@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'orignagta.firebasestorage.app',
     measurementId: 'G-ERYV0ZZJ7Z',
   );
+
 }
