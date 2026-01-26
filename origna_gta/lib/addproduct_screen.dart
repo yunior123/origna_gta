@@ -1,11 +1,12 @@
-
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloudflare_r2_uploader/cloudflare_r2_uploader.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/productaddimages_screen.dart';
+import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/utils.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -256,9 +257,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
       return;
     }
     try {
-      final response = await http.get(
-        Uri.parse('https://api.geoapify.com/v1/geocode/autocomplete?text=$value&filter=countrycode:ca&apiKey=REDACTED_SECRET'),
-      );
+      final String apiKey = ConfigService().geoapifyKey;
+      final response = await http.get(Uri.parse('https://api.geoapify.com/v1/geocode/autocomplete?text=$value&filter=countrycode:ca&apiKey=$apiKey'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
@@ -276,9 +276,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     setState(() {
       _streetController.text = details.street;
-      _cityController.text = details.city ;
-      _selectedProvince = details.province ;
-      _postalCodeController.text = details.postalCode ;
+      _cityController.text = details.city;
+      _selectedProvince = details.province;
+      _postalCodeController.text = details.postalCode;
       _latitude = details.latitude;
       _longitude = details.longitude;
 
@@ -289,28 +289,26 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Future<String?> _uploadToCloudflareR2(Uint8List bytes, path) async {
     try {
-      final fileName = 'products/${DateTime.now().millisecondsSinceEpoch}.jpg';
-      const accessKeyId = 'REDACTED_SECRET';
-      const secretAccessKey = 'REDACTED_SECRET';
-      const bucket = 'orignagta';
-      const accountId = '9b027cd3919483d27f0abeb2090ac626';
-      const devUrl = "https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev";
-      final uploader = CloudflareR2Uploader(accountId: accountId, accessKeyId: accessKeyId, secretAccessKey: secretAccessKey, bucketName: bucket);
-      final url = await uploader.uploadFile(
-        fileBytes: bytes,
-        fileName: fileName,
-        folderName: 'uploads',
-        onProgress: (progress) => print('Upload Progress: ${(progress * 100).toStringAsFixed(0)}%'),
+      final fileName = "product_${DateTime.now().millisecondsSinceEpoch}.jpg";
+      final String filePath = "products/$fileName";
+
+      final result = await FirebaseFunctions.instance.httpsCallable('get_r2_presigned_url').call({'fileName': fileName});
+
+      String uploadUrl = result.data['uploadUrl'];
+
+      final response = await http.put(
+        Uri.parse(uploadUrl),
+        body: bytes, // The image bytes from your image picker
+        headers: {"Content-Type": "image/jpeg"},
       );
-      if (url != null) {
-        print('✅ File uploaded successfully: $url');
-        final devUrlF = '$devUrl/uploads/$fileName';
-        print('✅ Public URL: $devUrlF');
-        return devUrlF;
-      } else {
-        print('❌ Upload failed');
-        return null;
+
+      final String permanentUrl = "${ConfigService().imageBaseUrl}/$filePath";
+
+      if (response.statusCode == 200) {
+        print("Uploaded successfully to R2!");
+        return permanentUrl;
       }
+      return null;
     } catch (e) {
       print('Error uploading to Cloudflare R2: $e');
       return null;
@@ -326,6 +324,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return null;
   }
 }
+
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
 

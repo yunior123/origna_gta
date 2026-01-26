@@ -36,18 +36,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       appBar: AppBar(
         title: const Text('Product Details'),
         actions: [
-          // Use this block inside the AppBar actions list in HomeScreen and ProductDetailScreen
-          StreamBuilder<DocumentSnapshot>(
-            stream: user != null ? FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots() : null,
+       StreamBuilder<QuerySnapshot>(
+            stream: user != null 
+                ? FirebaseFirestore.instance.collection('users').doc(user.uid).collection('cart').snapshots() 
+                : null,
             builder: (context, snapshot) {
-              if (!snapshot.hasData || !snapshot.data!.exists) {
-                return const Center(child: CircularProgressIndicator());
+              int itemCount = 0;
+              if (snapshot.hasData) {
+                // Sum quantities across all documents in the sub-collection
+                itemCount = snapshot.data!.docs.fold(0, (sum, doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return sum + (data['quantity'] as int? ?? 0);
+                });
               }
-
-              final List<dynamic> cartData = snapshot.data!.get('cart') ?? [];
-              final cartItems = cartData.map((e) => Map<String, dynamic>.from(e)).toList();
-              int itemCount = cartItems.fold(0, (sum, item) => sum + (item['quantity'] as int));
-
               return Stack(
                 children: [
                   IconButton(

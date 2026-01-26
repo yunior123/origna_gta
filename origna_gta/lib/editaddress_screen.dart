@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/utils.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -204,8 +205,10 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
     }
 
     try {
+      final String apiKey = ConfigService().geoapifyKey;
+
       final response = await http.get(
-        Uri.parse('https://api.geoapify.com/v1/geocode/autocomplete?text=$value&filter=countrycode:ca&apiKey=REDACTED_SECRET'),
+        Uri.parse('https://api.geoapify.com/v1/geocode/autocomplete?text=$value&filter=countrycode:ca&apiKey=$apiKey'),
       );
 
       if (response.statusCode == 200) {

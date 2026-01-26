@@ -2,12 +2,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
-class CartItem extends StatelessWidget {
+class CartItemScreen extends StatelessWidget {
   final Map<String, dynamic> item;
   final VoidCallback onRemove;
   final Function(int) onQuantityChanged;
 
-  const CartItem({super.key, required this.item, required this.onRemove, required this.onQuantityChanged});
+  const CartItemScreen({super.key, required this.item, required this.onRemove, required this.onQuantityChanged});
   @override
   Widget build(BuildContext context) {
     return Container(

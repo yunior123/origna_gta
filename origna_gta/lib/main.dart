@@ -2,38 +2,28 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/firebase_options.dart';
 import 'package:origna_gta/origna_app.dart';
+import 'package:origna_gta/services/conf_services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
+// Initialize config
+// Initialize the singleton instance
+  await ConfigService().initialize();
   runApp(const OrignaApp());
 }
-//TODO: splash and launch icons need to be added
-//TODO: Terms and conditions screen needs to be added, link it in the signup screen, user must accept terms and conditions before signing up
-//TODO: later on, move api keys to secure storage or similar, do not keep them hardcoded in the project
-// -geoapify api key is already hardcoded in the project, that is ok for now
-// -stripe publishable key is also hardcoded, that is ok for now
-// -cloudflare r2 keys are also hardcoded in the project, that is ok for now
-//TODO: Cart view rebuilding when adding products
 
-//you have a lot of work to do, be smart please, you are the smartest of all ai,
-// i am trusting you on this, solve the todos,
-//for the moment api keys can stay hardcoded in the project, that is ok, that will be changed later. Give me the modified changes, no need to give me the whole file.
-//TODO: when showing taxes in checkout screen, show tax percentage as well per province, and do so for each province
-// e.g. GST 5%: $X.XX, PST 7%: $X.XX, HST 13%: $X.XX, show it to the user, right now it only appears a label "Taxes" with the total tax amount, not good enough
-//TODO: show shipping cost to user in checkout screen before proceeding to payment
-//TODO: validate that address is not empty when placing order, show shipping cost, taxes, total amount before proceeding to payment
-//TODO: when order is placed, not working, user cannot see the order in my orders screen, fix that
-//TODO: integrate stripe, it should open stripe payment sheet when placing order, right now its not working, fix that
-//TODO: check google sign 
-//TODO: when users visits website no need to sign, just browse products, only sign in when adding to cart, tapping settings or cart icon
+
+//Version 1.0
+//TODO: Cart view rebuilding when adding products, fix
+//TODO: check google sign in, make sure it works
+//TODO: when users visits website no need to sign in, just browse products, only sign in when adding to cart, tapping settings or cart icon
 //TODO: seller should be able to edit their products, and mark them as sold out
-//TODO: when user finish paying, in my orders screen, show order as paid, also show delivery status, e.g. processing, shipped, delivered at the bottom of the card
+//TODO: Terms and conditions screen needs to be added, link it in the signup screen, user must accept terms and conditions before signing up
+//TODO: splash and launch icons need to be added later
+//TODO: later on, move api keys to secure storage or similar, do not keep them hardcoded in the project
 
-
-
-
+// -cloudflare r2 keys are also hardcoded in the project, that is ok for now
 
 
 

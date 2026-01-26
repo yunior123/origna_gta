@@ -23,10 +23,11 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   String? _selectedCategoryId;
   final ScrollController _scrollController = ScrollController();
-  //DocumentSnapshot? _lastDocument;
   final List<ProductModel> _products = [];
-  // bool _isLoadingMore = false;
-  // bool _hasMore = true;
+static const int _pageSize = 20;
+DocumentSnapshot? _lastDocument;
+bool _isLoadingMore = false;
+bool _hasMore = true;
 
   @override
   Widget build(BuildContext context) {
@@ -97,47 +98,21 @@ class _HomeScreenState extends State<HomeScreen> {
                             Navigator.push(context, MaterialPageRoute(builder: (_) => const AddProductScreen()));
                           },
                         ),
-                      StreamBuilder<DocumentSnapshot>(
-                        stream: user != null ? FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots() : null,
+                   // UPDATED: Cart Counter using Sub-collection
+                      StreamBuilder<QuerySnapshot>(
+                        stream: user != null 
+                          ? FirebaseFirestore.instance.collection('users').doc(user.uid).collection('cart').snapshots() 
+                          : null,
                         builder: (context, snapshot) {
-                          int itemCount = 0;
-                          if (snapshot.hasData && snapshot.data!.exists) {
-                            final data = snapshot.data!.data() as Map<String, dynamic>?;
-                            if (data != null && data.containsKey('cart')) {
-                              final List<dynamic> cartList = data['cart'] ?? [];
-                              itemCount = cartList.fold(0, (sum, item) => sum + (item['quantity'] as int));
+                          int totalCount = 0;
+                          if (snapshot.hasData) {
+                            // Sum up the quantities of all documents in the cart sub-collection
+                            for (var doc in snapshot.data!.docs) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              totalCount += (data['quantity'] as num? ?? 0).toInt();
                             }
                           }
-                          return Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              _buildIconButton(
-                                icon: Icons.shopping_cart_outlined,
-                                onPressed: () {
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
-                                },
-                              ),
-                              if (itemCount > 0)
-                                Positioned(
-                                  right: -2,
-                                  top: -2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(5),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: const Color(0xFFFF6B35), width: 2),
-                                    ),
-                                    constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                                    child: Text(
-                                      itemCount > 99 ? '99+' : '$itemCount',
-                                      style: const TextStyle(color: Color(0xFFFF6B35), fontSize: 10, fontWeight: FontWeight.bold),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          );
+                          return _buildCartBadge(totalCount);
                         },
                       ),
                     ],
@@ -260,18 +235,58 @@ class _HomeScreenState extends State<HomeScreen> {
                 }, childCount: filteredProducts.length),
               ),
             ),
-          // if (_isLoadingMore)
-          //   const SliverToBoxAdapter(
-          //     child: Padding(
-          //       padding: EdgeInsets.all(16),
-          //       child: Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B35)))),
-          //     ),
-          //   ),
+
+      
+        // NEW: Loading Indicator at the bottom for Pagination
+          if (_isLoadingMore)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B35)),
+                  ),
+                ),
+              ),
+            ),
+          
+          // Visual spacer for the bottom
+          const SliverToBoxAdapter(child: SizedBox(height: 50)),
         ],
       ),
     );
   }
-
+// Logic Fix: Use QuerySnapshot instead of DocumentSnapshot for the cart
+  Widget _buildCartBadge(int count) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        _buildIconButton(
+          icon: Icons.shopping_cart_outlined,
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen())),
+        ),
+        if (count > 0)
+          Positioned(
+            right: -2,
+            top: -2,
+            child: Container(
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFFF6B35), width: 2),
+              ),
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              child: Text(
+                count > 99 ? '99+' : '$count',
+                style: const TextStyle(color: Color(0xFFFF6B35), fontSize: 10, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
   @override
   void dispose() {
     _searchController.dispose();
@@ -284,8 +299,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadProducts();
-    _scrollController.addListener(_onScroll);
+    _loadProducts(); // Initial load
+    _scrollController.addListener(_onScroll); // Listen for scroll events
   }
 
   // Add this helper method in _HomeScreenState class:
@@ -302,42 +317,54 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadProducts() async {
-    // if (_isLoadingMore || !_hasMore) return;
+    if (_isLoadingMore || !_hasMore) return;
+  
+  setState(() => _isLoadingMore = true);
+  
+  try {
+    var query = FirebaseFirestore.instance
+        .collection('products')
+        .orderBy('dateCreated', descending: true)
+        .limit(_pageSize);
 
-    // setState(() => _isLoadingMore = true);
-
-    try {
-      final query = FirebaseFirestore.instance.collection('products');
-
-      // if (_lastDocument != null) {
-      //   query = query.startAfterDocument(_lastDocument!);
-      // }
-
-      final QuerySnapshot<Map<String, dynamic>> snapshot = await query.get();
-
-      if (snapshot.docs.isEmpty) {
-        // setState(() => _hasMore = false);
-      } else {
-        setState(() {
-          // _lastDocument = snapshot.docs.last;
-          final prod = snapshot.docs.map((doc) => ProductModel.fromDocument(doc)).toList();
-          _products.addAll(prod);
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading products: $e')));
-      }
+    if (_lastDocument != null) {
+      query = query.startAfterDocument(_lastDocument!);
     }
 
-    // finally {
-    //   //if (mounted) setState(() => _isLoadingMore = false);
-    // }
+    final snapshot = await query.get();
+    
+    if (snapshot.docs.length < _pageSize) {
+      _hasMore = false;
+    }
+
+    if (snapshot.docs.isNotEmpty) {
+      _lastDocument = snapshot.docs.last;
+      final newProducts = snapshot.docs.map((doc) => ProductModel.fromDocument(doc)).toList();
+      
+      setState(() {
+        _products.addAll(newProducts);
+      });
+    }
+  } catch (e) {
+    debugPrint('Error loading products: $e');
+     if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading products: $e')));
+      }
+  } finally {
+    setState(() => _isLoadingMore = false);
+    
+  }
+ 
   }
 
+
+
+  // Logic to detect when user reaches the bottom
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      //_loadProducts();
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
+      if (!_isLoadingMore && _hasMore) {
+        _loadProducts();
+      }
     }
   }
 }

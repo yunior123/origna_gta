@@ -719,3 +719,32 @@ def on_order_status_change(event: firestore_fn.Event[firestore_fn.Change[firesto
         print(f"❌ Error in order trigger: {str(e)}")
         import traceback
         print(traceback.format_exc())
+
+
+from firebase_functions.params import SecretParam
+R2_ACCESS_KEY = SecretParam("R2_ACCESS_KEY")
+R2_SECRET_KEY = SecretParam("R2_SECRET_KEY")
+R2_ACCOUNT_ID = SecretParam("R2_ACCOUNT_ID")
+
+import boto3
+from botocore.config import Config
+
+@https_fn.on_call(secrets=[R2_ACCESS_KEY, R2_SECRET_KEY, R2_ACCOUNT_ID])
+def get_r2_presigned_url(req: https_fn.CallableRequest) -> Any:
+    file_name = req.data.get("fileName")
+    
+    # Use .value to access the secret content safely
+    r2 = boto3.client(
+        's3',
+        endpoint_url=f"https://{R2_ACCOUNT_ID.value}.r2.cloudflarestorage.com",
+        aws_access_key_id=R2_ACCESS_KEY.value,
+        aws_secret_access_key=R2_SECRET_KEY.value,
+        config=Config(signature_version='s3v4'),
+    )
+
+    url = r2.generate_presigned_url(
+        ClientMethod='put_object',
+        Params={'Bucket': 'orignagta', 'Key': f"products/{file_name}"},
+        ExpiresIn=3600 
+    )
+    return {"uploadUrl": url}
