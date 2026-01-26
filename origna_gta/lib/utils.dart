@@ -561,7 +561,8 @@ class ProductModel {
 
       dateCreated: data['dateCreated'] is Timestamp ? data['dateCreated'] as Timestamp : null,
       sellerId: data['sellerId'] ?? '',
-      searchKeywords:  
+      searchKeywords:  data["searchKeywords"],
+      stockQuantity: data["stockQuantity"],
     );
   }
 
@@ -581,6 +582,8 @@ class ProductModel {
       rating: (map['rating'] ?? 0.0).toDouble(),
       dateCreated: map['dateCreated'] as Timestamp?,
       sellerId: map['sellerId'] ?? '',
+       searchKeywords:  map["searchKeywords"],
+      stockQuantity: map["stockQuantity"],
     );
   }
 
@@ -593,7 +596,7 @@ class ProductModel {
       'imageUrls': imageUrls,
       'sellerAddress': sellerAddress.toMap(),
       'description': description,
-      //'stockQuantity': stockQuantity,
+      'stockQuantity': stockQuantity,
       'categoryId': categoryId,
       'rating': rating,
       'dateCreated': dateCreated,

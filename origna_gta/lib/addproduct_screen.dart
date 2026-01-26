@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:cloudflare_r2_uploader/cloudflare_r2_uploader.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/productaddimages_screen.dart';
@@ -10,6 +9,8 @@ import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/utils.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as img;
+
 
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -21,6 +22,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _apartmentController = TextEditingController();
   final _cityController = TextEditingController();
   final _postalCodeController = TextEditingController();
+  final _stockController = TextEditingController(text: '1'); // Default to 1
   String _selectedProvince = 'ON';
   double? _latitude;
   double? _longitude;
@@ -82,6 +84,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     validator: (value) => value?.isEmpty ?? true ? 'Please enter price' : null,
                   ),
                   const SizedBox(height: 12),
+                  // --- NEW STOCK QUANTITY FIELD ---
+TextFormField(
+  controller: _stockController,
+  keyboardType: TextInputType.number,
+  decoration: const InputDecoration(labelText: 'Stock Quantity', prefixIcon: Icon(Icons.inventory_2_outlined)),
+  validator: (value) {
+    if (value == null || value.isEmpty) return 'Please enter stock quantity';
+    if (int.tryParse(value) == null || int.parse(value) < 0) return 'Enter a valid number';
+    return null;
+  },
+),
+const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: _categoryController.text.isNotEmpty ? _categoryController.text : null,
                     decoration: const InputDecoration(labelText: 'Category', prefixIcon: Icon(Icons.category_outlined)),
@@ -197,17 +211,45 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _apartmentController.dispose();
     _cityController.dispose();
     _postalCodeController.dispose();
+    _stockController.dispose();
     super.dispose();
   }
+  // Constants for image validation
+  static const int MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+  static const int MAX_IMAGES = 10;
+  static const List<String> ALLOWED_FORMATS = ['jpg', 'jpeg', 'png', 'webp'];
+  static const int MAX_DIMENSION = 2048; // Max width/height
 
   Future<void> _addProduct() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // Validate images
+    if (_imageModels.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one product image')),
+      );
+      return;
+    }
+
+    if (_imageModels.length > MAX_IMAGES) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Maximum $MAX_IMAGES images allowed')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
+    
     try {
+      final productName = _nameController.text.trim();
+      final keywords = generateSearchKeywords(productName);
+      
       final product = ProductModel(
         id: '',
         sellerId: FirebaseAuth.instance.currentUser!.uid,
-        name: _nameController.text.trim(),
+        name: productName,
+        searchKeywords: keywords,
+        stockQuantity: int.parse(_stockController.text.trim()),
         price: double.parse(_priceController.text.trim()),
         imageUrls: <String>[],
         sellerAddress: Address(
@@ -224,28 +266,176 @@ class _AddProductScreenState extends State<AddProductScreen> {
         categoryId: int.parse(_categoryController.text.trim()),
         dateCreated: Timestamp.now(),
       );
-      final productIdMap = await FirebaseFirestore.instance.collection('products').add(product.toMap());
+      
+      final productIdMap = await FirebaseFirestore.instance
+          .collection('products')
+          .add(product.toMap());
       final productId = productIdMap.id;
-      for (var m in _imageModels) {
-        final downloadUrl = await _uploadToCloudflareR2(m.bytes, m.url);
-        if (downloadUrl != null) {
-          await FirebaseFirestore.instance.collection('products').doc(productId).update({
-            "id": productId,
-            'imageUrls': FieldValue.arrayUnion([downloadUrl]),
-          });
-        }
+
+      // 🔥 FIX: Upload images in parallel with validation
+      final uploadResults = await _uploadImagesInParallel(_imageModels, productId);
+      
+      final successfulUrls = uploadResults.where((url) => url != null).cast<String>().toList();
+      
+      if (successfulUrls.isEmpty) {
+        throw Exception('Failed to upload any images');
       }
+
+      // Update product with uploaded image URLs
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(productId)
+          .update({
+            'id': productId,
+            'imageUrls': successfulUrls,
+          });
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product added successfully'), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Product added with ${successfulUrls.length} images'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Validate and compress image before upload
+  Future<Uint8List?> _validateAndCompressImage(Uint8List bytes) async {
+    try {
+      // Check file size
+      if (bytes.length > MAX_IMAGE_SIZE) {
+        throw Exception('Image too large. Max size is ${MAX_IMAGE_SIZE ~/ (1024 * 1024)}MB');
+      }
+
+      // Decode image
+      final image = img.decodeImage(bytes);
+      if (image == null) {
+        throw Exception('Invalid image format');
+      }
+
+      // Resize if too large (maintains aspect ratio)
+      img.Image resized = image;
+      if (image.width > MAX_DIMENSION || image.height > MAX_DIMENSION) {
+        resized = img.copyResize(
+          image,
+          width: image.width > image.height ? MAX_DIMENSION : null,
+          height: image.height > image.width ? MAX_DIMENSION : null,
+        );
+      }
+
+      // Compress to JPEG with 85% quality
+      final compressed = img.encodeJpg(resized, quality: 85);
+      
+      return Uint8List.fromList(compressed);
+    } catch (e) {
+      debugPrint('Image validation error: $e');
+      return null;
+    }
+  }
+
+  /// Upload multiple images in parallel for better performance
+  Future<List<String?>> _uploadImagesInParallel(
+    List<ImageModel> imageModels,
+    String productId,
+  ) async {
+    // Validate and compress all images first
+    final validationFutures = imageModels.map((model) async {
+      final validated = await _validateAndCompressImage(model.bytes);
+      return validated != null ? (model, validated) : null;
+    });
+
+    final validatedImages = (await Future.wait(validationFutures))
+        .whereType<(ImageModel, Uint8List)>()
+        .toList();
+
+    if (validatedImages.isEmpty) {
+      throw Exception('No valid images to upload');
+    }
+
+    // Upload all images in parallel
+    final uploadFutures = validatedImages.asMap().entries.map((entry) async {
+      final index = entry.key;
+      final (original, compressed) = entry.value;
+      
+      try {
+        return await _uploadToCloudflareR2(
+          compressed,
+          productId,
+          index,
+        );
+      } catch (e) {
+        debugPrint('Failed to upload image $index: $e');
+        return null;
+      }
+    });
+
+    return await Future.wait(uploadFutures);
+  }
+
+  /// Upload single image to Cloudflare R2 with retry logic
+  Future<String?> _uploadToCloudflareR2(
+    Uint8List bytes,
+    String productId,
+    int index,
+  ) async {
+    const maxRetries = 3;
+    int attempt = 0;
+
+    while (attempt < maxRetries) {
+      try {
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final fileName = "product_${productId}_${index}_$timestamp.jpg";
+        final String filePath = "products/$fileName";
+
+        // Get presigned URL from Cloud Function
+        final result = await FirebaseFunctions.instance
+            .httpsCallable('get_r2_presigned_url')
+            .call({'fileName': fileName});
+
+        String uploadUrl = result.data['uploadUrl'];
+
+        // Upload with timeout
+        final response = await http
+            .put(
+              Uri.parse(uploadUrl),
+              body: bytes,
+              headers: {"Content-Type": "image/jpeg"},
+            )
+            .timeout(const Duration(seconds: 30));
+
+        if (response.statusCode == 200) {
+          final String permanentUrl = "${ConfigService().imageBaseUrl}/$filePath";
+          debugPrint("Uploaded image $index successfully to R2!");
+          return permanentUrl;
+        } else {
+          throw Exception('Upload failed with status ${response.statusCode}');
+        }
+      } catch (e) {
+        attempt++;
+        debugPrint('Upload attempt $attempt failed: $e');
+        
+        if (attempt >= maxRetries) {
+          debugPrint('Max retries reached for image $index');
+          return null;
+        }
+        
+        // Exponential backoff
+        await Future.delayed(Duration(seconds: attempt * 2));
+      }
+    }
+
+    return null;
   }
 
   void _onStreetChanged(String value) async {
@@ -287,33 +477,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     });
   }
 
-  Future<String?> _uploadToCloudflareR2(Uint8List bytes, path) async {
-    try {
-      final fileName = "product_${DateTime.now().millisecondsSinceEpoch}.jpg";
-      final String filePath = "products/$fileName";
-
-      final result = await FirebaseFunctions.instance.httpsCallable('get_r2_presigned_url').call({'fileName': fileName});
-
-      String uploadUrl = result.data['uploadUrl'];
-
-      final response = await http.put(
-        Uri.parse(uploadUrl),
-        body: bytes, // The image bytes from your image picker
-        headers: {"Content-Type": "image/jpeg"},
-      );
-
-      final String permanentUrl = "${ConfigService().imageBaseUrl}/$filePath";
-
-      if (response.statusCode == 200) {
-        print("Uploaded successfully to R2!");
-        return permanentUrl;
-      }
-      return null;
-    } catch (e) {
-      print('Error uploading to Cloudflare R2: $e');
-      return null;
-    }
-  }
 
   String? _validateCanadianPostalCode(String? value) {
     if (value == null || value.isEmpty) return 'Required';

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:origna_gta/utils.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -242,18 +243,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       if (_isLogin) {
         await FirebaseAuth.instance.signInWithEmailAndPassword(email: _emailController.text.trim(), password: _passwordController.text.trim());
       } else {
-        final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
-
-        await FirebaseFirestore.instance.collection('users').doc(credential.user!.uid).set({
-          'name': _nameController.text.trim(),
-          'email': _emailController.text.trim(),
-          'createdAt': FieldValue.serverTimestamp(),
-          'favorites': [],
-          'address': {},
-        });
+        final userModel = UserModel(
+          uid: userCredential.user!.uid,
+          email: _emailController.text.trim(),
+          name: _nameController.text.trim(),
+          roles: <String>[],
+          createdAt: DateTime.now(),
+          favorites: <String>[],
+        );
+        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set(userModel.toMap());
       }
     } on FirebaseAuthException catch (e) {
       _showErrorSnackBar(e.message ?? 'Authentication failed');
@@ -279,14 +281,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   void _showForgotPasswordDialog(BuildContext context) {
     final emailController = TextEditingController();
     final formKey = GlobalKey<FormState>();
-     bool isSending = false;
+    bool isSending = false;
     showDialog(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
-       
-
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: const Text('Reset Password'),
@@ -365,13 +365,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         final userDoc = await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).get();
 
         if (!userDoc.exists) {
-          await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
-            'name': userCredential.user!.displayName ?? '',
-            'email': userCredential.user!.email ?? '',
-            'createdAt': FieldValue.serverTimestamp(),
-            'favorites': [],
-            'address': {},
-          });
+          final userModel = UserModel(
+            uid: userCredential.user!.uid,
+            email: userCredential.user!.email ?? '',
+            name: userCredential.user!.displayName ?? '',
+            roles: <String>[],
+            createdAt: DateTime.now(),
+            favorites: <String>[],
+          );
+          await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set(userModel.toMap());
         }
       } else {
         _showErrorSnackBar('Google Sign-In is not supported on this platform.');

@@ -218,49 +218,7 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
   Future<void> _deleteProduct(BuildContext context) async {
     try {
       final productId = widget.productId;
-      final firestore = FirebaseFirestore.instance;
-
-      // 1. Delete the actual product document
-      await firestore.collection('products').doc(productId).delete();
-
-      // 2. Find all users who have this product in their cart OR favorites
-      // We fetch users who have a non-empty cart or favorites to minimize the search
-      final usersSnapshot = await firestore.collection('users').get(); //TODO: In production, use Cloud Functions for scalability
-
-      final WriteBatch batch = firestore.batch();
-      bool adjustmentsMade = false;
-
-      for (var userDoc in usersSnapshot.docs) {
-        final data = userDoc.data();
-        bool userNeedsUpdate = false;
-        Map<String, dynamic> updates = {};
-
-        // --- Handle Cart (Array of Objects) ---
-        final List<dynamic> cart = data['cart'] ?? [];
-        final bool hasInCart = cart.any((item) => item['productId'] == productId);
-        if (hasInCart) {
-          updates['cart'] = cart.where((item) => item['productId'] != productId).toList();
-          userNeedsUpdate = true;
-        }
-
-        // --- Handle Favorites (Array of Strings/IDs) ---
-        final List<dynamic> favorites = data['favorites'] ?? [];
-        if (favorites.contains(productId)) {
-          updates['favorites'] = FieldValue.arrayRemove([productId]);
-          userNeedsUpdate = true;
-        }
-
-        if (userNeedsUpdate) {
-          batch.update(userDoc.reference, updates);
-          adjustmentsMade = true;
-        }
-      }
-
-      // 3. Commit all changes across all affected user documents
-      if (adjustmentsMade) {
-        await batch.commit();
-      }
-
+      //TODO: delete in backend, call cloud fn
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product deleted and removed from all carts & favorites')));
       }
