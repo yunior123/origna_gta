@@ -382,6 +382,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         subtotal: widget.total,
         currency: 'cad',
         amount: (totalWithTax * 100).toInt(),
+        stripeSessionId: "",
       );
 
       final response = await callable.call(order.toMap());

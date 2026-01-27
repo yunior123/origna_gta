@@ -61,6 +61,7 @@ void main() async {
     },
   );
 }
+//TODO add chatbot
 
     // FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 

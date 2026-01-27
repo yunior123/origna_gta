@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:origna_gta/cartitem_screen.dart';
 import 'package:origna_gta/checkout_screen.dart';
 import 'package:origna_gta/utils.dart';
-
+//TODO check rebuilds when tapping plus or minus, the entire ui rebuilds instead of specific parts
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
   @override

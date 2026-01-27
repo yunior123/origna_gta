@@ -47,19 +47,37 @@ class OrdersScreen extends StatelessWidget {
   }
 }
 
+Widget _productImage(String? url) {
+  if (url == null || url.isEmpty) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(8)),
+      child: const Icon(Icons.image, size: 20, color: Colors.grey),
+    );
+  }
+
+  return ClipRRect(
+    borderRadius: BorderRadius.circular(8),
+    child: Image.network(
+      url,
+      width: 48,
+      height: 48,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(width: 48, height: 48, color: Colors.grey[300], child: const Icon(Icons.broken_image, size: 20)),
+    ),
+  );
+}
+
 class _BuyerOrderCard extends StatelessWidget {
   final Map<String, dynamic> data;
   const _BuyerOrderCard({required this.data});
 
   @override
   Widget build(BuildContext context) {
-    final itemsData = List<Map<String,dynamic>>.from(data['items'] ?? []);
-    final items = itemsData
-    .map((e) => CartItemDetailModel.fromMap(e))
-    .toList();
-
+    final itemsData = List<Map<String, dynamic>>.from(data['items'] ?? []);
+    final items = itemsData.map((e) => CartItemDetailModel.fromMap(e)).toList();
     final total = data['total'] ?? 0.0;
-    //TODO: add more data to be seen by user
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -85,46 +103,64 @@ class _BuyerOrderCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Row(
                   children: [
-                    // Item details
+                    // 🖼 Product Image
+                    _productImage(item.imageUrls.isNotEmpty ? item.imageUrls.first : null),
+                    const SizedBox(width: 12),
+
+                    // 📦 Product Info
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(item.name, style: const TextStyle(fontWeight: FontWeight.w500)),
-                          Text("Qty: $quantity", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                          Text(
+                            item.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 4),
+                          Text("Qty: ${item.quantity} • \$${item.price.toStringAsFixed(2)}", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+
+                          if (isShipped && item.trackingNumber != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text("Tracking: ${item.trackingNumber}", style: const TextStyle(fontSize: 11, color: Colors.blue)),
+                            ),
                         ],
                       ),
                     ),
-                    // Status Badge
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isShipped ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            isShipped
-                                ? "Shipped"
-                                : isDelivered
-                                ? "Delivered"
-                                : "Processing",
-                            style: TextStyle(color: isShipped ? Colors.green : Colors.orange, fontSize: 10, fontWeight: FontWeight.bold),
-                          ),
+                    // 🚚 Status Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDelivered
+                            ? Colors.blue.withOpacity(0.1)
+                            : isShipped
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isDelivered
+                            ? "Delivered"
+                            : isShipped
+                            ? "Shipped"
+                            : "Processing",
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: isDelivered
+                              ? Colors.blue
+                              : isShipped
+                              ? Colors.green
+                              : Colors.orange,
                         ),
-                        if (isShipped && item.trackingNumber != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text("Track: ${item.trackingNumber}", style: const TextStyle(fontSize: 10, color: Colors.blue)),
-                          ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
               );
-            },),
+            }),
           ],
         ),
       ),

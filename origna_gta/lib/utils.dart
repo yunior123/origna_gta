@@ -405,7 +405,11 @@ class CartItemDetailModel {
     );
   }
 }
+
 int getCrossAxisCount(BuildContext context) {
+  if (TargetPlatform.android == defaultTargetPlatform || TargetPlatform.iOS == defaultTargetPlatform) {
+    return 2;
+  }
   final width = MediaQuery.of(context).size.width;
 
   if (kIsWeb) {
@@ -474,6 +478,7 @@ class OrderModel {
   final String currency;
   final int amount;
   final List<String> sellerIds;
+  final String stripeSessionId;
 
   OrderModel({
     required this.orderId,
@@ -491,6 +496,7 @@ class OrderModel {
     required this.amount,
     required this.currency,
     required this.sellerIds,
+    required this.stripeSessionId,
   });
 
   factory OrderModel.fromDocument(DocumentSnapshot doc) {
@@ -530,6 +536,7 @@ class OrderModel {
       amount: (data['amount'] ?? 0),
       currency: data["currency"] ?? '',
       sellerIds: List<String>.from(data["sellerIds"] ?? []),
+      stripeSessionId: data["stripeSessionId"] ?? "",
     );
   }
 
@@ -554,7 +561,6 @@ class OrderModel {
   }
 }
 
-
 class ProductCategories {
   final int categoryId;
   final String name;
@@ -562,6 +568,7 @@ class ProductCategories {
 
   ProductCategories({required this.categoryId, required this.name, required this.icon});
 }
+
 class ProductModel {
   final String id;
   final String name;
@@ -594,7 +601,7 @@ class ProductModel {
   factory ProductModel.fromDocument(DocumentSnapshot doc) {
     assert(doc.data() != null, 'Product document data is null');
     final data = doc.data() as Map<String, dynamic>;
-    
+
     assert(data.containsKey('name'), 'Product missing "name"');
     assert(data.containsKey('price'), 'Product missing "price"');
     assert(data.containsKey('categoryId'), 'Product missing "categoryId"');
@@ -664,31 +671,24 @@ class ProductModel {
     return Address.fromMap({});
   }
 }
+
 // Model for favorite items in subcollection
 class FavoriteItem {
   final String productId;
   final DateTime dateFavorited;
 
-  FavoriteItem({
-    required this.productId,
-    required this.dateFavorited,
-  });
+  FavoriteItem({required this.productId, required this.dateFavorited});
 
   factory FavoriteItem.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    return FavoriteItem(
-      productId: data['productId'] ?? doc.id,
-      dateFavorited: (data['dateFavorited'] as Timestamp?)?.toDate() ?? DateTime.now(),
-    );
+    return FavoriteItem(productId: data['productId'] ?? doc.id, dateFavorited: (data['dateFavorited'] as Timestamp?)?.toDate() ?? DateTime.now());
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'productId': productId,
-      'dateFavorited': Timestamp.fromDate(dateFavorited),
-    };
+    return {'productId': productId, 'dateFavorited': Timestamp.fromDate(dateFavorited)};
   }
 }
+
 class UserModel {
   final String uid;
   final String email;
@@ -708,19 +708,17 @@ class UserModel {
     this.customerId,
   });
 
-factory UserModel.fromMap(Map<String, dynamic> map) {
-  return UserModel(
-    uid: map['uid']?.toString() ?? '',
-    email: map['email']?.toString() ?? '',
-    name: map['name']?.toString() ?? '',
-    roles: List<String>.from(map['roles'] ?? const []),
-    address: map['address'] != null
-        ? Address.fromMap(map['address'] as Map<String, dynamic>)
-        : null,
-    createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-    customerId: map['customerId'] as String?, // ✅ FIX
-  );
-}
+  factory UserModel.fromMap(Map<String, dynamic> map) {
+    return UserModel(
+      uid: map['uid']?.toString() ?? '',
+      email: map['email']?.toString() ?? '',
+      name: map['name']?.toString() ?? '',
+      roles: List<String>.from(map['roles'] ?? const []),
+      address: map['address'] != null ? Address.fromMap(map['address'] as Map<String, dynamic>) : null,
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      customerId: map['customerId'] as String?, // ✅ FIX
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -734,47 +732,32 @@ factory UserModel.fromMap(Map<String, dynamic> map) {
     };
   }
 
-    // Helper method to get favorites subcollection reference
+  // Helper method to get favorites subcollection reference
   static CollectionReference getFavoritesCollection(String userId) {
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('favorites');
+    return FirebaseFirestore.instance.collection('users').doc(userId).collection('favorites');
   }
 
   // Helper method to get cart subcollection reference
   static CollectionReference getCartCollection(String userId) {
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('cart');
+    return FirebaseFirestore.instance.collection('users').doc(userId).collection('cart');
   }
-
 }
+
 // Add this helper method
-void showLoginPrompt(BuildContext context,{String text= 'You need to sign in to add items to your cart.'}) {
+void showLoginPrompt(BuildContext context, {String text = 'You need to sign in to add items to your cart.'}) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Sign In Required'),
-      content:  Text(text),
+      content: Text(text),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         ElevatedButton(
           onPressed: () {
             Navigator.pop(context);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => LoginScreen()),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (_) => LoginScreen()));
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFF6B35),
-            foregroundColor: Colors.white,
-          ),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
           child: const Text('Sign In'),
         ),
       ],

@@ -1,11 +1,9 @@
 import 'dart:async'; // Required for Timer (Debouncer)
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/addproduct_screen.dart';
 import 'package:origna_gta/cart_screen.dart';
-import 'package:origna_gta/login_screen.dart';
 import 'package:origna_gta/productcard_screen.dart';
 import 'package:origna_gta/profile_screen.dart';
 import 'package:origna_gta/utils.dart';
