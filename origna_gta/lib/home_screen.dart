@@ -165,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
             SliverPadding(
               padding: const EdgeInsets.all(16),
               sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: kIsWeb ? 4 : 2, crossAxisSpacing: 12, mainAxisSpacing: 12),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: getCrossAxisCount(context), crossAxisSpacing: 12, mainAxisSpacing: 12),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final product = _products[index];
                   return ProductCard(productId: product.id, product: product, userModel: widget.userModel);

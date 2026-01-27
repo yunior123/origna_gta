@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:origna_gta/login_screen.dart';
@@ -404,7 +405,21 @@ class CartItemDetailModel {
     );
   }
 }
+int getCrossAxisCount(BuildContext context) {
+  final width = MediaQuery.of(context).size.width;
 
+  if (kIsWeb) {
+    if (width < 600) {
+      return 2; // Mobile browser
+    } else if (width < 1024) {
+      return 3; // Tablet / small desktop
+    } else {
+      return 4; // Desktop
+    }
+  } else {
+    return 2; // Mobile app
+  }
+}
 
 class CartItemModel {
   final int quantity;
