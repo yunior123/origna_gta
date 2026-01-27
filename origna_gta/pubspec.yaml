@@ -54,7 +54,6 @@ dependencies:
   firebase_remote_config: ^6.1.4
   image: ^4.7.2
   sentry_flutter: ^9.10.0
-  firebase_crashlytics: ^5.0.7
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.7
 

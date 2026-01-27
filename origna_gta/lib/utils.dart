@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:origna_gta/login_screen.dart';
 
 // Add these to your constants or helper section
 const Map<String, Map<String, double>> provinceTaxRates = {
@@ -64,9 +65,13 @@ final taxConfig = {
   'YT': {'GST': 0.05},
 };
 
-Future<void> addToCart({required String productId, required int quantity, required BuildContext context}) async {
+Future<bool> addToCart({required String productId, required int quantity, required BuildContext context}) async {
   final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
+  if (user == null) {
+    // Navigate to login screen
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => LoginScreen()));
+    return false;
+  }
 
   // Change: Access the cart as a sub-collection instead of a user document field
   final cartItemRef = FirebaseFirestore.instance.collection('users').doc(user.uid).collection('cart').doc(productId);
@@ -91,6 +96,7 @@ Future<void> addToCart({required String productId, required int quantity, requir
   } catch (e) {
     debugPrint('Error updating cart: $e');
   }
+  return true;
 }
 
 // Calculate detailed taxes based on selected province
@@ -350,6 +356,8 @@ class CartItemDetailModel {
   final Timestamp dateCreated;
   final Address sellerAddress;
   final String sellerId;
+  final String deliveryStatus;
+  final String? trackingNumber;
 
   CartItemDetailModel({
     required this.productId,
@@ -360,7 +368,11 @@ class CartItemDetailModel {
     required this.dateCreated,
     required this.sellerAddress,
     required this.sellerId,
+    required this.deliveryStatus,
+    this.trackingNumber,
   });
+
+  // Convert model to Map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'productId': productId,
@@ -371,9 +383,28 @@ class CartItemDetailModel {
       'dateCreated': dateCreated,
       'sellerAddress': sellerAddress.toMap(),
       'sellerId': sellerId,
+      'deliveryStatus': deliveryStatus,
+      'trackingNumber': trackingNumber,
     };
   }
+
+  // Convert Firestore Map to CartItemDetailModel
+  factory CartItemDetailModel.fromMap(Map<String, dynamic> map) {
+    return CartItemDetailModel(
+      productId: map['productId'] ?? '',
+      name: map['name'] ?? '',
+      price: (map['price'] ?? 0).toDouble(),
+      imageUrls: List<String>.from(map['imageUrls'] ?? []),
+      quantity: map['quantity'] ?? 0,
+      dateCreated: (map['dateCreated'] as Timestamp?) ?? Timestamp.now(),
+      sellerAddress: Address.fromMap(map['sellerAddress'] as Map<String, dynamic>),
+      sellerId: map['sellerId'] ?? '',
+      deliveryStatus: map['deliveryStatus'] ?? 'pending',
+      trackingNumber: map['trackingNumber'],
+    );
+  }
 }
+
 
 class CartItemModel {
   final int quantity;
@@ -417,7 +448,7 @@ class OrderModel {
   final String userId;
   final String customerId;
   final String customerEmail;
-  final List<dynamic> items;
+  final List<CartItemDetailModel> items;
   final double total;
   final Map<String, double> taxes;
   final double shippingCost;
@@ -449,10 +480,29 @@ class OrderModel {
 
   factory OrderModel.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
+    // Convert the list of items
+    final itemsData = data['items'] as List<dynamic>? ?? [];
+    final items = itemsData.map((item) {
+      final map = item as Map<String, dynamic>;
+      return CartItemDetailModel(
+        productId: map['productId'] ?? '',
+        name: map['name'] ?? '',
+        price: (map['price'] ?? 0).toDouble(),
+        imageUrls: List<String>.from(map['imageUrls'] ?? []),
+        quantity: map['quantity'] ?? 0,
+        dateCreated: map['dateCreated'] as Timestamp,
+        sellerAddress: Address.fromMap(map['sellerAddress'] as Map<String, dynamic>),
+        sellerId: map['sellerId'] ?? '',
+        deliveryStatus: map['deliveryStatus'] ?? 'pending',
+        trackingNumber: map['trackingNumber'],
+      );
+    }).toList();
+
     return OrderModel(
       orderId: doc.id,
       userId: data['userId'] ?? '',
-      items: data['items'] ?? [],
+      items: items,
       total: (data['total'] ?? 0).toDouble(),
       status: data['status'] ?? 'pending',
       deliveryInfo: data['deliveryInfo'] ?? {},
@@ -463,16 +513,16 @@ class OrderModel {
       shippingCost: (data['shippingCost'] ?? 0).toDouble(),
       subtotal: (data['subtotal'] ?? 0).toDouble(),
       amount: (data['amount'] ?? 0),
-      currency: data["currency"],
-      sellerIds: data["sellerIds"],
+      currency: data["currency"] ?? '',
+      sellerIds: List<String>.from(data["sellerIds"] ?? []),
     );
   }
 
-  // to map
+  // Convert OrderModel to map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
-      'items': items,
+      'items': items.map((item) => item.toMap()).toList(),
       'total': total,
       'status': status,
       'deliveryInfo': deliveryInfo,
@@ -489,6 +539,7 @@ class OrderModel {
   }
 }
 
+
 class ProductCategories {
   final int categoryId;
   final String name;
@@ -496,7 +547,6 @@ class ProductCategories {
 
   ProductCategories({required this.categoryId, required this.name, required this.icon});
 }
-
 class ProductModel {
   final String id;
   final String name;
@@ -522,74 +572,41 @@ class ProductModel {
     required this.categoryId,
     required this.sellerId,
     required this.searchKeywords,
-
     this.rating = 0.0,
     this.dateCreated,
   });
+
   factory ProductModel.fromDocument(DocumentSnapshot doc) {
     assert(doc.data() != null, 'Product document data is null');
-
     final data = doc.data() as Map<String, dynamic>;
-
+    
     assert(data.containsKey('name'), 'Product missing "name"');
     assert(data.containsKey('price'), 'Product missing "price"');
     assert(data.containsKey('categoryId'), 'Product missing "categoryId"');
 
-    final sellerAddress = Address.fromMap((data['sellerAddress'] is Map<String, dynamic>) ? data['sellerAddress'] as Map<String, dynamic> : {});
-
-    final price = data['price'];
-    assert(price is num || price is String, 'Invalid price type');
-
-    final categoryRaw = data['categoryId'];
-    assert(categoryRaw is int || categoryRaw is String, 'Invalid categoryId type');
-
-    return ProductModel(
-      id: doc.id,
-      name: (data['name'] ?? '').toString(),
-
-      price: price is num ? price.toDouble() : double.tryParse(price.toString()) ?? 0.0,
-
-      imageUrls: (data['imageUrls'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-
-      sellerAddress: sellerAddress,
-
-      description: (data['description'] ?? '').toString(),
-
-      categoryId: categoryRaw is int ? categoryRaw : int.tryParse(categoryRaw.toString()) ?? 0,
-
-      rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
-
-      dateCreated: data['dateCreated'] is Timestamp ? data['dateCreated'] as Timestamp : null,
-      sellerId: data['sellerId'] ?? '',
-      searchKeywords:  data["searchKeywords"],
-      stockQuantity: data["stockQuantity"],
-    );
+    return ProductModel.fromMap({...data, 'id': doc.id});
   }
 
-  // from map factory
   factory ProductModel.fromMap(Map<String, dynamic> map) {
-    final categoryRaw = map['categoryId']; // Safe extraction
-
     return ProductModel(
-      id: map['id'] ?? '',
-      name: (map['name'] ?? '').toString(),
-      price: (map['price'] ?? 0).toDouble(),
-      imageUrls: List<String>.from(map['imageUrls'] ?? []),
-      sellerAddress: Address.fromMap(map['sellerAddress'] ?? {}),
-      description: (map['description'] ?? '').toString(),
-      // Logic: Only parse if it's a string, otherwise use directly or default to 0
-      categoryId: categoryRaw is int ? categoryRaw : int.tryParse(categoryRaw.toString()) ?? 0,
-      rating: (map['rating'] ?? 0.0).toDouble(),
+      id: map['id']?.toString() ?? '',
+      name: map['name']?.toString() ?? '',
+      price: _parseDouble(map['price']),
+      imageUrls: _parseStringList(map['imageUrls']),
+      sellerAddress: _parseAddress(map['sellerAddress']),
+      description: map['description']?.toString() ?? '',
+      categoryId: _parseInt(map['categoryId']),
+      rating: _parseDouble(map['rating']),
       dateCreated: map['dateCreated'] as Timestamp?,
-      sellerId: map['sellerId'] ?? '',
-       searchKeywords:  map["searchKeywords"],
-      stockQuantity: map["stockQuantity"],
+      sellerId: map['sellerId']?.toString() ?? '',
+      searchKeywords: _parseStringList(map['searchKeywords']),
+      stockQuantity: _parseInt(map['stockQuantity']),
     );
   }
 
-  // to Map method for saving to Firestore
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'name': name,
       'price': price,
       'sellerId': sellerId,
@@ -600,10 +617,63 @@ class ProductModel {
       'categoryId': categoryId,
       'rating': rating,
       'dateCreated': dateCreated,
+      'searchKeywords': searchKeywords,
+    };
+  }
+
+  // Helper methods for parsing
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString()) ?? 0.0;
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    return int.tryParse(value.toString()) ?? 0;
+  }
+
+  static List<String> _parseStringList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value.map((e) => e.toString()).toList();
+    }
+    return [];
+  }
+
+  static Address _parseAddress(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return Address.fromMap(value);
+    }
+    return Address.fromMap({});
+  }
+}
+// Model for favorite items in subcollection
+class FavoriteItem {
+  final String productId;
+  final DateTime dateFavorited;
+
+  FavoriteItem({
+    required this.productId,
+    required this.dateFavorited,
+  });
+
+  factory FavoriteItem.fromDocument(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return FavoriteItem(
+      productId: data['productId'] ?? doc.id,
+      dateFavorited: (data['dateFavorited'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'productId': productId,
+      'dateFavorited': Timestamp.fromDate(dateFavorited),
     };
   }
 }
-
 class UserModel {
   final String uid;
   final String email;
@@ -611,7 +681,6 @@ class UserModel {
   final List<String> roles;
   final Address? address; // Changed to Address object
   final DateTime createdAt;
-  final List<String> favorites;
   final String? customerId; // Stripe customer ID
 
   UserModel({
@@ -621,22 +690,22 @@ class UserModel {
     required this.roles,
     this.address, // Made optional since not all users may have an address
     required this.createdAt,
-    required this.favorites,
     this.customerId,
   });
 
-  factory UserModel.fromMap(Map<String, dynamic> map) {
-    return UserModel(
-      uid: map['uid'] ?? '',
-      email: map['email'] ?? '',
-      name: (map['name'] ?? '').toString(),
-      roles: List<String>.from(map['roles'] ?? []),
-      address: map['address'] != null ? Address.fromMap(map['address'] as Map<String, dynamic>) : null,
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      favorites: List<String>.from(map['favorites'] ?? []),
-      customerId: map.containsKey('customerId') ? map['customerId'] as String : null,
-    );
-  }
+factory UserModel.fromMap(Map<String, dynamic> map) {
+  return UserModel(
+    uid: map['uid']?.toString() ?? '',
+    email: map['email']?.toString() ?? '',
+    name: map['name']?.toString() ?? '',
+    roles: List<String>.from(map['roles'] ?? const []),
+    address: map['address'] != null
+        ? Address.fromMap(map['address'] as Map<String, dynamic>)
+        : null,
+    createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    customerId: map['customerId'] as String?, // ✅ FIX
+  );
+}
 
   Map<String, dynamic> toMap() {
     return {
@@ -646,8 +715,54 @@ class UserModel {
       'roles': roles,
       'address': address?.toMap(),
       'createdAt': Timestamp.fromDate(createdAt),
-      'favorites': favorites,
       'customerId': customerId,
     };
   }
+
+    // Helper method to get favorites subcollection reference
+  static CollectionReference getFavoritesCollection(String userId) {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('favorites');
+  }
+
+  // Helper method to get cart subcollection reference
+  static CollectionReference getCartCollection(String userId) {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('cart');
+  }
+
+}
+// Add this helper method
+void showLoginPrompt(BuildContext context,{String text= 'You need to sign in to add items to your cart.'}) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Sign In Required'),
+      content:  Text(text),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => LoginScreen()),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFF6B35),
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Sign In'),
+        ),
+      ],
+    ),
+  );
 }

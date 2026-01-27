@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:origna_gta/utils.dart';
@@ -117,9 +118,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your password';
                                   }
-                                  if (!_isLogin && value.length < 6) {
+                                  if (value.length < 6) {
                                     return 'Password must be at least 6 characters';
                                   }
+                                
                                   return null;
                                 },
                               ),
@@ -163,31 +165,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
                             ],
                           ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 54,
-                            child: OutlinedButton(
-                              onPressed: _isLoading ? null : _signInWithGoogle,
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Colors.grey[300]!, width: 1.5),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2.5))
-                                  : Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.g_mobiledata, size: 32, color: Colors.grey[800]),
-                                        const SizedBox(width: 12),
-                                        Text(
-                                          'Google',
-                                          style: TextStyle(fontSize: 16, color: Colors.grey[800], fontWeight: FontWeight.w600),
-                                        ),
-                                      ],
-                                    ),
-                            ),
-                          ),
+                         
                           const SizedBox(height: 24),
                         ],
                         TextButton(
@@ -241,7 +219,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     setState(() => _isLoading = true);
     try {
       if (_isLogin) {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(email: _emailController.text.trim(), password: _passwordController.text.trim());
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _emailController.text.trim(), 
+          password: _passwordController.text.trim(),
+        );
+        
+        // Show success message for login
+        if (mounted) {
+          _showSuccessSnackBar('Welcome back!');
+          // Pop the login screen - AuthWrapper will handle showing MainScreen
+          Navigator.of(context).pop();
+        }
       } else {
         final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
@@ -253,9 +241,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           name: _nameController.text.trim(),
           roles: <String>[],
           createdAt: DateTime.now(),
-          favorites: <String>[],
         );
         await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set(userModel.toMap());
+        
+        // Show success message for signup
+        if (mounted) {
+          _showSuccessSnackBar('Account created successfully!');
+          // Pop the login screen - AuthWrapper will handle showing MainScreen
+          Navigator.of(context).pop();
+        }
       }
     } on FirebaseAuthException catch (e) {
       _showErrorSnackBar(e.message ?? 'Authentication failed');
@@ -264,6 +258,18 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green[700],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   void _showErrorSnackBar(String message) {
@@ -279,9 +285,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   void _showForgotPasswordDialog(BuildContext context) {
-    final emailController = TextEditingController();
+    // Pre-populate with email from the email field if it exists
+    final emailController = TextEditingController(text: _emailController.text.trim());
     final formKey = GlobalKey<FormState>();
     bool isSending = false;
+    
     showDialog(
       context: context,
       builder: (dialogContext) {
@@ -290,98 +298,131 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: const Text('Reset Password'),
-              content: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined)),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your email';
-                        }
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                          return 'Please enter a valid email';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: isSending
-                            ? null
-                            : () async {
-                                if (!formKey.currentState!.validate()) return;
-
-                                setState(() => isSending = true);
-
-                                try {
-                                  await FirebaseAuth.instance.sendPasswordResetEmail(email: emailController.text.trim());
-                                  if (dialogContext.mounted) {
-                                    Navigator.of(dialogContext).pop();
-                                    ScaffoldMessenger.of(
-                                      dialogContext,
-                                    ).showSnackBar(const SnackBar(content: Text('Password reset email sent!'), backgroundColor: Colors.green));
-                                  }
-                                } catch (e) {
-                                  ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
-                                } finally {
-                                  setState(() => isSending = false);
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
-                        child: isSending
-                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : const Text('Send Reset Email'),
+              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              content: SizedBox(
+                width: 300, // Make dialog wider
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Enter your email address and we\'ll send you a link to reset your password.',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          prefixIcon: Icon(Icons.email_outlined),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your email';
+                          }
+                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                            return 'Please enter a valid email';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
               ),
+              actions: [
+                TextButton(
+                  onPressed: isSending ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isSending
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+
+                          setState(() => isSending = true);
+
+                          try {
+                            
+                            await FirebaseAuth.instance.sendPasswordResetEmail(
+                              email: emailController.text.trim(),
+                            );
+                            
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop();
+                              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                SnackBar(
+                                  content: const Text("If an account exists for this email, you'll receive a password reset link."),
+                                  backgroundColor: Colors.green[700],
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                              );
+                            }
+                          } on FirebaseAuthException catch (e) {
+                            String errorMessage;
+                            
+                            // Check for user-not-found error
+                            if (e.code == 'user-not-found') {
+                              errorMessage = 'No account exists with this email address.';
+                            } else if (e.code == 'invalid-email') {
+                              errorMessage = 'Invalid email address.';
+                            } else {
+                              errorMessage = e.message ?? 'An error occurred';
+                            }
+                            
+                            if (dialogContext.mounted) {
+                              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                SnackBar(
+                                  content: Text(errorMessage),
+                                  backgroundColor: Colors.red[700],
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (dialogContext.mounted) {
+                              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: ${e.toString()}'),
+                                  backgroundColor: Colors.red[700],
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() => isSending = false);
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6B35),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: isSending
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('Send Reset Email'),
+                ),
+              ],
             );
           },
         );
       },
     );
-  }
-
-  Future<void> _signInWithGoogle() async {
-    setState(() => _isLoading = true);
-    try {
-      if (GoogleSignIn.instance.supportsAuthenticate()) {
-        final googleUser = await GoogleSignIn.instance.authenticate();
-
-        final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-
-        final credential = GoogleAuthProvider.credential(idToken: googleAuth.idToken);
-
-        final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).get();
-
-        if (!userDoc.exists) {
-          final userModel = UserModel(
-            uid: userCredential.user!.uid,
-            email: userCredential.user!.email ?? '',
-            name: userCredential.user!.displayName ?? '',
-            roles: <String>[],
-            createdAt: DateTime.now(),
-            favorites: <String>[],
-          );
-          await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set(userModel.toMap());
-        }
-      } else {
-        _showErrorSnackBar('Google Sign-In is not supported on this platform.');
-      }
-    } catch (e) {
-      _showErrorSnackBar('Google Sign-In failed. Please try again.');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
   }
 }

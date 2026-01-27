@@ -44,12 +44,10 @@ class CartScreen extends StatelessWidget {
               }
 
               // Mapping documents from the sub-collection to your model
-              final cartItems = snapshot.data!.docs.map((doc) {
-                return CartItemModel.fromMap(doc.data() as Map<String, dynamic>);
-              }).toList();
+              final cartItems = snapshot.data!.docs;
 
               return FutureBuilder<List<CartItemDetailModel>>(
-                future: _fetchCartItemsWithDetails(cartItems),
+                future: _fetchCartItemsWithDetails(cartItems.map((doc) => CartItemModel.fromMap(doc.data() as Map<String, dynamic>)).toList()),
                 builder: (context, AsyncSnapshot<List<CartItemDetailModel>> productSnapshot) {
                   if (productSnapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
@@ -162,6 +160,7 @@ class CartScreen extends StatelessWidget {
         dateCreated: item.dateCreated,
         sellerAddress: productModel.sellerAddress,
         sellerId: productModel.sellerId,
+        deliveryStatus: "pending",
       );
     });
 

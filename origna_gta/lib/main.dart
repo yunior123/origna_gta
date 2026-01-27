@@ -1,5 +1,4 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/firebase_options.dart';
@@ -8,21 +7,6 @@ import 'package:origna_gta/services/conf_services.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-// Initialize config
-// Initialize the singleton instance
-  await ConfigService().initialize();
-    // Initialize Crashlytics
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-  
-  // Catch async errors
-  PlatformDispatcher.instance.onError = (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    return true;
-  };
-
-  // Optional: Sentry for additional monitoring
   await SentryFlutter.init(
     (options) {
       options.dsn = 'https://536779563eb50abc63b8c5d2db8d0dc7@o4510778090848256.ingest.us.sentry.io/4510778092421120';
@@ -37,16 +21,55 @@ void main() async {
         }
         return event;
       };
+
+           // On web, disable frame tracking & auto performance
+      if (kIsWeb) {
+        options.enableAutoPerformanceTracing = false;
+        options.enableFramesTracking = false;
+        options.enableAutoSessionTracking = false;
+      } else {
+        // mobile defaults (optional tuning):
+        options.tracesSampleRate = 1.0;
+      }
     },
-    appRunner: () => runApp(const OrignaApp()),
+    appRunner: () async {
+      WidgetsFlutterBinding.ensureInitialized();
+
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+      await ConfigService().initialize();
+
+      // Set global Flutter error handler
+      FlutterError.onError = (FlutterErrorDetails details) {
+        final message = details.exceptionAsString();
+
+        // Ignore the disposed Web engine view error
+        if (kIsWeb && message.contains('disposed EngineFlutterView')) {
+          return;
+        }
+
+        // Log to Sentry
+        Sentry.captureException(
+          details.exception,
+          stackTrace: details.stack,
+        );
+
+        // Let Flutter still show errors in debug
+        FlutterError.presentError(details);
+      };
+      runApp(const OrignaApp());
+    },
   );
 }
 
+    // FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
+      // PlatformDispatcher.instance.onError = (error, stack) {
+      //   FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      //   return true;
+      // };
 //Version 1.0
-//TODO: Cart view rebuilding when adding products, fix
-//TODO: check google sign in, make sure it works
-//TODO: when users visits website no need to sign in, just browse products, only sign in when adding to cart, tapping settings or cart icon
+//TODO: contact us section
 //TODO: seller should be able to edit their products, and mark them as sold out
 //TODO: Terms and conditions screen needs to be added, link it in the signup screen, user must accept terms and conditions before signing up
 //TODO: splash and launch icons need to be added later
@@ -54,8 +77,8 @@ void main() async {
 
 // -cloudflare r2 keys are also hardcoded in the project, that is ok for now
 
-
-
+//TODO delete user account
+//TODO terms conditions
 
 
 

@@ -34,31 +34,33 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _loadUserModel() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      try {
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    
+    // If no user, just set loading to false and continue with null userModel
+    if (user == null) {
+      setState(() => _isLoadingUser = false);
+      return;
+    }
+    
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
-        if (!userDoc.exists) {
-          setState(() => _isLoadingUser = false);
-          return;
-        }
-
-        final userData = userDoc.data();
-
-        setState(() {
-          if (userData != null) {
-            _userModel = UserModel.fromMap(userData);
-          }
-
-          _isLoadingUser = false;
-        });
-      } catch (e) {
-        if (kDebugMode) {
-          print('Error loading user: $e');
-        }
+      if (!userDoc.exists) {
         setState(() => _isLoadingUser = false);
+        return;
       }
-    } else {
+
+      final userData = userDoc.data();
+
+      setState(() {
+        if (userData != null) {
+          _userModel = UserModel.fromMap(userData);
+        }
+        _isLoadingUser = false;
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading user: $e');
+      }
       setState(() => _isLoadingUser = false);
     }
   }

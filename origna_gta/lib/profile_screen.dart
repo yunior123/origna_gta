@@ -79,7 +79,7 @@ class ProfileScreen extends StatelessWidget {
                           _buildMenuItem(
                             context,
                             icon: Icons.location_on_outlined,
-                            title: 'Addresses',
+                            title: 'Address',
                             onTap: () {
                               Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressManagementScreen()));
                             },

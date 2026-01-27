@@ -14,7 +14,9 @@ class OrdersScreen extends StatelessWidget {
     if (user == null) return const Scaffold();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Orders', style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text('My Orders', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
       backgroundColor: const Color(0xFFF5F5F5),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -24,9 +26,13 @@ class OrdersScreen extends StatelessWidget {
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          if (snapshot.data!.docs.isEmpty) return const Center(child: Text("No paid orders found"));
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text("No paid orders found"));
+          }
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: snapshot.data!.docs.length,
@@ -47,9 +53,13 @@ class _BuyerOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
+    final itemsData = List<Map<String,dynamic>>.from(data['items'] ?? []);
+    final items = itemsData
+    .map((e) => CartItemDetailModel.fromMap(e))
+    .toList();
+
     final total = data['total'] ?? 0.0;
-    
+    //TODO: add more data to be seen by user
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -61,18 +71,16 @@ class _BuyerOrderCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text("Total: \$${total.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(
-                  DateFormat('MMM dd').format((data['createdAt'] as Timestamp).toDate()),
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
+                Text(DateFormat('MMM dd').format((data['createdAt'] as Timestamp).toDate()), style: TextStyle(color: Colors.grey[600], fontSize: 12)),
               ],
             ),
             const Divider(),
             // Render each item with its OWN status
             ...items.map((item) {
-              final status = item['status'] ?? 'pending';
+              final status = item.deliveryStatus;
               final isShipped = status == 'shipped';
-              
+              final isDelivered = status == "delivered";
+              final quantity = item.quantity;
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Row(
@@ -82,8 +90,8 @@ class _BuyerOrderCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(item['name'], style: const TextStyle(fontWeight: FontWeight.w500)),
-                          Text("Qty: ${item['quantity']}", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                          Text(item.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                          Text("Qty: $quantity", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                         ],
                       ),
                     ),
@@ -98,28 +106,25 @@ class _BuyerOrderCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            isShipped ? "Shipped" : "Processing",
-                            style: TextStyle(
-                              color: isShipped ? Colors.green : Colors.orange,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            isShipped
+                                ? "Shipped"
+                                : isDelivered
+                                ? "Delivered"
+                                : "Processing",
+                            style: TextStyle(color: isShipped ? Colors.green : Colors.orange, fontSize: 10, fontWeight: FontWeight.bold),
                           ),
                         ),
-                        if (isShipped && item['trackingNumber'] != null)
+                        if (isShipped && item.trackingNumber != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              "Track: ${item['trackingNumber']}",
-                              style: const TextStyle(fontSize: 10, color: Colors.blue),
-                            ),
+                            child: Text("Track: ${item.trackingNumber}", style: const TextStyle(fontSize: 10, color: Colors.blue)),
                           ),
                       ],
-                    )
+                    ),
                   ],
                 ),
               );
-            }),
+            },),
           ],
         ),
       ),

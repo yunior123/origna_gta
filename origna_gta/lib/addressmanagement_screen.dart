@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/editaddress_screen.dart';
+import 'package:origna_gta/login_screen.dart';
 import 'package:origna_gta/utils.dart';
 
 class AddressManagementScreen extends StatelessWidget {
@@ -11,20 +12,12 @@ class AddressManagementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return const Scaffold(body: Center(child: Text('Please log in')));
+      return const LoginScreen();
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Addresses', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEditAddressScreen()));
-            },
-          ),
-        ],
+        title: const Text('My Address', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
@@ -108,6 +101,3 @@ class AddressManagementScreen extends StatelessWidget {
     );
   }
 }
-
-
-

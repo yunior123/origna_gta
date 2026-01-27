@@ -1,11 +1,9 @@
-
-
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/cart_screen.dart';
+import 'package:origna_gta/login_screen.dart';
 import 'package:origna_gta/utils.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -19,136 +17,174 @@ class ProductDetailScreen extends StatefulWidget {
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
 }
 
-
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _quantity = 1;
+  int _currentImageIndex = 0;
+
+  void _showImageDialog(List<dynamic> imageUrls, int initialIndex) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.zero,
+          child: Stack(
+            children: [
+              // Full screen image viewer
+              PageView.builder(
+                itemCount: imageUrls.length,
+                controller: PageController(initialPage: initialIndex),
+                itemBuilder: (context, index) {
+                  return InteractiveViewer(
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    child: Center(
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrls[index].toString(),
+                        fit: BoxFit.contain,
+                        placeholder: (context, url) => Shimmer.fromColors(
+                          baseColor: Colors.grey[300]!,
+                          highlightColor: Colors.grey[100]!,
+                          child: Container(color: Colors.white),
+                        ),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.image_not_supported, size: 100, color: Colors.white),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              // Close button
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 16,
+                right: 16,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final imageUrls = widget.product['imageUrls'] ?? '';
+    final imageUrls = widget.product['imageUrls'] as List<dynamic>? ?? [];
     final name = widget.product['name'] ?? 'Product';
     final price = widget.product['price'] ?? 0.0;
     final description = widget.product['description'] ?? 'No description available';
     final rating = (widget.product['rating'] ?? 0.0).toDouble();
-    final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Product Details'),
-        actions: [
-       StreamBuilder<QuerySnapshot>(
-            stream: user != null 
-                ? FirebaseFirestore.instance.collection('users').doc(user.uid).collection('cart').snapshots() 
-                : null,
-            builder: (context, snapshot) {
-              int itemCount = 0;
-              if (snapshot.hasData) {
-                // Sum quantities across all documents in the sub-collection
-                itemCount = snapshot.data!.docs.fold(0, (sum, doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  return sum + (data['quantity'] as int? ?? 0);
-                });
-              }
-              return Stack(
+      body: CustomScrollView(
+        slivers: [
+          // Custom App Bar with back button
+          SliverAppBar(
+            automaticallyImplyLeading: false,
+            pinned: true,
+            floating: true,
+            expandedHeight: 300,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.shopping_cart_outlined),
-                    onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
-                    },
+                  // Image
+                  imageUrls.isNotEmpty
+                      ? PageView.builder(
+                          itemCount: imageUrls.length,
+                          onPageChanged: (index) {
+                            setState(() => _currentImageIndex = index);
+                          },
+                          itemBuilder: (context, index) {
+                            return GestureDetector(
+                              onTap: () => _showImageDialog(imageUrls, index),
+                              child: SizedBox.expand(
+                                child: CachedNetworkImage(
+                                  imageUrl: imageUrls[index].toString(),
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Shimmer.fromColors(
+                                    baseColor: Colors.grey[300]!,
+                                    highlightColor: Colors.grey[100]!,
+                                    child: Container(color: Colors.white),
+                                  ),
+                                  errorWidget: (context, url, error) =>
+                                      Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported, size: 100)),
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported, size: 100)),
+                  
+                  // Back button
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top + 5,
+                    left: 16,
+                    
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
                   ),
-                  if (itemCount > 0)
+                  
+                  // Image indicator
+                  if (imageUrls.length > 1)
                     Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(color: Color(0xFFFF6B35), shape: BoxShape.circle),
-                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                        child: Text(
-                          itemCount > 99 ? '99+' : '$itemCount',
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
+                      bottom: 16,
+                      left: 0,
+                      right: 0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          imageUrls.length,
+                          (index) => Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _currentImageIndex == index ? Colors.white : Colors.white.withOpacity(0.5),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                 ],
-              );
-            },
+              ),
+            ),
+      bottom: const PreferredSize(
+  preferredSize: Size.fromHeight(20),
+  child: DecoratedBox(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+  ),
+),
           ),
-        ],
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Hero(
-                  tag: 'product_${widget.productId}',
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: imageUrls.isNotEmpty
-                        ? StatefulBuilder(
-                            builder: (context, setState) {
-                              int currentPage = 0;
-
-                              return Stack(
-                                children: [
-                                  // Swipeable images
-                                  PageView.builder(
-                                    itemCount: imageUrls.length,
-                                    onPageChanged: (index) {
-                                      setState(() => currentPage = index);
-                                    },
-                                    itemBuilder: (context, index) {
-                                      return CachedNetworkImage(
-                                        imageUrl: imageUrls[index],
-                                        fit: BoxFit.cover,
-                                        placeholder: (context, url) => Shimmer.fromColors(
-                                          baseColor: Colors.grey[300]!,
-                                          highlightColor: Colors.grey[100]!,
-                                          child: Container(color: Colors.white),
-                                        ),
-                                        errorWidget: (context, url, error) =>
-                                            Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported, size: 100)),
-                                      );
-                                    },
-                                  ),
-
-                                  // Dot indicators (top center - AliExpress style)
-                                  if (imageUrls.length > 1)
-                                    Positioned(
-                                      top: 16,
-                                      left: 0,
-                                      right: 0,
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: List.generate(
-                                          imageUrls.length,
-                                          (index) => AnimatedContainer(
-                                            duration: const Duration(milliseconds: 300),
-                                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                                            width: currentPage == index ? 8 : 6,
-                                            height: currentPage == index ? 8 : 6,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: currentPage == index ? Colors.white : Colors.white.withOpacity(0.5),
-                                              boxShadow: currentPage == index ? [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 4)] : null,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              );
-                            },
-                          )
-                        : Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported, size: 100)),
-                  ),
-                ),
-                Padding(
+          
+          // Product details
+          SliverToBoxAdapter(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,9 +219,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                             child: Row(
                               children: [
-                                IconButton(icon: const Icon(Icons.remove), onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null),
+                                IconButton(
+                                  icon: const Icon(Icons.remove),
+                                  onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null,
+                                ),
                                 Text('$_quantity', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                IconButton(icon: const Icon(Icons.add), onPressed: () => setState(() => _quantity++)),
+                                IconButton(
+                                  icon: const Icon(Icons.add),
+                                  onPressed: () => setState(() => _quantity++),
+                                ),
                               ],
                             ),
                           ),
@@ -197,22 +239,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         height: 54,
                         child: ElevatedButton(
                           onPressed: () async {
+                            final user = FirebaseAuth.instance.currentUser;
+                            if (user == null) {
+                              showLoginPrompt(context);
+                              return;
+                            }
                             await addToCart(productId: widget.productId, quantity: _quantity, context: context);
                           },
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF6B35),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
                           child: const Text('Add to Cart', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
-
-

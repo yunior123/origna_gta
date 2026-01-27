@@ -16,7 +16,6 @@ class CheckoutScreen extends StatefulWidget {
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
 }
-// checkout_screen.dart - OPTIMIZED VERSION
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _isProcessing = false;
@@ -40,10 +39,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
 
     try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
       final addressMap = userDoc.data()?['address'] as Map<String, dynamic>?;
       if (addressMap == null) {
@@ -85,20 +81,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
           child: StreamBuilder<DocumentSnapshot>(
-            stream: user != null 
-                ? FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots() 
-                : null,
+            stream: user != null ? FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots() : null,
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
 
               final userData = snapshot.data!.data() as Map<String, dynamic>?;
-              final Address? savedAddress = userData?['address'] != null 
-                  ? Address.fromMap(userData!['address'] as Map<String, dynamic>) 
-                  : null;
+              final Address? savedAddress = userData?['address'] != null ? Address.fromMap(userData!['address'] as Map<String, dynamic>) : null;
               final userModel = UserModel.fromMap(userData ?? {});
-              
+
               if (savedAddress == null) {
                 return _buildNoAddressView();
               }
@@ -115,11 +107,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildAddressSection(savedAddress),
-                          const SizedBox(height: 24),
-                          _buildOrderSummary(savedAddress.state, shippingCost),
-                        ],
+                        children: [_buildAddressSection(savedAddress), const SizedBox(height: 24), _buildOrderSummary(savedAddress.state, shippingCost)],
                       ),
                     ),
                   ),
@@ -146,13 +134,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              )
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Column(
             children: [
@@ -162,16 +144,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Text(
-                          '${item.name} x${item.quantity}',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
-                      Text(
-                        '\$${(item.price * item.quantity).toStringAsFixed(2)}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
+                      Expanded(child: Text('${item.name} x${item.quantity}', style: const TextStyle(fontSize: 14))),
+                      Text('\$${(item.price * item.quantity).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
@@ -192,18 +166,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 children: [
                   const Text('Shipping', style: TextStyle(color: Colors.grey)),
                   if (_isCalculatingShipping)
-                    const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                    const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                   else if (_shippingError != null)
                     Text(_shippingError!, style: const TextStyle(color: Colors.red, fontSize: 12))
                   else
-                    Text(
-                      '\$${shippingCost.toStringAsFixed(2)} CAD',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                    Text('\$${shippingCost.toStringAsFixed(2)} CAD', style: const TextStyle(fontWeight: FontWeight.bold)),
                 ],
               ),
               const Divider(height: 24),
@@ -213,11 +180,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   const Text('Total', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   Text(
                     '\$${(widget.total + (getTaxRate(state) * widget.total) + shippingCost).toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFFF6B35),
-                    ),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
                   ),
                 ],
               ),
@@ -237,10 +200,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           children: [
             Icon(Icons.location_off_outlined, size: 80, color: Colors.grey[300]),
             const SizedBox(height: 16),
-            const Text(
-              'No delivery address found',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
+            const Text('No delivery address found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Text(
               'Please add a delivery address before checkout',
@@ -257,10 +217,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               },
               icon: const Icon(Icons.add),
               label: const Text('Add Address'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF6B35),
-                foregroundColor: Colors.white,
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
             ),
           ],
         ),
@@ -273,10 +230,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 24),
-        const Text(
-          "Shipping Address",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
+        const Text("Shipping Address", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(16),
@@ -284,13 +238,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFFFF6B35), width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              )
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,52 +249,30 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   if (savedAddress.label != null)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF6B35),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      decoration: BoxDecoration(color: const Color(0xFFFF6B35), borderRadius: BorderRadius.circular(12)),
                       child: Text(
                         savedAddress.label!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                     ),
                   TextButton.icon(
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => AddEditAddressScreen(
-                            address: savedAddress.formattedAddress.isEmpty ? null : savedAddress,
-                          ),
-                        ),
+                        MaterialPageRoute(builder: (_) => AddEditAddressScreen(address: savedAddress.formattedAddress.isEmpty ? null : savedAddress)),
                       ).then((_) => _calculateShippingCost()); // Recalculate after editing
                     },
                     icon: const Icon(Icons.edit_outlined, size: 18),
                     label: const Text('Edit'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFFFF6B35),
-                    ),
+                    style: TextButton.styleFrom(foregroundColor: const Color(0xFFFF6B35)),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                savedAddress.formattedAddress,
-                style: const TextStyle(fontSize: 14, height: 1.5),
-              ),
+              Text(savedAddress.formattedAddress, style: const TextStyle(fontSize: 14, height: 1.5)),
               if (savedAddress.phoneNumber != null) ...[
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.phone_outlined, size: 16),
-                    const SizedBox(width: 8),
-                    Text(savedAddress.phoneNumber!),
-                  ],
-                ),
+                Row(children: [const Icon(Icons.phone_outlined, size: 16), const SizedBox(width: 8), Text(savedAddress.phoneNumber!)]),
               ],
             ],
           ),
@@ -360,45 +286,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          )
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -5))],
       ),
       child: SizedBox(
         width: double.infinity,
         height: 54,
         child: ElevatedButton(
-          onPressed: (_isProcessing || _isCalculatingShipping || _shippingError != null)
-              ? null
-              : () => _startStripeCheckout(widget.items, address, userModel),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFF6B35),
-            foregroundColor: Colors.white,
-          ),
+          onPressed: (_isProcessing || _isCalculatingShipping || _shippingError != null) ? null : () => _startStripeCheckout(widget.items, address, userModel),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
           child: _isProcessing
-              ? const SizedBox(
-                  height: 24,
-                  width: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.5,
-                  ),
-                )
-              : const Text(
-                  'Place Order',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+              ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+              : const Text('Place Order', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),
     );
   }
 
   // ... rest of the methods remain the same
-  
+
   List<Widget> _buildTaxBreakdown(String province, double subtotal) {
     final taxes = taxConfig[province] ?? {'HST': 0.13};
     List<Widget> widgets = [];
@@ -409,14 +314,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              '$taxName (${(rate * 100).toStringAsFixed(2)}%)',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-            Text(
-              '\$${taxAmount.toStringAsFixed(2)}',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
+            Text('$taxName (${(rate * 100).toStringAsFixed(2)}%)', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+            Text('\$${taxAmount.toStringAsFixed(2)}', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
           ],
         ),
       );
@@ -429,19 +328,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget _buildSecurityInfo() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
       child: Row(
         children: [
           Icon(Icons.lock_outline, color: Colors.blue.shade700),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              'Secure payment powered by Stripe. Your card information is encrypted.',
-              style: TextStyle(color: Colors.blue.shade700, fontSize: 14),
-            ),
+            child: Text('Secure payment powered by Stripe. Your card information is encrypted.', style: TextStyle(color: Colors.blue.shade700, fontSize: 14)),
           ),
         ],
       ),
@@ -455,11 +348,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  Future<void> _startStripeCheckout(
-    List<CartItemDetailModel> items,
-    Address address,
-    UserModel userModel,
-  ) async {
+  Future<void> _startStripeCheckout(List<CartItemDetailModel> items, Address address, UserModel userModel) async {
+    return;
+
     setState(() => _isProcessing = true);
 
     try {
@@ -474,7 +365,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       final callable = FirebaseFunctions.instance.httpsCallable('create_checkout_session');
       final taxes = calculateDetailedTaxes(address, widget.total);
-      
+
       final order = OrderModel(
         orderId: user.uid,
         userId: userModel.uid,
@@ -492,7 +383,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         currency: 'cad',
         amount: (totalWithTax * 100).toInt(),
       );
-      
+
       final response = await callable.call(order.toMap());
       final checkoutUrl = response.data['url'];
 
@@ -503,9 +394,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Checkout error: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);

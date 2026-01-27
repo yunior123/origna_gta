@@ -1,25 +1,50 @@
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/login_screen.dart';
 import 'package:origna_gta/productdetails_screen.dart';
 import 'package:origna_gta/utils.dart';
 import 'package:shimmer/shimmer.dart';
+
+class ProductCard extends StatefulWidget {
+  final String productId;
+  final ProductModel product;
+  final UserModel? userModel;
+
+  const ProductCard({super.key, required this.productId, required this.product, required this.userModel});
+
+  @override
+  State<ProductCard> createState() => _ProductCardState();
+}
 
 class _ProductCardState extends State<ProductCard> with SingleTickerProviderStateMixin {
   bool _isFavorite = false;
   late AnimationController _controller;
   int _currentImageIndex = 0;
   final int _quantity = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
+    _checkFavorite();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<String> imageUrls = (widget.product.imageUrls as List<dynamic>? ?? []).map((e) => e.toString()).toList();
-    final name = widget.product.name ;
-    final price = widget.product.price ;
-    final rating = (widget.product.rating ).toDouble();
-    //final user = FirebaseAuth.instance.currentUser;
+    final name = widget.product.name;
+    final price = widget.product.price;
+    final rating = (widget.product.rating).toDouble();
     final isAdmin = widget.userModel?.roles.contains('admin') ?? false;
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -86,8 +111,6 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                                       ),
                                     ),
                                   ),
-
-                        
                               ],
                             )
                           : Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported, size: 50)),
@@ -103,7 +126,9 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                         shape: const CircleBorder(),
                         elevation: 4,
                         child: InkWell(
-                          onTap: _toggleFavorite,
+                          onTap: () {
+                            _toggleFavorite(context);
+                          },
                           customBorder: const CircleBorder(),
                           child: Padding(
                             padding: const EdgeInsets.all(8),
@@ -155,7 +180,14 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                           color: const Color(0xFFFF6B35),
                           borderRadius: BorderRadius.circular(8),
                           child: InkWell(
-                            onTap: () => addToCart(productId: widget.productId, quantity: _quantity, context: context),
+                            onTap: () async {
+                              final user = FirebaseAuth.instance.currentUser;
+                              if (user == null) {
+                                showLoginPrompt(context);
+                                return;
+                              }
+                              await addToCart(productId: widget.productId, quantity: _quantity, context: context);
+                            },
                             borderRadius: BorderRadius.circular(8),
                             child: const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -189,31 +221,27 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
     );
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
-    _checkFavorite();
-  }
-
+  // Check if product is favorited using subcollection
   Future<void> _checkFavorite() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      final favorites = List<String>.from(userDoc.data()?['favorites'] ?? []);
-      if (mounted) {
-        setState(() => _isFavorite = favorites.contains(widget.productId));
+      try {
+        // Check if document exists in favorites subcollection
+        final favoriteDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('favorites')
+            .doc(widget.productId)
+            .get();
+
+        if (mounted) {
+          setState(() => _isFavorite = favoriteDoc.exists);
+        }
+      } catch (e) {
+        debugPrint('Error checking favorite: $e');
       }
     }
   }
-
-  // inside _ProductCardState
 
   Future<void> _deleteProduct(BuildContext context) async {
     try {
@@ -229,36 +257,53 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
     }
   }
 
-  Future<void> _toggleFavorite() async {
+  // Toggle favorite using subcollection
+  Future<void> _toggleFavorite(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      showLoginPrompt(context, text: "You need to sign in to add favorites");
+      return;
+    }
+
+    // Optimistic UI update
     if (!mounted) return;
     setState(() => _isFavorite = !_isFavorite);
+
+    // Animate the heart
     if (!mounted) return;
     await _controller.forward();
     if (mounted) await _controller.reverse();
 
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    // Reference to the favorite document
+    final favoriteRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('favorites')
+        .doc(widget.productId);
 
-    if (_isFavorite) {
-      await userRef.update({
-        'favorites': FieldValue.arrayUnion([widget.productId]),
-      });
-    } else {
-      await userRef.update({
-        'favorites': FieldValue.arrayRemove([widget.productId]),
-      });
+    try {
+      if (_isFavorite) {
+        // Add to favorites subcollection
+        await favoriteRef.set({
+          'productId': widget.productId,
+          'dateFavorited': FieldValue.serverTimestamp(),
+        });
+      } else {
+        // Remove from favorites subcollection
+        await favoriteRef.delete();
+      }
+    } catch (e) {
+      // Revert optimistic update on error
+      if (mounted) {
+        setState(() => _isFavorite = !_isFavorite);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating favorites: $e'),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+      }
+      debugPrint('Error toggling favorite: $e');
     }
   }
-}
-
-class ProductCard extends StatefulWidget {
-  final String productId;
-  final ProductModel product;
-  final UserModel? userModel;
-
-  const ProductCard({super.key, required this.productId, required this.product, required this.userModel});
-
-  @override
-  State<ProductCard> createState() => _ProductCardState();
 }
