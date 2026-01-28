@@ -15,22 +15,17 @@ class ConfigService {
   final FirebaseRemoteConfig _remoteConfig = FirebaseRemoteConfig.instance;
 
   Future<void> initialize() async {
-    await _remoteConfig.setConfigSettings(RemoteConfigSettings(
-      fetchTimeout: const Duration(minutes: 1),
-      minimumFetchInterval: const Duration(hours: 1),
-    ));
+    await _remoteConfig.setConfigSettings(RemoteConfigSettings(fetchTimeout: const Duration(minutes: 1), minimumFetchInterval: const Duration(hours: 1)));
 
-    await _remoteConfig.setDefaults({
-      "geoapify_api_key": "YOUR_BACKUP_KEY",
-    });
+    await _remoteConfig.setDefaults({"geoapify_api_key": "YOUR_BACKUP_KEY"});
 
     await _remoteConfig.fetchAndActivate();
   }
-// Inside ConfigService
-String get imageBaseUrl => _remoteConfig.getString('image_base_url');
+
+  // Inside ConfigService
+  String get imageBaseUrl => _remoteConfig.getString('image_base_url');
   // Getters for your keys
   String get geoapifyKey => _remoteConfig.getString('geoapify_api_key');
 
   String get sentryDnsKey => _remoteConfig.getString('sentry_dns');
-
 }
