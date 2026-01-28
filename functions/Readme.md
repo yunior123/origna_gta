@@ -12,20 +12,24 @@ firebase deploy --only functions
 firebase emulators:start --only functions
 
 # ###################################
-firebase functions:delete on_order_status_change
-firebase deploy --only functions:on_order_status_change
+firebase functions:delete on_order_updated
+firebase deploy --only functions:on_order_updated
 
 firebase functions:delete stripe_webhook 
 firebase deploy --only functions:stripe_webhook
 
-firebase functions:delete create_checkout_session
+firebase functions:delete create_checkout_session 
 firebase deploy --only functions:create_checkout_session
 
 firebase functions:delete get_r2_presigned_url 
 firebase deploy --only functions:get_r2_presigned_url
 
+
+firebase functions:delete --all
+
+
 pip3 install -r requirements.txt
-source venv/bin/activate
+source venv/bin/activate 
 
 pip freeze > requirements.txt
 

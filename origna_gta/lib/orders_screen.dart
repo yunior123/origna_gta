@@ -154,7 +154,7 @@ class _BuyerOrderCard extends StatelessWidget {
   }
 
   Widget _buildOrderItem(CartItemDetailModel item) {
-    final status = item.deliveryStatus ?? 'pending';
+    final status = item.deliveryStatus;
     final isShipped = status == 'shipped';
     final isDelivered = status == 'delivered';
 

@@ -7,6 +7,7 @@ import 'package:origna_gta/editaddress_screen.dart';
 import 'package:origna_gta/utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+//TODO, if the user change address shipping gets recalculated?
 class CheckoutScreen extends StatefulWidget {
   final List<CartItemDetailModel> items;
   final double total;
