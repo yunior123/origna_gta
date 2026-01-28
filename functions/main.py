@@ -528,46 +528,152 @@ def create_checkout_session(req: https_fn.Request) -> https_fn.Response:
             str(e) if IS_EMULATOR else None
         )
 
+"""
+Enhanced Stripe Webhook Handler with Comprehensive Logging
+Add this to your main.py file, replacing the existing stripe_webhook function
+"""
+
 @https_fn.on_request(timeout_sec=60)
 def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
-    """Handle Stripe webhook events"""
+    """Handle Stripe webhook events with detailed logging"""
     try:
+        # ====================================================================
+        # STEP 1: LOG INCOMING REQUEST DETAILS
+        # ====================================================================
+        print("=" * 80)
+        print("📥 WEBHOOK REQUEST RECEIVED")
+        print(f"Timestamp: {datetime.utcnow().isoformat()}")
+        print(f"Method: {req.method}")
+        print(f"Content-Type: {req.headers.get('content-type')}")
+        print(f"Content-Length: {req.headers.get('content-length')}")
+        print(f"User-Agent: {req.headers.get('user-agent', 'N/A')}")
+        
+        # ====================================================================
+        # STEP 2: EXTRACT AND VALIDATE PAYLOAD
+        # ====================================================================
         payload = req.data
         sig_header = req.headers.get('stripe-signature')
         
+        print(f"\nPayload Info:")
+        print(f"  - Size: {len(payload)} bytes")
+        print(f"  - Type: {type(payload)}")
+        print(f"  - First 100 chars: {payload[:100]}")
+        
+        print(f"\nSignature Info:")
+        print(f"  - Header present: {bool(sig_header)}")
+        
+        if sig_header:
+            # Parse signature components (don't log actual values for security)
+            sig_parts = sig_header.split(',')
+            print(f"  - Components count: {len(sig_parts)}")
+            for part in sig_parts:
+                if '=' in part:
+                    key, _ = part.split('=', 1)
+                    print(f"    • {key}: [PRESENT]")
+        else:
+            print("  - ❌ NO SIGNATURE HEADER FOUND")
+        
+        # ====================================================================
+        # STEP 3: CHECK WEBHOOK SECRET CONFIGURATION
+        # ====================================================================
+        print(f"\nWebhook Secret Config:")
+        print(f"  - Secret configured: {bool(STRIPE_WEBHOOK_SECRET)}")
+        if STRIPE_WEBHOOK_SECRET:
+            print(f"  - Secret prefix: {STRIPE_WEBHOOK_SECRET[:10]}...")
+            print(f"  - Secret length: {len(STRIPE_WEBHOOK_SECRET)}")
+            print(f"  - Starts with 'whsec_': {STRIPE_WEBHOOK_SECRET.startswith('whsec_')}")
+        else:
+            print("  - ❌ SECRET NOT CONFIGURED")
+        
+        print(f"  - Environment: {'EMULATOR' if IS_EMULATOR else 'PRODUCTION'}")
+        
         if not sig_header:
+            print("\n❌ FATAL: Missing Stripe signature header")
+            print("=" * 80)
             return create_error_response("Missing Stripe signature", 400)
+        
+        # ====================================================================
+        # STEP 4: ATTEMPT SIGNATURE VERIFICATION
+        # ====================================================================
+        print("\n🔐 Attempting signature verification...")
         
         try:
             event = stripe.Webhook.construct_event(
                 payload, sig_header, STRIPE_WEBHOOK_SECRET
             )
+            print("✅ Signature verification SUCCESSFUL")
+            
         except stripe.error.SignatureVerificationError as e:
-            print(f"❌ Webhook signature verification failed: {str(e)}")
+            print("\n❌ SIGNATURE VERIFICATION FAILED")
+            print(f"Error type: {type(e).__name__}")
+            print(f"Error message: {str(e)}")
+            
+            # Additional debugging info
+            print("\nDebug Information:")
+            print(f"  - Payload is bytes: {isinstance(payload, bytes)}")
+            print(f"  - Payload encoding test: {payload.decode('utf-8')[:200] if isinstance(payload, bytes) else 'Not bytes'}")
+            
+            # Test if the secret can compute signatures at all
+            try:
+                from stripe.webhook import WebhookSignature
+                test_sig = WebhookSignature._compute_signature(payload, STRIPE_WEBHOOK_SECRET)
+                print(f"  - Secret can compute signatures: ✓ (format OK)")
+                print(f"  - Computed signature prefix: {test_sig[:20]}...")
+            except Exception as sig_test_error:
+                print(f"  - Secret computation test: ✗ ({sig_test_error})")
+            
+            # Check if webhook secret matches expected format
+            if not STRIPE_WEBHOOK_SECRET.startswith('whsec_'):
+                print("  - ⚠️  WARNING: Webhook secret doesn't start with 'whsec_'")
+                print("  - This might be a test secret or incorrect secret type")
+            
+            print("\nPossible Issues:")
+            print("  1. Wrong webhook secret (test vs production mismatch)")
+            print("  2. Webhook endpoint URL mismatch in Stripe Dashboard")
+            print("  3. Request body modified by middleware before reaching webhook")
+            print("  4. Stripe signature version mismatch")
+            
+            print("=" * 80)
             return create_error_response("Invalid signature", 400)
         
+        # ====================================================================
+        # STEP 5: PROCESS WEBHOOK EVENT
+        # ====================================================================
         event_type = event['type']
         event_data = event['data']['object']
+        event_id = event.get('id', 'unknown')
         
-        print(f"📨 Received webhook: {event_type}")
+        print(f"\n📨 Processing webhook event:")
+        print(f"  - Event ID: {event_id}")
+        print(f"  - Event Type: {event_type}")
+        print(f"  - Created: {datetime.fromtimestamp(event.get('created', 0)).isoformat()}")
+        print(f"  - Livemode: {event.get('livemode', False)}")
         
         # ====================================================================
         # CHECKOUT SESSION EVENTS
         # ====================================================================
         if event_type == 'checkout.session.completed':
+            print("\n✅ Processing: checkout.session.completed")
             session = event_data
             order_id = session.get('client_reference_id') or session['metadata'].get('orderId')
             
+            print(f"  - Session ID: {session.get('id')}")
+            print(f"  - Order ID: {order_id}")
+            print(f"  - Payment Status: {session.get('payment_status')}")
+            print(f"  - Amount Total: ${session.get('amount_total', 0) / 100}")
+            
             if not order_id:
-                print("⚠️ No order ID found in session")
+                print("  - ⚠️  No order ID found in session")
                 return create_error_response("Order ID not found", 400)
             
             order_ref = db.collection('orders').document(order_id)
             order_doc = order_ref.get()
             
             if not order_doc.exists:
-                print(f"⚠️ Order {order_id} not found")
+                print(f"  - ❌ Order {order_id} not found in database")
                 return create_error_response("Order not found", 404)
+            
+            print(f"  - ✓ Order found in database")
             
             # Check payment status - some payments are async
             payment_status = session.get('payment_status')
@@ -587,11 +693,12 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                     "paymentStatus": "paid",
                     "paidAt": firestore.SERVER_TIMESTAMP,
                 })
-                print(f"✅ Order {order_id} marked as paid (immediate)")
+                print(f"  - ✅ Marking order as PAID (immediate)")
                 
                 # Clear user's cart
                 user_id = session['metadata'].get('userId')
                 if user_id:
+                    print(f"  - 🛒 Clearing cart for user {user_id}")
                     db.collection('users').document(user_id).update({
                         "cart": [],
                         "updatedAt": firestore.SERVER_TIMESTAMP
@@ -602,13 +709,17 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                     "status": "processing",
                     "paymentStatus": "processing",
                 })
-                print(f"⏳ Order {order_id} payment processing (async)")
+                print(f"  - ⏳ Payment processing (async)")
             
             order_ref.update(update_data)
+            print(f"  - ✓ Order updated in database")
         
         elif event_type == 'checkout.session.async_payment_succeeded':
+            print("\n✅ Processing: checkout.session.async_payment_succeeded")
             session = event_data
             order_id = session.get('client_reference_id') or session['metadata'].get('orderId')
+            
+            print(f"  - Order ID: {order_id}")
             
             if order_id:
                 order_ref = db.collection('orders').document(order_id)
@@ -623,16 +734,22 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                     # Clear user's cart
                     user_id = session['metadata'].get('userId')
                     if user_id:
+                        print(f"  - 🛒 Clearing cart for user {user_id}")
                         db.collection('users').document(user_id).update({
                             "cart": [],
                             "updatedAt": firestore.SERVER_TIMESTAMP
                         })
                     
-                    print(f"✅ Order {order_id} async payment succeeded")
+                    print(f"  - ✅ Async payment succeeded for order {order_id}")
+                else:
+                    print(f"  - ⚠️  Order {order_id} not found")
         
         elif event_type == 'checkout.session.async_payment_failed':
+            print("\n❌ Processing: checkout.session.async_payment_failed")
             session = event_data
             order_id = session.get('client_reference_id') or session['metadata'].get('orderId')
+            
+            print(f"  - Order ID: {order_id}")
             
             if order_id:
                 order_ref = db.collection('orders').document(order_id)
@@ -643,11 +760,14 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                         "paymentError": "Async payment failed",
                         "updatedAt": firestore.SERVER_TIMESTAMP,
                     })
-                    print(f"❌ Order {order_id} async payment failed")
+                    print(f"  - ❌ Async payment failed for order {order_id}")
         
         elif event_type == 'checkout.session.expired':
+            print("\n⏰ Processing: checkout.session.expired")
             session = event_data
             order_id = session.get('client_reference_id') or session['metadata'].get('orderId')
+            
+            print(f"  - Order ID: {order_id}")
             
             if order_id:
                 order_ref = db.collection('orders').document(order_id)
@@ -657,13 +777,16 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                         "paymentStatus": "session_expired",
                         "updatedAt": firestore.SERVER_TIMESTAMP
                     })
-                    print(f"⏰ Order {order_id} marked as expired")
+                    print(f"  - ⏰ Session expired for order {order_id}")
         
         # ====================================================================
         # PAYMENT INTENT EVENTS
         # ====================================================================
         elif event_type == 'payment_intent.succeeded':
+            print("\n💰 Processing: payment_intent.succeeded")
             payment_intent = event_data
+            print(f"  - Payment Intent ID: {payment_intent['id']}")
+            
             orders = db.collection('orders').where(
                 'stripePaymentIntentId', '==', payment_intent['id']
             ).limit(1).get()
@@ -671,6 +794,8 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             if orders:
                 order_ref = orders[0].reference
                 order_data = orders[0].to_dict()
+                
+                print(f"  - Found order: {order_ref.id}")
                 
                 # Only update if not already paid
                 if order_data.get('paymentStatus') != 'paid':
@@ -685,14 +810,20 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                     # Clear user's cart
                     user_id = order_data.get('userId')
                     if user_id:
+                        print(f"  - 🛒 Clearing cart for user {user_id}")
                         db.collection('users').document(user_id).update({
                             "cart": [],
                             "updatedAt": firestore.SERVER_TIMESTAMP
                         })
                     
-                    print(f"✅ Payment intent succeeded for order")
+                    print(f"  - ✅ Payment intent succeeded")
+                else:
+                    print(f"  - ℹ️  Order already marked as paid")
+            else:
+                print(f"  - ⚠️  No order found for payment intent")
         
         elif event_type == 'payment_intent.payment_failed':
+            print("\n❌ Processing: payment_intent.payment_failed")
             payment_intent = event_data
             orders = db.collection('orders').where(
                 'stripePaymentIntentId', '==', payment_intent['id']
@@ -702,6 +833,9 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                 order_ref = orders[0].reference
                 last_error = payment_intent.get('last_payment_error', {})
                 
+                print(f"  - Order: {order_ref.id}")
+                print(f"  - Error: {last_error.get('message', 'Unknown error')}")
+                
                 order_ref.update({
                     "status": "failed",
                     "paymentStatus": "payment_failed",
@@ -709,19 +843,23 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                     "paymentErrorCode": last_error.get('code'),
                     "updatedAt": firestore.SERVER_TIMESTAMP,
                 })
-                print(f"❌ Payment intent failed: {last_error.get('message', 'Unknown error')}")
+                print(f"  - ❌ Payment failed")
         
         # ====================================================================
         # REFUND EVENTS
         # ====================================================================
         elif event_type == 'refund.created':
+            print("\n💰 Processing: refund.created")
             refund = event_data
-            charge_id = refund.get('charge')
             refund_id = refund['id']
             amount = refund.get('amount', 0) / 100
             reason = refund.get('reason', 'requested_by_customer')
             
-            # Find order by charge ID or payment intent
+            print(f"  - Refund ID: {refund_id}")
+            print(f"  - Amount: ${amount}")
+            print(f"  - Reason: {reason}")
+            
+            # Find order by payment intent
             payment_intent_id = refund.get('payment_intent')
             orders = db.collection('orders').where(
                 'stripePaymentIntentId', '==', payment_intent_id
@@ -730,6 +868,8 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             if orders:
                 order_ref = orders[0].reference
                 order_data = orders[0].to_dict()
+                
+                print(f"  - Order: {order_ref.id}")
                 
                 # Initialize refunds array if it doesn't exist
                 refunds = order_data.get('refunds', [])
@@ -746,13 +886,17 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                     "refundStatus": "processing",
                     "updatedAt": firestore.SERVER_TIMESTAMP,
                 })
-                print(f"💰 Refund created: ${amount} (reason: {reason})")
+                print(f"  - ✓ Refund recorded")
         
         elif event_type == 'refund.updated':
+            print("\n💰 Processing: refund.updated")
             refund = event_data
             refund_id = refund['id']
             refund_status = refund.get('status')
             payment_intent_id = refund.get('payment_intent')
+            
+            print(f"  - Refund ID: {refund_id}")
+            print(f"  - Status: {refund_status}")
             
             orders = db.collection('orders').where(
                 'stripePaymentIntentId', '==', payment_intent_id
@@ -781,13 +925,17 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                     "refundStatus": overall_status,
                     "updatedAt": firestore.SERVER_TIMESTAMP,
                 })
-                print(f"💰 Refund {refund_id} updated to: {refund_status}")
+                print(f"  - ✓ Refund updated to: {overall_status}")
         
         elif event_type == 'refund.failed':
+            print("\n❌ Processing: refund.failed")
             refund = event_data
             refund_id = refund['id']
             failure_reason = refund.get('failure_reason', 'Unknown')
             payment_intent_id = refund.get('payment_intent')
+            
+            print(f"  - Refund ID: {refund_id}")
+            print(f"  - Failure Reason: {failure_reason}")
             
             orders = db.collection('orders').where(
                 'stripePaymentIntentId', '==', payment_intent_id
@@ -811,67 +959,50 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                     "refundStatus": "failed",
                     "updatedAt": firestore.SERVER_TIMESTAMP,
                 })
-                print(f"❌ Refund {refund_id} failed: {failure_reason}")
+                print(f"  - ✓ Refund marked as failed")
         
         # ====================================================================
-        # INVOICE EVENTS (for subscription-based orders if applicable)
+        # INVOICE EVENTS
         # ====================================================================
         elif event_type == 'invoice.paid':
+            print("\n📄 Processing: invoice.paid")
             invoice = event_data
             invoice_id = invoice['id']
-            subscription_id = invoice.get('subscription')
-            customer_id = invoice.get('customer')
             amount_paid = invoice.get('amount_paid', 0) / 100
             
-            # Log invoice payment - can be used for subscription tracking
-            print(f"📄 Invoice {invoice_id} paid: ${amount_paid}")
-            
-            # If you have subscription orders, update them here
-            # This is a placeholder for future subscription functionality
-            if subscription_id:
-                # Example: Update subscription status in a subscriptions collection
-                # db.collection('subscriptions').document(subscription_id).update({
-                #     "status": "active",
-                #     "lastPaymentDate": firestore.SERVER_TIMESTAMP,
-                #     "lastInvoiceId": invoice_id,
-                # })
-                pass
+            print(f"  - Invoice ID: {invoice_id}")
+            print(f"  - Amount Paid: ${amount_paid}")
         
         elif event_type == 'invoice.payment_failed':
+            print("\n❌ Processing: invoice.payment_failed")
             invoice = event_data
             invoice_id = invoice['id']
-            subscription_id = invoice.get('subscription')
-            customer_id = invoice.get('customer')
             
-            print(f"❌ Invoice {invoice_id} payment failed")
-            
-            # If you have subscription orders, handle failure here
-            if subscription_id:
-                # Example: Update subscription status
-                # db.collection('subscriptions').document(subscription_id).update({
-                #     "status": "past_due",
-                #     "lastFailedPaymentDate": firestore.SERVER_TIMESTAMP,
-                #     "lastFailedInvoiceId": invoice_id,
-                # })
-                pass
+            print(f"  - Invoice ID: {invoice_id}")
         
         # ====================================================================
         # UNKNOWN EVENT TYPE
         # ====================================================================
         else:
-            print(f"⚠️ Unhandled webhook event type: {event_type}")
+            print(f"\n⚠️  Unhandled webhook event type: {event_type}")
         
+        print("\n✅ Webhook processed successfully")
+        print("=" * 80)
         return create_success_response({"received": True})
         
     except Exception as e:
-        print(f"❌ Webhook Error: {str(e)}")
+        print("\n" + "=" * 80)
+        print("❌ WEBHOOK ERROR")
+        print(f"Error Type: {type(e).__name__}")
+        print(f"Error Message: {str(e)}")
+        print(f"Traceback:")
         print(traceback.format_exc())
+        print("=" * 80)
         return create_error_response(
             "Webhook processing error",
             500,
             str(e) if IS_EMULATOR else None
         )
-
 # ============================================================================
 # FIRESTORE TRIGGERS - EMAIL NOTIFICATIONS
 # ============================================================================

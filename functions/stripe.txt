@@ -1,0 +1,1172 @@
+stripe trigger checkout.session.completed
+✔ Configurer un élément fixe pour : product
+Requête
+{
+"path": 
+"/v1/products",
+"method": 
+"post",
+"parameters": {
+"name": 
+"myproduct",
+"description": 
+"(created by Stripe CLI)",
+},
+}
+Réponse
+{
+"id": 
+"prod_TsApHgCSAY2OAS"
+,
+"object": 
+"product",
+"active": 
+true,
+"attributes": [],
+"created": 
+1769574972
+,
+"default_price": 
+null,
+"description": 
+"(created by Stripe CLI)",
+"images": [],
+"livemode": 
+false,
+"marketing_features": [],
+"metadata": {},
+"name": 
+"myproduct",
+"package_dimensions": 
+null,
+"shippable": 
+null,
+"statement_descriptor": 
+null,
+"tax_code": 
+null,
+"type": 
+"service",
+"unit_label": 
+null,
+"updated": 
+1769574972,
+"url": 
+null,
+}
+✔ Configurer un élément fixe pour : price
+Requête
+{
+"path": 
+"/v1/prices",
+"method": 
+"post",
+"parameters": {
+"product": 
+"prod_TsApHgCSAY2OAS"
+,
+"unit_amount": 
+"1500",
+"currency": 
+"usd",
+},
+}
+Réponse
+{
+"id": 
+"price_1SuQUCPPD6r8xGIz7CUtJBVw"
+,
+"object": 
+"price",
+"active": 
+true,
+"billing_scheme": 
+"per_unit",
+"created": 
+1769574972
+,
+"currency": 
+"usd",
+"custom_unit_amount": 
+null,
+"livemode": 
+false,
+"lookup_key": 
+null,
+"metadata": {},
+"nickname": 
+null,
+"product": 
+"prod_TsApHgCSAY2OAS"
+,
+"recurring": 
+null,
+"tax_behavior": 
+"unspecified",
+"tiers_mode": 
+null,
+"transform_quantity": 
+null,
+"type": 
+"one_time",
+"unit_amount": 
+1500,
+"unit_amount_decimal": 
+"1500",
+}
+✔ Configurer un élément fixe pour : checkout_session
+Requête
+{
+"path": 
+"/v1/checkout/sessions",
+"method": 
+"post",
+"parameters": {
+"success_url": 
+"https://httpbin.org/post",
+"cancel_url": 
+"https://httpbin.org/post",
+"mode": 
+"payment",
+"line_items": [
+"0": {
+"price": 
+"price_1SuQUCPPD6r8xGIz7CUtJBVw"
+,
+"quantity": 
+2,
+},
+],
+"payment_intent_data": {
+"shipping": {
+"name": 
+"Jenny Rosen",
+"address": {
+"line1": 
+"510 Townsend St",
+"postal_code": 
+"94103",
+"city": 
+"San Francisco",
+"state": 
+"CA",
+"country": 
+"US",
+},
+},
+},
+},
+}
+Réponse
+{
+"id": 
+"cs_test_a1Kso3Vf833y5QvMYeXKrmhAembOOsjHdxtkzbMe9VKyMzBA0lrr3015z7"
+,
+"object": 
+"checkout.session",
+"adaptive_pricing": {
+"enabled": 
+true,
+},
+"after_expiration": 
+null,
+"allow_promotion_codes": 
+null,
+"amount_subtotal": 
+3000,
+"amount_total": 
+3000,
+"automatic_tax": {
+"enabled": 
+false,
+"liability": 
+null,
+"provider": 
+null,
+"status": 
+null,
+},
+"billing_address_collection": 
+null,
+"branding_settings": {… 7 items},
+"cancel_url": 
+"https://httpbin.org/post",
+"client_reference_id": 
+null,
+"client_secret": 
+null,
+"collected_information": 
+null,
+"consent": 
+null,
+"consent_collection": 
+null,
+"created": 
+1769574973
+,
+"currency": 
+"usd",
+"currency_conversion": 
+null,
+"custom_fields": [],
+"custom_text": {
+"after_submit": 
+null,
+"shipping_address": 
+null,
+"submit": 
+null,
+"terms_of_service_acceptance": 
+null,
+},
+"customer": 
+null,
+"customer_account": 
+null,
+"customer_creation": 
+"if_required",
+"customer_details": 
+null,
+"customer_email": 
+null,
+"discounts": [],
+"expires_at": 
+1769661373
+,
+"invoice": 
+null,
+"invoice_creation": {
+"enabled": 
+false,
+"invoice_data": {… 7 items},
+},
+"livemode": 
+false,
+"locale": 
+null,
+"metadata": {},
+"mode": 
+"payment",
+"origin_context": 
+null,
+"payment_intent": 
+null,
+"payment_link": 
+null,
+"payment_method_collection": 
+"if_required",
+"payment_method_configuration_details": {
+"id": 
+"pmc_1StdjTPPD6r8xGIzrMkuYdAD"
+,
+"parent": 
+null,
+},
+"payment_method_options": {
+"card": {
+"request_three_d_secure": 
+"automatic",
+},
+},
+"payment_method_types": [
+"card",
+"link",
+],
+"payment_status": 
+"unpaid",
+"permissions": 
+null,
+"phone_number_collection": {
+"enabled": 
+false,
+},
+"recovered_from": 
+null,
+"saved_payment_method_options": 
+null,
+"setup_intent": 
+null,
+"shipping_address_collection": 
+null,
+"shipping_cost": 
+null,
+"shipping_options": [],
+"status": 
+"open",
+"submit_type": 
+null,
+"subscription": 
+null,
+"success_url": 
+"https://httpbin.org/post",
+"total_details": {
+"amount_discount": 
+0,
+"amount_shipping": 
+0,
+"amount_tax": 
+0,
+},
+"ui_mode": 
+"hosted",
+"url": 
+"https://checkout.stripe.com/c/pay/cs_test_a1Kso3Vf833y5QvMYeXKrmhAembOOsjHdxtkzbMe9VKyMzBA0lrr3015z7#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdkdWxOYHwnPyd1blpxYHZxWjA0VnFhbHJVVUEzdz19Qkx%2FV31yXDN0fWNpa09qU09rdGJgPUl9X2JoS21SYExuUkZ8TkB2VWtySExWXzR%2FZkdxcmJXampfcX1mYnV1Rn1icXN3dnZvUG5QNTU9VzM3czV1NycpJ2N3amhWYHdzYHcnP3F3cGApJ2dkZm5id2pwa2FGamlqdyc%2FJyZjY2NjY2MnKSdpZHxqcHFRfHVgJz8ndmxrYmlgWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl"
+,
+"wallet_options": 
+null,
+}
+✔ Configurer un élément fixe pour : payment_page
+Requête
+{
+"path": 
+"/v1/payment_pages/cs_test_a1Kso3Vf833y5QvMYeXKrmhAembOOsjHdxtkzbMe9VKyMzBA0lrr3015z7",
+"method": 
+"get",
+"parameters": {},
+}
+Réponse
+{
+"id": 
+"ppage_1SuQUDPPD6r8xGIzf6vPhHOJ",
+"object": 
+"checkout.session",
+"account_settings": {… 16 items},
+"application": 
+null,
+"automatic_payment_method_types": 
+true,
+"beta_versions": 
+null,
+"billing_address_collection": 
+null,
+"blob": 
+null,
+"blocked_billing_address_countries": [],
+"bnpl_in_link_ui_enabled": 
+false,
+"bnpl_link_experiment_payment_method_type": 
+null,
+"cancel_url": 
+"https://httpbin.org/post",
+"capture_method": 
+"automatic_async",
+"card_brand_choice": {
+"eligible": 
+false,
+"preferred_networks": [
+"cartes_bancaires",
+],
+"supported_cobranded_networks": {
+"cartes_bancaires": 
+false,
+},
+},
+"card_brands": {… 20 items},
+"client_reference_id": 
+null,
+"config_id": 
+"d2e47a11-88af-461c-b70c-1375a5fba4d3",
+"consent": 
+null,
+"consent_collection": 
+null,
+"cross_sell_group": 
+null,
+"crypto_in_link_ui_enabled": 
+false,
+"currency": 
+"usd",
+"custom_fields": [],
+"custom_text": {
+"after_submit": 
+null,
+"shipping_address": 
+null,
+"submit": 
+null,
+"terms_of_service_acceptance": 
+null,
+},
+"customer": 
+null,
+"customer_email": 
+null,
+"customer_managed_saved_payment_methods_offer_save": 
+null,
+"developer_tool_context": 
+null,
+"display_consent_collection_promotions": 
+false,
+"eid": 
+"NA",
+"email_collection": 
+"always",
+"enabled_third_party_wallets": [
+"0": {
+"id": 
+"APPLE_PAY",
+"apple_pay": {
+"required_version": 
+2,
+},
+"carousel_enabled": 
+false,
+"enabled": 
+true,
+},
+"1": {
+"id": 
+"GOOGLE_PAY",
+"carousel_enabled": 
+false,
+"enabled": 
+false,
+"google_pay": {
+"id": 
+"GOOGLE_PAY",
+"version_major": 
+2,
+"version_minor": 
+0,
+},
+},
+"2": {
+"id": 
+"LINK_BUTTON",
+"carousel_enabled": 
+false,
+"enabled": 
+true,
+},
+"3": {
+"id": 
+"AMAZON_PAY",
+"carousel_enabled": 
+false,
+"enabled": 
+false,
+},
+"4": {
+"id": 
+"KLARNA_EXPRESS",
+"carousel_enabled": 
+false,
+"enabled": 
+false,
+},
+],
+"enforcement_mode": 
+"functional",
+"experiments_data": {
+"event_id": 
+"832879c5-471e-4e16-b61f-a000ba7fec65",
+"experiment_assignments": {… 28 items},
+"experiment_metadata": {
+"ocs_buyer_xp_cpl_lpm_holdback": {
+"heldback_special_wallets": [],
+},
+},
+},
+"feature_flags": {… 18 items},
+"form_field_settings": {
+"hide_cardholder_name": 
+false,
+},
+"geocoding": {
+"country_code": 
+"CA",
+"region_name": 
+null,
+},
+"has_async_attached_payment_method": 
+false,
+"has_dynamic_tax_rates": 
+false,
+"init_checksum": 
+null,
+"invoice_creation": {
+"enabled": 
+false,
+},
+"is_sandbox_merchant": 
+false,
+"klarna_info": 
+null,
+"konbini_confirmation_number": 
+null,
+"line_item_group": {… 11 items},
+"link_settings": {… 11 items},
+"livemode": 
+false,
+"locale": 
+null,
+"managed_payments": {
+"enabled": 
+false,
+"guest_checkout": 
+true,
+},
+"mode": 
+"payment",
+"name_collection": 
+null,
+"on_behalf_of": 
+null,
+"ordered_payment_method_types": [
+"card",
+"link",
+"apple_pay",
+],
+"origin_context": 
+null,
+"payment_intent": 
+null,
+"payment_method_collection": 
+"if_required",
+"payment_method_filtering": {
+"invalid_payment_method_types": {
+"affirm": {
+"message": 
+"payment_intent_invalid_currency",
+},
+"bancontact": {
+"message": 
+"payment_intent_invalid_currency",
+},
+"blik": {
+"message": 
+"dynamic_payment_methods_capability_not_present",
+},
+"eps": {
+"message": 
+"payment_intent_invalid_currency",
+},
+"klarna": {
+"message": 
+"payment_intent_invalid_currency",
+},
+"transfers": {
+"message": 
+"dynamic_payment_methods_capability_not_present",
+},
+},
+"valid_payment_method_types": [
+"card",
+"link",
+],
+},
+"payment_method_options": {
+"card": {
+"request_three_d_secure": 
+"automatic",
+},
+},
+"payment_method_specs": [
+"0": {
+"async": 
+false,
+"fields": [],
+"type": 
+"card",
+},
+],
+"payment_method_types": [
+"card",
+"link",
+],
+"payment_status": 
+"unpaid",
+"permissions": 
+null,
+"phone_number_collection": {
+"enabled": 
+false,
+},
+"policies": 
+null,
+"prefilled": 
+null,
+"receipt_emails_enabled": 
+false,
+"redirect_on_completion": 
+null,
+"return_url": 
+null,
+"route_to_orchestration_interface": 
+false,
+"rqdata": 
+"X0KTnt1Aqp2BsZq89rZEQADn9lSdzVZn9Vcz+LA75zC9UWABk1lhHdpqQSNph6L5ru6Nl9H63uXHgR5KGqmxnQbjDKhy48BSJaJyUGUFsj42Nps8R14RGKFuXjQIpYWGUvvxBjehmMtn99p/GHeouWVjvPSj9yFDz7YEK7XZz0yVKOzPAlzN9z75Q0M8trE2PlWl+GutWyCSIxKauBsfl5BuNWXV8cSavbaluXY8XMr7OifkdF0XswwgsCohEK3Uxo8AK5NavIyhb16+wS32eCZsvCLPREA758l3jCsuIRIbX5iVeqB59IFJ7Q==hlHhNCHYyZ+ZNzFa",
+"sepa_debit_info": 
+null,
+"session_id": 
+"cs_test_a1Kso3Vf833y5QvMYeXKrmhAembOOsjHdxtkzbMe9VKyMzBA0lrr3015z7"
+,
+"setup_future_usage": 
+null,
+"setup_future_usage_for_payment_method_type": {},
+"setup_intent": 
+null,
+"shipping": 
+null,
+"shipping_address_collection": 
+null,
+"shipping_options": [],
+"shipping_rate": 
+null,
+"shipping_tax_amounts": [],
+"site_key": 
+"20000000-ffff-ffff-ffff-000000000002",
+"state": 
+"active",
+"statement_descriptor": 
+"STRIPE ORIGNA TORONTO",
+"status": 
+"open",
+"stripe_hosted_url": 
+"https://checkout.stripe.com/c/pay/cs_test_a1Kso3Vf833y5QvMYeXKrmhAembOOsjHdxtkzbMe9VKyMzBA0lrr3015z7#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdkdWxOYHwnPyd1blpxYHZxWjA0VnFhbHJVVUEzdz19Qkx%2FV31yXDN0fWNpa09qU09rdGJgPUl9X2JoS21SYExuUkZ8TkB2VWtySExWXzR%2FZkdxcmJXampfcX1mYnV1Rn1icXN3dnZvUG5QNTU9VzM3czV1NycpJ2N3amhWYHdzYHcnP3F3cGApJ2dkZm5id2pwa2FGamlqdyc%2FJyZjY2NjY2MnKSdpZHxqcHFRfHVgJz8ndmxrYmlgWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl"
+,
+"submit_type": 
+null,
+"subscription_data": 
+null,
+"subscription_settings": 
+null,
+"success_url": 
+"https://httpbin.org/post",
+"tax_context": {… 10 items},
+"tax_meta": {
+"computation_type": 
+"manual",
+"customer_tax_exempt": 
+"none",
+"error_reason": 
+null,
+"status": 
+"complete",
+},
+"token_notification_url": 
+"https://pm-hooks.stripe.com/apple_pay/merchant_token/pDq7tf9uieoQWMVJixFwuOve/acct_1StdiwPPD6r8xGIz/"
+,
+"total_summary": 
+null,
+"ui_mode": 
+"hosted",
+"url": 
+"https://checkout.stripe.com/c/pay/cs_test_a1Kso3Vf833y5QvMYeXKrmhAembOOsjHdxtkzbMe9VKyMzBA0lrr3015z7#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdkdWxOYHwnPyd1blpxYHZxWjA0VnFhbHJVVUEzdz19Qkx%2FV31yXDN0fWNpa09qU09rdGJgPUl9X2JoS21SYExuUkZ8TkB2VWtySExWXzR%2FZkdxcmJXampfcX1mYnV1Rn1icXN3dnZvUG5QNTU9VzM3czV1NycpJ2N3amhWYHdzYHcnP3F3cGApJ2dkZm5id2pwa2FGamlqdyc%2FJyZjY2NjY2MnKSdpZHxqcHFRfHVgJz8ndmxrYmlgWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl"
+,
+"use_payment_methods": 
+true,
+"utm_codes": 
+null,
+}
+✔ Configurer un élément fixe pour : payment_method
+Requête
+{
+"path": 
+"/v1/payment_methods",
+"method": 
+"post",
+"parameters": {
+"type": 
+"card",
+"card": {
+"token": 
+"tok_visa",
+},
+"billing_details": {
+"email": 
+"stripe@example.com",
+"name": 
+"Jenny Rosen",
+"address": {
+"line1": 
+"354 Oyster Point Blvd",
+"postal_code": 
+"94080",
+"city": 
+"South San Francisco",
+"state": 
+"CA",
+"country": 
+"US",
+},
+},
+},
+}
+Réponse
+{
+"id": 
+"pm_1SuQUDPPD6r8xGIzTiXoMNXS"
+,
+"object": 
+"payment_method",
+"allow_redisplay": 
+"unspecified",
+"billing_details": {
+"address": {
+"city": 
+"South San Francisco",
+"country": 
+"US",
+"line1": 
+"354 Oyster Point Blvd",
+"line2": 
+null,
+"postal_code": 
+"94080",
+"state": 
+"CA",
+},
+"email": 
+"stripe@example.com",
+"name": 
+"Jenny Rosen",
+"phone": 
+null,
+"tax_id": 
+null,
+},
+"card": {… 15 items},
+"created": 
+1769574973
+,
+"customer": 
+null,
+"customer_account": 
+null,
+"livemode": 
+false,
+"metadata": {},
+"type": 
+"card",
+}
+✔ Configurer un élément fixe pour : payment_page_confirm
+Requête
+{
+"path": 
+"/v1/payment_pages/cs_test_a1Kso3Vf833y5QvMYeXKrmhAembOOsjHdxtkzbMe9VKyMzBA0lrr3015z7/confirm",
+"method": 
+"post",
+"parameters": {
+"payment_method": 
+"pm_1SuQUDPPD6r8xGIzTiXoMNXS"
+,
+"expected_amount": 
+3000,
+},
+}
+Réponse
+{
+"id": 
+"ppage_1SuQUDPPD6r8xGIzf6vPhHOJ",
+"object": 
+"checkout.session",
+"account_settings": {… 16 items},
+"application": 
+null,
+"automatic_payment_method_types": 
+true,
+"beta_versions": 
+null,
+"billing_address_collection": 
+null,
+"blob": 
+null,
+"blocked_billing_address_countries": [],
+"bnpl_in_link_ui_enabled": 
+false,
+"bnpl_link_experiment_payment_method_type": 
+null,
+"cancel_url": 
+"https://httpbin.org/post",
+"capture_method": 
+"automatic_async",
+"card_brand_choice": {
+"eligible": 
+false,
+"preferred_networks": [
+"cartes_bancaires",
+],
+"supported_cobranded_networks": {
+"cartes_bancaires": 
+false,
+},
+},
+"card_brands": {… 20 items},
+"client_reference_id": 
+null,
+"config_id": 
+"d2e47a11-88af-461c-b70c-1375a5fba4d3",
+"consent": 
+null,
+"consent_collection": 
+null,
+"cross_sell_group": 
+null,
+"crypto_in_link_ui_enabled": 
+false,
+"currency": 
+"usd",
+"custom_fields": [],
+"custom_text": {
+"after_submit": 
+null,
+"shipping_address": 
+null,
+"submit": 
+null,
+"terms_of_service_acceptance": 
+null,
+},
+"customer": 
+null,
+"customer_email": 
+null,
+"customer_managed_saved_payment_methods_offer_save": 
+null,
+"developer_tool_context": 
+null,
+"display_consent_collection_promotions": 
+false,
+"eid": 
+"NA",
+"email_collection": 
+"always",
+"enabled_third_party_wallets": [
+"0": {
+"id": 
+"APPLE_PAY",
+"apple_pay": {
+"required_version": 
+2,
+},
+"carousel_enabled": 
+false,
+"enabled": 
+true,
+},
+"1": {
+"id": 
+"GOOGLE_PAY",
+"carousel_enabled": 
+false,
+"enabled": 
+false,
+"google_pay": {
+"id": 
+"GOOGLE_PAY",
+"version_major": 
+2,
+"version_minor": 
+0,
+},
+},
+"2": {
+"id": 
+"LINK_BUTTON",
+"carousel_enabled": 
+false,
+"enabled": 
+true,
+},
+"3": {
+"id": 
+"AMAZON_PAY",
+"carousel_enabled": 
+false,
+"enabled": 
+false,
+},
+"4": {
+"id": 
+"KLARNA_EXPRESS",
+"carousel_enabled": 
+false,
+"enabled": 
+false,
+},
+],
+"enforcement_mode": 
+"functional",
+"experiments_data": {
+"event_id": 
+"13fb6c0c-de3e-4cc9-adcc-3d696f73680b",
+"experiment_assignments": {… 28 items},
+"experiment_metadata": {
+"ocs_buyer_xp_cpl_lpm_holdback": {
+"heldback_special_wallets": [],
+},
+},
+},
+"feature_flags": {… 18 items},
+"form_field_settings": {
+"hide_cardholder_name": 
+false,
+},
+"geocoding": {
+"country_code": 
+"CA",
+"region_name": 
+null,
+},
+"has_async_attached_payment_method": 
+false,
+"has_dynamic_tax_rates": 
+false,
+"init_checksum": 
+null,
+"invoice_creation": {
+"enabled": 
+false,
+},
+"is_sandbox_merchant": 
+false,
+"klarna_info": 
+null,
+"konbini_confirmation_number": 
+null,
+"line_item_group": {… 11 items},
+"link_settings": {… 11 items},
+"livemode": 
+false,
+"locale": 
+null,
+"managed_payments": {
+"enabled": 
+false,
+"guest_checkout": 
+true,
+},
+"mode": 
+"payment",
+"name_collection": 
+null,
+"on_behalf_of": 
+null,
+"ordered_payment_method_types": [
+"card",
+"link",
+"apple_pay",
+],
+"origin_context": 
+null,
+"payment_intent": {… 26 items},
+"payment_method_collection": 
+"if_required",
+"payment_method_filtering": {
+"invalid_payment_method_types": {
+"affirm": {
+"message": 
+"payment_intent_invalid_currency",
+},
+"bancontact": {
+"message": 
+"payment_intent_invalid_currency",
+},
+"blik": {
+"message": 
+"dynamic_payment_methods_capability_not_present",
+},
+"eps": {
+"message": 
+"payment_intent_invalid_currency",
+},
+"klarna": {
+"message": 
+"payment_intent_invalid_currency",
+},
+"transfers": {
+"message": 
+"dynamic_payment_methods_capability_not_present",
+},
+},
+"valid_payment_method_types": [
+"card",
+"link",
+],
+},
+"payment_method_options": {
+"card": {
+"request_three_d_secure": 
+"automatic",
+},
+},
+"payment_method_specs": [
+"0": {
+"async": 
+false,
+"fields": [],
+"type": 
+"card",
+},
+],
+"payment_method_types": [
+"card",
+"link",
+],
+"payment_status": 
+"paid",
+"permissions": 
+null,
+"phone_number_collection": {
+"enabled": 
+false,
+},
+"policies": 
+null,
+"prefilled": 
+null,
+"receipt_emails_enabled": 
+false,
+"redirect_on_completion": 
+null,
+"return_url": 
+null,
+"route_to_orchestration_interface": 
+false,
+"rqdata": 
+"HlZe55c5ibkt6u3SbQRL0WUDkbGplM9rg6n+z7DMQXgpz9BDL9NOU2AWyi9GHNGeXVGGHZNPq9qTbxnzKIwypYxKERHuDNzBh0n9hCMSTWwX3V8Tg/P+sm9cfhLGP9PmYlLxMddJ+JisrHE+m/2sfNSdzZ7LkyCMFuC3D+DE7knFewnmiiXNaKcCkRMrT9NS5PCrKqik88yCUukWIXG3GDb43uQLKnyCuhufidRnKH4+PiEr42JSJzk9yfuTwybfspW4PgJV/5jjsxxzBsvvksTcp+1bjCJBDl2zWUdOUF38+yRIehARKmdJyQ==U2ldMVM8z6AWRU77",
+"sepa_debit_info": 
+null,
+"session_id": 
+"cs_test_a1Kso3Vf833y5QvMYeXKrmhAembOOsjHdxtkzbMe9VKyMzBA0lrr3015z7"
+,
+"setup_future_usage": 
+null,
+"setup_future_usage_for_payment_method_type": {},
+"setup_intent": 
+null,
+"shipping": 
+null,
+"shipping_address_collection": 
+null,
+"shipping_options": [],
+"shipping_rate": 
+null,
+"shipping_tax_amounts": [],
+"site_key": 
+"20000000-ffff-ffff-ffff-000000000002",
+"state": 
+"succeeded",
+"statement_descriptor": 
+"STRIPE ORIGNA TORONTO",
+"status": 
+"complete",
+"stripe_hosted_url": 
+"https://checkout.stripe.com/c/pay/cs_test_a1Kso3Vf833y5QvMYeXKrmhAembOOsjHdxtkzbMe9VKyMzBA0lrr3015z7#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdkdWxOYHwnPyd1blpxYHZxWjA0VnFhbHJVVUEzdz19Qkx%2FV31yXDN0fWNpa09qU09rdGJgPUl9X2JoS21SYExuUkZ8TkB2VWtySExWXzR%2FZkdxcmJXampfcX1mYnV1Rn1icXN3dnZvUG5QNTU9VzM3czV1NycpJ2N3amhWYHdzYHcnP3F3cGApJ2dkZm5id2pwa2FGamlqdyc%2FJyZjY2NjY2MnKSdpZHxqcHFRfHVgJz8ndmxrYmlgWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl"
+,
+"submit_type": 
+null,
+"subscription_data": 
+null,
+"subscription_settings": 
+null,
+"success_url": 
+"https://httpbin.org/post",
+"tax_context": {… 10 items},
+"tax_meta": {
+"computation_type": 
+"manual",
+"customer_tax_exempt": 
+"none",
+"error_reason": 
+null,
+"status": 
+"complete",
+},
+"token_notification_url": 
+"https://pm-hooks.stripe.com/apple_pay/merchant_token/pDq7tf9uieoQWMVJixFwuOve/acct_1StdiwPPD6r8xGIz/"
+,
+"total_summary": 
+null,
+"ui_mode": 
+"hosted",
+"url": 
+"https://checkout.stripe.com/c/pay/cs_test_a1Kso3Vf833y5QvMYeXKrmhAembOOsjHdxtkzbMe9VKyMzBA0lrr3015z7#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdkdWxOYHwnPyd1blpxYHZxWjA0VnFhbHJVVUEzdz19Qkx%2FV31yXDN0fWNpa09qU09rdGJgPUl9X2JoS21SYExuUkZ8TkB2VWtySExWXzR%2FZkdxcmJXampfcX1mYnV1Rn1icXN3dnZvUG5QNTU9VzM3czV1NycpJ2N3amhWYHdzYHcnP3F3cGApJ2dkZm5id2pwa2FGamlqdyc%2FJyZjY2NjY2MnKSdpZHxqcHFRfHVgJz8ndmxrYmlgWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl"
+,
+"use_payment_methods": 
+true,
+"utm_codes": 
+null,
+}
+✔ Déclenchement réussi !
+Masquer les détails
+
+
+
+INFO 2026-01-28T04:36:15.755940Z Starting new instance. Reason: AUTOSCALING - Instance started due to configured scaling factors (e.g. CPU utilization, request throughput, etc.) or no existing capacity for current traffic.
+WARNING 2026-01-28T04:36:15.793507Z [httpRequest.requestMethod: POST] [httpRequest.status: 400] [httpRequest.responseSize: 231 B] [httpRequest.latency: 32 ms] [httpRequest.userAgent: Stripe 1.0] https://stripe-webhook-wwnxr2xxoq-uc.a.run.app/
+DEFAULT 2026-01-28T04:36:18.213768Z 🚀 Running in PRODUCTION mode
+INFO 2026-01-28T04:36:18.501943Z Default STARTUP TCP probe succeeded after 1 attempt for container "worker" on port 8080.
+DEFAULT 2026-01-28T04:36:18.571562Z ================================================================================
+DEFAULT 2026-01-28T04:36:18.571636Z 📥 WEBHOOK REQUEST RECEIVED
+DEFAULT 2026-01-28T04:36:18.571848Z Timestamp: 2026-01-28T04:36:18.572500
+DEFAULT 2026-01-28T04:36:18.571964Z Method: POST
+DEFAULT 2026-01-28T04:36:18.572056Z Content-Type: application/json; charset=utf-8
+DEFAULT 2026-01-28T04:36:18.572186Z Content-Length: 2608
+DEFAULT 2026-01-28T04:36:18.572290Z User-Agent: Stripe/1.0 (+https://stripe.com/docs/webhooks)
+DEFAULT 2026-01-28T04:36:18.574233Z Payload Info:
+DEFAULT 2026-01-28T04:36:18.574318Z - Size: 2608 bytes
+DEFAULT 2026-01-28T04:36:18.574419Z - Type: <class 'bytes'>
+DEFAULT 2026-01-28T04:36:18.574566Z - First 100 chars: b'{\n "id": "evt_3SuQUEPPD6r8xGIz0IKD0loT",\n "object": "event",\n "api_version": "2025-12-15.clover",'
+DEFAULT 2026-01-28T04:36:18.574659Z Signature Info:
+DEFAULT 2026-01-28T04:36:18.574762Z - Header present: True
+DEFAULT 2026-01-28T04:36:18.574857Z - Components count: 3
+DEFAULT 2026-01-28T04:36:18.574998Z • t: [PRESENT]
+DEFAULT 2026-01-28T04:36:18.575089Z • v1: [PRESENT]
+DEFAULT 2026-01-28T04:36:18.575191Z • v0: [PRESENT]
+DEFAULT 2026-01-28T04:36:18.575292Z Webhook Secret Config:
+DEFAULT 2026-01-28T04:36:18.575382Z - Secret configured: True
+DEFAULT 2026-01-28T04:36:18.575519Z - Secret prefix: STRIPE_WEBHOOK_SECRET_REDACTED...
+DEFAULT 2026-01-28T04:36:18.575635Z - Secret length: 38
+DEFAULT 2026-01-28T04:36:18.575724Z - Starts with 'whsec_': True
+DEFAULT 2026-01-28T04:36:18.575817Z - Environment: PRODUCTION
+DEFAULT 2026-01-28T04:36:18.575938Z 🔐 Attempting signature verification...
+DEFAULT 2026-01-28T04:36:18.635593Z ✅ Signature verification SUCCESSFUL
+DEFAULT 2026-01-28T04:36:18.635672Z 📨 Processing webhook event:
+DEFAULT 2026-01-28T04:36:18.635763Z - Event ID: evt_3SuQUEPPD6r8xGIz0IKD0loT
+DEFAULT 2026-01-28T04:36:18.635961Z - Event Type: payment_intent.succeeded
+DEFAULT 2026-01-28T04:36:18.636126Z - Created: 2026-01-28T04:36:15
+DEFAULT 2026-01-28T04:36:18.636196Z - Livemode: False
+DEFAULT 2026-01-28T04:36:18.636301Z 💰 Processing: payment_intent.succeeded
+DEFAULT 2026-01-28T04:36:18.636384Z - Payment Intent ID: pi_3SuQUEPPD6r8xGIz0a2xRIG6
+DEFAULT 2026-01-28T04:36:18.638828Z /layers/google.python.pip/pip/lib/python3.13/site-packages/google/cloud/firestore_v1/base_collection.py:316: UserWarning: Detected filter using positional arguments. Prefer using the 'filter' keyword argument instead. return query.where(field_path, op_string, value)
+DEFAULT 2026-01-28T04:36:18.798225Z ================================================================================
+DEFAULT 2026-01-28T04:36:18.798295Z 📥 WEBHOOK REQUEST RECEIVED
+DEFAULT 2026-01-28T04:36:18.798422Z Timestamp: 2026-01-28T04:36:18.798882
+DEFAULT 2026-01-28T04:36:18.798515Z Method: POST
+DEFAULT 2026-01-28T04:36:18.798590Z Content-Type: application/json; charset=utf-8
+DEFAULT 2026-01-28T04:36:18.798669Z Content-Length: 3790
+DEFAULT 2026-01-28T04:36:18.798780Z User-Agent: Stripe/1.0 (+https://stripe.com/docs/webhooks)
+DEFAULT 2026-01-28T04:36:18.799052Z Payload Info:
+DEFAULT 2026-01-28T04:36:18.799126Z - Size: 3790 bytes
+DEFAULT 2026-01-28T04:36:18.799224Z - Type: <class 'bytes'>
+DEFAULT 2026-01-28T04:36:18.799310Z - First 100 chars: b'{\n "id": "evt_1SuQUFPPD6r8xGIze6GLjpJ3",\n "object": "event",\n "api_version": "2025-12-15.clover",'
+DEFAULT 2026-01-28T04:36:18.799428Z Signature Info:
+DEFAULT 2026-01-28T04:36:18.799494Z - Header present: True
+DEFAULT 2026-01-28T04:36:18.799694Z - Components count: 3
+DEFAULT 2026-01-28T04:36:18.799884Z • t: [PRESENT]
+DEFAULT 2026-01-28T04:36:18.799996Z • v1: [PRESENT]
+DEFAULT 2026-01-28T04:36:18.800095Z • v0: [PRESENT]
+DEFAULT 2026-01-28T04:36:18.800198Z Webhook Secret Config:
+DEFAULT 2026-01-28T04:36:18.800342Z - Secret configured: True
+DEFAULT 2026-01-28T04:36:18.800562Z - Secret prefix: STRIPE_WEBHOOK_SECRET_REDACTED...
+DEFAULT 2026-01-28T04:36:18.800774Z - Secret length: 38
+DEFAULT 2026-01-28T04:36:18.800955Z - Starts with 'whsec_': True
+DEFAULT 2026-01-28T04:36:18.801046Z - Environment: PRODUCTION
+DEFAULT 2026-01-28T04:36:18.801178Z 🔐 Attempting signature verification...
+DEFAULT 2026-01-28T04:36:18.824803Z ✅ Signature verification SUCCESSFUL
+DEFAULT 2026-01-28T04:36:18.825692Z 📨 Processing webhook event:
+DEFAULT 2026-01-28T04:36:18.825801Z - Event ID: evt_1SuQUFPPD6r8xGIze6GLjpJ3
+DEFAULT 2026-01-28T04:36:18.826322Z - Event Type: checkout.session.completed
+DEFAULT 2026-01-28T04:36:18.826377Z - Created: 2026-01-28T04:36:15
+DEFAULT 2026-01-28T04:36:18.826522Z - Livemode: False
+DEFAULT 2026-01-28T04:36:18.826702Z ✅ Processing: checkout.session.completed
+DEFAULT 2026-01-28T04:36:18.826809Z - Session ID: cs_test_a1Kso3Vf833y5QvMYeXKrmhAembOOsjHdxtkzbMe9VKyMzBA0lrr3015z7
+DEFAULT 2026-01-28T04:36:18.826911Z - Order ID: None
+DEFAULT 2026-01-28T04:36:18.827001Z - Payment Status: paid
+DEFAULT 2026-01-28T04:36:18.827158Z - Amount Total: $30.0
+DEFAULT 2026-01-28T04:36:18.827234Z - ⚠️ No order ID found in session
+DEFAULT 2026-01-28T04:36:19.087649Z - ⚠️ No order found for payment intent
+DEFAULT 2026-01-28T04:36:19.087692Z ✅ Webhook processed successfully
+DEFAULT 2026-01-28T04:36:19.087766Z ================================================================================
