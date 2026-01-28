@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:origna_gta/addressmanagement_screen.dart';
 import 'package:origna_gta/favorites_screen.dart';
 import 'package:origna_gta/orders_screen.dart';
+import 'package:origna_gta/seller_orders_screen.dart';
 import 'package:origna_gta/utils.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -26,10 +27,15 @@ class ProfileScreen extends StatelessWidget {
                 }
 
                 final userData = snapshot.data!.data() as Map<String, dynamic>?;
-                final name = userData?['name'] ?? 'User';
-                final email = userData?['email'] ?? user.email ?? '';
-                final userModel = UserModel.fromMap(userData!);
+                if (userData == null) {
+                  return const Center(child: Text('User data not found'));
+                }
+
+                final userModel = UserModel.fromMap(userData);
+                final name = userModel.name;
+                final email = userModel.email;
                 final isSeller = userModel.roles.contains('seller');
+
                 return Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 600),
@@ -41,7 +47,7 @@ class ProfileScreen extends StatelessWidget {
                             radius: 50,
                             backgroundColor: const Color(0xFFFF6B35),
                             child: Text(
-                              name[0].toUpperCase(),
+                              name.isNotEmpty ? name[0].toUpperCase() : 'U',
                               style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -58,14 +64,13 @@ class ProfileScreen extends StatelessWidget {
                               Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen()));
                             },
                           ),
-
                           if (isSeller)
                             _buildMenuItem(
                               context,
-                              icon: Icons.shopping_bag_outlined,
+                              icon: Icons.store_outlined,
                               title: 'Seller Orders',
                               onTap: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen()));
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerOrdersScreen()));
                               },
                             ),
                           _buildMenuItem(
@@ -84,14 +89,6 @@ class ProfileScreen extends StatelessWidget {
                               Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressManagementScreen()));
                             },
                           ),
-                          // _buildMenuItem(
-                          //   context,
-                          //   icon: Icons.payment_outlined,
-                          //   title: 'Payment Methods',
-                          //   onTap: () {
-                          //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment methods coming soon')));
-                          //   },
-                          // ),
                           const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,
@@ -99,8 +96,12 @@ class ProfileScreen extends StatelessWidget {
                               onPressed: () async {
                                 await FirebaseAuth.instance.signOut();
                               },
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red[600], foregroundColor: Colors.white),
-                              child: const Text('Sign Out'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red[600],
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              child: const Text('Sign Out', style: TextStyle(fontSize: 16)),
                             ),
                           ),
                         ],

@@ -14,15 +14,24 @@ class OrignaApp extends StatelessWidget {
       onGenerateRoute: _onGenerateRoute,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF6B35), brightness: Brightness.light),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFFFF6B35),
+          brightness: Brightness.light,
+        ),
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
         fontFamily: 'Roboto',
-        appBarTheme: const AppBarTheme(centerTitle: false, elevation: 0, scrolledUnderElevation: 2),
+        appBarTheme: const AppBarTheme(
+          centerTitle: false,
+          elevation: 0,
+          scrolledUnderElevation: 2,
+        ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
@@ -48,63 +57,97 @@ class OrignaApp extends StatelessWidget {
   }
 }
 
-
 Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   final uri = Uri.tryParse(settings.name ?? '');
 
   if (uri == null) return null;
 
-  // ✅ PAYMENT SUCCESS
-  if (uri.scheme == 'orignagta' && uri.host == 'payment-success') {
+  // Handle payment success deep link
+  if (uri.path == '/payment-success') {
     final sessionId = uri.queryParameters['session_id'];
+    
+    if (sessionId == null || sessionId.isEmpty) {
+      return MaterialPageRoute(
+        builder: (_) => const _ErrorScreen(message: 'Invalid payment link'),
+      );
+    }
 
     return MaterialPageRoute(
-      builder: (_) => OrderSuccessGate(sessionId: sessionId!),
+      builder: (_) => _OrderSuccessGate(sessionId: sessionId),
     );
   }
 
-  // ❌ PAYMENT CANCELED
-  if (uri.scheme == 'orignagta' && uri.host == 'payment-cancel') {
+  // Handle payment cancellation deep link
+  if (uri.path == '/payment-cancel') {
     return MaterialPageRoute(
-      builder: (_) => const PaymentCanceledScreen(),
+      builder: (_) => const _PaymentCanceledScreen(),
     );
   }
 
   return null;
 }
-class PaymentCanceledScreen extends StatelessWidget {
-  const PaymentCanceledScreen({super.key});
+
+class _PaymentCanceledScreen extends StatelessWidget {
+  const _PaymentCanceledScreen();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Payment Canceled'),
+      ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.cancel, size: 80, color: Colors.red),
-            const SizedBox(height: 16),
-            const Text("Payment canceled"),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Back to Cart"),
-            )
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.cancel, size: 100, color: Colors.red[400]),
+              const SizedBox(height: 24),
+              const Text(
+                'Payment Canceled',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Your payment was canceled. Your cart items are still saved.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6B35),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text(
+                    'Back to Shopping',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class OrderSuccessGate extends StatelessWidget {
+class _OrderSuccessGate extends StatelessWidget {
   final String sessionId;
 
-  const OrderSuccessGate({super.key, required this.sessionId});
+  const _OrderSuccessGate({required this.sessionId});
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder(
+    return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('orders')
           .where('stripeSessionId', isEqualTo: sessionId)
@@ -112,22 +155,83 @@ class OrderSuccessGate extends StatelessWidget {
           .limit(1)
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Confirming your payment...'),
+                ],
+              ),
+            ),
           );
         }
 
-        if (snapshot.data!.docs.isEmpty) {
+        if (snapshot.hasError) {
+          return _ErrorScreen(message: 'Error loading order: ${snapshot.error}');
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Scaffold(
-            body: Center(child: Text("Confirming payment…")),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Processing your payment...'),
+                  SizedBox(height: 8),
+                  Text(
+                    'This may take a few moments',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
           );
         }
 
-        final order = snapshot.data!.docs.first;
-
-        return OrderSuccessScreen(orderId: order.id);
+        final orderDoc = snapshot.data!.docs.first;
+        return OrderSuccessScreen(orderId: orderDoc.id);
       },
+    );
+  }
+}
+
+class _ErrorScreen extends StatelessWidget {
+  final String message;
+
+  const _ErrorScreen({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Error')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 80, color: Colors.red[400]),
+              const SizedBox(height: 24),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                child: const Text('Go Home'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

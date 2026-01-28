@@ -703,6 +703,9 @@ class UserModel {
   final Address? address; // Changed to Address object
   final DateTime createdAt;
   final String? customerId; // Stripe customer ID
+  final String? lastCheckoutSession;
+  final String? lastOrderId;
+  final DateTime? lastCheckoutTimestamp;
 
   UserModel({
     required this.uid,
@@ -712,6 +715,9 @@ class UserModel {
     this.address, // Made optional since not all users may have an address
     required this.createdAt,
     this.customerId,
+    this.lastCheckoutSession,
+    this.lastOrderId,
+    this.lastCheckoutTimestamp,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -722,7 +728,10 @@ class UserModel {
       roles: List<String>.from(map['roles'] ?? const []),
       address: map['address'] != null ? Address.fromMap(map['address'] as Map<String, dynamic>) : null,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      customerId: map['customerId'] as String?, // ✅ FIX
+      customerId: map['customerId'] as String?,
+      lastCheckoutSession: map['lastCheckoutSession'] as String?,
+      lastOrderId: map['lastOrderId'] as String?,
+      lastCheckoutTimestamp: (map['lastCheckoutTimestamp'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -735,7 +744,37 @@ class UserModel {
       'address': address?.toMap(),
       'createdAt': Timestamp.fromDate(createdAt),
       'customerId': customerId,
+      if (lastCheckoutSession != null) 'lastCheckoutSession': lastCheckoutSession,
+      if (lastOrderId != null) 'lastOrderId': lastOrderId,
+      if (lastCheckoutTimestamp != null) 'lastCheckoutTimestamp': Timestamp.fromDate(lastCheckoutTimestamp!),
     };
+  }
+
+  // copyWith method for updating specific fields
+  UserModel copyWith({
+    String? uid,
+    String? email,
+    String? name,
+    List<String>? roles,
+    Address? address,
+    DateTime? createdAt,
+    String? customerId,
+    String? lastCheckoutSession,
+    String? lastOrderId,
+    DateTime? lastCheckoutTimestamp,
+  }) {
+    return UserModel(
+      uid: uid ?? this.uid,
+      email: email ?? this.email,
+      name: name ?? this.name,
+      roles: roles ?? this.roles,
+      address: address ?? this.address,
+      createdAt: createdAt ?? this.createdAt,
+      customerId: customerId ?? this.customerId,
+      lastCheckoutSession: lastCheckoutSession ?? this.lastCheckoutSession,
+      lastOrderId: lastOrderId ?? this.lastOrderId,
+      lastCheckoutTimestamp: lastCheckoutTimestamp ?? this.lastCheckoutTimestamp,
+    );
   }
 
   // Helper method to get favorites subcollection reference

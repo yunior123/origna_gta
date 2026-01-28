@@ -1,4 +1,3 @@
-// OrdersScreen
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +10,12 @@ class OrdersScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const Scaffold();
+    if (user == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('My Orders')),
+        body: const Center(child: Text('Please log in to view orders')),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -22,7 +26,7 @@ class OrdersScreen extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection('orders')
             .where('userId', isEqualTo: user.uid)
-            .where('paymentStatus', isEqualTo: 'paid') // Only show paid orders
+            .where('paymentStatus', isEqualTo: 'paid')
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
@@ -30,15 +34,32 @@ class OrdersScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("No paid orders found"));
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.shopping_bag_outlined, size: 80, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text('No orders yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+                  const SizedBox(height: 8),
+                  Text('Your paid orders will appear here', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+                ],
+              ),
+            );
+          }
+
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
-              final orderData = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-              return _BuyerOrderCard(data: orderData);
+              final doc = snapshot.data!.docs[index];
+              final orderData = doc.data() as Map<String, dynamic>;
+              return _BuyerOrderCard(orderId: doc.id, data: orderData);
             },
           );
         },
@@ -47,121 +68,213 @@ class OrdersScreen extends StatelessWidget {
   }
 }
 
-Widget _productImage(String? url) {
-  if (url == null || url.isEmpty) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(8)),
-      child: const Icon(Icons.image, size: 20, color: Colors.grey),
-    );
-  }
-
-  return ClipRRect(
-    borderRadius: BorderRadius.circular(8),
-    child: Image.network(
-      url,
-      width: 48,
-      height: 48,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(width: 48, height: 48, color: Colors.grey[300], child: const Icon(Icons.broken_image, size: 20)),
-    ),
-  );
-}
-
 class _BuyerOrderCard extends StatelessWidget {
+  final String orderId;
   final Map<String, dynamic> data;
-  const _BuyerOrderCard({required this.data});
+
+  const _BuyerOrderCard({required this.orderId, required this.data});
 
   @override
   Widget build(BuildContext context) {
+    // Parse order data
     final itemsData = List<Map<String, dynamic>>.from(data['items'] ?? []);
     final items = itemsData.map((e) => CartItemDetailModel.fromMap(e)).toList();
-    final total = data['total'] ?? 0.0;
+    final total = (data['total'] ?? 0.0).toDouble();
+    final createdAt = data['createdAt'] as Timestamp?;
+    final deliveryInfo = data['deliveryInfo'] as Map<String, dynamic>?;
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Order Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Total: \$${total.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(DateFormat('MMM dd').format((data['createdAt'] as Timestamp).toDate()), style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Order #${orderId.substring(0, 8).toUpperCase()}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    if (createdAt != null)
+                      Text(
+                        DateFormat('MMM dd, yyyy').format(createdAt.toDate()),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      ),
+                  ],
+                ),
+                Text(
+                  '\$${total.toStringAsFixed(2)}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFFFF6B35)),
+                ),
               ],
             ),
-            const Divider(),
-            // Render each item with its OWN status
-            ...items.map((item) {
-              final status = item.deliveryStatus;
-              final isShipped = status == 'shipped';
-              final isDelivered = status == "delivered";
-              final quantity = item.quantity;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
+            
+            // Delivery Address
+            if (deliveryInfo != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Row(
                   children: [
-                    // 🖼 Product Image
-                    _productImage(item.imageUrls.isNotEmpty ? item.imageUrls.first : null),
-                    const SizedBox(width: 12),
-
-                    // 📦 Product Info
+                    Icon(Icons.location_on_outlined, size: 18, color: Colors.grey[700]),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          const SizedBox(height: 4),
-                          Text("Qty: ${item.quantity} • \$${item.price.toStringAsFixed(2)}", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-
-                          if (isShipped && item.trackingNumber != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text("Tracking: ${item.trackingNumber}", style: const TextStyle(fontSize: 11, color: Colors.blue)),
-                            ),
-                        ],
-                      ),
-                    ),
-                    // 🚚 Status Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isDelivered
-                            ? Colors.blue.withOpacity(0.1)
-                            : isShipped
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
                       child: Text(
-                        isDelivered
-                            ? "Delivered"
-                            : isShipped
-                            ? "Shipped"
-                            : "Processing",
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: isDelivered
-                              ? Colors.blue
-                              : isShipped
-                              ? Colors.green
-                              : Colors.orange,
-                        ),
+                        deliveryInfo['formattedAddress'] ?? 'Address not provided',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                       ),
                     ),
                   ],
                 ),
-              );
+              ),
+            ],
+            
+            const Divider(height: 24),
+            
+            // Items List
+            ...items.map((item) {
+              return _buildOrderItem(item);
             }),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderItem(CartItemDetailModel item) {
+    final status = item.deliveryStatus ?? 'pending';
+    final isShipped = status == 'shipped';
+    final isDelivered = status == 'delivered';
+
+    Color statusColor;
+    String statusText;
+    IconData statusIcon;
+
+    if (isDelivered) {
+      statusColor = Colors.green;
+      statusText = 'Delivered';
+      statusIcon = Icons.check_circle;
+    } else if (isShipped) {
+      statusColor = Colors.blue;
+      statusText = 'Shipped';
+      statusIcon = Icons.local_shipping;
+    } else {
+      statusColor = Colors.orange;
+      statusText = 'Processing';
+      statusIcon = Icons.hourglass_empty;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Product Image
+          _productImage(item.imageUrls.isNotEmpty ? item.imageUrls.first : null),
+          const SizedBox(width: 12),
+
+          // Product Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Qty: ${item.quantity} • \$${item.price.toStringAsFixed(2)}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+                
+                // Tracking Number
+                if (isShipped && item.trackingNumber != null) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Tracking: ${item.trackingNumber}',
+                      style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          
+          const SizedBox(width: 8),
+          
+          // Status Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              children: [
+                Icon(statusIcon, size: 16, color: statusColor),
+                const SizedBox(height: 2),
+                Text(
+                  statusText,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: statusColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _productImage(String? url) {
+    if (url == null || url.isEmpty) {
+      return Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(Icons.image, size: 24, color: Colors.grey),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        url,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          width: 60,
+          height: 60,
+          color: Colors.grey[300],
+          child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
         ),
       ),
     );

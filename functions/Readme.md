@@ -155,3 +155,17 @@ firebase emulators:start --only functions
 
 # Deploy only what changed
 firebase deploy --only functions:get_r2_presigned_url
+
+
+
+
+
+# Deploy corrected backend
+firebase deploy --only functions:create_checkout_session,functions:stripe_webhook
+
+# Test with Stripe CLI
+stripe trigger checkout.session.completed
+stripe trigger payment_intent.succeeded
+
+# Check logs
+firebase functions:log --only stripe_webhook

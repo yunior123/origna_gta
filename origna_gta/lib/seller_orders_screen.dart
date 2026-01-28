@@ -2,44 +2,52 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:origna_gta/utils.dart';
 
 class SellerOrdersScreen extends StatelessWidget {
   const SellerOrdersScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return const SizedBox();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Seller Orders')),
+        body: const Center(child: Text('Please log in to view orders')),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sales Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: Colors.black,
+        title: const Text('Seller Orders', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       backgroundColor: const Color(0xFFF5F5F5),
       body: StreamBuilder<QuerySnapshot>(
-        // Query orders containing products from this seller
         stream: FirebaseFirestore.instance
             .collection('orders')
-            .where('sellerIds', arrayContains: uid)
-            .where('paymentStatus', isEqualTo: 'paid') // Only show paid orders
+            .where('sellerIds', arrayContains: user.uid)
+            .where('paymentStatus', isEqualTo: 'paid')
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35)));
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.inventory_2_outlined, size: 60, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text('No active orders to fulfill', style: TextStyle(color: Colors.grey)),
+                  Icon(Icons.store_outlined, size: 80, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text('No seller orders yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+                  const SizedBox(height: 8),
+                  Text('Orders containing your products will appear here', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
                 ],
               ),
             );
@@ -49,9 +57,12 @@ class SellerOrdersScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
+              final doc = snapshot.data!.docs[index];
+              final orderData = doc.data() as Map<String, dynamic>;
               return _SellerOrderCard(
-                orderDoc: snapshot.data!.docs[index],
-                sellerUid: uid,
+                orderId: doc.id,
+                data: orderData,
+                sellerId: user.uid,
               );
             },
           );
@@ -62,98 +73,261 @@ class SellerOrdersScreen extends StatelessWidget {
 }
 
 class _SellerOrderCard extends StatelessWidget {
-  final DocumentSnapshot orderDoc;
-  final String sellerUid;
+  final String orderId;
+  final Map<String, dynamic> data;
+  final String sellerId;
 
-  const _SellerOrderCard({required this.orderDoc, required this.sellerUid});
+  const _SellerOrderCard({
+    required this.orderId,
+    required this.data,
+    required this.sellerId,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final data = orderDoc.data() as Map<String, dynamic>;
-    final allItems = List<Map<String, dynamic>>.from(data['items'] ?? []);
+    // Parse order data
+    final itemsData = List<Map<String, dynamic>>.from(data['items'] ?? []);
+    final allItems = itemsData.map((e) => CartItemDetailModel.fromMap(e)).toList();
     
-    // Filter to show ONLY this seller's items
-    final myItems = allItems.where((item) => item['sellerId'] == sellerUid).toList();
+    // Filter only items belonging to this seller
+    final sellerItems = allItems.where((item) => item.sellerId == sellerId).toList();
     
-    final buyerEmail = data['customerEmail'] ?? 'Unknown';
-    final delivery = data['deliveryInfo'] ?? {};
-    final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+    if (sellerItems.isEmpty) {
+      return const SizedBox.shrink(); // Don't show if no items belong to seller
+    }
+
+    final createdAt = data['createdAt'] as Timestamp?;
+    final deliveryInfo = data['deliveryInfo'] as Map<String, dynamic>?;
+    final customerEmail = data['customerEmail'] as String?;
+
+    // Calculate seller's total from their items
+    final sellerTotal = sellerItems.fold<double>(
+      0.0,
+      (sum, item) => sum + (item.price * item.quantity),
+    );
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 2,
-      child: ExpansionTile(
-        initiallyExpanded: true,
-        shape: const Border(), // Remove default border
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        title: Row(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF6B35).withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.shopping_bag_outlined, color: Color(0xFFFF6B35), size: 20),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            // Order Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Order #${orderDoc.id.substring(0, 8).toUpperCase()}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Order #${orderId.substring(0, 8).toUpperCase()}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    if (createdAt != null)
+                      Text(
+                        DateFormat('MMM dd, yyyy').format(createdAt.toDate()),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      ),
+                  ],
                 ),
                 Text(
-                  DateFormat('MMM dd • hh:mm a').format(createdAt ?? DateTime.now()),
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  '\$${sellerTotal.toStringAsFixed(2)}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFFFF6B35)),
                 ),
               ],
             ),
-          ],
-        ),
-        children: [
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Buyer Info
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+
+            // Customer Info
+            if (customerEmail != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
                   children: [
-                    const Icon(Icons.local_shipping_outlined, size: 18, color: Colors.grey),
+                    Icon(Icons.person_outline, size: 18, color: Colors.blue[700]),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(buyerEmail, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                          const SizedBox(height: 2),
-                          Text(
-                            delivery['formattedAddress'] ?? 'No address provided',
-                            style: TextStyle(color: Colors.grey[700], fontSize: 13),
-                          ),
-                        ],
+                      child: Text(
+                        customerEmail,
+                        style: TextStyle(fontSize: 12, color: Colors.blue[700]),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                
-                const Text(
-                  "ITEMS TO FULFILL",
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1),
+              ),
+            ],
+            
+            // Delivery Address
+            if (deliveryInfo != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(height: 12),
+                child: Row(
+                  children: [
+                    Icon(Icons.location_on_outlined, size: 18, color: Colors.grey[700]),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        deliveryInfo['formattedAddress'] ?? 'Address not provided',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            
+            const Divider(height: 24),
+            
+            // Seller's Items
+            Text(
+              'Your Items (${sellerItems.length})',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            
+            ...sellerItems.map((item) {
+              return _buildSellerItem(context, item);
+            }),
+          ],
+        ),
+      ),
+    );
+  }
 
-                // Dynamic List of Seller Items
-                ...myItems.map((item) {
-                  return _buildItemRow(context, item, allItems);
-                }),
+  Widget _buildSellerItem(BuildContext context, CartItemDetailModel item) {
+    final status = item.deliveryStatus ?? 'pending';
+    final isShipped = status == 'shipped';
+    final isDelivered = status == 'delivered';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Product Image
+              _productImage(item.imageUrls.isNotEmpty ? item.imageUrls.first : null),
+              const SizedBox(width: 12),
+
+              // Product Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Qty: ${item.quantity} • \$${(item.price * item.quantity).toStringAsFixed(2)}',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                    
+                    // Tracking Number Display
+                    if (isShipped && item.trackingNumber != null) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Tracking: ${item.trackingNumber}',
+                          style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              
+              const SizedBox(width: 8),
+              
+              // Status Badge
+              _buildStatusBadge(status),
+            ],
+          ),
+          
+          // Action Buttons
+          if (!isDelivered) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (!isShipped)
+                  TextButton.icon(
+                    onPressed: () => _showMarkAsShippedDialog(context, item),
+                    icon: const Icon(Icons.local_shipping, size: 16),
+                    label: const Text('Mark as Shipped'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                  ),
+                if (isShipped && !isDelivered)
+                  TextButton.icon(
+                    onPressed: () => _markAsDelivered(context, item),
+                    icon: const Icon(Icons.check_circle, size: 16),
+                    label: const Text('Mark as Delivered'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.green),
+                  ),
               ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    Color statusColor;
+    String statusText;
+    IconData statusIcon;
+
+    if (status == 'delivered') {
+      statusColor = Colors.green;
+      statusText = 'Delivered';
+      statusIcon = Icons.check_circle;
+    } else if (status == 'shipped') {
+      statusColor = Colors.blue;
+      statusText = 'Shipped';
+      statusIcon = Icons.local_shipping;
+    } else {
+      statusColor = Colors.orange;
+      statusText = 'Pending';
+      statusIcon = Icons.hourglass_empty;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Icon(statusIcon, size: 16, color: statusColor),
+          const SizedBox(height: 2),
+          Text(
+            statusText,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: statusColor,
             ),
           ),
         ],
@@ -161,204 +335,163 @@ class _SellerOrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildItemRow(BuildContext context, Map<String, dynamic> item, List<Map<String, dynamic>> allItems) {
-    final status = item['status'] ?? 'pending';
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              // Quantity Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text("x${item['quantity']}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-              ),
-              const SizedBox(width: 12),
-              // Name
-              Expanded(
-                child: Text(
-                  item['name'],
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                ),
-              ),
-              // Status Chip
-              _buildStatusChip(status),
-            ],
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // Action Buttons based on status
-          if (status == 'pending' || status == 'confirmed')
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _showUpdateDialog(context, item, allItems, 'shipped'),
-                icon: const Icon(Icons.local_shipping, size: 16),
-                label: const Text("Mark as Shipped"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF6B35),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-              ),
-            )
-          else if (status == 'shipped')
-             Row(
-               children: [
-                 Expanded(
-                   child: OutlinedButton(
-                     onPressed: null, // Disabled
-                     child: Text("Tracking: ${item['trackingNumber'] ?? 'N/A'}", style: const TextStyle(fontSize: 12)),
-                   ),
-                 ),
-                 const SizedBox(width: 8),
-                 Expanded(
-                   child: ElevatedButton.icon(
-                     onPressed: () => _showUpdateDialog(context, item, allItems, 'delivered'),
-                     icon: const Icon(Icons.check_circle_outline, size: 16),
-                     label: const Text("Mark Delivered"),
-                     style: ElevatedButton.styleFrom(
-                       backgroundColor: Colors.green,
-                       foregroundColor: Colors.white,
-                       elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                     ),
-                   ),
-                 ),
-               ],
-             )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusChip(String status) {
-    Color bg;
-    Color text;
-    IconData icon;
-    String label = status.toUpperCase();
-
-    switch (status) {
-      case 'shipped':
-        bg = Colors.blue.shade50;
-        text = Colors.blue.shade700;
-        icon = Icons.local_shipping;
-        break;
-      case 'delivered':
-        bg = Colors.green.shade50;
-        text = Colors.green.shade700;
-        icon = Icons.check_circle;
-        break;
-      case 'cancelled':
-        bg = Colors.red.shade50;
-        text = Colors.red.shade700;
-        icon = Icons.cancel;
-        break;
-      default: // pending/confirmed
-        bg = Colors.orange.shade50;
-        text = Colors.orange.shade800;
-        icon = Icons.pending;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: text),
-          const SizedBox(width: 4),
-          Text(label, style: TextStyle(color: text, fontSize: 10, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  void _showUpdateDialog(BuildContext context, Map<String, dynamic> targetItem, List<Map<String, dynamic>> allItems, String nextAction) {
+  void _showMarkAsShippedDialog(BuildContext context, CartItemDetailModel item) {
     final trackingController = TextEditingController();
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(nextAction == 'shipped' ? "Mark as Shipped" : "Confirm Delivery"),
+        title: const Text('Mark as Shipped'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Update status for: ${targetItem['name']}"),
+            Text('Item: ${item.name}'),
             const SizedBox(height: 16),
-            if (nextAction == 'shipped') ...[
-              TextField(
-                controller: trackingController,
-                decoration: const InputDecoration(
-                  labelText: "Tracking Number",
-                  hintText: "e.g. UPS123456789",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.qr_code),
-                ),
+            TextField(
+              controller: trackingController,
+              decoration: const InputDecoration(
+                labelText: 'Tracking Number',
+                hintText: 'Enter tracking number',
+                border: OutlineInputBorder(),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                "The customer will receive an email with this tracking number.",
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ] else 
-              const Text("Are you sure this item has been delivered to the customer?"),
+            ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () async {
-              // 1. Find index of the item
-              final index = allItems.indexOf(targetItem);
-              if (index != -1) {
-                // 2. Update local list
-                if (nextAction == 'shipped') {
-                  allItems[index]['status'] = 'shipped';
-                  allItems[index]['trackingNumber'] = trackingController.text.trim();
-                } else {
-                  allItems[index]['status'] = 'delivered';
-                }
-                allItems[index]['updatedAt'] = Timestamp.now();
-
-                // 3. Update Firestore
-                await FirebaseFirestore.instance
-                    .collection('orders')
-                    .doc(orderDoc.id)
-                    .update({'items': allItems});
-                
-                if (context.mounted) Navigator.pop(context);
+            onPressed: () {
+              if (trackingController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a tracking number')),
+                );
+                return;
               }
+              Navigator.pop(context);
+              _updateItemStatus(context, item, 'shipped', trackingController.text.trim());
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: nextAction == 'shipped' ? const Color(0xFFFF6B35) : Colors.green,
+              backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
             ),
-            child: Text(nextAction == 'shipped' ? "Update Status" : "Confirm Delivery"),
+            child: const Text('Confirm'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _markAsDelivered(BuildContext context, CartItemDetailModel item) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mark as Delivered'),
+        content: Text('Confirm that ${item.name} has been delivered?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _updateItemStatus(context, item, 'delivered', null);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateItemStatus(
+    BuildContext context,
+    CartItemDetailModel item,
+    String newStatus,
+    String? trackingNumber,
+  ) async {
+    try {
+      final orderRef = FirebaseFirestore.instance.collection('orders').doc(orderId);
+      final orderDoc = await orderRef.get();
+      
+      if (!orderDoc.exists) {
+        throw Exception('Order not found');
+      }
+
+      final orderData = orderDoc.data()!;
+      final items = List<Map<String, dynamic>>.from(orderData['items'] ?? []);
+
+      // Update the specific item
+      for (var i = 0; i < items.length; i++) {
+        if (items[i]['productId'] == item.productId) {
+          items[i]['deliveryStatus'] = newStatus;
+          if (trackingNumber != null) {
+            items[i]['trackingNumber'] = trackingNumber;
+          }
+          break;
+        }
+      }
+
+      // Update Firestore
+      await orderRef.update({
+        'items': items,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Item marked as $newStatus'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _productImage(String? url) {
+    if (url == null || url.isEmpty) {
+      return Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(Icons.image, size: 24, color: Colors.grey),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        url,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          width: 60,
+          height: 60,
+          color: Colors.grey[300],
+          child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
+        ),
       ),
     );
   }
