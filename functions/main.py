@@ -1,12 +1,17 @@
 """
 Firebase Cloud Functions for Stripe Payment Integration
-Complete production-ready implementation with email notifications and order management
+Production-ready implementation with comprehensive logging and security
 
 Setup Instructions:
 1. Install dependencies: pip install -r requirements.txt
-2. Set environment variables:
-   - Production: firebase functions:config:set stripe.secret_key="sk_live_..." stripe.webhook_secret="whsec_..." sendgrid.api_key="SG.xxx"
-   - Local: Set in .env file
+2. Set environment variables or Firebase secrets:
+   - STRIPE_SECRET_KEY
+   - STRIPE_WEBHOOK_SECRET
+   - MAILJET_API_KEY
+   - MAILJET_SECRET_KEY
+   - R2_ACCESS_KEY (optional)
+   - R2_SECRET_KEY (optional)
+   - R2_ACCOUNT_ID (optional)
 3. Deploy: firebase deploy --only functions
 """
 
@@ -42,8 +47,8 @@ db = firestore.client()
 # CONFIGURATION
 # ============================================================================
 
-
 IS_EMULATOR = os.environ.get('FUNCTIONS_EMULATOR') == 'true'
+
 # Stripe keys
 if IS_EMULATOR:
     STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "sk_test_...")
@@ -54,14 +59,13 @@ if IS_EMULATOR:
     print("🧪 Running in EMULATOR mode")
 else:
     from firebase_functions import params
-
+    
     STRIPE_SECRET_KEY = params.SecretParam("STRIPE_SECRET_KEY").value
     STRIPE_WEBHOOK_SECRET = params.SecretParam("STRIPE_WEBHOOK_SECRET").value
     MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_API_KEY").value
     MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_SECRET_KEY").value
     SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "seller@orignagta.com")
     print("🚀 Running in PRODUCTION mode")
-
 
 stripe.api_key = STRIPE_SECRET_KEY
 
@@ -78,6 +82,86 @@ cors_config = options.CorsOptions(
 # ============================================================================
 # EMAIL TEMPLATES
 # ============================================================================
+
+def get_order_confirmation_email(order_data: Dict[str, Any]) -> str:
+    """Generate HTML email for customer order confirmation"""
+    items_html = ""
+    for item in order_data.get('items', []):
+        items_html += f"""
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">
+                {item.get('name', 'Product')}
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">
+                {item.get('quantity', 1)}
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
+                ${(item.get('price', 0) * item.get('quantity', 1)):.2f}
+            </td>
+        </tr>
+        """
+    
+    delivery_info = order_data.get('deliveryInfo', {})
+    
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Order Confirmed!</h1>
+            <p style="color: white; margin: 10px 0 0 0;">Thank you for your purchase</p>
+        </div>
+        
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #eee; border-top: none;">
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h2 style="margin: 0 0 10px 0; color: #FF6B35;">Order Details</h2>
+                <p style="margin: 5px 0;"><strong>Order ID:</strong> {order_data.get('orderId', 'N/A')}</p>
+                <p style="margin: 5px 0;"><strong>Order Date:</strong> {datetime.utcnow().strftime('%B %d, %Y')}</p>
+            </div>
+            
+            <h3 style="color: #333; border-bottom: 2px solid #FF6B35; padding-bottom: 10px;">Items Ordered</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <thead>
+                    <tr style="background: #f8f9fa;">
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Item</th>
+                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Qty</th>
+                        <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {items_html}
+                    <tr style="font-weight: bold; background: #f8f9fa;">
+                        <td colspan="2" style="padding: 12px; text-align: right; border-top: 2px solid #ddd;">Total:</td>
+                        <td style="padding: 12px; text-align: right; color: #FF6B35; font-size: 18px; border-top: 2px solid #ddd;">${order_data.get('total', 0):.2f} CAD</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 10px 0; color: #333;">Delivery Address</h3>
+                <p style="margin: 0; line-height: 1.8;">
+                    {delivery_info.get('formattedAddress', 'N/A')}<br>
+                    {f"Phone: {delivery_info.get('phoneNumber', 'N/A')}" if delivery_info.get('phoneNumber') else ''}
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="https://orignagta.ca/orders" style="background: #FF6B35; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Track Your Order</a>
+            </div>
+        </div>
+        
+        <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+            <p>Questions? Contact us at support@orignagta.com</p>
+            <p>© 2025 Origna GTA. All rights reserved.</p>
+        </div>
+    </body>
+    </html>
+    """
+
 
 def get_seller_notification_email(order_data: Dict[str, Any]) -> str:
     """Generate HTML email for seller notification"""
@@ -158,83 +242,18 @@ def get_seller_notification_email(order_data: Dict[str, Any]) -> str:
                         <td style="text-align: right; padding: 5px 0;">${sum(order_data.get('taxes', {}).values()):.2f}</td>
                     </tr>
                     <tr style="font-size: 18px; font-weight: bold; border-top: 2px solid #856404;">
-                        <td style="padding: 10px 0;">Total:</td>
-                        <td style="text-align: right; padding: 10px 0; color: #FF6B35;">${order_data.get('total', 0):.2f} CAD</td>
+                        <td style="padding: 10px 0 5px 0;">Total:</td>
+                        <td style="text-align: right; padding: 10px 0 5px 0; color: #FF6B35;">${order_data.get('total', 0):.2f} CAD</td>
                     </tr>
                 </table>
             </div>
             
-            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-                <p style="color: #666; font-size: 14px;">Please process this order and update the shipping status in your admin panel.</p>
-            </div>
-        </div>
-        
-        <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-            <p>This is an automated notification from Origna GTA</p>
-        </div>
-    </body>
-    </html>
-    """
-
-def get_customer_confirmation_email(order_data: Dict[str, Any]) -> str:
-    """Generate HTML email for customer confirmation"""
-    items_html = ""
-    for item in order_data.get('items', []):
-        items_html += f"""
-        <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #eee;">{item.get('name', 'Product')}</td>
-            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">{item.get('quantity', 1)}</td>
-            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">${(item.get('price', 0) * item.get('quantity', 1)):.2f}</td>
-        </tr>
-        """
-    
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">✅ Order Confirmed!</h1>
-            <p style="color: white; margin: 10px 0 0 0;">Thank you for your purchase</p>
-        </div>
-        
-        <div style="background: #ffffff; padding: 30px; border: 1px solid #eee; border-top: none; border-radius: 0 0 10px 10px;">
-            <p style="font-size: 16px; margin-bottom: 20px;">Hi there,</p>
-            <p style="font-size: 16px; margin-bottom: 20px;">We've received your order and will begin processing it shortly. You'll receive another email when your order ships.</p>
-            
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <p style="margin: 5px 0;"><strong>Order ID:</strong> {order_data.get('orderId', 'N/A')}</p>
-                <p style="margin: 5px 0;"><strong>Order Date:</strong> {datetime.utcnow().strftime('%B %d, %Y')}</p>
-            </div>
-            
-            <h3 style="color: #333; border-bottom: 2px solid #FF6B35; padding-bottom: 10px;">Order Summary</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                <thead>
-                    <tr style="background: #f8f9fa;">
-                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Item</th>
-                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Qty</th>
-                        <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Price</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items_html}
-                    <tr style="font-weight: bold; background: #f8f9fa;">
-                        <td colspan="2" style="padding: 12px; text-align: right; border-top: 2px solid #ddd;">Total:</td>
-                        <td style="padding: 12px; text-align: right; color: #FF6B35; font-size: 18px; border-top: 2px solid #ddd;">${order_data.get('total', 0):.2f} CAD</td>
-                    </tr>
-                </tbody>
-            </table>
-            
             <div style="text-align: center; margin-top: 30px;">
-                <a href="https://orignagta.ca/orders" style="background: #FF6B35; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Track Your Order</a>
+                <a href="https://orignagta.ca/seller/orders" style="background: #FF6B35; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Manage Orders</a>
             </div>
         </div>
         
         <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-            <p>Questions? Contact us at support@orignagta.com</p>
             <p>© 2025 Origna GTA. All rights reserved.</p>
         </div>
     </body>
@@ -308,6 +327,7 @@ def create_success_response(data: Dict[str, Any], status_code: int = 200) -> htt
         headers={"Content-Type": "application/json"}
     )
 
+
 def create_error_response(error: str, status_code: int = 400, details: Optional[str] = None) -> https_fn.Response:
     """Create standardized error response"""
     response_data = {
@@ -322,12 +342,14 @@ def create_error_response(error: str, status_code: int = 400, details: Optional[
         headers={"Content-Type": "application/json"}
     )
 
+
 def sanitize_email(email: str) -> str:
     """Sanitize and validate email address"""
     email = email.strip().lower()
     if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
         raise ValueError("Invalid email format")
     return email
+
 
 def validate_item(item: Dict) -> tuple[bool, str]:
     """Validate individual item data"""
@@ -342,6 +364,7 @@ def validate_item(item: Dict) -> tuple[bool, str]:
     if not item.get('name'):
         return False, "name required for all items"
     return True, ""
+
 
 def validate_order_data(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
     """Validate order data structure"""
@@ -371,23 +394,120 @@ def validate_order_data(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
     
     return True, None
 
+
+def log_webhook_to_database(
+    event_id: str,
+    event_type: str,
+    payload_size: int,
+    signature_verified: bool,
+    processing_status: str,
+    order_id: Optional[str] = None,
+    error_message: Optional[str] = None,
+    raw_event_data: Optional[Dict] = None
+) -> None:
+    """
+    Log all webhook calls to database for audit trail and debugging
+    
+    Args:
+        event_id: Stripe event ID
+        event_type: Type of Stripe event
+        payload_size: Size of payload in bytes
+        signature_verified: Whether signature verification passed
+        processing_status: success, failed, skipped, etc.
+        order_id: Associated order ID if found
+        error_message: Error message if processing failed
+        raw_event_data: Complete event data for debugging
+    """
+    try:
+        log_data = {
+            "eventId": event_id,
+            "eventType": event_type,
+            "payloadSize": payload_size,
+            "signatureVerified": signature_verified,
+            "processingStatus": processing_status,
+            "orderId": order_id,
+            "errorMessage": error_message,
+            "timestamp": firestore.SERVER_TIMESTAMP,
+            "environment": "emulator" if IS_EMULATOR else "production",
+        }
+        
+        # Store limited event data to avoid bloat
+        if raw_event_data:
+            log_data["eventData"] = {
+                "id": raw_event_data.get("id"),
+                "type": raw_event_data.get("type"),
+                "created": raw_event_data.get("created"),
+                "livemode": raw_event_data.get("livemode"),
+                "object_id": raw_event_data.get("data", {}).get("object", {}).get("id"),
+            }
+        
+        db.collection('webhook_logs').document(event_id).set(log_data)
+        print(f"✅ Logged webhook {event_id} to database")
+        
+    except Exception as e:
+        print(f"⚠️ Failed to log webhook to database: {str(e)}")
+
+
 # ============================================================================
 # STRIPE CHECKOUT FUNCTIONS
 # ============================================================================
 
-@https_fn.on_request(cors=cors_config, timeout_sec=60)
-def create_checkout_session(req: https_fn.Request) -> https_fn.Response:
-    """Create Stripe Checkout Session"""
-    try:
-        data = req.get_json()
-        if not data:
-            return create_error_response("Request body is required", 400)
+"""
+CORRECTED create_checkout_session function for main.py
+Replace the existing function with this version
+
+This version uses @https_fn.on_call which is compatible with
+Dart's FirebaseFunctions.instance.httpsCallable()
+"""
+
+@https_fn.on_call(cors=cors_config)
+def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Create Stripe Checkout Session - Callable Function
+    
+    Compatible with Dart: FirebaseFunctions.instance.httpsCallable('create_checkout_session')
+    
+    Args:
+        req.data: Order data from frontend
         
+    Returns:
+        {
+            "url": Stripe checkout URL,
+            "sessionId": Stripe session ID,
+            "orderId": Firebase order ID
+        }
+        
+    Raises:
+        https_fn.HttpsError: On validation or processing errors
+    """
+    try:
+        data = req.data
+        
+        if not data:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+                message="Request body is required"
+            )
+        
+        # Validate order data
         is_valid, error_msg = validate_order_data(data)
         if not is_valid:
-            return create_error_response(error_msg, 400)
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+                message=error_msg
+            )
         
-        user_id = data['userId']
+        # Extract user ID from auth context (more secure than trusting client)
+        if req.auth is None:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+                message="User must be authenticated"
+            )
+        
+        auth_user_id = req.auth.uid
+        
+        # Get data from request
+        user_id = data.get('userId', auth_user_id)  # Use auth UID as fallback
         customer_email = sanitize_email(data['customerEmail'])
         amount = int(data['amount'])
         currency = data.get('currency', 'cad').lower()
@@ -395,11 +515,20 @@ def create_checkout_session(req: https_fn.Request) -> https_fn.Response:
         delivery_info = data['deliveryInfo']
         customer_id = data.get('customerId', '')
         
+        # Validate user ID matches authenticated user (security)
+        if user_id != auth_user_id:
+            print(f"⚠️ User ID mismatch: claimed={user_id}, auth={auth_user_id}")
+            user_id = auth_user_id  # Use authenticated ID
+        
+        # Create new order with auto-generated ID
         order_ref = db.collection('orders').document()
         order_id = order_ref.id
+        print(f"📝 Creating order: {order_id}")
 
+        # Extract unique seller IDs
         seller_ids = list(set([item.get('sellerId') for item in items if item.get('sellerId')]))
         
+        # Build Stripe line items
         line_items = []
         for item in items:
             # Get first image from imageUrls array if available
@@ -414,11 +543,12 @@ def create_checkout_session(req: https_fn.Request) -> https_fn.Response:
                         "name": item.get('name', 'Product'),
                         "images": images
                     },
-                    "unit_amount": int(item['price'] * 100),
+                    "unit_amount": int(item['price'] * 100),  # Convert to cents
                 },
                 "quantity": item.get('quantity', 1)
             })
         
+        # Add shipping if present
         shipping_cost = data.get('shippingCost', 0)
         if shipping_cost > 0:
             line_items.append({
@@ -433,6 +563,7 @@ def create_checkout_session(req: https_fn.Request) -> https_fn.Response:
                 "quantity": 1
             })
         
+        # Add taxes as separate line items
         taxes = data.get('taxes', {})
         for tax_name, tax_amount in taxes.items():
             if tax_amount > 0:
@@ -452,17 +583,20 @@ def create_checkout_session(req: https_fn.Request) -> https_fn.Response:
         enriched_items = []
         for item in items:
             item_copy = item.copy()
-            item_copy['deliveryStatus'] = 'pending'  # Fixed: was 'status'
+            item_copy['deliveryStatus'] = 'pending'
             item_copy['trackingNumber'] = None
             enriched_items.append(item_copy)
 
+        # Build success/cancel URLs
         base_url = "https://orignagta.ca"
-         
         if IS_EMULATOR:
             base_url = "http://localhost:5000"
+            
         success_url = f"{base_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}&order_id={order_id}"
         cancel_url = f"{base_url}/payment-cancel"
         
+        # Create Stripe checkout session
+        print(f"💳 Creating Stripe session for order {order_id}")
         session = stripe.checkout.Session.create(
             mode="payment",
             payment_method_types=["card"],
@@ -475,15 +609,16 @@ def create_checkout_session(req: https_fn.Request) -> https_fn.Response:
                 "orderId": order_id,
                 "environment": "test" if IS_EMULATOR else "production"
             },
-            client_reference_id=order_id,
+            client_reference_id=order_id,  # Critical for webhook to find order
             billing_address_collection="auto",
-            expires_at=int((datetime.utcnow().timestamp() + 1800))
+            expires_at=int((datetime.utcnow().timestamp() + 1800))  # 30 minutes
         )
         
+        # Save order to Firestore
         order_data = {
             "orderId": order_id,
             "userId": user_id,
-            "customerId": customer_id,  # Fixed: Added customerId
+            "customerId": customer_id,
             "customerEmail": customer_email,
             "items": enriched_items,
             "sellerIds": seller_ids,
@@ -502,626 +637,717 @@ def create_checkout_session(req: https_fn.Request) -> https_fn.Response:
         }
         
         order_ref.set(order_data)
+        print(f"✅ Order {order_id} created successfully")
         
-        return create_success_response({
+        # Return response (no need for create_success_response wrapper)
+        return {
             "url": session.url,
             "sessionId": session.id,
             "orderId": order_id
-        })
+        }
+        
+    except https_fn.HttpsError:
+        # Re-raise HttpsError as-is
+        raise
         
     except stripe.error.StripeError as e:
         print(f"❌ Stripe Error: {str(e)}")
-        return create_error_response(
-            "Payment processing error",
-            500,
-            str(e) if IS_EMULATOR else None
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message="Payment processing error",
+            details=str(e) if IS_EMULATOR else None
         )
+        
     except ValueError as e:
         print(f"❌ Validation Error: {str(e)}")
-        return create_error_response(str(e), 400)
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message=str(e)
+        )
+        
     except Exception as e:
         print(f"❌ Unexpected Error: {str(e)}")
         print(traceback.format_exc())
-        return create_error_response(
-            "Internal server error",
-            500,
-            str(e) if IS_EMULATOR else None
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message="Internal server error",
+            details=str(e) if IS_EMULATOR else None
         )
 
-"""
-Enhanced Stripe Webhook Handler with Comprehensive Logging
-Add this to your main.py file, replacing the existing stripe_webhook function
-"""
+
+# ============================================================================
+# STRIPE WEBHOOK HANDLER - PRODUCTION READY WITH COMPREHENSIVE LOGGING
+# ============================================================================
 
 @https_fn.on_request(timeout_sec=60)
 def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
-    """Handle Stripe webhook events with detailed logging"""
+    """
+    Handle Stripe webhook events with comprehensive logging and security
+    
+    This function:
+    1. Verifies webhook signature according to Stripe best practices
+    2. Logs all webhook events to database for audit trail
+    3. Implements idempotency to prevent duplicate processing
+    4. Processes payment events and updates orders
+    5. Sends confirmation emails
+    """
+    
+    event_id = "unknown"
+    payload_size = 0
+    
     try:
         # ====================================================================
-        # STEP 1: LOG INCOMING REQUEST DETAILS
+        # STEP 1: EXTRACT RAW PAYLOAD - CRITICAL FOR SIGNATURE VERIFICATION
         # ====================================================================
+        # IMPORTANT: We must use req.data (raw bytes) not req.get_json()
+        # Parsing JSON before signature verification will cause verification to fail
+        payload = req.data
+        sig_header = req.headers.get('stripe-signature')
+        payload_size = len(payload)
+        
         print("=" * 80)
         print("📥 WEBHOOK REQUEST RECEIVED")
         print(f"Timestamp: {datetime.utcnow().isoformat()}")
-        print(f"Method: {req.method}")
-        print(f"Content-Type: {req.headers.get('content-type')}")
-        print(f"Content-Length: {req.headers.get('content-length')}")
-        print(f"User-Agent: {req.headers.get('user-agent', 'N/A')}")
-        
-        # ====================================================================
-        # STEP 2: EXTRACT AND VALIDATE PAYLOAD
-        # ====================================================================
-        payload = req.data
-        sig_header = req.headers.get('stripe-signature')
-        
-        print(f"\nPayload Info:")
-        print(f"  - Size: {len(payload)} bytes")
-        print(f"  - Type: {type(payload)}")
-        print(f"  - First 100 chars: {payload[:100]}")
-        
-        print(f"\nSignature Info:")
-        print(f"  - Header present: {bool(sig_header)}")
-        
-        if sig_header:
-            # Parse signature components (don't log actual values for security)
-            sig_parts = sig_header.split(',')
-            print(f"  - Components count: {len(sig_parts)}")
-            for part in sig_parts:
-                if '=' in part:
-                    key, _ = part.split('=', 1)
-                    print(f"    • {key}: [PRESENT]")
-        else:
-            print("  - ❌ NO SIGNATURE HEADER FOUND")
-        
-        # ====================================================================
-        # STEP 3: CHECK WEBHOOK SECRET CONFIGURATION
-        # ====================================================================
-        print(f"\nWebhook Secret Config:")
-        print(f"  - Secret configured: {bool(STRIPE_WEBHOOK_SECRET)}")
-        if STRIPE_WEBHOOK_SECRET:
-            print(f"  - Secret prefix: {STRIPE_WEBHOOK_SECRET[:10]}...")
-            print(f"  - Secret length: {len(STRIPE_WEBHOOK_SECRET)}")
-            print(f"  - Starts with 'whsec_': {STRIPE_WEBHOOK_SECRET.startswith('whsec_')}")
-        else:
-            print("  - ❌ SECRET NOT CONFIGURED")
-        
-        print(f"  - Environment: {'EMULATOR' if IS_EMULATOR else 'PRODUCTION'}")
+        print(f"Payload Size: {payload_size} bytes")
+        print(f"Signature Present: {bool(sig_header)}")
         
         if not sig_header:
-            print("\n❌ FATAL: Missing Stripe signature header")
-            print("=" * 80)
-            return create_error_response("Missing Stripe signature", 400)
+            error_msg = "Missing Stripe signature header"
+            print(f"❌ {error_msg}")
+            log_webhook_to_database(
+                event_id="missing_signature",
+                event_type="unknown",
+                payload_size=payload_size,
+                signature_verified=False,
+                processing_status="failed",
+                error_message=error_msg
+            )
+            return create_error_response(error_msg, 400)
         
         # ====================================================================
-        # STEP 4: ATTEMPT SIGNATURE VERIFICATION
+        # STEP 2: VERIFY SIGNATURE - ACCORDING TO STRIPE DOCUMENTATION
         # ====================================================================
-        print("\n🔐 Attempting signature verification...")
+        # Reference: https://docs.stripe.com/webhooks/signature
+        print("🔐 Verifying webhook signature...")
         
         try:
+            # Use stripe.Webhook.construct_event() which:
+            # 1. Verifies the signature using HMAC-SHA256
+            # 2. Checks the timestamp is within tolerance (default 5 minutes)
+            # 3. Returns the parsed event object if valid
             event = stripe.Webhook.construct_event(
-                payload, sig_header, STRIPE_WEBHOOK_SECRET
+                payload,  # Raw bytes - never parsed JSON
+                sig_header,
+                STRIPE_WEBHOOK_SECRET
             )
             print("✅ Signature verification SUCCESSFUL")
             
+        except ValueError as e:
+            # Invalid payload (not valid JSON)
+            error_msg = f"Invalid payload: {str(e)}"
+            print(f"❌ {error_msg}")
+            log_webhook_to_database(
+                event_id="invalid_payload",
+                event_type="unknown",
+                payload_size=payload_size,
+                signature_verified=False,
+                processing_status="failed",
+                error_message=error_msg
+            )
+            return create_error_response("Invalid payload", 400)
+            
         except stripe.error.SignatureVerificationError as e:
-            print("\n❌ SIGNATURE VERIFICATION FAILED")
-            print(f"Error type: {type(e).__name__}")
-            print(f"Error message: {str(e)}")
+            # Invalid signature
+            error_msg = f"Signature verification failed: {str(e)}"
+            print(f"❌ {error_msg}")
+            print(f"Webhook secret prefix: {STRIPE_WEBHOOK_SECRET[:10]}...")
+            print(f"Webhook secret length: {len(STRIPE_WEBHOOK_SECRET)}")
             
-            # Additional debugging info
-            print("\nDebug Information:")
-            print(f"  - Payload is bytes: {isinstance(payload, bytes)}")
-            print(f"  - Payload encoding test: {payload.decode('utf-8')[:200] if isinstance(payload, bytes) else 'Not bytes'}")
-            
-            # Test if the secret can compute signatures at all
-            try:
-                from stripe.webhook import WebhookSignature
-                test_sig = WebhookSignature._compute_signature(payload, STRIPE_WEBHOOK_SECRET)
-                print(f"  - Secret can compute signatures: ✓ (format OK)")
-                print(f"  - Computed signature prefix: {test_sig[:20]}...")
-            except Exception as sig_test_error:
-                print(f"  - Secret computation test: ✗ ({sig_test_error})")
-            
-            # Check if webhook secret matches expected format
-            if not STRIPE_WEBHOOK_SECRET.startswith('whsec_'):
-                print("  - ⚠️  WARNING: Webhook secret doesn't start with 'whsec_'")
-                print("  - This might be a test secret or incorrect secret type")
-            
-            print("\nPossible Issues:")
-            print("  1. Wrong webhook secret (test vs production mismatch)")
-            print("  2. Webhook endpoint URL mismatch in Stripe Dashboard")
-            print("  3. Request body modified by middleware before reaching webhook")
-            print("  4. Stripe signature version mismatch")
-            
-            print("=" * 80)
+            log_webhook_to_database(
+                event_id="invalid_signature",
+                event_type="unknown",
+                payload_size=payload_size,
+                signature_verified=False,
+                processing_status="failed",
+                error_message=error_msg
+            )
             return create_error_response("Invalid signature", 400)
         
         # ====================================================================
-        # STEP 5: PROCESS WEBHOOK EVENT
+        # STEP 3: EXTRACT EVENT DATA
         # ====================================================================
+        event_id = event.get('id', 'unknown')
         event_type = event['type']
         event_data = event['data']['object']
-        event_id = event.get('id', 'unknown')
         
-        print(f"\n📨 Processing webhook event:")
-        print(f"  - Event ID: {event_id}")
-        print(f"  - Event Type: {event_type}")
-        print(f"  - Created: {datetime.fromtimestamp(event.get('created', 0)).isoformat()}")
-        print(f"  - Livemode: {event.get('livemode', False)}")
+        print(f"\n📨 Event Details:")
+        print(f"  Event ID: {event_id}")
+        print(f"  Event Type: {event_type}")
+        print(f"  Created: {datetime.fromtimestamp(event.get('created', 0)).isoformat()}")
+        print(f"  Livemode: {event.get('livemode', False)}")
         
         # ====================================================================
-        # CHECKOUT SESSION EVENTS
+        # STEP 4: IDEMPOTENCY CHECK - PREVENT DUPLICATE PROCESSING
         # ====================================================================
-        if event_type == 'checkout.session.completed':
-            print("\n✅ Processing: checkout.session.completed")
-            session = event_data
-            order_id = session.get('client_reference_id') or session['metadata'].get('orderId')
-            
-            print(f"  - Session ID: {session.get('id')}")
-            print(f"  - Order ID: {order_id}")
-            print(f"  - Payment Status: {session.get('payment_status')}")
-            print(f"  - Amount Total: ${session.get('amount_total', 0) / 100}")
-            
-            if not order_id:
-                print("  - ⚠️  No order ID found in session")
-                return create_error_response("Order ID not found", 400)
-            
-            order_ref = db.collection('orders').document(order_id)
-            order_doc = order_ref.get()
-            
-            if not order_doc.exists:
-                print(f"  - ❌ Order {order_id} not found in database")
-                return create_error_response("Order not found", 404)
-            
-            print(f"  - ✓ Order found in database")
-            
-            # Check payment status - some payments are async
-            payment_status = session.get('payment_status')
-            
-            update_data = {
-                "stripePaymentIntentId": session.get('payment_intent'),
-                "stripeCustomerId": session.get('customer'),
-                "updatedAt": firestore.SERVER_TIMESTAMP,
-                "paymentMethod": session.get('payment_method_types', [])[0] if session.get('payment_method_types') else None,
-                "amountTotal": session.get('amount_total', 0) / 100,
-            }
-            
-            if payment_status == 'paid':
-                # Immediate payment success
-                update_data.update({
-                    "status": "confirmed",
-                    "paymentStatus": "paid",
-                    "paidAt": firestore.SERVER_TIMESTAMP,
-                })
-                print(f"  - ✅ Marking order as PAID (immediate)")
+        # Stripe may send the same event multiple times
+        # We must ensure we only process each event once
+        event_log_ref = db.collection('webhook_events').document(event_id)
+        event_log = event_log_ref.get()
+        
+        if event_log.exists:
+            print(f"ℹ️ Event {event_id} already processed - skipping")
+            log_webhook_to_database(
+                event_id=event_id,
+                event_type=event_type,
+                payload_size=payload_size,
+                signature_verified=True,
+                processing_status="skipped_duplicate",
+                raw_event_data=event
+            )
+            return create_success_response({
+                "received": True,
+                "status": "already_processed"
+            })
+        
+        # Mark event as received (before processing)
+        event_log_ref.set({
+            "eventId": event_id,
+            "eventType": event_type,
+            "receivedAt": firestore.SERVER_TIMESTAMP,
+            "processed": False,
+            "livemode": event.get('livemode', False)
+        })
+        
+        # ====================================================================
+        # STEP 5: PROCESS EVENT BY TYPE
+        # ====================================================================
+        order_id = None
+        processing_status = "success"
+        error_message = None
+        
+        try:
+            if event_type == 'checkout.session.completed':
+                order_id = process_checkout_session_completed(event_data)
                 
-                # Clear user's cart
-                user_id = session['metadata'].get('userId')
-                if user_id:
-                    print(f"  - 🛒 Clearing cart for user {user_id}")
+            elif event_type == 'checkout.session.async_payment_succeeded':
+                order_id = process_async_payment_succeeded(event_data)
+                
+            elif event_type == 'checkout.session.async_payment_failed':
+                order_id = process_async_payment_failed(event_data)
+                
+            elif event_type == 'checkout.session.expired':
+                order_id = process_session_expired(event_data)
+                
+            elif event_type == 'payment_intent.succeeded':
+                order_id = process_payment_intent_succeeded(event_data)
+                
+            elif event_type == 'payment_intent.payment_failed':
+                order_id = process_payment_intent_failed(event_data)
+                
+            elif event_type == 'charge.refunded':
+                order_id = process_charge_refunded(event_data)
+                
+            else:
+                print(f"ℹ️ Unhandled event type: {event_type}")
+                processing_status = "unhandled"
+        
+        except Exception as process_error:
+            processing_status = "failed"
+            error_message = str(process_error)
+            print(f"❌ Error processing event: {error_message}")
+            print(traceback.format_exc())
+        
+        # ====================================================================
+        # STEP 6: UPDATE EVENT LOG AS PROCESSED
+        # ====================================================================
+        event_log_ref.update({
+            "processed": True,
+            "processedAt": firestore.SERVER_TIMESTAMP,
+            "processingStatus": processing_status,
+            "orderId": order_id,
+            "errorMessage": error_message
+        })
+        
+        # ====================================================================
+        # STEP 7: LOG TO DATABASE FOR AUDIT TRAIL
+        # ====================================================================
+        log_webhook_to_database(
+            event_id=event_id,
+            event_type=event_type,
+            payload_size=payload_size,
+            signature_verified=True,
+            processing_status=processing_status,
+            order_id=order_id,
+            error_message=error_message,
+            raw_event_data=event
+        )
+        
+        print("✅ Webhook processed successfully")
+        print("=" * 80)
+        
+        return create_success_response({"received": True})
+        
+    except Exception as e:
+        error_msg = f"Unexpected error: {str(e)}"
+        print(f"❌ {error_msg}")
+        print(traceback.format_exc())
+        
+        log_webhook_to_database(
+            event_id=event_id,
+            event_type="unknown",
+            payload_size=payload_size,
+            signature_verified=False,
+            processing_status="failed",
+            error_message=error_msg
+        )
+        
+        return create_error_response("Internal error", 500)
+
+
+# ============================================================================
+# WEBHOOK EVENT PROCESSORS
+# ============================================================================
+
+def process_checkout_session_completed(session: Dict) -> Optional[str]:
+    """Process checkout.session.completed event"""
+    print("\n✅ Processing: checkout.session.completed")
+    
+    # Extract order ID - use defensive programming
+    order_id = (
+        session.get('client_reference_id') or 
+        session.get('metadata', {}).get('orderId')
+    )
+    
+    print(f"  Session ID: {session.get('id')}")
+    print(f"  Order ID: {order_id}")
+    print(f"  Payment Status: {session.get('payment_status')}")
+    print(f"  Amount Total: ${session.get('amount_total', 0) / 100}")
+    
+    if not order_id:
+        print("  ⚠️ No order ID found in session")
+        raise ValueError("Order ID not found in session")
+    
+    order_ref = db.collection('orders').document(order_id)
+    order_doc = order_ref.get()
+    
+    if not order_doc.exists:
+        print(f"  ❌ Order {order_id} not found in database")
+        raise ValueError(f"Order {order_id} not found")
+    
+    print(f"  ✓ Order found in database")
+    
+    # Check payment status - some payments are async
+    payment_status = session.get('payment_status')
+    
+    update_data = {
+        "stripePaymentIntentId": session.get('payment_intent'),
+        "stripeCustomerId": session.get('customer'),
+        "updatedAt": firestore.SERVER_TIMESTAMP,
+        "paymentMethod": session.get('payment_method_types', [])[0] if session.get('payment_method_types') else None,
+        "amountTotal": session.get('amount_total', 0) / 100,
+    }
+    
+    if payment_status == 'paid':
+        # Immediate payment success
+        update_data.update({
+            "status": "confirmed",
+            "paymentStatus": "paid",
+            "paidAt": firestore.SERVER_TIMESTAMP,
+        })
+        print(f"  ✅ Marking order as PAID")
+        
+        # Clear user's cart
+        user_id = session.get('metadata', {}).get('userId')
+        if user_id:
+            print(f"  🛒 Clearing cart for user {user_id}")
+            try:
+                db.collection('users').document(user_id).update({
+                    "cart": [],
+                    "updatedAt": firestore.SERVER_TIMESTAMP
+                })
+            except Exception as e:
+                print(f"  ⚠️ Failed to clear cart: {str(e)}")
+        
+        # Send confirmation emails
+        send_order_confirmation_emails(order_id, order_doc.to_dict())
+        
+    elif payment_status == 'unpaid':
+        # Async payment pending
+        update_data.update({
+            "status": "processing",
+            "paymentStatus": "processing",
+        })
+        print(f"  ⏳ Payment processing (async)")
+    
+    order_ref.update(update_data)
+    print(f"  ✓ Order updated")
+    
+    return order_id
+
+
+def process_async_payment_succeeded(session: Dict) -> Optional[str]:
+    """Process checkout.session.async_payment_succeeded event"""
+    print("\n✅ Processing: checkout.session.async_payment_succeeded")
+    
+    order_id = (
+        session.get('client_reference_id') or 
+        session.get('metadata', {}).get('orderId')
+    )
+    
+    print(f"  Order ID: {order_id}")
+    
+    if not order_id:
+        print("  ⚠️ No order ID found")
+        return None
+    
+    order_ref = db.collection('orders').document(order_id)
+    order_doc = order_ref.get()
+    
+    if order_doc.exists:
+        order_ref.update({
+            "status": "confirmed",
+            "paymentStatus": "paid",
+            "paidAt": firestore.SERVER_TIMESTAMP,
+            "updatedAt": firestore.SERVER_TIMESTAMP,
+        })
+        
+        # Clear user's cart
+        user_id = session.get('metadata', {}).get('userId')
+        if user_id:
+            print(f"  🛒 Clearing cart for user {user_id}")
+            try:
+                db.collection('users').document(user_id).update({
+                    "cart": [],
+                    "updatedAt": firestore.SERVER_TIMESTAMP
+                })
+            except Exception as e:
+                print(f"  ⚠️ Failed to clear cart: {str(e)}")
+        
+        # Send confirmation emails
+        send_order_confirmation_emails(order_id, order_doc.to_dict())
+        
+        print(f"  ✅ Async payment succeeded")
+    else:
+        print(f"  ⚠️ Order {order_id} not found")
+    
+    return order_id
+
+
+def process_async_payment_failed(session: Dict) -> Optional[str]:
+    """Process checkout.session.async_payment_failed event"""
+    print("\n❌ Processing: checkout.session.async_payment_failed")
+    
+    order_id = (
+        session.get('client_reference_id') or 
+        session.get('metadata', {}).get('orderId')
+    )
+    
+    print(f"  Order ID: {order_id}")
+    
+    if order_id:
+        order_ref = db.collection('orders').document(order_id)
+        if order_ref.get().exists:
+            order_ref.update({
+                "status": "failed",
+                "paymentStatus": "payment_failed",
+                "paymentError": "Async payment failed",
+                "updatedAt": firestore.SERVER_TIMESTAMP,
+            })
+            print(f"  ❌ Async payment failed")
+    
+    return order_id
+
+
+def process_session_expired(session: Dict) -> Optional[str]:
+    """Process checkout.session.expired event"""
+    print("\n⏰ Processing: checkout.session.expired")
+    
+    order_id = (
+        session.get('client_reference_id') or 
+        session.get('metadata', {}).get('orderId')
+    )
+    
+    print(f"  Order ID: {order_id}")
+    
+    if order_id:
+        order_ref = db.collection('orders').document(order_id)
+        if order_ref.get().exists:
+            order_ref.update({
+                "status": "expired",
+                "paymentStatus": "session_expired",
+                "updatedAt": firestore.SERVER_TIMESTAMP
+            })
+            print(f"  ⏰ Session expired")
+    
+    return order_id
+
+
+def process_payment_intent_succeeded(payment_intent: Dict) -> Optional[str]:
+    """Process payment_intent.succeeded event"""
+    print("\n💰 Processing: payment_intent.succeeded")
+    print(f"  Payment Intent ID: {payment_intent['id']}")
+    
+    # Find order by payment intent ID
+    orders = db.collection('orders').where(
+        'stripePaymentIntentId', '==', payment_intent['id']
+    ).limit(1).get()
+    
+    if orders:
+        order_ref = orders[0].reference
+        order_data = orders[0].to_dict()
+        order_id = order_ref.id
+        
+        print(f"  Found order: {order_id}")
+        
+        # Only update if not already paid
+        if order_data.get('paymentStatus') != 'paid':
+            order_ref.update({
+                "status": "confirmed",
+                "paymentStatus": "paid",
+                "paidAt": firestore.SERVER_TIMESTAMP,
+                "updatedAt": firestore.SERVER_TIMESTAMP,
+                "amountReceived": payment_intent.get('amount_received', 0) / 100,
+            })
+            
+            # Clear user's cart
+            user_id = order_data.get('userId')
+            if user_id:
+                print(f"  🛒 Clearing cart for user {user_id}")
+                try:
                     db.collection('users').document(user_id).update({
                         "cart": [],
                         "updatedAt": firestore.SERVER_TIMESTAMP
                     })
-            elif payment_status == 'unpaid':
-                # Async payment pending
-                update_data.update({
-                    "status": "processing",
-                    "paymentStatus": "processing",
-                })
-                print(f"  - ⏳ Payment processing (async)")
+                except Exception as e:
+                    print(f"  ⚠️ Failed to clear cart: {str(e)}")
             
-            order_ref.update(update_data)
-            print(f"  - ✓ Order updated in database")
-        
-        elif event_type == 'checkout.session.async_payment_succeeded':
-            print("\n✅ Processing: checkout.session.async_payment_succeeded")
-            session = event_data
-            order_id = session.get('client_reference_id') or session['metadata'].get('orderId')
+            # Send confirmation emails
+            send_order_confirmation_emails(order_id, order_data)
             
-            print(f"  - Order ID: {order_id}")
-            
-            if order_id:
-                order_ref = db.collection('orders').document(order_id)
-                if order_ref.get().exists:
-                    order_ref.update({
-                        "status": "confirmed",
-                        "paymentStatus": "paid",
-                        "paidAt": firestore.SERVER_TIMESTAMP,
-                        "updatedAt": firestore.SERVER_TIMESTAMP,
-                    })
-                    
-                    # Clear user's cart
-                    user_id = session['metadata'].get('userId')
-                    if user_id:
-                        print(f"  - 🛒 Clearing cart for user {user_id}")
-                        db.collection('users').document(user_id).update({
-                            "cart": [],
-                            "updatedAt": firestore.SERVER_TIMESTAMP
-                        })
-                    
-                    print(f"  - ✅ Async payment succeeded for order {order_id}")
-                else:
-                    print(f"  - ⚠️  Order {order_id} not found")
-        
-        elif event_type == 'checkout.session.async_payment_failed':
-            print("\n❌ Processing: checkout.session.async_payment_failed")
-            session = event_data
-            order_id = session.get('client_reference_id') or session['metadata'].get('orderId')
-            
-            print(f"  - Order ID: {order_id}")
-            
-            if order_id:
-                order_ref = db.collection('orders').document(order_id)
-                if order_ref.get().exists:
-                    order_ref.update({
-                        "status": "failed",
-                        "paymentStatus": "payment_failed",
-                        "paymentError": "Async payment failed",
-                        "updatedAt": firestore.SERVER_TIMESTAMP,
-                    })
-                    print(f"  - ❌ Async payment failed for order {order_id}")
-        
-        elif event_type == 'checkout.session.expired':
-            print("\n⏰ Processing: checkout.session.expired")
-            session = event_data
-            order_id = session.get('client_reference_id') or session['metadata'].get('orderId')
-            
-            print(f"  - Order ID: {order_id}")
-            
-            if order_id:
-                order_ref = db.collection('orders').document(order_id)
-                if order_ref.get().exists:
-                    order_ref.update({
-                        "status": "expired",
-                        "paymentStatus": "session_expired",
-                        "updatedAt": firestore.SERVER_TIMESTAMP
-                    })
-                    print(f"  - ⏰ Session expired for order {order_id}")
-        
-        # ====================================================================
-        # PAYMENT INTENT EVENTS
-        # ====================================================================
-        elif event_type == 'payment_intent.succeeded':
-            print("\n💰 Processing: payment_intent.succeeded")
-            payment_intent = event_data
-            print(f"  - Payment Intent ID: {payment_intent['id']}")
-            
-            orders = db.collection('orders').where(
-                'stripePaymentIntentId', '==', payment_intent['id']
-            ).limit(1).get()
-            
-            if orders:
-                order_ref = orders[0].reference
-                order_data = orders[0].to_dict()
-                
-                print(f"  - Found order: {order_ref.id}")
-                
-                # Only update if not already paid
-                if order_data.get('paymentStatus') != 'paid':
-                    order_ref.update({
-                        "status": "confirmed",
-                        "paymentStatus": "paid",
-                        "paidAt": firestore.SERVER_TIMESTAMP,
-                        "updatedAt": firestore.SERVER_TIMESTAMP,
-                        "amountReceived": payment_intent.get('amount_received', 0) / 100,
-                    })
-                    
-                    # Clear user's cart
-                    user_id = order_data.get('userId')
-                    if user_id:
-                        print(f"  - 🛒 Clearing cart for user {user_id}")
-                        db.collection('users').document(user_id).update({
-                            "cart": [],
-                            "updatedAt": firestore.SERVER_TIMESTAMP
-                        })
-                    
-                    print(f"  - ✅ Payment intent succeeded")
-                else:
-                    print(f"  - ℹ️  Order already marked as paid")
-            else:
-                print(f"  - ⚠️  No order found for payment intent")
-        
-        elif event_type == 'payment_intent.payment_failed':
-            print("\n❌ Processing: payment_intent.payment_failed")
-            payment_intent = event_data
-            orders = db.collection('orders').where(
-                'stripePaymentIntentId', '==', payment_intent['id']
-            ).limit(1).get()
-            
-            if orders:
-                order_ref = orders[0].reference
-                last_error = payment_intent.get('last_payment_error', {})
-                
-                print(f"  - Order: {order_ref.id}")
-                print(f"  - Error: {last_error.get('message', 'Unknown error')}")
-                
-                order_ref.update({
-                    "status": "failed",
-                    "paymentStatus": "payment_failed",
-                    "paymentError": last_error.get('message', 'Payment failed'),
-                    "paymentErrorCode": last_error.get('code'),
-                    "updatedAt": firestore.SERVER_TIMESTAMP,
-                })
-                print(f"  - ❌ Payment failed")
-        
-        # ====================================================================
-        # REFUND EVENTS
-        # ====================================================================
-        elif event_type == 'refund.created':
-            print("\n💰 Processing: refund.created")
-            refund = event_data
-            refund_id = refund['id']
-            amount = refund.get('amount', 0) / 100
-            reason = refund.get('reason', 'requested_by_customer')
-            
-            print(f"  - Refund ID: {refund_id}")
-            print(f"  - Amount: ${amount}")
-            print(f"  - Reason: {reason}")
-            
-            # Find order by payment intent
-            payment_intent_id = refund.get('payment_intent')
-            orders = db.collection('orders').where(
-                'stripePaymentIntentId', '==', payment_intent_id
-            ).limit(1).get()
-            
-            if orders:
-                order_ref = orders[0].reference
-                order_data = orders[0].to_dict()
-                
-                print(f"  - Order: {order_ref.id}")
-                
-                # Initialize refunds array if it doesn't exist
-                refunds = order_data.get('refunds', [])
-                refunds.append({
-                    "refundId": refund_id,
-                    "amount": amount,
-                    "status": "pending",
-                    "reason": reason,
-                    "createdAt": firestore.SERVER_TIMESTAMP,
-                })
-                
-                order_ref.update({
-                    "refunds": refunds,
-                    "refundStatus": "processing",
-                    "updatedAt": firestore.SERVER_TIMESTAMP,
-                })
-                print(f"  - ✓ Refund recorded")
-        
-        elif event_type == 'refund.updated':
-            print("\n💰 Processing: refund.updated")
-            refund = event_data
-            refund_id = refund['id']
-            refund_status = refund.get('status')
-            payment_intent_id = refund.get('payment_intent')
-            
-            print(f"  - Refund ID: {refund_id}")
-            print(f"  - Status: {refund_status}")
-            
-            orders = db.collection('orders').where(
-                'stripePaymentIntentId', '==', payment_intent_id
-            ).limit(1).get()
-            
-            if orders:
-                order_ref = orders[0].reference
-                order_data = orders[0].to_dict()
-                refunds = order_data.get('refunds', [])
-                
-                # Update the specific refund
-                for r in refunds:
-                    if r.get('refundId') == refund_id:
-                        r['status'] = refund_status
-                        r['updatedAt'] = firestore.SERVER_TIMESTAMP
-                        break
-                
-                # Determine overall refund status
-                all_succeeded = all(r.get('status') == 'succeeded' for r in refunds)
-                any_failed = any(r.get('status') == 'failed' for r in refunds)
-                
-                overall_status = 'refunded' if all_succeeded else 'partially_refunded' if any_failed else 'processing'
-                
-                order_ref.update({
-                    "refunds": refunds,
-                    "refundStatus": overall_status,
-                    "updatedAt": firestore.SERVER_TIMESTAMP,
-                })
-                print(f"  - ✓ Refund updated to: {overall_status}")
-        
-        elif event_type == 'refund.failed':
-            print("\n❌ Processing: refund.failed")
-            refund = event_data
-            refund_id = refund['id']
-            failure_reason = refund.get('failure_reason', 'Unknown')
-            payment_intent_id = refund.get('payment_intent')
-            
-            print(f"  - Refund ID: {refund_id}")
-            print(f"  - Failure Reason: {failure_reason}")
-            
-            orders = db.collection('orders').where(
-                'stripePaymentIntentId', '==', payment_intent_id
-            ).limit(1).get()
-            
-            if orders:
-                order_ref = orders[0].reference
-                order_data = orders[0].to_dict()
-                refunds = order_data.get('refunds', [])
-                
-                # Update the specific refund
-                for r in refunds:
-                    if r.get('refundId') == refund_id:
-                        r['status'] = 'failed'
-                        r['failureReason'] = failure_reason
-                        r['updatedAt'] = firestore.SERVER_TIMESTAMP
-                        break
-                
-                order_ref.update({
-                    "refunds": refunds,
-                    "refundStatus": "failed",
-                    "updatedAt": firestore.SERVER_TIMESTAMP,
-                })
-                print(f"  - ✓ Refund marked as failed")
-        
-        # ====================================================================
-        # INVOICE EVENTS
-        # ====================================================================
-        elif event_type == 'invoice.paid':
-            print("\n📄 Processing: invoice.paid")
-            invoice = event_data
-            invoice_id = invoice['id']
-            amount_paid = invoice.get('amount_paid', 0) / 100
-            
-            print(f"  - Invoice ID: {invoice_id}")
-            print(f"  - Amount Paid: ${amount_paid}")
-        
-        elif event_type == 'invoice.payment_failed':
-            print("\n❌ Processing: invoice.payment_failed")
-            invoice = event_data
-            invoice_id = invoice['id']
-            
-            print(f"  - Invoice ID: {invoice_id}")
-        
-        # ====================================================================
-        # UNKNOWN EVENT TYPE
-        # ====================================================================
+            print(f"  ✅ Payment intent succeeded")
         else:
-            print(f"\n⚠️  Unhandled webhook event type: {event_type}")
+            print(f"  ℹ️ Order already marked as paid")
         
-        print("\n✅ Webhook processed successfully")
-        print("=" * 80)
-        return create_success_response({"received": True})
+        return order_id
+    else:
+        print(f"  ⚠️ No order found for payment intent")
+        return None
+
+
+def process_payment_intent_failed(payment_intent: Dict) -> Optional[str]:
+    """Process payment_intent.payment_failed event"""
+    print("\n❌ Processing: payment_intent.payment_failed")
+    
+    orders = db.collection('orders').where(
+        'stripePaymentIntentId', '==', payment_intent['id']
+    ).limit(1).get()
+    
+    if orders:
+        order_ref = orders[0].reference
+        order_id = order_ref.id
+        last_error = payment_intent.get('last_payment_error', {})
         
+        print(f"  Order: {order_id}")
+        print(f"  Error: {last_error.get('message', 'Unknown error')}")
+        
+        order_ref.update({
+            "status": "failed",
+            "paymentStatus": "payment_failed",
+            "paymentError": last_error.get('message', 'Payment failed'),
+            "paymentErrorCode": last_error.get('code'),
+            "updatedAt": firestore.SERVER_TIMESTAMP,
+        })
+        print(f"  ❌ Payment failed")
+        
+        return order_id
+    
+    return None
+
+
+def process_charge_refunded(charge: Dict) -> Optional[str]:
+    """Process charge.refunded event"""
+    print("\n💸 Processing: charge.refunded")
+    
+    payment_intent_id = charge.get('payment_intent')
+    if not payment_intent_id:
+        print("  ⚠️ No payment intent ID in charge")
+        return None
+    
+    orders = db.collection('orders').where(
+        'stripePaymentIntentId', '==', payment_intent_id
+    ).limit(1).get()
+    
+    if orders:
+        order_ref = orders[0].reference
+        order_id = order_ref.id
+        
+        print(f"  Order: {order_id}")
+        print(f"  Refund Amount: ${charge.get('amount_refunded', 0) / 100}")
+        
+        # Check if fully or partially refunded
+        is_fully_refunded = charge.get('refunded', False)
+        
+        order_ref.update({
+            "status": "refunded" if is_fully_refunded else "partially_refunded",
+            "paymentStatus": "refunded" if is_fully_refunded else "partially_refunded",
+            "refundAmount": charge.get('amount_refunded', 0) / 100,
+            "refundedAt": firestore.SERVER_TIMESTAMP,
+            "updatedAt": firestore.SERVER_TIMESTAMP,
+        })
+        
+        print(f"  💸 {'Fully' if is_fully_refunded else 'Partially'} refunded")
+        
+        return order_id
+    
+    return None
+
+
+def send_order_confirmation_emails(order_id: str, order_data: Dict) -> None:
+    """Send confirmation emails to customer and sellers"""
+    try:
+        # Send customer confirmation
+        customer_email = order_data.get('customerEmail')
+        if customer_email:
+            try:
+                confirmation_html = get_order_confirmation_email(order_data)
+                send_email(
+                    to_email=customer_email,
+                    subject=f"Order Confirmation #{order_id[:8]}",
+                    html_content=confirmation_html
+                )
+                print(f"  ✅ Sent confirmation to customer: {customer_email}")
+            except Exception as e:
+                print(f"  ⚠️ Failed to send customer email: {str(e)}")
+        
+        # Send seller notification
+        try:
+            seller_html = get_seller_notification_email(order_data)
+            send_email(
+                to_email=SELLER_EMAIL,
+                subject=f"🎉 New Order #{order_id[:8]}",
+                html_content=seller_html
+            )
+            print(f"  ✅ Sent notification to seller: {SELLER_EMAIL}")
+        except Exception as e:
+            print(f"  ⚠️ Failed to send seller email: {str(e)}")
+            
     except Exception as e:
-        print("\n" + "=" * 80)
-        print("❌ WEBHOOK ERROR")
-        print(f"Error Type: {type(e).__name__}")
-        print(f"Error Message: {str(e)}")
-        print(f"Traceback:")
-        print(traceback.format_exc())
-        print("=" * 80)
-        return create_error_response(
-            "Webhook processing error",
-            500,
-            str(e) if IS_EMULATOR else None
-        )
+        print(f"  ⚠️ Error sending emails: {str(e)}")
+
+
 # ============================================================================
-# FIRESTORE TRIGGERS - EMAIL NOTIFICATIONS
+# FIRESTORE TRIGGERS - ORDER STATUS CHANGES
 # ============================================================================
 
 @firestore_fn.on_document_updated(document="orders/{orderId}")
-def on_order_status_change(event: firestore_fn.Event[firestore_fn.Change[firestore_fn.DocumentSnapshot]]) -> None:
+def on_order_updated(event: firestore_fn.Event[firestore_fn.Change]) -> None:
     """
-    Handles order status changes:
-    1. If Payment Status -> 'paid': Email EACH seller their specific items to ship.
-    2. If Item deliveryStatus -> 'shipped'/'delivered': Email Customer with updates.
+    Trigger when order is updated - send notifications for status changes
     """
     try:
+        order_id = event.params["orderId"]
         before_data = event.data.before.to_dict() if event.data.before else {}
         after_data = event.data.after.to_dict() if event.data.after else {}
         
-        if not after_data:
-            return
-
-        order_id = event.params['orderId']
         customer_email = after_data.get('customerEmail')
         
         # ====================================================================
-        # SCENARIO 1: NEW PAID ORDER (Notify Sellers)
+        # SCENARIO 1: NEW ORDER CONFIRMED (Notify Sellers per Item)
         # ====================================================================
-        old_pay_status = before_data.get('paymentStatus', '')
-        new_pay_status = after_data.get('paymentStatus', '')
+        old_status = before_data.get('status', 'pending')
+        new_status = after_data.get('status', 'pending')
         
-        if old_pay_status != 'paid' and new_pay_status == 'paid':
-            print(f"💰 Order {order_id} paid. Processing seller notifications...")
+        if old_status != 'confirmed' and new_status == 'confirmed':
+            print(f"📧 Order {order_id} confirmed - notifying sellers")
             
-            # Group items by Seller ID
-            items = after_data.get('items', [])
-            seller_groups = {}
-            
-            for item in items:
+            # Group items by seller
+            items_by_seller = {}
+            for item in after_data.get('items', []):
                 seller_id = item.get('sellerId')
                 if seller_id:
-                    if seller_id not in seller_groups:
-                        seller_groups[seller_id] = []
-                    seller_groups[seller_id].append(item)
+                    if seller_id not in items_by_seller:
+                        items_by_seller[seller_id] = []
+                    items_by_seller[seller_id].append(item)
             
-            # Iterate through each seller group and send specific emails
-            for seller_id, seller_items in seller_groups.items():
+            # Notify each seller
+            for seller_id, seller_items in items_by_seller.items():
                 try:
-                    # Fetch seller's email from 'users' collection
-                    seller_doc = db.collection('users').document(seller_id).get()
-                    if seller_doc.exists:
-                        seller_data = seller_doc.to_dict()
-                        seller_email = seller_data.get('email')
-                        
-                        if seller_email:
-                            # Generate HTML for this seller's items only
-                            items_html = ""
-                            for item in seller_items:
-                                items_html += f"""
-                                <tr>
-                                    <td style="padding: 12px; border-bottom: 1px solid #eee;">
-                                        <strong>{item.get('name', 'Product')}</strong>
-                                        <br><span style="font-size: 12px; color: #666;">ID: {item.get('productId', 'N/A')}</span>
-                                    </td>
-                                    <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">
-                                        {item.get('quantity', 1)}
-                                    </td>
-                                    <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
-                                        ${item.get('price', 0):.2f}
-                                    </td>
-                                </tr>
-                                """
-
-                            email_html = f"""
-                            <!DOCTYPE html>
-                            <html>
-                            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto;">
-                                <div style="background: #FF6B35; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-                                    <h2 style="color: white; margin: 0;">📦 New Order to Ship!</h2>
-                                </div>
-                                <div style="border: 1px solid #eee; border-top: none; padding: 20px; border-radius: 0 0 8px 8px;">
-                                    <p>Hello {seller_data.get('name', 'Seller')},</p>
-                                    <p>You have sold items in Order <strong>#{order_id[:8]}</strong>.</p>
-                                    
-                                    <h3 style="border-bottom: 2px solid #FF6B35; padding-bottom: 10px;">Items to Ship</h3>
-                                    <table style="width: 100%; border-collapse: collapse;">
-                                        <thead>
-                                            <tr style="background: #f8f9fa;">
-                                                <th style="text-align: left; padding: 10px;">Item</th>
-                                                <th style="text-align: center; padding: 10px;">Qty</th>
-                                                <th style="text-align: right; padding: 10px;">Price</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {items_html}
-                                        </tbody>
-                                    </table>
-                                    
-                                    <div style="background: #f8f9fa; padding: 15px; margin-top: 20px; border-radius: 5px;">
-                                        <strong>Shipping Address:</strong><br>
-                                        {after_data.get('deliveryInfo', {}).get('formattedAddress', 'Address not provided')}
-                                    </div>
-                                    
-                                    <p style="text-align: center; margin-top: 25px;">
-                                        <a href="https://orignagta.ca/seller/orders" style="background: #FF6B35; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Manage Order</a>
-                                    </p>
-                                </div>
-                            </body>
-                            </html>
-                            """
+                    # Get seller email from database
+                    seller_doc = db.collection('sellers').document(seller_id).get()
+                    if not seller_doc.exists:
+                        print(f"⚠️ Seller {seller_id} not found")
+                        continue
+                    
+                    seller_data = seller_doc.to_dict()
+                    seller_email = seller_data.get('email')
+                    
+                    if not seller_email:
+                        print(f"⚠️ No email for seller {seller_id}")
+                        continue
+                    
+                    # Build items HTML for this seller
+                    items_html = ""
+                    for item in seller_items:
+                        items_html += f"""
+                        <tr>
+                            <td style="padding: 10px; border-bottom: 1px solid #eee;">{item.get('name', 'Product')}</td>
+                            <td style="text-align: center; padding: 10px; border-bottom: 1px solid #eee;">{item.get('quantity', 1)}</td>
+                            <td style="text-align: right; padding: 10px; border-bottom: 1px solid #eee;">${(item.get('price', 0) * item.get('quantity', 1)):.2f}</td>
+                        </tr>
+                        """
+                    
+                    email_html = f"""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                    </head>
+                    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <div style="background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+                            <h1 style="color: white; margin: 0;">📦 New Order!</h1>
+                        </div>
+                        <div style="padding: 20px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 8px 8px;">
+                            <p>Hello {seller_data.get('name', 'Seller')},</p>
+                            <p>You have sold items in Order <strong>#{order_id[:8]}</strong>.</p>
                             
-                            send_email(
-                                to_email=seller_email,
-                                subject=f"✅ Ship Now: New Order #{order_id[:8]}",
-                                html_content=email_html
-                            )
-                            print(f"📧 Sent notification to seller {seller_id} ({seller_email})")
+                            <h3 style="border-bottom: 2px solid #FF6B35; padding-bottom: 10px;">Items to Ship</h3>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8f9fa;">
+                                        <th style="text-align: left; padding: 10px;">Item</th>
+                                        <th style="text-align: center; padding: 10px;">Qty</th>
+                                        <th style="text-align: right; padding: 10px;">Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {items_html}
+                                </tbody>
+                            </table>
+                            
+                            <div style="background: #f8f9fa; padding: 15px; margin-top: 20px; border-radius: 5px;">
+                                <strong>Shipping Address:</strong><br>
+                                {after_data.get('deliveryInfo', {}).get('formattedAddress', 'Address not provided')}
+                            </div>
+                            
+                            <p style="text-align: center; margin-top: 25px;">
+                                <a href="https://orignagta.ca/seller/orders" style="background: #FF6B35; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Manage Order</a>
+                            </p>
+                        </div>
+                    </body>
+                    </html>
+                    """
+                    
+                    send_email(
+                        to_email=seller_email,
+                        subject=f"✅ Ship Now: New Order #{order_id[:8]}",
+                        html_content=email_html
+                    )
+                    print(f"📧 Sent notification to seller {seller_id} ({seller_email})")
                 except Exception as e:
                     print(f"❌ Failed to notify seller {seller_id}: {str(e)}")
 
         # ====================================================================
         # SCENARIO 2: ITEM STATUS UPDATE (Notify Customer)
-        # Fixed: Match items by productId instead of assuming same order
         # ====================================================================
         before_items = before_data.get('items', [])
         after_items = after_data.get('items', [])
@@ -1136,12 +1362,10 @@ def on_order_status_change(event: firestore_fn.Event[firestore_fn.Change[firesto
                 continue
                 
             old_item = before_items_dict.get(product_id, {})
-            
-            # Fixed: Use 'deliveryStatus' instead of 'status'
             old_status = old_item.get('deliveryStatus', 'pending')
             new_status = new_item.get('deliveryStatus', 'pending')
             
-            # 2a. Item Shipped
+            # Item Shipped
             if old_status != 'shipped' and new_status == 'shipped':
                 if customer_email:
                     tracking = new_item.get('trackingNumber', 'N/A')
@@ -1165,7 +1389,7 @@ def on_order_status_change(event: firestore_fn.Event[firestore_fn.Change[firesto
                     send_email(customer_email, f"Item Shipped: {item_name}", html_content)
                     print(f"📧 Sent 'shipped' email to customer for {item_name}")
             
-            # 2b. Item Delivered
+            # Item Delivered
             elif old_status != 'delivered' and new_status == 'delivered':
                 if customer_email:
                     item_name = new_item.get('name', 'Item')
@@ -1205,6 +1429,7 @@ R2_ACCESS_KEY_NEW = SecretParam("R2_ACCESS_KEY")
 R2_SECRET_KEY_NEW = SecretParam("R2_SECRET_KEY")
 R2_ACCOUNT_ID_NEW = SecretParam("R2_ACCOUNT_ID")
 
+
 @https_fn.on_call(secrets=[R2_ACCESS_KEY_NEW, R2_SECRET_KEY_NEW, R2_ACCOUNT_ID_NEW])
 def get_r2_presigned_url(req: https_fn.CallableRequest) -> Any:
     """Generate presigned URL for uploading to Cloudflare R2"""
@@ -1217,7 +1442,6 @@ def get_r2_presigned_url(req: https_fn.CallableRequest) -> Any:
         )
     
     try:
-        # Use .value to access the secret content safely
         r2 = boto3.client(
             's3',
             endpoint_url=f"https://{R2_ACCOUNT_ID_NEW.value}.r2.cloudflarestorage.com",
