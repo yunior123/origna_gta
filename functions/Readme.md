@@ -1,10 +1,37 @@
 # Set your Stripe keys
 firebase functions:config:set stripe.secret_key="STRIPE_SECRET_KEY_REDACTED"
 firebase functions:config:set stripe.webhook_secret="STRIPE_WEBHOOK_SECRET_REDACTED"
+firebase functions:secrets:set MAILJET_API_KEY
+firebase functions:secrets:set MAILJET_SECRET_KEY
 
+
+
+firebase functions:delete stripe_webhook
 # Deploy
 firebase deploy --only functions
 firebase emulators:start --only functions
+
+# ###################################
+firebase functions:delete on_order_status_change
+firebase deploy --only functions:on_order_status_change
+
+firebase functions:delete stripe_webhook 
+firebase deploy --only functions:stripe_webhook
+
+firebase functions:delete create_checkout_session
+firebase deploy --only functions:create_checkout_session
+
+firebase functions:delete get_r2_presigned_url 
+firebase deploy --only functions:get_r2_presigned_url
+
+pip3 install -r requirements.txt
+source venv/bin/activate
+
+pip freeze > requirements.txt
+
+firebase functions:config:get
+
+firebase functions:secrets:list
 
 # firebase functions:config:set stripe.secret_key="sk_live_..."
 # firebase functions:config:set stripe.webhook_secret="whsec_..."
@@ -88,3 +115,43 @@ bashcurl -X POST http://127.0.0.1:5001/orignagta/us-central1/stripe_webhook \
     }
   }'
 Note: Replace cus_xxxxx and pi_xxxxx with actual IDs you get from creating customers and payment intents. Start with the health check, then create a customer, and use that customer ID for subsequent requests.
+
+
+
+
+# Stripe API Keys (Get from https://dashboard.stripe.com/test/apikeys)
+STRIPE_SECRET_KEY=REDACTED_SECRET
+STRIPE_WEBHOOK_SECRET=REDACTED_SECRET
+
+# Firebase Service Account (Download from Firebase Console)
+# Go to: Project Settings > Service Accounts > Generate New Private Key
+GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json
+
+
+FUNCTIONS_EMULATOR=true
+
+R2_ACCOUNT_ID = 9b027cd3919483d27f0abeb2090ac626
+R2_ACCESS_KEY = aa9380c4880881c0c93977ee9c01f24a
+R2_SECRET_KEY = REDACTED_SECRET
+
+R2_ACCOUNT_ID_NEW = 9b027cd3919483d27f0abeb2090ac626
+R2_ACCESS_KEY_NEW = aa9380c4880881c0c93977ee9c01f24a
+R2_SECRET_KEY_NEW = REDACTED_SECRET
+
+
+MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED
+MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED
+
+
+https://us-central1-orignagta.cloudfunctions.net/stripe_webhook
+
+✔  Deploy complete!
+
+https://stripe-webhook-wwnxr2xxoq-uc.a.run.app
+
+
+# Local test
+firebase emulators:start --only functions
+
+# Deploy only what changed
+firebase deploy --only functions:get_r2_presigned_url

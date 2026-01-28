@@ -351,6 +351,7 @@ class AddressDetails {
 class CartItemDetailModel {
   final String productId;
   final String name;
+  final String description;
   final double price;
   final List<String> imageUrls;
   final int quantity;
@@ -363,6 +364,7 @@ class CartItemDetailModel {
   CartItemDetailModel({
     required this.productId,
     required this.name,
+    required this.description,
     required this.price,
     required this.imageUrls,
     required this.quantity,
@@ -378,6 +380,7 @@ class CartItemDetailModel {
     return {
       'productId': productId,
       'name': name,
+      'description': description,
       'price': price,
       'imageUrls': imageUrls,
       'quantity': quantity,
@@ -394,6 +397,8 @@ class CartItemDetailModel {
     return CartItemDetailModel(
       productId: map['productId'] ?? '',
       name: map['name'] ?? '',
+      description: map['description'] ?? '',
+
       price: (map['price'] ?? 0).toDouble(),
       imageUrls: List<String>.from(map['imageUrls'] ?? []),
       quantity: map['quantity'] ?? 0,
@@ -509,6 +514,7 @@ class OrderModel {
       return CartItemDetailModel(
         productId: map['productId'] ?? '',
         name: map['name'] ?? '',
+        description: map["description"]?? '',
         price: (map['price'] ?? 0).toDouble(),
         imageUrls: List<String>.from(map['imageUrls'] ?? []),
         quantity: map['quantity'] ?? 0,
