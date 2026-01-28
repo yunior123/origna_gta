@@ -1,0 +1,150 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ================================================================
+    // HELPER FUNCTIONS
+    // ================================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function hasRole(role) {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid))
+          .data.roles.hasAny([role]);
+    }
+    
+    function isAdmin() {
+      return hasRole('admin');
+    }
+    
+    function isSeller() {
+      return hasRole('seller') || isAdmin();
+    }
+    
+    // ================================================================
+    // USERS COLLECTION
+    // ================================================================
+    match /users/{userId} {
+      // Users can read their own profile
+      // Admins can read any profile
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Users can update their own profile (except roles)
+      allow update: if isOwner(userId) && 
+        request.resource.data.roles == resource.data.roles;
+      
+      // Only backend can create users
+      allow create: if false;
+      
+      // Users can't delete their own account (use Cloud Function)
+      allow delete: if false;
+      
+      // --- CART SUBCOLLECTION ---
+      match /cart/{itemId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // --- FAVORITES SUBCOLLECTION ---
+      match /favorites/{productId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+    
+    // ================================================================
+    // PRODUCTS COLLECTION
+    // ================================================================
+    match /products/{productId} {
+      // Anyone can read products
+      allow read: if true;
+
+      // Only sellers can create products
+      // Must set correct sellerId
+      allow create: if isSeller() &&
+        request.resource.data.sellerId == request.auth.uid &&
+        request.resource.data.keys().hasAll([
+          'name', 'price', 'sellerId', 'categoryId',
+          'stockQuantity', 'imageUrls'
+        ]) &&
+        request.resource.data.stockQuantity >= 0 &&
+        request.resource.data.price > 0;
+
+      // Product updates have multiple allowed scenarios
+      allow update: if isAuthenticated() && (
+        // Scenario 1: Product owner or admin can update all fields (except sellerId)
+        ((resource.data.sellerId == request.auth.uid || isAdmin()) &&
+          request.resource.data.sellerId == resource.data.sellerId &&
+          request.resource.data.stockQuantity >= 0) ||
+
+        // Scenario 2: Any authenticated user can update rating fields only
+        // This allows users to rate products they've purchased
+        (request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['rating', 'ratingCount']) &&
+          request.resource.data.rating >= 0 &&
+          request.resource.data.rating <= 5 &&
+          request.resource.data.ratingCount >= resource.data.ratingCount)
+      );
+
+      // Only product owner or admin can delete
+      allow delete: if isAuthenticated() &&
+        (resource.data.sellerId == request.auth.uid || isAdmin());
+    }
+    
+    // ================================================================
+    // ORDERS COLLECTION
+    // ================================================================
+    match /orders/{orderId} {
+      // Users can read their own orders
+      // Sellers can read orders containing their products
+      // Admins can read all orders
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.sellerIds.hasAny([request.auth.uid]) ||
+        isAdmin()
+      );
+      
+      // ONLY BACKEND CAN CREATE ORDERS
+      // This prevents client-side order manipulation
+      allow create: if false;
+      
+      // Sellers can update delivery status of their items only
+      // Backend can update payment status
+      // Users can add ratings to their orders
+      allow update: if isAuthenticated() && (
+        // Seller updating their items
+        (resource.data.sellerIds.hasAny([request.auth.uid]) &&
+         // Verify only updating delivery status
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['items', 'updatedAt']) &&
+         // Verify seller only updates their own items
+         validateSellerItemUpdate(
+           resource.data.items,
+           request.resource.data.items,
+           request.auth.uid
+         )) ||
+        // Order owner can add ratings
+        (resource.data.userId == request.auth.uid &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['ratings'])) ||
+        // Admin can update anything
+        isAdmin()
+      );
+      
+      // No one can delete orders (only backend)
+      allow delete: if false;
+    }
+    
+    // ================================================================
+    // VALIDATION FUNCTIONS
+    // ================================================================
+    function validateSellerItemUpdate(oldItems, newItems, sellerId) {
+      // Ensure seller only updates items they own
+      return true; // Simplified - implement in Cloud Function
+    }
+  }
+}

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/addproduct_screen.dart';
 import 'package:origna_gta/cart_screen.dart';
+import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/productcard_screen.dart';
 import 'package:origna_gta/profile_screen.dart';
 import 'package:origna_gta/utils.dart';
@@ -239,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
                       },
                     ),
-                    if (widget.userModel?.roles.contains('seller') ?? false)
+                    if (widget.userModel?.roles.contains(UserRoles.seller) ?? false)
                       _buildIconButton(
                         icon: Icons.add_box_outlined,
                         onPressed: () {

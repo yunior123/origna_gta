@@ -3,11 +3,12 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/editaddress_screen.dart';
+import 'package:origna_gta/terms_screen.dart';
 import 'package:origna_gta/utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-//TODO, if the user change address shipping gets recalculated?
 class CheckoutScreen extends StatefulWidget {
   final List<CartItemDetailModel> items;
   final double total;
@@ -127,6 +128,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                   ),
                   _buildCheckoutButton(savedAddress, userModel, totalWithTax),
+                  _buildTermsText(context),
                   const SizedBox(height: 16),
                   _buildSecurityInfo(),
                 ],
@@ -405,6 +407,47 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return widgets;
   }
 
+  Widget _buildTermsText(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Flexible(
+            child: RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                children: [
+                  const TextSpan(text: 'By placing this order, you agree to our '),
+                  WidgetSpan(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const TermsScreen()),
+                        );
+                      },
+                      child: const Text(
+                        'Terms & Conditions',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFFF6B35),
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSecurityInfo() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -484,7 +527,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         taxes: taxes,
         shippingCost: shippingCost,
         subtotal: widget.total,
-        status: 'pending', // Will be overridden by backend
+        status: OrderStatus.pending.value, // Will be overridden by backend
         deliveryInfo: deliveryInfo,
         createdAt: DateTime.now(), // Will be overridden by backend
         currency: 'cad',

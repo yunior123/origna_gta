@@ -6,7 +6,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/login_screen.dart';
+import 'package:origna_gta/services/conf_services.dart';
 
 // Add these to your constants or helper section
 const Map<String, Map<String, double>> provinceTaxRates = {
@@ -121,7 +123,7 @@ Future<double> calculateShippingCost(List<CartItemDetailModel> items, Address? b
   }
 
   double totalShipping = 0.0;
-  const String apiKey = 'REDACTED_SECRET'; // Hardcoded as per your project notes
+  final String apiKey = ConfigService().geoapifyKey;
 
   for (var item in items) {
     final seller = item.sellerAddress;
@@ -405,7 +407,7 @@ class CartItemDetailModel {
       dateCreated: (map['dateCreated'] as Timestamp?) ?? Timestamp.now(),
       sellerAddress: Address.fromMap(map['sellerAddress'] as Map<String, dynamic>),
       sellerId: map['sellerId'] ?? '',
-      deliveryStatus: map['deliveryStatus'] ?? 'pending',
+      deliveryStatus: map['deliveryStatus'] ?? DeliveryStatus.pending.value,
       trackingNumber: map['trackingNumber'],
     );
   }
@@ -521,7 +523,7 @@ class OrderModel {
         dateCreated: map['dateCreated'] as Timestamp,
         sellerAddress: Address.fromMap(map['sellerAddress'] as Map<String, dynamic>),
         sellerId: map['sellerId'] ?? '',
-        deliveryStatus: map['deliveryStatus'] ?? 'pending',
+        deliveryStatus: map['deliveryStatus'] ?? DeliveryStatus.pending.value,
         trackingNumber: map['trackingNumber'],
       );
     }).toList();
@@ -531,7 +533,7 @@ class OrderModel {
       userId: data['userId'] ?? '',
       items: items,
       total: (data['total'] ?? 0).toDouble(),
-      status: data['status'] ?? 'pending',
+      status: data['status'] ?? OrderStatus.pending.value,
       deliveryInfo: data['deliveryInfo'] ?? {},
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       customerId: data['customerId'] ?? '',
@@ -586,6 +588,7 @@ class ProductModel {
   final int stockQuantity;
   final int categoryId;
   final double rating;
+  final int ratingCount;
   final Timestamp? dateCreated;
   final List<String> searchKeywords;
 
@@ -601,6 +604,7 @@ class ProductModel {
     required this.sellerId,
     required this.searchKeywords,
     this.rating = 0.0,
+    this.ratingCount = 0,
     this.dateCreated,
   });
 
@@ -625,6 +629,7 @@ class ProductModel {
       description: map['description']?.toString() ?? '',
       categoryId: _parseInt(map['categoryId']),
       rating: _parseDouble(map['rating']),
+      ratingCount: _parseInt(map['ratingCount']),
       dateCreated: map['dateCreated'] as Timestamp?,
       sellerId: map['sellerId']?.toString() ?? '',
       searchKeywords: _parseStringList(map['searchKeywords']),
@@ -644,6 +649,7 @@ class ProductModel {
       'stockQuantity': stockQuantity,
       'categoryId': categoryId,
       'rating': rating,
+      'ratingCount': ratingCount,
       'dateCreated': dateCreated,
       'searchKeywords': searchKeywords,
     };

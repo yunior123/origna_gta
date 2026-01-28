@@ -25,6 +25,47 @@ from datetime import datetime
 import traceback
 from mailjet_rest import Client
 import re
+from enum import Enum
+
+# ============================================================================
+# CONSTANTS - Must match Flutter constants.dart
+# ============================================================================
+
+class OrderStatus:
+    PENDING = 'pending'
+    CONFIRMED = 'confirmed'
+    PROCESSING = 'processing'
+    SHIPPED = 'shipped'
+    DELIVERED = 'delivered'
+    CANCELLED = 'cancelled'
+    FAILED = 'failed'
+    EXPIRED = 'expired'
+    REFUNDED = 'refunded'
+    PARTIALLY_REFUNDED = 'partially_refunded'
+
+class PaymentStatus:
+    AWAITING_PAYMENT = 'awaiting_payment'
+    PROCESSING = 'processing'
+    PAID = 'paid'
+    PAYMENT_FAILED = 'payment_failed'
+    REFUNDED = 'refunded'
+    SESSION_EXPIRED = 'session_expired'
+
+class DeliveryStatus:
+    PENDING = 'pending'
+    SHIPPED = 'shipped'
+    DELIVERED = 'delivered'
+
+class UserRoles:
+    ADMIN = 'admin'
+    SELLER = 'seller'
+
+class Collections:
+    USERS = 'users'
+    PRODUCTS = 'products'
+    ORDERS = 'orders'
+    CART = 'cart'
+    FAVORITES = 'favorites'
 
 # ============================================================================
 # FIREBASE INITIALIZATION
@@ -519,9 +560,58 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         if user_id != auth_user_id:
             print(f"⚠️ User ID mismatch: claimed={user_id}, auth={auth_user_id}")
             user_id = auth_user_id  # Use authenticated ID
-        
+
+        # ================================================================
+        # ATOMIC STOCK VALIDATION AND RESERVATION
+        # ================================================================
+        print("🔒 Validating and reserving stock...")
+
+        @firestore.transactional
+        def validate_and_reserve_stock(transaction):
+            """Atomically validate and decrement stock for all items"""
+            stock_updates = []
+
+            for item in items:
+                product_id = item.get('productId')
+                quantity = item.get('quantity', 1)
+
+                if not product_id:
+                    raise ValueError(f"Missing productId in item")
+
+                product_ref = db.collection(Collections.PRODUCTS).document(product_id)
+                product_doc = product_ref.get(transaction=transaction)
+
+                if not product_doc.exists:
+                    raise ValueError(f"Product {product_id} not found")
+
+                product_data = product_doc.to_dict()
+                current_stock = product_data.get('stockQuantity', 0)
+                product_name = product_data.get('name', 'Unknown')
+
+                if current_stock < quantity:
+                    raise ValueError(f"Insufficient stock for '{product_name}'. Available: {current_stock}, Requested: {quantity}")
+
+                stock_updates.append((product_ref, current_stock - quantity))
+
+            # All validations passed, now decrement stock
+            for product_ref, new_stock in stock_updates:
+                transaction.update(product_ref, {'stockQuantity': new_stock})
+
+            return True
+
+        try:
+            transaction = db.transaction()
+            validate_and_reserve_stock(transaction)
+            print("✅ Stock reserved successfully")
+        except ValueError as e:
+            print(f"❌ Stock validation failed: {str(e)}")
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message=str(e)
+            )
+
         # Create new order with auto-generated ID
-        order_ref = db.collection('orders').document()
+        order_ref = db.collection(Collections.ORDERS).document()
         order_id = order_ref.id
         print(f"📝 Creating order: {order_id}")
 
@@ -583,7 +673,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         enriched_items = []
         for item in items:
             item_copy = item.copy()
-            item_copy['deliveryStatus'] = 'pending'
+            item_copy['deliveryStatus'] = DeliveryStatus.PENDING
             item_copy['trackingNumber'] = None
             enriched_items.append(item_copy)
 
@@ -629,8 +719,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             "total": data.get('total', 0),
             "currency": currency,
             "amount": amount,
-            "status": "pending",
-            "paymentStatus": "awaiting_payment",
+            "status": OrderStatus.PENDING,
+            "paymentStatus": PaymentStatus.AWAITING_PAYMENT,
             "stripeSessionId": session.id,
             "createdAt": firestore.SERVER_TIMESTAMP,
             "updatedAt": firestore.SERVER_TIMESTAMP
@@ -911,34 +1001,62 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
 def process_checkout_session_completed(session: Dict) -> Optional[str]:
     """Process checkout.session.completed event"""
     print("\n✅ Processing: checkout.session.completed")
-    
+
     # Extract order ID - use defensive programming
     order_id = (
-        session.get('client_reference_id') or 
+        session.get('client_reference_id') or
         session.get('metadata', {}).get('orderId')
     )
-    
+
     print(f"  Session ID: {session.get('id')}")
     print(f"  Order ID: {order_id}")
     print(f"  Payment Status: {session.get('payment_status')}")
     print(f"  Amount Total: ${session.get('amount_total', 0) / 100}")
-    
+
     if not order_id:
         print("  ⚠️ No order ID found in session")
         raise ValueError("Order ID not found in session")
-    
-    order_ref = db.collection('orders').document(order_id)
+
+    order_ref = db.collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
-    
+
     if not order_doc.exists:
         print(f"  ❌ Order {order_id} not found in database")
         raise ValueError(f"Order {order_id} not found")
-    
+
     print(f"  ✓ Order found in database")
+
+    order_data = order_doc.to_dict()
+
+    # ================================================================
+    # AMOUNT VERIFICATION - Fraud Protection
+    # ================================================================
+    stripe_amount = session.get('amount_total', 0)  # In cents
+    stored_amount = order_data.get('amount', 0)  # In cents
+
+    # Allow small tolerance for rounding (1 cent)
+    if abs(stripe_amount - stored_amount) > 1:
+        print(f"  🚨 FRAUD ALERT: Amount mismatch!")
+        print(f"     Stripe amount: {stripe_amount} cents")
+        print(f"     Stored amount: {stored_amount} cents")
+
+        # Flag the order as potentially fraudulent
+        order_ref.update({
+            "status": OrderStatus.FAILED,
+            "paymentStatus": PaymentStatus.PAYMENT_FAILED,
+            "fraudAlert": True,
+            "fraudReason": f"Amount mismatch: Stripe={stripe_amount}, Order={stored_amount}",
+            "updatedAt": firestore.SERVER_TIMESTAMP,
+        })
+
+        # Restore stock since payment is rejected
+        _restore_stock_for_order(order_data)
+
+        raise ValueError(f"Amount verification failed: mismatch detected")
     
     # Check payment status - some payments are async
     payment_status = session.get('payment_status')
-    
+
     update_data = {
         "stripePaymentIntentId": session.get('payment_intent'),
         "stripeCustomerId": session.get('customer'),
@@ -946,139 +1064,165 @@ def process_checkout_session_completed(session: Dict) -> Optional[str]:
         "paymentMethod": session.get('payment_method_types', [])[0] if session.get('payment_method_types') else None,
         "amountTotal": session.get('amount_total', 0) / 100,
     }
-    
+
     if payment_status == 'paid':
         # Immediate payment success
         update_data.update({
-            "status": "confirmed",
-            "paymentStatus": "paid",
+            "status": OrderStatus.CONFIRMED,
+            "paymentStatus": PaymentStatus.PAID,
             "paidAt": firestore.SERVER_TIMESTAMP,
         })
         print(f"  ✅ Marking order as PAID")
-        
+
         # Clear user's cart
         user_id = session.get('metadata', {}).get('userId')
         if user_id:
-            print(f"  🛒 Clearing cart for user {user_id}")
-            try:
-                db.collection('users').document(user_id).update({
-                    "cart": [],
-                    "updatedAt": firestore.SERVER_TIMESTAMP
-                })
-            except Exception as e:
-                print(f"  ⚠️ Failed to clear cart: {str(e)}")
-        
+            _clear_user_cart(user_id)
+
         # Send confirmation emails
-        send_order_confirmation_emails(order_id, order_doc.to_dict())
-        
+        send_order_confirmation_emails(order_id, order_data)
+
     elif payment_status == 'unpaid':
         # Async payment pending
         update_data.update({
-            "status": "processing",
-            "paymentStatus": "processing",
+            "status": OrderStatus.PROCESSING,
+            "paymentStatus": PaymentStatus.PROCESSING,
         })
         print(f"  ⏳ Payment processing (async)")
-    
+
     order_ref.update(update_data)
     print(f"  ✓ Order updated")
-    
+
     return order_id
+
+
+def _clear_user_cart(user_id: str) -> None:
+    """Clear user's cart subcollection"""
+    print(f"  🛒 Clearing cart for user {user_id}")
+    try:
+        cart_ref = db.collection(Collections.USERS).document(user_id).collection(Collections.CART)
+        cart_docs = cart_ref.stream()
+        for doc in cart_docs:
+            doc.reference.delete()
+        print(f"  ✓ Cart cleared")
+    except Exception as e:
+        print(f"  ⚠️ Failed to clear cart: {str(e)}")
+
+
+def _restore_stock_for_order(order_data: Dict) -> None:
+    """Restore stock for all items in an order (used when payment fails/expires)"""
+    print("  📦 Restoring stock for order items...")
+    try:
+        items = order_data.get('items', [])
+        for item in items:
+            product_id = item.get('productId')
+            quantity = item.get('quantity', 1)
+
+            if product_id:
+                product_ref = db.collection(Collections.PRODUCTS).document(product_id)
+                product_ref.update({
+                    'stockQuantity': firestore.Increment(quantity)
+                })
+                print(f"    ✓ Restored {quantity} units for product {product_id}")
+    except Exception as e:
+        print(f"  ⚠️ Failed to restore stock: {str(e)}")
 
 
 def process_async_payment_succeeded(session: Dict) -> Optional[str]:
     """Process checkout.session.async_payment_succeeded event"""
     print("\n✅ Processing: checkout.session.async_payment_succeeded")
-    
+
     order_id = (
-        session.get('client_reference_id') or 
+        session.get('client_reference_id') or
         session.get('metadata', {}).get('orderId')
     )
-    
+
     print(f"  Order ID: {order_id}")
-    
+
     if not order_id:
         print("  ⚠️ No order ID found")
         return None
-    
-    order_ref = db.collection('orders').document(order_id)
+
+    order_ref = db.collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
-    
+
     if order_doc.exists:
         order_ref.update({
-            "status": "confirmed",
-            "paymentStatus": "paid",
+            "status": OrderStatus.CONFIRMED,
+            "paymentStatus": PaymentStatus.PAID,
             "paidAt": firestore.SERVER_TIMESTAMP,
             "updatedAt": firestore.SERVER_TIMESTAMP,
         })
-        
+
         # Clear user's cart
         user_id = session.get('metadata', {}).get('userId')
         if user_id:
-            print(f"  🛒 Clearing cart for user {user_id}")
-            try:
-                db.collection('users').document(user_id).update({
-                    "cart": [],
-                    "updatedAt": firestore.SERVER_TIMESTAMP
-                })
-            except Exception as e:
-                print(f"  ⚠️ Failed to clear cart: {str(e)}")
-        
+            _clear_user_cart(user_id)
+
         # Send confirmation emails
         send_order_confirmation_emails(order_id, order_doc.to_dict())
-        
+
         print(f"  ✅ Async payment succeeded")
     else:
         print(f"  ⚠️ Order {order_id} not found")
-    
+
     return order_id
 
 
 def process_async_payment_failed(session: Dict) -> Optional[str]:
     """Process checkout.session.async_payment_failed event"""
     print("\n❌ Processing: checkout.session.async_payment_failed")
-    
+
     order_id = (
-        session.get('client_reference_id') or 
+        session.get('client_reference_id') or
         session.get('metadata', {}).get('orderId')
     )
-    
+
     print(f"  Order ID: {order_id}")
-    
+
     if order_id:
-        order_ref = db.collection('orders').document(order_id)
-        if order_ref.get().exists:
+        order_ref = db.collection(Collections.ORDERS).document(order_id)
+        order_doc = order_ref.get()
+        if order_doc.exists:
+            order_data = order_doc.to_dict()
             order_ref.update({
-                "status": "failed",
-                "paymentStatus": "payment_failed",
+                "status": OrderStatus.FAILED,
+                "paymentStatus": PaymentStatus.PAYMENT_FAILED,
                 "paymentError": "Async payment failed",
                 "updatedAt": firestore.SERVER_TIMESTAMP,
             })
-            print(f"  ❌ Async payment failed")
-    
+            # Restore stock for failed payment
+            _restore_stock_for_order(order_data)
+            print(f"  ❌ Async payment failed - stock restored")
+
     return order_id
 
 
 def process_session_expired(session: Dict) -> Optional[str]:
     """Process checkout.session.expired event"""
     print("\n⏰ Processing: checkout.session.expired")
-    
+
     order_id = (
-        session.get('client_reference_id') or 
+        session.get('client_reference_id') or
         session.get('metadata', {}).get('orderId')
     )
-    
+
     print(f"  Order ID: {order_id}")
-    
+
     if order_id:
-        order_ref = db.collection('orders').document(order_id)
-        if order_ref.get().exists:
+        order_ref = db.collection(Collections.ORDERS).document(order_id)
+        order_doc = order_ref.get()
+        if order_doc.exists:
+            order_data = order_doc.to_dict()
             order_ref.update({
-                "status": "expired",
-                "paymentStatus": "session_expired",
+                "status": OrderStatus.EXPIRED,
+                "paymentStatus": PaymentStatus.SESSION_EXPIRED,
                 "updatedAt": firestore.SERVER_TIMESTAMP
             })
-            print(f"  ⏰ Session expired")
-    
+            # Restore stock for expired session
+            _restore_stock_for_order(order_data)
+            print(f"  ⏰ Session expired - stock restored")
+
     return order_id
 
 
@@ -1086,48 +1230,41 @@ def process_payment_intent_succeeded(payment_intent: Dict) -> Optional[str]:
     """Process payment_intent.succeeded event"""
     print("\n💰 Processing: payment_intent.succeeded")
     print(f"  Payment Intent ID: {payment_intent['id']}")
-    
+
     # Find order by payment intent ID
-    orders = db.collection('orders').where(
+    orders = db.collection(Collections.ORDERS).where(
         'stripePaymentIntentId', '==', payment_intent['id']
     ).limit(1).get()
-    
+
     if orders:
         order_ref = orders[0].reference
         order_data = orders[0].to_dict()
         order_id = order_ref.id
-        
+
         print(f"  Found order: {order_id}")
-        
+
         # Only update if not already paid
-        if order_data.get('paymentStatus') != 'paid':
+        if order_data.get('paymentStatus') != PaymentStatus.PAID:
             order_ref.update({
-                "status": "confirmed",
-                "paymentStatus": "paid",
+                "status": OrderStatus.CONFIRMED,
+                "paymentStatus": PaymentStatus.PAID,
                 "paidAt": firestore.SERVER_TIMESTAMP,
                 "updatedAt": firestore.SERVER_TIMESTAMP,
                 "amountReceived": payment_intent.get('amount_received', 0) / 100,
             })
-            
+
             # Clear user's cart
             user_id = order_data.get('userId')
             if user_id:
-                print(f"  🛒 Clearing cart for user {user_id}")
-                try:
-                    db.collection('users').document(user_id).update({
-                        "cart": [],
-                        "updatedAt": firestore.SERVER_TIMESTAMP
-                    })
-                except Exception as e:
-                    print(f"  ⚠️ Failed to clear cart: {str(e)}")
-            
+                _clear_user_cart(user_id)
+
             # Send confirmation emails
             send_order_confirmation_emails(order_id, order_data)
-            
+
             print(f"  ✅ Payment intent succeeded")
         else:
             print(f"  ℹ️ Order already marked as paid")
-        
+
         return order_id
     else:
         print(f"  ⚠️ No order found for payment intent")
@@ -1137,68 +1274,72 @@ def process_payment_intent_succeeded(payment_intent: Dict) -> Optional[str]:
 def process_payment_intent_failed(payment_intent: Dict) -> Optional[str]:
     """Process payment_intent.payment_failed event"""
     print("\n❌ Processing: payment_intent.payment_failed")
-    
-    orders = db.collection('orders').where(
+
+    orders = db.collection(Collections.ORDERS).where(
         'stripePaymentIntentId', '==', payment_intent['id']
     ).limit(1).get()
-    
+
     if orders:
         order_ref = orders[0].reference
+        order_data = orders[0].to_dict()
         order_id = order_ref.id
         last_error = payment_intent.get('last_payment_error', {})
-        
+
         print(f"  Order: {order_id}")
         print(f"  Error: {last_error.get('message', 'Unknown error')}")
-        
+
         order_ref.update({
-            "status": "failed",
-            "paymentStatus": "payment_failed",
+            "status": OrderStatus.FAILED,
+            "paymentStatus": PaymentStatus.PAYMENT_FAILED,
             "paymentError": last_error.get('message', 'Payment failed'),
             "paymentErrorCode": last_error.get('code'),
             "updatedAt": firestore.SERVER_TIMESTAMP,
         })
-        print(f"  ❌ Payment failed")
-        
+
+        # Restore stock for failed payment
+        _restore_stock_for_order(order_data)
+        print(f"  ❌ Payment failed - stock restored")
+
         return order_id
-    
+
     return None
 
 
 def process_charge_refunded(charge: Dict) -> Optional[str]:
     """Process charge.refunded event"""
     print("\n💸 Processing: charge.refunded")
-    
+
     payment_intent_id = charge.get('payment_intent')
     if not payment_intent_id:
         print("  ⚠️ No payment intent ID in charge")
         return None
-    
-    orders = db.collection('orders').where(
+
+    orders = db.collection(Collections.ORDERS).where(
         'stripePaymentIntentId', '==', payment_intent_id
     ).limit(1).get()
-    
+
     if orders:
         order_ref = orders[0].reference
         order_id = order_ref.id
-        
+
         print(f"  Order: {order_id}")
         print(f"  Refund Amount: ${charge.get('amount_refunded', 0) / 100}")
-        
+
         # Check if fully or partially refunded
         is_fully_refunded = charge.get('refunded', False)
-        
+
         order_ref.update({
-            "status": "refunded" if is_fully_refunded else "partially_refunded",
-            "paymentStatus": "refunded" if is_fully_refunded else "partially_refunded",
+            "status": OrderStatus.REFUNDED if is_fully_refunded else OrderStatus.PARTIALLY_REFUNDED,
+            "paymentStatus": PaymentStatus.REFUNDED,
             "refundAmount": charge.get('amount_refunded', 0) / 100,
             "refundedAt": firestore.SERVER_TIMESTAMP,
             "updatedAt": firestore.SERVER_TIMESTAMP,
         })
-        
+
         print(f"  💸 {'Fully' if is_fully_refunded else 'Partially'} refunded")
-        
+
         return order_id
-    
+
     return None
 
 
@@ -1463,4 +1604,102 @@ def get_r2_presigned_url(req: https_fn.CallableRequest) -> Any:
         raise https_fn.HttpsError(
             code=https_fn.FunctionsErrorCode.INTERNAL,
             message="Failed to generate upload URL"
+        )
+
+
+# ============================================================================
+# PRODUCT MANAGEMENT FUNCTIONS
+# ============================================================================
+
+@https_fn.on_call()
+def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Delete a product and clean up from all carts and favorites.
+    Only the product owner or an admin can delete.
+    """
+    # Verify authentication
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in to delete products"
+        )
+
+    product_id = req.data.get("productId")
+    if not product_id:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="productId is required"
+        )
+
+    user_id = req.auth.uid
+    print(f"🗑️ Delete product request: {product_id} by user {user_id}")
+
+    try:
+        # Get product document
+        product_ref = db.collection(Collections.PRODUCTS).document(product_id)
+        product_doc = product_ref.get()
+
+        if not product_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Product not found"
+            )
+
+        product_data = product_doc.to_dict()
+        seller_id = product_data.get('sellerId')
+
+        # Check if user is admin
+        user_ref = db.collection(Collections.USERS).document(user_id)
+        user_doc = user_ref.get()
+        user_data = user_doc.to_dict() if user_doc.exists else {}
+        user_roles = user_data.get('roles', [])
+        is_admin = UserRoles.ADMIN in user_roles
+
+        # Verify ownership or admin status
+        if seller_id != user_id and not is_admin:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+                message="You don't have permission to delete this product"
+            )
+
+        print(f"  ✓ Authorization verified (admin={is_admin}, owner={seller_id == user_id})")
+
+        # 1. Remove from all carts using collectionGroup query
+        print(f"  🛒 Removing from carts...")
+        cart_items = db.collection_group(Collections.CART).where('productId', '==', product_id).get()
+        cart_count = 0
+        for cart_item in cart_items:
+            cart_item.reference.delete()
+            cart_count += 1
+        print(f"    ✓ Removed from {cart_count} carts")
+
+        # 2. Remove from all favorites using collectionGroup query
+        print(f"  ❤️ Removing from favorites...")
+        fav_items = db.collection_group(Collections.FAVORITES).where('productId', '==', product_id).get()
+        fav_count = 0
+        for fav_item in fav_items:
+            fav_item.reference.delete()
+            fav_count += 1
+        print(f"    ✓ Removed from {fav_count} favorites")
+
+        # 3. Delete the product document
+        print(f"  📦 Deleting product document...")
+        product_ref.delete()
+        print(f"  ✓ Product deleted successfully")
+
+        return {
+            "success": True,
+            "message": "Product deleted successfully",
+            "cleanedCarts": cart_count,
+            "cleanedFavorites": fav_count,
+        }
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Error deleting product: {str(e)}")
+        print(traceback.format_exc())
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to delete product: {str(e)}"
         )

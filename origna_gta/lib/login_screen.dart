@@ -1,8 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:origna_gta/terms_screen.dart';
 import 'package:origna_gta/utils.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -20,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   bool _isLogin = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _acceptedTerms = false;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -121,10 +121,61 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   if (value.length < 6) {
                                     return 'Password must be at least 6 characters';
                                   }
-                                
+
                                   return null;
                                 },
                               ),
+                              // Terms and Conditions checkbox (signup only)
+                              if (!_isLogin) ...[
+                                const SizedBox(height: 16),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: Checkbox(
+                                        value: _acceptedTerms,
+                                        onChanged: (value) {
+                                          setState(() => _acceptedTerms = value ?? false);
+                                        },
+                                        activeColor: const Color(0xFFFF6B35),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() => _acceptedTerms = !_acceptedTerms);
+                                        },
+                                        child: RichText(
+                                          text: TextSpan(
+                                            style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                                            children: [
+                                              const TextSpan(text: 'I agree to the '),
+                                              TextSpan(
+                                                text: 'Terms and Conditions',
+                                                style: const TextStyle(
+                                                  color: Color(0xFFFF6B35),
+                                                  fontWeight: FontWeight.w600,
+                                                  decoration: TextDecoration.underline,
+                                                ),
+                                                recognizer: TapGestureRecognizer()
+                                                  ..onTap = () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(builder: (_) => const TermsScreen()),
+                                                    );
+                                                  },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -133,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           width: double.infinity,
                           height: 54,
                           child: ElevatedButton(
-                            onPressed: _isLoading ? null : _handleAuth,
+                            onPressed: _isLoading || (!_isLogin && !_acceptedTerms) ? null : _handleAuth,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFFF6B35),
                               foregroundColor: Colors.white,
@@ -172,6 +223,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           onPressed: () {
                             setState(() {
                               _isLogin = !_isLogin;
+                              _acceptedTerms = false;
                               _formKey.currentState?.reset();
                             });
                           },

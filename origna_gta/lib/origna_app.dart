@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/authwrapper_screen.dart';
+import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/ordersuccess_screen.dart';
 
 class OrignaApp extends StatelessWidget {
@@ -151,7 +152,7 @@ class _OrderSuccessGate extends StatelessWidget {
       stream: FirebaseFirestore.instance
           .collection('orders')
           .where('stripeSessionId', isEqualTo: sessionId)
-          .where('paymentStatus', isEqualTo: 'paid')
+          .where('paymentStatus', isEqualTo: PaymentStatus.paid.value)
           .limit(1)
           .snapshots(),
       builder: (context, snapshot) {

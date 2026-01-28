@@ -1,7 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/constants.dart';
+import 'package:origna_gta/editproduct_screen.dart';
 import 'package:origna_gta/productdetails_screen.dart';
 import 'package:origna_gta/utils.dart';
 import 'package:shimmer/shimmer.dart';
@@ -42,7 +45,9 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
     final name = widget.product.name;
     final price = widget.product.price;
     final rating = (widget.product.rating).toDouble();
-    final isAdmin = widget.userModel?.roles.contains('admin') ?? false;
+    final isAdmin = widget.userModel?.roles.contains(UserRoles.admin) ?? false;
+    final isOwner = widget.userModel?.uid == widget.product.sellerId;
+    final canManageProduct = isAdmin || isOwner;
 
     return GestureDetector(
       onTap: () {
@@ -200,20 +205,27 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                 ),
               ),
             ),
-            Builder(
-              builder: (context) {
-                if (!isAdmin) return const SizedBox.shrink();
-                return Container(
-                  decoration: BoxDecoration(
-                    border: Border(top: BorderSide(color: Colors.grey[200]!)),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _deleteProduct(context),
-                  ),
-                );
-              },
-            ),
+            if (canManageProduct)
+              Container(
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: Colors.grey[200]!)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Color(0xFFFF6B35)),
+                      onPressed: () => _editProduct(context),
+                      tooltip: 'Edit Product',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _showDeleteConfirmation(context),
+                      tooltip: 'Delete Product',
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -242,16 +254,73 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
     }
   }
 
+  void _editProduct(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditProductScreen(product: widget.product),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Product'),
+        content: Text('Are you sure you want to delete "${widget.product.name}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _deleteProduct(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _deleteProduct(BuildContext context) async {
     try {
-      final productId = widget.productId;
-      //TODO: delete in backend, call cloud fn
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product deleted and removed from all carts & favorites')));
+      // Call cloud function to delete product
+      final callable = FirebaseFunctions.instance.httpsCallable('delete_product');
+      await callable.call({'productId': widget.productId});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Product deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } on FirebaseFunctionsException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.message ?? e.code}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting product: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting product: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }

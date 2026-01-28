@@ -2,10 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/addressmanagement_screen.dart';
+import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/favorites_screen.dart';
 import 'package:origna_gta/orders_screen.dart';
 import 'package:origna_gta/seller_orders_screen.dart';
+import 'package:origna_gta/terms_screen.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -34,7 +37,7 @@ class ProfileScreen extends StatelessWidget {
                 final userModel = UserModel.fromMap(userData);
                 final name = userModel.name;
                 final email = userModel.email;
-                final isSeller = userModel.roles.contains('seller');
+                final isSeller = userModel.roles.contains(UserRoles.seller);
 
                 return Center(
                   child: ConstrainedBox(
@@ -89,6 +92,20 @@ class ProfileScreen extends StatelessWidget {
                               Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressManagementScreen()));
                             },
                           ),
+                          _buildMenuItem(
+                            context,
+                            icon: Icons.description_outlined,
+                            title: 'Terms & Conditions',
+                            onTap: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
+                            },
+                          ),
+                          _buildMenuItem(
+                            context,
+                            icon: Icons.mail_outline,
+                            title: 'Contact Us',
+                            onTap: () => _showContactDialog(context),
+                          ),
                           const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,
@@ -120,13 +137,69 @@ class ProfileScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: ListTile(
         leading: Icon(icon, color: const Color(0xFFFF6B35)),
         title: Text(title),
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
+      ),
+    );
+  }
+
+  void _showContactDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Contact Us'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Have questions or need help? Reach out to us!',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.email, color: Color(0xFFFF6B35)),
+              title: const Text(AppConfig.supportEmail),
+              subtitle: const Text('Email Support'),
+              onTap: () async {
+                final uri = Uri(
+                  scheme: 'mailto',
+                  path: AppConfig.supportEmail,
+                  queryParameters: {'subject': 'Support Request - OrignaGTA'},
+                );
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                }
+              },
+            ),
+            const Divider(),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.language, color: Color(0xFFFF6B35)),
+              title: const Text('Visit our website'),
+              subtitle: const Text(AppConfig.websiteUrl),
+              onTap: () async {
+                final uri = Uri.parse(AppConfig.websiteUrl);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }

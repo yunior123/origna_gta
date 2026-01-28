@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:origna_gta/constants.dart';
+import 'package:origna_gta/rating_dialog.dart';
 import 'package:origna_gta/utils.dart';
 
 class OrdersScreen extends StatelessWidget {
@@ -26,7 +28,7 @@ class OrdersScreen extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection('orders')
             .where('userId', isEqualTo: user.uid)
-            .where('paymentStatus', isEqualTo: 'paid')
+            .where('paymentStatus', isEqualTo: PaymentStatus.paid.value)
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
@@ -73,6 +75,12 @@ class _BuyerOrderCard extends StatelessWidget {
   final Map<String, dynamic> data;
 
   const _BuyerOrderCard({required this.orderId, required this.data});
+
+  /// Check if a product has already been rated in this order
+  bool _isProductRated(String productId) {
+    final ratings = data['ratings'] as Map<String, dynamic>?;
+    return ratings?.containsKey(productId) ?? false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +153,7 @@ class _BuyerOrderCard extends StatelessWidget {
             
             // Items List
             ...items.map((item) {
-              return _buildOrderItem(item);
+              return _buildOrderItem(context, item);
             }),
           ],
         ),
@@ -153,10 +161,11 @@ class _BuyerOrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildOrderItem(CartItemDetailModel item) {
-    final status = item.deliveryStatus;
-    final isShipped = status == 'shipped';
-    final isDelivered = status == 'delivered';
+  Widget _buildOrderItem(BuildContext context, CartItemDetailModel item) {
+    final deliveryStatus = DeliveryStatus.fromValue(item.deliveryStatus);
+    final isShipped = deliveryStatus == DeliveryStatus.shipped;
+    final isDelivered = deliveryStatus == DeliveryStatus.delivered;
+    final isRated = _isProductRated(item.productId);
 
     Color statusColor;
     String statusText;
@@ -164,87 +173,135 @@ class _BuyerOrderCard extends StatelessWidget {
 
     if (isDelivered) {
       statusColor = Colors.green;
-      statusText = 'Delivered';
+      statusText = DeliveryStatus.delivered.displayText;
       statusIcon = Icons.check_circle;
     } else if (isShipped) {
       statusColor = Colors.blue;
-      statusText = 'Shipped';
+      statusText = DeliveryStatus.shipped.displayText;
       statusIcon = Icons.local_shipping;
     } else {
       statusColor = Colors.orange;
-      statusText = 'Processing';
+      statusText = DeliveryStatus.pending.displayText;
       statusIcon = Icons.hourglass_empty;
     }
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          // Product Image
-          _productImage(item.imageUrls.isNotEmpty ? item.imageUrls.first : null),
-          const SizedBox(width: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Product Image
+              _productImage(item.imageUrls.isNotEmpty ? item.imageUrls.first : null),
+              const SizedBox(width: 12),
 
-          // Product Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Qty: ${item.quantity} • \$${item.price.toStringAsFixed(2)}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-                
-                // Tracking Number
-                if (isShipped && item.trackingNumber != null) ...[
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
+              // Product Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                     ),
-                    child: Text(
-                      'Tracking: ${item.trackingNumber}',
-                      style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.w500),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Qty: ${item.quantity} - \$${item.price.toStringAsFixed(2)}',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
                     ),
-                  ),
-                ],
-              ],
-            ),
+
+                    // Tracking Number
+                    if (isShipped && item.trackingNumber != null) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Tracking: ${item.trackingNumber}',
+                          style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              // Status Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    Icon(statusIcon, size: 16, color: statusColor),
+                    const SizedBox(height: 2),
+                    Text(
+                      statusText,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          
-          const SizedBox(width: 8),
-          
-          // Status Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              children: [
-                Icon(statusIcon, size: 16, color: statusColor),
-                const SizedBox(height: 2),
-                Text(
-                  statusText,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
+          // Rating button for delivered items
+          if (isDelivered && !isRated)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => showRatingDialog(
+                    context: context,
+                    orderId: orderId,
+                    productId: item.productId,
+                    productName: item.name,
+                  ),
+                  icon: const Icon(Icons.star_outline, size: 16),
+                  label: const Text('Rate Product'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.amber[700],
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+          if (isDelivered && isRated)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, size: 14, color: Colors.green[600]),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Rated',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

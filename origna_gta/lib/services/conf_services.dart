@@ -30,4 +30,7 @@ class ConfigService {
 String get imageBaseUrl => _remoteConfig.getString('image_base_url');
   // Getters for your keys
   String get geoapifyKey => _remoteConfig.getString('geoapify_api_key');
+
+  String get sentryDnsKey => _remoteConfig.getString('sentry_dns');
+
 }

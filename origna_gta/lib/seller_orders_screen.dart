@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/utils.dart';
 
 class SellerOrdersScreen extends StatelessWidget {
@@ -26,7 +27,7 @@ class SellerOrdersScreen extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection('orders')
             .where('sellerIds', arrayContains: user.uid)
-            .where('paymentStatus', isEqualTo: 'paid')
+            .where('paymentStatus', isEqualTo: PaymentStatus.paid.value)
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
@@ -207,9 +208,9 @@ class _SellerOrderCard extends StatelessWidget {
   }
 
   Widget _buildSellerItem(BuildContext context, CartItemDetailModel item) {
-    final status = item.deliveryStatus ?? 'pending';
-    final isShipped = status == 'shipped';
-    final isDelivered = status == 'delivered';
+    final deliveryStatus = DeliveryStatus.fromValue(item.deliveryStatus);
+    final isShipped = deliveryStatus == DeliveryStatus.shipped;
+    final isDelivered = deliveryStatus == DeliveryStatus.delivered;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -261,7 +262,7 @@ class _SellerOrderCard extends StatelessWidget {
               const SizedBox(width: 8),
               
               // Status Badge
-              _buildStatusBadge(status),
+              _buildStatusBadge(deliveryStatus),
             ],
           ),
           
@@ -293,22 +294,22 @@ class _SellerOrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBadge(String status) {
+  Widget _buildStatusBadge(DeliveryStatus status) {
     Color statusColor;
     String statusText;
     IconData statusIcon;
 
-    if (status == 'delivered') {
+    if (status == DeliveryStatus.delivered) {
       statusColor = Colors.green;
-      statusText = 'Delivered';
+      statusText = DeliveryStatus.delivered.displayText;
       statusIcon = Icons.check_circle;
-    } else if (status == 'shipped') {
+    } else if (status == DeliveryStatus.shipped) {
       statusColor = Colors.blue;
-      statusText = 'Shipped';
+      statusText = DeliveryStatus.shipped.displayText;
       statusIcon = Icons.local_shipping;
     } else {
       statusColor = Colors.orange;
-      statusText = 'Pending';
+      statusText = DeliveryStatus.pending.displayText;
       statusIcon = Icons.hourglass_empty;
     }
 
