@@ -48,6 +48,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
               ),
               GestureDetector(
                 onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
                   try {
                     final picker = ImagePicker();
 
@@ -60,7 +61,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
                       });
                     }
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+                    messenger.showSnackBar(SnackBar(content: Text('Error picking image: $e')));
                   }
                 },
                 child: Container(

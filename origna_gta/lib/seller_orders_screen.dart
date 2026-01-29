@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
 
 class SellerOrdersScreen extends StatelessWidget {
   const SellerOrdersScreen({super.key});
@@ -20,9 +21,7 @@ class SellerOrdersScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Seller Orders', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
+      appBar: AppBarFactory.simple(title: 'Seller Orders'),
       backgroundColor: const Color(0xFFF5F5F5),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -94,7 +93,6 @@ class _SellerOrderCard extends StatefulWidget {
 
 class _SellerOrderCardState extends State<_SellerOrderCard> {
   bool _isUpdatingShipping = false;
-  bool _isCapturing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -119,7 +117,7 @@ class _SellerOrderCardState extends State<_SellerOrderCard> {
     // Calculate seller's total from their items
     final sellerTotal = sellerItems.fold<double>(
       0.0,
-      (sum, item) => sum + (item.price * item.quantity),
+      (acc, item) => acc + (item.price * item.quantity),
     );
 
     return Card(
@@ -435,10 +433,7 @@ class _SellerOrderCardState extends State<_SellerOrderCard> {
         }
       } else {
         // No approval needed - capture payment
-        setState(() {
-          _isUpdatingShipping = false;
-          _isCapturing = true;
-        });
+        setState(() => _isUpdatingShipping = false);
 
         final capturePayment = FirebaseFunctions.instance.httpsCallable('capture_payment');
         await capturePayment.call({
@@ -475,10 +470,7 @@ class _SellerOrderCardState extends State<_SellerOrderCard> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isUpdatingShipping = false;
-          _isCapturing = false;
-        });
+        setState(() => _isUpdatingShipping = false);
       }
     }
   }
@@ -764,7 +756,7 @@ class _SellerOrderCardState extends State<_SellerOrderCard> {
         width: 60,
         height: 60,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
+        errorBuilder: (_, _, _) => Container(
           width: 60,
           height: 60,
           color: Colors.grey[300],

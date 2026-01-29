@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/productcard_screen.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
 
 class FavoritesScreen extends StatelessWidget {
   const FavoritesScreen({super.key});
@@ -19,9 +20,7 @@ class FavoritesScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Favorites', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
+      appBar: AppBarFactory.simple(title: 'Favorites'),
       body: StreamBuilder<DocumentSnapshot>(
         // Still need user data for UserModel
         stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),

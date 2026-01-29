@@ -9,6 +9,7 @@ import 'package:image/image.dart' as img;
 import 'package:origna_gta/productaddimages_screen.dart';
 import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
 
 class EditProductScreen extends StatefulWidget {
   final ProductModel product;
@@ -110,9 +111,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Product', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
+      appBar: AppBarFactory.simple(title: 'Edit Product'),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),

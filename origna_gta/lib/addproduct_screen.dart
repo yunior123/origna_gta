@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:origna_gta/productaddimages_screen.dart';
 import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
@@ -28,6 +29,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _widthController = TextEditingController();
   final _heightController = TextEditingController();
   final _shipDaysController = TextEditingController(text: '3');
+  final _taxCodeController = TextEditingController(); // Optional
   bool _isLocalDeliveryOnly = false;
   String _selectedProvince = 'ON';
   double? _latitude;
@@ -56,9 +58,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Product', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
+      appBar: AppBarFactory.simple(title: 'Add Product'),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -201,6 +201,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     validator: (value) => (value == null || value.isEmpty) ? 'Please select a category' : null,
                   ),
                   const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _taxCodeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Stripe Tax Code (Optional)',
+                      prefixIcon: Icon(Icons.receipt_long_outlined),
+                      hintText: 'e.g., txcd_10000000',
+                      helperText: 'Leave blank to use default category tax settings',
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   const Text('Product Location', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -215,7 +225,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))],
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2))],
                       ),
                       child: ListView.builder(
                         shrinkWrap: true,
@@ -307,16 +317,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _weightController.dispose();
     _lengthController.dispose();
     _widthController.dispose();
-    _heightController.dispose();
     _shipDaysController.dispose();
+    _taxCodeController.dispose();
     super.dispose();
   }
 
   // Constants for image validation
-  static const int MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-  static const int MAX_IMAGES = 10;
-  static const List<String> ALLOWED_FORMATS = ['jpg', 'jpeg', 'png', 'webp'];
-  static const int MAX_DIMENSION = 2048; // Max width/height
+  static const int maxImageSize = 5 * 1024 * 1024; // 5MB
+  static const int maxImages = 10;
+  static const List<String> allowedFormats = ['jpg', 'jpeg', 'png', 'webp'];
+  static const int maxDimension = 2048; // Max width/height
 
   Future<void> _addProduct() async {
     if (!_formKey.currentState!.validate()) return;
@@ -327,8 +337,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
       return;
     }
 
-    if (_imageModels.length > MAX_IMAGES) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Maximum $MAX_IMAGES images allowed')));
+    if (_imageModels.length > maxImages) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Maximum $maxImages images allowed')));
       return;
     }
 
@@ -366,6 +376,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         heightCm: _heightController.text.isNotEmpty ? double.tryParse(_heightController.text) : null,
         isLocalDeliveryOnly: _isLocalDeliveryOnly,
         estimatedShipDays: int.tryParse(_shipDaysController.text) ?? 3,
+        taxCode: _taxCodeController.text.trim().isNotEmpty ? _taxCodeController.text.trim() : null,
       );
 
       final productRef = await FirebaseFirestore.instance.collection('products').add(product.toMap());
@@ -402,8 +413,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
   Future<Uint8List?> _validateAndCompressImage(Uint8List bytes) async {
     try {
       // Check file size
-      if (bytes.length > MAX_IMAGE_SIZE) {
-        throw Exception('Image too large. Max size is ${MAX_IMAGE_SIZE ~/ (1024 * 1024)}MB');
+      if (bytes.length > maxImageSize) {
+        throw Exception('Image too large. Max size is ${maxImageSize ~/ (1024 * 1024)}MB');
       }
 
       // Decode image
@@ -414,8 +425,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
       // Resize if too large (maintains aspect ratio)
       img.Image resized = image;
-      if (image.width > MAX_DIMENSION || image.height > MAX_DIMENSION) {
-        resized = img.copyResize(image, width: image.width > image.height ? MAX_DIMENSION : null, height: image.height > image.width ? MAX_DIMENSION : null);
+      if (image.width > maxDimension || image.height > maxDimension) {
+        resized = img.copyResize(image, width: image.width > image.height ? maxDimension : null, height: image.height > image.width ? maxDimension : null);
       }
 
       // Compress to JPEG with 85% quality
@@ -430,8 +441,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   /// Upload multiple images in parallel for better performance
   Future<List<String?>> _uploadImagesInParallel(List<ImageModel> imageModels, String productId) async {
-    // Validate and compress all images first
+    // Validate format and compress all images first
     final validationFutures = imageModels.map((model) async {
+      // Validate file extension
+      final extension = model.url.split('.').last.toLowerCase();
+      if (!allowedFormats.contains(extension)) {
+        debugPrint('Rejected image with format: $extension');
+        return null;
+      }
       final validated = await _validateAndCompressImage(model.bytes);
       return validated != null ? (model, validated) : null;
     });
@@ -520,7 +537,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         });
       }
     } catch (e) {
-      print('Error fetching address suggestions: $e');
+      debugPrint('Error fetching address suggestions: $e');
     }
   }
 

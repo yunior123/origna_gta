@@ -8,7 +8,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:origna_gta/main.dart';
 import 'package:origna_gta/origna_app.dart';
 
 void main() {

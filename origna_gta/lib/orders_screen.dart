@@ -7,6 +7,7 @@ import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/rating_dialog.dart';
 import 'package:origna_gta/shipping_approval_screen.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
 
 class OrdersScreen extends StatelessWidget {
   const OrdersScreen({super.key});
@@ -22,9 +23,7 @@ class OrdersScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Orders', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
+      appBar: AppBarFactory.simple(title: 'My Orders'),
       backgroundColor: const Color(0xFFF5F5F5),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -488,6 +487,44 @@ class _BuyerOrderCardState extends State<_BuyerOrderCard> {
     );
   }
 
+  Widget _buildPaymentStatusBanner(bool isPendingApproval) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isPendingApproval
+            ? Colors.orange.withValues(alpha: 0.1)
+            : Colors.blue.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isPendingApproval
+              ? Colors.orange.withValues(alpha: 0.3)
+              : Colors.blue.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isPendingApproval ? Icons.pending_actions : Icons.credit_card,
+            size: 18,
+            color: isPendingApproval ? Colors.orange : Colors.blue,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              isPendingApproval
+                  ? 'Shipping cost changed - your approval is needed'
+                  : 'Payment authorized - awaiting seller shipment',
+              style: TextStyle(
+                fontSize: 12,
+                color: isPendingApproval ? Colors.orange[800] : Colors.blue[800],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _productImage(String? url) {
     if (url == null || url.isEmpty) {
       return Container(
@@ -508,7 +545,7 @@ class _BuyerOrderCardState extends State<_BuyerOrderCard> {
         width: 60,
         height: 60,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
+        errorBuilder: (_, _, _) => Container(
           width: 60,
           height: 60,
           color: Colors.grey[300],

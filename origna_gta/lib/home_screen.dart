@@ -1,32 +1,32 @@
 import 'dart:async'; // Required for Timer (Debouncer)
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/addproduct_screen.dart';
 import 'package:origna_gta/cart_screen.dart';
 import 'package:origna_gta/constants.dart';
+import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/features/cart/cart_provider.dart';
+import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/productcard_screen.dart';
 import 'package:origna_gta/profile_screen.dart';
 import 'package:origna_gta/utils.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   final UserModel? userModel;
   const HomeScreen({super.key, this.userModel});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  // State variables
-  String _searchQuery = '';
-  String? _selectedCategoryId;
-  final List<ProductModel> _products = [];
-
   // Pagination variables
+  final List<ProductModel> _products = [];
   static const int _pageSize = 20;
   DocumentSnapshot? _lastDocument;
   bool _isLoadingMore = false;
@@ -46,11 +46,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
-    _debounce?.cancel(); // Important: cancel timer on dispose
+    _debounce?.cancel();
     super.dispose();
   }
 
-  // Logic: Reset list and fetch fresh from server
   void _refreshProducts() {
     setState(() {
       _products.clear();
@@ -60,11 +59,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadProducts();
   }
 
-  // Logic: Debounce search to prevent excessive Firestore reads
   void _onSearchChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      setState(() => _searchQuery = value);
+      ref.read(searchQueryProvider.notifier).state = value;
       _refreshProducts();
     });
   }
@@ -83,20 +81,19 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoadingMore = true);
 
     try {
+      final searchQuery = ref.read(searchQueryProvider);
+      final selectedCategoryId = ref.read(selectedCategoryProvider);
+      
       Query query = FirebaseFirestore.instance.collection('products');
 
-      // 1. SERVER-SIDE SEARCH (Free Way)
-      if (_searchQuery.isNotEmpty) {
-        query = query.where('searchKeywords', arrayContains: _searchQuery.toLowerCase().trim());
+      if (searchQuery.isNotEmpty) {
+        query = query.where('searchKeywords', arrayContains: searchQuery.toLowerCase().trim());
       }
 
-      // 2. SERVER-SIDE CATEGORY FILTER
-      if (_selectedCategoryId != null) {
-        query = query.where('categoryId', isEqualTo: int.parse(_selectedCategoryId!));
+      if (selectedCategoryId != null) {
+        query = query.where('categoryId', isEqualTo: selectedCategoryId);
       }
 
-      // 3. ORDERING & PAGINATION
-      // Note: You must click the error link in console to create composite index!
       query = query.orderBy('dateCreated', descending: true).limit(_pageSize);
 
       if (_lastDocument != null) {
@@ -126,10 +123,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    // Watch providers
+    final user = ref.watch(currentUserProvider);
+    final userProfile = ref.watch(userProfileProvider).valueOrNull;
+    final cartCount = ref.watch(cartItemCountProvider);
 
     return Scaffold(
-      appBar: _buildAppBar(user),
+      appBar: _buildAppBar(user, userProfile, cartCount),
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
@@ -139,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.all(16),
               child: TextField(
                 controller: _searchController,
-                onChanged: _onSearchChanged, // Used debouncer here
+                onChanged: _onSearchChanged,
                 decoration: InputDecoration(
                   hintText: 'Search products...',
                   prefixIcon: const Icon(Icons.search),
@@ -157,17 +157,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-          // Product Grid (Directly using _products from server)
+          // Product Grid
           if (_products.isEmpty && !_isLoadingMore)
             _buildEmptyState()
           else
             SliverPadding(
               padding: const EdgeInsets.all(16),
               sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: getCrossAxisCount(context), crossAxisSpacing: 12, mainAxisSpacing: 12),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: getCrossAxisCount(context),
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final product = _products[index];
-                  return ProductCard(productId: product.id, product: product, userModel: widget.userModel);
+                  return ProductCard(productId: product.id, product: product, userModel: userProfile ?? widget.userModel);
                 }, childCount: _products.length),
               ),
             ),
@@ -187,8 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  //   // --- UI Helper Methods ---
-  PreferredSizeWidget _buildAppBar(User? user) {
+  PreferredSizeWidget _buildAppBar(dynamic user, UserModel? userProfile, int cartCount) {
     return PreferredSize(
       preferredSize: const Size.fromHeight(70),
       child: Container(
@@ -214,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           scale: value,
                           child: Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.25), borderRadius: BorderRadius.circular(15)),
+                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(15)),
                             child: const Icon(Icons.shopping_bag, color: Colors.white, size: 28),
                           ),
                         );
@@ -232,7 +235,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildIconButton(
                       icon: Icons.settings_outlined,
                       onPressed: () {
-                        final user = FirebaseAuth.instance.currentUser;
                         if (user == null) {
                           showLoginPrompt(context, text: "You need to sign in to access settings");
                           return;
@@ -240,24 +242,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
                       },
                     ),
-                    if ((widget.userModel?.roles.contains(UserRoles.seller) ?? false) ||
-                        (widget.userModel?.roles.contains(UserRoles.admin) ?? false))
+                    if ((userProfile?.roles.contains(UserRoles.seller) ?? false) ||
+                        (userProfile?.roles.contains(UserRoles.admin) ?? false))
                       _buildIconButton(
                         icon: Icons.add_box_outlined,
                         onPressed: () {
                           Navigator.push(context, MaterialPageRoute(builder: (_) => const AddProductScreen()));
                         },
                       ),
-                    StreamBuilder<QuerySnapshot>(
-                      stream: user != null ? FirebaseFirestore.instance.collection('users').doc(user.uid).collection('cart').snapshots() : null,
-                      builder: (context, snapshot) {
-                        int count = 0;
-                        if (snapshot.hasData) {
-                          count = snapshot.data!.docs.fold(0, (sum, doc) => sum + (doc.get('quantity') as int));
-                        }
-                        return _buildCartBadge(context, count);
-                      },
-                    ),
+                    _buildCartBadge(context, cartCount),
                   ],
                 ),
               ],
@@ -269,13 +262,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Stack _buildCartBadge(BuildContext context, int count) {
+    final user = ref.watch(currentUserProvider);
     return Stack(
       clipBehavior: Clip.none,
       children: [
         _buildIconButton(
           icon: Icons.shopping_cart_outlined,
           onPressed: () {
-            final user = FirebaseAuth.instance.currentUser;
             if (user == null) {
               showLoginPrompt(context);
               return;
@@ -307,6 +300,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategoryList() {
+    final selectedCategoryId = ref.watch(selectedCategoryProvider);
+    
     return Container(
       height: 50,
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -316,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
         itemBuilder: (context, index) {
           final isAll = index == 0;
           final category = isAll ? null : productCategories[index - 1];
-          final isSelected = isAll ? _selectedCategoryId == null : _selectedCategoryId == category?.categoryId.toString();
+          final isSelected = isAll ? selectedCategoryId == null : selectedCategoryId == category?.categoryId;
 
           return Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -324,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
               label: Text(isAll ? 'All' : category!.name),
               selected: isSelected,
               onSelected: (selected) {
-                setState(() => _selectedCategoryId = isAll ? null : category!.categoryId.toString());
+                ref.read(selectedCategoryProvider.notifier).state = isAll ? null : category!.categoryId;
                 _refreshProducts();
               },
               selectedColor: const Color(0xFFFF6B35),

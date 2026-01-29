@@ -27,7 +27,7 @@ firebase deploy --only functions:get_r2_presigned_url
 
 firebase functions:delete --all
 
-
+firebase functions:secrets:set GEOAPIFY_API_KEY
 pip3 install -r requirements.txt
 source venv/bin/activate 
 

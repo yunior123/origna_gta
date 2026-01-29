@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SellerRegistrationScreen extends StatefulWidget {
@@ -59,9 +60,7 @@ class _SellerRegistrationScreenState extends State<SellerRegistrationScreen> wit
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Become a Seller', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
+      appBar: AppBarFactory.simple(title: 'Become a Seller'),
       backgroundColor: const Color(0xFFF5F5F5),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance.collection(Collections.users).doc(user.uid).snapshots(),

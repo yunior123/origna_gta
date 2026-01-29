@@ -7,6 +7,7 @@ import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/editaddress_screen.dart';
 import 'package:origna_gta/terms_screen.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -79,9 +80,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Checkout', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
+      appBar: AppBarFactory.simple(title: 'Checkout'),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
@@ -153,7 +152,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha:0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               )
@@ -225,7 +224,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Total', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text('Estimated Total', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   Text(
                     '\$${(widget.total + (getTaxRate(state) * widget.total) + shippingCost).toStringAsFixed(2)}',
                     style: const TextStyle(
@@ -235,6 +234,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Taxes and total will be confirmed at payment.',
+                style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
               ),
             ],
           ),
@@ -318,7 +322,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha:0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               )
@@ -331,7 +335,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF6B35).withOpacity(0.1),
+                    color: const Color(0xFFFF6B35).withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -370,7 +374,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha:0.1),
             blurRadius: 10,
             offset: const Offset(0, -5),
           )
@@ -409,7 +413,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('$taxName (${(rate * 100).toStringAsFixed(2)}%)', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+            Text('$taxName (Est. ${(rate * 100).toStringAsFixed(2)}%)', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
             Text('\$${taxAmount.toStringAsFixed(2)}', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
           ],
         ),

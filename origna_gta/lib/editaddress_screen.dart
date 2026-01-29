@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -42,7 +43,7 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.address == null ? 'Add Address' : 'Edit Address')),
+      appBar: AppBarFactory.simple(title: widget.address == null ? 'Add Address' : 'Edit Address'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -101,7 +102,7 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.1), blurRadius: 8, offset: const Offset(0, 2))],
                   ),
                   child: ListView.builder(
                     shrinkWrap: true,
@@ -241,7 +242,7 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
         });
       }
     } catch (e) {
-      print('Error fetching address suggestions: $e');
+      debugPrint('Error fetching address suggestions: $e');
     }
   }
 

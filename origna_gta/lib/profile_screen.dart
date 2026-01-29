@@ -10,6 +10,7 @@ import 'package:origna_gta/seller_orders_screen.dart';
 import 'package:origna_gta/seller_registration_screen.dart';
 import 'package:origna_gta/terms_screen.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -19,9 +20,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings & Profile', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
+      appBar: AppBarFactory.simple(title: 'Settings & Profile'),
       body: user == null
           ? const Center(child: Text('Please log in'))
           : StreamBuilder<DocumentSnapshot>(

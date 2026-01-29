@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
 
 /// Screen for buyers to approve or reject shipping cost changes
 /// This is shown when the seller's actual shipping cost exceeds the estimate by more than 20%
@@ -22,9 +23,7 @@ class ShippingApprovalScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Shipping Approvals', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
+      appBar: AppBarFactory.simple(title: 'Shipping Approvals'),
       backgroundColor: const Color(0xFFF5F5F5),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance

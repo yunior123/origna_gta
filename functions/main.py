@@ -26,6 +26,7 @@ import traceback
 from mailjet_rest import Client
 import re
 from enum import Enum
+import requests
 
 # ============================================================================
 # CONSTANTS - Must match Flutter constants.dart
@@ -119,6 +120,7 @@ if IS_EMULATOR:
     STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "STRIPE_WEBHOOK_SECRET_REDACTED...")
     MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_API_KEY", "")
     MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_SECRET_KEY", "")
+    GEOAPIFY_API_KEY = os.environ.get("GEOAPIFY_API_KEY", "")
     SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "seller@orignagta.com")
     print("🧪 Running in EMULATOR mode")
 else:
@@ -128,6 +130,7 @@ else:
     STRIPE_WEBHOOK_SECRET = params.SecretParam("STRIPE_WEBHOOK_SECRET").value
     MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_API_KEY").value
     MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_SECRET_KEY").value
+    GEOAPIFY_API_KEY = params.SecretParam("GEOAPIFY_API_KEY").value
     SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "seller@orignagta.com")
     print("🚀 Running in PRODUCTION mode")
 
@@ -516,33 +519,185 @@ def log_webhook_to_database(
 # STRIPE CHECKOUT FUNCTIONS
 # ============================================================================
 
-"""
-CORRECTED create_checkout_session function for main.py
-Replace the existing function with this version
 
-This version uses @https_fn.on_call which is compatible with
-Dart's FirebaseFunctions.instance.httpsCallable()
-"""
+# ============================================================================
+# SHIPPING & TAX CALCULATION HELPER FUNCTIONS
+# ============================================================================
+
+def get_tax_rate(province: str) -> float:
+    """Get tax rate for a Canadian province"""
+    tax_rates = {
+        'AB': 0.05,
+        'BC': 0.12,
+        'MB': 0.12,
+        'NB': 0.15,
+        'NL': 0.15,
+        'NT': 0.05,
+        'NS': 0.15,
+        'NU': 0.05,
+        'ON': 0.13,
+        'PE': 0.15,
+        'QC': 0.14975,
+        'SK': 0.11,
+        'YT': 0.05,
+    }
+    return tax_rates.get(province, 0.13)
+
+
+def _are_adjacent_provinces(p1: str, p2: str) -> bool:
+    """Check if two provinces are adjacent"""
+    adjacency = {
+        'BC': ['AB', 'YT', 'NT'],
+        'AB': ['BC', 'SK', 'NT'],
+        'SK': ['AB', 'MB', 'NT', 'NU'],
+        'MB': ['SK', 'ON', 'NU'],
+        'ON': ['MB', 'QC'],
+        'QC': ['ON', 'NB', 'NL'],
+        'NB': ['QC', 'NS', 'PE'],
+        'NS': ['NB', 'PE'],
+        'PE': ['NB', 'NS'],
+        'NL': ['QC'],
+        'YT': ['BC', 'NT'],
+        'NT': ['BC', 'AB', 'SK', 'YT', 'NU'],
+        'NU': ['SK', 'MB', 'NT'],
+    }
+    return p2 in adjacency.get(p1, [])
+
+
+def _are_same_region(p1: str, p2: str) -> bool:
+    """Check if two provinces are in the same region"""
+    regions = {
+        'West': ['BC', 'AB'],
+        'Prairies': ['SK', 'MB'],
+        'Central': ['ON', 'QC'],
+        'Atlantic': ['NB', 'NS', 'PE', 'NL'],
+        'North': ['YT', 'NT', 'NU'],
+    }
+    for region_provinces in regions.values():
+        if p1 in region_provinces and p2 in region_provinces:
+            return True
+    return False
+
+
+def _calculate_tiered_shipping(distance_km: float, item_count: int) -> float:
+    """Calculate shipping cost based on distance and item count"""
+    base_cost = 34.99  # Default high
+
+    if distance_km <= 50:
+        base_cost = 5.99
+    elif distance_km <= 150:
+        base_cost = 8.99
+    elif distance_km <= 500:
+        base_cost = 12.99
+    elif distance_km <= 1000:
+        base_cost = 16.99
+    elif distance_km <= 2000:
+        base_cost = 22.99
+    elif distance_km <= 4000:
+        base_cost = 28.99
+    
+    # Additional items cost
+    additional_items_cost = (item_count - 1) * (base_cost * 0.2)
+    
+    # Cap additional cost at 50% of base
+    capped_additional = min(additional_items_cost, base_cost * 0.5)
+    
+    return base_cost + capped_additional
+
+
+def _calculate_fallback_shipping(item_count: int, seller_province: str, buyer_province: str) -> float:
+    """Fallback shipping calculation using province matrix"""
+    base_cost = 29.99  # Default Cross-country
+
+    if seller_province == buyer_province:
+        base_cost = 12.99
+    elif _are_adjacent_provinces(seller_province, buyer_province):
+        base_cost = 18.99
+    elif _are_same_region(seller_province, buyer_province):
+        base_cost = 24.99
+    
+    additional_cost = (item_count - 1) * (base_cost * 0.2)
+    capped_additional = min(additional_cost, base_cost * 0.5)
+    
+    return base_cost + capped_additional
+
+
+def calculate_shipping_cost(items: List[Dict], buyer_address: Dict) -> float:
+    """
+    Server-side shipping calculation.
+    Fetches distances via Geoapify or falls back to province rules.
+    """
+    if not buyer_address or not buyer_address.get('latitude') or not buyer_address.get('longitude'):
+        print("⚠️ Buyer address missing coordinates")
+        return 0.0
+
+    total_shipping = 0.0
+    
+    # Group items by seller
+    items_by_seller = {}
+    for item in items:
+        seller_id = item.get('sellerId')
+        if seller_id:
+            if seller_id not in items_by_seller:
+                items_by_seller[seller_id] = []
+            items_by_seller[seller_id].append(item)
+    
+    for seller_id, seller_items in items_by_seller.items():
+        # Get seller address from first item (enriched by main function)
+        seller_address = seller_items[0].get('sellerAddress', {})
+        
+        seller_lat = seller_address.get('latitude')
+        seller_lon = seller_address.get('longitude')
+        seller_state = seller_address.get('state', 'ON')
+        buyer_state = buyer_address.get('state', 'ON')
+        
+        item_count = sum(item.get('quantity', 1) for item in seller_items)
+        
+        if seller_lat and seller_lon and GEOAPIFY_API_KEY:
+            try:
+                # Call Geoapify Route Matrix
+                url = f"https://api.geoapify.com/v1/routematrix?apiKey={GEOAPIFY_API_KEY}"
+                payload = {
+                    "mode": "drive",
+                    "sources": [{"location": [seller_lon, seller_lat]}],
+                    "targets": [{"location": [buyer_address['longitude'], buyer_address['latitude']]}]
+                }
+                
+                response = requests.post(url, json=payload, timeout=5)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    distance_km = data['sources_to_targets'][0][0]['distance'] / 1000.0
+                    cost = _calculate_tiered_shipping(distance_km, item_count)
+                    total_shipping += cost
+                    continue
+            except Exception as e:
+                print(f"⚠️ Geoapify error: {str(e)}")
+        
+        # Fallback
+        cost = _calculate_fallback_shipping(item_count, seller_state, buyer_state)
+        total_shipping += cost
+        
+    return total_shipping
+
+# Stripe Tax Code Mapping
+# Maps internal categoryId to Stripe Tax Codes (TXCD)
+# https://stripe.com/docs/tax/tax-categories
+CATEGORY_TAX_CODE_MAP = {
+    14: "txcd_10000000", # Books
+    17: "txcd_20030002", # Baby & Kids -> Mapping to Children's Clothing to handle rebates
+    19: "txcd_30060005", # Groceries -> Basic Groceries (Zero-rated)
+    21: "txcd_10000001", # Digital Products
+    # Defaults to txcd_99999999 (General Merchandise) for others
+}
+
+# ... (Previous imports and setup)
 
 @https_fn.on_call(cors=cors_config)
 def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Create Stripe Checkout Session - Callable Function
-    
-    Compatible with Dart: FirebaseFunctions.instance.httpsCallable('create_checkout_session')
-    
-    Args:
-        req.data: Order data from frontend
-        
-    Returns:
-        {
-            "url": Stripe checkout URL,
-            "sessionId": Stripe session ID,
-            "orderId": Firebase order ID
-        }
-        
-    Raises:
-        https_fn.HttpsError: On validation or processing errors
+    SECURE VERSION: Server-side validation + Stripe Tax
     """
     try:
         data = req.data
@@ -553,7 +708,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 message="Request body is required"
             )
         
-        # Validate order data
+        # Validate order data structure (keys existence)
         is_valid, error_msg = validate_order_data(data)
         if not is_valid:
             raise https_fn.HttpsError(
@@ -561,7 +716,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 message=error_msg
             )
         
-        # Extract user ID from auth context (more secure than trusting client)
+        # Extract user ID from auth context
         if req.auth is None:
             raise https_fn.HttpsError(
                 code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
@@ -569,20 +724,17 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             )
         
         auth_user_id = req.auth.uid
+        user_id = data.get('userId', auth_user_id)
         
-        # Get data from request
-        user_id = data.get('userId', auth_user_id)  # Use auth UID as fallback
-        customer_email = sanitize_email(data['customerEmail'])
-        amount = int(data['amount'])
-        currency = data.get('currency', 'cad').lower()
-        items = data['items']
-        delivery_info = data['deliveryInfo']
-        customer_id = data.get('customerId', '')
-        
-        # Validate user ID matches authenticated user (security)
         if user_id != auth_user_id:
             print(f"⚠️ User ID mismatch: claimed={user_id}, auth={auth_user_id}")
-            user_id = auth_user_id  # Use authenticated ID
+            user_id = auth_user_id
+
+        customer_email = sanitize_email(data['customerEmail'])
+        customer_id = data.get('customerId', '')
+        currency = data.get('currency', 'cad').lower()
+        delivery_info = data['deliveryInfo']
+        requested_items = data['items']
 
         # ================================================================
         # CANADA-ONLY SHIPPING VALIDATION
@@ -603,21 +755,28 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 message="Shipping is only available within Canada"
             )
 
-        print(f"✓ Delivery address validated: {delivery_state}, {delivery_country}")
+        print(f"✓ Delivery address validated: {delivery_state}")
 
         # ================================================================
-        # ATOMIC STOCK VALIDATION AND RESERVATION
+        # ATOMIC VALIDATION: STOCK & PRICE FETCHING
         # ================================================================
-        print("🔒 Validating and reserving stock...")
+        print("🔒 Validating stock and fetching trusted prices...")
 
         @firestore.transactional
-        def validate_and_reserve_stock(transaction):
-            """Atomically validate and decrement stock for all items"""
+        def validate_reserve_and_fetch(transaction):
+            """
+            Atomically:
+            1. Fetch product docs to get REAL prices and seller info
+            2. Validate stock
+            3. Decrement stock
+            4. Return trusted item list
+            """
             stock_updates = []
+            trusted_items = []
 
-            for item in items:
-                product_id = item.get('productId')
-                quantity = item.get('quantity', 1)
+            for req_item in requested_items:
+                product_id = req_item.get('productId')
+                quantity = req_item.get('quantity', 1)
 
                 if not product_id:
                     raise ValueError(f"Missing productId in item")
@@ -631,97 +790,125 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 product_data = product_doc.to_dict()
                 current_stock = product_data.get('stockQuantity', 0)
                 product_name = product_data.get('name', 'Unknown')
-
+                
+                # TRUSTED DATA
+                price = product_data.get('price', 0.0)
+                seller_id = product_data.get('sellerId')
+                seller_address = product_data.get('sellerAddress', {})
+                image_urls = product_data.get('imageUrls', [])
+                category_id = product_data.get('categoryId', 0)
+                product_tax_code = product_data.get('taxCode') # Optional override
+                
+                # Check stock
                 if current_stock < quantity:
                     raise ValueError(f"Insufficient stock for '{product_name}'. Available: {current_stock}, Requested: {quantity}")
 
                 stock_updates.append((product_ref, current_stock - quantity))
+                
+                # Build trusted item
+                trusted_items.append({
+                    'productId': product_id,
+                    'name': product_name,
+                    'description': product_data.get('description', ''),
+                    'price': float(price), # Server price
+                    'quantity': int(quantity),
+                    'imageUrls': image_urls,
+                    'sellerId': seller_id,
+                    'sellerAddress': seller_address,
+                    'categoryId': category_id,
+                    'taxCode': product_tax_code, # Explicit tax code from product
+                    'deliveryStatus': DeliveryStatus.PENDING,
+                    'trackingNumber': None,
+                    'confirmedByBuyer': False
+                })
 
-            # All validations passed, now decrement stock
+            # Commit stock updates
             for product_ref, new_stock in stock_updates:
                 transaction.update(product_ref, {'stockQuantity': new_stock})
 
-            return True
+            return trusted_items
 
         try:
             transaction = db.transaction()
-            validate_and_reserve_stock(transaction)
-            print("✅ Stock reserved successfully")
+            trusted_items = validate_reserve_and_fetch(transaction)
+            print("✅ Stock reserved and prices fetched successfully")
         except ValueError as e:
-            print(f"❌ Stock validation failed: {str(e)}")
+            print(f"❌ Validation failed: {str(e)}")
             raise https_fn.HttpsError(
                 code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
                 message=str(e)
             )
 
+        # ================================================================
+        # SERVER-SIDE CALCULATIONS (SUBTOTAL & SHIPPING)
+        # ================================================================
+        
+        # 1. Subtotal
+        subtotal = sum(item['price'] * item['quantity'] for item in trusted_items)
+        
+        # 2. Shipping Cost
+        shipping_cost = calculate_shipping_cost(trusted_items, delivery_info)
+        
+        # 3. Taxes - DELEGATED TO STRIPE
+        # We no longer calculate taxes here. Stripe Tax handles it.
+            
+        # ================================================================
+        # CREATE STRIPE SESSION WITH AUTOMATIC TAX
+        # ================================================================
+        
         # Create new order with auto-generated ID
         order_ref = db.collection(Collections.ORDERS).document()
         order_id = order_ref.id
-        print(f"📝 Creating order: {order_id}")
-
-        # Extract unique seller IDs
-        seller_ids = list(set([item.get('sellerId') for item in items if item.get('sellerId')]))
+        
+        seller_ids = list(set([item.get('sellerId') for item in trusted_items if item.get('sellerId')]))
         
         # Build Stripe line items
         line_items = []
-        for item in items:
-            # Get first image from imageUrls array if available
+        for item in trusted_items:
             images = []
-            if item.get('imageUrls') and len(item.get('imageUrls', [])) > 0:
+            if item.get('imageUrls') and len(item.get('imageUrls')) > 0:
                 images = [item['imageUrls'][0]]
+            
+            # Determine Tax Code
+            # 1. Product specific override
+            # 2. Category mapping
+            # 3. General merchandise fallback
+            tax_code = item.get('taxCode')
+            if not tax_code:
+                cat_id = item.get('categoryId', 0)
+                tax_code = CATEGORY_TAX_CODE_MAP.get(cat_id, "txcd_99999999")
             
             line_items.append({
                 "price_data": {
                     "currency": currency,
                     "product_data": {
                         "name": item.get('name', 'Product'),
-                        "images": images
+                        "images": images,
+                        "tax_code": tax_code, # STRIPE TAX KEY
                     },
-                    "unit_amount": int(item['price'] * 100),  # Convert to cents
+                    "unit_amount": int(item['price'] * 100),
+                    "tax_behavior": "exclusive" # Price does not include tax
                 },
                 "quantity": item.get('quantity', 1)
             })
         
-        # Add shipping if present
-        shipping_cost = data.get('shippingCost', 0)
+        # Add Shipping
         if shipping_cost > 0:
             line_items.append({
                 "price_data": {
                     "currency": currency,
                     "product_data": {
                         "name": "Shipping",
-                        "description": f"Delivery to {delivery_info.get('state', '')}"
+                        "description": f"Delivery to {delivery_state}",
+                        "tax_code": "txcd_92010001" # Shipping tax code
                     },
-                    "unit_amount": int(shipping_cost * 100)
+                    "unit_amount": int(shipping_cost * 100),
+                    "tax_behavior": "exclusive"
                 },
                 "quantity": 1
             })
-        
-        # Add taxes as separate line items
-        taxes = data.get('taxes', {})
-        for tax_name, tax_amount in taxes.items():
-            if tax_amount > 0:
-                line_items.append({
-                    "price_data": {
-                        "currency": currency,
-                        "product_data": {
-                            "name": tax_name,
-                            "description": "Tax"
-                        },
-                        "unit_amount": int(tax_amount * 100)
-                    },
-                    "quantity": 1
-                })
 
-        # Enrich items with delivery status and tracking
-        enriched_items = []
-        for item in items:
-            item_copy = item.copy()
-            item_copy['deliveryStatus'] = DeliveryStatus.PENDING
-            item_copy['trackingNumber'] = None
-            enriched_items.append(item_copy)
-
-        # Build success/cancel URLs
+        # Base URL
         base_url = "https://orignagta.ca"
         if IS_EMULATOR:
             base_url = "http://localhost:5000"
@@ -729,10 +916,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         success_url = f"{base_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}&order_id={order_id}"
         cancel_url = f"{base_url}/payment-cancel"
         
-        # Create Stripe checkout session with manual capture
-        # This allows us to authorize the payment first, then capture later
-        # when the seller confirms actual shipping cost
-        print(f"💳 Creating Stripe session for order {order_id} (manual capture)")
+        print(f"💳 Creating Stripe session for order {order_id} (Stripe Tax Enabled)")
         session = stripe.checkout.Session.create(
             mode="payment",
             payment_method_types=["card"],
@@ -740,8 +924,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             line_items=line_items,
             success_url=success_url,
             cancel_url=cancel_url,
+            automatic_tax={"enabled": True}, # STRIPE TAX ENABLED
             payment_intent_data={
-                "capture_method": "manual",  # KEY: Authorize only, capture later
+                "capture_method": "manual",
                 "metadata": {
                     "orderId": order_id,
                     "userId": user_id,
@@ -752,50 +937,56 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 "orderId": order_id,
                 "environment": "test" if IS_EMULATOR else "production"
             },
-            client_reference_id=order_id,  # Critical for webhook to find order
+            client_reference_id=order_id,
             billing_address_collection="auto",
-            expires_at=int((datetime.now().timestamp() + 1800))  # 30 minutes
+            shipping_address_collection={
+                 "allowed_countries": ["CA"]
+            },
+            expires_at=int((datetime.now().timestamp() + 1800))
         )
         
-        # Calculate authorization expiration (7 days from now)
         auth_expires_at = datetime.now() + timedelta(days=AUTHORIZATION_VALID_DAYS)
-
-        # Save order to Firestore with manual capture fields
+        
+        # NOTE: We don't know the exact taxes yet. Stripe calculates them.
+        # We will update the order with the FINAL tax amounts via Webhook (checkout.session.completed)
+        # For now, we save "calculated" taxes as None or Estimate.
+        # But to allow the frontend to proceed, we can just save 0/Empty and rely on the UI using the Stripe Hosted Page values?
+        # OR: We store the subtotal/shipping and mark status PENDING.
+        
+        # Save order to Firestore
         order_data = {
             "orderId": order_id,
             "userId": user_id,
             "customerId": customer_id,
             "customerEmail": customer_email,
-            "items": enriched_items,
+            "items": trusted_items,
             "sellerIds": seller_ids,
             "deliveryInfo": delivery_info,
-            "subtotal": data.get('subtotal', 0),
-            "taxes": taxes,
+            "subtotal": subtotal,
+            "taxes": {}, # Will be populated by Webhook
             "shippingCost": shipping_cost,
-            "total": data.get('total', 0),
+            "total": None, # Will be populated by Webhook or Session result
             "currency": currency,
-            "amount": amount,
+            "amount": None, # Will be populated by Webhook
             "status": OrderStatus.PENDING,
             "paymentStatus": PaymentStatus.AWAITING_PAYMENT,
             "stripeSessionId": session.id,
             "createdAt": firestore.SERVER_TIMESTAMP,
             "updatedAt": firestore.SERVER_TIMESTAMP,
-            # Manual capture fields
             "captureMethod": CaptureMethod.MANUAL,
-            "authorizedAmount": amount,  # Amount authorized in cents
-            "capturedAmount": None,  # Will be set when captured
-            "capturedAt": None,  # Timestamp when payment was captured
-            "estimatedShipping": shipping_cost,  # Original estimated shipping
-            "actualShipping": None,  # Seller will provide actual cost
+            "authorizedAmount": None,
+            "capturedAmount": None,
+            "capturedAt": None,
+            "estimatedShipping": shipping_cost,
+            "actualShipping": None,
             "shippingApprovalStatus": ShippingApprovalStatus.NOT_REQUIRED,
             "shippingApprovalRequired": False,
             "authorizationExpiresAt": auth_expires_at,
         }
         
         order_ref.set(order_data)
-        print(f"✅ Order {order_id} created successfully")
+        print(f"✅ Order {order_id} created successfully. Taxes will be calculated by Stripe.")
         
-        # Return response (no need for create_success_response wrapper)
         return {
             "url": session.url,
             "sessionId": session.id,
@@ -803,7 +994,6 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         }
         
     except https_fn.HttpsError:
-        # Re-raise HttpsError as-is
         raise
         
     except stripe.error.StripeError as e:
@@ -999,13 +1189,6 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                 
             elif event_type == 'payment_intent.payment_failed':
                 order_id = process_payment_intent_failed(event_data)
-
-            # Manual capture events
-            elif event_type == 'payment_intent.amount_capturable_updated':
-                order_id = process_amount_capturable_updated(event_data)
-
-            elif event_type == 'payment_intent.canceled':
-                order_id = process_payment_intent_canceled(event_data)
 
             elif event_type == 'charge.refunded':
                 order_id = process_charge_refunded(event_data)
@@ -1421,84 +1604,6 @@ def process_payment_intent_failed(payment_intent: Dict) -> Optional[str]:
 
         return order_id
 
-    return None
-
-
-def process_amount_capturable_updated(payment_intent: Dict) -> Optional[str]:
-    """
-    Process payment_intent.amount_capturable_updated event.
-    This is triggered when a manual capture payment is authorized.
-    """
-    print("\n💳 Processing: payment_intent.amount_capturable_updated")
-    print(f"  Payment Intent ID: {payment_intent['id']}")
-    print(f"  Amount Capturable: ${payment_intent.get('amount_capturable', 0) / 100}")
-
-    # Find order by payment intent ID
-    orders = db.collection(Collections.ORDERS).where(
-        'stripePaymentIntentId', '==', payment_intent['id']
-    ).limit(1).get()
-
-    if orders:
-        order_ref = orders[0].reference
-        order_id = order_ref.id
-
-        print(f"  Found order: {order_id}")
-
-        # Update order with capturable amount
-        order_ref.update({
-            "amountCapturable": payment_intent.get('amount_capturable', 0),
-            "updatedAt": firestore.SERVER_TIMESTAMP,
-        })
-
-        print(f"  ✅ Updated capturable amount")
-        return order_id
-
-    print(f"  ⚠️ No order found for payment intent")
-    return None
-
-
-def process_payment_intent_canceled(payment_intent: Dict) -> Optional[str]:
-    """
-    Process payment_intent.canceled event.
-    This is triggered when a payment authorization is cancelled or expires.
-    """
-    print("\n❌ Processing: payment_intent.canceled")
-    print(f"  Payment Intent ID: {payment_intent['id']}")
-    print(f"  Cancellation Reason: {payment_intent.get('cancellation_reason')}")
-
-    # Find order by payment intent ID
-    orders = db.collection(Collections.ORDERS).where(
-        'stripePaymentIntentId', '==', payment_intent['id']
-    ).limit(1).get()
-
-    if orders:
-        order_ref = orders[0].reference
-        order_data = orders[0].to_dict()
-        order_id = order_ref.id
-
-        print(f"  Found order: {order_id}")
-
-        # Only update if not already in a terminal state
-        current_status = order_data.get('paymentStatus')
-        if current_status not in [PaymentStatus.PAID, PaymentStatus.REFUNDED, 'cancelled']:
-            # Restore stock
-            _restore_stock_for_order(order_data)
-
-            order_ref.update({
-                "status": OrderStatus.CANCELLED,
-                "paymentStatus": 'cancelled',
-                "cancellationReason": payment_intent.get('cancellation_reason', 'Authorization cancelled'),
-                "cancelledAt": firestore.SERVER_TIMESTAMP,
-                "updatedAt": firestore.SERVER_TIMESTAMP,
-            })
-
-            print(f"  ✅ Order cancelled and stock restored")
-        else:
-            print(f"  ℹ️ Order already in terminal state: {current_status}")
-
-        return order_id
-
-    print(f"  ⚠️ No order found for payment intent")
     return None
 
 
@@ -2928,6 +3033,79 @@ def auto_release_payouts(event: scheduler_fn.ScheduledEvent) -> None:
         print(traceback.format_exc())
 
 
+@scheduler_fn.on_schedule(schedule="every 24 hours")
+def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    Scheduled function to check for expired Stripe authorizations.
+    Authorizations typically expire after 7 days.
+    If expired:
+    1. Mark order as cancelled
+    2. Restore stock
+    3. Log the expiry
+    """
+    print("=" * 80)
+    print("⏰ CHECK EXPIRED AUTHORIZATIONS - Scheduled Job Started")
+    print(f"Timestamp: {datetime.now().isoformat()}")
+    print("=" * 80)
+
+    try:
+        # Query for authorized orders where expiration date < now
+        now = datetime.now()
+        
+        # Note: In a real production app with many orders, you might need pagination
+        # or a composite index on [paymentStatus, authorizationExpiresAt]
+        orders_query = db.collection(Collections.ORDERS).where(
+            'paymentStatus', '==', 'authorized'
+        ).where(
+            'authorizationExpiresAt', '<', now
+        ).stream()
+
+        expired_count = 0
+
+        for order_doc in orders_query:
+            order_id = order_doc.id
+            order_data = order_doc.to_dict()
+
+            print(f"\n⚠️ Found expired authorization: {order_id}")
+            print(f"  Expires At: {order_data.get('authorizationExpiresAt')}")
+
+            try:
+                # 1. Update order status
+                db.collection(Collections.ORDERS).document(order_id).update({
+                    "status": OrderStatus.CANCELLED,
+                    "paymentStatus": PaymentStatus.SESSION_EXPIRED,
+                    "cancellationReason": "Payment authorization expired (auto-cancelled)",
+                    "updatedAt": firestore.SERVER_TIMESTAMP,
+                })
+
+                # 2. Restore stock
+                _restore_stock_for_order(order_data)
+                
+                # 3. Cancel Stripe PaymentIntent if possible (best effort)
+                payment_intent_id = order_data.get('stripePaymentIntentId')
+                if payment_intent_id:
+                   try:
+                       stripe.PaymentIntent.cancel(payment_intent_id)
+                       print(f"  ✓ Stripe PaymentIntent cancelled")
+                   except Exception as stripe_error:
+                       print(f"  ⚠️ Could not cancel Stripe intent (likely already expired): {stripe_error}")
+
+                expired_count += 1
+                print(f"  ✅ Order {order_id} cancelled and stock restored")
+
+            except Exception as e:
+                print(f"  ❌ Failed to process expired order {order_id}: {str(e)}")
+        
+        print("\n" + "=" * 80)
+        print(f"✅ EXPIRED CHECK COMPLETE")
+        print(f"  Orders cancelled: {expired_count}")
+        print("=" * 80)
+
+    except Exception as e:
+        print(f"❌ Error in expired authorizations job: {str(e)}")
+        print(traceback.format_exc())
+
+
 # ============================================================================
 # MANUAL CAPTURE PAYMENT FUNCTIONS
 # ============================================================================
@@ -3201,9 +3379,10 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 message="You don't have items in this order"
             )
 
-        # Verify order is in authorized state (not already captured)
+        # Verify order is in authorized OR paid state (for multi-seller support)
+        # If one seller already captured, status is PAID, but other sellers still need to ship
         payment_status = order_data.get('paymentStatus')
-        if payment_status not in ['authorized']:
+        if payment_status not in ['authorized', PaymentStatus.PAID]:
             raise https_fn.HttpsError(
                 code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
                 message=f"Payment cannot be captured (current status: {payment_status})"
@@ -3232,21 +3411,25 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
 
         # Get the capture amount (may have been updated with actual shipping)
         capture_amount = order_data.get('amount')  # In cents
+        is_already_paid = payment_status == PaymentStatus.PAID
 
-        # Capture the payment
-        print(f"  💰 Capturing ${capture_amount / 100:.2f} CAD")
-        try:
-            payment_intent = stripe.PaymentIntent.capture(
-                payment_intent_id,
-                amount_to_capture=capture_amount,
-            )
-            print(f"  ✅ Payment captured successfully")
-        except stripe.error.StripeError as e:
-            print(f"  ❌ Stripe capture failed: {str(e)}")
-            raise https_fn.HttpsError(
-                code=https_fn.FunctionsErrorCode.INTERNAL,
-                message=f"Payment capture failed: {str(e)}"
-            )
+        # Capture the payment ONLY if not already paid
+        if not is_already_paid:
+            print(f"  💰 Capturing ${capture_amount / 100:.2f} CAD")
+            try:
+                payment_intent = stripe.PaymentIntent.capture(
+                    payment_intent_id,
+                    amount_to_capture=capture_amount,
+                )
+                print(f"  ✅ Payment captured successfully")
+            except stripe.error.StripeError as e:
+                print(f"  ❌ Stripe capture failed: {str(e)}")
+                raise https_fn.HttpsError(
+                    code=https_fn.FunctionsErrorCode.INTERNAL,
+                    message=f"Payment capture failed: {str(e)}"
+                )
+        else:
+             print(f"  ℹ️ Order already PAID. Skipping Stripe capture, updating shipment info only.")
 
         # Update items with shipped status and tracking
         items = order_data.get('items', [])
@@ -3257,13 +3440,20 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                     item['trackingNumber'] = tracking_number
 
         # Update order
-        order_ref.update({
+        update_data = {
             'items': items,
-            'paymentStatus': PaymentStatus.PAID,
-            'capturedAmount': capture_amount,
-            'capturedAt': firestore.SERVER_TIMESTAMP,
             'updatedAt': firestore.SERVER_TIMESTAMP,
-        })
+        }
+
+        # Only update payment fields if we actually performed the capture
+        if not is_already_paid:
+            update_data.update({
+                'paymentStatus': PaymentStatus.PAID,
+                'capturedAmount': capture_amount,
+                'capturedAt': firestore.SERVER_TIMESTAMP,
+            })
+
+        order_ref.update(update_data)
 
         print(f"  ✅ Order updated with captured payment")
 

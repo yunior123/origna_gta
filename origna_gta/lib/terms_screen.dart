@@ -1,5 +1,6 @@
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
 
 class TermsScreen extends StatelessWidget {
   const TermsScreen({super.key});
@@ -7,9 +8,7 @@ class TermsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Terms & Conditions', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
+      appBar: AppBarFactory.simple(title: 'Terms & Conditions'),
       body: FutureBuilder<String>(
         future: _loadTermsContent(),
         builder: (context, snapshot) {

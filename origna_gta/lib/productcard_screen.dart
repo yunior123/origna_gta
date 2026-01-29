@@ -337,6 +337,9 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
       return;
     }
 
+    // Capture messenger before async gaps
+    final messenger = ScaffoldMessenger.of(context);
+
     // Optimistic UI update
     if (!mounted) return;
     setState(() => _isFavorite = !_isFavorite);
@@ -368,7 +371,7 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
       // Revert optimistic update on error
       if (mounted) {
         setState(() => _isFavorite = !_isFavorite);
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text('Error updating favorites: $e'),
             backgroundColor: Colors.red[700],

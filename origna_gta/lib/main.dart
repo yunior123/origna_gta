@@ -5,6 +5,7 @@ import 'package:origna_gta/firebase_options.dart';
 import 'package:origna_gta/origna_app.dart';
 import 'package:origna_gta/services/conf_services.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // OrignaGta -e-commerce store in Canada only, inspired by Amazon, 
 // Meta Marketplace, Alibaba, Instacart
@@ -19,6 +20,17 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 // in the entire app.
 // 3.Scale to more than 100 million users a year
 // 4.Easy to maintain, only one developer with super powers using claude pro
+
+// Review and finish up
+// Confirm your funds flow and business details. We’ll review this information to determine onboarding requirements for sellers.
+// Summary
+
+// Funds flow
+// Sellers will collect payments directly
+// Industry
+// E-commerce products
+// Confirming this setup will set your platform configuration, you won’t be able to change it.
+// You can continue creating test accounts and charges while we review your details.
 // ============================================================================
 // ARCHITECTURE NOTES 
 // ============================================================================
@@ -152,10 +164,13 @@ void main() async {
       options.environment = kReleaseMode ? 'production' : 'development';
       options.tracesSampleRate = 0.1; // 10% of transactions
       options.beforeSend = (event, hint) {
-        // Filter sensitive data
+        // Filter sensitive data - strip emails before sending
         if (event.user != null) {
-          event.user = event.user!.copyWith(
-            email: null, // Don't send emails to Sentry
+          event.user = SentryUser(
+            id: event.user!.id,
+            username: event.user!.username,
+            ipAddress: event.user!.ipAddress,
+            data: event.user!.data,
           );
         }
         return event;
@@ -191,7 +206,7 @@ void main() async {
         // Let Flutter still show errors in debug
         FlutterError.presentError(details);
       };
-      runApp(const OrignaApp());
+      runApp(const ProviderScope(child: OrignaApp()));
     },
   );
 }
@@ -278,96 +293,15 @@ void main() async {
 // REMAINING V1.1 TODOS
 // ============================================================================
 // TODO v1.1: MVVM with Riverpod for state management (major refactor, do after launch)
-// TODO v1.1: Improve UI/UX with animations throughout the app
+// TODO v1.1: Improve UI/UX with animations throughout the app and nice decoration similar to home screen style
 // TODO v1.1: Admin panel for moderation (seller management, user messages, etc.)
-// TODO:v1.1: change way payment is handled, do it like below, Woocommerce, shoppify way, release payment to seller onces delivery is confirmed:
-// stripe.accounts.create({ type: 'express' })
-// Generate onboarding link:
-// stripe.accountLinks.create({
-//   account: acct_id,
-//   refresh_url: YOUR_URL,
-//   return_url: YOUR_URL,
-//   type: 'account_onboarding',
-// })
-// Buyers will purchase directly from sellers via stripe, search for best practices.
-// The core problem
-// User pays → shipping is only estimated → seller later discovers shipping costs way more than expected.
-// If you do pure WooCommerce-style instant payouts, this can hurt sellers badly and create disputes.
-// The correct marketplace pattern (used by Amazon, Etsy, Airbnb)
-// 👉 Authorize first, capture later
-// 👉 Delay seller payout until shipping is confirmed
-// This solves your issue without going full “Custom payouts”.
-// ✅ Recommended solution (Stripe-native & safe)
-// 1️⃣ Use Payment Intent with manual capture
-// At checkout:
-// Authorize full amount (product + estimated shipping)
-// Do NOT capture yet
-// Funds are held (up to ~7 days on cards)
-// 2️⃣ Seller confirms real shipping cost
-// Seller enters actual shipping price
-// Your system compares:
-// estimated vs real shipping
-// If higher → you:
-// update the amount (within Stripe rules)
-// or request user confirmation (clean UX)
-// 3️⃣ Capture payment only when shipping is locked
-// Capture final amount
-// Create transfer to seller (minus platform fee)
-// Stripe handles payout timing
-// This is how Amazon handles variable shipping.
-// What if shipping becomes much more expensive?
-// You have 3 safe options:
-// Option A — Ask buyer for approval (best UX)
-// “Shipping cost updated from $12 → $28. Approve?”
-// One-click confirmation
-// Capture after approval
-// Option B — Split payment
-// Capture product price immediately
-// Capture shipping separately once confirmed
-// Option C — Cap shipping risk
-// Platform covers difference up to X$
-// Beyond that → seller must approve or cancel
-// 🚫 What NOT to do
-// ❌ Instant payout to seller
-// ❌ Let seller lose money
-// ❌ Auto-charge extra without buyer consent
-// ❌ Manual Stripe Custom unless necessary
-// Those cause disputes, chargebacks, and Stripe account reviews.
-// Stripe setup you should use
-// Best combo for you:
-// Stripe Connect Express
-// Payment Intents
-// capture_method = manual
-// Delayed transfer to seller
-// You keep:
-// Low fees
-// Low legal risk
-// High trust
-// Flow summary (simple)
-// Buyer checks out (estimated shipping)
-// Payment authorized (not captured)
-// Seller ships & confirms cost
-// Buyer approves if needed
-// Payment captured
-// Stripe pays seller automatically
-// Bonus: Seller protection rule (important)
-// Add this to your marketplace rules:
-// “If actual shipping exceeds estimate by more than X%, buyer confirmation is required.”
-// This protects you, buyers, and sellers.
-// TODO: Remove unnecessary webhooks, it should be woocommerce style:
-//    - checkout.session.completed, async_payment_succeeded, async_payment_failed, expired
-//    - payment_intent.succeeded, payment_intent.payment_failed
-//    - charge.refunded, charge.dispute.created, charge.dispute.closed
-//    - account.updated
-//    - transfer.created, transfer.reversed
-//    - payout.paid, payout.failed
-//    - refund.created, refund.failed
-//TODO should we modify the code like this or will it break somehting otherwise?
-// static const List<String> ALLOWED_FORMATS = ['jpg', 'jpeg', 'png', 'webp'];
-// final extension = model.fileName.split('.').last.toLowerCase();
-// if (!ALLOWED_FORMATS.contains(extension)) return null;
+// [DONE] v1.1: Use Stripe Tax instead of hardcoding taxes calculation (compliance automation, product exemptions)
 
-// TODO fix all dart compiler warnings, code should be clean.
-
-// TODO use stripe tax instead of hardcoding taxes calculation
-// TODO use same custom app bar in all screens where is needed, except for home screen
+// [DONE] Remove unnecessary webhooks - cleaned up payment_intent.amount_capturable_updated and payment_intent.canceled
+// [DONE] Image format validation - added allowedFormats check in _uploadImagesInParallel
+// [DONE] Fix all dart compiler warnings - flutter analyze shows 0 issues
+// [DONE] Use same custom app bar in all screens - adopted CustomAppBar via AppBarFactory.simple()
+// [DONE] Payment flow change (WooCommerce/Shopify style) - Manual capture, seller confirms shipping,
+//        buyer approval for >20% increase, delayed payout to seller with 2.5% fee, auto-release after 14 days
+// TODO v4.0 google ranking in search SEO optimization
+// [ACTION REQUIRED] Enable Stripe Tax in your Stripe Dashboard Settings

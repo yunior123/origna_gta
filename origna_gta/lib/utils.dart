@@ -827,6 +827,7 @@ class ProductModel {
   final double? heightCm; // Height in centimeters
   final bool isLocalDeliveryOnly; // For food/perishables - same day local delivery
   final int estimatedShipDays; // Seller's estimated shipping time in days
+  final String? taxCode; // Optional Stripe Tax Code (e.g. txcd_10000000)
 
   ProductModel({
     required this.id,
@@ -848,6 +849,7 @@ class ProductModel {
     this.heightCm,
     this.isLocalDeliveryOnly = false,
     this.estimatedShipDays = 3,
+    this.taxCode,
   });
 
   factory ProductModel.fromDocument(DocumentSnapshot doc) {
@@ -882,6 +884,7 @@ class ProductModel {
       heightCm: map['heightCm'] != null ? _parseDouble(map['heightCm']) : null,
       isLocalDeliveryOnly: map['isLocalDeliveryOnly'] ?? false,
       estimatedShipDays: _parseInt(map['estimatedShipDays']),
+      taxCode: map['taxCode']?.toString(),
     );
   }
 
@@ -906,6 +909,7 @@ class ProductModel {
       if (heightCm != null) 'heightCm': heightCm,
       'isLocalDeliveryOnly': isLocalDeliveryOnly,
       'estimatedShipDays': estimatedShipDays,
+      if (taxCode != null) 'taxCode': taxCode,
     };
   }
 
