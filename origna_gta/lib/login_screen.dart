@@ -2,17 +2,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/terms_screen.dart';
 import 'package:origna_gta/utils.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
@@ -270,37 +272,28 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
+    final authController = ref.read(authControllerProvider);
+    
     try {
       if (_isLogin) {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: _emailController.text.trim(), 
-          password: _passwordController.text.trim(),
+        await authController.signInWithEmail(
+          _emailController.text.trim(), 
+          _passwordController.text.trim(),
         );
         
-        // Show success message for login
         if (mounted) {
           _showSuccessSnackBar('Welcome back!');
-          // Pop the login screen - AuthWrapper will handle showing MainScreen
           Navigator.of(context).pop();
         }
       } else {
-        final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
+        await authController.registerWithEmail(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+          _nameController.text.trim(),
         );
-        final userModel = UserModel(
-          uid: userCredential.user!.uid,
-          email: _emailController.text.trim(),
-          name: _nameController.text.trim(),
-          roles: <String>[],
-          createdAt: DateTime.now(),
-        );
-        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set(userModel.toMap());
         
-        // Show success message for signup
         if (mounted) {
           _showSuccessSnackBar('Account created successfully!');
-          // Pop the login screen - AuthWrapper will handle showing MainScreen
           Navigator.of(context).pop();
         }
       }
