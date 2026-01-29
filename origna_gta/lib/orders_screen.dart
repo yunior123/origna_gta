@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/rating_dialog.dart';
+import 'package:origna_gta/shipping_approval_screen.dart';
 import 'package:origna_gta/utils.dart';
 
 class OrdersScreen extends StatelessWidget {
@@ -29,7 +30,10 @@ class OrdersScreen extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection('orders')
             .where('userId', isEqualTo: user.uid)
-            .where('paymentStatus', isEqualTo: PaymentStatus.paid.value)
+            .where('paymentStatus', whereIn: [
+              PaymentStatus.paid.value,
+              PaymentStatus.authorized.value, // Include authorized orders
+            ])
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
@@ -56,14 +60,82 @@ class OrdersScreen extends StatelessWidget {
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: snapshot.data!.docs.length,
-            itemBuilder: (context, index) {
-              final doc = snapshot.data!.docs[index];
-              final orderData = doc.data() as Map<String, dynamic>;
-              return _BuyerOrderCard(orderId: doc.id, data: orderData);
-            },
+          // Check for pending shipping approvals
+          final pendingApprovals = snapshot.data!.docs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return data['shippingApprovalStatus'] == ShippingApprovalStatus.pending.value;
+          }).toList();
+
+          return Column(
+            children: [
+              // Shipping approval banner
+              if (pendingApprovals.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.orange.shade400, Colors.orange.shade600],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ShippingApprovalScreen()),
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        const Icon(Icons.pending_actions, color: Colors.white, size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${pendingApprovals.length} order${pendingApprovals.length > 1 ? 's' : ''} need${pendingApprovals.length == 1 ? 's' : ''} approval',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const Text(
+                                'Tap to review shipping cost changes',
+                                style: TextStyle(color: Colors.white70, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, color: Colors.white),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Orders list
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (context, index) {
+                    final doc = snapshot.data!.docs[index];
+                    final orderData = doc.data() as Map<String, dynamic>;
+                    return _BuyerOrderCard(orderId: doc.id, data: orderData);
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -154,6 +226,10 @@ class _BuyerOrderCardState extends State<_BuyerOrderCard> {
     final createdAt = widget.data['createdAt'] as Timestamp?;
     final deliveryInfo = widget.data['deliveryInfo'] as Map<String, dynamic>?;
     final isOrderConfirmed = widget.data['confirmedByClient'] == true;
+    final paymentStatus = widget.data['paymentStatus'] as String?;
+    final isAuthorized = paymentStatus == PaymentStatus.authorized.value;
+    final shippingApprovalStatus = widget.data['shippingApprovalStatus'] as String?;
+    final isPendingApproval = shippingApprovalStatus == ShippingApprovalStatus.pending.value;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -188,7 +264,13 @@ class _BuyerOrderCardState extends State<_BuyerOrderCard> {
                 ),
               ],
             ),
-            
+
+            // Payment status banner for authorized orders
+            if (isAuthorized) ...[
+              const SizedBox(height: 12),
+              _buildPaymentStatusBanner(isPendingApproval),
+            ],
+
             // Delivery Address
             if (deliveryInfo != null) ...[
               const SizedBox(height: 12),
@@ -212,9 +294,9 @@ class _BuyerOrderCardState extends State<_BuyerOrderCard> {
                 ),
               ),
             ],
-            
+
             const Divider(height: 24),
-            
+
             // Items List
             ...items.map((item) {
               return _buildOrderItem(context, item, isOrderConfirmed);

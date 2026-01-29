@@ -89,10 +89,13 @@ enum OrderStatus {
 enum PaymentStatus {
   awaitingPayment('awaiting_payment'),
   processing('processing'),
+  authorized('authorized'),
   paid('paid'),
   paymentFailed('payment_failed'),
   refunded('refunded'),
-  sessionExpired('session_expired');
+  sessionExpired('session_expired'),
+  cancelled('cancelled'),
+  authorizationExpired('authorization_expired');
 
   final String value;
   const PaymentStatus(this.value);
@@ -112,6 +115,8 @@ enum PaymentStatus {
         return 'Awaiting Payment';
       case PaymentStatus.processing:
         return 'Processing';
+      case PaymentStatus.authorized:
+        return 'Payment Authorized';
       case PaymentStatus.paid:
         return 'Paid';
       case PaymentStatus.paymentFailed:
@@ -120,7 +125,58 @@ enum PaymentStatus {
         return 'Refunded';
       case PaymentStatus.sessionExpired:
         return 'Session Expired';
+      case PaymentStatus.cancelled:
+        return 'Cancelled';
+      case PaymentStatus.authorizationExpired:
+        return 'Authorization Expired';
     }
+  }
+}
+
+/// Shipping approval status for manual capture orders
+enum ShippingApprovalStatus {
+  notRequired('not_required'),
+  pending('pending'),
+  approved('approved'),
+  rejected('rejected');
+
+  final String value;
+  const ShippingApprovalStatus(this.value);
+
+  static ShippingApprovalStatus fromValue(String value) {
+    return ShippingApprovalStatus.values.firstWhere(
+      (e) => e.value == value,
+      orElse: () => ShippingApprovalStatus.notRequired,
+    );
+  }
+
+  String get displayText {
+    switch (this) {
+      case ShippingApprovalStatus.notRequired:
+        return 'Not Required';
+      case ShippingApprovalStatus.pending:
+        return 'Awaiting Approval';
+      case ShippingApprovalStatus.approved:
+        return 'Approved';
+      case ShippingApprovalStatus.rejected:
+        return 'Rejected';
+    }
+  }
+}
+
+/// Capture method for payments
+enum CaptureMethod {
+  manual('manual'),
+  automatic('automatic');
+
+  final String value;
+  const CaptureMethod(this.value);
+
+  static CaptureMethod fromValue(String value) {
+    return CaptureMethod.values.firstWhere(
+      (e) => e.value == value,
+      orElse: () => CaptureMethod.automatic,
+    );
   }
 }
 

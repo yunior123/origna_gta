@@ -57,15 +57,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 top: MediaQuery.of(context).padding.top + 16,
                 right: 16,
                 child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
+  decoration: BoxDecoration(
+    color: Colors.black.withValues(alpha: 0.5),
+    shape: BoxShape.circle,
+  ),
+  child: IconButton(
+    icon: const Icon(Icons.close, color: Colors.white, size: 28),
+    onPressed: () => Navigator.pop(context),
+  ),
+),
               ),
             ],
           ),
@@ -130,7 +130,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -156,7 +156,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             height: 8,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: _currentImageIndex == index ? Colors.white : Colors.white.withOpacity(0.5),
+                              color: _currentImageIndex == index ? Colors.white : Colors.white.withValues(alpha: 0.5),
                             ),
                           ),
                         ),

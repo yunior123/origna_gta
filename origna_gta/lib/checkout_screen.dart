@@ -195,7 +195,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Shipping', style: TextStyle(color: Colors.grey)),
+                  const Text('Estimated Shipping', style: TextStyle(color: Colors.grey)),
                   if (_isCalculatingShipping)
                     const SizedBox(
                       width: 20,
@@ -208,6 +208,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     Text('\$${shippingCost.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                 ],
               ),
+              // Estimated shipping disclaimer
+              if (!_isCalculatingShipping && _shippingError == null && shippingCost > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Final shipping cost will be confirmed by seller before charge',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[500],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
               const Divider(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,

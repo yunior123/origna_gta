@@ -62,7 +62,7 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -108,7 +108,7 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                                     right: 8,
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(12)),
+                                      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(12)),
                                       child: Text(
                                         '${_currentImageIndex + 1}/${imageUrls.length}',
                                         style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
@@ -277,7 +277,7 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
           ElevatedButton(
             onPressed: () {
               Navigator.pop(dialogContext);
-              _deleteProduct(context);
+              _deleteProduct();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -290,40 +290,44 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
     );
   }
 
-  Future<void> _deleteProduct(BuildContext context) async {
-    try {
-      // Call cloud function to delete product
-      final callable = FirebaseFunctions.instance.httpsCallable('delete_product');
-      await callable.call({'productId': widget.productId});
+ Future<void> _deleteProduct() async {
+  final messenger = ScaffoldMessenger.of(context);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Product deleted successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } on FirebaseFunctionsException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.message ?? e.code}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error deleting product: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+  try {
+    final callable =
+        FirebaseFunctions.instance.httpsCallable('delete_product');
+
+    await callable.call({'productId': widget.productId});
+
+    if (!mounted) return;
+
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Product deleted successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  } on FirebaseFunctionsException catch (e) {
+    if (!mounted) return;
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Error: ${e.message ?? e.code}'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Error deleting product: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
+
 
   // Toggle favorite using subcollection
   Future<void> _toggleFavorite(BuildContext context) async {

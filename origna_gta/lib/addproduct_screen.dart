@@ -11,10 +11,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 
-//TODO should we modify the code like this or will it break somehting otherwise?
-// static const List<String> ALLOWED_FORMATS = ['jpg', 'jpeg', 'png', 'webp'];
-// final extension = model.fileName.split('.').last.toLowerCase();
-// if (!ALLOWED_FORMATS.contains(extension)) return null;
 
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();

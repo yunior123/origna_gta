@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -27,7 +28,10 @@ class SellerOrdersScreen extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection('orders')
             .where('sellerIds', arrayContains: user.uid)
-            .where('paymentStatus', isEqualTo: PaymentStatus.paid.value)
+            .where('paymentStatus', whereIn: [
+              PaymentStatus.paid.value,
+              PaymentStatus.authorized.value, // Include authorized orders for manual capture
+            ])
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
@@ -73,7 +77,7 @@ class SellerOrdersScreen extends StatelessWidget {
   }
 }
 
-class _SellerOrderCard extends StatelessWidget {
+class _SellerOrderCard extends StatefulWidget {
   final String orderId;
   final Map<String, dynamic> data;
   final String sellerId;
@@ -85,7 +89,18 @@ class _SellerOrderCard extends StatelessWidget {
   });
 
   @override
+  State<_SellerOrderCard> createState() => _SellerOrderCardState();
+}
+
+class _SellerOrderCardState extends State<_SellerOrderCard> {
+  bool _isUpdatingShipping = false;
+  bool _isCapturing = false;
+
+  @override
   Widget build(BuildContext context) {
+    final orderId = widget.orderId;
+    final data = widget.data;
+    final sellerId = widget.sellerId;
     // Parse order data
     final itemsData = List<Map<String, dynamic>>.from(data['items'] ?? []);
     final allItems = itemsData.map((e) => CartItemDetailModel.fromMap(e)).toList();
@@ -147,7 +162,7 @@ class _SellerOrderCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.05),
+                  color: Colors.blue.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -190,16 +205,22 @@ class _SellerOrderCard extends StatelessWidget {
             ],
             
             const Divider(height: 24),
-            
+
+            // Manual capture banner - show if payment is authorized but not captured
+            if (data['paymentStatus'] == PaymentStatus.authorized.value) ...[
+              _buildAuthorizationBanner(data),
+              const SizedBox(height: 12),
+            ],
+
             // Seller's Items
             Text(
               'Your Items (${sellerItems.length})',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 8),
-            
+
             ...sellerItems.map((item) {
-              return _buildSellerItem(context, item);
+              return _buildSellerItem(context, item, data);
             }),
           ],
         ),
@@ -207,10 +228,266 @@ class _SellerOrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildSellerItem(BuildContext context, CartItemDetailModel item) {
+  Widget _buildAuthorizationBanner(Map<String, dynamic> data) {
+    final estimatedShipping = (data['estimatedShipping'] ?? 0.0).toDouble();
+    final actualShipping = data['actualShipping'];
+    final approvalStatus = data['shippingApprovalStatus'] as String?;
+    final authExpires = data['authorizationExpiresAt'];
+
+    String expiresText = '';
+    if (authExpires != null) {
+      final expiresDate = authExpires is Timestamp
+          ? authExpires.toDate()
+          : DateTime.tryParse(authExpires.toString());
+      if (expiresDate != null) {
+        final daysLeft = expiresDate.difference(DateTime.now()).inDays;
+        expiresText = '$daysLeft days left to capture';
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.credit_card, size: 18, color: Colors.orange),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Payment Authorized',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                  ),
+                ),
+              ),
+              if (expiresText.isNotEmpty)
+                Text(
+                  expiresText,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.orange[700],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            actualShipping == null
+                ? 'Enter actual shipping cost and confirm shipment to capture payment.'
+                : approvalStatus == ShippingApprovalStatus.pending.value
+                    ? 'Waiting for buyer to approve the updated shipping cost.'
+                    : 'Ready to capture payment. Confirm shipment to proceed.',
+            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Estimated shipping: \$${estimatedShipping.toStringAsFixed(2)}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+              if (actualShipping != null)
+                Text(
+                  'Actual: \$${(actualShipping as num).toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+            ],
+          ),
+          if (actualShipping == null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isUpdatingShipping ? null : () => _showUpdateShippingDialog(data),
+                icon: _isUpdatingShipping
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.local_shipping, size: 18),
+                label: Text(_isUpdatingShipping ? 'Updating...' : 'Confirm Shipping Cost'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showUpdateShippingDialog(Map<String, dynamic> orderData) {
+    final estimatedShipping = (orderData['estimatedShipping'] ?? 0.0).toDouble();
+    final shippingController = TextEditingController(text: estimatedShipping.toStringAsFixed(2));
+    final trackingController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirm Shipping'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Estimated shipping: \$${estimatedShipping.toStringAsFixed(2)}',
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: shippingController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Actual Shipping Cost',
+                prefixText: '\$ ',
+                border: OutlineInputBorder(),
+                helperText: 'If more than 20% higher, buyer approval required',
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: trackingController,
+              decoration: const InputDecoration(
+                labelText: 'Tracking Number',
+                hintText: 'Enter tracking number',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final actualShipping = double.tryParse(shippingController.text);
+              if (actualShipping == null || actualShipping < 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a valid shipping cost')),
+                );
+                return;
+              }
+
+              final tracking = trackingController.text.trim();
+              if (tracking.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a tracking number')),
+                );
+                return;
+              }
+
+              Navigator.pop(dialogContext);
+              await _updateShippingAndCapture(actualShipping, tracking);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF6B35),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirm & Ship'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateShippingAndCapture(double actualShipping, String trackingNumber) async {
+    setState(() => _isUpdatingShipping = true);
+
+    try {
+      // First, update the shipping cost
+      final updateShipping = FirebaseFunctions.instance.httpsCallable('update_shipping_cost');
+      final updateResult = await updateShipping.call({
+        'orderId': widget.orderId,
+        'actualShipping': actualShipping,
+      });
+
+      final approvalRequired = updateResult.data['approvalRequired'] == true;
+
+      if (approvalRequired) {
+        // Buyer approval needed - show message and don't capture yet
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Shipping cost exceeds estimate. Waiting for buyer approval.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+      } else {
+        // No approval needed - capture payment
+        setState(() {
+          _isUpdatingShipping = false;
+          _isCapturing = true;
+        });
+
+        final capturePayment = FirebaseFunctions.instance.httpsCallable('capture_payment');
+        await capturePayment.call({
+          'orderId': widget.orderId,
+          'trackingNumber': trackingNumber,
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment captured and item shipped!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } on FirebaseFunctionsException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message ?? 'Failed to process shipping'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingShipping = false;
+          _isCapturing = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildSellerItem(BuildContext context, CartItemDetailModel item, Map<String, dynamic> orderData) {
     final deliveryStatus = DeliveryStatus.fromValue(item.deliveryStatus);
     final isShipped = deliveryStatus == DeliveryStatus.shipped;
     final isDelivered = deliveryStatus == DeliveryStatus.delivered;
+    final isAuthorized = orderData['paymentStatus'] == PaymentStatus.authorized.value;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -239,14 +516,14 @@ class _SellerOrderCard extends StatelessWidget {
                       'Qty: ${item.quantity} • \$${(item.price * item.quantity).toStringAsFixed(2)}',
                       style: TextStyle(color: Colors.grey[600], fontSize: 12),
                     ),
-                    
+
                     // Tracking Number Display
                     if (isShipped && item.trackingNumber != null) ...[
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: Colors.blue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -258,16 +535,16 @@ class _SellerOrderCard extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               const SizedBox(width: 8),
-              
+
               // Status Badge
               _buildStatusBadge(deliveryStatus),
             ],
           ),
-          
-          // Action Buttons
-          if (!isDelivered) ...[
+
+          // Action Buttons - Only show for paid orders (not authorized - those use the banner)
+          if (!isDelivered && !isAuthorized) ...[
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -316,7 +593,7 @@ class _SellerOrderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
+        color: statusColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -420,7 +697,7 @@ class _SellerOrderCard extends StatelessWidget {
     String? trackingNumber,
   ) async {
     try {
-      final orderRef = FirebaseFirestore.instance.collection('orders').doc(orderId);
+      final orderRef = FirebaseFirestore.instance.collection('orders').doc(widget.orderId);
       final orderDoc = await orderRef.get();
       
       if (!orderDoc.exists) {

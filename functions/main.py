@@ -74,9 +74,21 @@ class PayoutStatus:
     PARTIAL = 'partial'
     FAILED = 'failed'
 
+class CaptureMethod:
+    MANUAL = 'manual'
+    AUTOMATIC = 'automatic'
+
+class ShippingApprovalStatus:
+    NOT_REQUIRED = 'not_required'
+    PENDING = 'pending'
+    APPROVED = 'approved'
+    REJECTED = 'rejected'
+
 # Platform configuration
 PLATFORM_FEE_PERCENT = 0.025  # 2.5% platform fee
 AUTO_CONFIRM_DAYS = 14  # Auto-confirm orders after 14 days
+AUTHORIZATION_VALID_DAYS = 7  # Stripe authorization valid for 7 days
+SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20% - require buyer approval if actual shipping exceeds estimate by this much
 
 # ============================================================================
 # FIREBASE INITIALIZATION
@@ -717,8 +729,10 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         success_url = f"{base_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}&order_id={order_id}"
         cancel_url = f"{base_url}/payment-cancel"
         
-        # Create Stripe checkout session
-        print(f"💳 Creating Stripe session for order {order_id}")
+        # Create Stripe checkout session with manual capture
+        # This allows us to authorize the payment first, then capture later
+        # when the seller confirms actual shipping cost
+        print(f"💳 Creating Stripe session for order {order_id} (manual capture)")
         session = stripe.checkout.Session.create(
             mode="payment",
             payment_method_types=["card"],
@@ -726,6 +740,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             line_items=line_items,
             success_url=success_url,
             cancel_url=cancel_url,
+            payment_intent_data={
+                "capture_method": "manual",  # KEY: Authorize only, capture later
+                "metadata": {
+                    "orderId": order_id,
+                    "userId": user_id,
+                }
+            },
             metadata={
                 "userId": user_id,
                 "orderId": order_id,
@@ -736,7 +757,10 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             expires_at=int((datetime.now().timestamp() + 1800))  # 30 minutes
         )
         
-        # Save order to Firestore
+        # Calculate authorization expiration (7 days from now)
+        auth_expires_at = datetime.now() + timedelta(days=AUTHORIZATION_VALID_DAYS)
+
+        # Save order to Firestore with manual capture fields
         order_data = {
             "orderId": order_id,
             "userId": user_id,
@@ -755,7 +779,17 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             "paymentStatus": PaymentStatus.AWAITING_PAYMENT,
             "stripeSessionId": session.id,
             "createdAt": firestore.SERVER_TIMESTAMP,
-            "updatedAt": firestore.SERVER_TIMESTAMP
+            "updatedAt": firestore.SERVER_TIMESTAMP,
+            # Manual capture fields
+            "captureMethod": CaptureMethod.MANUAL,
+            "authorizedAmount": amount,  # Amount authorized in cents
+            "capturedAmount": None,  # Will be set when captured
+            "capturedAt": None,  # Timestamp when payment was captured
+            "estimatedShipping": shipping_cost,  # Original estimated shipping
+            "actualShipping": None,  # Seller will provide actual cost
+            "shippingApprovalStatus": ShippingApprovalStatus.NOT_REQUIRED,
+            "shippingApprovalRequired": False,
+            "authorizationExpiresAt": auth_expires_at,
         }
         
         order_ref.set(order_data)
@@ -965,7 +999,14 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                 
             elif event_type == 'payment_intent.payment_failed':
                 order_id = process_payment_intent_failed(event_data)
-                
+
+            # Manual capture events
+            elif event_type == 'payment_intent.amount_capturable_updated':
+                order_id = process_amount_capturable_updated(event_data)
+
+            elif event_type == 'payment_intent.canceled':
+                order_id = process_payment_intent_canceled(event_data)
+
             elif event_type == 'charge.refunded':
                 order_id = process_charge_refunded(event_data)
 
@@ -1122,6 +1163,7 @@ def process_checkout_session_completed(session: Dict) -> Optional[str]:
     
     # Check payment status - some payments are async
     payment_status = session.get('payment_status')
+    capture_method = order_data.get('captureMethod', CaptureMethod.AUTOMATIC)
 
     update_data = {
         "stripePaymentIntentId": session.get('payment_intent'),
@@ -1132,13 +1174,24 @@ def process_checkout_session_completed(session: Dict) -> Optional[str]:
     }
 
     if payment_status == 'paid':
-        # Immediate payment success
-        update_data.update({
-            "status": OrderStatus.CONFIRMED,
-            "paymentStatus": PaymentStatus.PAID,
-            "paidAt": firestore.SERVER_TIMESTAMP,
-        })
-        print(f"  ✅ Marking order as PAID")
+        # Check if this is manual capture or automatic
+        if capture_method == CaptureMethod.MANUAL:
+            # For manual capture, 'paid' means authorized (not captured yet)
+            # The payment_intent has requires_capture status
+            update_data.update({
+                "status": OrderStatus.CONFIRMED,
+                "paymentStatus": "authorized",  # Custom status for manual capture
+                "authorizedAt": firestore.SERVER_TIMESTAMP,
+            })
+            print(f"  ✅ Payment AUTHORIZED (manual capture - awaiting seller shipping confirmation)")
+        else:
+            # Automatic capture - immediate payment success
+            update_data.update({
+                "status": OrderStatus.CONFIRMED,
+                "paymentStatus": PaymentStatus.PAID,
+                "paidAt": firestore.SERVER_TIMESTAMP,
+            })
+            print(f"  ✅ Marking order as PAID")
 
         # Clear user's cart
         user_id = session.get('metadata', {}).get('userId')
@@ -1368,6 +1421,84 @@ def process_payment_intent_failed(payment_intent: Dict) -> Optional[str]:
 
         return order_id
 
+    return None
+
+
+def process_amount_capturable_updated(payment_intent: Dict) -> Optional[str]:
+    """
+    Process payment_intent.amount_capturable_updated event.
+    This is triggered when a manual capture payment is authorized.
+    """
+    print("\n💳 Processing: payment_intent.amount_capturable_updated")
+    print(f"  Payment Intent ID: {payment_intent['id']}")
+    print(f"  Amount Capturable: ${payment_intent.get('amount_capturable', 0) / 100}")
+
+    # Find order by payment intent ID
+    orders = db.collection(Collections.ORDERS).where(
+        'stripePaymentIntentId', '==', payment_intent['id']
+    ).limit(1).get()
+
+    if orders:
+        order_ref = orders[0].reference
+        order_id = order_ref.id
+
+        print(f"  Found order: {order_id}")
+
+        # Update order with capturable amount
+        order_ref.update({
+            "amountCapturable": payment_intent.get('amount_capturable', 0),
+            "updatedAt": firestore.SERVER_TIMESTAMP,
+        })
+
+        print(f"  ✅ Updated capturable amount")
+        return order_id
+
+    print(f"  ⚠️ No order found for payment intent")
+    return None
+
+
+def process_payment_intent_canceled(payment_intent: Dict) -> Optional[str]:
+    """
+    Process payment_intent.canceled event.
+    This is triggered when a payment authorization is cancelled or expires.
+    """
+    print("\n❌ Processing: payment_intent.canceled")
+    print(f"  Payment Intent ID: {payment_intent['id']}")
+    print(f"  Cancellation Reason: {payment_intent.get('cancellation_reason')}")
+
+    # Find order by payment intent ID
+    orders = db.collection(Collections.ORDERS).where(
+        'stripePaymentIntentId', '==', payment_intent['id']
+    ).limit(1).get()
+
+    if orders:
+        order_ref = orders[0].reference
+        order_data = orders[0].to_dict()
+        order_id = order_ref.id
+
+        print(f"  Found order: {order_id}")
+
+        # Only update if not already in a terminal state
+        current_status = order_data.get('paymentStatus')
+        if current_status not in [PaymentStatus.PAID, PaymentStatus.REFUNDED, 'cancelled']:
+            # Restore stock
+            _restore_stock_for_order(order_data)
+
+            order_ref.update({
+                "status": OrderStatus.CANCELLED,
+                "paymentStatus": 'cancelled',
+                "cancellationReason": payment_intent.get('cancellation_reason', 'Authorization cancelled'),
+                "cancelledAt": firestore.SERVER_TIMESTAMP,
+                "updatedAt": firestore.SERVER_TIMESTAMP,
+            })
+
+            print(f"  ✅ Order cancelled and stock restored")
+        else:
+            print(f"  ℹ️ Order already in terminal state: {current_status}")
+
+        return order_id
+
+    print(f"  ⚠️ No order found for payment intent")
     return None
 
 
@@ -2794,4 +2925,507 @@ def auto_release_payouts(event: scheduler_fn.ScheduledEvent) -> None:
 
     except Exception as e:
         print(f"❌ Error in auto-release job: {str(e)}")
+        print(traceback.format_exc())
+
+
+# ============================================================================
+# MANUAL CAPTURE PAYMENT FUNCTIONS
+# ============================================================================
+
+@https_fn.on_call()
+def update_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Called by seller to update the actual shipping cost.
+    If the actual cost exceeds the estimate by more than SHIPPING_APPROVAL_THRESHOLD,
+    buyer approval is required before capture.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    seller_id = req.auth.uid
+    order_id = req.data.get('orderId')
+    actual_shipping = req.data.get('actualShipping')
+
+    if not order_id:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="orderId is required"
+        )
+
+    if actual_shipping is None or actual_shipping < 0:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="actualShipping must be a non-negative number"
+        )
+
+    print(f"📦 Updating shipping cost for order {order_id} by seller {seller_id}")
+
+    try:
+        order_ref = db.collection(Collections.ORDERS).document(order_id)
+        order_doc = order_ref.get()
+
+        if not order_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Order not found"
+            )
+
+        order_data = order_doc.to_dict()
+
+        # Verify seller has items in this order
+        seller_items = [i for i in order_data.get('items', []) if i.get('sellerId') == seller_id]
+        if not seller_items:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+                message="You don't have items in this order"
+            )
+
+        # Verify order is in authorized state
+        if order_data.get('paymentStatus') != 'authorized':
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message=f"Order payment is not in authorized state (current: {order_data.get('paymentStatus')})"
+            )
+
+        estimated_shipping = order_data.get('estimatedShipping', 0)
+
+        # Calculate if approval is required
+        approval_required = False
+        if estimated_shipping > 0:
+            shipping_increase = (actual_shipping - estimated_shipping) / estimated_shipping
+            if shipping_increase > SHIPPING_APPROVAL_THRESHOLD:
+                approval_required = True
+                print(f"  ⚠️ Shipping increase {shipping_increase:.1%} exceeds threshold, buyer approval required")
+
+        # Calculate new total
+        subtotal = order_data.get('subtotal', 0)
+        taxes = sum(order_data.get('taxes', {}).values())
+        new_total = subtotal + taxes + actual_shipping
+        new_amount_cents = int(new_total * 100)
+
+        update_data = {
+            'actualShipping': actual_shipping,
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+        }
+
+        if approval_required:
+            update_data['shippingApprovalRequired'] = True
+            update_data['shippingApprovalStatus'] = ShippingApprovalStatus.PENDING
+            update_data['pendingTotal'] = new_total
+            update_data['pendingAmount'] = new_amount_cents
+            print(f"  📧 Buyer approval required for new shipping cost")
+        else:
+            # No approval needed, can proceed to capture
+            update_data['shippingApprovalStatus'] = ShippingApprovalStatus.NOT_REQUIRED
+            update_data['total'] = new_total
+            update_data['amount'] = new_amount_cents
+
+        order_ref.update(update_data)
+
+        return {
+            "success": True,
+            "approvalRequired": approval_required,
+            "estimatedShipping": estimated_shipping,
+            "actualShipping": actual_shipping,
+            "newTotal": new_total,
+            "message": "Shipping cost updated. Buyer approval required." if approval_required else "Shipping cost updated. Ready to capture."
+        }
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Error updating shipping cost: {str(e)}")
+        print(traceback.format_exc())
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to update shipping cost: {str(e)}"
+        )
+
+
+@https_fn.on_call()
+def approve_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Called by buyer to approve or reject the updated shipping cost.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    user_id = req.auth.uid
+    order_id = req.data.get('orderId')
+    approved = req.data.get('approved', False)
+
+    if not order_id:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="orderId is required"
+        )
+
+    print(f"📋 {'Approving' if approved else 'Rejecting'} shipping cost for order {order_id}")
+
+    try:
+        order_ref = db.collection(Collections.ORDERS).document(order_id)
+        order_doc = order_ref.get()
+
+        if not order_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Order not found"
+            )
+
+        order_data = order_doc.to_dict()
+
+        # Verify user owns this order
+        if order_data.get('userId') != user_id:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+                message="Not authorized to approve this order"
+            )
+
+        # Verify approval is pending
+        if order_data.get('shippingApprovalStatus') != ShippingApprovalStatus.PENDING:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message="No shipping approval pending for this order"
+            )
+
+        if approved:
+            # Buyer approved the new shipping cost
+            pending_total = order_data.get('pendingTotal')
+            pending_amount = order_data.get('pendingAmount')
+
+            order_ref.update({
+                'shippingApprovalStatus': ShippingApprovalStatus.APPROVED,
+                'shippingApprovedAt': firestore.SERVER_TIMESTAMP,
+                'total': pending_total,
+                'amount': pending_amount,
+                'updatedAt': firestore.SERVER_TIMESTAMP,
+            })
+
+            print(f"  ✅ Buyer approved shipping cost")
+
+            return {
+                "success": True,
+                "status": "approved",
+                "newTotal": pending_total,
+                "message": "Shipping cost approved. Payment will be captured when seller confirms shipment."
+            }
+        else:
+            # Buyer rejected - cancel the authorization
+            payment_intent_id = order_data.get('stripePaymentIntentId')
+
+            if payment_intent_id:
+                try:
+                    stripe.PaymentIntent.cancel(payment_intent_id)
+                    print(f"  ❌ Authorization cancelled")
+                except stripe.error.StripeError as e:
+                    print(f"  ⚠️ Failed to cancel authorization: {str(e)}")
+
+            # Restore stock
+            _restore_stock_for_order(order_data)
+
+            order_ref.update({
+                'shippingApprovalStatus': ShippingApprovalStatus.REJECTED,
+                'shippingRejectedAt': firestore.SERVER_TIMESTAMP,
+                'status': OrderStatus.CANCELLED,
+                'paymentStatus': 'cancelled',
+                'cancellationReason': 'Buyer rejected shipping cost',
+                'updatedAt': firestore.SERVER_TIMESTAMP,
+            })
+
+            print(f"  ❌ Buyer rejected shipping cost - order cancelled")
+
+            return {
+                "success": True,
+                "status": "rejected",
+                "message": "Shipping cost rejected. Order has been cancelled and you will not be charged."
+            }
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Error processing shipping approval: {str(e)}")
+        print(traceback.format_exc())
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to process approval: {str(e)}"
+        )
+
+
+@https_fn.on_call()
+def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Called when seller confirms shipping to capture the authorized payment.
+    For manual capture orders, this is when the actual charge happens.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    seller_id = req.auth.uid
+    order_id = req.data.get('orderId')
+    tracking_number = req.data.get('trackingNumber')
+
+    if not order_id:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="orderId is required"
+        )
+
+    print(f"💳 Capturing payment for order {order_id} by seller {seller_id}")
+
+    try:
+        order_ref = db.collection(Collections.ORDERS).document(order_id)
+        order_doc = order_ref.get()
+
+        if not order_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Order not found"
+            )
+
+        order_data = order_doc.to_dict()
+
+        # Verify seller has items in this order
+        seller_items = [i for i in order_data.get('items', []) if i.get('sellerId') == seller_id]
+        if not seller_items:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+                message="You don't have items in this order"
+            )
+
+        # Verify order is in authorized state (not already captured)
+        payment_status = order_data.get('paymentStatus')
+        if payment_status not in ['authorized']:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message=f"Payment cannot be captured (current status: {payment_status})"
+            )
+
+        # Check if shipping approval is required and approved
+        if order_data.get('shippingApprovalRequired', False):
+            approval_status = order_data.get('shippingApprovalStatus')
+            if approval_status == ShippingApprovalStatus.PENDING:
+                raise https_fn.HttpsError(
+                    code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                    message="Waiting for buyer to approve shipping cost"
+                )
+            elif approval_status == ShippingApprovalStatus.REJECTED:
+                raise https_fn.HttpsError(
+                    code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                    message="Buyer rejected the shipping cost. Order is cancelled."
+                )
+
+        payment_intent_id = order_data.get('stripePaymentIntentId')
+        if not payment_intent_id:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message="No payment intent found for this order"
+            )
+
+        # Get the capture amount (may have been updated with actual shipping)
+        capture_amount = order_data.get('amount')  # In cents
+
+        # Capture the payment
+        print(f"  💰 Capturing ${capture_amount / 100:.2f} CAD")
+        try:
+            payment_intent = stripe.PaymentIntent.capture(
+                payment_intent_id,
+                amount_to_capture=capture_amount,
+            )
+            print(f"  ✅ Payment captured successfully")
+        except stripe.error.StripeError as e:
+            print(f"  ❌ Stripe capture failed: {str(e)}")
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.INTERNAL,
+                message=f"Payment capture failed: {str(e)}"
+            )
+
+        # Update items with shipped status and tracking
+        items = order_data.get('items', [])
+        for item in items:
+            if item.get('sellerId') == seller_id:
+                item['deliveryStatus'] = DeliveryStatus.SHIPPED
+                if tracking_number:
+                    item['trackingNumber'] = tracking_number
+
+        # Update order
+        order_ref.update({
+            'items': items,
+            'paymentStatus': PaymentStatus.PAID,
+            'capturedAmount': capture_amount,
+            'capturedAt': firestore.SERVER_TIMESTAMP,
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+        })
+
+        print(f"  ✅ Order updated with captured payment")
+
+        return {
+            "success": True,
+            "capturedAmount": capture_amount / 100,
+            "message": "Payment captured and items marked as shipped"
+        }
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Error capturing payment: {str(e)}")
+        print(traceback.format_exc())
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to capture payment: {str(e)}"
+        )
+
+
+@scheduler_fn.on_schedule(schedule="every 12 hours")
+def check_expiring_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    Scheduled function to handle expiring payment authorizations.
+    Stripe card authorizations typically expire after 7 days.
+
+    This job:
+    1. Warns about authorizations expiring in 24-48 hours
+    2. Auto-captures or cancels orders where authorization is about to expire
+    """
+    print("=" * 80)
+    print("🕐 CHECK EXPIRING AUTHORIZATIONS - Scheduled Job Started")
+    print(f"Timestamp: {datetime.now().isoformat()}")
+    print("=" * 80)
+
+    try:
+        # Calculate warning threshold (48 hours from now)
+        warning_threshold = datetime.now() + timedelta(hours=48)
+
+        # Calculate expiry threshold (orders that have expired)
+        expiry_threshold = datetime.now()
+
+        # Query for authorized orders
+        orders_query = db.collection(Collections.ORDERS).where(
+            'paymentStatus', '==', 'authorized'
+        ).where(
+            'captureMethod', '==', CaptureMethod.MANUAL
+        ).stream()
+
+        warned_count = 0
+        expired_count = 0
+
+        for order_doc in orders_query:
+            order_id = order_doc.id
+            order_data = order_doc.to_dict()
+
+            try:
+                auth_expires = order_data.get('authorizationExpiresAt')
+                if not auth_expires:
+                    continue
+
+                # Convert to datetime if needed
+                if hasattr(auth_expires, 'timestamp'):
+                    auth_expires_dt = datetime.fromtimestamp(auth_expires.timestamp())
+                else:
+                    auth_expires_dt = auth_expires
+
+                print(f"\n📦 Checking order: {order_id}")
+                print(f"  Authorization expires: {auth_expires_dt.isoformat()}")
+
+                if auth_expires_dt < expiry_threshold:
+                    # Authorization has expired
+                    print(f"  ⚠️ Authorization EXPIRED")
+
+                    # Cancel the order
+                    order_ref = db.collection(Collections.ORDERS).document(order_id)
+
+                    # Try to cancel the payment intent
+                    payment_intent_id = order_data.get('stripePaymentIntentId')
+                    if payment_intent_id:
+                        try:
+                            stripe.PaymentIntent.cancel(payment_intent_id)
+                        except stripe.error.StripeError:
+                            pass  # May already be cancelled
+
+                    # Restore stock
+                    _restore_stock_for_order(order_data)
+
+                    order_ref.update({
+                        'status': OrderStatus.EXPIRED,
+                        'paymentStatus': 'authorization_expired',
+                        'expiredAt': firestore.SERVER_TIMESTAMP,
+                        'updatedAt': firestore.SERVER_TIMESTAMP,
+                    })
+
+                    # Notify customer
+                    customer_email = order_data.get('customerEmail')
+                    if customer_email:
+                        send_email(
+                            to_email=customer_email,
+                            subject=f"Order #{order_id[:8]} Expired",
+                            html_content=f"""
+                            <html>
+                            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                <div style="padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+                                    <h2 style="color: #e53935;">Order Expired</h2>
+                                    <p>Unfortunately, your order #{order_id[:8]} has expired because the seller did not ship it within the required timeframe.</p>
+                                    <p>Your payment authorization has been released and you will not be charged.</p>
+                                    <p style="text-align: center; margin-top: 20px;">
+                                        <a href="https://orignagta.ca" style="background: #FF6B35; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Continue Shopping</a>
+                                    </p>
+                                </div>
+                            </body>
+                            </html>
+                            """
+                        )
+
+                    expired_count += 1
+
+                elif auth_expires_dt < warning_threshold:
+                    # Authorization expiring soon - warn seller
+                    print(f"  ⚠️ Authorization expiring soon (within 48 hours)")
+
+                    # Get seller info and notify
+                    seller_ids = order_data.get('sellerIds', [])
+                    for sid in seller_ids:
+                        seller_doc = db.collection(Collections.USERS).document(sid).get()
+                        if seller_doc.exists:
+                            seller_email = seller_doc.to_dict().get('email')
+                            if seller_email:
+                                hours_remaining = int((auth_expires_dt - datetime.now()).total_seconds() / 3600)
+                                send_email(
+                                    to_email=seller_email,
+                                    subject=f"⚠️ Action Required: Order #{order_id[:8]} Authorization Expiring",
+                                    html_content=f"""
+                                    <html>
+                                    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                        <div style="padding: 20px; border: 1px solid #ffc107; border-radius: 8px; background: #fff9e6;">
+                                            <h2 style="color: #ff9800;">⚠️ Authorization Expiring</h2>
+                                            <p>Order <strong>#{order_id[:8]}</strong> has a payment authorization expiring in <strong>{hours_remaining} hours</strong>.</p>
+                                            <p>Please confirm the actual shipping cost and ship the order, or the authorization will expire and the order will be cancelled.</p>
+                                            <p style="text-align: center; margin-top: 20px;">
+                                                <a href="https://orignagta.ca/seller/orders" style="background: #FF6B35; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order</a>
+                                            </p>
+                                        </div>
+                                    </body>
+                                    </html>
+                                    """
+                                )
+
+                    warned_count += 1
+
+            except Exception as order_error:
+                print(f"  ❌ Error processing order {order_id}: {str(order_error)}")
+                continue
+
+        print("\n" + "=" * 80)
+        print(f"✅ CHECK EXPIRING AUTHORIZATIONS - Job Complete")
+        print(f"  Orders warned: {warned_count}")
+        print(f"  Orders expired: {expired_count}")
+        print("=" * 80)
+
+    except Exception as e:
+        print(f"❌ Error in expiring authorizations job: {str(e)}")
         print(traceback.format_exc())

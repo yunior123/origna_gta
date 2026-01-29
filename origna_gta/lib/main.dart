@@ -11,6 +11,8 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 // Coding principles and rules
 // 1.MVVM arquitecture, clean code all the time
 // 2.Logic between backend and frontend should be nice and clean
+// 3.The code should be so robust that if you need to replace an api you only need to modify the service file
+// of that api
 // Store Creation Considerations
 // 1.Avoid expensive APIs, only use them if really needed
 // 2.Avoid fetching too much from database, keep this consistent 
@@ -64,6 +66,79 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 // Simple fees – Stripe collects processing fees; you collect your platform fee only.
 // Risk management – Stripe handles fraud, chargebacks, and payout failures.
 // ✅ Verdict: Your setup is fully aligned with best practices for marketplaces like Etsy, Shopify, and Amazon.
+// ✅ Best-practice solution (no async context usage)
+// 1️⃣ Store the messenger synchronously
+// Future<void> _deleteProduct() async {
+//   final messenger = ScaffoldMessenger.of(context);
+
+//   try {
+//     final callable =
+//         FirebaseFunctions.instance.httpsCallable('delete_product');
+
+//     await callable.call({'productId': widget.productId});
+
+//     if (!mounted) return;
+
+//     messenger.showSnackBar(
+//       const SnackBar(
+//         content: Text('Product deleted successfully'),
+//         backgroundColor: Colors.green,
+//       ),
+//     );
+//   } on FirebaseFunctionsException catch (e) {
+//     if (!mounted) return;
+
+//     messenger.showSnackBar(
+//       SnackBar(
+//         content: Text('Error: ${e.message ?? e.code}'),
+//         backgroundColor: Colors.red,
+//       ),
+//     );
+//   } catch (e) {
+//     if (!mounted) return;
+
+//     messenger.showSnackBar(
+//       SnackBar(
+//         content: Text('Error deleting product: $e'),
+//         backgroundColor: Colors.red,
+//       ),
+//     );
+//   }
+// }
+// 2️⃣ Call it normally
+// onPressed: _deleteProduct,
+// ✔ No BuildContext passed
+// ✔ No lints
+// ✔ Safe after await
+// ✔ Future-proof
+// ❌ What NOT to do
+// Future<void> _deleteProduct(BuildContext context) async { ... }
+// Even with mounted, this triggers:
+// “Avoid using BuildContext across async gaps”
+// 🔍 Why this works
+// ScaffoldMessenger.of(context) is resolved before await
+// You’re no longer holding onto a BuildContext
+// mounted still protects against widget disposal
+// 🧠 Extra-clean pattern (optional)
+// If you want it even tighter:
+// void _showSnack(SnackBar bar) {
+//   if (!mounted) return;
+//   ScaffoldMessenger.of(context).showSnackBar(bar);
+// }
+// Yep — withOpacity is deprecated on Color in recent Flutter versions 👀
+// The fix is simple: use withValues (preferred) or Color.fromARGB.
+// ✅ Recommended fix (modern Flutter)
+// Container(
+//   decoration: BoxDecoration(
+//     color: Colors.black.withValues(alpha: 0.5),
+//     shape: BoxShape.circle,
+//   ),
+//   child: IconButton(
+//     icon: const Icon(Icons.close, color: Colors.white, size: 28),
+//     onPressed: () => Navigator.pop(context),
+//   ),
+// );
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -287,6 +362,12 @@ void main() async {
 //    - transfer.created, transfer.reversed
 //    - payout.paid, payout.failed
 //    - refund.created, refund.failed
-
+//TODO should we modify the code like this or will it break somehting otherwise?
+// static const List<String> ALLOWED_FORMATS = ['jpg', 'jpeg', 'png', 'webp'];
+// final extension = model.fileName.split('.').last.toLowerCase();
+// if (!ALLOWED_FORMATS.contains(extension)) return null;
 
 // TODO fix all dart compiler warnings, code should be clean.
+
+// TODO use stripe tax instead of hardcoding taxes calculation
+// TODO use same custom app bar in all screens where is needed, except for home screen

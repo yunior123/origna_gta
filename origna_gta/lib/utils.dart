@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -223,7 +222,7 @@ double _calculateTieredShipping(double distanceKm, int itemCount) {
 /// Fallback shipping calculation when coordinates are unavailable.
 /// Uses province-based flat rates.
 double _calculateFallbackShipping(List<CartItemDetailModel> items, String sellerProvince, String buyerProvince) {
-  final totalItems = items.fold(0, (count, item) => count + item.quantity);
+  final totalItems = items.fold(0, (i, item) => i + item.quantity);
   double baseCost;
 
   if (sellerProvince == buyerProvince) {
