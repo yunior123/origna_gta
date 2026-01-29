@@ -11,6 +11,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 
+//TODO should we modify the code like this or will it break somehting otherwise?
+// static const List<String> ALLOWED_FORMATS = ['jpg', 'jpeg', 'png', 'webp'];
+// final extension = model.fileName.split('.').last.toLowerCase();
+// if (!ALLOWED_FORMATS.contains(extension)) return null;
 
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -23,6 +27,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _cityController = TextEditingController();
   final _postalCodeController = TextEditingController();
   final _stockController = TextEditingController(text: '1'); // Default to 1
+  final _weightController = TextEditingController();
+  final _lengthController = TextEditingController();
+  final _widthController = TextEditingController();
+  final _heightController = TextEditingController();
+  final _shipDaysController = TextEditingController(text: '3');
+  bool _isLocalDeliveryOnly = false;
   String _selectedProvince = 'ON';
   double? _latitude;
   double? _longitude;
@@ -84,18 +94,104 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     validator: (value) => value?.isEmpty ?? true ? 'Please enter price' : null,
                   ),
                   const SizedBox(height: 12),
-                  // --- NEW STOCK QUANTITY FIELD ---
-TextFormField(
-  controller: _stockController,
-  keyboardType: TextInputType.number,
-  decoration: const InputDecoration(labelText: 'Stock Quantity', prefixIcon: Icon(Icons.inventory_2_outlined)),
-  validator: (value) {
-    if (value == null || value.isEmpty) return 'Please enter stock quantity';
-    if (int.tryParse(value) == null || int.parse(value) < 0) return 'Enter a valid number';
-    return null;
-  },
-),
-const SizedBox(height: 12),
+                  // --- STOCK QUANTITY FIELD ---
+                  TextFormField(
+                    controller: _stockController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Stock Quantity', prefixIcon: Icon(Icons.inventory_2_outlined)),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Please enter stock quantity';
+                      if (int.tryParse(value) == null || int.parse(value) < 0) return 'Enter a valid number';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // --- SHIPPING INFO SECTION ---
+                  const Text('Shipping Information', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Optional: Add dimensions for accurate shipping rates. Required for items shipped nationally.',
+                      style: TextStyle(color: Colors.blue, fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Local delivery toggle
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Local Delivery Only'),
+                    subtitle: const Text('For food/perishables - same day local delivery'),
+                    value: _isLocalDeliveryOnly,
+                    activeTrackColor: const Color(0xFFFF6B35),
+                    onChanged: (value) => setState(() => _isLocalDeliveryOnly = value),
+                  ),
+                  if (!_isLocalDeliveryOnly) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _weightController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'Weight (kg)',
+                              prefixIcon: Icon(Icons.scale_outlined),
+                              hintText: 'e.g., 0.5',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _shipDaysController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Ship Days',
+                              prefixIcon: Icon(Icons.schedule_outlined),
+                              hintText: '1-7',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Dimensions (cm)', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _lengthController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(labelText: 'Length'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _widthController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(labelText: 'Width'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _heightController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(labelText: 'Height'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 20),
                   DropdownButtonFormField<String>(
                     initialValue: _categoryController.text.isNotEmpty ? _categoryController.text : null,
                     decoration: const InputDecoration(labelText: 'Category', prefixIcon: Icon(Icons.category_outlined)),
@@ -212,8 +308,14 @@ const SizedBox(height: 12),
     _cityController.dispose();
     _postalCodeController.dispose();
     _stockController.dispose();
+    _weightController.dispose();
+    _lengthController.dispose();
+    _widthController.dispose();
+    _heightController.dispose();
+    _shipDaysController.dispose();
     super.dispose();
   }
+
   // Constants for image validation
   static const int MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
   static const int MAX_IMAGES = 10;
@@ -222,28 +324,24 @@ const SizedBox(height: 12),
 
   Future<void> _addProduct() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     // Validate images
     if (_imageModels.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add at least one product image')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add at least one product image')));
       return;
     }
 
     if (_imageModels.length > MAX_IMAGES) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Maximum $MAX_IMAGES images allowed')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Maximum $MAX_IMAGES images allowed')));
       return;
     }
 
     setState(() => _isLoading = true);
-    
+
     try {
       final productName = _nameController.text.trim();
       final keywords = generateSearchKeywords(productName);
-      
+
       final product = ProductModel(
         id: '',
         sellerId: FirebaseAuth.instance.currentUser!.uid,
@@ -265,45 +363,39 @@ const SizedBox(height: 12),
         description: _descriptionController.text.trim(),
         categoryId: int.parse(_categoryController.text.trim()),
         dateCreated: Timestamp.now(),
+        // Shipping dimensions
+        weightKg: _weightController.text.isNotEmpty ? double.tryParse(_weightController.text) : null,
+        lengthCm: _lengthController.text.isNotEmpty ? double.tryParse(_lengthController.text) : null,
+        widthCm: _widthController.text.isNotEmpty ? double.tryParse(_widthController.text) : null,
+        heightCm: _heightController.text.isNotEmpty ? double.tryParse(_heightController.text) : null,
+        isLocalDeliveryOnly: _isLocalDeliveryOnly,
+        estimatedShipDays: int.tryParse(_shipDaysController.text) ?? 3,
       );
-      
-      final productIdMap = await FirebaseFirestore.instance
-          .collection('products')
-          .add(product.toMap());
-      final productId = productIdMap.id;
+
+      final productRef = await FirebaseFirestore.instance.collection('products').add(product.toMap());
+      final productId = productRef.id;
 
       // 🔥 FIX: Upload images in parallel with validation
       final uploadResults = await _uploadImagesInParallel(_imageModels, productId);
-      
+
       final successfulUrls = uploadResults.where((url) => url != null).cast<String>().toList();
-      
+
       if (successfulUrls.isEmpty) {
         throw Exception('Failed to upload any images');
       }
 
       // Update product with uploaded image URLs
-      await FirebaseFirestore.instance
-          .collection('products')
-          .doc(productId)
-          .update({
-            'id': productId,
-            'imageUrls': successfulUrls,
-          });
+      await FirebaseFirestore.instance.collection('products').doc(productId).update({'id': productId, 'imageUrls': successfulUrls});
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Product added with ${successfulUrls.length} images'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Product added with ${successfulUrls.length} images'), backgroundColor: Colors.green));
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -327,16 +419,12 @@ const SizedBox(height: 12),
       // Resize if too large (maintains aspect ratio)
       img.Image resized = image;
       if (image.width > MAX_DIMENSION || image.height > MAX_DIMENSION) {
-        resized = img.copyResize(
-          image,
-          width: image.width > image.height ? MAX_DIMENSION : null,
-          height: image.height > image.width ? MAX_DIMENSION : null,
-        );
+        resized = img.copyResize(image, width: image.width > image.height ? MAX_DIMENSION : null, height: image.height > image.width ? MAX_DIMENSION : null);
       }
 
       // Compress to JPEG with 85% quality
       final compressed = img.encodeJpg(resized, quality: 85);
-      
+
       return Uint8List.fromList(compressed);
     } catch (e) {
       debugPrint('Image validation error: $e');
@@ -345,19 +433,14 @@ const SizedBox(height: 12),
   }
 
   /// Upload multiple images in parallel for better performance
-  Future<List<String?>> _uploadImagesInParallel(
-    List<ImageModel> imageModels,
-    String productId,
-  ) async {
+  Future<List<String?>> _uploadImagesInParallel(List<ImageModel> imageModels, String productId) async {
     // Validate and compress all images first
     final validationFutures = imageModels.map((model) async {
       final validated = await _validateAndCompressImage(model.bytes);
       return validated != null ? (model, validated) : null;
     });
 
-    final validatedImages = (await Future.wait(validationFutures))
-        .whereType<(ImageModel, Uint8List)>()
-        .toList();
+    final validatedImages = (await Future.wait(validationFutures)).whereType<(ImageModel, Uint8List)>().toList();
 
     if (validatedImages.isEmpty) {
       throw Exception('No valid images to upload');
@@ -367,13 +450,9 @@ const SizedBox(height: 12),
     final uploadFutures = validatedImages.asMap().entries.map((entry) async {
       final index = entry.key;
       final (original, compressed) = entry.value;
-      
+
       try {
-        return await _uploadToCloudflareR2(
-          compressed,
-          productId,
-          index,
-        );
+        return await _uploadToCloudflareR2(compressed, productId, index);
       } catch (e) {
         debugPrint('Failed to upload image $index: $e');
         return null;
@@ -384,11 +463,7 @@ const SizedBox(height: 12),
   }
 
   /// Upload single image to Cloudflare R2 with retry logic
-  Future<String?> _uploadToCloudflareR2(
-    Uint8List bytes,
-    String productId,
-    int index,
-  ) async {
+  Future<String?> _uploadToCloudflareR2(Uint8List bytes, String productId, int index) async {
     const maxRetries = 3;
     int attempt = 0;
 
@@ -399,20 +474,12 @@ const SizedBox(height: 12),
         final String filePath = "products/$fileName";
 
         // Get presigned URL from Cloud Function
-        final result = await FirebaseFunctions.instance
-            .httpsCallable('get_r2_presigned_url')
-            .call({'fileName': fileName});
+        final result = await FirebaseFunctions.instance.httpsCallable('get_r2_presigned_url').call({'fileName': fileName});
 
         String uploadUrl = result.data['uploadUrl'];
 
         // Upload with timeout
-        final response = await http
-            .put(
-              Uri.parse(uploadUrl),
-              body: bytes,
-              headers: {"Content-Type": "image/jpeg"},
-            )
-            .timeout(const Duration(seconds: 30));
+        final response = await http.put(Uri.parse(uploadUrl), body: bytes, headers: {"Content-Type": "image/jpeg"}).timeout(const Duration(seconds: 30));
 
         if (response.statusCode == 200) {
           final String permanentUrl = "${ConfigService().imageBaseUrl}/$filePath";
@@ -424,12 +491,12 @@ const SizedBox(height: 12),
       } catch (e) {
         attempt++;
         debugPrint('Upload attempt $attempt failed: $e');
-        
+
         if (attempt >= maxRetries) {
           debugPrint('Max retries reached for image $index');
           return null;
         }
-        
+
         // Exponential backoff
         await Future.delayed(Duration(seconds: attempt * 2));
       }
@@ -476,7 +543,6 @@ const SizedBox(height: 12),
       _addressSuggestions = [];
     });
   }
-
 
   String? _validateCanadianPostalCode(String? value) {
     if (value == null || value.isEmpty) return 'Required';

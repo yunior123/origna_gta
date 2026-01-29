@@ -13,9 +13,39 @@ class SellerRegistrationScreen extends StatefulWidget {
   State<SellerRegistrationScreen> createState() => _SellerRegistrationScreenState();
 }
 
-class _SellerRegistrationScreenState extends State<SellerRegistrationScreen> {
+class _SellerRegistrationScreenState extends State<SellerRegistrationScreen> with WidgetsBindingObserver {
   bool _isLoading = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Refresh account status when app resumes (after returning from Stripe onboarding)
+    if (state == AppLifecycleState.resumed) {
+      _refreshAccountStatus();
+    }
+  }
+
+  Future<void> _refreshAccountStatus() async {
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('get_connect_account_status');
+      await callable.call();
+      // The StreamBuilder will automatically update the UI
+    } catch (e) {
+      // Silently fail - the user will see the current cached status
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

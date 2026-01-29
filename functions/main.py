@@ -16,7 +16,7 @@ Setup Instructions:
 """
 
 from firebase_functions import https_fn, options, firestore_fn, scheduler_fn
-from firebase_admin import initialize_app, firestore, credentials
+from firebase_admin import initialize_app, firestore, credentials, auth
 import stripe
 import json
 import os
@@ -573,6 +573,27 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             user_id = auth_user_id  # Use authenticated ID
 
         # ================================================================
+        # CANADA-ONLY SHIPPING VALIDATION
+        # ================================================================
+        CANADIAN_PROVINCES = ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT']
+        delivery_state = delivery_info.get('state', '').upper()
+        delivery_country = delivery_info.get('country', 'Canada')
+
+        if delivery_state not in CANADIAN_PROVINCES:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+                message=f"Shipping is only available within Canada. Invalid province: {delivery_state}"
+            )
+
+        if delivery_country.lower() not in ['canada', 'ca']:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+                message="Shipping is only available within Canada"
+            )
+
+        print(f"✓ Delivery address validated: {delivery_state}, {delivery_country}")
+
+        # ================================================================
         # ATOMIC STOCK VALIDATION AND RESERVATION
         # ================================================================
         print("🔒 Validating and reserving stock...")
@@ -951,6 +972,37 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             elif event_type == 'account.updated':
                 process_account_updated(event_data)
 
+            # Dispute events
+            elif event_type == 'charge.dispute.created':
+                order_id = process_dispute_created(event_data)
+
+            elif event_type == 'charge.dispute.closed':
+                order_id = process_dispute_closed(event_data)
+
+            # Transfer events (for logging/monitoring)
+            elif event_type == 'transfer.created':
+                print(f"ℹ️ Transfer created: {event_data.get('id')}")
+                processing_status = "logged"
+
+            elif event_type == 'transfer.reversed':
+                order_id = process_transfer_reversed(event_data)
+
+            # Payout events (seller bank payouts)
+            elif event_type == 'payout.paid':
+                print(f"ℹ️ Payout completed: {event_data.get('id')}")
+                processing_status = "logged"
+
+            elif event_type == 'payout.failed':
+                process_payout_failed(event_data)
+
+            # Refund events
+            elif event_type == 'refund.created':
+                print(f"ℹ️ Refund created: {event_data.get('id')}")
+                processing_status = "logged"
+
+            elif event_type == 'refund.failed':
+                process_refund_failed(event_data)
+
             else:
                 print(f"ℹ️ Unhandled event type: {event_type}")
                 processing_status = "unhandled"
@@ -1320,7 +1372,7 @@ def process_payment_intent_failed(payment_intent: Dict) -> Optional[str]:
 
 
 def process_charge_refunded(charge: Dict) -> Optional[str]:
-    """Process charge.refunded event"""
+    """Process charge.refunded event - restore stock on full refunds"""
     print("\n💸 Processing: charge.refunded")
 
     payment_intent_id = charge.get('payment_intent')
@@ -1335,6 +1387,7 @@ def process_charge_refunded(charge: Dict) -> Optional[str]:
     if orders:
         order_ref = orders[0].reference
         order_id = order_ref.id
+        order_data = orders[0].to_dict()
 
         print(f"  Order: {order_id}")
         print(f"  Refund Amount: ${charge.get('amount_refunded', 0) / 100}")
@@ -1350,11 +1403,197 @@ def process_charge_refunded(charge: Dict) -> Optional[str]:
             "updatedAt": firestore.SERVER_TIMESTAMP,
         })
 
+        # Restore stock on full refunds
+        if is_fully_refunded:
+            _restore_stock_for_order(order_data)
+            print(f"  📦 Stock restored for fully refunded order")
+
         print(f"  💸 {'Fully' if is_fully_refunded else 'Partially'} refunded")
 
         return order_id
 
     return None
+
+
+def process_dispute_created(dispute: Dict) -> Optional[str]:
+    """Process charge.dispute.created - freeze payouts for disputed orders"""
+    print("\n⚠️ Processing: charge.dispute.created")
+
+    charge_id = dispute.get('charge')
+    if not charge_id:
+        print("  ⚠️ No charge ID in dispute")
+        return None
+
+    # Get the charge to find the payment intent
+    try:
+        charge = stripe.Charge.retrieve(charge_id)
+        payment_intent_id = charge.payment_intent
+    except Exception as e:
+        print(f"  ❌ Failed to retrieve charge: {e}")
+        return None
+
+    if not payment_intent_id:
+        print("  ⚠️ No payment intent ID in charge")
+        return None
+
+    orders = db.collection(Collections.ORDERS).where(
+        'stripePaymentIntentId', '==', payment_intent_id
+    ).limit(1).get()
+
+    if orders:
+        order_ref = orders[0].reference
+        order_id = order_ref.id
+
+        print(f"  Order: {order_id}")
+        print(f"  Dispute ID: {dispute.get('id')}")
+        print(f"  Reason: {dispute.get('reason')}")
+        print(f"  Amount: ${dispute.get('amount', 0) / 100}")
+
+        # Update order with dispute info - freeze payouts
+        order_ref.update({
+            "hasDispute": True,
+            "disputeId": dispute.get('id'),
+            "disputeReason": dispute.get('reason'),
+            "disputeStatus": dispute.get('status'),
+            "disputeAmount": dispute.get('amount', 0) / 100,
+            "disputeCreatedAt": firestore.SERVER_TIMESTAMP,
+            "payoutStatus": PayoutStatus.PENDING,  # Freeze payouts
+            "updatedAt": firestore.SERVER_TIMESTAMP,
+        })
+
+        print(f"  ⚠️ Dispute created - payouts frozen")
+        return order_id
+
+    return None
+
+
+def process_dispute_closed(dispute: Dict) -> Optional[str]:
+    """Process charge.dispute.closed - handle dispute resolution"""
+    print("\n⚖️ Processing: charge.dispute.closed")
+
+    charge_id = dispute.get('charge')
+    if not charge_id:
+        return None
+
+    try:
+        charge = stripe.Charge.retrieve(charge_id)
+        payment_intent_id = charge.payment_intent
+    except Exception:
+        return None
+
+    if not payment_intent_id:
+        return None
+
+    orders = db.collection(Collections.ORDERS).where(
+        'stripePaymentIntentId', '==', payment_intent_id
+    ).limit(1).get()
+
+    if orders:
+        order_ref = orders[0].reference
+        order_id = order_ref.id
+        dispute_status = dispute.get('status')
+
+        print(f"  Order: {order_id}")
+        print(f"  Dispute Status: {dispute_status}")
+
+        update_data = {
+            "disputeStatus": dispute_status,
+            "disputeClosedAt": firestore.SERVER_TIMESTAMP,
+            "updatedAt": firestore.SERVER_TIMESTAMP,
+        }
+
+        # If dispute won (in seller's favor), unfreeze payouts
+        if dispute_status == 'won':
+            update_data["hasDispute"] = False
+            print(f"  ✅ Dispute won - payouts unfrozen")
+        else:
+            # Dispute lost - mark order appropriately
+            update_data["status"] = OrderStatus.REFUNDED
+            print(f"  ❌ Dispute lost - order refunded")
+
+        order_ref.update(update_data)
+        return order_id
+
+    return None
+
+
+def process_transfer_reversed(transfer: Dict) -> Optional[str]:
+    """Process transfer.reversed - update payout records"""
+    print("\n🔄 Processing: transfer.reversed")
+
+    order_id = transfer.get('metadata', {}).get('orderId')
+    seller_id = transfer.get('metadata', {}).get('sellerId')
+
+    if not order_id:
+        print("  ⚠️ No order ID in transfer metadata")
+        return None
+
+    print(f"  Order: {order_id}")
+    print(f"  Seller: {seller_id}")
+    print(f"  Reversed Amount: ${transfer.get('amount_reversed', 0) / 100}")
+
+    order_ref = db.collection(Collections.ORDERS).document(order_id)
+    order_doc = order_ref.get()
+
+    if order_doc.exists:
+        order_data = order_doc.to_dict()
+        seller_payouts = order_data.get('sellerPayouts', [])
+
+        # Update the specific seller's payout record
+        for payout in seller_payouts:
+            if payout.get('sellerId') == seller_id:
+                payout['reversed'] = True
+                payout['reversedAt'] = firestore.SERVER_TIMESTAMP
+                break
+
+        order_ref.update({
+            'sellerPayouts': seller_payouts,
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+        })
+
+        print(f"  🔄 Transfer reversed for seller {seller_id}")
+        return order_id
+
+    return None
+
+
+def process_payout_failed(payout: Dict) -> None:
+    """Process payout.failed - log failed bank payouts"""
+    print("\n❌ Processing: payout.failed")
+    print(f"  Payout ID: {payout.get('id')}")
+    print(f"  Amount: ${payout.get('amount', 0) / 100}")
+    print(f"  Failure Code: {payout.get('failure_code')}")
+    print(f"  Failure Message: {payout.get('failure_message')}")
+
+    # Log to webhook_logs for monitoring
+    db.collection('webhook_logs').add({
+        'eventType': 'payout.failed',
+        'payoutId': payout.get('id'),
+        'amount': payout.get('amount', 0) / 100,
+        'failureCode': payout.get('failure_code'),
+        'failureMessage': payout.get('failure_message'),
+        'destination': payout.get('destination'),
+        'createdAt': firestore.SERVER_TIMESTAMP,
+    })
+
+
+def process_refund_failed(refund: Dict) -> None:
+    """Process refund.failed - log failed refunds for manual review"""
+    print("\n❌ Processing: refund.failed")
+    print(f"  Refund ID: {refund.get('id')}")
+    print(f"  Amount: ${refund.get('amount', 0) / 100}")
+    print(f"  Failure Reason: {refund.get('failure_reason')}")
+
+    # Log for manual review
+    db.collection('webhook_logs').add({
+        'eventType': 'refund.failed',
+        'refundId': refund.get('id'),
+        'amount': refund.get('amount', 0) / 100,
+        'failureReason': refund.get('failure_reason'),
+        'chargeId': refund.get('charge'),
+        'createdAt': firestore.SERVER_TIMESTAMP,
+        'requiresManualReview': True,
+    })
 
 
 def process_account_updated(account: Dict) -> None:
@@ -1768,6 +2007,162 @@ def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError(
             code=https_fn.FunctionsErrorCode.INTERNAL,
             message=f"Failed to delete product: {str(e)}"
+        )
+
+
+# ============================================================================
+# ACCOUNT MANAGEMENT - DELETE ACCOUNT (GDPR/PIPEDA COMPLIANCE)
+# ============================================================================
+
+@https_fn.on_call()
+def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Delete a user account and all associated data for GDPR/PIPEDA compliance.
+    This function:
+    1. Deletes user's cart items
+    2. Deletes user's favorites
+    3. Deletes or anonymizes user's products (if seller)
+    4. Anonymizes user data in orders
+    5. Deletes Stripe Connect account (if seller)
+    6. Deletes Firestore user document
+    7. Deletes Firebase Auth account
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in to delete account"
+        )
+
+    user_id = req.auth.uid
+    confirmation = req.data.get("confirmation")
+
+    # Require explicit confirmation
+    if confirmation != "DELETE_MY_ACCOUNT":
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="Must provide confirmation string 'DELETE_MY_ACCOUNT'"
+        )
+
+    print(f"🗑️ Account deletion requested for user: {user_id}")
+
+    try:
+        user_ref = db.collection(Collections.USERS).document(user_id)
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="User not found"
+            )
+
+        user_data = user_doc.to_dict()
+        user_email = user_data.get('email', 'deleted')
+        stripe_account_id = user_data.get('stripeAccountId')
+
+        # 1. Delete cart subcollection
+        print("  🛒 Deleting cart items...")
+        cart_ref = user_ref.collection(Collections.CART)
+        cart_docs = cart_ref.get()
+        cart_count = 0
+        for doc in cart_docs:
+            doc.reference.delete()
+            cart_count += 1
+        print(f"    ✓ Deleted {cart_count} cart items")
+
+        # 2. Delete favorites subcollection
+        print("  ❤️ Deleting favorites...")
+        fav_ref = user_ref.collection(Collections.FAVORITES)
+        fav_docs = fav_ref.get()
+        fav_count = 0
+        for doc in fav_docs:
+            doc.reference.delete()
+            fav_count += 1
+        print(f"    ✓ Deleted {fav_count} favorites")
+
+        # 3. Handle seller's products - anonymize instead of delete (for order history)
+        print("  📦 Anonymizing seller products...")
+        products = db.collection(Collections.PRODUCTS).where('sellerId', '==', user_id).get()
+        product_count = 0
+        for product_doc in products:
+            # Mark as deleted and remove from search, but keep for order references
+            product_doc.reference.update({
+                'sellerId': 'deleted_user',
+                'sellerAddress': {
+                    'street': 'Deleted',
+                    'city': 'Deleted',
+                    'state': 'ON',
+                    'postalCode': 'A0A 0A0',
+                    'country': 'Canada',
+                },
+                'stockQuantity': 0,  # Mark as sold out
+                'searchKeywords': [],  # Remove from search
+            })
+            product_count += 1
+        print(f"    ✓ Anonymized {product_count} products")
+
+        # 4. Anonymize user data in orders (keep order for records)
+        print("  📋 Anonymizing order data...")
+        orders = db.collection(Collections.ORDERS).where('userId', '==', user_id).get()
+        order_count = 0
+        for order_doc in orders:
+            order_doc.reference.update({
+                'customerEmail': 'deleted@account.com',
+                'deliveryInfo': {
+                    'street': 'Deleted',
+                    'city': 'Deleted',
+                    'state': 'ON',
+                    'postalCode': 'A0A 0A0',
+                    'country': 'Canada',
+                    'formattedAddress': 'Account Deleted',
+                },
+            })
+            order_count += 1
+        print(f"    ✓ Anonymized {order_count} orders")
+
+        # 5. Delete Stripe Connect account if exists
+        if stripe_account_id:
+            print(f"  💳 Deleting Stripe Connect account: {stripe_account_id}")
+            try:
+                stripe.Account.delete(stripe_account_id)
+                print("    ✓ Stripe account deleted")
+            except stripe.error.StripeError as e:
+                print(f"    ⚠️ Failed to delete Stripe account: {str(e)}")
+                # Continue with deletion even if Stripe fails
+
+        # 6. Delete Firestore user document
+        print("  👤 Deleting Firestore user document...")
+        user_ref.delete()
+        print("    ✓ User document deleted")
+
+        # 7. Delete Firebase Auth account
+        print("  🔐 Deleting Firebase Auth account...")
+        try:
+            auth.delete_user(user_id)
+            print("    ✓ Auth account deleted")
+        except auth.UserNotFoundError:
+            print("    ⚠️ Auth user not found (may have been deleted already)")
+
+        print(f"✅ Account deletion complete for user: {user_id}")
+
+        return {
+            "success": True,
+            "message": "Account deleted successfully",
+            "deletedItems": {
+                "cartItems": cart_count,
+                "favorites": fav_count,
+                "productsAnonymized": product_count,
+                "ordersAnonymized": order_count,
+            }
+        }
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Error deleting account: {str(e)}")
+        print(traceback.format_exc())
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to delete account: {str(e)}"
         )
 
 
@@ -2206,7 +2601,8 @@ def _process_seller_payouts(order_id: str, order_data: Dict) -> None:
                 net_amount = gross_amount - platform_fee
                 total_platform_fee += platform_fee
 
-                # Create transfer to seller
+                # Create transfer to seller with idempotency key to prevent duplicates
+                idempotency_key = f"transfer_{order_id}_{seller_id}"
                 transfer = stripe.Transfer.create(
                     amount=int(net_amount * 100),  # Convert to cents
                     currency='cad',
@@ -2217,6 +2613,7 @@ def _process_seller_payouts(order_id: str, order_data: Dict) -> None:
                         'sellerId': seller_id,
                         'platformFee': str(platform_fee),
                     },
+                    idempotency_key=idempotency_key,
                 )
 
                 print(f"  ✅ Transferred ${net_amount:.2f} to seller {seller_id} (transfer: {transfer.id})")

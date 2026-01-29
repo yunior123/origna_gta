@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/addressmanagement_screen.dart';
@@ -38,7 +39,8 @@ class ProfileScreen extends StatelessWidget {
                 final userModel = UserModel.fromMap(userData);
                 final name = userModel.name;
                 final email = userModel.email;
-                final isSeller = userModel.roles.contains(UserRoles.seller);
+                final isSeller = userModel.roles.contains(UserRoles.seller) ||
+                    userModel.roles.contains(UserRoles.admin);
 
                 return Center(
                   child: ConstrainedBox(
@@ -139,6 +141,14 @@ class ProfileScreen extends StatelessWidget {
                               child: const Text('Sign Out', style: TextStyle(fontSize: 16)),
                             ),
                           ),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () => _showDeleteAccountDialog(context),
+                            child: Text(
+                              'Delete Account',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -218,6 +228,134 @@ class ProfileScreen extends StatelessWidget {
             child: const Text('Close'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    final confirmController = TextEditingController();
+    bool isDeleting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red[700], size: 28),
+              const SizedBox(width: 8),
+              const Text('Delete Account'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This action is permanent and cannot be undone.',
+                style: TextStyle(color: Colors.red[700], fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Deleting your account will:',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 8),
+              const Text('• Remove your profile and personal data'),
+              const Text('• Delete your cart and favorites'),
+              const Text('• Anonymize your order history'),
+              const Text('• Remove your products (if seller)'),
+              const Text('• Delete your Stripe account (if seller)'),
+              const SizedBox(height: 16),
+              const Text(
+                'Type "DELETE" to confirm:',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: confirmController,
+                decoration: InputDecoration(
+                  hintText: 'DELETE',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                enabled: !isDeleting,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isDeleting ? null : () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isDeleting
+                  ? null
+                  : () async {
+                      if (confirmController.text.trim().toUpperCase() != 'DELETE') {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please type DELETE to confirm'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                        return;
+                      }
+
+                      setState(() => isDeleting = true);
+
+                      try {
+                        final callable = FirebaseFunctions.instance.httpsCallable('delete_account');
+                        await callable.call({'confirmation': 'DELETE_MY_ACCOUNT'});
+
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Account deleted successfully'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } on FirebaseFunctionsException catch (e) {
+                        setState(() => isDeleting = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.message ?? 'Failed to delete account'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setState(() => isDeleting = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[700],
+                foregroundColor: Colors.white,
+              ),
+              child: isDeleting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Delete Account'),
+            ),
+          ],
+        ),
       ),
     );
   }

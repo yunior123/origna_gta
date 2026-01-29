@@ -15,7 +15,55 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 // 1.Avoid expensive APIs, only use them if really needed
 // 2.Avoid fetching too much from database, keep this consistent 
 // in the entire app.
+// 3.Scale to more than 100 million users a year
+// 4.Easy to maintain, only one developer with super powers using claude pro
+// ============================================================================
+// ARCHITECTURE NOTES 
+// ============================================================================
+// 1. Seller has Stripe Express account (connected)
+// 2. Customer checks out
+// 3. Payment is AUTHORIZED (manual capture)
+// 4. Seller ships order + confirms tracking
+// 5. Buyer confirms receipt OR 14 days pass
+// 6. Payment is CAPTURED
+// 7. Stripe automatically:
+//    - Sends funds to seller
+//    - Deducts platform fee (2.5%)
+//    - Handles payout to seller’s bank
+// Setup Funds flow Sellers will collect payments directly Industry E-commerce products Account creation Embedded onboarding components Account management 
+// You’ll use embedded components to let users manage their Stripe account on your platform Pricing owner Stripe Enabled by default Risk and loss liability Stripe will manage risk and be liable if sellers can’t pay back losses—even if those losses result from fraud. Learn more about risk management
 
+// ✅ Funds flow: Sellers will collect payments directly
+// This is the WooCommerce-style “direct charges” model.
+// Customer pays → Stripe routes funds directly to the seller.
+// Your platform only takes an application fee (2.5%).
+// Benefit: Lower liability, no need to hold funds, and simpler accounting.
+// ✅ Industry: E-commerce products
+// This matches your marketplace use case.
+// Stripe will optimize integration guides and risk models for physical product sales.
+// ✅ Account creation: Embedded onboarding components
+// You are using Stripe Connect Express embedded in your app (WebView or browser).
+// Stripe handles all KYC, identity, and bank account collection.
+// Sellers feel like they’re still in your app, but compliance is Stripe’s responsibility.
+// ✅ Account management: Embedded components
+// Sellers manage payouts, bank info, tax info, and identity updates via Stripe-hosted Express Dashboard links.
+// You never store or manage sensitive financial or identity data.
+// Embedded components = WebView (or external browser) opening the dashboard.
+// ✅ Pricing owner: Stripe
+// Stripe collects card processing fees automatically.
+// Your platform only collects the application fee.
+// This is simplest and safest — no bookkeeping headaches or disputes with sellers.
+// ✅ Risk and loss liability: Stripe manages
+// Stripe assumes fraud and chargeback risk.
+// You don’t need to handle seller losses if a buyer disputes a charge or if fraud occurs.
+// Reduces legal and financial exposure for your platform.
+// 🧩 Summary: Why this setup is ideal
+// Scalable – works for millions of sellers and buyers.
+// Low liability – you don’t hold funds or handle sensitive data.
+// Smooth UX – sellers stay in your app via embedded onboarding and dashboard access.
+// Simple fees – Stripe collects processing fees; you collect your platform fee only.
+// Risk management – Stripe handles fraud, chargebacks, and payout failures.
+// ✅ Verdict: Your setup is fully aligned with best practices for marketplaces like Etsy, Shopify, and Amazon.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -86,13 +134,60 @@ void main() async {
 // [DONE] Amount verification in Stripe webhook
 // [DONE] Stock restoration for failed/expired payments
 // [DONE] Rating system for delivered products
+// [DONE] Stripe Connect seller payouts with 2.5% platform fee
+// [DONE] Seller registration workflow with Stripe Express onboarding
+// [DONE] Order confirmation button for buyers to confirm receipt
+// [DONE] Auto-release payout fallback (14 days after delivery)
+// [DONE] Custom reusable AppBar widget (widgets/custom_app_bar.dart)
+// [DONE] Database schema documentation (docs/database_schema.json)
+// [DONE] Improved shipping calculation for long distances (tiered pricing)
+// [DONE] Idempotency keys for Stripe transfers to prevent double-payments
+// [DONE] Webhook handlers for disputes, refunds, payouts
+// [DONE] Stock restoration on refunds
+// [DONE] Admin can sell products and receive payouts
+// [DONE] Delete Account feature for GDPR/PIPEDA compliance
+// [DONE] Canada-only shipping restriction (addresses validated backend & frontend)
+// [DONE] Weight/volume/dimensions fields in ProductModel for accurate shipping
 
 // ============================================================================
 // FUTURE VERSIONS
 // ============================================================================
-// TODO v4.0: Algolia search for better product discovery
+// TODO v4.0: CloudFlare Domain + Flutter web Firebase Hosting + OCI->Appwrite + Typesense. R2 Cloudflare + Geoapify + Mailjet + Stripe
+//  Mail services are only used after user pays, for delivery updates and payment confirmation. Geopify is used when adding new product and when user add address
+// Esta configuración es el "Santo Grial" del ahorro para startups. Estás utilizando estratégicamente los servicios gestionados (Cloudflare, Firebase Hosting) donde la fiabilidad es crítica, y el auto-hospedaje (OCI) donde los costos de escalabilidad de Firebase te arruinarían.
+
+// Aquí tienes el análisis de viabilidad técnica y cómo interactúan estas piezas:
+
+// 1. El Flujo de Datos y Conexiones
+
+// Tu arquitectura separa perfectamente las responsabilidades para maximizar el rendimiento:
+
+// Frontend (Firebase Hosting + Flutter Web): Es ideal porque Firebase Hosting ofrece un CDN global gratuito y excelente soporte para Flutter Web. Al estar bajo tu Cloudflare Domain, obtienes una capa extra de seguridad (WAF) y caché.
+
+// Backend & Search (OCI): Appwrite y Typesense viven en tu instancia Ampere de 24GB. Tu Flutter Web hablará con la IP/Dominio de tu servidor OCI para autenticación y búsquedas.
+
+// Archivos (R2): Cuando un usuario sube una foto en AddProductScreen, Appwrite la recibe pero la "empuja" automáticamente a Cloudflare R2. Esto mantiene tu disco de OCI limpio.
+
+// 2. Análisis de Costos y Límites (Escala de 50M de Usuarios)
+
+// Componente	Rol	Costo en Escala (50M Users)	Riesgo / Nota
+// Firebase Hosting	Hosting Web	Bajo/Medio	Solo pagas por transferencia de datos (Egress). Cloudflare delante puede reducir esto mediante caché.
+// OCI (Appwrite/Typesense)	DB, Auth, Search	$0	Tu mayor ahorro. Firebase Auth para 50M te costaría >$100k/mes. Aquí es gratis.
+// Cloudflare R2	Imágenes	$0.015 / GB	Lo mejor: $0 costo de descarga (Egress). Es el único servicio que permite 50M de usuarios viendo fotos sin quebrar el banco.
+// Geoapify	Direcciones	Variable	Como solo lo usas al añadir producto/dirección, los 3,000 créditos gratuitos durarán mucho.
+// Mailjet	Email Transaccional	$0 hasta 6k/mes	Al enviarlo solo tras el pago, el volumen es bajo. Es escalable.
+// Stripe	Pagos	2.9% + $0.30	Estándar de la industria. Solo pagas si ganas dinero.
+// Geoapify: El Seguro de Vida
+// Typesense: Si el stock llega a 0, otra función de Dart elimina el producto del índice de búsqueda.
+// Como planeas 50M de usuarios, eventualmente superarás los 3,000 créditos diarios de Geoapify.
+
+// Estrategia: Implementa un "Debounce" en tu campo de búsqueda en Flutter (esperar 500ms antes de llamar a la API) para evitar llamadas innecesarias mientras el usuario escribe.
+// TODO v4.0: Algolia search for better product discovery. Algolia / Typesense. 
+// Two cloud fn, one for product creation and the other for product update to send data to algolia, 
+// or typesense instance in OCI
 // TODO v4.0: Build releases for android and ios using codemagic
 // TODO v4.0: Chat integration, create chat room when a client trying to contact,
+// TODO v4.0: Caching	CachedNetworkImage	CDN + Local DB (Hive/Drift)
 // only for chatting, remove current contact us, users can chat if they are logged, fully functional, 
 // the chat should be between assistant and user, find some random user in the database with assistant role
 // option if considered, show floating chat icon in homescreen. Simple chat that does not cost too much
@@ -105,396 +200,93 @@ void main() async {
 // drivers
 
 // ============================================================================
-// CURRENT VERSION
+// REMAINING V1.1 TODOS
 // ============================================================================
-// Todos for v1.0
-// TODO Pay sellers automatically, charge a platform fee to buyers and sellers depending on the amount of the order, 
-// should be a cheap fee, 2.5 percent.
-// create seller registration workflow and payout once the order is confirmed by user
-// in app, create a button and functionality so that user can confirm reception of the products. take some of this info below 
-// into consideration: 
+// TODO v1.1: MVVM with Riverpod for state management (major refactor, do after launch)
+// TODO v1.1: Improve UI/UX with animations throughout the app
+// TODO v1.1: Admin panel for moderation (seller management, user messages, etc.)
+// TODO:v1.1: change way payment is handled, do it like below, Woocommerce, shoppify way, release payment to seller onces delivery is confirmed:
+// stripe.accounts.create({ type: 'express' })
+// Generate onboarding link:
+// stripe.accountLinks.create({
+//   account: acct_id,
+//   refresh_url: YOUR_URL,
+//   return_url: YOUR_URL,
+//   type: 'account_onboarding',
+// })
+// Buyers will purchase directly from sellers via stripe, search for best practices.
+// The core problem
+// User pays → shipping is only estimated → seller later discovers shipping costs way more than expected.
+// If you do pure WooCommerce-style instant payouts, this can hurt sellers badly and create disputes.
+// The correct marketplace pattern (used by Amazon, Etsy, Airbnb)
+// 👉 Authorize first, capture later
+// 👉 Delay seller payout until shipping is confirmed
+// This solves your issue without going full “Custom payouts”.
+// ✅ Recommended solution (Stripe-native & safe)
+// 1️⃣ Use Payment Intent with manual capture
+// At checkout:
+// Authorize full amount (product + estimated shipping)
+// Do NOT capture yet
+// Funds are held (up to ~7 days on cards)
+// 2️⃣ Seller confirms real shipping cost
+// Seller enters actual shipping price
+// Your system compares:
+// estimated vs real shipping
+// If higher → you:
+// update the amount (within Stripe rules)
+// or request user confirmation (clean UX)
+// 3️⃣ Capture payment only when shipping is locked
+// Capture final amount
+// Create transfer to seller (minus platform fee)
+// Stripe handles payout timing
+// This is how Amazon handles variable shipping.
+// What if shipping becomes much more expensive?
+// You have 3 safe options:
+// Option A — Ask buyer for approval (best UX)
+// “Shipping cost updated from $12 → $28. Approve?”
+// One-click confirmation
+// Capture after approval
+// Option B — Split payment
+// Capture product price immediately
+// Capture shipping separately once confirmed
+// Option C — Cap shipping risk
+// Platform covers difference up to X$
+// Beyond that → seller must approve or cancel
+// 🚫 What NOT to do
+// ❌ Instant payout to seller
+// ❌ Let seller lose money
+// ❌ Auto-charge extra without buyer consent
+// ❌ Manual Stripe Custom unless necessary
+// Those cause disputes, chargebacks, and Stripe account reviews.
+// Stripe setup you should use
+// Best combo for you:
+// Stripe Connect Express
+// Payment Intents
+// capture_method = manual
+// Delayed transfer to seller
+// You keep:
+// Low fees
+// Low legal risk
+// High trust
+// Flow summary (simple)
+// Buyer checks out (estimated shipping)
+// Payment authorized (not captured)
+// Seller ships & confirms cost
+// Buyer approves if needed
+// Payment captured
+// Stripe pays seller automatically
+// Bonus: Seller protection rule (important)
+// Add this to your marketplace rules:
+// “If actual shipping exceeds estimate by more than X%, buyer confirmation is required.”
+// This protects you, buyers, and sellers.
+// TODO: Remove unnecessary webhooks, it should be woocommerce style:
+//    - checkout.session.completed, async_payment_succeeded, async_payment_failed, expired
+//    - payment_intent.succeeded, payment_intent.payment_failed
+//    - charge.refunded, charge.dispute.created, charge.dispute.closed
+//    - account.updated
+//    - transfer.created, transfer.reversed
+//    - payout.paid, payout.failed
+//    - refund.created, refund.failed
 
-// The correct Stripe architecture for marketplaces
-// 1️⃣ Use Stripe Connect
-// This is Stripe’s system for multi-seller platforms (like Etsy, Uber, Airbnb).
-// You’ll:
-// Onboard sellers as Connected Accounts
-// Collect payments from customers
-// Automatically (or manually) split money between you and sellers
-// Let Stripe handle KYC, payouts, tax forms, etc.
-// 2️⃣ Choose your seller account type
-// Stripe gives you 3 options:
-// 🔹 Express (recommended for most apps)
-// ✅ Stripe handles KYC
-// ✅ Sellers get a Stripe dashboard
-// ✅ You control payouts
-// ❌ Less branding control
-// 👉 Best balance for online marketplaces
-// 🔹 Standard
-// ✅ Sellers have full Stripe accounts
-// ❌ You lose payout control
-// ❌ Worse UX (seller leaves your app)
-// 👉 Good if sellers are already Stripe users
-// 🔹 Custom
-// ✅ Full control
-// ❌ You handle compliance, KYC, risk
-// ❌ More expensive + complex
-// 👉 Only for large platforms
-// 👉 I strongly recommend Express.
-// 3️⃣ Payment flow with Stripe Checkout (IMPORTANT)
-// When creating a Checkout Session, you must use Connect parameters.
-// Option A: Destination charges (most common)
-// Customer pays → Stripe → Seller
-// You take a platform fee
-// stripe.checkout.sessions.create({
-//   mode: "payment",
-//   line_items: [...],
-//   payment_intent_data: {
-//     application_fee_amount: 1500, // your fee in cents
-//     transfer_data: {
-//       destination: SELLER_STRIPE_ACCOUNT_ID,
-//     },
-//   },
-//   success_url,
-//   cancel_url,
-// });
-// ✔ Stripe sends the rest to the seller
-// ✔ Stripe pays the seller automatically
-// ✔ You keep your fee
-// Option B: Separate charges & transfers
-// More control (escrow-like behavior)
-// Customer pays → You → Seller later
-// // 1. Charge customer normally (money goes to you)
 
-// // 2. Later transfer to seller
-// stripe.transfers.create({
-//   amount: 8500,
-//   currency: "cad",
-//   destination: SELLER_STRIPE_ACCOUNT_ID,
-// });
-// ✔ You control when sellers get paid
-// ✔ Useful for refunds, disputes, delivery-based payouts
-// 4️⃣ What you should store in your database
-// For each seller:
-// {
-//   "userId": "seller_123",
-//   "stripeAccountId": "acct_1Qxxxx",
-//   "payoutsEnabled": true
-// }
-// For each order:
-// {
-//   "orderId": "ord_456",
-//   "checkoutSessionId": "cs_test_...",
-//   "paymentIntentId": "pi_...",
-//   "sellerId": "seller_123",
-//   "stripeTransferId": "tr_...",
-//   "platformFee": 15.00
-// }
-// 👉 Do NOT store Stripe balances manually
-// 👉 Treat Stripe as the source of truth
-// 5️⃣ Seller onboarding flow
-// Seller clicks “Start selling”
-// You create a Stripe Connect account
-// Redirect them to Stripe onboarding
-// Stripe notifies you via webhook when:
-// charges_enabled = true
-// payouts_enabled = true
-// Only then can they receive money.
-// 6️⃣ Payout timing
-// By default:
-// Stripe pays sellers daily
-// You can change this (weekly / manual)
-// You do not send money yourself — Stripe does.
-// 7️⃣ Taxes & compliance (good news)
-// Stripe:
-// Handles identity verification
-// Collects required tax info
-// Generates 1099 / tax forms (US/Canada supported)
-// TL;DR
-// ✔ Stripe Checkout → collect money
-// ✔ Stripe Connect → pay sellers
-// ✔ Use Express accounts
-// ✔ Use destination charges unless you need escrow
-// ✔ Store Stripe IDs, not balances
-// Alright — multiple sellers per single order is the hard mode of Stripe 😄
-// Totally doable, but there’s one correct approach and a couple of tempting wrong ones.
-// 🚨 First: a hard Stripe limitation (very important)
-// A single Checkout Session / PaymentIntent can only have ONE destination account.
-// ❌ You cannot do:
-// One Checkout
-// Multiple sellers
-// Multiple transfer_data.destination
-// Stripe simply doesn’t allow it.
-// So… we adapt.
-// ✅ The ONLY scalable solution: Separate charges & transfers
-// Money flow
-// Customer → Platform (you) → Multiple sellers
-// You:
-// Collect 100% of the payment
-// Later split & transfer money to each seller
-// This is how Amazon, DoorDash, Uber Eats do it.
-// 🧠 High-level architecture
-// Checkout (customer pays)
-//         ↓
-// PaymentIntent (owned by YOU)
-//         ↓
-// Order confirmed
-//         ↓
-// For each seller in order:
-//     → stripe.transfers.create()
-// 🛒 Example order (multi-seller)
-// Order #123
-// {
-//   "items": [
-//     { "sellerId": "A", "price": 40 },
-//     { "sellerId": "B", "price": 25 },
-//     { "sellerId": "A", "price": 15 }
-//   ]
-// }
-// Totals:
-// Seller A → $55
-// Seller B → $25
-// Platform fee → e.g. 10%
-// 1️⃣ Checkout Session (NO destination)
-// Create Checkout normally — money lands in your platform account.
-// stripe.checkout.sessions.create({
-//   mode: "payment",
-//   line_items,
-//   success_url,
-//   cancel_url,
-// });
-// ✔ Simple
-// ✔ One payment
-// ✔ No seller logic here
-// 2️⃣ Store a seller breakdown on your side
-// In Firestore / DB:
-// {
-//   "orderId": "ord_123",
-//   "paymentIntentId": "pi_...",
-//   "sellers": [
-//     {
-//       "sellerId": "sellerA",
-//       "stripeAccountId": "acct_1A",
-//       "gross": 55.00,
-//       "platformFee": 5.50,
-//       "net": 49.50
-//     },
-//     {
-//       "sellerId": "sellerB",
-//       "stripeAccountId": "acct_1B",
-//       "gross": 25.00,
-//       "platformFee": 2.50,
-//       "net": 22.50
-//     }
-//   ],
-//   "status": "paid"
-// }
-// 👉 This breakdown is critical.
-// 3️⃣ Webhook: checkout.session.completed
-// Only after this event do you pay sellers.
-// if (event.type === "checkout.session.completed") {
-//   // confirm order
-//   // trigger transfers
-// }
-// 4️⃣ Create one transfer per seller
-// await stripe.transfers.create({
-//   amount: 4950,
-//   currency: "cad",
-//   destination: "acct_1A",
-//   source_transaction: paymentIntentId,
-// });
-// await stripe.transfers.create({
-//   amount: 2250,
-//   currency: "cad",
-//   destination: "acct_1B",
-//   source_transaction: paymentIntentId,
-// });
-// ✔ Unlimited sellers
-// ✔ Clean accounting
-// ✔ Fully Stripe-compliant
-// 5️⃣ Refunds & disputes (this is why this model wins)
-// Partial refund?
-// ✔ Refund item → reduce seller transfer
-// ✔ Or claw back from future balance
-// Dispute?
-// ✔ Stripe pulls from your account
-// ✔ You decide how to handle seller liability
-// This is impossible with destination charges.
-// 6️⃣ Payout timing (very flexible)
-// You can:
-// Pay sellers instantly
-// Delay until delivery
-// Batch weekly
-// Hold funds for disputes
-// Just don’t create the transfer yet.
-// 7️⃣ What NOT to do ❌
-// ❌ Multiple Checkout Sessions per order
-// ❌ One Checkout per seller
-// ❌ Manual PayPal-style payouts
-// ❌ Storing balances yourself
-// ❌ Trying to split a PaymentIntent
-// 🧩 Recommended Stripe Connect setup
-// Thing	Choice
-// Account type	Express
-// Charge type	Separate charges & transfers
-// Checkout	Single session
-// Payout control	Platform
-// Seller UX	Stripe-hosted onboarding
-// TL;DR
-// ✔ One Checkout
-// ✔ Money lands on YOU
-// ✔ Split order by seller
-// ✔ One transfer per seller
-// ✔ Stripe Connect Express
-// Perfect — that’s actually the cleanest and safest model. You’re basically building a built-in escrow 👍
-// Stripe is very happy with this setup.
-// Let’s lock it in step by step.
-// ✅ Correct model for your case
-// Separate charges & transfers + delayed payout
-// Customer pays (Checkout)
-//         ↓
-// Money sits on YOUR Stripe balance
-//         ↓
-// Order delivered
-//         ↓
-// Client confirms receipt in app
-//         ↓
-// You release funds → sellers
-// No hacks. No ToS issues. Fully compliant.
-// 1️⃣ Checkout: collect money (nothing special here)
-// Money must land on your platform account, not sellers.
-// stripe.checkout.sessions.create({
-//   mode: "payment",
-//   line_items,
-//   success_url,
-//   cancel_url,
-// });
-// ❗ Do NOT use transfer_data
-// ❗ Do NOT auto-pay sellers yet
-// 2️⃣ Order states (this is key)
-// Your order lifecycle should look like:
-// created
-// → paid
-// → shipped
-// → delivered
-// → confirmed_by_client
-// → sellers_paid
-// You only pay sellers at confirmed_by_client.
-// 3️⃣ Store seller escrow data per order
-// Example Firestore document:
-// {
-//   "orderId": "ord_789",
-//   "paymentIntentId": "pi_...",
-//   "status": "confirmed_by_client",
-//   "sellers": [
-//     {
-//       "sellerId": "sellerA",
-//       "stripeAccountId": "acct_1A",
-//       "gross": 80.00,
-//       "platformFee": 8.00,
-//       "net": 72.00,
-//       "paid": false
-//     },
-//     {
-//       "sellerId": "sellerB",
-//       "stripeAccountId": "acct_1B",
-//       "gross": 40.00,
-//       "platformFee": 4.00,
-//       "net": 36.00,
-//       "paid": false
-//     }
-//   ]
-// }
-// Think of this as your escrow ledger (Stripe holds the money, you hold the logic).
-// 4️⃣ Client confirmation → trigger payouts
-// When the client taps “I received my items”:
-// Backend only (never client-side!)
-// for (const seller of order.sellers) {
-//   if (!seller.paid) {
-//     const transfer = await stripe.transfers.create({
-//       amount: Math.round(seller.net * 100),
-//       currency: "cad",
-//       destination: seller.stripeAccountId,
-//       source_transaction: order.paymentIntentId,
-//     });
-
-//     // Mark seller as paid
-//     seller.paid = true;
-//     seller.transferId = transfer.id;
-//   }
-// }
-// ✔ One transfer per seller
-// ✔ Idempotent logic
-// ✔ Safe to retry
-// 5️⃣ Protect yourself (VERY important)
-// ⏳ Auto-release fallback
-// What if the client disappears?
-// Example:
-// Auto-confirm after 7–14 days
-// Or seller marks as delivered + grace period
-// delivered + 7 days → auto confirmed
-// Stripe does NOT do this for you — your app must.
-// 6️⃣ Refund rules (before confirmation)
-// Situation	What you do
-// Not delivered	Full refund
-// Partial items	Partial refund
-// Seller canceled	Remove seller from payout
-// Before confirmation	No transfers yet
-// After confirmation:
-// Refunds come from your account
-// Optionally deduct from seller’s future payouts
-// 7️⃣ Disputes (you’re doing this right)
-// Because funds stayed with you:
-// Stripe pulls disputed funds from you
-// You’re not breaking seller payouts
-// You stay in control
-// This is exactly why Stripe recommends this model.
-// 8️⃣ Stripe Connect settings (recommended)
-// Setting	Value
-// Account type	Express
-// Payout schedule	Manual or Daily
-// Transfers	Manual
-// Capability	card_payments, transfers
-// 9️⃣ What NOT to do ❌
-// ❌ Pay sellers immediately
-// ❌ Let sellers trigger payouts
-// ❌ Do payouts from client app
-// ❌ Store balances outside Stripe
-// ❌ Skip auto-release fallback
-// TL;DR (sticky note version)
-// ✔ Single Checkout
-// ✔ Money → you
-// ✔ Order confirmation unlocks escrow
-// ✔ One transfer per seller
-// ✔ Stripe Connect Express
-// ✔ Auto-release safety net
-
-// TODO shipping calculation is amazing in the app but only for local distances, if the seller is in BC Canada,
-// shipping should be cheaper using a shipping provider, in which case the seller can set the tracking number, 
-// but the shipping algorithm should be as precise as possible according to recent data, no API calls, just pure 
-// algorithm as precise as possible, the seller should agree to this stimate in the terms and conditions.
-// TODO MVVM required. Use riverpod for flutter for state management in the entire app, to follow modern clean arquitecture patterns
-// TODO: As admin i should be able to sell product in the platform as well and receive payment automatically once the user pays and receives
-// TODO the app bar for the home view is awesome, but in the rest of the app there is inconsistency with the color
-// and letters, create custom app bar similar to the one in home view but without any oval rounding, just the similar ui as the one from 
-// home so there is ui consistency, make it reusable
-
-// TODO: improve UI and UX in the entire app, make sure that there are nice animations
-
-// TODO: only users with admin or assistant roles can see Admin Panel - Build separate admin dashboard for moderation, to see sellers info, block them from the platform
-// if needed, see users messages, etc. Show automatic email to newly registered sellers with a welcoming message.
-// TODO make sure that the flow of the app is ok, check latest docs for best practices
-// TODO create a database schema, save it as json or any better way of your choice to keep track of the fields an structure
-// and avoid inconsistencies
-// TODO check entire workflow and files of the app to make sure there are no errors or mistakes, check cloud functions 
-// logic too, review everything, be creative too and propose out of the art changes with latest updated info with best
-// practices.
-// TODO Create a presentation file that is easy to edit with all workflows of the app and logic, refine logic as
-// needed, propose changes, to make sure that the e-commerce store is successfull and bullet prove, solid.
-// TODO reuse code and refactor in the entire app, keep code clean
-
-// TODO make layout responsive and working for all sort of screen, mobile, web, etc
-// TODO set todos and improvements as done an answer this: Is the app ready for production, with more than 100 000 clients
-// and more than 10 000 sellers? if yes mark as done too, if no, make changes or suggestions so that it is bullet prove
-// TODO make sure of no loose ends in the app like this one: make sure to handle this in app     refresh_url = req.data.get('refreshUrl', 'https://orignagta.ca/seller/onboarding/refresh')
-//    return_url = req.data.get('returnUrl', 'https://orignagta.ca/seller/onboarding/complete')
+// TODO fix all dart compiler warnings, code should be clean.

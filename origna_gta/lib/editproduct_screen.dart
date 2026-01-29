@@ -30,11 +30,17 @@ class _EditProductScreenState extends State<EditProductScreen> {
   late final TextEditingController _cityController;
   late final TextEditingController _postalCodeController;
   late final TextEditingController _stockController;
+  late final TextEditingController _weightController;
+  late final TextEditingController _lengthController;
+  late final TextEditingController _widthController;
+  late final TextEditingController _heightController;
+  late final TextEditingController _shipDaysController;
   late String _selectedProvince;
   late double? _latitude;
   late double? _longitude;
   bool _isLoading = false;
   bool _isSoldOut = false;
+  late bool _isLocalDeliveryOnly;
   final List<ImageModel> _newImageModels = [];
   List<String> _existingImageUrls = [];
   List<Map<String, dynamic>> _addressSuggestions = [];
@@ -69,11 +75,17 @@ class _EditProductScreenState extends State<EditProductScreen> {
     _cityController = TextEditingController(text: p.sellerAddress.city);
     _postalCodeController = TextEditingController(text: p.sellerAddress.postalCode);
     _stockController = TextEditingController(text: p.stockQuantity.toString());
+    _weightController = TextEditingController(text: p.weightKg?.toString() ?? '');
+    _lengthController = TextEditingController(text: p.lengthCm?.toString() ?? '');
+    _widthController = TextEditingController(text: p.widthCm?.toString() ?? '');
+    _heightController = TextEditingController(text: p.heightCm?.toString() ?? '');
+    _shipDaysController = TextEditingController(text: p.estimatedShipDays.toString());
     _selectedProvince = p.sellerAddress.state.isNotEmpty ? p.sellerAddress.state : 'ON';
     _latitude = p.sellerAddress.latitude;
     _longitude = p.sellerAddress.longitude;
     _existingImageUrls = List.from(p.imageUrls);
     _isSoldOut = p.stockQuantity == 0;
+    _isLocalDeliveryOnly = p.isLocalDeliveryOnly;
   }
 
   @override
@@ -87,6 +99,11 @@ class _EditProductScreenState extends State<EditProductScreen> {
     _cityController.dispose();
     _postalCodeController.dispose();
     _stockController.dispose();
+    _weightController.dispose();
+    _lengthController.dispose();
+    _widthController.dispose();
+    _heightController.dispose();
+    _shipDaysController.dispose();
     super.dispose();
   }
 
@@ -189,6 +206,92 @@ class _EditProductScreenState extends State<EditProductScreen> {
                     },
                     validator: (value) => (value == null || value.isEmpty) ? 'Please select a category' : null,
                   ),
+                  const SizedBox(height: 20),
+
+                  // --- SHIPPING INFO SECTION ---
+                  const Text('Shipping Information', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Optional: Add dimensions for accurate shipping rates. Required for items shipped nationally.',
+                      style: TextStyle(color: Colors.blue, fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Local delivery toggle
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Local Delivery Only'),
+                    subtitle: const Text('For food/perishables - same day local delivery'),
+                    value: _isLocalDeliveryOnly,
+                    activeTrackColor: const Color(0xFFFF6B35),
+                    onChanged: (value) => setState(() => _isLocalDeliveryOnly = value),
+                  ),
+                  if (!_isLocalDeliveryOnly) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _weightController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'Weight (kg)',
+                              prefixIcon: Icon(Icons.scale_outlined),
+                              hintText: 'e.g., 0.5',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _shipDaysController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Ship Days',
+                              prefixIcon: Icon(Icons.schedule_outlined),
+                              hintText: '1-7',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Dimensions (cm)', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _lengthController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(labelText: 'Length'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _widthController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(labelText: 'Width'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _heightController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(labelText: 'Height'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   const Text('Product Location', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 12),
@@ -429,6 +532,13 @@ class _EditProductScreenState extends State<EditProductScreen> {
           'latitude': _latitude,
           'longitude': _longitude,
         },
+        // Shipping dimensions
+        'weightKg': _weightController.text.isNotEmpty ? double.tryParse(_weightController.text) : null,
+        'lengthCm': _lengthController.text.isNotEmpty ? double.tryParse(_lengthController.text) : null,
+        'widthCm': _widthController.text.isNotEmpty ? double.tryParse(_widthController.text) : null,
+        'heightCm': _heightController.text.isNotEmpty ? double.tryParse(_heightController.text) : null,
+        'isLocalDeliveryOnly': _isLocalDeliveryOnly,
+        'estimatedShipDays': int.tryParse(_shipDaysController.text) ?? 3,
       });
 
       if (mounted) {

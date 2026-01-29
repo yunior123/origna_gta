@@ -116,8 +116,13 @@ Map<String, double> calculateDetailedTaxes(Address? address, double total) {
   return breakdown;
 }
 
+/// Calculate shipping cost based on distance and item quantity.
+/// Uses a tiered pricing model that reflects real Canadian shipping costs:
+/// - Local (0-50km): Base rate
+/// - Regional (50-500km): Moderate rate
+/// - Provincial (500-1500km): Higher rate
+/// - National (1500km+): Uses flat rates similar to Canada Post
 Future<double> calculateShippingCost(List<CartItemDetailModel> items, Address? buyerAddress) async {
-  print('Calculating shipping cost for ${items.length} items to buyer at $buyerAddress');
   if (buyerAddress == null || buyerAddress.latitude == null || buyerAddress.longitude == null) {
     return 0.0;
   }
@@ -125,9 +130,19 @@ Future<double> calculateShippingCost(List<CartItemDetailModel> items, Address? b
   double totalShipping = 0.0;
   final String apiKey = ConfigService().geoapifyKey;
 
+  // Group items by seller to calculate shipping per seller
+  final Map<String, List<CartItemDetailModel>> itemsBySeller = {};
   for (var item in items) {
-    final seller = item.sellerAddress;
-    if (seller.latitude == null || seller.longitude == null) continue;
+    itemsBySeller.putIfAbsent(item.sellerId, () => []).add(item);
+  }
+
+  for (var sellerItems in itemsBySeller.values) {
+    final seller = sellerItems.first.sellerAddress;
+    if (seller.latitude == null || seller.longitude == null) {
+      // Fallback: use flat rate if no coordinates
+      totalShipping += _calculateFallbackShipping(sellerItems, seller.state, buyerAddress.state);
+      continue;
+    }
 
     final url = Uri.parse("https://api.geoapify.com/v1/routematrix?apiKey=$apiKey");
 
@@ -137,32 +152,138 @@ Future<double> calculateShippingCost(List<CartItemDetailModel> items, Address? b
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "mode": "drive",
-          "sources": [
-            {
-              "location": [seller.longitude, seller.latitude],
-            },
-          ],
-          "targets": [
-            {
-              "location": [buyerAddress.longitude, buyerAddress.latitude],
-            },
-          ],
+          "sources": [{"location": [seller.longitude, seller.latitude]}],
+          "targets": [{"location": [buyerAddress.longitude, buyerAddress.latitude]}],
         }),
       );
 
       if (response.statusCode == 200) {
-        print('Shipping API response: ${response.body}');
         final data = jsonDecode(response.body);
-        // Distance is in meters, convert to km
-        double distanceKm = data['sources_to_targets'][0][0]['distance'] / 1000.0;
-        // Calculation logic: Distance * 0.5
-        totalShipping += (distanceKm * 0.5);
+        final distanceKm = data['sources_to_targets'][0][0]['distance'] / 1000.0;
+
+        // Calculate total items from this seller
+        final totalItems = sellerItems.fold(0, (qty, item) => qty + item.quantity);
+
+        // Calculate shipping using tiered model
+        totalShipping += _calculateTieredShipping(distanceKm, totalItems);
+      } else {
+        // API failed, use fallback
+        totalShipping += _calculateFallbackShipping(sellerItems, seller.state, buyerAddress.state);
       }
     } catch (e) {
       debugPrint('Error calculating shipping: $e');
+      // Use fallback on error
+      totalShipping += _calculateFallbackShipping(sellerItems, seller.state, buyerAddress.state);
     }
   }
+
   return totalShipping;
+}
+
+/// Tiered shipping calculation based on distance.
+/// Reflects realistic Canadian shipping costs.
+double _calculateTieredShipping(double distanceKm, int itemCount) {
+  double baseCost;
+
+  if (distanceKm <= 50) {
+    // Local delivery (same city/area)
+    baseCost = 5.99;
+  } else if (distanceKm <= 150) {
+    // Regional (nearby cities)
+    baseCost = 8.99;
+  } else if (distanceKm <= 500) {
+    // Provincial (within province)
+    baseCost = 12.99;
+  } else if (distanceKm <= 1000) {
+    // Inter-provincial (adjacent provinces)
+    baseCost = 16.99;
+  } else if (distanceKm <= 2000) {
+    // Cross-country (e.g., ON to AB)
+    baseCost = 22.99;
+  } else if (distanceKm <= 4000) {
+    // Coast to coast (e.g., BC to NS)
+    baseCost = 28.99;
+  } else {
+    // Very far (e.g., northern territories)
+    baseCost = 34.99;
+  }
+
+  // Additional items add incremental cost (simulating weight/volume)
+  // First item is base, each additional adds 20% of base
+  final additionalItemsCost = (itemCount - 1) * (baseCost * 0.2);
+
+  // Cap additional cost at 50% of base for large orders
+  final cappedAdditional = additionalItemsCost > (baseCost * 0.5)
+      ? baseCost * 0.5
+      : additionalItemsCost;
+
+  return baseCost + cappedAdditional;
+}
+
+/// Fallback shipping calculation when coordinates are unavailable.
+/// Uses province-based flat rates.
+double _calculateFallbackShipping(List<CartItemDetailModel> items, String sellerProvince, String buyerProvince) {
+  final totalItems = items.fold(0, (count, item) => count + item.quantity);
+  double baseCost;
+
+  if (sellerProvince == buyerProvince) {
+    // Same province
+    baseCost = 12.99;
+  } else if (_areAdjacentProvinces(sellerProvince, buyerProvince)) {
+    // Adjacent provinces
+    baseCost = 18.99;
+  } else if (_areSameRegion(sellerProvince, buyerProvince)) {
+    // Same region (East, Central, West, North)
+    baseCost = 24.99;
+  } else {
+    // Cross-country
+    baseCost = 29.99;
+  }
+
+  // Additional items cost
+  final additionalCost = (totalItems - 1) * (baseCost * 0.2);
+  final cappedAdditional = additionalCost > (baseCost * 0.5) ? baseCost * 0.5 : additionalCost;
+
+  return baseCost + cappedAdditional;
+}
+
+/// Check if two provinces are adjacent
+bool _areAdjacentProvinces(String p1, String p2) {
+  const adjacency = {
+    'BC': ['AB', 'YT', 'NT'],
+    'AB': ['BC', 'SK', 'NT'],
+    'SK': ['AB', 'MB', 'NT', 'NU'],
+    'MB': ['SK', 'ON', 'NU'],
+    'ON': ['MB', 'QC'],
+    'QC': ['ON', 'NB', 'NL'],
+    'NB': ['QC', 'NS', 'PE'],
+    'NS': ['NB', 'PE'],
+    'PE': ['NB', 'NS'],
+    'NL': ['QC'],
+    'YT': ['BC', 'NT'],
+    'NT': ['BC', 'AB', 'SK', 'YT', 'NU'],
+    'NU': ['SK', 'MB', 'NT'],
+  };
+
+  return adjacency[p1]?.contains(p2) ?? false;
+}
+
+/// Check if two provinces are in the same region
+bool _areSameRegion(String p1, String p2) {
+  const regions = {
+    'West': ['BC', 'AB'],
+    'Prairies': ['SK', 'MB'],
+    'Central': ['ON', 'QC'],
+    'Atlantic': ['NB', 'NS', 'PE', 'NL'],
+    'North': ['YT', 'NT', 'NU'],
+  };
+
+  for (var region in regions.values) {
+    if (region.contains(p1) && region.contains(p2)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 List<String> generateSearchKeywords(String name) {
@@ -700,6 +821,13 @@ class ProductModel {
   final int ratingCount;
   final Timestamp? dateCreated;
   final List<String> searchKeywords;
+  // Shipping dimensions (optional - for better shipping calculation)
+  final double? weightKg; // Weight in kilograms
+  final double? lengthCm; // Length in centimeters
+  final double? widthCm; // Width in centimeters
+  final double? heightCm; // Height in centimeters
+  final bool isLocalDeliveryOnly; // For food/perishables - same day local delivery
+  final int estimatedShipDays; // Seller's estimated shipping time in days
 
   ProductModel({
     required this.id,
@@ -715,6 +843,12 @@ class ProductModel {
     this.rating = 0.0,
     this.ratingCount = 0,
     this.dateCreated,
+    this.weightKg,
+    this.lengthCm,
+    this.widthCm,
+    this.heightCm,
+    this.isLocalDeliveryOnly = false,
+    this.estimatedShipDays = 3,
   });
 
   factory ProductModel.fromDocument(DocumentSnapshot doc) {
@@ -743,6 +877,12 @@ class ProductModel {
       sellerId: map['sellerId']?.toString() ?? '',
       searchKeywords: _parseStringList(map['searchKeywords']),
       stockQuantity: _parseInt(map['stockQuantity']),
+      weightKg: map['weightKg'] != null ? _parseDouble(map['weightKg']) : null,
+      lengthCm: map['lengthCm'] != null ? _parseDouble(map['lengthCm']) : null,
+      widthCm: map['widthCm'] != null ? _parseDouble(map['widthCm']) : null,
+      heightCm: map['heightCm'] != null ? _parseDouble(map['heightCm']) : null,
+      isLocalDeliveryOnly: map['isLocalDeliveryOnly'] ?? false,
+      estimatedShipDays: _parseInt(map['estimatedShipDays']),
     );
   }
 
@@ -761,6 +901,12 @@ class ProductModel {
       'ratingCount': ratingCount,
       'dateCreated': dateCreated,
       'searchKeywords': searchKeywords,
+      if (weightKg != null) 'weightKg': weightKg,
+      if (lengthCm != null) 'lengthCm': lengthCm,
+      if (widthCm != null) 'widthCm': widthCm,
+      if (heightCm != null) 'heightCm': heightCm,
+      'isLocalDeliveryOnly': isLocalDeliveryOnly,
+      'estimatedShipDays': estimatedShipDays,
     };
   }
 
@@ -917,8 +1063,11 @@ class UserModel {
     );
   }
 
-  /// Check if user is a seller with payouts enabled
-  bool get canReceivePayouts => roles.contains(UserRoles.seller) && payoutsEnabled && onboardingCompleted;
+  /// Check if user is a seller or admin with payouts enabled
+  bool get canReceivePayouts =>
+      (roles.contains(UserRoles.seller) || roles.contains(UserRoles.admin)) &&
+      payoutsEnabled &&
+      onboardingCompleted;
 
   // Helper method to get favorites subcollection reference
   static CollectionReference getFavoritesCollection(String userId) {

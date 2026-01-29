@@ -240,7 +240,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
                       },
                     ),
-                    if (widget.userModel?.roles.contains(UserRoles.seller) ?? false)
+                    if ((widget.userModel?.roles.contains(UserRoles.seller) ?? false) ||
+                        (widget.userModel?.roles.contains(UserRoles.admin) ?? false))
                       _buildIconButton(
                         icon: Icons.add_box_outlined,
                         onPressed: () {
