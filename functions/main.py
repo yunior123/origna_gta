@@ -15,13 +15,13 @@ Setup Instructions:
 3. Deploy: firebase deploy --only functions
 """
 
-from firebase_functions import https_fn, options, firestore_fn
+from firebase_functions import https_fn, options, firestore_fn, scheduler_fn
 from firebase_admin import initialize_app, firestore, credentials
 import stripe
 import json
 import os
 from typing import Any, Dict, Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 import traceback
 from mailjet_rest import Client
 import re
@@ -66,6 +66,17 @@ class Collections:
     ORDERS = 'orders'
     CART = 'cart'
     FAVORITES = 'favorites'
+
+class PayoutStatus:
+    PENDING = 'pending'
+    PROCESSING = 'processing'
+    COMPLETED = 'completed'
+    PARTIAL = 'partial'
+    FAILED = 'failed'
+
+# Platform configuration
+PLATFORM_FEE_PERCENT = 0.025  # 2.5% platform fee
+AUTO_CONFIRM_DAYS = 14  # Auto-confirm orders after 14 days
 
 # ============================================================================
 # FIREBASE INITIALIZATION
@@ -161,7 +172,7 @@ def get_order_confirmation_email(order_data: Dict[str, Any]) -> str:
             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <h2 style="margin: 0 0 10px 0; color: #FF6B35;">Order Details</h2>
                 <p style="margin: 5px 0;"><strong>Order ID:</strong> {order_data.get('orderId', 'N/A')}</p>
-                <p style="margin: 5px 0;"><strong>Order Date:</strong> {datetime.utcnow().strftime('%B %d, %Y')}</p>
+                <p style="margin: 5px 0;"><strong>Order Date:</strong> {datetime.now().strftime('%B %d, %Y')}</p>
             </div>
             
             <h3 style="color: #333; border-bottom: 2px solid #FF6B35; padding-bottom: 10px;">Items Ordered</h3>
@@ -245,7 +256,7 @@ def get_seller_notification_email(order_data: Dict[str, Any]) -> str:
                 <h2 style="margin: 0 0 10px 0; color: #FF6B35;">Order Details</h2>
                 <p style="margin: 5px 0;"><strong>Order ID:</strong> {order_data.get('orderId', 'N/A')}</p>
                 <p style="margin: 5px 0;"><strong>Customer Email:</strong> {order_data.get('customerEmail', 'N/A')}</p>
-                <p style="margin: 5px 0;"><strong>Order Date:</strong> {datetime.utcnow().strftime('%B %d, %Y at %I:%M %p UTC')}</p>
+                <p style="margin: 5px 0;"><strong>Order Date:</strong> {datetime.now().strftime('%B %d, %Y at %I:%M %p UTC')}</p>
             </div>
             
             <h3 style="color: #333; border-bottom: 2px solid #FF6B35; padding-bottom: 10px;">Items Ordered</h3>
@@ -375,7 +386,7 @@ def create_error_response(error: str, status_code: int = 400, details: Optional[
         "success": False,
         "error": error,
         "details": details,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now().isoformat()
     }
     return https_fn.Response(
         json.dumps(response_data),
@@ -701,7 +712,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             },
             client_reference_id=order_id,  # Critical for webhook to find order
             billing_address_collection="auto",
-            expires_at=int((datetime.utcnow().timestamp() + 1800))  # 30 minutes
+            expires_at=int((datetime.now().timestamp() + 1800))  # 30 minutes
         )
         
         # Save order to Firestore
@@ -797,7 +808,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         
         print("=" * 80)
         print("📥 WEBHOOK REQUEST RECEIVED")
-        print(f"Timestamp: {datetime.utcnow().isoformat()}")
+        print(f"Timestamp: {datetime.now().isoformat()}")
         print(f"Payload Size: {payload_size} bytes")
         print(f"Signature Present: {bool(sig_header)}")
         
@@ -936,7 +947,10 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
                 
             elif event_type == 'charge.refunded':
                 order_id = process_charge_refunded(event_data)
-                
+
+            elif event_type == 'account.updated':
+                process_account_updated(event_data)
+
             else:
                 print(f"ℹ️ Unhandled event type: {event_type}")
                 processing_status = "unhandled"
@@ -1343,6 +1357,58 @@ def process_charge_refunded(charge: Dict) -> Optional[str]:
     return None
 
 
+def process_account_updated(account: Dict) -> None:
+    """
+    Process account.updated event from Stripe Connect.
+    Updates the user's Firestore document when their Stripe account status changes.
+    """
+    print("\n🏪 Processing: account.updated")
+
+    account_id = account.get('id')
+    if not account_id:
+        print("  ⚠️ No account ID in event")
+        return
+
+    print(f"  Account ID: {account_id}")
+    print(f"  Charges Enabled: {account.get('charges_enabled')}")
+    print(f"  Payouts Enabled: {account.get('payouts_enabled')}")
+    print(f"  Details Submitted: {account.get('details_submitted')}")
+
+    # Find user with this Stripe account
+    users = db.collection(Collections.USERS).where(
+        'stripeAccountId', '==', account_id
+    ).limit(1).get()
+
+    if not users:
+        print(f"  ⚠️ No user found with Stripe account {account_id}")
+        return
+
+    user_ref = users[0].reference
+    user_id = user_ref.id
+
+    print(f"  User ID: {user_id}")
+
+    # Update user document with current account status
+    user_ref.update({
+        'chargesEnabled': account.get('charges_enabled', False),
+        'payoutsEnabled': account.get('payouts_enabled', False),
+        'onboardingCompleted': account.get('details_submitted', False),
+        'updatedAt': firestore.SERVER_TIMESTAMP,
+    })
+
+    print(f"  ✅ Updated user {user_id} Stripe account status")
+
+    # If onboarding is completed, ensure seller role is set
+    if account.get('details_submitted', False):
+        user_data = users[0].to_dict()
+        current_roles = user_data.get('roles', [])
+        if UserRoles.SELLER not in current_roles:
+            user_ref.update({
+                'roles': current_roles + [UserRoles.SELLER],
+            })
+            print(f"  ✅ Added seller role to user {user_id}")
+
+
 def send_order_confirmation_emails(order_id: str, order_data: Dict) -> None:
     """Send confirmation emails to customer and sellers"""
     try:
@@ -1703,3 +1769,632 @@ def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
             code=https_fn.FunctionsErrorCode.INTERNAL,
             message=f"Failed to delete product: {str(e)}"
         )
+
+
+# ============================================================================
+# STRIPE CONNECT - SELLER ONBOARDING & PAYOUTS
+# ============================================================================
+
+@https_fn.on_call()
+def create_connect_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Create a Stripe Connect Express account for a seller.
+    Called when a user wants to become a seller.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    user_id = req.auth.uid
+    print(f"🏪 Creating Stripe Connect account for user: {user_id}")
+
+    try:
+        # Get user data
+        user_ref = db.collection(Collections.USERS).document(user_id)
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="User not found"
+            )
+
+        user_data = user_doc.to_dict()
+
+        # Check if user already has a Stripe account
+        existing_account_id = user_data.get('stripeAccountId')
+        if existing_account_id:
+            print(f"  User already has Stripe account: {existing_account_id}")
+            # Return existing account info
+            account = stripe.Account.retrieve(existing_account_id)
+            return {
+                "accountId": existing_account_id,
+                "chargesEnabled": account.charges_enabled,
+                "payoutsEnabled": account.payouts_enabled,
+                "onboardingCompleted": account.details_submitted,
+                "alreadyExists": True,
+            }
+
+        # Create new Stripe Connect Express account
+        account = stripe.Account.create(
+            type="express",
+            country="CA",
+            email=user_data.get('email'),
+            capabilities={
+                "card_payments": {"requested": True},
+                "transfers": {"requested": True},
+            },
+            business_type="individual",
+            metadata={
+                "userId": user_id,
+                "platform": "orignagta",
+            },
+        )
+
+        print(f"  ✅ Created Stripe account: {account.id}")
+
+        # Update user document with Stripe account ID
+        user_ref.update({
+            "stripeAccountId": account.id,
+            "payoutsEnabled": False,
+            "chargesEnabled": False,
+            "onboardingCompleted": False,
+            "updatedAt": firestore.SERVER_TIMESTAMP,
+        })
+
+        # Add seller role if not already present
+        current_roles = user_data.get('roles', [])
+        if UserRoles.SELLER not in current_roles:
+            user_ref.update({
+                "roles": current_roles + [UserRoles.SELLER],
+            })
+
+        return {
+            "accountId": account.id,
+            "chargesEnabled": False,
+            "payoutsEnabled": False,
+            "onboardingCompleted": False,
+            "alreadyExists": False,
+        }
+
+    except stripe.error.StripeError as e:
+        print(f"❌ Stripe error: {str(e)}")
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Stripe error: {str(e)}"
+        )
+    except Exception as e:
+        print(f"❌ Error creating Connect account: {str(e)}")
+        print(traceback.format_exc())
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to create seller account: {str(e)}"
+        )
+
+
+@https_fn.on_call()
+def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Generate Stripe onboarding link for a seller.
+    Called to start or resume the onboarding process.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    user_id = req.auth.uid
+    refresh_url = req.data.get('refreshUrl', 'https://orignagta.ca/seller/onboarding/refresh')
+    return_url = req.data.get('returnUrl', 'https://orignagta.ca/seller/onboarding/complete')
+
+    print(f"🔗 Creating account link for user: {user_id}")
+
+    try:
+        # Get user's Stripe account ID
+        user_ref = db.collection(Collections.USERS).document(user_id)
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="User not found"
+            )
+
+        user_data = user_doc.to_dict()
+        account_id = user_data.get('stripeAccountId')
+
+        if not account_id:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message="No Stripe account found. Create one first."
+            )
+
+        # Create account link
+        account_link = stripe.AccountLink.create(
+            account=account_id,
+            refresh_url=refresh_url,
+            return_url=return_url,
+            type="account_onboarding",
+        )
+
+        print(f"  ✅ Created account link: {account_link.url[:50]}...")
+
+        return {
+            "url": account_link.url,
+            "expiresAt": account_link.expires_at,
+        }
+
+    except stripe.error.StripeError as e:
+        print(f"❌ Stripe error: {str(e)}")
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Stripe error: {str(e)}"
+        )
+    except Exception as e:
+        print(f"❌ Error creating account link: {str(e)}")
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to create onboarding link: {str(e)}"
+        )
+
+
+@https_fn.on_call()
+def get_connect_account_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Get the current status of a seller's Stripe Connect account.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    user_id = req.auth.uid
+    print(f"📊 Getting Connect account status for: {user_id}")
+
+    try:
+        user_ref = db.collection(Collections.USERS).document(user_id)
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="User not found"
+            )
+
+        user_data = user_doc.to_dict()
+        account_id = user_data.get('stripeAccountId')
+
+        if not account_id:
+            return {
+                "hasAccount": False,
+                "chargesEnabled": False,
+                "payoutsEnabled": False,
+                "onboardingCompleted": False,
+            }
+
+        # Get account status from Stripe
+        account = stripe.Account.retrieve(account_id)
+
+        # Update user document if status changed
+        if (account.charges_enabled != user_data.get('chargesEnabled') or
+            account.payouts_enabled != user_data.get('payoutsEnabled') or
+            account.details_submitted != user_data.get('onboardingCompleted')):
+
+            user_ref.update({
+                "chargesEnabled": account.charges_enabled,
+                "payoutsEnabled": account.payouts_enabled,
+                "onboardingCompleted": account.details_submitted,
+                "updatedAt": firestore.SERVER_TIMESTAMP,
+            })
+            print(f"  ✅ Updated user account status")
+
+        return {
+            "hasAccount": True,
+            "accountId": account_id,
+            "chargesEnabled": account.charges_enabled,
+            "payoutsEnabled": account.payouts_enabled,
+            "onboardingCompleted": account.details_submitted,
+            "requiresAction": not account.details_submitted,
+        }
+
+    except stripe.error.StripeError as e:
+        print(f"❌ Stripe error: {str(e)}")
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Stripe error: {str(e)}"
+        )
+    except Exception as e:
+        print(f"❌ Error getting account status: {str(e)}")
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=str(e)
+        )
+
+
+@https_fn.on_call()
+def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Called when buyer confirms receipt of delivered items.
+    Triggers seller payouts.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    user_id = req.auth.uid
+    order_id = req.data.get('orderId')
+    item_ids = req.data.get('itemIds', [])  # Optional: specific items to confirm
+
+    if not order_id:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="orderId is required"
+        )
+
+    print(f"✅ Confirming order receipt: {order_id} by user: {user_id}")
+
+    try:
+        order_ref = db.collection(Collections.ORDERS).document(order_id)
+        order_doc = order_ref.get()
+
+        if not order_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Order not found"
+            )
+
+        order_data = order_doc.to_dict()
+
+        # Verify user owns this order
+        if order_data.get('userId') != user_id:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+                message="Not authorized to confirm this order"
+            )
+
+        # Verify order is paid
+        if order_data.get('paymentStatus') != PaymentStatus.PAID:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message="Order is not paid"
+            )
+
+        # Update items as confirmed by buyer
+        items = order_data.get('items', [])
+        confirmed_count = 0
+
+        for i, item in enumerate(items):
+            # Only confirm delivered items
+            if item.get('deliveryStatus') == DeliveryStatus.DELIVERED:
+                # If specific items provided, only confirm those
+                if not item_ids or item.get('productId') in item_ids:
+                    if not item.get('confirmedByBuyer', False):
+                        items[i]['confirmedByBuyer'] = True
+                        confirmed_count += 1
+
+        # Check if all delivered items are now confirmed
+        delivered_items = [i for i in items if i.get('deliveryStatus') == DeliveryStatus.DELIVERED]
+        all_confirmed = all(i.get('confirmedByBuyer', False) for i in delivered_items)
+
+        # Update order
+        update_data = {
+            'items': items,
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+        }
+
+        if all_confirmed and delivered_items:
+            update_data['confirmedByClient'] = True
+            update_data['confirmedAt'] = firestore.SERVER_TIMESTAMP
+
+        order_ref.update(update_data)
+
+        print(f"  ✅ Confirmed {confirmed_count} items")
+
+        # If all confirmed, trigger seller payouts
+        if all_confirmed and delivered_items:
+            print(f"  💰 All items confirmed, triggering payouts...")
+            _process_seller_payouts(order_id, order_data)
+
+        return {
+            "success": True,
+            "confirmedItems": confirmed_count,
+            "allConfirmed": all_confirmed,
+            "payoutsTriggered": all_confirmed and len(delivered_items) > 0,
+        }
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Error confirming order: {str(e)}")
+        print(traceback.format_exc())
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to confirm order: {str(e)}"
+        )
+
+
+def _process_seller_payouts(order_id: str, order_data: Dict) -> None:
+    """
+    Process payouts to all sellers in an order.
+    Called when buyer confirms receipt or auto-release triggers.
+    """
+    print(f"💰 Processing seller payouts for order: {order_id}")
+
+    try:
+        payment_intent_id = order_data.get('stripePaymentIntentId')
+        if not payment_intent_id:
+            print(f"  ⚠️ No payment intent ID found")
+            return
+
+        # Group items by seller and calculate amounts
+        seller_totals = {}
+        items = order_data.get('items', [])
+
+        for item in items:
+            seller_id = item.get('sellerId')
+            if not seller_id:
+                continue
+
+            item_total = item.get('price', 0) * item.get('quantity', 1)
+
+            if seller_id not in seller_totals:
+                seller_totals[seller_id] = 0.0
+            seller_totals[seller_id] += item_total
+
+        print(f"  📊 Seller breakdown: {seller_totals}")
+
+        # Process transfers for each seller
+        order_ref = db.collection(Collections.ORDERS).document(order_id)
+        seller_payouts = []
+        total_platform_fee = 0.0
+
+        for seller_id, gross_amount in seller_totals.items():
+            try:
+                # Get seller's Stripe account
+                seller_ref = db.collection(Collections.USERS).document(seller_id)
+                seller_doc = seller_ref.get()
+
+                if not seller_doc.exists:
+                    print(f"  ⚠️ Seller {seller_id} not found")
+                    seller_payouts.append({
+                        'sellerId': seller_id,
+                        'gross': gross_amount,
+                        'platformFee': 0,
+                        'net': 0,
+                        'paid': False,
+                        'error': 'Seller not found',
+                    })
+                    continue
+
+                seller_data = seller_doc.to_dict()
+                stripe_account_id = seller_data.get('stripeAccountId')
+
+                if not stripe_account_id:
+                    print(f"  ⚠️ Seller {seller_id} has no Stripe account")
+                    seller_payouts.append({
+                        'sellerId': seller_id,
+                        'stripeAccountId': None,
+                        'gross': gross_amount,
+                        'platformFee': 0,
+                        'net': 0,
+                        'paid': False,
+                        'error': 'No Stripe account',
+                    })
+                    continue
+
+                if not seller_data.get('payoutsEnabled', False):
+                    print(f"  ⚠️ Seller {seller_id} payouts not enabled")
+                    seller_payouts.append({
+                        'sellerId': seller_id,
+                        'stripeAccountId': stripe_account_id,
+                        'gross': gross_amount,
+                        'platformFee': 0,
+                        'net': 0,
+                        'paid': False,
+                        'error': 'Payouts not enabled',
+                    })
+                    continue
+
+                # Calculate platform fee and net amount
+                platform_fee = round(gross_amount * PLATFORM_FEE_PERCENT, 2)
+                net_amount = gross_amount - platform_fee
+                total_platform_fee += platform_fee
+
+                # Create transfer to seller
+                transfer = stripe.Transfer.create(
+                    amount=int(net_amount * 100),  # Convert to cents
+                    currency='cad',
+                    destination=stripe_account_id,
+                    source_transaction=payment_intent_id,
+                    metadata={
+                        'orderId': order_id,
+                        'sellerId': seller_id,
+                        'platformFee': str(platform_fee),
+                    },
+                )
+
+                print(f"  ✅ Transferred ${net_amount:.2f} to seller {seller_id} (transfer: {transfer.id})")
+
+                seller_payouts.append({
+                    'sellerId': seller_id,
+                    'stripeAccountId': stripe_account_id,
+                    'gross': gross_amount,
+                    'platformFee': platform_fee,
+                    'net': net_amount,
+                    'paid': True,
+                    'transferId': transfer.id,
+                    'paidAt': firestore.SERVER_TIMESTAMP,
+                })
+
+            except stripe.error.StripeError as e:
+                print(f"  ❌ Transfer failed for seller {seller_id}: {str(e)}")
+                seller_payouts.append({
+                    'sellerId': seller_id,
+                    'stripeAccountId': stripe_account_id if 'stripe_account_id' in dir() else None,
+                    'gross': gross_amount,
+                    'platformFee': 0,
+                    'net': 0,
+                    'paid': False,
+                    'error': str(e),
+                })
+
+        # Determine overall payout status
+        all_paid = all(p.get('paid', False) for p in seller_payouts)
+        any_paid = any(p.get('paid', False) for p in seller_payouts)
+
+        if all_paid:
+            payout_status = PayoutStatus.COMPLETED
+        elif any_paid:
+            payout_status = PayoutStatus.PARTIAL
+        else:
+            payout_status = PayoutStatus.FAILED
+
+        # Update order with payout info
+        order_ref.update({
+            'sellerPayouts': seller_payouts,
+            'platformFeeTotal': total_platform_fee,
+            'payoutStatus': payout_status,
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+        })
+
+        print(f"  ✅ Payout status: {payout_status}, Platform fee: ${total_platform_fee:.2f}")
+
+    except Exception as e:
+        print(f"❌ Error processing payouts: {str(e)}")
+        print(traceback.format_exc())
+
+
+# ============================================================================
+# SCHEDULED FUNCTION - AUTO-RELEASE PAYOUTS
+# ============================================================================
+
+@scheduler_fn.on_schedule(schedule="every 24 hours")
+def auto_release_payouts(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    Scheduled function to auto-release payouts for orders where:
+    - All items are delivered
+    - Buyer hasn't confirmed receipt
+    - More than AUTO_CONFIRM_DAYS have passed since the last item was delivered
+
+    This protects sellers by ensuring they get paid even if buyers don't confirm.
+    """
+    print("=" * 80)
+    print("🕐 AUTO-RELEASE PAYOUTS - Scheduled Job Started")
+    print(f"Timestamp: {datetime.now().isoformat()}")
+    print(f"Auto-confirm threshold: {AUTO_CONFIRM_DAYS} days")
+    print("=" * 80)
+
+    try:
+        # Calculate the cutoff date
+        cutoff_date = datetime.now() - timedelta(days=AUTO_CONFIRM_DAYS)
+        print(f"📅 Looking for orders delivered before: {cutoff_date.isoformat()}")
+
+        # Query for paid orders that haven't been confirmed yet
+        orders_query = db.collection(Collections.ORDERS).where(
+            'paymentStatus', '==', PaymentStatus.PAID
+        ).where(
+            'confirmedByClient', '==', False
+        ).where(
+            'payoutStatus', 'in', [PayoutStatus.PENDING, None]
+        ).stream()
+
+        processed_count = 0
+        payout_count = 0
+
+        for order_doc in orders_query:
+            order_id = order_doc.id
+            order_data = order_doc.to_dict()
+
+            try:
+                print(f"\n📦 Checking order: {order_id}")
+
+                items = order_data.get('items', [])
+                if not items:
+                    print(f"  ⚠️ No items in order")
+                    continue
+
+                # Check if all items are delivered
+                all_delivered = all(
+                    item.get('deliveryStatus') == DeliveryStatus.DELIVERED
+                    for item in items
+                )
+
+                if not all_delivered:
+                    print(f"  ⏳ Not all items delivered yet")
+                    continue
+
+                # Find the last delivery date (we'll use updatedAt as proxy)
+                order_updated_at = order_data.get('updatedAt')
+                if order_updated_at:
+                    # Convert Firestore Timestamp to datetime
+                    if hasattr(order_updated_at, 'timestamp'):
+                        order_datetime = datetime.fromtimestamp(order_updated_at.timestamp())
+                    else:
+                        order_datetime = order_updated_at
+
+                    if order_datetime > cutoff_date:
+                        days_remaining = (order_datetime - cutoff_date).days + AUTO_CONFIRM_DAYS
+                        print(f"  ⏳ Order still within grace period ({days_remaining} days remaining)")
+                        continue
+
+                # Check if order was created before cutoff (fallback check)
+                created_at = order_data.get('createdAt')
+                if created_at:
+                    if hasattr(created_at, 'timestamp'):
+                        created_datetime = datetime.fromtimestamp(created_at.timestamp())
+                    else:
+                        created_datetime = created_at
+
+                    # Give at least AUTO_CONFIRM_DAYS from creation
+                    if created_datetime > cutoff_date:
+                        print(f"  ⏳ Order too recent (created: {created_datetime.isoformat()})")
+                        continue
+
+                print(f"  ✅ Order qualifies for auto-release")
+
+                # Auto-confirm the order
+                order_ref = db.collection(Collections.ORDERS).document(order_id)
+
+                # Mark all delivered items as confirmed
+                updated_items = []
+                for item in items:
+                    if item.get('deliveryStatus') == DeliveryStatus.DELIVERED:
+                        item['confirmedByBuyer'] = True
+                    updated_items.append(item)
+
+                order_ref.update({
+                    'items': updated_items,
+                    'confirmedByClient': True,
+                    'confirmedAt': firestore.SERVER_TIMESTAMP,
+                    'autoConfirmed': True,  # Flag to indicate auto-confirmation
+                    'updatedAt': firestore.SERVER_TIMESTAMP,
+                })
+
+                print(f"  ✅ Order auto-confirmed")
+
+                # Process payouts
+                _process_seller_payouts(order_id, order_data)
+                payout_count += 1
+
+                processed_count += 1
+
+            except Exception as order_error:
+                print(f"  ❌ Error processing order {order_id}: {str(order_error)}")
+                print(traceback.format_exc())
+                continue
+
+        print("\n" + "=" * 80)
+        print(f"✅ AUTO-RELEASE PAYOUTS - Job Complete")
+        print(f"  Orders processed: {processed_count}")
+        print(f"  Payouts triggered: {payout_count}")
+        print("=" * 80)
+
+    except Exception as e:
+        print(f"❌ Error in auto-release job: {str(e)}")
+        print(traceback.format_exc())

@@ -350,6 +350,77 @@ class AddressDetails {
   AddressDetails({required this.street, required this.city, required this.province, required this.postalCode, required this.latitude, required this.longitude});
 }
 
+/// Model for tracking seller payouts per order
+class SellerPayout {
+  final String sellerId;
+  final String? stripeAccountId;
+  final double gross; // Total amount before platform fee
+  final double platformFee; // Platform fee amount
+  final double net; // Amount seller receives
+  final bool paid; // Has the seller been paid
+  final String? transferId; // Stripe transfer ID
+  final DateTime? paidAt; // When the seller was paid
+
+  SellerPayout({
+    required this.sellerId,
+    this.stripeAccountId,
+    required this.gross,
+    required this.platformFee,
+    required this.net,
+    this.paid = false,
+    this.transferId,
+    this.paidAt,
+  });
+
+  factory SellerPayout.fromMap(Map<String, dynamic> map) {
+    return SellerPayout(
+      sellerId: map['sellerId'] ?? '',
+      stripeAccountId: map['stripeAccountId'],
+      gross: (map['gross'] ?? 0).toDouble(),
+      platformFee: (map['platformFee'] ?? 0).toDouble(),
+      net: (map['net'] ?? 0).toDouble(),
+      paid: map['paid'] ?? false,
+      transferId: map['transferId'],
+      paidAt: (map['paidAt'] as Timestamp?)?.toDate(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'sellerId': sellerId,
+      'stripeAccountId': stripeAccountId,
+      'gross': gross,
+      'platformFee': platformFee,
+      'net': net,
+      'paid': paid,
+      'transferId': transferId,
+      if (paidAt != null) 'paidAt': Timestamp.fromDate(paidAt!),
+    };
+  }
+
+  SellerPayout copyWith({
+    String? sellerId,
+    String? stripeAccountId,
+    double? gross,
+    double? platformFee,
+    double? net,
+    bool? paid,
+    String? transferId,
+    DateTime? paidAt,
+  }) {
+    return SellerPayout(
+      sellerId: sellerId ?? this.sellerId,
+      stripeAccountId: stripeAccountId ?? this.stripeAccountId,
+      gross: gross ?? this.gross,
+      platformFee: platformFee ?? this.platformFee,
+      net: net ?? this.net,
+      paid: paid ?? this.paid,
+      transferId: transferId ?? this.transferId,
+      paidAt: paidAt ?? this.paidAt,
+    );
+  }
+}
+
 class CartItemDetailModel {
   final String productId;
   final String name;
@@ -362,6 +433,7 @@ class CartItemDetailModel {
   final String sellerId;
   final String deliveryStatus;
   final String? trackingNumber;
+  final bool confirmedByBuyer; // Buyer confirmed receipt of this item
 
   CartItemDetailModel({
     required this.productId,
@@ -375,6 +447,7 @@ class CartItemDetailModel {
     required this.sellerId,
     required this.deliveryStatus,
     this.trackingNumber,
+    this.confirmedByBuyer = false,
   });
 
   // Convert model to Map for Firestore
@@ -391,6 +464,7 @@ class CartItemDetailModel {
       'sellerId': sellerId,
       'deliveryStatus': deliveryStatus,
       'trackingNumber': trackingNumber,
+      'confirmedByBuyer': confirmedByBuyer,
     };
   }
 
@@ -400,7 +474,6 @@ class CartItemDetailModel {
       productId: map['productId'] ?? '',
       name: map['name'] ?? '',
       description: map['description'] ?? '',
-
       price: (map['price'] ?? 0).toDouble(),
       imageUrls: List<String>.from(map['imageUrls'] ?? []),
       quantity: map['quantity'] ?? 0,
@@ -409,6 +482,7 @@ class CartItemDetailModel {
       sellerId: map['sellerId'] ?? '',
       deliveryStatus: map['deliveryStatus'] ?? DeliveryStatus.pending.value,
       trackingNumber: map['trackingNumber'],
+      confirmedByBuyer: map['confirmedByBuyer'] ?? false,
     );
   }
 }
@@ -486,6 +560,12 @@ class OrderModel {
   final int amount;
   final List<String> sellerIds;
   final String stripeSessionId;
+  // Payout tracking fields
+  final List<SellerPayout> sellerPayouts; // Per-seller payout breakdown
+  final bool confirmedByClient; // Client confirmed receipt
+  final DateTime? confirmedAt; // When order was confirmed by client
+  final double platformFeeTotal; // Total platform fee for this order
+  final String payoutStatus; // 'pending', 'processing', 'completed', 'partial'
 
   OrderModel({
     required this.orderId,
@@ -504,7 +584,21 @@ class OrderModel {
     required this.currency,
     required this.sellerIds,
     required this.stripeSessionId,
+    this.sellerPayouts = const [],
+    this.confirmedByClient = false,
+    this.confirmedAt,
+    this.platformFeeTotal = 0.0,
+    this.payoutStatus = 'pending',
   });
+
+  /// Check if all delivered items have been confirmed by buyer
+  bool get allItemsConfirmed {
+    final deliveredItems = items.where((i) => i.deliveryStatus == DeliveryStatus.delivered.value);
+    return deliveredItems.isNotEmpty && deliveredItems.every((i) => i.confirmedByBuyer);
+  }
+
+  /// Check if all sellers have been paid
+  bool get allSellersPaid => sellerPayouts.isNotEmpty && sellerPayouts.every((p) => p.paid);
 
   factory OrderModel.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -516,7 +610,7 @@ class OrderModel {
       return CartItemDetailModel(
         productId: map['productId'] ?? '',
         name: map['name'] ?? '',
-        description: map["description"]?? '',
+        description: map["description"] ?? '',
         price: (map['price'] ?? 0).toDouble(),
         imageUrls: List<String>.from(map['imageUrls'] ?? []),
         quantity: map['quantity'] ?? 0,
@@ -525,8 +619,13 @@ class OrderModel {
         sellerId: map['sellerId'] ?? '',
         deliveryStatus: map['deliveryStatus'] ?? DeliveryStatus.pending.value,
         trackingNumber: map['trackingNumber'],
+        confirmedByBuyer: map['confirmedByBuyer'] ?? false,
       );
     }).toList();
+
+    // Parse seller payouts
+    final payoutsData = data['sellerPayouts'] as List<dynamic>? ?? [];
+    final sellerPayouts = payoutsData.map((p) => SellerPayout.fromMap(p as Map<String, dynamic>)).toList();
 
     return OrderModel(
       orderId: doc.id,
@@ -545,6 +644,11 @@ class OrderModel {
       currency: data["currency"] ?? '',
       sellerIds: List<String>.from(data["sellerIds"] ?? []),
       stripeSessionId: data["stripeSessionId"] ?? "",
+      sellerPayouts: sellerPayouts,
+      confirmedByClient: data['confirmedByClient'] ?? false,
+      confirmedAt: (data['confirmedAt'] as Timestamp?)?.toDate(),
+      platformFeeTotal: (data['platformFeeTotal'] ?? 0).toDouble(),
+      payoutStatus: data['payoutStatus'] ?? 'pending',
     );
   }
 
@@ -565,6 +669,11 @@ class OrderModel {
       "currency": currency,
       "amount": amount,
       "sellerIds": sellerIds,
+      'sellerPayouts': sellerPayouts.map((p) => p.toMap()).toList(),
+      'confirmedByClient': confirmedByClient,
+      if (confirmedAt != null) 'confirmedAt': Timestamp.fromDate(confirmedAt!),
+      'platformFeeTotal': platformFeeTotal,
+      'payoutStatus': payoutStatus,
     };
   }
 }
@@ -712,6 +821,11 @@ class UserModel {
   final String? lastCheckoutSession;
   final String? lastOrderId;
   final DateTime? lastCheckoutTimestamp;
+  // Stripe Connect fields for sellers
+  final String? stripeAccountId; // Stripe Connect account ID
+  final bool payoutsEnabled; // Can receive payouts
+  final bool chargesEnabled; // Can accept charges
+  final bool onboardingCompleted; // Completed Stripe onboarding
 
   UserModel({
     required this.uid,
@@ -724,6 +838,10 @@ class UserModel {
     this.lastCheckoutSession,
     this.lastOrderId,
     this.lastCheckoutTimestamp,
+    this.stripeAccountId,
+    this.payoutsEnabled = false,
+    this.chargesEnabled = false,
+    this.onboardingCompleted = false,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -738,6 +856,10 @@ class UserModel {
       lastCheckoutSession: map['lastCheckoutSession'] as String?,
       lastOrderId: map['lastOrderId'] as String?,
       lastCheckoutTimestamp: (map['lastCheckoutTimestamp'] as Timestamp?)?.toDate(),
+      stripeAccountId: map['stripeAccountId'] as String?,
+      payoutsEnabled: map['payoutsEnabled'] ?? false,
+      chargesEnabled: map['chargesEnabled'] ?? false,
+      onboardingCompleted: map['onboardingCompleted'] ?? false,
     );
   }
 
@@ -753,6 +875,10 @@ class UserModel {
       if (lastCheckoutSession != null) 'lastCheckoutSession': lastCheckoutSession,
       if (lastOrderId != null) 'lastOrderId': lastOrderId,
       if (lastCheckoutTimestamp != null) 'lastCheckoutTimestamp': Timestamp.fromDate(lastCheckoutTimestamp!),
+      if (stripeAccountId != null) 'stripeAccountId': stripeAccountId,
+      'payoutsEnabled': payoutsEnabled,
+      'chargesEnabled': chargesEnabled,
+      'onboardingCompleted': onboardingCompleted,
     };
   }
 
@@ -768,6 +894,10 @@ class UserModel {
     String? lastCheckoutSession,
     String? lastOrderId,
     DateTime? lastCheckoutTimestamp,
+    String? stripeAccountId,
+    bool? payoutsEnabled,
+    bool? chargesEnabled,
+    bool? onboardingCompleted,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -780,8 +910,15 @@ class UserModel {
       lastCheckoutSession: lastCheckoutSession ?? this.lastCheckoutSession,
       lastOrderId: lastOrderId ?? this.lastOrderId,
       lastCheckoutTimestamp: lastCheckoutTimestamp ?? this.lastCheckoutTimestamp,
+      stripeAccountId: stripeAccountId ?? this.stripeAccountId,
+      payoutsEnabled: payoutsEnabled ?? this.payoutsEnabled,
+      chargesEnabled: chargesEnabled ?? this.chargesEnabled,
+      onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
     );
   }
+
+  /// Check if user is a seller with payouts enabled
+  bool get canReceivePayouts => roles.contains(UserRoles.seller) && payoutsEnabled && onboardingCompleted;
 
   // Helper method to get favorites subcollection reference
   static CollectionReference getFavoritesCollection(String userId) {

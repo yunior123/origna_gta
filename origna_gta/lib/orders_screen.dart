@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -70,26 +71,89 @@ class OrdersScreen extends StatelessWidget {
   }
 }
 
-class _BuyerOrderCard extends StatelessWidget {
+class _BuyerOrderCard extends StatefulWidget {
   final String orderId;
   final Map<String, dynamic> data;
 
   const _BuyerOrderCard({required this.orderId, required this.data});
 
+  @override
+  State<_BuyerOrderCard> createState() => _BuyerOrderCardState();
+}
+
+class _BuyerOrderCardState extends State<_BuyerOrderCard> {
+  bool _isConfirming = false;
+  String? _confirmingItemId;
+
   /// Check if a product has already been rated in this order
   bool _isProductRated(String productId) {
-    final ratings = data['ratings'] as Map<String, dynamic>?;
+    final ratings = widget.data['ratings'] as Map<String, dynamic>?;
     return ratings?.containsKey(productId) ?? false;
+  }
+
+  /// Check if item is confirmed by buyer
+  bool _isItemConfirmed(CartItemDetailModel item) {
+    return item.confirmedByBuyer;
+  }
+
+  Future<void> _confirmReceipt(CartItemDetailModel item) async {
+    setState(() {
+      _isConfirming = true;
+      _confirmingItemId = item.productId;
+    });
+
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('confirm_order_receipt');
+      await callable.call({
+        'orderId': widget.orderId,
+        'itemIds': [item.productId],
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Receipt confirmed! Seller will be paid.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } on FirebaseFunctionsException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message ?? 'Failed to confirm receipt'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isConfirming = false;
+          _confirmingItemId = null;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     // Parse order data
-    final itemsData = List<Map<String, dynamic>>.from(data['items'] ?? []);
+    final itemsData = List<Map<String, dynamic>>.from(widget.data['items'] ?? []);
     final items = itemsData.map((e) => CartItemDetailModel.fromMap(e)).toList();
-    final total = (data['total'] ?? 0.0).toDouble();
-    final createdAt = data['createdAt'] as Timestamp?;
-    final deliveryInfo = data['deliveryInfo'] as Map<String, dynamic>?;
+    final total = (widget.data['total'] ?? 0.0).toDouble();
+    final createdAt = widget.data['createdAt'] as Timestamp?;
+    final deliveryInfo = widget.data['deliveryInfo'] as Map<String, dynamic>?;
+    final isOrderConfirmed = widget.data['confirmedByClient'] == true;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -108,7 +172,7 @@ class _BuyerOrderCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Order #${orderId.substring(0, 8).toUpperCase()}',
+                      'Order #${widget.orderId.substring(0, 8).toUpperCase()}',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     if (createdAt != null)
@@ -153,7 +217,7 @@ class _BuyerOrderCard extends StatelessWidget {
             
             // Items List
             ...items.map((item) {
-              return _buildOrderItem(context, item);
+              return _buildOrderItem(context, item, isOrderConfirmed);
             }),
           ],
         ),
@@ -161,11 +225,13 @@ class _BuyerOrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildOrderItem(BuildContext context, CartItemDetailModel item) {
+  Widget _buildOrderItem(BuildContext context, CartItemDetailModel item, bool isOrderConfirmed) {
     final deliveryStatus = DeliveryStatus.fromValue(item.deliveryStatus);
     final isShipped = deliveryStatus == DeliveryStatus.shipped;
     final isDelivered = deliveryStatus == DeliveryStatus.delivered;
     final isRated = _isProductRated(item.productId);
+    final isConfirmed = _isItemConfirmed(item);
+    final isConfirmingThis = _isConfirming && _confirmingItemId == item.productId;
 
     Color statusColor;
     String statusText;
@@ -258,50 +324,83 @@ class _BuyerOrderCard extends StatelessWidget {
               ),
             ],
           ),
-          // Rating button for delivered items
-          if (isDelivered && !isRated)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () => showRatingDialog(
-                    context: context,
-                    orderId: orderId,
-                    productId: item.productId,
-                    productName: item.name,
-                  ),
-                  icon: const Icon(Icons.star_outline, size: 16),
-                  label: const Text('Rate Product'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.amber[700],
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  ),
-                ),
-              ),
-            ),
-          if (isDelivered && isRated)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle, size: 14, color: Colors.green[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Rated',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.green[600],
-                        fontWeight: FontWeight.w500,
-                      ),
+          // Action buttons for delivered items
+          if (isDelivered) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // Confirm Receipt button
+                if (!isConfirmed && !isOrderConfirmed)
+                  TextButton.icon(
+                    onPressed: isConfirmingThis ? null : () => _confirmReceipt(item),
+                    icon: isConfirmingThis
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check_circle_outline, size: 16),
+                    label: Text(isConfirmingThis ? 'Confirming...' : 'Confirm Receipt'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                // Confirmed indicator
+                if (isConfirmed || isOrderConfirmed)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.verified, size: 14, color: Colors.green[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Confirmed',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(width: 12),
+                // Rating button
+                if (!isRated)
+                  TextButton.icon(
+                    onPressed: () => showRatingDialog(
+                      context: context,
+                      orderId: widget.orderId,
+                      productId: item.productId,
+                      productName: item.name,
+                    ),
+                    icon: const Icon(Icons.star_outline, size: 16),
+                    label: const Text('Rate'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.amber[700],
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    ),
+                  ),
+                // Rated indicator
+                if (isRated)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.star, size: 14, color: Colors.amber[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Rated',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.amber[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
             ),
+          ],
         ],
       ),
     );

@@ -169,4 +169,44 @@ class AppConfig {
   static const String websiteUrl = 'https://orignagta.ca';
   static const String currency = 'cad';
   static const String currencySymbol = '\$';
+  static const double platformFeePercent = 0.025; // 2.5% platform fee
+  static const int autoConfirmDays = 14; // Auto-confirm orders after 14 days
+}
+
+// ============================================================================
+// PAYOUT STATUS
+// ============================================================================
+
+/// Payout status for seller transfers
+enum PayoutStatus {
+  pending('pending'),
+  processing('processing'),
+  completed('completed'),
+  partial('partial'),
+  failed('failed');
+
+  final String value;
+  const PayoutStatus(this.value);
+
+  static PayoutStatus fromValue(String value) {
+    return PayoutStatus.values.firstWhere(
+      (e) => e.value == value,
+      orElse: () => PayoutStatus.pending,
+    );
+  }
+
+  String get displayText {
+    switch (this) {
+      case PayoutStatus.pending:
+        return 'Awaiting Confirmation';
+      case PayoutStatus.processing:
+        return 'Processing';
+      case PayoutStatus.completed:
+        return 'Paid';
+      case PayoutStatus.partial:
+        return 'Partially Paid';
+      case PayoutStatus.failed:
+        return 'Failed';
+    }
+  }
 }

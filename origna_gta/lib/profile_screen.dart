@@ -6,6 +6,7 @@ import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/favorites_screen.dart';
 import 'package:origna_gta/orders_screen.dart';
 import 'package:origna_gta/seller_orders_screen.dart';
+import 'package:origna_gta/seller_registration_screen.dart';
 import 'package:origna_gta/terms_screen.dart';
 import 'package:origna_gta/utils.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -67,13 +68,30 @@ class ProfileScreen extends StatelessWidget {
                               Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen()));
                             },
                           ),
-                          if (isSeller)
+                          if (isSeller) ...[
                             _buildMenuItem(
                               context,
                               icon: Icons.store_outlined,
                               title: 'Seller Orders',
                               onTap: () {
                                 Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerOrdersScreen()));
+                              },
+                            ),
+                            _buildMenuItem(
+                              context,
+                              icon: Icons.account_balance,
+                              title: 'Seller Dashboard',
+                              onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerRegistrationScreen()));
+                              },
+                            ),
+                          ] else
+                            _buildMenuItem(
+                              context,
+                              icon: Icons.storefront,
+                              title: 'Become a Seller',
+                              onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerRegistrationScreen()));
                               },
                             ),
                           _buildMenuItem(

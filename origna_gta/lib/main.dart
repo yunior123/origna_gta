@@ -474,7 +474,7 @@ void main() async {
 // but the shipping algorithm should be as precise as possible according to recent data, no API calls, just pure 
 // algorithm as precise as possible, the seller should agree to this stimate in the terms and conditions.
 // TODO MVVM required. Use riverpod for flutter for state management in the entire app, to follow modern clean arquitecture patterns
-
+// TODO: As admin i should be able to sell product in the platform as well and receive payment automatically once the user pays and receives
 // TODO the app bar for the home view is awesome, but in the rest of the app there is inconsistency with the color
 // and letters, create custom app bar similar to the one in home view but without any oval rounding, just the similar ui as the one from 
 // home so there is ui consistency, make it reusable
@@ -496,3 +496,5 @@ void main() async {
 // TODO make layout responsive and working for all sort of screen, mobile, web, etc
 // TODO set todos and improvements as done an answer this: Is the app ready for production, with more than 100 000 clients
 // and more than 10 000 sellers? if yes mark as done too, if no, make changes or suggestions so that it is bullet prove
+// TODO make sure of no loose ends in the app like this one: make sure to handle this in app     refresh_url = req.data.get('refreshUrl', 'https://orignagta.ca/seller/onboarding/refresh')
+//    return_url = req.data.get('returnUrl', 'https://orignagta.ca/seller/onboarding/complete')
