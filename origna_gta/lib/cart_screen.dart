@@ -102,7 +102,7 @@ class _OptimizedCartItem extends ConsumerWidget {
         // Watch cart items to get current quantity
         final cartItems = ref.watch(cartItemsProvider).valueOrNull ?? [];
         final currentQuantity = cartItems
-            .firstWhere((i) => i.productId == productId, orElse: () => CartItemModel(productId: productId, quantity: initialQuantity, dateCreated: DateTime.now()))
+            .firstWhere((i) => i.productId == productId, orElse: () => CartItemModel(productId: productId, quantity: initialQuantity, dateCreated: Timestamp.now()))
             .quantity;
 
         final updatedItem = item.copyWith(quantity: currentQuantity);

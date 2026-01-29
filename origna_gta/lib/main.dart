@@ -292,7 +292,7 @@ void main() async {
 // ============================================================================
 // REMAINING V1.1 TODOS
 // ============================================================================
-// TODO v1.1: MVVM with Riverpod for state management (major refactor, do after launch)
+// [IN PROGRESS] v1.1: MVVM with Riverpod for state management - providers created, HomeScreen & CartScreen migrated
 // TODO v1.1: Improve UI/UX with animations throughout the app and nice decoration similar to home screen style
 // TODO v1.1: Admin panel for moderation (seller management, user messages, etc.)
 // [DONE] v1.1: Use Stripe Tax instead of hardcoding taxes calculation (compliance automation, product exemptions)
