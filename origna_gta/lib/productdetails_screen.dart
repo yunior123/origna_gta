@@ -1,20 +1,22 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/utils.dart';
 import 'package:shimmer/shimmer.dart';
 
-class ProductDetailScreen extends StatefulWidget {
+class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
   final Map<String, dynamic> product;
 
   const ProductDetailScreen({super.key, required this.productId, required this.product});
 
   @override
-  State<ProductDetailScreen> createState() => _ProductDetailScreenState();
+  ConsumerState<ProductDetailScreen> createState() => _ProductDetailScreenState();
 }
 
-class _ProductDetailScreenState extends State<ProductDetailScreen> {
+class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   int _quantity = 1;
   int _currentImageIndex = 0;
 
@@ -236,12 +238,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         height: 54,
                         child: ElevatedButton(
                           onPressed: () async {
-                            final user = FirebaseAuth.instance.currentUser;
+                            final user = ref.read(currentUserProvider);
                             if (user == null) {
                               showLoginPrompt(context);
                               return;
                             }
-                            await addToCart(productId: widget.productId, quantity: _quantity, context: context);
+                            final messenger = ScaffoldMessenger.of(context);
+                            final success = await ref.read(cartControllerProvider).addToCart(widget.productId, _quantity);
+                            if (success) {
+                              messenger.showSnackBar(const SnackBar(content: Text('Added to cart'), backgroundColor: Colors.green));
+                            } else {
+                              messenger.showSnackBar(const SnackBar(content: Text('Failed to add to cart'), backgroundColor: Colors.red));
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFF6B35),

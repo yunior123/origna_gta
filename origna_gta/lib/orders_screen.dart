@@ -1,20 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:origna_gta/constants.dart';
+import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/rating_dialog.dart';
 import 'package:origna_gta/shipping_approval_screen.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 
-class OrdersScreen extends StatelessWidget {
+class OrdersScreen extends ConsumerWidget {
   const OrdersScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
     if (user == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('My Orders')),
@@ -45,17 +47,10 @@ class OrdersScreen extends StatelessWidget {
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.shopping_bag_outlined, size: 80, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text('No orders yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
-                  const SizedBox(height: 8),
-                  Text('Your paid orders will appear here', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
-                ],
-              ),
+            return const AnimatedEmptyState(
+              icon: Icons.shopping_bag_outlined,
+              title: 'No orders yet',
+              subtitle: 'Your paid orders will appear here',
             );
           }
 
@@ -69,7 +64,9 @@ class OrdersScreen extends StatelessWidget {
             children: [
               // Shipping approval banner
               if (pendingApprovals.isNotEmpty)
-                Container(
+                FadeSlideIn(
+                  beginOffset: const Offset(0, -0.1),
+                  child: Container(
                   width: double.infinity,
                   margin: const EdgeInsets.all(16),
                   padding: const EdgeInsets.all(16),
@@ -121,6 +118,7 @@ class OrdersScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+                ),
 
               // Orders list
               Expanded(
@@ -130,7 +128,10 @@ class OrdersScreen extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final doc = snapshot.data!.docs[index];
                     final orderData = doc.data() as Map<String, dynamic>;
-                    return _BuyerOrderCard(orderId: doc.id, data: orderData);
+                    return FadeSlideIn(
+                      delay: Duration(milliseconds: 50 * index),
+                      child: _BuyerOrderCard(orderId: doc.id, data: orderData),
+                    );
                   },
                 ),
               ),

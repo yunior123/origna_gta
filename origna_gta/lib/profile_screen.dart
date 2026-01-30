@@ -8,8 +8,10 @@ import 'package:origna_gta/favorites_screen.dart';
 import 'package:origna_gta/orders_screen.dart';
 import 'package:origna_gta/seller_orders_screen.dart';
 import 'package:origna_gta/seller_registration_screen.dart';
+import 'package:origna_gta/admin/admin_panel_screen.dart';
 import 'package:origna_gta/terms_screen.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -40,6 +42,7 @@ class ProfileScreen extends StatelessWidget {
                 final email = userModel.email;
                 final isSeller = userModel.roles.contains(UserRoles.seller) ||
                     userModel.roles.contains(UserRoles.admin);
+                final isAdmin = userModel.roles.contains(UserRoles.admin);
 
                 return Center(
                   child: ConstrainedBox(
@@ -48,104 +51,154 @@ class ProfileScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor: const Color(0xFFFF6B35),
-                            child: Text(
-                              name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                              style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold),
+                          FadeSlideIn(
+                            child: CircleAvatar(
+                              radius: 50,
+                              backgroundColor: const Color(0xFFFF6B35),
+                              child: Text(
+                                name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                                style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 16),
-                          Text(name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                          FadeSlideIn(
+                            delay: const Duration(milliseconds: 50),
+                            child: Text(name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                          ),
                           const SizedBox(height: 4),
-                          Text(email, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                          FadeSlideIn(
+                            delay: const Duration(milliseconds: 100),
+                            child: Text(email, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                          ),
                           const SizedBox(height: 32),
-                          _buildMenuItem(
-                            context,
-                            icon: Icons.shopping_bag_outlined,
-                            title: 'My Orders',
-                            onTap: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen()));
-                            },
+                          FadeSlideIn(
+                            delay: const Duration(milliseconds: 150),
+                            child: _buildMenuItem(
+                              context,
+                              icon: Icons.shopping_bag_outlined,
+                              title: 'My Orders',
+                              onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen()));
+                              },
+                            ),
                           ),
                           if (isSeller) ...[
-                            _buildMenuItem(
-                              context,
-                              icon: Icons.store_outlined,
-                              title: 'Seller Orders',
-                              onTap: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerOrdersScreen()));
-                              },
+                            FadeSlideIn(
+                              delay: const Duration(milliseconds: 200),
+                              child: _buildMenuItem(
+                                context,
+                                icon: Icons.store_outlined,
+                                title: 'Seller Orders',
+                                onTap: () {
+                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerOrdersScreen()));
+                                },
+                              ),
                             ),
-                            _buildMenuItem(
-                              context,
-                              icon: Icons.account_balance,
-                              title: 'Seller Dashboard',
-                              onTap: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerRegistrationScreen()));
-                              },
+                            FadeSlideIn(
+                              delay: const Duration(milliseconds: 250),
+                              child: _buildMenuItem(
+                                context,
+                                icon: Icons.account_balance,
+                                title: 'Seller Dashboard',
+                                onTap: () {
+                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerRegistrationScreen()));
+                                },
+                              ),
                             ),
                           ] else
-                            _buildMenuItem(
+                            FadeSlideIn(
+                              delay: const Duration(milliseconds: 200),
+                              child: _buildMenuItem(
+                                context,
+                                icon: Icons.storefront,
+                                title: 'Become a Seller',
+                                onTap: () {
+                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerRegistrationScreen()));
+                                },
+                              ),
+                            ),
+                          if (isAdmin)
+                            FadeSlideIn(
+                              delay: Duration(milliseconds: isSeller ? 300 : 250),
+                              child: _buildMenuItem(
+                                context,
+                                icon: Icons.admin_panel_settings,
+                                title: 'Admin Panel',
+                                onTap: () {
+                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPanelScreen()));
+                                },
+                              ),
+                            ),
+                          FadeSlideIn(
+                            delay: Duration(milliseconds: isAdmin ? (isSeller ? 350 : 300) : (isSeller ? 300 : 250)),
+                            child: _buildMenuItem(
                               context,
-                              icon: Icons.storefront,
-                              title: 'Become a Seller',
+                              icon: Icons.favorite_outline,
+                              title: 'Favorites',
                               onTap: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerRegistrationScreen()));
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen()));
                               },
                             ),
-                          _buildMenuItem(
-                            context,
-                            icon: Icons.favorite_outline,
-                            title: 'Favorites',
-                            onTap: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen()));
-                            },
                           ),
-                          _buildMenuItem(
-                            context,
-                            icon: Icons.location_on_outlined,
-                            title: 'Address',
-                            onTap: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressManagementScreen()));
-                            },
+                          FadeSlideIn(
+                            delay: Duration(milliseconds: isSeller ? 350 : 300),
+                            child: _buildMenuItem(
+                              context,
+                              icon: Icons.location_on_outlined,
+                              title: 'Address',
+                              onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressManagementScreen()));
+                              },
+                            ),
                           ),
-                          _buildMenuItem(
-                            context,
-                            icon: Icons.description_outlined,
-                            title: 'Terms & Conditions',
-                            onTap: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
-                            },
+                          FadeSlideIn(
+                            delay: Duration(milliseconds: isSeller ? 400 : 350),
+                            child: _buildMenuItem(
+                              context,
+                              icon: Icons.description_outlined,
+                              title: 'Terms & Conditions',
+                              onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
+                              },
+                            ),
                           ),
-                          _buildMenuItem(
-                            context,
-                            icon: Icons.mail_outline,
-                            title: 'Contact Us',
-                            onTap: () => _showContactDialog(context),
+                          FadeSlideIn(
+                            delay: Duration(milliseconds: isSeller ? 450 : 400),
+                            child: _buildMenuItem(
+                              context,
+                              icon: Icons.mail_outline,
+                              title: 'Contact Us',
+                              onTap: () => _showContactDialog(context),
+                            ),
                           ),
                           const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                await FirebaseAuth.instance.signOut();
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red[600],
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                          FadeSlideIn(
+                            delay: Duration(milliseconds: isSeller ? 500 : 450),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  await FirebaseAuth.instance.signOut();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red[600],
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                ),
+                                child: const Text('Sign Out', style: TextStyle(fontSize: 16)),
                               ),
-                              child: const Text('Sign Out', style: TextStyle(fontSize: 16)),
                             ),
                           ),
                           const SizedBox(height: 8),
-                          TextButton(
-                            onPressed: () => _showDeleteAccountDialog(context),
-                            child: Text(
-                              'Delete Account',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                          FadeSlideIn(
+                            delay: Duration(milliseconds: isSeller ? 550 : 500),
+                            child: TextButton(
+                              onPressed: () => _showDeleteAccountDialog(context),
+                              child: Text(
+                                'Delete Account',
+                                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                              ),
                             ),
                           ),
                         ],

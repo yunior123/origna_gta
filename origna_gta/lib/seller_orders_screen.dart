@@ -1,18 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:origna_gta/constants.dart';
+import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 
-class SellerOrdersScreen extends StatelessWidget {
+class SellerOrdersScreen extends ConsumerWidget {
   const SellerOrdersScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
     if (user == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Seller Orders')),
@@ -20,29 +22,16 @@ class SellerOrdersScreen extends StatelessWidget {
       );
     }
 
+    final ordersAsync = ref.watch(sellerOrdersProvider);
+
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'Seller Orders'),
       backgroundColor: const Color(0xFFF5F5F5),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('orders')
-            .where('sellerIds', arrayContains: user.uid)
-            .where('paymentStatus', whereIn: [
-              PaymentStatus.paid.value,
-              PaymentStatus.authorized.value, // Include authorized orders for manual capture
-            ])
-            .orderBy('createdAt', descending: true)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+      body: ordersAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(child: Text('Error: $error')),
+        data: (orders) {
+          if (orders.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -59,12 +48,11 @@ class SellerOrdersScreen extends StatelessWidget {
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: snapshot.data!.docs.length,
+            itemCount: orders.length,
             itemBuilder: (context, index) {
-              final doc = snapshot.data!.docs[index];
-              final orderData = doc.data() as Map<String, dynamic>;
+              final orderData = orders[index];
               return _SellerOrderCard(
-                orderId: doc.id,
+                orderId: orderData['id'] as String,
                 data: orderData,
                 sellerId: user.uid,
               );

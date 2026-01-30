@@ -26,18 +26,20 @@ final userOrdersProvider = StreamProvider.autoDispose<List<OrderModel>>((ref) {
 // SELLER ORDERS PROVIDER
 // ============================================================================
 
-/// Stream of orders for the current user's seller products
-final sellerOrdersProvider = StreamProvider.autoDispose<List<OrderModel>>((ref) {
+/// Stream of orders containing products from the current seller
+/// Filters for paid/authorized orders only (ready for fulfillment)
+final sellerOrdersProvider = StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
   final userId = ref.watch(userIdProvider);
   if (userId == null) return Stream.value([]);
 
   return ref.watch(firestoreProvider)
       .collection('orders')
-      .where('sellerId', isEqualTo: userId)
+      .where('sellerIds', arrayContains: userId)
+      .where('paymentStatus', whereIn: ['paid', 'authorized'])
       .orderBy('createdAt', descending: true)
       .snapshots()
       .map((snapshot) => snapshot.docs
-          .map((doc) => OrderModel.fromDocument(doc))
+          .map((doc) => {'id': doc.id, ...doc.data()})
           .toList());
 });
 

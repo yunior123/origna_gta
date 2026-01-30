@@ -7,6 +7,7 @@ import 'package:origna_gta/checkout_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 
 // Optimized version using Riverpod
@@ -33,15 +34,10 @@ class CartScreen extends ConsumerWidget {
             error: (error, stack) => Center(child: Text('Error: $error')),
             data: (cartItems) {
               if (cartItems.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.grey[300]),
-                      const SizedBox(height: 16),
-                      const Text('Your cart is empty'),
-                    ],
-                  ),
+                return const AnimatedEmptyState(
+                  icon: Icons.shopping_cart_outlined,
+                  title: 'Your cart is empty',
+                  subtitle: 'Add items to get started',
                 );
               }
 
@@ -49,17 +45,25 @@ class CartScreen extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       itemCount: cartItems.length,
                       itemBuilder: (context, index) {
                         final cartItem = cartItems[index];
-                        return _OptimizedCartItem(
-                          productId: cartItem.productId,
-                          initialQuantity: cartItem.quantity,
+                        return FadeSlideIn(
+                          delay: Duration(milliseconds: 50 * index),
+                          child: _OptimizedCartItem(
+                            productId: cartItem.productId,
+                            initialQuantity: cartItem.quantity,
+                          ),
                         );
                       },
                     ),
                   ),
-                  _CartSummary(cartItems: cartItems),
+                  FadeSlideIn(
+                    delay: Duration(milliseconds: 50 * cartItems.length),
+                    beginOffset: const Offset(0, 0.2),
+                    child: _CartSummary(cartItems: cartItems),
+                  ),
                 ],
               );
             },

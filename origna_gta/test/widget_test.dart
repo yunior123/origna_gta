@@ -1,30 +1,71 @@
-// This is a basic Flutter widget test.
+// OrignaGta App Smoke Test
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Basic test to verify the app can be instantiated without errors.
+// More comprehensive tests are in the unit/ and widget/ subdirectories.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:origna_gta/origna_app.dart';
+import 'package:origna_gta/utils.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const OrignaApp());
+  group('App Smoke Tests', () {
+    test('Address model can be instantiated', () {
+      final address = Address(
+        street: '123 Test St',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V 1A1',
+        country: 'Canada',
+      );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      expect(address.city, 'Toronto');
+      expect(address.state, 'ON');
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    test('UserModel can be instantiated', () {
+      final user = UserModel(
+        uid: 'test_user',
+        email: 'test@example.com',
+        name: 'Test User',
+        roles: ['buyer'],
+        createdAt: DateTime.now(),
+      );
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+      expect(user.uid, 'test_user');
+      expect(user.roles.contains('buyer'), true);
+    });
+
+    test('ProductModel can be instantiated', () {
+      final product = ProductModel(
+        id: 'prod_123',
+        name: 'Test Product',
+        price: 29.99,
+        imageUrls: [],
+        sellerAddress: Address(
+          street: '123 Test St',
+          city: 'Toronto',
+          state: 'ON',
+          postalCode: 'M5V 1A1',
+          country: 'Canada',
+        ),
+        description: 'A test product',
+        sellerId: 'seller_123',
+        stockQuantity: 10,
+        categoryId: 1,
+        searchKeywords: ['test'],
+      );
+
+      expect(product.name, 'Test Product');
+      expect(product.price, 29.99);
+    });
+
+    test('Tax calculation works for all provinces', () {
+      // Verify all provinces have tax rates
+      final provinces = ['ON', 'BC', 'AB', 'QC', 'MB', 'SK', 'NS', 'NB', 'NL', 'PE', 'NT', 'YT', 'NU'];
+
+      for (final province in provinces) {
+        final rate = getTaxRate(province);
+        expect(rate, greaterThan(0), reason: '$province should have a positive tax rate');
+      }
+    });
   });
 }
