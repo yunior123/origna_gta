@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -151,64 +153,62 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 //   ),
 // );
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await ConfigService().initialize();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  await ConfigService().initialize();
-
-  await SentryFlutter.init(
-    (options) {
-      options.dsn = ConfigService().sentryDnsKey;
-      options.environment = kReleaseMode ? 'production' : 'development';
-      options.tracesSampleRate = 0.1; // 10% of transactions
-      options.beforeSend = (event, hint) {
-        // Filter sensitive data - strip emails before sending
-        if (event.user != null) {
-          event.user = SentryUser(
-            id: event.user!.id,
-            username: event.user!.username,
-            ipAddress: event.user!.ipAddress,
-            data: event.user!.data,
-          );
+    await SentryFlutter.init(
+      (options) {
+        options.dsn = ConfigService().sentryDnsKey;
+        options.environment = kReleaseMode ? 'production' : 'development';
+        options.tracesSampleRate = 0.1; // 10% of transactions
+        options.beforeSend = (event, hint) {
+          // Filter sensitive data - strip emails before sending
+          if (event.user != null) {
+            event.user = SentryUser(
+              id: event.user!.id,
+              username: event.user!.username,
+              ipAddress: event.user!.ipAddress,
+              data: event.user!.data,
+            );
+          }
+          return event;
+        };
+        // On web, disable frame tracking & auto performance
+        if (kIsWeb) {
+          options.enableAutoPerformanceTracing = false;
+          options.enableFramesTracking = false;
+          options.enableAutoSessionTracking = false;
+        } else {
+          // mobile defaults (optional tuning):
+          options.tracesSampleRate = 1.0;
         }
-        return event;
-      };
+      },
+    );
 
-           // On web, disable frame tracking & auto performance
-      if (kIsWeb) {
-        options.enableAutoPerformanceTracing = false;
-        options.enableFramesTracking = false;
-        options.enableAutoSessionTracking = false;
-      } else {
-        // mobile defaults (optional tuning):
-        options.tracesSampleRate = 1.0;
+    // Set global Flutter error handler
+    FlutterError.onError = (FlutterErrorDetails details) {
+      final message = details.exceptionAsString();
+      // Ignore the disposed Web engine view error
+      if (kIsWeb && message.contains('disposed EngineFlutterView')) {
+        return;
       }
-    },
-    appRunner: () async {
+      // Log to Sentry
+      Sentry.captureException(
+        details.exception,
+        stackTrace: details.stack,
+      );
+      // Let Flutter still show errors in debug
+      FlutterError.presentError(details);
+    };
 
-      // Set global Flutter error handler
-      FlutterError.onError = (FlutterErrorDetails details) {
-        final message = details.exceptionAsString();
-
-        // Ignore the disposed Web engine view error
-        if (kIsWeb && message.contains('disposed EngineFlutterView')) {
-          return;
-        }
-
-        // Log to Sentry
-        Sentry.captureException(
-          details.exception,
-          stackTrace: details.stack,
-        );
-
-        // Let Flutter still show errors in debug
-        FlutterError.presentError(details);
-      };
-      runApp(const ProviderScope(child: OrignaApp()));
-    },
-  );
+    runApp(const ProviderScope(child: OrignaApp()));
+  }, (exception, stackTrace) async {
+    // Capture unhandled errors to Sentry
+    await Sentry.captureException(exception, stackTrace: stackTrace);
+  });
 }
 
 // ============================================================================
@@ -242,7 +242,7 @@ void main() async {
 // ============================================================================
 // FUTURE VERSIONS
 // ============================================================================
-// TODO v4.0: CloudFlare Domain + Flutter web Firebase Hosting + OCI->Appwrite + Typesense. R2 Cloudflare + Geoapify + Mailjet + Stripe
+// TODO v4.0: CloudFlare Domain + Flutter web Firebase Hosting + OCI->Appwrite + Typesense. R2 Cloudflare + Geoapify + Mailjet + Stripe + Sentry
 //  Mail services are only used after user pays, for delivery updates and payment confirmation. Geopify is used when adding new product and when user add address
 // Esta configuración es el "Santo Grial" del ahorro para startups. Estás utilizando estratégicamente los servicios gestionados (Cloudflare, Firebase Hosting) donde la fiabilidad es crítica, y el auto-hospedaje (OCI) donde los costos de escalabilidad de Firebase te arruinarían.
 
@@ -292,7 +292,7 @@ void main() async {
 // ============================================================================
 // REMAINING V1.1 TODOS
 // ============================================================================
-// [DONE] v1.1: MVVM with Riverpod - 5 provider files, 7 screens migrated (home, cart, login, orders, productdetails, seller_orders)
+
 // [DONE] v1.1: UI/UX animations - FadeSlideIn, AnimatedEmptyState, staggered lists, rounded AppBar with shadow
 // [DONE] v1.1: Admin panel - seller management, user management, order overview, product moderation with stock control
 // [DONE] v1.1: Integration and unit tests created - 69 tests covering models, business logic, widgets, and checkout flow
@@ -306,3 +306,12 @@ void main() async {
 //        buyer approval for >20% increase, delayed payout to seller with 2.5% fee, auto-release after 14 days
 // TODO v4.0 google ranking in search SEO optimization
 // [ACTION REQUIRED] Enable Stripe Tax in your Stripe Dashboard Settings
+// TODO: Finish MVVM, 1.services like database connection should not handled in UI, keep separation of concerns, state managers in a separate file, one for each view is 
+// the ideal v1.1: MVVM with Riverpod - 5 provider files, 7 screens migrated (home, cart, login, orders, productdetails, seller_orders)
+// TODO create script to trigger all tests, the python ones and the flutter and dart ones before push is made to the main branch. All tests need to pass to be able to push
+// TODO delete all cloud functions from console and registries and then redeploy
+
+// TODO when the cart get cleared in the database after the user finish checkout, the ui of home screen and cart screen do not reflect the changes
+// TODO in cart screen when tapping the plus button the ui rebuilds entirely, fix that
+// TODO after the success url is triggered the user is redirected to another tab of the app home view,
+// it should redirect to same tab and to the success screen instead

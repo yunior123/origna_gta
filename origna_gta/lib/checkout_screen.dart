@@ -42,10 +42,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
 
     try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
       final addressMap = userDoc.data()?['address'] as Map<String, dynamic>?;
       if (addressMap == null) {
@@ -85,21 +82,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
           child: StreamBuilder<DocumentSnapshot>(
-            stream: user != null
-                ? FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(user.uid)
-                    .snapshots()
-                : null,
+            stream: user != null ? FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots() : null,
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
 
               final userData = snapshot.data!.data() as Map<String, dynamic>?;
-              final Address? savedAddress = userData?['address'] != null
-                  ? Address.fromMap(userData!['address'] as Map<String, dynamic>)
-                  : null;
+              final Address? savedAddress = userData?['address'] != null ? Address.fromMap(userData!['address'] as Map<String, dynamic>) : null;
               final userModel = UserModel.fromMap(userData ?? {});
 
               if (savedAddress == null) {
@@ -118,11 +108,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildAddressSection(savedAddress),
-                          const SizedBox(height: 24),
-                          _buildOrderSummary(savedAddress.state, shippingCost)
-                        ],
+                        children: [_buildAddressSection(savedAddress), const SizedBox(height: 24), _buildOrderSummary(savedAddress.state, shippingCost)],
                       ),
                     ),
                   ),
@@ -150,13 +136,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha:0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              )
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Column(
             children: [
@@ -166,16 +146,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Text(
-                          '${item.name} x${item.quantity}',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
-                      Text(
-                        '\$${(item.price * item.quantity).toStringAsFixed(2)}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
+                      Expanded(child: Text('${item.name} x${item.quantity}', style: const TextStyle(fontSize: 14))),
+                      Text('\$${(item.price * item.quantity).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
@@ -196,11 +168,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 children: [
                   const Text('Estimated Shipping', style: TextStyle(color: Colors.grey)),
                   if (_isCalculatingShipping)
-                    const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                    const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                   else if (_shippingError != null)
                     Text(_shippingError!, style: const TextStyle(color: Colors.red, fontSize: 12))
                   else
@@ -213,11 +181,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     'Final shipping cost will be confirmed by seller before charge',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[500],
-                      fontStyle: FontStyle.italic,
-                    ),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500], fontStyle: FontStyle.italic),
                   ),
                 ),
               const Divider(height: 24),
@@ -227,11 +191,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   const Text('Estimated Total', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   Text(
                     '\$${(widget.total + (getTaxRate(state) * widget.total) + shippingCost).toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFFF6B35),
-                    ),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
                   ),
                 ],
               ),
@@ -256,10 +216,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           children: [
             Icon(Icons.location_off, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 24),
-            const Text(
-              'No Delivery Address',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
+            const Text('No Delivery Address', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             Text(
               'Please add a delivery address to continue with checkout',
@@ -269,10 +226,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AddEditAddressScreen()),
-                ).then((_) => _calculateShippingCost());
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEditAddressScreen())).then((_) => _calculateShippingCost());
               },
               icon: const Icon(Icons.add_location),
               label: const Text('Add Address'),
@@ -300,11 +254,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => AddEditAddressScreen(
-                      address: savedAddress.formattedAddress.isEmpty ? null : savedAddress,
-                    ),
-                  ),
+                  MaterialPageRoute(builder: (_) => AddEditAddressScreen(address: savedAddress.formattedAddress.isEmpty ? null : savedAddress)),
                 ).then((_) => _calculateShippingCost());
               },
               icon: const Icon(Icons.edit_outlined, size: 18),
@@ -320,13 +270,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha:0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              )
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,17 +278,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               if (savedAddress.label != null) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF6B35).withValues(alpha:0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
+                  decoration: BoxDecoration(color: const Color(0xFFFF6B35).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                   child: Text(
                     savedAddress.label!,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFFF6B35),
-                    ),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -352,13 +289,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Text(savedAddress.formattedAddress, style: const TextStyle(fontSize: 14, height: 1.5)),
               if (savedAddress.phoneNumber != null) ...[
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.phone_outlined, size: 16),
-                    const SizedBox(width: 8),
-                    Text(savedAddress.phoneNumber!)
-                  ],
-                ),
+                Row(children: [const Icon(Icons.phone_outlined, size: 16), const SizedBox(width: 8), Text(savedAddress.phoneNumber!)]),
               ],
             ],
           ),
@@ -372,31 +303,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha:0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          )
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -5))],
       ),
       child: SizedBox(
         width: double.infinity,
         height: 54,
         child: ElevatedButton(
-          onPressed: (_isProcessing || _isCalculatingShipping || _shippingError != null)
-              ? null
-              : () => _startStripeCheckout(widget.items, address, userModel),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFF6B35),
-            foregroundColor: Colors.white,
-          ),
+          onPressed: (_isProcessing || _isCalculatingShipping || _shippingError != null) ? null : () => _startStripeCheckout(widget.items, address, userModel),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
           child: _isProcessing
-              ? const SizedBox(
-                  height: 24,
-                  width: 24,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                )
+              ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
               : const Text('Place Order', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),
@@ -440,19 +356,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   WidgetSpan(
                     child: GestureDetector(
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const TermsScreen()),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
                       },
                       child: const Text(
                         'Terms & Conditions',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFFFF6B35),
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.underline,
-                        ),
+                        style: TextStyle(fontSize: 12, color: Color(0xFFFF6B35), fontWeight: FontWeight.w600, decoration: TextDecoration.underline),
                       ),
                     ),
                   ),
@@ -468,19 +376,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget _buildSecurityInfo() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
       child: Row(
         children: [
           Icon(Icons.lock_outline, color: Colors.blue.shade700),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              'Secure payment powered by Stripe. Your card information is encrypted.',
-              style: TextStyle(color: Colors.blue.shade700, fontSize: 14),
-            ),
+            child: Text('Secure payment powered by Stripe. Your card information is encrypted.', style: TextStyle(color: Colors.blue.shade700, fontSize: 14)),
           ),
         ],
       ),
@@ -494,11 +396,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  Future<void> _startStripeCheckout(
-    List<CartItemDetailModel> items,
-    Address address,
-    UserModel userModel,
-  ) async {
+  Future<void> _startStripeCheckout(List<CartItemDetailModel> items, Address address, UserModel userModel) async {
     setState(() => _isProcessing = true);
 
     try {
@@ -559,26 +457,35 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // Remove fields that backend will generate
       orderData.remove('createdAt');
       orderData.remove('status');
-      
+
       // Backend expects items as simple maps without sellerAddress since it's already in the item
-      orderData['items'] = items.map((item) => {
-        'sellerId': item.sellerId,
-        'productId': item.productId,
-        'name': item.name,
-        'description': item.description,
-        'price': item.price,
-        'quantity': item.quantity,
-        'imageUrls': item.imageUrls,
-      }).toList();
+      orderData['items'] = items
+          .map(
+            (item) => {
+              'sellerId': item.sellerId,
+              'productId': item.productId,
+              'name': item.name,
+              'description': item.description,
+              'price': item.price,
+              'quantity': item.quantity,
+              'imageUrls': item.imageUrls,
+            },
+          )
+          .toList();
 
       debugPrint('📤 Sending checkout request...');
-      
+      final functions = FirebaseFunctions.instance;
+
+      if (kDebugMode) {
+        functions.useFunctionsEmulator('127.0.0.1', 8081);
+      }
+
       // Call the Cloud Function
-      final callable = FirebaseFunctions.instance.httpsCallable('create_checkout_session');
+      final callable = functions.httpsCallable('create_checkout_session');
       final response = await callable.call(orderData);
 
       debugPrint('✅ Received response from backend');
-      
+
       // Extract response data
       final checkoutUrl = response.data['url'] as String;
       final orderId = response.data['orderId'] as String;
@@ -588,17 +495,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       debugPrint('🔗 Session ID: $sessionId');
 
       // Update user model with checkout tracking info
-      final updatedUser = userModel.copyWith(
-        lastCheckoutSession: sessionId,
-        lastOrderId: orderId,
-        lastCheckoutTimestamp: DateTime.now(),
-      );
-      
+      final updatedUser = userModel.copyWith(lastCheckoutSession: sessionId, lastOrderId: orderId, lastCheckoutTimestamp: DateTime.now());
+
       // Save to Firestore using the model
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update(updatedUser.toMap());
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(updatedUser.toMap());
 
       // Redirect to Stripe
       if (kIsWeb) {
@@ -608,27 +508,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         // For mobile apps
         await _redirectToStripe(checkoutUrl);
       }
-      
     } on FirebaseFunctionsException catch (e) {
       debugPrint('❌ Firebase Function Error: ${e.code} - ${e.message}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Checkout error: ${e.message ?? e.code}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Checkout error: ${e.message ?? e.code}'), backgroundColor: Colors.red, duration: const Duration(seconds: 5)));
       }
     } catch (e) {
       debugPrint('❌ Unexpected error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Checkout error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout error: $e'), backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) {

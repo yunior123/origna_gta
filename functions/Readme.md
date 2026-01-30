@@ -11,6 +11,10 @@ firebase functions:delete stripe_webhook
 firebase deploy --only functions
 firebase emulators:start --only functions
 
+firebase emulators:start --only functions --inspect-functions
+firebase emulators:start --only functions --port 8081
+
+
 # ###################################
 firebase functions:delete on_order_updated
 firebase deploy --only functions:on_order_updated

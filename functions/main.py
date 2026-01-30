@@ -136,7 +136,7 @@ else:
 
 stripe.api_key = STRIPE_SECRET_KEY
 
-cors_config = options.CorsOptions(
+cors_config_p = options.CorsOptions(
     cors_origins=[
         "https://orignagta.ca",
         "https://www.orignagta.ca",
@@ -145,6 +145,18 @@ cors_config = options.CorsOptions(
     ],
     cors_methods=["get", "post", "options"],
 )
+cors_config_e = options.CorsOptions(
+    cors_origins=[
+        "http://localhost:*",
+        "http://127.0.0.1:*"
+    ],
+    cors_methods=["get", "post", "options"],
+)
+
+if IS_EMULATOR:
+    cors_config = cors_config_e
+else:
+    cors_config = cors_config_p
 
 # ============================================================================
 # EMAIL TEMPLATES
@@ -911,7 +923,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         # Base URL
         base_url = "https://orignagta.ca"
         if IS_EMULATOR:
-            base_url = "http://localhost:5000"
+            base_url = "http://localhost:63959"
             
         success_url = f"{base_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}&order_id={order_id}"
         cancel_url = f"{base_url}/payment-cancel"
