@@ -17,6 +17,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 // 3.The code should be so robust that if you need to replace an api you only need to modify the service file
 // of that api
 // 4. Avoid unnecessary rebuilds, use nice state manager
+// 5. try not to use a dependency unless really necessary
 // Store Creation Considerations
 // 1.Avoid expensive APIs, only use them if really needed
 // 2.Avoid fetching too much from database, keep this consistent
@@ -343,3 +344,7 @@ void main() {
 // [DONE] Orders screen StreamBuilder replaced with buyerOrdersRawProvider
 // [DONE] Login screen password reset moved to authControllerProvider
 // [DONE] OrdersController extended with seller methods (updateShippingCost, capturePayment, updateItemStatus) 
+
+// TODO add implementation for google sign in, make some tests for it and check latest docs for integrating with flutter
+// on the web, it took me some hard time last time i tried, check the docs completely and tests after, no pitfalls or all dependencies that will crash
+// try not to use a dependency unless really necessary
