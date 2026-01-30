@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -119,7 +117,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Local Delivery Only'),
-                    subtitle: const Text('For food/perishables - same day local delivery'),
+                    subtitle: const Text('Restrict to buyers within 50km for same-day/next-day delivery'),
                     value: _isLocalDeliveryOnly,
                     activeTrackColor: const Color(0xFFFF6B35),
                     onChanged: (value) => setState(() => _isLocalDeliveryOnly = value),
@@ -312,9 +310,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   // Constants for image validation
-  static const int maxImageSize = 10 * 1024 * 1024; // 5MB
+  static const int maxImageSize = 10 * 1024 * 1024; // 10MB
   static const int maxImages = 10;
-  static const List<String> allowedFormats = ['jpg', 'jpeg', 'png', 'webp'];
   static const int maxDimension = 2560; // Max width/height
 
   Future<void> _addProduct() async {
@@ -440,10 +437,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final validatedImages = (await Future.wait(validationFutures)).whereType<(ImageModel, Uint8List)>().toList();
 
     if (validatedImages.isEmpty) {
-      // TODO in this case, seller should not be able to add product, fix
-      //       Rejected image with format: blob:http://localhost:63119/0ad21da6-9787-4c1c-9588-db67f94e935a
-      // Rejected image with format: blob:http://localhost:63119/32ce5677-01b6-4211-a850-eb2c23809020
-      throw Exception('No valid images to upload');
+      // All images failed validation - prevent product creation
+      throw Exception('All images failed validation. Please use JPG, PNG, or WebP images under 10MB.');
     }
 
     // Upload all images in parallel
@@ -568,25 +563,3 @@ class AddProductScreen extends StatefulWidget {
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
 }
-
-
-//TODO Upload attempt 1 failed: ClientException: Failed to fetch, uri=https://9b027cd3919483d27f0abeb2090ac626.r2.cloudflarestorage.com/orignagta/products/product_oPBYStxEuBrRi0t9vYhP_0_1769768978790.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=aa9380c4880881c0c93977ee9c01f24a%2F20260130%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20260130T102939Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=1a349400f6c1295f899c81db4838f842efe02654ea7d2cdd8b1ec9e0e7725a6c
-// Upload attempt 2 failed: ClientException: Failed to fetch, uri=https://9b027cd3919483d27f0abeb2090ac626.r2.cloudflarestorage.com/orignagta/products/product_oPBYStxEuBrRi0t9vYhP_0_1769768981463.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=aa9380c4880881c0c93977ee9c01f24a%2F20260130%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20260130T102941Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=1b3eb9f6c6811ee845e4c552ff85998f4f79c2a2bd996637f12d50a884f95846
-// Upload attempt 3 failed: ClientException: Failed to fetch, uri=https://9b027cd3919483d27f0abeb2090ac626.r2.cloudflarestorage.com/orignagta/products/product_oPBYStxEuBrRi0t9vYhP_0_1769768985550.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=aa9380c4880881c0c93977ee9c01f24a%2F20260130%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20260130T102945Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=4ee995468595b68688ed63d5cd244eb4cb6a20f0a5d5105ff59b53dc1acd12cf
-// Max retries reached for image 0
-// 1. Use a server-side upload proxy (recommended)
-// Instead of uploading directly from Flutter Web to R2:
-// Send image bytes from Flutter Web to your Firebase Function.
-// Firebase Function uploads to R2 using boto3 (server-side, no CORS issues).
-// Return the permanent URL to the client.
-// This is bulletproof and works for all platforms.
-// Example Flutter Web:
-// final request = http.MultipartRequest(
-//   'POST',
-//   Uri.parse('https://your-cloud-function/uploadImage'),
-// );
-// request.files.add(
-//   http.MultipartFile.fromBytes('file', imageBytes, filename: 'product.jpg'),
-// );
-// final response = await request.send();
-// Server-side function: uploads to R2 normally (no CORS, no preflight).

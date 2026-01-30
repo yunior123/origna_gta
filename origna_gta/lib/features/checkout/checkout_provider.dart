@@ -195,8 +195,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       // Prepare delivery info
       final deliveryInfo = state.address!.toMap();
 
-      // Build order data
-      // TODO use OrderModel to respect MVVM, no magic strings
+      // Build checkout request data for cloud function
+      // Note: Cloud function creates the actual OrderModel server-side
       final orderData = {
         'userId': userId,
         'customerId': user.customerId ?? '',

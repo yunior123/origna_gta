@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -227,7 +226,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Local Delivery Only'),
-                    subtitle: const Text('For food/perishables - same day local delivery'),
+                    subtitle: const Text('Restrict to buyers within 50km for same-day/next-day delivery'),
                     value: _isLocalDeliveryOnly,
                     activeTrackColor: const Color(0xFFFF6B35),
                     onChanged: (value) => setState(() => _isLocalDeliveryOnly = value),

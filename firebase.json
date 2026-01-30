@@ -12,7 +12,7 @@
     }
   ],
   "hosting": {
-    "public": "build/web",
+    "public": "origna_gta/build/web",
     "ignore": [
       "firebase.json",
       "**/.*",

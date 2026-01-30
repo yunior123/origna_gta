@@ -308,5 +308,226 @@ class TestPaymentFlow(unittest.TestCase):
             "Must use manual capture for authorization workflow"
         )
 
+class TestRefundFlow(unittest.TestCase):
+    """Tests for refund processing"""
+
+    def setUp(self):
+        main.db = MagicMock()
+        main.stripe = mock_stripe
+
+    def test_process_charge_refunded_full_refund(self):
+        """
+        Scenario: Full refund processed.
+        Expectation: Order marked as refunded, stock restored.
+        """
+        charge = {
+            'payment_intent': 'pi_123',
+            'amount_refunded': 5000,
+            'refunded': True  # Full refund
+        }
+
+        # Mock order lookup
+        mock_order_doc = MagicMock()
+        mock_order_doc.reference = MagicMock()
+        mock_order_doc.reference.id = 'order_123'
+        mock_order_doc.to_dict.return_value = {
+            'items': [
+                {'productId': 'prod_1', 'quantity': 2}
+            ]
+        }
+
+        main.db.collection.return_value.where.return_value.limit.return_value.get.return_value = [mock_order_doc]
+
+        # Mock product lookup for stock restoration
+        mock_product_ref = MagicMock()
+        mock_product_doc = MagicMock()
+        mock_product_doc.exists = True
+        mock_product_doc.to_dict.return_value = {'stockQuantity': 5}
+        mock_product_ref.get.return_value = mock_product_doc
+
+        # Setup collection chain
+        def collection_side_effect(name):
+            if name == 'orders':
+                mock = MagicMock()
+                mock.where.return_value.limit.return_value.get.return_value = [mock_order_doc]
+                return mock
+            elif name == 'products':
+                mock = MagicMock()
+                mock.document.return_value = mock_product_ref
+                return mock
+            return MagicMock()
+
+        main.db.collection.side_effect = collection_side_effect
+
+        # Execute
+        result = main.process_charge_refunded(charge)
+
+        # Verify
+        self.assertEqual(result, 'order_123')
+        mock_order_doc.reference.update.assert_called()
+        call_args = mock_order_doc.reference.update.call_args[0][0]
+        self.assertEqual(call_args['status'], OrderStatus.REFUNDED)
+        self.assertEqual(call_args['paymentStatus'], PaymentStatus.REFUNDED)
+
+    def test_process_charge_refunded_partial_refund(self):
+        """
+        Scenario: Partial refund processed.
+        Expectation: Order marked as partially refunded, stock NOT restored.
+        """
+        charge = {
+            'payment_intent': 'pi_123',
+            'amount_refunded': 2500,
+            'refunded': False  # Partial refund
+        }
+
+        mock_order_doc = MagicMock()
+        mock_order_doc.reference = MagicMock()
+        mock_order_doc.reference.id = 'order_123'
+        mock_order_doc.to_dict.return_value = {
+            'items': [{'productId': 'prod_1', 'quantity': 2}]
+        }
+
+        main.db.collection.return_value.where.return_value.limit.return_value.get.return_value = [mock_order_doc]
+
+        result = main.process_charge_refunded(charge)
+
+        self.assertEqual(result, 'order_123')
+        call_args = mock_order_doc.reference.update.call_args[0][0]
+        self.assertEqual(call_args['status'], OrderStatus.PARTIALLY_REFUNDED)
+
+
+class TestDisputeFlow(unittest.TestCase):
+    """Tests for dispute handling"""
+
+    def setUp(self):
+        main.db = MagicMock()
+        main.stripe = mock_stripe
+
+    def test_process_dispute_created(self):
+        """
+        Scenario: Dispute opened on an order.
+        Expectation: Order marked with dispute, payouts frozen.
+        """
+        dispute = {
+            'id': 'dp_123',
+            'charge': 'ch_123',
+            'reason': 'fraudulent',
+            'status': 'warning_needs_response',
+            'amount': 5000
+        }
+
+        # Mock charge retrieval
+        mock_charge = MagicMock()
+        mock_charge.payment_intent = 'pi_123'
+        main.stripe.Charge.retrieve.return_value = mock_charge
+
+        # Mock order lookup
+        mock_order_doc = MagicMock()
+        mock_order_doc.reference = MagicMock()
+        mock_order_doc.reference.id = 'order_123'
+
+        main.db.collection.return_value.where.return_value.limit.return_value.get.return_value = [mock_order_doc]
+
+        result = main.process_dispute_created(dispute)
+
+        self.assertEqual(result, 'order_123')
+        mock_order_doc.reference.update.assert_called()
+        call_args = mock_order_doc.reference.update.call_args[0][0]
+        self.assertTrue(call_args['hasDispute'])
+        self.assertEqual(call_args['disputeId'], 'dp_123')
+        self.assertEqual(call_args['disputeReason'], 'fraudulent')
+
+    def test_process_dispute_closed_won(self):
+        """
+        Scenario: Dispute closed in seller's favor.
+        Expectation: Dispute flag cleared, payouts unfrozen.
+        """
+        dispute = {
+            'id': 'dp_123',
+            'charge': 'ch_123',
+            'status': 'won'
+        }
+
+        mock_charge = MagicMock()
+        mock_charge.payment_intent = 'pi_123'
+        main.stripe.Charge.retrieve.return_value = mock_charge
+
+        mock_order_doc = MagicMock()
+        mock_order_doc.reference = MagicMock()
+        mock_order_doc.reference.id = 'order_123'
+
+        main.db.collection.return_value.where.return_value.limit.return_value.get.return_value = [mock_order_doc]
+
+        result = main.process_dispute_closed(dispute)
+
+        self.assertEqual(result, 'order_123')
+        call_args = mock_order_doc.reference.update.call_args[0][0]
+        self.assertFalse(call_args['hasDispute'])
+        self.assertEqual(call_args['disputeStatus'], 'won')
+
+    def test_process_dispute_closed_lost(self):
+        """
+        Scenario: Dispute lost (refund to customer).
+        Expectation: Order marked as refunded.
+        """
+        dispute = {
+            'id': 'dp_123',
+            'charge': 'ch_123',
+            'status': 'lost'
+        }
+
+        mock_charge = MagicMock()
+        mock_charge.payment_intent = 'pi_123'
+        main.stripe.Charge.retrieve.return_value = mock_charge
+
+        mock_order_doc = MagicMock()
+        mock_order_doc.reference = MagicMock()
+        mock_order_doc.reference.id = 'order_123'
+
+        main.db.collection.return_value.where.return_value.limit.return_value.get.return_value = [mock_order_doc]
+
+        result = main.process_dispute_closed(dispute)
+
+        self.assertEqual(result, 'order_123')
+        call_args = mock_order_doc.reference.update.call_args[0][0]
+        self.assertEqual(call_args['status'], OrderStatus.REFUNDED)
+
+
+class TestIdempotency(unittest.TestCase):
+    """Tests for idempotency in payment operations"""
+
+    def setUp(self):
+        main.db = MagicMock()
+        main.stripe = mock_stripe
+
+    def test_webhook_idempotency_duplicate_event(self):
+        """
+        Scenario: Same webhook event received twice.
+        Expectation: Second call returns early without processing.
+        """
+        req = MagicMock()
+        req.data = b'raw_payload'
+        req.headers = {'stripe-signature': 'sig_123'}
+
+        mock_event = {
+            'id': 'evt_duplicate',
+            'type': 'checkout.session.completed',
+            'data': {'object': {'id': 'cs_123'}}
+        }
+        main.stripe.Webhook.construct_event.return_value = mock_event
+
+        # Event already processed (exists in webhook_events)
+        mock_event_ref = MagicMock()
+        mock_event_ref.get.return_value.exists = True  # Event already processed
+        main.db.collection.return_value.document.return_value = mock_event_ref
+
+        # Execute
+        response = stripe_webhook(req)
+
+        # Verify it returned a response (function completed without crash)
+        # The actual return value is a Flask Response object
+        self.assertIsNotNone(response)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

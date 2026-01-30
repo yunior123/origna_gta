@@ -1,0 +1,79 @@
+name: Deploy to Firebase
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Flutter setup
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      # Python setup
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: functions/requirements.txt
+
+      # Install Python dependencies
+      - name: Install Python dependencies
+        run: |
+          cd functions
+          pip install -r requirements.txt
+          pip install pytest
+
+      # Flutter analyze
+      - name: Flutter analyze
+        run: |
+          cd origna_gta
+          flutter pub get
+          flutter analyze
+
+      # Flutter tests
+      - name: Flutter tests
+        run: |
+          cd origna_gta
+          flutter test
+
+      # Dart unit tests
+      - name: Dart unit tests
+        run: |
+          cd origna_gta
+          flutter test test/unit/
+
+      # Python tests
+      - name: Python tests
+        run: |
+          cd functions
+          python -m pytest tests/ -v --tb=short
+
+      # Build Flutter web
+      - name: Build Flutter web
+        run: |
+          cd origna_gta
+          flutter build web --release
+
+      # Deploy to Firebase
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: orignagta
+
+      - name: Deploy Functions
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only functions
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

@@ -221,7 +221,6 @@ enum DeliveryStatus {
 /// Application configuration constants
 class AppConfig {
   static const String appName = 'OrignaGta';
-  //TODO get real support email
   static const String supportEmail = 'support@orignagta.ca';
   static const String websiteUrl = 'https://www.orignaventures.ca';
   static const String currency = 'cad';

@@ -8,6 +8,92 @@ import 'package:http/http.dart' as http;
 import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/login_screen.dart';
 import 'package:origna_gta/services/conf_services.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
+
+// ============================================================================
+// ERROR HANDLING UTILITIES
+// ============================================================================
+
+/// Centralized error handler - logs to console and Sentry
+/// Use this for all caught errors to ensure visibility
+class AppError {
+  /// Log error with optional user message
+  /// - Logs to debugPrint in development
+  /// - Sends to Sentry in production
+  static void log(
+    dynamic error, {
+    StackTrace? stackTrace,
+    String? context,
+    Map<String, dynamic>? extras,
+  }) {
+    final contextPrefix = context != null ? '[$context] ' : '';
+    debugPrint('$contextPrefix$error');
+    if (stackTrace != null) {
+      debugPrint('$stackTrace');
+    }
+
+    // Send to Sentry (non-blocking)
+    Sentry.captureException(
+      error,
+      stackTrace: stackTrace,
+      withScope: (scope) {
+        if (context != null) {
+          scope.setTag('context', context);
+        }
+        if (extras != null) {
+          scope.setContexts('extras', extras);
+        }
+      },
+    );
+  }
+
+  /// Show error to user via SnackBar and log it
+  static void show(
+    BuildContext context,
+    String userMessage, {
+    dynamic error,
+    StackTrace? stackTrace,
+    String? logContext,
+    Duration duration = const Duration(seconds: 4),
+  }) {
+    // Log the error
+    if (error != null) {
+      log(error, stackTrace: stackTrace, context: logContext);
+    }
+
+    // Show user-friendly message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(userMessage),
+        backgroundColor: Colors.red,
+        duration: duration,
+        action: SnackBarAction(
+          label: 'Dismiss',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Extract user-friendly message from error
+  static String getMessage(dynamic error) {
+    if (error is FirebaseException) {
+      return error.message ?? 'An error occurred';
+    }
+    if (error is Exception) {
+      final message = error.toString();
+      // Remove "Exception: " prefix if present
+      if (message.startsWith('Exception: ')) {
+        return message.substring(11);
+      }
+      return message;
+    }
+    return error?.toString() ?? 'An unexpected error occurred';
+  }
+}
 
 // Add these to your constants or helper section
 const Map<String, Map<String, double>> provinceTaxRates = {
@@ -382,6 +468,15 @@ class Address {
     this.longitude,
   });
 
+  /// Create an empty address for fallback when data is missing
+  factory Address.empty() => Address(
+        street: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: 'Canada',
+      );
+
   factory Address.fromMap(Map<String, dynamic> map) {
     return Address(
       street: map['street'] ?? '',
@@ -598,7 +693,9 @@ class CartItemDetailModel {
       imageUrls: List<String>.from(map['imageUrls'] ?? []),
       quantity: map['quantity'] ?? 0,
       dateCreated: (map['dateCreated'] as Timestamp?) ?? Timestamp.now(),
-      sellerAddress: Address.fromMap(map['sellerAddress'] as Map<String, dynamic>),
+      sellerAddress: map['sellerAddress'] != null
+          ? Address.fromMap(map['sellerAddress'] as Map<String, dynamic>)
+          : Address.empty(),
       sellerId: map['sellerId'] ?? '',
       deliveryStatus: map['deliveryStatus'] ?? DeliveryStatus.pending.value,
       trackingNumber: map['trackingNumber'],
@@ -734,8 +831,10 @@ class OrderModel {
         price: (map['price'] ?? 0).toDouble(),
         imageUrls: List<String>.from(map['imageUrls'] ?? []),
         quantity: map['quantity'] ?? 0,
-        dateCreated: map['dateCreated'] as Timestamp,
-        sellerAddress: Address.fromMap(map['sellerAddress'] as Map<String, dynamic>),
+        dateCreated: (map['dateCreated'] as Timestamp?) ?? Timestamp.now(),
+        sellerAddress: map['sellerAddress'] != null
+            ? Address.fromMap(map['sellerAddress'] as Map<String, dynamic>)
+            : Address.empty(),
         sellerId: map['sellerId'] ?? '',
         deliveryStatus: map['deliveryStatus'] ?? DeliveryStatus.pending.value,
         trackingNumber: map['trackingNumber'],
@@ -825,7 +924,7 @@ class ProductModel {
   final double? lengthCm; // Length in centimeters
   final double? widthCm; // Width in centimeters
   final double? heightCm; // Height in centimeters
-  final bool isLocalDeliveryOnly; // For food/perishables - same day local delivery
+  final bool isLocalDeliveryOnly; // Restrict to buyers within 50km for same-day/next-day delivery
   final int estimatedShipDays; // Seller's estimated shipping time in days
   final String? taxCode; // Optional Stripe Tax Code (e.g. txcd_10000000)
 

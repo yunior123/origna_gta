@@ -71,61 +71,6 @@ class OrdersScreen extends ConsumerWidget {
     );
   }
 }
-// TODO it happens after seller registration completes, before it was ok, now its ok too, but check anyways
-// The following _TypeError was thrown building _BuyerOrderCard(dirty, state:
-// _BuyerOrderCardState#fefa3):
-// TypeError: null: type 'Null' is not a subtype of type 'Map<String, dynamic>'
-
-// The relevant error-causing widget was:
-//   _BuyerOrderCard
-//   _BuyerOrderCard:file:///Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta/lib/orders_screen.dart:62:30
-
-// When the exception was thrown, this was the stack:
-// dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3        throw_
-// errors.dart:274
-// dart-sdk/lib/_internal/js_shared/lib/rti.dart 1503:3                               _generalAsCheckImplementation
-// rti.dart:1503
-// package:origna_gta/utils.dart 601:59                                               fromMap
-// utils.dart:601
-// package:origna_gta/orders_screen.dart 201:60                                       <fn>
-// orders_screen.dart:201
-// dart-sdk/lib/internal/iterable.dart 442:31                                         elementAt
-// iterable.dart:442
-// dart-sdk/lib/internal/iterable.dart 371:26                                         moveNext
-// iterable.dart:371
-// dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 1279:20  next
-// operations.dart:1279
-// dart-sdk/lib/_internal/js_dev_runtime/patch/core_patch.dart 357:14                 of
-// core_patch.dart:357
-// dart-sdk/lib/internal/iterable.dart 224:7                                          toList
-// iterable.dart:224
-// package:origna_gta/orders_screen.dart 201:69                                       build
-// orders_screen.dart:201
-// package:flutter/src/widgets/framework.dart 5934:27                                 build
-// framework.dart:5934
-// package:flutter_riverpod/src/consumer.dart 539:20                                  build
-// consumer.dart:539
-// package:flutter/src/widgets/framework.dart 5820:15                                 performRebuild
-// framework.dart:5820
-// package:flutter/src/widgets/framework.dart 5985:11                                 performRebuild
-// framework.dart:5985
-// package:flutter/src/widgets/framework.dart 5532:7                                  rebuild
-// framework.dart:5532
-// package:flutter/src/widgets/framework.dart 5802:5                                  [_firstBuild]
-// framework.dart:5802
-// package:flutter/src/widgets/framework.dart 5976:11                                 [_firstBuild]
-// framework.dart:5976
-// package:flutter/src/widgets/framework.dart 5796:5                                  mount
-// framework.dart:5796
-// ...     Normal element mounting (29 frames)
-// package:flutter/src/widgets/framework.dart 4590:19                                 inflateWidget
-// framework.dart:4590
-// package:flutter/src/widgets/framework.dart 4059:18                                 updateChild
-// framework.dart:4059
-// package:flutter/src/widgets/framework.dart 5844:16                                 performRebuild
-// framework.dart:5844
-// package:flutter/src/widgets/framework.dart 5985:11                                 performRebuild
-// framework.dart:5985
 
 /// Pending approvals banner - extracted widget
 class _PendingApprovalsBanner extends StatelessWidget {
