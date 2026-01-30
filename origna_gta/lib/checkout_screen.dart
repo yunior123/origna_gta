@@ -1,122 +1,70 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:origna_gta/constants.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/editaddress_screen.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/features/checkout/checkout_provider.dart';
 import 'package:origna_gta/terms_screen.dart';
 import 'package:origna_gta/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class CheckoutScreen extends StatefulWidget {
+class CheckoutScreen extends ConsumerStatefulWidget {
   final List<CartItemDetailModel> items;
   final double total;
 
   const CheckoutScreen({super.key, required this.items, required this.total});
 
   @override
-  State<CheckoutScreen> createState() => _CheckoutScreenState();
+  ConsumerState<CheckoutScreen> createState() => _CheckoutScreenState();
 }
 
-class _CheckoutScreenState extends State<CheckoutScreen> {
-  bool _isProcessing = false;
-  double? _cachedShippingCost;
-  bool _isCalculatingShipping = false;
-  String? _shippingError;
-
+class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   @override
   void initState() {
     super.initState();
-    _calculateShippingCost();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeCheckout();
+    });
   }
 
-  Future<void> _calculateShippingCost() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+  Future<void> _initializeCheckout() async {
+    final notifier = ref.read(checkoutStateProvider.notifier);
+    await notifier.initialize();
 
-    setState(() {
-      _isCalculatingShipping = true;
-      _shippingError = null;
-    });
-
-    try {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-
-      final addressMap = userDoc.data()?['address'] as Map<String, dynamic>?;
-      if (addressMap == null) {
-        setState(() {
-          _shippingError = 'No address found';
-          _isCalculatingShipping = false;
-        });
-        return;
-      }
-
-      final address = Address.fromMap(addressMap);
-      final cost = await calculateShippingCost(widget.items, address);
-
-      if (mounted) {
-        setState(() {
-          _cachedShippingCost = cost;
-          _isCalculatingShipping = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _shippingError = 'Failed to calculate shipping';
-          _isCalculatingShipping = false;
-        });
-      }
+    final state = ref.read(checkoutStateProvider);
+    if (state.address != null) {
+      await notifier.calculateShipping(widget.items);
+      notifier.calculateTaxes(widget.total);
     }
+  }
+
+  Future<void> _refreshShipping() async {
+    final notifier = ref.read(checkoutStateProvider.notifier);
+    await notifier.calculateShipping(widget.items);
+    notifier.calculateTaxes(widget.total);
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    final userProfileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'Checkout'),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
-          child: StreamBuilder<DocumentSnapshot>(
-            stream: user != null ? FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots() : null,
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
+          child: userProfileAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) => Center(child: Text('Error: $error')),
+            data: (userProfile) {
+              if (userProfile == null) {
+                return const Center(child: Text('Please log in to checkout'));
               }
-
-              final userData = snapshot.data!.data() as Map<String, dynamic>?;
-              final Address? savedAddress = userData?['address'] != null ? Address.fromMap(userData!['address'] as Map<String, dynamic>) : null;
-              final userModel = UserModel.fromMap(userData ?? {});
-
-              if (savedAddress == null) {
-                return _buildNoAddressView();
-              }
-
-              final taxRate = getTaxRate(savedAddress.state);
-              final tax = widget.total * taxRate;
-              final shippingCost = _cachedShippingCost ?? 0.0;
-              final totalWithTax = widget.total + tax + shippingCost;
-
-              return Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [_buildAddressSection(savedAddress), const SizedBox(height: 24), _buildOrderSummary(savedAddress.state, shippingCost)],
-                      ),
-                    ),
-                  ),
-                  _buildCheckoutButton(savedAddress, userModel, totalWithTax),
-                  _buildTermsText(context),
-                  const SizedBox(height: 16),
-                  _buildSecurityInfo(),
-                ],
+              return _CheckoutContent(
+                items: widget.items,
+                subtotal: widget.total,
+                userModel: userProfile,
+                onRefreshShipping: _refreshShipping,
               );
             },
           ),
@@ -124,90 +72,70 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
     );
   }
+}
 
-  Widget _buildOrderSummary(String state, double shippingCost) {
+class _CheckoutContent extends ConsumerWidget {
+  final List<CartItemDetailModel> items;
+  final double subtotal;
+  final UserModel userModel;
+  final VoidCallback onRefreshShipping;
+
+  const _CheckoutContent({
+    required this.items,
+    required this.subtotal,
+    required this.userModel,
+    required this.onRefreshShipping,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final checkoutState = ref.watch(checkoutStateProvider);
+    final address = checkoutState.address;
+
+    if (address == null) {
+      return _NoAddressView(onRefreshShipping: onRefreshShipping);
+    }
+
+    final taxRate = getTaxRate(address.state);
+    final tax = subtotal * taxRate;
+    final totalWithTax = subtotal + tax + checkoutState.shippingCost;
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Order Summary', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
-          ),
-          child: Column(
-            children: [
-              ...widget.items.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(child: Text('${item.name} x${item.quantity}', style: const TextStyle(fontSize: 14))),
-                      Text('\$${(item.price * item.quantity).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-              ),
-              const Divider(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Subtotal', style: TextStyle(fontSize: 16)),
-                  Text('\$${widget.total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ..._buildTaxBreakdown(state, widget.total),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Estimated Shipping', style: TextStyle(color: Colors.grey)),
-                  if (_isCalculatingShipping)
-                    const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  else if (_shippingError != null)
-                    Text(_shippingError!, style: const TextStyle(color: Colors.red, fontSize: 12))
-                  else
-                    Text('\$${shippingCost.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                ],
-              ),
-              // Estimated shipping disclaimer
-              if (!_isCalculatingShipping && _shippingError == null && shippingCost > 0)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Final shipping cost will be confirmed by seller before charge',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500], fontStyle: FontStyle.italic),
-                  ),
-                ),
-              const Divider(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Estimated Total', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text(
-                    '\$${(widget.total + (getTaxRate(state) * widget.total) + shippingCost).toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Taxes and total will be confirmed at payment.',
-                style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
-              ),
-            ],
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _AddressSection(address: address, onRefreshShipping: onRefreshShipping),
+                const SizedBox(height: 24),
+                _OrderSummary(items: items, subtotal: subtotal, state: address.state),
+              ],
+            ),
           ),
         ),
+        _CheckoutButton(
+          items: items,
+          userModel: userModel,
+          subtotal: subtotal,
+          total: totalWithTax,
+        ),
+        _TermsText(),
+        const SizedBox(height: 16),
+        _SecurityInfo(),
       ],
     );
   }
+}
 
-  Widget _buildNoAddressView() {
+class _NoAddressView extends StatelessWidget {
+  final VoidCallback onRefreshShipping;
+
+  const _NoAddressView({required this.onRefreshShipping});
+
+  @override
+  Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -226,7 +154,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEditAddressScreen())).then((_) => _calculateShippingCost());
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEditAddressScreen())).then((_) => onRefreshShipping());
               },
               icon: const Icon(Icons.add_location),
               label: const Text('Add Address'),
@@ -241,8 +169,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
     );
   }
+}
 
-  Widget _buildAddressSection(Address savedAddress) {
+class _AddressSection extends StatelessWidget {
+  final Address address;
+  final VoidCallback onRefreshShipping;
+
+  const _AddressSection({required this.address, required this.onRefreshShipping});
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -254,8 +190,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => AddEditAddressScreen(address: savedAddress.formattedAddress.isEmpty ? null : savedAddress)),
-                ).then((_) => _calculateShippingCost());
+                  MaterialPageRoute(builder: (_) => AddEditAddressScreen(address: address.formattedAddress.isEmpty ? null : address)),
+                ).then((_) => onRefreshShipping());
               },
               icon: const Icon(Icons.edit_outlined, size: 18),
               label: const Text('Edit'),
@@ -275,21 +211,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (savedAddress.label != null) ...[
+              if (address.label != null) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(color: const Color(0xFFFF6B35).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                   child: Text(
-                    savedAddress.label!,
+                    address.label!,
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
                   ),
                 ),
                 const SizedBox(height: 8),
               ],
-              Text(savedAddress.formattedAddress, style: const TextStyle(fontSize: 14, height: 1.5)),
-              if (savedAddress.phoneNumber != null) ...[
+              Text(address.formattedAddress, style: const TextStyle(fontSize: 14, height: 1.5)),
+              if (address.phoneNumber != null) ...[
                 const SizedBox(height: 8),
-                Row(children: [const Icon(Icons.phone_outlined, size: 16), const SizedBox(width: 8), Text(savedAddress.phoneNumber!)]),
+                Row(children: [const Icon(Icons.phone_outlined, size: 16), const SizedBox(width: 8), Text(address.phoneNumber!)]),
               ],
             ],
           ),
@@ -297,34 +233,108 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ],
     );
   }
+}
 
-  Widget _buildCheckoutButton(Address address, UserModel userModel, double total) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -5))],
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 54,
-        child: ElevatedButton(
-          onPressed: (_isProcessing || _isCalculatingShipping || _shippingError != null) ? null : () => _startStripeCheckout(widget.items, address, userModel),
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
-          child: _isProcessing
-              ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-              : const Text('Place Order', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+class _OrderSummary extends ConsumerWidget {
+  final List<CartItemDetailModel> items;
+  final double subtotal;
+  final String state;
+
+  const _OrderSummary({required this.items, required this.subtotal, required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final checkoutState = ref.watch(checkoutStateProvider);
+    final shippingCost = checkoutState.shippingCost;
+    final isCalculating = checkoutState.isCalculatingShipping;
+    final shippingError = checkoutState.shippingError;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Order Summary', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
+          ),
+          child: Column(
+            children: [
+              ...items.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(child: Text('${item.name} x${item.quantity}', style: const TextStyle(fontSize: 14))),
+                      Text('\$${(item.price * item.quantity).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Subtotal', style: TextStyle(fontSize: 16)),
+                  Text('\$${subtotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ..._buildTaxBreakdown(state, subtotal),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Estimated Shipping', style: TextStyle(color: Colors.grey)),
+                  if (isCalculating)
+                    const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  else if (shippingError != null)
+                    Text(shippingError, style: const TextStyle(color: Colors.red, fontSize: 12))
+                  else
+                    Text('\$${shippingCost.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              if (!isCalculating && shippingError == null && shippingCost > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Final shipping cost will be confirmed by seller before charge',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500], fontStyle: FontStyle.italic),
+                  ),
+                ),
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Estimated Total', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text(
+                    '\$${(subtotal + (getTaxRate(state) * subtotal) + shippingCost).toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Taxes and total will be confirmed at payment.',
+                style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
-  List<Widget> _buildTaxBreakdown(String province, double subtotal) {
+  List<Widget> _buildTaxBreakdown(String province, double total) {
     final taxes = taxConfig[province] ?? {'HST': 0.13};
     List<Widget> widgets = [];
 
     taxes.forEach((taxName, rate) {
-      final taxAmount = subtotal * rate;
+      final taxAmount = total * rate;
       widgets.add(
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -339,8 +349,81 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     return widgets;
   }
+}
 
-  Widget _buildTermsText(BuildContext context) {
+class _CheckoutButton extends ConsumerWidget {
+  final List<CartItemDetailModel> items;
+  final UserModel userModel;
+  final double subtotal;
+  final double total;
+
+  const _CheckoutButton({
+    required this.items,
+    required this.userModel,
+    required this.subtotal,
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final checkoutState = ref.watch(checkoutStateProvider);
+    final isDisabled = checkoutState.isProcessing || checkoutState.isCalculatingShipping || checkoutState.shippingError != null;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -5))],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 54,
+        child: ElevatedButton(
+          onPressed: isDisabled ? null : () => _startCheckout(context, ref),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+          child: checkoutState.isProcessing
+              ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+              : const Text('Place Order', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _startCheckout(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final notifier = ref.read(checkoutStateProvider.notifier);
+
+    final result = await notifier.startCheckout(
+      items: items,
+      user: userModel,
+      subtotal: subtotal,
+    );
+
+    switch (result) {
+      case CheckoutSuccess(:final checkoutUrl):
+        await _redirectToStripe(checkoutUrl);
+      case CheckoutError(:final message):
+        messenger.showSnackBar(
+          SnackBar(content: Text('Checkout error: $message'), backgroundColor: Colors.red, duration: const Duration(seconds: 5)),
+        );
+      case CheckoutAlreadyProcessed(:final existingOrderId):
+        messenger.showSnackBar(
+          SnackBar(content: Text('Order already exists: $existingOrderId'), backgroundColor: Colors.orange),
+        );
+    }
+  }
+
+  Future<void> _redirectToStripe(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      debugPrint('Could not redirect to Stripe');
+    }
+  }
+}
+
+class _TermsText extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -372,8 +455,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
     );
   }
+}
 
-  Widget _buildSecurityInfo() {
+class _SecurityInfo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
@@ -387,143 +473,5 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _redirectToStripe(String url) async {
-    final uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      throw Exception('Could not redirect to Stripe');
-    }
-  }
-
-  Future<void> _startStripeCheckout(List<CartItemDetailModel> items, Address address, UserModel userModel) async {
-    setState(() => _isProcessing = true);
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('User not logged in');
-      }
-
-      // Calculate totals
-      final taxRate = getTaxRate(address.state);
-      final tax = widget.total * taxRate;
-      final shippingCost = _cachedShippingCost ?? 0.0;
-      final totalWithTax = widget.total + tax + shippingCost;
-
-      // Get detailed taxes breakdown
-      final taxes = calculateDetailedTaxes(address, widget.total);
-
-      // Get seller IDs from items
-      final sellerIds = items.map((item) => item.sellerId).toSet().toList();
-
-      // Prepare delivery info map
-      final deliveryInfo = {
-        'formattedAddress': address.formattedAddress,
-        'street': address.street,
-        'apartment': address.apartment,
-        'city': address.city,
-        'state': address.state,
-        'postalCode': address.postalCode,
-        'country': address.country,
-        'phoneNumber': address.phoneNumber,
-        'label': address.label,
-      };
-
-      // Create OrderModel for type safety - this ensures all fields match
-      // Note: orderId, createdAt, status, stripeSessionId will be set by backend
-      final orderForValidation = OrderModel(
-        orderId: '', // Will be set by backend
-        userId: user.uid,
-        customerId: userModel.customerId ?? '',
-        customerEmail: userModel.email,
-        items: items,
-        total: totalWithTax,
-        taxes: taxes,
-        shippingCost: shippingCost,
-        subtotal: widget.total,
-        status: OrderStatus.pending.value, // Will be overridden by backend
-        deliveryInfo: deliveryInfo,
-        createdAt: DateTime.now(), // Will be overridden by backend
-        currency: 'cad',
-        amount: (totalWithTax * 100).toInt(),
-        sellerIds: sellerIds,
-        stripeSessionId: '', // Will be set by backend
-      );
-
-      // Convert to map for sending to backend
-      // We use the model's toMap to ensure consistency, then remove fields set by backend
-      final orderData = orderForValidation.toMap();
-      // Remove fields that backend will generate
-      orderData.remove('createdAt');
-      orderData.remove('status');
-
-      // Backend expects items as simple maps without sellerAddress since it's already in the item
-      orderData['items'] = items
-          .map(
-            (item) => {
-              'sellerId': item.sellerId,
-              'productId': item.productId,
-              'name': item.name,
-              'description': item.description,
-              'price': item.price,
-              'quantity': item.quantity,
-              'imageUrls': item.imageUrls,
-            },
-          )
-          .toList();
-
-      debugPrint('📤 Sending checkout request...');
-      final functions = FirebaseFunctions.instance;
-
-      if (kDebugMode) {
-        functions.useFunctionsEmulator('127.0.0.1', 8081);
-      }
-
-      // Call the Cloud Function
-      final callable = functions.httpsCallable('create_checkout_session');
-      final response = await callable.call(orderData);
-
-      debugPrint('✅ Received response from backend');
-
-      // Extract response data
-      final checkoutUrl = response.data['url'] as String;
-      final orderId = response.data['orderId'] as String;
-      final sessionId = response.data['sessionId'] as String;
-
-      debugPrint('📝 Order ID: $orderId');
-      debugPrint('🔗 Session ID: $sessionId');
-
-      // Update user model with checkout tracking info
-      final updatedUser = userModel.copyWith(lastCheckoutSession: sessionId, lastOrderId: orderId, lastCheckoutTimestamp: DateTime.now());
-
-      // Save to Firestore using the model
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(updatedUser.toMap());
-
-      // Redirect to Stripe
-      if (kIsWeb) {
-        debugPrint('🌐 Redirecting to Stripe...');
-        await _redirectToStripe(checkoutUrl);
-      } else {
-        // For mobile apps
-        await _redirectToStripe(checkoutUrl);
-      }
-    } on FirebaseFunctionsException catch (e) {
-      debugPrint('❌ Firebase Function Error: ${e.code} - ${e.message}');
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Checkout error: ${e.message ?? e.code}'), backgroundColor: Colors.red, duration: const Duration(seconds: 5)));
-      }
-    } catch (e) {
-      debugPrint('❌ Unexpected error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout error: $e'), backgroundColor: Colors.red));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-      }
-    }
   }
 }

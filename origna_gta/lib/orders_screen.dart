@@ -1,10 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/rating_dialog.dart';
 import 'package:origna_gta/shipping_approval_screen.dart';
 import 'package:origna_gta/utils.dart';
@@ -24,29 +23,16 @@ class OrdersScreen extends ConsumerWidget {
       );
     }
 
+    final ordersAsync = ref.watch(buyerOrdersRawProvider);
+
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'My Orders'),
       backgroundColor: const Color(0xFFF5F5F5),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('orders')
-            .where('userId', isEqualTo: user.uid)
-            .where('paymentStatus', whereIn: [
-              PaymentStatus.paid.value,
-              PaymentStatus.authorized.value, // Include authorized orders
-            ])
-            .orderBy('createdAt', descending: true)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+      body: ordersAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
+        data: (orders) {
+          if (orders.isEmpty) {
             return const AnimatedEmptyState(
               icon: Icons.shopping_bag_outlined,
               title: 'No orders yet',
@@ -55,82 +41,25 @@ class OrdersScreen extends ConsumerWidget {
           }
 
           // Check for pending shipping approvals
-          final pendingApprovals = snapshot.data!.docs.where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
+          final pendingApprovals = orders.where((data) {
             return data['shippingApprovalStatus'] == ShippingApprovalStatus.pending.value;
           }).toList();
 
           return Column(
             children: [
               // Shipping approval banner
-              if (pendingApprovals.isNotEmpty)
-                FadeSlideIn(
-                  beginOffset: const Offset(0, -0.1),
-                  child: Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.orange.shade400, Colors.orange.shade600],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.orange.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const ShippingApprovalScreen()),
-                      );
-                    },
-                    child: Row(
-                      children: [
-                        const Icon(Icons.pending_actions, color: Colors.white, size: 28),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${pendingApprovals.length} order${pendingApprovals.length > 1 ? 's' : ''} need${pendingApprovals.length == 1 ? 's' : ''} approval',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const Text(
-                                'Tap to review shipping cost changes',
-                                style: TextStyle(color: Colors.white70, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right, color: Colors.white),
-                      ],
-                    ),
-                  ),
-                ),
-                ),
+              if (pendingApprovals.isNotEmpty) _PendingApprovalsBanner(count: pendingApprovals.length),
 
               // Orders list
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: snapshot.data!.docs.length,
+                  itemCount: orders.length,
                   itemBuilder: (context, index) {
-                    final doc = snapshot.data!.docs[index];
-                    final orderData = doc.data() as Map<String, dynamic>;
+                    final orderData = orders[index];
                     return FadeSlideIn(
                       delay: Duration(milliseconds: 50 * index),
-                      child: _BuyerOrderCard(orderId: doc.id, data: orderData),
+                      child: _BuyerOrderCard(orderId: orderData['id'] as String, data: orderData),
                     );
                   },
                 ),
@@ -143,17 +72,84 @@ class OrdersScreen extends ConsumerWidget {
   }
 }
 
-class _BuyerOrderCard extends StatefulWidget {
+/// Pending approvals banner - extracted widget
+class _PendingApprovalsBanner extends StatelessWidget {
+  final int count;
+
+  const _PendingApprovalsBanner({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeSlideIn(
+      beginOffset: const Offset(0, -0.1),
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.orange.shade400, Colors.orange.shade600],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.orange.withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ShippingApprovalScreen()),
+            );
+          },
+          child: Row(
+            children: [
+              const Icon(Icons.pending_actions, color: Colors.white, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$count order${count > 1 ? 's' : ''} need${count == 1 ? 's' : ''} approval',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const Text(
+                      'Tap to review shipping cost changes',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Order card using ConsumerStatefulWidget for proper state management
+class _BuyerOrderCard extends ConsumerStatefulWidget {
   final String orderId;
   final Map<String, dynamic> data;
 
   const _BuyerOrderCard({required this.orderId, required this.data});
 
   @override
-  State<_BuyerOrderCard> createState() => _BuyerOrderCardState();
+  ConsumerState<_BuyerOrderCard> createState() => _BuyerOrderCardState();
 }
 
-class _BuyerOrderCardState extends State<_BuyerOrderCard> {
+class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
   bool _isConfirming = false;
   String? _confirmingItemId;
 
@@ -169,52 +165,33 @@ class _BuyerOrderCardState extends State<_BuyerOrderCard> {
   }
 
   Future<void> _confirmReceipt(CartItemDetailModel item) async {
+    final messenger = ScaffoldMessenger.of(context);
+
     setState(() {
       _isConfirming = true;
       _confirmingItemId = item.productId;
     });
 
-    try {
-      final callable = FirebaseFunctions.instance.httpsCallable('confirm_order_receipt');
-      await callable.call({
-        'orderId': widget.orderId,
-        'itemIds': [item.productId],
-      });
+    final ordersController = ref.read(ordersControllerProvider);
+    final result = await ordersController.confirmReceipt(widget.orderId, [item.productId]);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Receipt confirmed! Seller will be paid.'),
-            backgroundColor: Colors.green,
-          ),
+    if (!mounted) return;
+
+    switch (result) {
+      case OrderSuccess(:final message):
+        messenger.showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.green),
         );
-      }
-    } on FirebaseFunctionsException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.message ?? 'Failed to confirm receipt'),
-            backgroundColor: Colors.red,
-          ),
+      case OrderError(:final message):
+        messenger.showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.red),
         );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isConfirming = false;
-          _confirmingItemId = null;
-        });
-      }
     }
+
+    setState(() {
+      _isConfirming = false;
+      _confirmingItemId = null;
+    });
   }
 
   @override
@@ -223,7 +200,7 @@ class _BuyerOrderCardState extends State<_BuyerOrderCard> {
     final itemsData = List<Map<String, dynamic>>.from(widget.data['items'] ?? []);
     final items = itemsData.map((e) => CartItemDetailModel.fromMap(e)).toList();
     final total = (widget.data['total'] ?? 0.0).toDouble();
-    final createdAt = widget.data['createdAt'] as Timestamp?;
+    final createdAt = widget.data['createdAt'] as dynamic;
     final deliveryInfo = widget.data['deliveryInfo'] as Map<String, dynamic>?;
     final isOrderConfirmed = widget.data['confirmedByClient'] == true;
     final paymentStatus = widget.data['paymentStatus'] as String?;
@@ -253,7 +230,7 @@ class _BuyerOrderCardState extends State<_BuyerOrderCard> {
                     ),
                     if (createdAt != null)
                       Text(
-                        DateFormat('MMM dd, yyyy').format(createdAt.toDate()),
+                        DateFormat('MMM dd, yyyy').format(_parseTimestamp(createdAt)),
                         style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       ),
                   ],
@@ -305,6 +282,14 @@ class _BuyerOrderCardState extends State<_BuyerOrderCard> {
         ),
       ),
     );
+  }
+
+  DateTime _parseTimestamp(dynamic timestamp) {
+    if (timestamp is DateTime) return timestamp;
+    if (timestamp != null && timestamp.toDate != null) {
+      return timestamp.toDate();
+    }
+    return DateTime.now();
   }
 
   Widget _buildOrderItem(BuildContext context, CartItemDetailModel item, bool isOrderConfirmed) {
@@ -492,14 +477,10 @@ class _BuyerOrderCardState extends State<_BuyerOrderCard> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isPendingApproval
-            ? Colors.orange.withValues(alpha: 0.1)
-            : Colors.blue.withValues(alpha: 0.1),
+        color: isPendingApproval ? Colors.orange.withValues(alpha: 0.1) : Colors.blue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isPendingApproval
-              ? Colors.orange.withValues(alpha: 0.3)
-              : Colors.blue.withValues(alpha: 0.3),
+          color: isPendingApproval ? Colors.orange.withValues(alpha: 0.3) : Colors.blue.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -512,9 +493,7 @@ class _BuyerOrderCardState extends State<_BuyerOrderCard> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              isPendingApproval
-                  ? 'Shipping cost changed - your approval is needed'
-                  : 'Payment authorized - awaiting seller shipment',
+              isPendingApproval ? 'Shipping cost changed - your approval is needed' : 'Payment authorized - awaiting seller shipment',
               style: TextStyle(
                 fontSize: 12,
                 color: isPendingApproval ? Colors.orange[800] : Colors.blue[800],
@@ -546,7 +525,7 @@ class _BuyerOrderCardState extends State<_BuyerOrderCard> {
         width: 60,
         height: 60,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => Container(
+        errorBuilder: (_, e, s) => Container(
           width: 60,
           height: 60,
           color: Colors.grey[300],

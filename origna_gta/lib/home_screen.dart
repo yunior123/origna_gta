@@ -1,4 +1,4 @@
-import 'dart:async'; // Required for Timer (Debouncer)
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -83,7 +83,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final searchQuery = ref.read(searchQueryProvider);
       final selectedCategoryId = ref.read(selectedCategoryProvider);
-      
+
       Query query = FirebaseFirestore.instance.collection('products');
 
       if (searchQuery.isNotEmpty) {
@@ -123,13 +123,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch providers
-    final user = ref.watch(currentUserProvider);
+    // Only watch userProfile for ProductCard - no longer causes full rebuilds
+    // since cart badge and other buttons are extracted to separate widgets
     final userProfile = ref.watch(userProfileProvider).valueOrNull;
-    final cartCount = ref.watch(cartItemCountProvider);
 
     return Scaffold(
-      appBar: _buildAppBar(user, userProfile, cartCount),
+      appBar: _buildAppBar(),
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
@@ -191,7 +190,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(dynamic user, UserModel? userProfile, int cartCount) {
+  PreferredSizeWidget _buildAppBar() {
     return PreferredSize(
       preferredSize: const Size.fromHeight(70),
       child: Container(
@@ -230,27 +229,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ],
                 ),
-                Row(
+                const Row(
                   children: [
-                    _buildIconButton(
-                      icon: Icons.settings_outlined,
-                      onPressed: () {
-                        if (user == null) {
-                          showLoginPrompt(context, text: "You need to sign in to access settings");
-                          return;
-                        }
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
-                      },
-                    ),
-                    if ((userProfile?.roles.contains(UserRoles.seller) ?? false) ||
-                        (userProfile?.roles.contains(UserRoles.admin) ?? false))
-                      _buildIconButton(
-                        icon: Icons.add_box_outlined,
-                        onPressed: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const AddProductScreen()));
-                        },
-                      ),
-                    _buildCartBadge(context, cartCount),
+                    _SettingsButton(),
+                    _AddProductButton(),
+                    _CartBadge(),
                   ],
                 ),
               ],
@@ -261,47 +244,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Stack _buildCartBadge(BuildContext context, int count) {
-    final user = ref.watch(currentUserProvider);
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        _buildIconButton(
-          icon: Icons.shopping_cart_outlined,
-          onPressed: () {
-            if (user == null) {
-              showLoginPrompt(context);
-              return;
-            }
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
-          },
-        ),
-        if (count > 0)
-          Positioned(
-            right: -2,
-            top: -2,
-            child: Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFFF6B35), width: 2),
-              ),
-              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-              child: Text(
-                count > 99 ? '99+' : '$count',
-                style: const TextStyle(color: Color(0xFFFF6B35), fontSize: 10, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
   Widget _buildCategoryList() {
     final selectedCategoryId = ref.watch(selectedCategoryProvider);
-    
+
     return Container(
       height: 50,
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -347,11 +292,100 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+}
 
-  Widget _buildIconButton({required IconData icon, required VoidCallback onPressed}) {
+// ============================================================================
+// EXTRACTED WIDGETS - Each only rebuilds when its specific data changes
+// ============================================================================
+
+/// Settings button - only rebuilds when auth state changes
+class _SettingsButton extends ConsumerWidget {
+  const _SettingsButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+
     return IconButton(
-      icon: Icon(icon, color: Colors.white),
-      onPressed: onPressed,
+      icon: const Icon(Icons.settings_outlined, color: Colors.white),
+      onPressed: () {
+        if (user == null) {
+          showLoginPrompt(context, text: "You need to sign in to access settings");
+          return;
+        }
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+      },
+    );
+  }
+}
+
+/// Add product button - only rebuilds when user profile changes
+class _AddProductButton extends ConsumerWidget {
+  const _AddProductButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userProfile = ref.watch(userProfileProvider).valueOrNull;
+
+    // Only show for sellers or admins
+    final isSeller = userProfile?.roles.contains(UserRoles.seller) ?? false;
+    final isAdmin = userProfile?.roles.contains(UserRoles.admin) ?? false;
+
+    if (!isSeller && !isAdmin) {
+      return const SizedBox.shrink();
+    }
+
+    return IconButton(
+      icon: const Icon(Icons.add_box_outlined, color: Colors.white),
+      onPressed: () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const AddProductScreen()));
+      },
+    );
+  }
+}
+
+/// Cart badge - only rebuilds when cart count or auth state changes
+class _CartBadge extends ConsumerWidget {
+  const _CartBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final cartCount = ref.watch(cartItemCountProvider);
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+          onPressed: () {
+            if (user == null) {
+              showLoginPrompt(context);
+              return;
+            }
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
+          },
+        ),
+        if (cartCount > 0)
+          Positioned(
+            right: -2,
+            top: -2,
+            child: Container(
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFFF6B35), width: 2),
+              ),
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              child: Text(
+                cartCount > 99 ? '99+' : '$cartCount',
+                style: const TextStyle(color: Color(0xFFFF6B35), fontSize: 10, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

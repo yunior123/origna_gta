@@ -3,22 +3,23 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/firebase_options.dart';
 import 'package:origna_gta/origna_app.dart';
 import 'package:origna_gta/services/conf_services.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// OrignaGta -e-commerce store in Canada only, inspired by Amazon, 
+// OrignaGta -e-commerce store in Canada only, inspired by Amazon,
 // Meta Marketplace, Alibaba, Instacart
 // Coding principles and rules
 // 1.MVVM arquitecture, clean code all the time
 // 2.Logic between backend and frontend should be nice and clean
 // 3.The code should be so robust that if you need to replace an api you only need to modify the service file
 // of that api
+// 4. Avoid unnecessary rebuilds, use nice state manager
 // Store Creation Considerations
 // 1.Avoid expensive APIs, only use them if really needed
-// 2.Avoid fetching too much from database, keep this consistent 
+// 2.Avoid fetching too much from database, keep this consistent
 // in the entire app.
 // 3.Scale to more than 100 million users a year
 // 4.Easy to maintain, only one developer with super powers using claude pro
@@ -34,7 +35,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // Confirming this setup will set your platform configuration, you won’t be able to change it.
 // You can continue creating test accounts and charges while we review your details.
 // ============================================================================
-// ARCHITECTURE NOTES 
+// ARCHITECTURE NOTES
 // ============================================================================
 // 1. Seller has Stripe Express account (connected)
 // 2. Customer checks out
@@ -46,7 +47,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 //    - Sends funds to seller
 //    - Deducts platform fee (2.5%)
 //    - Handles payout to seller’s bank
-// Setup Funds flow Sellers will collect payments directly Industry E-commerce products Account creation Embedded onboarding components Account management 
+// Setup Funds flow Sellers will collect payments directly Industry E-commerce products Account creation Embedded onboarding components Account management
 // You’ll use embedded components to let users manage their Stripe account on your platform Pricing owner Stripe Enabled by default Risk and loss liability Stripe will manage risk and be liable if sellers can’t pay back losses—even if those losses result from fraud. Learn more about risk management
 
 // ✅ Funds flow: Sellers will collect payments directly
@@ -154,25 +155,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // );
 
 void main() {
-  runZonedGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    await ConfigService().initialize();
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      await ConfigService().initialize();
 
-    await SentryFlutter.init(
-      (options) {
+      await SentryFlutter.init((options) {
         options.dsn = ConfigService().sentryDnsKey;
         options.environment = kReleaseMode ? 'production' : 'development';
         options.tracesSampleRate = 0.1; // 10% of transactions
         options.beforeSend = (event, hint) {
           // Filter sensitive data - strip emails before sending
           if (event.user != null) {
-            event.user = SentryUser(
-              id: event.user!.id,
-              username: event.user!.username,
-              ipAddress: event.user!.ipAddress,
-              data: event.user!.data,
-            );
+            event.user = SentryUser(id: event.user!.id, username: event.user!.username, ipAddress: event.user!.ipAddress, data: event.user!.data);
           }
           return event;
         };
@@ -185,30 +181,28 @@ void main() {
           // mobile defaults (optional tuning):
           options.tracesSampleRate = 1.0;
         }
-      },
-    );
+      });
 
-    // Set global Flutter error handler
-    FlutterError.onError = (FlutterErrorDetails details) {
-      final message = details.exceptionAsString();
-      // Ignore the disposed Web engine view error
-      if (kIsWeb && message.contains('disposed EngineFlutterView')) {
-        return;
-      }
-      // Log to Sentry
-      Sentry.captureException(
-        details.exception,
-        stackTrace: details.stack,
-      );
-      // Let Flutter still show errors in debug
-      FlutterError.presentError(details);
-    };
+      // Set global Flutter error handler
+      FlutterError.onError = (FlutterErrorDetails details) {
+        final message = details.exceptionAsString();
+        // Ignore the disposed Web engine view error
+        if (kIsWeb && message.contains('disposed EngineFlutterView')) {
+          return;
+        }
+        // Log to Sentry
+        Sentry.captureException(details.exception, stackTrace: details.stack);
+        // Let Flutter still show errors in debug
+        FlutterError.presentError(details);
+      };
 
-    runApp(const ProviderScope(child: OrignaApp()));
-  }, (exception, stackTrace) async {
-    // Capture unhandled errors to Sentry
-    await Sentry.captureException(exception, stackTrace: stackTrace);
-  });
+      runApp(const ProviderScope(child: OrignaApp()));
+    },
+    (exception, stackTrace) async {
+      // Capture unhandled errors to Sentry
+      await Sentry.captureException(exception, stackTrace: stackTrace);
+    },
+  );
 }
 
 // ============================================================================
@@ -306,12 +300,46 @@ void main() {
 //        buyer approval for >20% increase, delayed payout to seller with 2.5% fee, auto-release after 14 days
 // TODO v4.0 google ranking in search SEO optimization
 // [ACTION REQUIRED] Enable Stripe Tax in your Stripe Dashboard Settings
-// TODO: Finish MVVM, 1.services like database connection should not handled in UI, keep separation of concerns, state managers in a separate file, one for each view is 
-// the ideal v1.1: MVVM with Riverpod - 5 provider files, 7 screens migrated (home, cart, login, orders, productdetails, seller_orders)
-// TODO create script to trigger all tests, the python ones and the flutter and dart ones before push is made to the main branch. All tests need to pass to be able to push
-// TODO delete all cloud functions from console and registries and then redeploy
 
-// TODO when the cart get cleared in the database after the user finish checkout, the ui of home screen and cart screen do not reflect the changes
-// TODO in cart screen when tapping the plus button the ui rebuilds entirely, fix that
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ============================================================================
+// REMAINING TODOS
+// ============================================================================
 // TODO after the success url is triggered the user is redirected to another tab of the app home view,
 // it should redirect to same tab and to the success screen instead
+// TODO create script to trigger all tests, the python ones and the flutter and dart ones before push is made to the main branch. All tests need to pass to be able to push
+// TODO delete all cloud functions from console and registries and then redeploy
+// TODO create integration tests in flutter to make sure ui is updating when database changes
+// TODO add more tests to cloud functions mainly to critical and most important parts
+
+// ============================================================================
+// COMPLETED MVVM REFACTORING (v1.1)
+// ============================================================================
+// [DONE] Cart screen rebuild on +/- button fixed via family providers (cart_provider.dart)
+// [DONE] Cart UI reactivity fixed with error handling and invalidation (cart_provider.dart)
+// [DONE] MVVM with Riverpod - Provider files: core, auth, cart, checkout, products, orders
+// [DONE] Screens migrated: home, cart, checkout, orders, login (ConsumerWidget/ConsumerStatefulWidget)
+// [DONE] Home screen AppBar widgets extracted (_CartBadge, _AddProductButton, _SettingsButton)
+// [DONE] N+1 database reads fixed with batch fetch in cartWithDetailsProvider
+// [DONE] Checkout idempotency added via CheckoutNotifier
+// [DONE] Orders screen StreamBuilder replaced with buyerOrdersRawProvider
+// [DONE] Login screen password reset moved to authControllerProvider
+// [DONE] OrdersController extended with seller methods (updateShippingCost, capturePayment, updateItemStatus) 

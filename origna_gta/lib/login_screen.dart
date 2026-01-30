@@ -392,9 +392,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                           setState(() => isSending = true);
 
                           try {
-                            
-                            await FirebaseAuth.instance.sendPasswordResetEmail(
-                              email: emailController.text.trim(),
+                            await ref.read(authControllerProvider).sendPasswordResetEmail(
+                              emailController.text.trim(),
                             );
                             
                             if (dialogContext.mounted) {
