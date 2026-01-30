@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/utils.dart';
@@ -40,7 +41,11 @@ class _SellerRegistrationScreenState extends State<SellerRegistrationScreen> wit
 
   Future<void> _refreshAccountStatus() async {
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable('get_connect_account_status');
+          final functions = FirebaseFunctions.instance;
+      if (kDebugMode) {
+        functions.useFunctionsEmulator('127.0.0.1', 8081);
+      }
+      final callable = functions.httpsCallable('get_connect_account_status');
       await callable.call();
       // The StreamBuilder will automatically update the UI
     } catch (e) {
@@ -358,8 +363,12 @@ class _SellerRegistrationScreenState extends State<SellerRegistrationScreen> wit
     });
 
     try {
+          final functions = FirebaseFunctions.instance;
+      if (kDebugMode) {
+        functions.useFunctionsEmulator('127.0.0.1', 8081);
+      }
       // Create Stripe Connect account
-      final createAccount = FirebaseFunctions.instance.httpsCallable('create_connect_account');
+      final createAccount = functions.httpsCallable('create_connect_account');
       final result = await createAccount.call();
 
       final data = result.data as Map<String, dynamic>;
@@ -393,8 +402,12 @@ class _SellerRegistrationScreenState extends State<SellerRegistrationScreen> wit
     });
 
     try {
+           final functions = FirebaseFunctions.instance;
+      if (kDebugMode) {
+        functions.useFunctionsEmulator('127.0.0.1', 8081);
+      }
       // Get onboarding link
-      final createLink = FirebaseFunctions.instance.httpsCallable('create_account_link');
+      final createLink = functions.httpsCallable('create_account_link');
       final result = await createLink.call({
         'refreshUrl': 'https://orignagta.ca/seller/refresh',
         'returnUrl': 'https://orignagta.ca/seller/return',
@@ -435,3 +448,23 @@ class _SellerRegistrationScreenState extends State<SellerRegistrationScreen> wit
     }
   }
 }
+// TODO the flow works https://orignagta.ca/seller/return but the browser opens a new tab for returning that leads to home view, fix that
+ //functions: Finished "us-central1-create_account_link" in 1.3435ms
+// i  functions: Beginning execution of "us-central1-create_account_link"
+// >  🔗 Creating account link for user: feP9aX0c6dRs9RspLcZ1qE1zxLy1
+// >    ✅ Created account link: https://connect.stripe.com/setup/e/acct_1SvF7mAm5U...
+// i  functions: Finished "us-central1-create_account_link" in 974.974167ms
+// i  functions: Beginning execution of "us-central1-get_connect_account_status"
+// i  functions: Finished "us-central1-get_connect_account_status" in 27.3875ms
+// i  functions: Beginning execution of "us-central1-get_connect_account_status"
+// >  📊 Getting Connect account status for: feP9aX0c6dRs9RspLcZ1qE1zxLy1
+// >    ✅ Updated user account status
+
+// TODO the cloud fn works perfect but takes a few seconds, 
+// make sure to provide nice ux to user and prevent tapping any button again if under process
+// TODO create tests to audit email being sent
+// TODO we are almost done for production, we just need to add some  integration tests to different workflows, be creative, 
+// 1. create the mandatory tests, 2. no github upload to main if any test fails, take advantage of firebase cloud fn emulators for the integration tests
+
+// TODO once we are done with testing the different worflows we deploy for production, once in production
+// get some real users to test the website

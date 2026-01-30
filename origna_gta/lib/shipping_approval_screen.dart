@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:origna_gta/constants.dart';
@@ -94,7 +95,11 @@ class _ApprovalCardState extends State<_ApprovalCard> {
     setState(() => _isProcessing = true);
 
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable('approve_shipping_cost');
+          final functions = FirebaseFunctions.instance;
+      if (kDebugMode) {
+        functions.useFunctionsEmulator('127.0.0.1', 8081);
+      }
+      final callable = functions.httpsCallable('approve_shipping_cost');
       final result = await callable.call({
         'orderId': widget.orderId,
         'approved': approved,

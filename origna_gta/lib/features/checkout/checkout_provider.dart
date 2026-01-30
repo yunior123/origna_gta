@@ -196,6 +196,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       final deliveryInfo = state.address!.toMap();
 
       // Build order data
+      // TODO use OrderModel to respect MVVM, no magic strings
       final orderData = {
         'userId': userId,
         'customerId': user.customerId ?? '',

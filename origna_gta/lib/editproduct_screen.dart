@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
@@ -632,8 +633,12 @@ class _EditProductScreenState extends State<EditProductScreen> {
         final fileName = "product_${productId}_${index}_$timestamp.jpg";
         final String filePath = "products/$fileName";
 
+    final functions = FirebaseFunctions.instance;
+      if (kDebugMode) {
+        functions.useFunctionsEmulator('127.0.0.1', 8081);
+      }
         final result =
-            await FirebaseFunctions.instance.httpsCallable('get_r2_presigned_url').call({'fileName': fileName});
+            await functions.httpsCallable('get_r2_presigned_url').call({'fileName': fileName});
 
         String uploadUrl = result.data['uploadUrl'];
 

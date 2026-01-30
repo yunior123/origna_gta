@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/constants.dart';
 import 'package:origna_gta/editproduct_screen.dart';
@@ -294,8 +295,12 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
   final messenger = ScaffoldMessenger.of(context);
 
   try {
+        final functions = FirebaseFunctions.instance;
+      if (kDebugMode) {
+        functions.useFunctionsEmulator('127.0.0.1', 8081);
+      }
     final callable =
-        FirebaseFunctions.instance.httpsCallable('delete_product');
+        functions.httpsCallable('delete_product');
 
     await callable.call({'productId': widget.productId});
 

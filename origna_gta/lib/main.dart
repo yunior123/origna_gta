@@ -329,11 +329,11 @@ void main() {
 // TODO delete all cloud functions from console and registries and then redeploy
 // TODO create integration tests in flutter to make sure ui is updating when database changes
 // TODO add more tests to cloud functions mainly to critical and most important parts
-
+// TODO Cart screen rebuild on +/- button fixed via family providers (cart_provider.dart)
+// TODO local delivery is also for non food items
 // ============================================================================
 // COMPLETED MVVM REFACTORING (v1.1)
 // ============================================================================
-// [DONE] Cart screen rebuild on +/- button fixed via family providers (cart_provider.dart)
 // [DONE] Cart UI reactivity fixed with error handling and invalidation (cart_provider.dart)
 // [DONE] MVVM with Riverpod - Provider files: core, auth, cart, checkout, products, orders
 // [DONE] Screens migrated: home, cart, checkout, orders, login (ConsumerWidget/ConsumerStatefulWidget)

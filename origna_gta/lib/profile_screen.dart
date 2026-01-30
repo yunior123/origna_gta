@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/addressmanagement_screen.dart';
 import 'package:origna_gta/constants.dart';
@@ -360,7 +361,11 @@ class ProfileScreen extends StatelessWidget {
                       setState(() => isDeleting = true);
 
                       try {
-                        final callable = FirebaseFunctions.instance.httpsCallable('delete_account');
+                            final functions = FirebaseFunctions.instance;
+      if (kDebugMode) {
+        functions.useFunctionsEmulator('127.0.0.1', 8081);
+      }
+                        final callable = functions.httpsCallable('delete_account');
                         await callable.call({'confirmation': 'DELETE_MY_ACCOUNT'});
 
                         if (context.mounted) {

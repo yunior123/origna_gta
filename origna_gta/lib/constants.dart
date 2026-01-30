@@ -221,8 +221,9 @@ enum DeliveryStatus {
 /// Application configuration constants
 class AppConfig {
   static const String appName = 'OrignaGta';
-  static const String supportEmail = 'support@orignagta.com';
-  static const String websiteUrl = 'https://orignagta.ca';
+  //TODO get real support email
+  static const String supportEmail = 'support@orignagta.ca';
+  static const String websiteUrl = 'https://www.orignaventures.ca';
   static const String currency = 'cad';
   static const String currencySymbol = '\$';
   static const double platformFeePercent = 0.025; // 2.5% platform fee

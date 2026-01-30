@@ -2141,13 +2141,15 @@ def get_r2_presigned_url(req: https_fn.CallableRequest) -> Any:
             endpoint_url=f"https://{R2_ACCOUNT_ID_NEW.value}.r2.cloudflarestorage.com",
             aws_access_key_id=R2_ACCESS_KEY_NEW.value,
             aws_secret_access_key=R2_SECRET_KEY_NEW.value,
+            region_name="auto",  # ✅ REQUIRED FOR R2
             config=Config(signature_version='s3v4'),
         )
 
         url = r2.generate_presigned_url(
             ClientMethod='put_object',
             Params={'Bucket': 'orignagta', 'Key': f"products/{file_name}"},
-            ExpiresIn=3600 
+            ExpiresIn=3600 ,
+            HttpMethod="PUT",  # ✅ explicit
         )
         
         return {"uploadUrl": url}

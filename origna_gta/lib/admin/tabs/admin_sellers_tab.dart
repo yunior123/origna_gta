@@ -9,26 +9,19 @@ class AdminSellersTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .where('roles', arrayContains: UserRoles.seller)
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
+      stream: FirebaseFirestore.instance.collection('users').where('roles', arrayContains: UserRoles.seller).orderBy('createdAt', descending: true).snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          debugPrint('Error: ${snapshot.error}');
+          return Center(child: Text('Error Fetching from Database'));
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const AnimatedEmptyState(
-            icon: Icons.store_outlined,
-            title: 'No sellers yet',
-            subtitle: 'Sellers will appear here when they register',
-          );
+          return const AnimatedEmptyState(icon: Icons.store_outlined, title: 'No sellers yet', subtitle: 'Sellers will appear here when they register');
         }
 
         return ListView.builder(
@@ -88,18 +81,12 @@ class _SellerCard extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              name,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
+                            child: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                           ),
                           if (isSuspended)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                              decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                               child: const Text(
                                 'Suspended',
                                 style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w600),
@@ -120,36 +107,22 @@ class _SellerCard extends StatelessWidget {
             // Stripe Status
             Row(
               children: [
-                Icon(
-                  stripeOnboarded ? Icons.check_circle : Icons.pending,
-                  size: 18,
-                  color: stripeOnboarded ? Colors.green : Colors.orange,
-                ),
+                Icon(stripeOnboarded ? Icons.check_circle : Icons.pending, size: 18, color: stripeOnboarded ? Colors.green : Colors.orange),
                 const SizedBox(width: 8),
                 Text(
                   stripeOnboarded ? 'Stripe Connected' : 'Stripe Pending',
-                  style: TextStyle(
-                    color: stripeOnboarded ? Colors.green : Colors.orange,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(color: stripeOnboarded ? Colors.green : Colors.orange, fontSize: 13, fontWeight: FontWeight.w500),
                 ),
                 if (stripeAccountId != null) ...[
                   const SizedBox(width: 8),
-                  Text(
-                    '(${stripeAccountId.substring(0, 12)}...)',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 11),
-                  ),
+                  Text('(${stripeAccountId.substring(0, 12)}...)', style: TextStyle(color: Colors.grey[500], fontSize: 11)),
                 ],
               ],
             ),
 
             if (createdAt != null) ...[
               const SizedBox(height: 8),
-              Text(
-                'Joined: ${_formatDate(createdAt.toDate())}',
-                style: TextStyle(color: Colors.grey[500], fontSize: 12),
-              ),
+              Text('Joined: ${_formatDate(createdAt.toDate())}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
             ],
 
             const SizedBox(height: 12),
@@ -201,14 +174,9 @@ class _SellerCard extends StatelessWidget {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await FirebaseFirestore.instance.collection('users').doc(userId).update({
-                'suspended': true,
-                'suspendedAt': FieldValue.serverTimestamp(),
-              });
+              await FirebaseFirestore.instance.collection('users').doc(userId).update({'suspended': true, 'suspendedAt': FieldValue.serverTimestamp()});
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Seller suspended'), backgroundColor: Colors.orange),
-                );
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seller suspended'), backgroundColor: Colors.orange));
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
@@ -220,14 +188,9 @@ class _SellerCard extends StatelessWidget {
   }
 
   void _unsuspendSeller(BuildContext context, String userId, String name) async {
-    await FirebaseFirestore.instance.collection('users').doc(userId).update({
-      'suspended': false,
-      'suspendedAt': FieldValue.delete(),
-    });
+    await FirebaseFirestore.instance.collection('users').doc(userId).update({'suspended': false, 'suspendedAt': FieldValue.delete()});
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Seller unsuspended'), backgroundColor: Colors.green),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seller unsuspended'), backgroundColor: Colors.green));
     }
   }
 
@@ -250,16 +213,9 @@ class _SellerProductsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('$sellerName\'s Products'),
-        backgroundColor: const Color(0xFFFF6B35),
-        foregroundColor: Colors.white,
-      ),
+      appBar: AppBar(title: Text('$sellerName\'s Products'), backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('products')
-            .where('sellerId', isEqualTo: sellerId)
-            .snapshots(),
+        stream: FirebaseFirestore.instance.collection('products').where('sellerId', isEqualTo: sellerId).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

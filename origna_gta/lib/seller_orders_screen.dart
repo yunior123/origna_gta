@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -399,8 +400,12 @@ class _SellerOrderCardState extends State<_SellerOrderCard> {
     setState(() => _isUpdatingShipping = true);
 
     try {
+          final functions = FirebaseFunctions.instance;
+      if (kDebugMode) {
+        functions.useFunctionsEmulator('127.0.0.1', 8081);
+      }
       // First, update the shipping cost
-      final updateShipping = FirebaseFunctions.instance.httpsCallable('update_shipping_cost');
+      final updateShipping = functions.httpsCallable('update_shipping_cost');
       final updateResult = await updateShipping.call({
         'orderId': widget.orderId,
         'actualShipping': actualShipping,
@@ -422,8 +427,11 @@ class _SellerOrderCardState extends State<_SellerOrderCard> {
       } else {
         // No approval needed - capture payment
         setState(() => _isUpdatingShipping = false);
-
-        final capturePayment = FirebaseFunctions.instance.httpsCallable('capture_payment');
+    final functions = FirebaseFunctions.instance;
+      if (kDebugMode) {
+        functions.useFunctionsEmulator('127.0.0.1', 8081);
+      }
+        final capturePayment = functions.httpsCallable('capture_payment');
         await capturePayment.call({
           'orderId': widget.orderId,
           'trackingNumber': trackingNumber,

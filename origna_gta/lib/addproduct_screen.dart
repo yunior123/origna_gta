@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/productaddimages_screen.dart';
 import 'package:origna_gta/services/conf_services.dart';
@@ -11,7 +12,6 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
-
 
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -108,10 +108,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(8)),
                     child: const Text(
                       'Optional: Add dimensions for accurate shipping rates. Required for items shipped nationally.',
                       style: TextStyle(color: Colors.blue, fontSize: 12),
@@ -135,11 +132,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           child: TextFormField(
                             controller: _weightController,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(
-                              labelText: 'Weight (kg)',
-                              prefixIcon: Icon(Icons.scale_outlined),
-                              hintText: 'e.g., 0.5',
-                            ),
+                            decoration: const InputDecoration(labelText: 'Weight (kg)', prefixIcon: Icon(Icons.scale_outlined), hintText: 'e.g., 0.5'),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -147,11 +140,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           child: TextFormField(
                             controller: _shipDaysController,
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'Ship Days',
-                              prefixIcon: Icon(Icons.schedule_outlined),
-                              hintText: '1-7',
-                            ),
+                            decoration: const InputDecoration(labelText: 'Ship Days', prefixIcon: Icon(Icons.schedule_outlined), hintText: '1-7'),
                           ),
                         ),
                       ],
@@ -323,10 +312,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   // Constants for image validation
-  static const int maxImageSize = 5 * 1024 * 1024; // 5MB
+  static const int maxImageSize = 10 * 1024 * 1024; // 5MB
   static const int maxImages = 10;
   static const List<String> allowedFormats = ['jpg', 'jpeg', 'png', 'webp'];
-  static const int maxDimension = 2048; // Max width/height
+  static const int maxDimension = 2560; // Max width/height
 
   Future<void> _addProduct() async {
     if (!_formKey.currentState!.validate()) return;
@@ -443,12 +432,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   Future<List<String?>> _uploadImagesInParallel(List<ImageModel> imageModels, String productId) async {
     // Validate format and compress all images first
     final validationFutures = imageModels.map((model) async {
-      // Validate file extension
-      final extension = model.url.split('.').last.toLowerCase();
-      if (!allowedFormats.contains(extension)) {
-        debugPrint('Rejected image with format: $extension');
-        return null;
-      }
+
       final validated = await _validateAndCompressImage(model.bytes);
       return validated != null ? (model, validated) : null;
     });
@@ -456,6 +440,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final validatedImages = (await Future.wait(validationFutures)).whereType<(ImageModel, Uint8List)>().toList();
 
     if (validatedImages.isEmpty) {
+      // TODO in this case, seller should not be able to add product, fix
+      //       Rejected image with format: blob:http://localhost:63119/0ad21da6-9787-4c1c-9588-db67f94e935a
+      // Rejected image with format: blob:http://localhost:63119/32ce5677-01b6-4211-a850-eb2c23809020
       throw Exception('No valid images to upload');
     }
 
@@ -486,13 +473,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
         final fileName = "product_${productId}_${index}_$timestamp.jpg";
         final String filePath = "products/$fileName";
 
+        final functions = FirebaseFunctions.instance;
+        if (kDebugMode) {
+          functions.useFunctionsEmulator('127.0.0.1', 8081);
+        }
         // Get presigned URL from Cloud Function
-        final result = await FirebaseFunctions.instance.httpsCallable('get_r2_presigned_url').call({'fileName': fileName});
+        final result = await functions.httpsCallable('get_r2_presigned_url').call({'fileName': fileName});
 
         String uploadUrl = result.data['uploadUrl'];
 
         // Upload with timeout
-        final response = await http.put(Uri.parse(uploadUrl), body: bytes, headers: {"Content-Type": "image/jpeg"}).timeout(const Duration(seconds: 30));
+        final response = await http.put(Uri.parse(uploadUrl), 
+        body: bytes, 
+        
+        
+        ).timeout(const Duration(seconds: 30));
 
         if (response.statusCode == 200) {
           final String permanentUrl = "${ConfigService().imageBaseUrl}/$filePath";
@@ -573,3 +568,25 @@ class AddProductScreen extends StatefulWidget {
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
 }
+
+
+//TODO Upload attempt 1 failed: ClientException: Failed to fetch, uri=https://9b027cd3919483d27f0abeb2090ac626.r2.cloudflarestorage.com/orignagta/products/product_oPBYStxEuBrRi0t9vYhP_0_1769768978790.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=aa9380c4880881c0c93977ee9c01f24a%2F20260130%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20260130T102939Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=1a349400f6c1295f899c81db4838f842efe02654ea7d2cdd8b1ec9e0e7725a6c
+// Upload attempt 2 failed: ClientException: Failed to fetch, uri=https://9b027cd3919483d27f0abeb2090ac626.r2.cloudflarestorage.com/orignagta/products/product_oPBYStxEuBrRi0t9vYhP_0_1769768981463.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=aa9380c4880881c0c93977ee9c01f24a%2F20260130%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20260130T102941Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=1b3eb9f6c6811ee845e4c552ff85998f4f79c2a2bd996637f12d50a884f95846
+// Upload attempt 3 failed: ClientException: Failed to fetch, uri=https://9b027cd3919483d27f0abeb2090ac626.r2.cloudflarestorage.com/orignagta/products/product_oPBYStxEuBrRi0t9vYhP_0_1769768985550.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=aa9380c4880881c0c93977ee9c01f24a%2F20260130%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20260130T102945Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=4ee995468595b68688ed63d5cd244eb4cb6a20f0a5d5105ff59b53dc1acd12cf
+// Max retries reached for image 0
+// 1. Use a server-side upload proxy (recommended)
+// Instead of uploading directly from Flutter Web to R2:
+// Send image bytes from Flutter Web to your Firebase Function.
+// Firebase Function uploads to R2 using boto3 (server-side, no CORS issues).
+// Return the permanent URL to the client.
+// This is bulletproof and works for all platforms.
+// Example Flutter Web:
+// final request = http.MultipartRequest(
+//   'POST',
+//   Uri.parse('https://your-cloud-function/uploadImage'),
+// );
+// request.files.add(
+//   http.MultipartFile.fromBytes('file', imageBytes, filename: 'product.jpg'),
+// );
+// final response = await request.send();
+// Server-side function: uploads to R2 normally (no CORS, no preflight).

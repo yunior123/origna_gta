@@ -45,7 +45,8 @@ class _AdminOrdersTabState extends State<AdminOrdersTab> {
               }
 
               if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
+                 debugPrint('Error: ${snapshot.error}');
+          return Center(child: Text('Error Fetching from Database'));
               }
 
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
