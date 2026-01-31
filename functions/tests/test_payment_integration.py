@@ -318,8 +318,24 @@ class TestPaymentFlow(unittest.TestCase):
         resp = submit_product_rating(req)
 
         self.assertTrue(resp["success"])
-        self.assertTrue(product_ref.update.called)
-        self.assertTrue(order_ref.update.called)
+        mock_transaction = main.db.transaction.return_value
+        mock_transaction.update.assert_any_call(
+            product_ref,
+            {
+                "rating": 4.333333333333333,
+                "ratingCount": 3,
+            },
+        )
+        mock_transaction.update.assert_any_call(
+            order_ref,
+            {
+                "ratings.prod_1": {
+                    "rating": 5,
+                    "ratedAt": main.firestore.SERVER_TIMESTAMP,
+                },
+                "updatedAt": main.firestore.SERVER_TIMESTAMP,
+            },
+        )
 
     def test_create_checkout_session_flow(self):
         """
