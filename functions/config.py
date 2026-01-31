@@ -61,7 +61,7 @@ class ShippingApprovalStatus:
 
 # Platform configuration
 PLATFORM_FEE_PERCENT = 0.025  # 2.5% platform fee
-AUTO_CONFIRM_DAYS = 14  # Auto-confirm orders after 14 days
+AUTO_CONFIRM_DAYS = 7  # Auto-confirm must be <= AUTHORIZATION_VALID_DAYS (Stripe limit)
 AUTHORIZATION_VALID_DAYS = 7  # Stripe authorization valid for 7 days
 SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20%
 

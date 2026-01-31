@@ -73,7 +73,7 @@ class CartItemScreen extends StatelessWidget {
                         right: 4,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(10)),
+                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(10)),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -81,7 +81,7 @@ class CartItemScreen extends StatelessWidget {
                               const SizedBox(width: 2),
                               Text(
                                 '${imageUrlsList.length}',
-                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),

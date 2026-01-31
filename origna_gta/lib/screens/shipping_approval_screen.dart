@@ -63,25 +63,6 @@ class _ApprovalCard extends ConsumerStatefulWidget {
 class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
   bool _isProcessing = false;
 
-  Future<void> _handleApproval(bool approved) async {
-    setState(() => _isProcessing = true);
-    final viewModel = ref.read(shippingApprovalViewModelProvider.notifier);
-
-    final success = await viewModel.approveShippingCost(widget.order.orderId, approved);
-    if (!mounted) return;
-
-    if (success) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(approved ? 'Shipping approved' : 'Order cancelled'), backgroundColor: approved ? Colors.green : Colors.orange));
-    } else {
-      final error = ref.read(shippingApprovalViewModelProvider).errorMessage ?? 'Failed to update shipping approval';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
-    }
-
-    setState(() => _isProcessing = false);
-  }
-
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
@@ -276,6 +257,26 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleApproval(bool approved) async {
+    setState(() => _isProcessing = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final viewModel = ref.read(shippingApprovalViewModelProvider.notifier);
+
+    final success = await viewModel.approveShippingCost(widget.order.orderId, approved);
+    if (!mounted) return;
+
+    if (success) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(approved ? 'Shipping approved' : 'Order cancelled'), backgroundColor: approved ? Colors.green : Colors.orange),
+      );
+    } else {
+      final error = ref.read(shippingApprovalViewModelProvider).errorMessage ?? 'Failed to update shipping approval';
+      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+    }
+
+    setState(() => _isProcessing = false);
   }
 
   void _showRejectConfirmation(BuildContext context) {

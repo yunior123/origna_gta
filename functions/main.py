@@ -51,8 +51,10 @@ from shipping_service import (
 
 from utils import (
     create_success_response, create_error_response, sanitize_email,
-    validate_item, validate_order_data, log_webhook_to_database
+    validate_item, validate_order_data, log_webhook_to_database,
+    validate_address_map
 )
+from rate_limiter import RateLimiter
 
 # ============================================================================
 # FIREBASE INITIALIZATION
@@ -70,6 +72,7 @@ except Exception as e:
         app = initialize_app()
 
 db = firestore.client()
+rate_limiter = RateLimiter(db)
 
 # ============================================================================
 # CONFIGURATION
@@ -116,7 +119,22 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Create Stripe Checkout Session - Callable Function
     SECURE VERSION: Server-side validation + Stripe Tax
+    SECURITY: Rate limited to 5 requests per minute (M-2 fix)
     """
+    # Rate limiting: 5 requests per 1 minute per user/IP (HARDENED)
+    identifier = rate_limiter.get_identifier(req)
+    allowed, message = rate_limiter.check_rate_limit(
+        identifier=identifier,
+        action='create_checkout',
+        max_requests=5,
+        window_minutes=1
+    )
+    if not allowed:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.RESOURCE_EXHAUSTED,
+            message=message
+        )
+    
     try:
         data = req.data
         
@@ -145,14 +163,23 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         user_id = data.get('userId', auth_user_id)
         
         if user_id != auth_user_id:
-            print(f"⚠️ User ID mismatch: claimed={user_id}, auth={auth_user_id}")
+            if IS_EMULATOR:
+                print(f"⚠️ User ID mismatch: claimed={user_id}, auth={auth_user_id}")
             user_id = auth_user_id
 
         customer_email = sanitize_email(data['customerEmail'])
         customer_id = data.get('customerId', '')
         currency = data.get('currency', 'cad').lower()
-        delivery_info = data['deliveryInfo']
+        delivery_info_raw = data['deliveryInfo']
         requested_items = data['items']
+
+        try:
+            delivery_info = validate_address_map(delivery_info_raw)
+        except ValueError as e:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+                message=str(e)
+            )
 
         # ================================================================
         # IDEMPOTENCY CHECK (CLIENT-SUPPLIED KEY)
@@ -197,16 +224,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 message="Shipping is only available within Canada"
             )
 
-        # Required address fields
-        required_address_fields = ['street', 'city', 'state', 'postalCode', 'country']
-        missing_address = [f for f in required_address_fields if not str(delivery_info.get(f, '')).strip()]
-        if missing_address:
-            raise https_fn.HttpsError(
-                code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
-                message=f"Missing address fields: {', '.join(missing_address)}"
-            )
-
-        print(f"✓ Delivery address validated: {delivery_state}")
+        if IS_EMULATOR:
+            print(f"✓ Delivery address validated: {delivery_state}")
 
         # ================================================================
         # ATOMIC VALIDATION: STOCK & PRICE FETCHING
@@ -228,6 +247,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             for req_item in requested_items:
                 product_id = req_item.get('productId')
                 quantity = req_item.get('quantity', 1)
+                client_price = req_item.get('price', 0.0)
 
                 if not product_id:
                     raise ValueError(f"Missing productId in item")
@@ -242,8 +262,18 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 current_stock = product_data.get('stockQuantity', 0)
                 product_name = product_data.get('name', 'Unknown')
                 
-                # TRUSTED DATA
+                # TRUSTED DATA - VALIDATE CLIENT PRICE
                 price = product_data.get('price', 0.0)
+                
+                # SECURITY: Reject if client price differs from DB price by > 1 cent
+                if abs(float(client_price) - float(price)) > 0.01:
+                    # SECURITY FIX L-3: Log details server-side, generic error to client
+                    print(f"[SECURITY] Price mismatch: product={product_name} ({product_id}), client={client_price:.2f}, db={price:.2f}, user={user_id}")
+                    
+                    # Generic error to client (don't expose DB price)
+                    raise ValueError(
+                        f"Price mismatch detected for '{product_name}'. Please refresh the page and try again."
+                    )
                 seller_id = product_data.get('sellerId')
                 seller_address = product_data.get('sellerAddress', {})
                 image_urls = product_data.get('imageUrls', [])
@@ -314,7 +344,30 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             requested_speed = 'standard'
         shipping_cost = calculate_shipping_cost(trusted_items, delivery_info, speed=requested_speed)
 
-        expected_subtotal_cents = int(round((subtotal + shipping_cost) * 100))
+        # 3. SERVER-SIDE TOTAL VALIDATION
+        server_total_pre_tax = subtotal + shipping_cost
+        client_total = data.get('total', 0.0)
+        client_subtotal = data.get('subtotal', 0.0)
+        
+        # Compare client subtotal vs server subtotal (tolerance: 1%)
+        if client_subtotal > 0 and subtotal > 0:
+            subtotal_diff_percent = abs(client_subtotal - subtotal) / subtotal
+            if subtotal_diff_percent > 0.01:  # 1% tolerance
+                print(f"⚠️ Subtotal mismatch: client={client_subtotal:.2f}, server={subtotal:.2f} ({subtotal_diff_percent*100:.1f}% diff)")
+                raise https_fn.HttpsError(
+                    code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+                    message=f"Subtotal verification failed. Please refresh and try again."
+                )
+        
+        # Compare total (if taxes were calculated client-side, tolerance higher)
+        if client_total > 0 and server_total_pre_tax > 0:
+            # Allow up to 20% difference for pre-tax total since taxes are added by Stripe
+            total_diff_percent = abs(client_total - server_total_pre_tax) / client_total
+            if total_diff_percent > 0.20:  # 20% tolerance (accounts for tax differences)
+                print(f"⚠️ Total mismatch: client={client_total:.2f}, server_pre_tax={server_total_pre_tax:.2f}")
+                # Log but don't reject - Stripe will add actual taxes
+        
+        expected_subtotal_cents = int(round(server_total_pre_tax * 100))
         
         # 3. Taxes - DELEGATED TO STRIPE
         # We no longer calculate taxes here. Stripe Tax handles it.
@@ -582,11 +635,15 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             return create_error_response("Invalid payload", 400)
             
         except stripe.error.SignatureVerificationError as e:
-            # Invalid signature
-            error_msg = f"Signature verification failed: {str(e)}"
-            print(f"❌ {error_msg}")
-            print(f"Webhook secret prefix: {STRIPE_WEBHOOK_SECRET[:10]}...")
-            print(f"Webhook secret length: {len(STRIPE_WEBHOOK_SECRET)}")
+            # Invalid signature - mask details in production
+            if IS_EMULATOR:
+                error_msg = f"Signature verification failed: {str(e)}"
+                print(f"❌ {error_msg}")
+                print(f"Webhook secret prefix: {STRIPE_WEBHOOK_SECRET[:10]}...")
+                print(f"Webhook secret length: {len(STRIPE_WEBHOOK_SECRET)}")
+            else:
+                error_msg = "Signature verification failed"
+                print(f"❌ Webhook signature verification failed (details masked)")
             
             log_webhook_to_database(
                 db,
@@ -606,11 +663,12 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         event_type = event['type']
         event_data = event['data']['object']
         
-        print(f"\n📨 Event Details:")
-        print(f"  Event ID: {event_id}")
-        print(f"  Event Type: {event_type}")
-        print(f"  Created: {datetime.fromtimestamp(event.get('created', 0)).isoformat()}")
-        print(f"  Livemode: {event.get('livemode', False)}")
+        if IS_EMULATOR:
+            print(f"\n📨 Event Details:")
+            print(f"  Event ID: {event_id}")
+            print(f"  Event Type: {event_type}")
+            print(f"  Created: {datetime.fromtimestamp(event.get('created', 0)).isoformat()}")
+            print(f"  Livemode: {event.get('livemode', False)}")
         
         # ====================================================================
         # STEP 4: IDEMPOTENCY CHECK - PREVENT DUPLICATE PROCESSING
@@ -1764,7 +1822,23 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     5. Deletes Stripe Connect account (if seller)
     6. Deletes Firestore user document
     7. Deletes Firebase Auth account
+    SECURITY: Rate limited to 2 requests per hour (M-2 fix)
     """
+    # RATE LIMITING (SECURITY FIX M-2) - Very restrictive for critical operation
+    identifier = rate_limiter.get_identifier(req)
+    allowed, message = rate_limiter.check_rate_limit(
+        identifier=identifier,
+        action='delete_account',
+        max_requests=2,
+        window_minutes=60
+    )
+    
+    if not allowed:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.RESOURCE_EXHAUSTED,
+            message="Account deletion rate limit exceeded. Please try again later."
+        )
+    
     if not req.auth:
         raise https_fn.HttpsError(
             code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
@@ -2618,7 +2692,23 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
     Called by seller to update the actual shipping cost.
     If the actual cost exceeds the estimate by more than SHIPPING_APPROVAL_THRESHOLD,
     buyer approval is required before capture.
+    SECURITY: Rate limited to 10 requests per minute (M-2 fix)
     """
+    # RATE LIMITING (SECURITY FIX M-2)
+    identifier = rate_limiter.get_identifier(req)
+    allowed, message = rate_limiter.check_rate_limit(
+        identifier=identifier,
+        action='update_shipping',
+        max_requests=10,
+        window_minutes=1
+    )
+    
+    if not allowed:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.RESOURCE_EXHAUSTED,
+            message=message
+        )
+    
     if not req.auth:
         raise https_fn.HttpsError(
             code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
@@ -3083,7 +3173,23 @@ def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Buyer submits rating for a delivered item.
     Updates product rating and order ratings atomically.
+    SECURITY: Rate limited to 10 requests per minute (M-2 fix)
     """
+    # RATE LIMITING (SECURITY FIX M-2)
+    identifier = rate_limiter.get_identifier(req)
+    allowed, message = rate_limiter.check_rate_limit(
+        identifier=identifier,
+        action='submit_rating',
+        max_requests=10,
+        window_minutes=1
+    )
+    
+    if not allowed:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.RESOURCE_EXHAUSTED,
+            message=message
+        )
+    
     if not req.auth:
         raise https_fn.HttpsError(
             code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
@@ -3341,3 +3447,208 @@ def check_expiring_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     except Exception as e:
         print(f"❌ Error in expiring authorizations job: {str(e)}")
         print(traceback.format_exc())
+
+
+# ============================================================================
+# ADMIN MANAGEMENT - UPDATE USER ROLES (SECURITY FIX H-1)
+# ============================================================================
+
+@https_fn.on_call()
+def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Update user roles with server-side validation (SECURITY FIX H-1).
+    Only admins can call this function.
+    Prevents privilege escalation attacks.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+    
+    caller_uid = req.auth.uid
+    print(f"🔐 update_user_roles called by: {caller_uid}")
+    
+    # 1. VERIFY CALLER IS ADMIN
+    try:
+        caller_ref = db.collection(Collections.USERS).document(caller_uid)
+        caller_doc = caller_ref.get()
+        
+        if not caller_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Caller user not found"
+            )
+        
+        caller_data = caller_doc.to_dict()
+        caller_roles = caller_data.get('roles', [])
+        
+        if UserRoles.ADMIN not in caller_roles:
+            # LOG UNAUTHORIZED ATTEMPT
+            db.collection('admin_audit_logs').add({
+                'action': 'UNAUTHORIZED_ROLE_UPDATE_ATTEMPT',
+                'adminUid': caller_uid,
+                'adminEmail': caller_data.get('email', 'unknown'),
+                'targetUserId': req.data.get('userId', 'unknown'),
+                'reason': 'Caller is not admin',
+                'timestamp': firestore.SERVER_TIMESTAMP,
+                'success': False,
+            })
+            
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+                message="Admin access required"
+            )
+        
+        print(f"  ✓ Admin verified: {caller_data.get('email')}")
+        
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Error verifying admin: {str(e)}")
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message="Failed to verify admin status"
+        )
+    
+    # 2. VALIDATE REQUEST DATA
+    target_user_id = req.data.get('userId')
+    add_roles = req.data.get('add', [])
+    remove_roles = req.data.get('remove', [])
+    reason = req.data.get('reason', 'No reason provided')
+    
+    if not target_user_id:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="userId is required"
+        )
+    
+    if not add_roles and not remove_roles:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="Must specify roles to add or remove"
+        )
+    
+    # 3. VALIDATE ROLES
+    valid_roles = [UserRoles.BUYER, UserRoles.SELLER, UserRoles.ADMIN]
+    invalid_add = [r for r in add_roles if r not in valid_roles]
+    invalid_remove = [r for r in remove_roles if r not in valid_roles]
+    
+    if invalid_add or invalid_remove:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message=f"Invalid roles: {invalid_add + invalid_remove}"
+        )
+    
+    # 4. PREVENT SELF-DEMOTION
+    if target_user_id == caller_uid and UserRoles.ADMIN in remove_roles:
+        db.collection('admin_audit_logs').add({
+            'action': 'SELF_DEMOTION_ATTEMPT',
+            'adminUid': caller_uid,
+            'adminEmail': caller_data.get('email'),
+            'targetUserId': target_user_id,
+            'attemptedRemove': remove_roles,
+            'reason': 'Attempted to remove own admin role',
+            'timestamp': firestore.SERVER_TIMESTAMP,
+            'success': False,
+        })
+        
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="Cannot remove your own admin role"
+        )
+    
+    # 5. GET TARGET USER
+    try:
+        target_ref = db.collection(Collections.USERS).document(target_user_id)
+        target_doc = target_ref.get()
+        
+        if not target_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Target user not found"
+            )
+        
+        target_data = target_doc.to_dict()
+        target_email = target_data.get('email', 'unknown')
+        original_roles = target_data.get('roles', [])
+        
+        print(f"  📝 Target user: {target_email}")
+        print(f"  📋 Original roles: {original_roles}")
+        print(f"  ➕ Adding: {add_roles}")
+        print(f"  ➖ Removing: {remove_roles}")
+        
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Error fetching target user: {str(e)}")
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message="Failed to fetch target user"
+        )
+    
+    # 6. APPLY ROLE CHANGES
+    try:
+        updates = {}
+        
+        if add_roles:
+            updates['roles'] = firestore.ArrayUnion(add_roles)
+        
+        if remove_roles:
+            # If adding and removing, need to do sequentially
+            if add_roles:
+                target_ref.update(updates)
+                updates = {}
+            updates['roles'] = firestore.ArrayRemove(remove_roles)
+        
+        if updates:
+            target_ref.update(updates)
+        
+        # Get new roles
+        new_target_doc = target_ref.get()
+        new_roles = new_target_doc.to_dict().get('roles', [])
+        
+        print(f"  ✅ Roles updated: {original_roles} → {new_roles}")
+        
+        # 7. AUDIT LOG
+        db.collection('admin_audit_logs').add({
+            'action': 'USER_ROLES_UPDATED',
+            'adminUid': caller_uid,
+            'adminEmail': caller_data.get('email'),
+            'targetUserId': target_user_id,
+            'targetEmail': target_email,
+            'originalRoles': original_roles,
+            'newRoles': new_roles,
+            'addedRoles': add_roles,
+            'removedRoles': remove_roles,
+            'reason': reason,
+            'timestamp': firestore.SERVER_TIMESTAMP,
+            'success': True,
+        })
+        
+        return {
+            'success': True,
+            'message': f'Roles updated for {target_email}',
+            'originalRoles': original_roles,
+            'newRoles': new_roles,
+        }
+        
+    except Exception as e:
+        print(f"❌ Error updating roles: {str(e)}")
+        print(traceback.format_exc())
+        
+        # Log failure
+        db.collection('admin_audit_logs').add({
+            'action': 'USER_ROLES_UPDATE_FAILED',
+            'adminUid': caller_uid,
+            'adminEmail': caller_data.get('email'),
+            'targetUserId': target_user_id,
+            'error': str(e),
+            'timestamp': firestore.SERVER_TIMESTAMP,
+            'success': False,
+        })
+        
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to update roles: {str(e)}"
+        )

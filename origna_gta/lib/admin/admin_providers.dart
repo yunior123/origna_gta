@@ -12,7 +12,7 @@ final adminProductsProvider = StreamProvider.autoDispose.family<List<ProductMode
 });
 
 final adminRepositoryProvider = Provider<AdminRepository>((ref) {
-  return FirebaseAdminRepository(ref.watch(firestoreProvider));
+  return FirebaseAdminRepository(ref.watch(firestoreProvider), ref.watch(firebaseFunctionsProvider));
 });
 
 final adminSellersProvider = StreamProvider.autoDispose<List<UserModel>>((ref) {

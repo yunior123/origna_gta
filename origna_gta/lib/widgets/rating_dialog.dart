@@ -111,18 +111,20 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
   Future<void> _submitRating() async {
     setState(() => _isSubmitting = true);
 
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     final viewModel = ref.read(productRatingViewModelProvider.notifier);
     final success = await viewModel.submitRating(widget.orderId, widget.productId, _selectedRating);
 
     if (!mounted) return;
 
     if (success) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thank you for your rating!'), backgroundColor: Colors.green));
+      navigator.pop();
+      messenger.showSnackBar(const SnackBar(content: Text('Thank you for your rating!'), backgroundColor: Colors.green));
       widget.onRatingSubmitted?.call();
     } else {
       final error = ref.read(productRatingViewModelProvider).errorMessage ?? 'Error submitting rating';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
       setState(() => _isSubmitting = false);
     }
   }

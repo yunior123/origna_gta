@@ -1,7 +1,7 @@
 {
   "$schema": "OrignaGTA Firestore Database Schema",
-  "version": "1.0.0",
-  "lastUpdated": "2026-01-29",
+  "version": "1.0.1",
+  "lastUpdated": "2026-01-31",
   "description": "Complete Firestore database schema for OrignaGTA e-commerce platform",
 
   "collections": {
@@ -17,12 +17,16 @@
         "email": {
           "type": "string",
           "required": true,
-          "description": "User email address"
+          "description": "User email address",
+          "maxLength": 254,
+          "pattern": "RFC 5322 compliant"
         },
         "name": {
           "type": "string",
           "required": true,
-          "description": "User display name"
+          "description": "User display name",
+          "maxLength": 60,
+          "pattern": "Letters, spaces, hyphens only"
         },
         "roles": {
           "type": "array<string>",
@@ -155,7 +159,8 @@
         "name": {
           "type": "string",
           "required": true,
-          "description": "Product name"
+          "description": "Product name",
+          "maxLength": 120
         },
         "price": {
           "type": "number",
@@ -165,12 +170,14 @@
         "description": {
           "type": "string",
           "required": true,
-          "description": "Product description"
+          "description": "Product description",
+          "maxLength": 4000
         },
         "imageUrls": {
           "type": "array<string>",
           "required": true,
-          "description": "Product image URLs (max 5)"
+          "description": "Product image URLs (max 5)",
+          "maxItems": 5
         },
         "sellerId": {
           "type": "string",
@@ -206,7 +213,8 @@
         "searchKeywords": {
           "type": "array<string>",
           "required": true,
-          "description": "Keywords for search functionality"
+          "description": "Keywords for search functionality",
+          "maxItems": 30
         },
         "isActive": {
           "type": "boolean",
@@ -542,37 +550,45 @@
         "street": {
           "type": "string",
           "required": true,
-          "description": "Street address"
+          "description": "Street address",
+          "maxLength": 100
         },
         "apartment": {
           "type": "string",
           "default": "",
-          "description": "Unit, suite, or apartment number"
+          "description": "Unit, suite, or apartment number",
+          "maxLength": 20
         },
         "city": {
           "type": "string",
           "required": true,
-          "description": "City name"
+          "description": "City name",
+          "maxLength": 50
         },
         "state": {
           "type": "string",
           "required": true,
-          "description": "Province code (ON, BC, etc.)"
+          "description": "Province code (ON, BC, etc.)",
+          "maxLength": 2
         },
         "postalCode": {
           "type": "string",
           "required": true,
-          "description": "Canadian postal code"
+          "description": "Canadian postal code",
+          "maxLength": 7,
+          "pattern": "^[A-Za-z]\\d[A-Za-z][ -]?\\d[A-Za-z]\\d$"
         },
         "country": {
           "type": "string",
           "default": "Canada",
-          "description": "Country name"
+          "description": "Country name",
+          "maxLength": 20
         },
         "phoneNumber": {
           "type": "string",
           "required": false,
-          "description": "Contact phone number"
+          "description": "Contact phone number",
+          "pattern": "^\\d{10,15}$"
         },
         "isDefault": {
           "type": "boolean",
@@ -582,7 +598,8 @@
         "label": {
           "type": "string",
           "required": false,
-          "description": "Address label (Home, Work, etc.)"
+          "description": "Address label (Home, Work, etc.)",
+          "maxLength": 30
         },
         "latitude": {
           "type": "number",

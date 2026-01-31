@@ -13,7 +13,7 @@ class AppConfig {
   static const String currency = 'cad';
   static const String currencySymbol = '\$';
   static const double platformFeePercent = 0.025; // 2.5% platform fee
-  static const int autoConfirmDays = 14; // Auto-confirm orders after 14 days
+  static const int autoConfirmDays = 7; // Auto-confirm orders after 7 days (Stripe authorization limit)
 }
 
 // ============================================================================

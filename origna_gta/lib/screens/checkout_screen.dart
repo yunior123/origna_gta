@@ -258,7 +258,19 @@ class _DeliveryOptionsSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Delivery Speed', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Delivery Speed', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            IconButton(
+              onPressed: () => _showDeliveryInfo(context),
+              icon: const Icon(Icons.info_outline, size: 20),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              tooltip: 'Learn more about delivery options',
+            ),
+          ],
+        ),
         const SizedBox(height: 12),
         ...DeliverySpeed.values.map((speed) {
           final isAvailable = availableSpeeds.contains(speed);
@@ -273,17 +285,10 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFFF6B35).withValues(alpha: 0.1) : Colors.white,
+                  color: isSelected ? const Color(0xFFFF6B35).withValues(alpha: 0.08) : Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected
-                        ? const Color(0xFFFF6B35)
-                        : isAvailable
-                        ? Colors.grey.shade300
-                        : Colors.grey.shade200,
-                    width: isSelected ? 2 : 1,
-                  ),
-                  boxShadow: isAvailable ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))] : null,
+                  border: Border.all(color: isSelected ? const Color(0xFFFF6B35) : Colors.grey.shade200, width: isSelected ? 1.5 : 1),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 1))],
                 ),
                 child: Opacity(
                   opacity: isAvailable ? 1.0 : 0.5,
@@ -294,7 +299,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                         height: 24,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: isSelected ? const Color(0xFFFF6B35) : Colors.grey.shade400, width: 2),
+                          border: Border.all(color: isSelected ? const Color(0xFFFF6B35) : Colors.grey.shade300, width: 2),
                         ),
                         child: isSelected
                             ? Center(
@@ -306,7 +311,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                               )
                             : null,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,13 +320,13 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                               children: [
                                 Text(
                                   speed.displayName,
-                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: isAvailable ? Colors.black : Colors.grey),
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: isAvailable ? Colors.black : Colors.grey.shade500),
                                 ),
                                 if (speed == DeliverySpeed.sameDay) ...[
                                   const SizedBox(width: 8),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(4)),
+                                    decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(4)),
                                     child: Text(
                                       'LOCAL',
                                       style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade700),
@@ -331,21 +336,22 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Text(speed.estimatedTime, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                            Text(speed.estimatedTime, style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
                             if (!isAvailable && speed == DeliverySpeed.sameDay)
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Text(
                                   'Only available for local orders within 50km',
-                                  style: TextStyle(fontSize: 11, color: Colors.orange.shade700, fontStyle: FontStyle.italic),
+                                  style: TextStyle(fontSize: 11, color: Colors.orange.shade600, fontStyle: FontStyle.italic),
                                 ),
                               ),
                           ],
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
                         surcharge > 0 ? '+\$${surcharge.toStringAsFixed(2)}' : 'FREE',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: surcharge > 0 ? Colors.black : Colors.green.shade700),
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: surcharge > 0 ? Colors.black87 : Colors.green.shade700),
                       ),
                     ],
                   ),
@@ -355,6 +361,60 @@ class _DeliveryOptionsSection extends ConsumerWidget {
           );
         }),
       ],
+    );
+  }
+
+  static void _showDeliveryInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delivery Options'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: DeliverySpeed.values.map((speed) {
+              final surcharge = speed == DeliverySpeed.standard ? 0.0 : speed.baseSurcharge;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(speed.displayName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        if (speed == DeliverySpeed.sameDay) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(4)),
+                            child: Text(
+                              'LOCAL',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade700),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(speed.estimatedTime, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                    if (speed == DeliverySpeed.sameDay)
+                      Text(
+                        'Available for local orders within 50km radius',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontStyle: FontStyle.italic),
+                      ),
+                    const SizedBox(height: 6),
+                    Text(
+                      surcharge > 0 ? 'Additional cost: +\$${surcharge.toStringAsFixed(2)}' : 'No additional cost',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: surcharge > 0 ? Colors.grey.shade700 : Colors.green.shade700),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+      ),
     );
   }
 }
@@ -520,14 +580,32 @@ class _SecurityInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.blue.shade200, width: 1),
+      ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lock_outline, color: Colors.blue.shade700),
+          Icon(Icons.lock_outline, color: Colors.blue.shade700, size: 20),
           const SizedBox(width: 12),
           Expanded(
-            child: Text('Secure payment powered by Stripe. Your card information is encrypted.', style: TextStyle(color: Colors.blue.shade700, fontSize: 14)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Secure Payment',
+                  style: TextStyle(color: Colors.blue.shade900, fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Powered by Stripe. Your payment information is encrypted and secure.',
+                  style: TextStyle(color: Colors.blue.shade700, fontSize: 12, height: 1.4),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -535,37 +613,87 @@ class _SecurityInfo extends StatelessWidget {
   }
 }
 
-class _TermsText extends StatelessWidget {
+class _TermsText extends StatefulWidget {
+  const _TermsText();
+
+  @override
+  State<_TermsText> createState() => _TermsTextState();
+}
+
+class _TermsTextState extends State<_TermsText> {
+  bool _termsAccepted = false;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Flexible(
-            child: RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                children: [
-                  const TextSpan(text: 'By placing this order, you agree to our '),
-                  WidgetSpan(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
-                      },
-                      child: const Text(
-                        'Terms & Conditions',
-                        style: TextStyle(fontSize: 12, color: Color(0xFFFF6B35), fontWeight: FontWeight.w600, decoration: TextDecoration.underline),
-                      ),
-                    ),
-                  ),
-                ],
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.grey.shade200, width: 1),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 20,
+              width: 20,
+              child: Checkbox(
+                value: _termsAccepted,
+                onChanged: (value) => setState(() => _termsAccepted = value ?? false),
+                side: BorderSide(color: Colors.grey.shade400),
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: RichText(
+                text: TextSpan(
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4),
+                  children: [
+                    const TextSpan(text: 'I agree to the '),
+                    WidgetSpan(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
+                        },
+                        child: Text(
+                          'Terms & Conditions',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: const Color(0xFFFF6B35),
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                            decorationColor: const Color(0xFFFF6B35),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const TextSpan(text: ' and '),
+                    WidgetSpan(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
+                        },
+                        child: Text(
+                          'Privacy Policy',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: const Color(0xFFFF6B35),
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                            decorationColor: const Color(0xFFFF6B35),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,0 +1,90 @@
+"""
+Rate Limiter for Cloud Functions
+Protects against abuse and DDoS
+"""
+from firebase_admin import firestore
+from datetime import datetime, timedelta
+from typing import Tuple
+
+class RateLimiter:
+    """Simple in-memory + Firestore rate limiter"""
+    
+    def __init__(self, db):
+        self.db = db
+        self.collection = 'rate_limits'
+    
+    def check_rate_limit(
+        self, 
+        identifier: str,  # IP, user_id, email
+        action: str,  # 'create_checkout', 'webhook', etc
+        max_requests: int,
+        window_minutes: int
+    ) -> Tuple[bool, str]:
+        """
+        Returns (allowed: bool, message: str)
+        """
+        now = datetime.utcnow()
+        window_start = now - timedelta(minutes=window_minutes)
+        
+        doc_id = f"{action}_{identifier}"
+        ref = self.db.collection(self.collection).document(doc_id)
+        
+        try:
+            doc = ref.get()
+            
+            if doc.exists:
+                data = doc.to_dict()
+                count = data.get('count', 0)
+                first_request = data.get('first_request').replace(tzinfo=None)
+                
+                # Window expired, reset
+                if first_request < window_start:
+                    ref.set({
+                        'count': 1,
+                        'first_request': now,
+                        'last_request': now
+                    })
+                    return True, "OK"
+                
+                # Within window, check limit
+                if count >= max_requests:
+                    return False, f"Rate limit exceeded: {max_requests} requests per {window_minutes} minutes"
+                
+                # Increment
+                ref.update({
+                    'count': firestore.Increment(1),
+                    'last_request': now
+                })
+                return True, "OK"
+            else:
+                # First request
+                ref.set({
+                    'count': 1,
+                    'first_request': now,
+                    'last_request': now
+                })
+                return True, "OK"
+                
+        except Exception as e:
+            # Fail open on errors (don't block legitimate users)
+            print(f"⚠️ Rate limiter error: {e}")
+            return True, "OK"
+    
+    def get_identifier(self, req) -> str:
+        """Extract identifier from request (IP or user_id)"""
+        # Try user ID first
+        if hasattr(req, 'auth') and req.auth:
+            return f"user_{req.auth.uid}"
+        
+        # Fall back to IP
+        if hasattr(req, 'headers'):
+            # Check for forwarded IP (behind proxy)
+            forwarded = req.headers.get('X-Forwarded-For', '').split(',')[0].strip()
+            if forwarded:
+                return f"ip_{forwarded}"
+            
+            # Direct IP
+            remote_addr = req.headers.get('X-Real-IP', 'unknown')
+            return f"ip_{remote_addr}"
+        
+        return "unknown"

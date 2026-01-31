@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:origna_gta/screens/cartitem_screen.dart';
-import 'package:origna_gta/screens/checkout_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
+import 'package:origna_gta/screens/cartitem_screen.dart';
+import 'package:origna_gta/screens/checkout_screen.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -102,17 +102,14 @@ class _CartSummary extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch cart details for checkout navigation
-    final cartDetailsAsync = ref.watch(cartWithDetailsProvider);
+    // Watch only if cart is empty (for visibility logic)
+    final isEmpty = ref.watch(cartWithDetailsProvider.select((async) => async.whenData((items) => items.isEmpty)));
 
-    return cartDetailsAsync.when(
+    return isEmpty.when(
       loading: () => const SizedBox.shrink(),
       error: (error, stack) => const SizedBox.shrink(),
-      data: (itemsWithDetails) {
-        if (itemsWithDetails.isEmpty) return const SizedBox.shrink();
-
-        // Calculate subtotal inline - no need for separate provider watch
-        final subtotal = itemsWithDetails.fold(0.0, (total, item) => total + (item.price * item.quantity));
+      data: (isEmpty) {
+        if (isEmpty) return const SizedBox.shrink();
 
         return Container(
           padding: const EdgeInsets.all(16),
@@ -120,38 +117,73 @@ class _CartSummary extends ConsumerWidget {
             color: Colors.white,
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -5))],
           ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Total:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text(
-                    NumberFormat.currency(locale: "en_CA", symbol: "CAD \$").format(subtotal),
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: itemsWithDetails.isEmpty
-                      ? null
-                      : () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CheckoutScreen(items: itemsWithDetails, total: subtotal),
-                            ),
-                          );
-                        },
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
-                  child: const Text('Proceed to Checkout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
+          child: Column(children: [const _CartTotalDisplay(), const SizedBox(height: 16), const _CheckoutButton()]),
+        );
+      },
+    );
+  }
+}
+
+/// Cart total display - only rebuilds when subtotal changes
+class _CartTotalDisplay extends ConsumerWidget {
+  const _CartTotalDisplay();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Only watch the subtotal calculation
+    final subtotalAsync = ref.watch(
+      cartWithDetailsProvider.select((async) => async.whenData((items) => items.fold(0.0, (total, item) => total + (item.price * item.quantity)))),
+    );
+
+    return subtotalAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (error, stack) => const SizedBox.shrink(),
+      data: (subtotal) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Total:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(
+              NumberFormat.currency(locale: "en_CA", symbol: "CAD \$").format(subtotal),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Checkout button - only rebuilds when cart items change
+class _CheckoutButton extends ConsumerWidget {
+  const _CheckoutButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watch cart details for checkout navigation
+    final cartDetailsAsync = ref.watch(cartWithDetailsProvider);
+
+    return cartDetailsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (error, stack) => const SizedBox.shrink(),
+      data: (itemsWithDetails) {
+        return SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: ElevatedButton(
+            onPressed: itemsWithDetails.isEmpty
+                ? null
+                : () {
+                    final subtotal = itemsWithDetails.fold(0.0, (total, item) => total + (item.price * item.quantity));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CheckoutScreen(items: itemsWithDetails, total: subtotal),
+                      ),
+                    );
+                  },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+            child: const Text('Proceed to Checkout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         );
       },

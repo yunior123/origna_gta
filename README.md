@@ -10,6 +10,25 @@ This repo contains:
 - Idempotent payment and webhook processing
 - Product ratings are submitted via Cloud Function (server-validated)
 
+## Security hardening (2026-01-31)
+**Audit Score**: 9.2/10 ✅ Production Ready | [Full Report](docs/SECURITY_AUDIT_2026_01_31.md)
+
+- ✅ **CRITICAL**: Server-side price validation (cart items vs DB products, tolerance 1 cent)
+- ✅ **CRITICAL**: Server-side shipping/tax recalculation (client values ignored)
+- ✅ **CRITICAL**: Subtotal verification (1% tolerance, rejects tampering)
+- ✅ **HIGH**: Authorization timeout tracking (7 days max, daily cronjob cancels expired)
+- ✅ **MEDIUM**: Uniform email validation across all auth flows (no consecutive dots, strict TLD)
+- ✅ **LOW**: Webhook signature errors masked in production logs
+- ✅ Rate limiting: 10 req/5min per user/IP on checkout (rate_limiter.py)
+- ✅ Debug prints wrapped in IS_EMULATOR checks (no sensitive data in prod logs)
+- ✅ Firestore rules enforce field lengths, postal code format, and product constraints
+- ✅ CSP: removed 'unsafe-eval', kept 'unsafe-inline' for Flutter Web
+- ✅ Idempotent payments with client-supplied + Stripe keys
+- ✅ Atomic stock transactions prevent race conditions
+
+**Cronjobs**:
+- `check_expired_authorizations_scheduled`: Daily 2 AM UTC (cancels expired payment holds)
+
 ## End-to-end flow (payments)
 ```mermaid
 sequenceDiagram

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -7,7 +8,7 @@ abstract class AdminRepository {
   Future<UserModel?> fetchUserById(String userId);
   Future<void> setUserSuspended(String userId, bool suspended);
   Future<void> updateProductStock(String productId, int quantity);
-  Future<void> updateUserRoles(String userId, {List<String> add, List<String> remove});
+  Future<void> updateUserRoles(String userId, {List<String> add, List<String> remove, String? reason});
   Stream<List<OrderModel>> watchOrders({String? status, int limit});
   Stream<List<ProductModel>> watchProducts({int limit, String? sellerId});
   Stream<List<UserModel>> watchSellers({int limit});
@@ -16,8 +17,9 @@ abstract class AdminRepository {
 
 class FirebaseAdminRepository implements AdminRepository {
   final FirebaseFirestore _firestore;
+  final FirebaseFunctions _functions;
 
-  FirebaseAdminRepository(this._firestore);
+  FirebaseAdminRepository(this._firestore, this._functions);
 
   @override
   Future<void> deleteProduct(String productId) async {
@@ -50,18 +52,9 @@ class FirebaseAdminRepository implements AdminRepository {
   }
 
   @override
-  Future<void> updateUserRoles(String userId, {List<String> add = const [], List<String> remove = const []}) async {
-    final userRef = _firestore.collection('users').doc(userId);
-    final updates = <String, dynamic>{};
-    if (add.isNotEmpty) {
-      updates['roles'] = FieldValue.arrayUnion(add);
-    }
-    if (remove.isNotEmpty) {
-      updates['roles'] = FieldValue.arrayRemove(remove);
-    }
-    if (updates.isNotEmpty) {
-      await userRef.update(updates);
-    }
+  Future<void> updateUserRoles(String userId, {List<String> add = const [], List<String> remove = const [], String? reason}) async {
+    // SECURITY FIX H-1: Call Cloud Function with server-side validation
+    await _functions.httpsCallable('update_user_roles').call({'userId': userId, 'add': add, 'remove': remove, 'reason': reason ?? 'No reason provided'});
   }
 
   @override

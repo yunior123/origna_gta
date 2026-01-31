@@ -311,5 +311,65 @@ class TestPaymentSecurity(unittest.TestCase):
         with self.assertRaises(MockHttpsError):
             create_checkout_session(req)
 
+    def test_checkout_rejects_invalid_postal_code(self):
+        """
+        Scenario: Malicious user sends invalid postal code.
+        Expectation: HttpsError thrown.
+        """
+        req = MagicMock()
+        req.auth.uid = "user_1"
+        req.data = {
+            "userId": "user_1",
+            "customerEmail": "abuse@example.com",
+            "amount": 100,
+            "items": [{
+                "productId": "prod_1",
+                "quantity": 1,
+                "price": 10.0,
+                "sellerId": "seller_1",
+                "name": "Test Product"
+            }],
+            "deliveryInfo": {
+                "street": "123 Test St",
+                "city": "Toronto",
+                "postalCode": "INVALID",
+                "state": "ON",
+                "country": "Canada"
+            }
+        }
+
+        with self.assertRaises(MockHttpsError):
+            create_checkout_session(req)
+
+    def test_checkout_rejects_overlong_address_fields(self):
+        """
+        Scenario: Malicious user sends overly long address fields.
+        Expectation: HttpsError thrown.
+        """
+        req = MagicMock()
+        req.auth.uid = "user_1"
+        req.data = {
+            "userId": "user_1",
+            "customerEmail": "abuse@example.com",
+            "amount": 100,
+            "items": [{
+                "productId": "prod_1",
+                "quantity": 1,
+                "price": 10.0,
+                "sellerId": "seller_1",
+                "name": "Test Product"
+            }],
+            "deliveryInfo": {
+                "street": "X" * 200,
+                "city": "Toronto",
+                "postalCode": "M5V 1A1",
+                "state": "ON",
+                "country": "Canada"
+            }
+        }
+
+        with self.assertRaises(MockHttpsError):
+            create_checkout_session(req)
+
 if __name__ == '__main__':
     unittest.main()

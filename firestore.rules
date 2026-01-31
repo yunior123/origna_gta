@@ -12,6 +12,45 @@ service cloud.firestore {
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
+
+    function isStringWithLen(value, minLen, maxLen) {
+      return value is string && value.size() >= minLen && value.size() <= maxLen;
+    }
+
+    function isValidEmail(email) {
+      return isStringWithLen(email, 6, 254) &&
+        email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+    }
+
+    function isValidName(name) {
+      return isStringWithLen(name, 2, 60) &&
+        name.matches('^\\p{L}+(?:[ -]\\p{L}+)*$');
+    }
+
+    function isValidPostalCode(code) {
+      return isStringWithLen(code, 6, 7) &&
+        code.matches('^[A-Za-z]\\d[A-Za-z][ -]?\\d[A-Za-z]\\d$');
+    }
+
+    function isValidProvince(code) {
+      return code in ['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'];
+    }
+
+    function isValidAddress(addr) {
+      return addr is map &&
+        addr.keys().hasOnly(['street','apartment','city','state','postalCode','country','phoneNumber','isDefault','label','latitude','longitude']) &&
+        isStringWithLen(addr.street, 3, 100) &&
+        (addr.apartment == null || isStringWithLen(addr.apartment, 1, 20)) &&
+        isStringWithLen(addr.city, 2, 50) &&
+        isValidProvince(addr.state) &&
+        isValidPostalCode(addr.postalCode) &&
+        isStringWithLen(addr.country, 2, 20) &&
+        (addr.phoneNumber == null || (addr.phoneNumber is string && addr.phoneNumber.matches('^\\d{10,15}$'))) &&
+        (addr.isDefault == null || addr.isDefault is bool) &&
+        (addr.label == null || isStringWithLen(addr.label, 1, 30)) &&
+        (addr.latitude == null || (addr.latitude is number && addr.latitude >= -90 && addr.latitude <= 90)) &&
+        (addr.longitude == null || (addr.longitude is number && addr.longitude >= -180 && addr.longitude <= 180));
+    }
     
     function hasRole(role) {
       return isAuthenticated() &&
@@ -43,6 +82,9 @@ service cloud.firestore {
       // Admins can update any user profile fields
       allow update: if isAdmin() || (isOwner(userId) &&
         request.resource.data.roles == resource.data.roles &&
+        isValidName(request.resource.data.name) &&
+        isValidEmail(request.resource.data.email) &&
+        (request.resource.data.address == null || isValidAddress(request.resource.data.address)) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name',
           'address',
@@ -54,6 +96,9 @@ service cloud.firestore {
       // Users can create their own profile with strict fields only
       allow create: if isOwner(userId) &&
         request.resource.data.uid == request.auth.uid &&
+        isValidName(request.resource.data.name) &&
+        isValidEmail(request.resource.data.email) &&
+        (request.resource.data.address == null || isValidAddress(request.resource.data.address)) &&
         request.resource.data.keys().hasOnly([
           'uid',
           'email',
@@ -73,12 +118,24 @@ service cloud.firestore {
       
       // --- CART SUBCOLLECTION ---
       match /cart/{itemId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) &&
+          request.resource.data.keys().hasOnly(['productId','quantity','dateCreated']) &&
+          request.resource.data.productId is string &&
+          request.resource.data.quantity is int &&
+          request.resource.data.quantity > 0 && request.resource.data.quantity <= 100 &&
+          request.resource.data.dateCreated is timestamp;
+        allow delete: if isOwner(userId);
       }
       
       // --- FAVORITES SUBCOLLECTION ---
       match /favorites/{productId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) &&
+          request.resource.data.keys().hasOnly(['productId','dateFavorited']) &&
+          request.resource.data.productId is string &&
+          request.resource.data.dateFavorited is timestamp;
+        allow delete: if isOwner(userId);
       }
     }
     
@@ -95,8 +152,16 @@ service cloud.firestore {
         request.resource.data.sellerId == request.auth.uid &&
         request.resource.data.keys().hasAll([
           'name', 'price', 'sellerId', 'categoryId',
-          'stockQuantity', 'imageUrls'
+          'stockQuantity', 'imageUrls', 'description',
+          'sellerAddress', 'searchKeywords', 'dateCreated'
         ]) &&
+        isStringWithLen(request.resource.data.name, 2, 120) &&
+        isStringWithLen(request.resource.data.description, 10, 4000) &&
+        isValidAddress(request.resource.data.sellerAddress) &&
+        request.resource.data.imageUrls is list &&
+        request.resource.data.imageUrls.size() >= 1 && request.resource.data.imageUrls.size() <= 5 &&
+        request.resource.data.searchKeywords is list &&
+        request.resource.data.searchKeywords.size() <= 30 &&
         request.resource.data.isActive == true &&
         request.resource.data.stockQuantity >= 0 &&
         request.resource.data.price > 0;
@@ -105,6 +170,13 @@ service cloud.firestore {
       allow update: if isAuthenticated() &&
         ((resource.data.sellerId == request.auth.uid || isAdmin()) &&
           request.resource.data.sellerId == resource.data.sellerId &&
+          isStringWithLen(request.resource.data.name, 2, 120) &&
+          isStringWithLen(request.resource.data.description, 10, 4000) &&
+          isValidAddress(request.resource.data.sellerAddress) &&
+          request.resource.data.imageUrls is list &&
+          request.resource.data.imageUrls.size() >= 1 && request.resource.data.imageUrls.size() <= 5 &&
+          request.resource.data.searchKeywords is list &&
+          request.resource.data.searchKeywords.size() <= 30 &&
           request.resource.data.stockQuantity >= 0 &&
           request.resource.data.isActive == resource.data.isActive &&
           !request.resource.data.keys().hasAny(['deletedAt']));

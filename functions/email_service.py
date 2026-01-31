@@ -218,3 +218,60 @@ def send_email(to_email, subject, html_content, from_email="orders@orignagta.com
     except Exception as e:
         print(f"❌ Mailjet error: {str(e)}")
         return False
+
+
+def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
+    """Send notification when payment authorization expires after 7 days"""
+    if IS_EMULATOR:
+        print(f"🔧 EMULATOR: Would send authorization expired email for order {order_id}")
+        return
+    
+    if not MAILJET_API_KEY or not MAILJET_SECRET_KEY:
+        print("⚠️ Mailjet credentials not configured")
+        return
+    
+    try:
+        mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
+        
+        customer_email = order_data.get('customerEmail')
+        total = order_data.get('total', 0)
+        items_summary = ', '.join([f"{item.get('name')} x{item.get('quantity', 1)}" 
+                                   for item in order_data.get('items', [])[:3]])
+        
+        # Email to buyer
+        buyer_message = {
+            'Messages': [{
+                'From': {'Email': 'noreply@orignagta.com', 'Name': 'Origna GTA'},
+                'To': [{'Email': customer_email}],
+                'Subject': f'Order {order_id[:8]} - Authorization Expired',
+                'HTMLPart': f"""
+                <html>
+                <body style="font-family: Arial, sans-serif; color: #333;">
+                    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <h2 style="color: #FF6B35;">⏰ Payment Authorization Expired</h2>
+                        <p>Your order authorization has expired after 7 days without seller confirmation.</p>
+                        
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <p><strong>Order ID:</strong> {order_id}</p>
+                            <p><strong>Items:</strong> {items_summary}</p>
+                            <p><strong>Amount:</strong> ${total:.2f} CAD</p>
+                        </div>
+                        
+                        <p>The hold on your payment has been released. No charge was made to your card.</p>
+                        <p>If you still want these items, please place a new order.</p>
+                        
+                        <p style="margin-top: 30px; color: #999; font-size: 12px;">
+                            Questions? Contact support@orignagta.com
+                        </p>
+                    </div>
+                </body>
+                </html>
+                """
+            }]
+        }
+        
+        mailjet.send.create(data=buyer_message)
+        print(f"✅ Authorization expired email sent to {customer_email}")
+        
+    except Exception as e:
+        print(f"⚠️ Failed to send authorization expired email: {str(e)}")

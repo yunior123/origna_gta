@@ -83,7 +83,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                                   onPageChanged: (index) => setState(() => _currentImageIndex = index),
                                   itemBuilder: (context, index) {
                                     return CachedNetworkImage(
-                                      imageUrl: imageUrls[index],
+                                      imageUrl: isValidImageUrl(imageUrls[index]) ? imageUrls[index] : '',
                                       fit: BoxFit.cover,
                                       placeholder: (context, url) => Shimmer.fromColors(
                                         baseColor: Colors.grey[300]!,
@@ -323,5 +323,10 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
         messenger.showSnackBar(SnackBar(content: Text('Error updating favorites: $e'), backgroundColor: Colors.red[700]));
       }
     }
+  }
+
+  // Add a utility function to validate image URLs
+  bool isValidImageUrl(String url) {
+    return url.isNotEmpty && Uri.tryParse(url)?.hasAbsolutePath == true;
   }
 }

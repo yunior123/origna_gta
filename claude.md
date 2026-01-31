@@ -6,6 +6,7 @@ You are amazing, your code beats chatgpt, think like a pro, similar to Magnus Ca
 Fix all dart compiler warnings, code should be clean.
 Make code bullet prove, if you have suggestion for the future add them to readme
 Malicious people will be using the app, make sure you handle edge cases, no loose ends. 
+Audit security before every release.
 
 PROJECT
 OrignaGta — Canada-only e-commerce marketplace.

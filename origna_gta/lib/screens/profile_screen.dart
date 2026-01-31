@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/screens/addressmanagement_screen.dart';
 import 'package:origna_gta/admin/admin_panel_screen.dart';
-import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/screens/addressmanagement_screen.dart';
 import 'package:origna_gta/screens/favorites_screen.dart';
 import 'package:origna_gta/screens/orders_screen.dart';
 import 'package:origna_gta/screens/seller_orders_screen.dart';
 import 'package:origna_gta/screens/seller_registration_screen.dart';
 import 'package:origna_gta/screens/terms_screen.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -173,20 +173,20 @@ class ProfileScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Have questions or need help? Reach out to us!', style: TextStyle(color: Colors.grey)),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.email, color: Color(0xFFFF6B35)),
-              title: const Text(AppConfig.supportEmail),
-              onTap: () async {
-                final uri = Uri(scheme: 'mailto', path: AppConfig.supportEmail, queryParameters: {'subject': 'Support Request'});
-                if (await canLaunchUrl(uri)) await launchUrl(uri);
-              },
-            ),
+            // The email is not registered yet, so commenting out for now
+            // ListTile(
+            //   contentPadding: EdgeInsets.zero,
+            //   leading: const Icon(Icons.email, color: Color(0xFFFF6B35)),
+            //   title: const Text(AppConfig.supportEmail),
+            //   onTap: () async {
+            //     final uri = Uri(scheme: 'mailto', path: AppConfig.supportEmail, queryParameters: {'subject': 'Support Request'});
+            //     if (await canLaunchUrl(uri)) await launchUrl(uri);
+            //   },
+            // ),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.language, color: Color(0xFFFF6B35)),
               title: const Text('orignaventures.ca'),
-              subtitle: const Text('Website'),
               onTap: () async {
                 const url = 'https://orignaventures.ca';
                 if (await canLaunchUrlString(url)) {

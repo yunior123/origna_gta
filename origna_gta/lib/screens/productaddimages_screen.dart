@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -54,11 +53,18 @@ class _ProductAddImagesState extends State<ProductAddImages> {
 
                     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-                    if (pickedFile != null) {
+                    // Add validation before adding the image
+                    if (pickedFile != null && pickedFile.path.isNotEmpty) {
                       final bytes = await pickedFile.readAsBytes();
                       setState(() {
-                        _imageModels.add(ImageModel(url: pickedFile.path, bytes: bytes)); // In a real app, upload and get URL
+                        if (bytes.isNotEmpty) {
+                          _imageModels.add(ImageModel(url: pickedFile.path, bytes: bytes)); // In a real app, upload and get URL
+                        } else {
+                          messenger.showSnackBar(SnackBar(content: Text('Selected image is empty.')));
+                        }
                       });
+                    } else {
+                      messenger.showSnackBar(SnackBar(content: Text('No image selected.')));
                     }
                   } catch (e) {
                     messenger.showSnackBar(SnackBar(content: Text('Error picking image: $e')));
