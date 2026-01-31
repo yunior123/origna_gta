@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 // ============================================================================
@@ -22,15 +22,12 @@ final buyerOrdersProvider = StreamProvider.autoDispose<List<OrderModel>>((ref) {
 
 final pendingApprovalsCountProvider = Provider.autoDispose<int>((ref) {
   final ordersAsync = ref.watch(buyerOrdersProvider);
-  return ordersAsync.maybeWhen(
-    data: (orders) => orders.where((o) => o.deliveryInfo['shippingApprovalStatus'] == ShippingApprovalStatus.pending.value).length,
-    orElse: () => 0,
-  );
+  return ordersAsync.maybeWhen(data: (orders) => orders.where((o) => o.shippingApprovalStatus == ShippingApprovalStatus.pending.value).length, orElse: () => 0);
 });
 
 final pendingShippingApprovalsProvider = Provider.autoDispose<AsyncValue<List<OrderModel>>>((ref) {
   return ref.watch(buyerOrdersProvider).whenData((orders) {
-    return orders.where((o) => o.deliveryInfo['shippingApprovalStatus'] == ShippingApprovalStatus.pending.value).toList();
+    return orders.where((o) => o.shippingApprovalStatus == ShippingApprovalStatus.pending.value).toList();
   });
 });
 

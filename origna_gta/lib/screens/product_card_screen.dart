@@ -1,13 +1,13 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:origna_gta/screens/editproduct_screen.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/product_actions_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
+import 'package:origna_gta/screens/editproduct_screen.dart';
 import 'package:origna_gta/screens/productdetails_screen.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -37,8 +37,8 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
     final isOwner = widget.userModel?.uid == widget.product.sellerId;
     final canManageProduct = isAdmin || isOwner;
 
-    // Use reactive favorites provider
-    final isFavorite = ref.watch(favoritesProvider).maybeWhen(data: (favs) => favs.contains(widget.productId), orElse: () => false);
+    // Use reactive favorites provider (only rebuild when this bool changes)
+    final isFavorite = ref.watch(favoritesProvider.select((value) => value.maybeWhen(data: (favs) => favs.contains(widget.productId), orElse: () => false)));
 
     // Responsive sizing
     final cardWidth = MediaQuery.of(context).size.width;

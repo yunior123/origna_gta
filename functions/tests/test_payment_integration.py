@@ -25,6 +25,7 @@ mock_firebase_functions.scheduler_fn.on_schedule.side_effect = pass_through_deco
 
 # Configure params
 mock_firebase_functions.params.SecretParam.return_value.value = "test_secret"
+mock_firebase_admin.firestore.transactional = lambda f: f
 
 class MockHttpsError(Exception):
     def __init__(self, code, message, details=None):
@@ -61,9 +62,11 @@ with patch.dict(sys.modules, module_mocks):
         capture_payment,
         stripe_webhook,
         create_checkout_session,
+        submit_product_rating,
         DeliveryStatus,
         PaymentStatus,
-        OrderStatus
+        OrderStatus,
+        PayoutStatus
     )
 
 class TestPaymentFlow(unittest.TestCase):
@@ -274,6 +277,49 @@ class TestPaymentFlow(unittest.TestCase):
         self.assertEqual(call_args.get("total"), 62.0)
         self.assertEqual(call_args.get("taxes"), {"stripeTax": 2.0})
         self.assertEqual(call_args.get("authorizedAmount"), 6200)
+
+    def test_submit_product_rating_delivered(self):
+        req = MagicMock()
+        req.auth.uid = "buyer_1"
+        req.data = {"orderId": "order_1", "productId": "prod_1", "rating": 5}
+
+        mock_order_doc = MagicMock()
+        mock_order_doc.exists = True
+        mock_order_doc.to_dict.return_value = {
+            "userId": "buyer_1",
+            "paymentStatus": PaymentStatus.PAID,
+            "items": [{"productId": "prod_1", "deliveryStatus": DeliveryStatus.DELIVERED}],
+            "ratings": {}
+        }
+
+        mock_product_doc = MagicMock()
+        mock_product_doc.exists = True
+        mock_product_doc.to_dict.return_value = {"rating": 4.0, "ratingCount": 2}
+
+        order_ref = MagicMock()
+        order_ref.get.return_value = mock_order_doc
+        product_ref = MagicMock()
+        product_ref.get.return_value = mock_product_doc
+
+        orders_collection = MagicMock()
+        orders_collection.document.return_value = order_ref
+        products_collection = MagicMock()
+        products_collection.document.return_value = product_ref
+
+        def collection_side_effect(name):
+            if name == main.Collections.ORDERS:
+                return orders_collection
+            if name == main.Collections.PRODUCTS:
+                return products_collection
+            return MagicMock()
+
+        main.db.collection.side_effect = collection_side_effect
+
+        resp = submit_product_rating(req)
+
+        self.assertTrue(resp["success"])
+        self.assertTrue(product_ref.update.called)
+        self.assertTrue(order_ref.update.called)
 
     def test_create_checkout_session_flow(self):
         """
@@ -506,6 +552,24 @@ class TestDisputeFlow(unittest.TestCase):
         self.assertTrue(call_args['hasDispute'])
         self.assertEqual(call_args['disputeId'], 'dp_123')
         self.assertEqual(call_args['disputeReason'], 'fraudulent')
+        self.assertEqual(call_args['payoutStatus'], PayoutStatus.PENDING)
+
+    def test_process_dispute_created_missing_charge(self):
+        """
+        Scenario: Dispute event missing charge id.
+        Expectation: No update and returns None.
+        """
+        dispute = {
+            'id': 'dp_123',
+            'reason': 'fraudulent',
+            'status': 'warning_needs_response',
+            'amount': 5000
+        }
+
+        result = main.process_dispute_created(dispute)
+
+        self.assertIsNone(result)
+        main.db.collection.return_value.where.assert_not_called()
 
     def test_process_dispute_closed_won(self):
         """

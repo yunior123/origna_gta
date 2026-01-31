@@ -19,14 +19,12 @@ class FavoritesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final favoritesAsync = ref.watch(favoritedProductsProvider);
-    final userProfileAsync = ref.watch(userProfileProvider);
+    final userModel = ref.watch(userProfileProvider.select((value) => value.valueOrNull));
 
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'Favorites'),
       body: favoritesAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B35))),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B35)))),
         error: (error, stack) => Center(child: Text('Error: $error')),
         data: (products) {
           if (products.isEmpty) {
@@ -44,8 +42,6 @@ class FavoritesScreen extends ConsumerWidget {
             );
           }
 
-          final userModel = userProfileAsync.valueOrNull;
-
           return GridView.builder(
             padding: const EdgeInsets.all(16),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -57,11 +53,7 @@ class FavoritesScreen extends ConsumerWidget {
             itemCount: products.length,
             itemBuilder: (context, index) {
               final product = products[index];
-              return ProductCard(
-                productId: product.id,
-                product: product,
-                userModel: userModel,
-              );
+              return ProductCard(productId: product.id, product: product, userModel: userModel);
             },
           );
         },

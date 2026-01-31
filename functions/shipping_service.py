@@ -175,7 +175,9 @@ def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str =
             total_shipping += seller_fixed_total
             continue
 
-        if seller_lat and seller_lon and GEOAPIFY_API_KEY:
+        should_call_geoapify = speed in ['express', 'same_day'] or has_local_restriction
+
+        if should_call_geoapify and seller_lat and seller_lon and GEOAPIFY_API_KEY:
             try:
                 url = f"https://api.geoapify.com/v1/routematrix?apiKey={GEOAPIFY_API_KEY}"
                 payload = {

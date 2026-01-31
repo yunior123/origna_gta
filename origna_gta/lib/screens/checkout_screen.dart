@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/utils/constants.dart';
-import 'package:origna_gta/screens/editaddress_screen.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/checkout/checkout_provider.dart';
+import 'package:origna_gta/screens/editaddress_screen.dart';
 import 'package:origna_gta/screens/terms_screen.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -17,146 +17,6 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<CheckoutScreen> createState() => _CheckoutScreenState();
-}
-
-class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeCheckout();
-    });
-  }
-
-  Future<void> _initializeCheckout() async {
-    final notifier = ref.read(checkoutStateProvider.notifier);
-    await notifier.initialize();
-
-    final state = ref.read(checkoutStateProvider);
-    if (state.address != null) {
-      await notifier.calculateShipping(widget.items);
-      notifier.calculateTaxes(widget.total);
-    }
-  }
-
-  Future<void> _refreshShipping() async {
-    final notifier = ref.read(checkoutStateProvider.notifier);
-    await notifier.calculateShipping(widget.items);
-    notifier.calculateTaxes(widget.total);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final userProfileAsync = ref.watch(userProfileProvider);
-
-    return Scaffold(
-      appBar: AppBarFactory.simple(title: 'Checkout'),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: userProfileAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => Center(child: Text(AppError.getMessage(error))),
-            data: (userProfile) {
-              if (userProfile == null) {
-                return const Center(child: Text('Please log in to checkout'));
-              }
-              return _CheckoutContent(items: widget.items, subtotal: widget.total, userModel: userProfile, onRefreshShipping: _refreshShipping);
-            },
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CheckoutContent extends ConsumerWidget {
-  final List<CartItemDetailModel> items;
-  final double subtotal;
-  final UserModel userModel;
-  final VoidCallback onRefreshShipping;
-
-  const _CheckoutContent({required this.items, required this.subtotal, required this.userModel, required this.onRefreshShipping});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final checkoutState = ref.watch(checkoutStateProvider);
-    final address = checkoutState.address;
-
-    if (address == null) {
-      return _NoAddressView(onRefreshShipping: onRefreshShipping);
-    }
-
-    final taxRate = getTaxRate(address.state);
-    final tax = subtotal * taxRate;
-    final totalWithTax = subtotal + tax + checkoutState.shippingCost;
-
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _AddressSection(address: address, onRefreshShipping: onRefreshShipping),
-                const SizedBox(height: 24),
-                const _DeliveryOptionsSection(),
-                const SizedBox(height: 24),
-                _OrderSummary(items: items, subtotal: subtotal, state: address.state),
-              ],
-            ),
-          ),
-        ),
-        _CheckoutButton(items: items, userModel: userModel, subtotal: subtotal, total: totalWithTax),
-        _TermsText(),
-        const SizedBox(height: 16),
-        _SecurityInfo(),
-      ],
-    );
-  }
-}
-
-class _NoAddressView extends StatelessWidget {
-  final VoidCallback onRefreshShipping;
-
-  const _NoAddressView({required this.onRefreshShipping});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.location_off, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 24),
-            const Text('No Delivery Address', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            Text(
-              'Please add a delivery address to continue with checkout',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEditAddressScreen())).then((_) => onRefreshShipping());
-              },
-              icon: const Icon(Icons.add_location),
-              label: const Text('Add Address'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF6B35),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _AddressSection extends StatelessWidget {
@@ -223,16 +83,173 @@ class _AddressSection extends StatelessWidget {
   }
 }
 
+class _CheckoutButton extends ConsumerWidget {
+  final List<CartItemDetailModel> items;
+  final UserModel userModel;
+  final double subtotal;
+  final double total;
+
+  const _CheckoutButton({required this.items, required this.userModel, required this.subtotal, required this.total});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isProcessing = ref.watch(checkoutStateProvider.select((state) => state.isProcessing));
+    final isCalculating = ref.watch(checkoutStateProvider.select((state) => state.isCalculatingShipping));
+    final shippingError = ref.watch(checkoutStateProvider.select((state) => state.shippingError));
+    final isDisabled = isProcessing || isCalculating || shippingError != null;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -5))],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 54,
+        child: ElevatedButton(
+          onPressed: isDisabled ? null : () => _startCheckout(context, ref),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+          child: isProcessing
+              ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+              : const Text('Place Order', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _redirectToStripe(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      debugPrint('Could not redirect to Stripe');
+    }
+  }
+
+  Future<void> _startCheckout(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final notifier = ref.read(checkoutStateProvider.notifier);
+
+    final result = await notifier.startCheckout(items: items, user: userModel, subtotal: subtotal);
+    if (!context.mounted) return;
+
+    switch (result) {
+      case CheckoutSuccess(:final checkoutUrl):
+        await _redirectToStripe(checkoutUrl);
+      case CheckoutError(:final message):
+        messenger.showSnackBar(SnackBar(content: Text('Checkout error: $message'), backgroundColor: Colors.red, duration: const Duration(seconds: 5)));
+      case CheckoutAlreadyProcessed(:final existingOrderId):
+        messenger.showSnackBar(SnackBar(content: Text('Order already exists: $existingOrderId'), backgroundColor: Colors.orange));
+    }
+  }
+}
+
+class _CheckoutContent extends ConsumerWidget {
+  final List<CartItemDetailModel> items;
+  final double subtotal;
+  final UserModel userModel;
+  final VoidCallback onRefreshShipping;
+
+  const _CheckoutContent({required this.items, required this.subtotal, required this.userModel, required this.onRefreshShipping});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final address = ref.watch(checkoutStateProvider.select((state) => state.address));
+    final shippingCost = ref.watch(checkoutStateProvider.select((state) => state.shippingCost));
+
+    if (address == null) {
+      return _NoAddressView(onRefreshShipping: onRefreshShipping);
+    }
+
+    final taxRate = getTaxRate(address.state);
+    final tax = subtotal * taxRate;
+    final totalWithTax = subtotal + tax + shippingCost;
+
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _AddressSection(address: address, onRefreshShipping: onRefreshShipping),
+                const SizedBox(height: 24),
+                const _DeliveryOptionsSection(),
+                const SizedBox(height: 24),
+                _OrderSummary(items: items, subtotal: subtotal, state: address.state),
+              ],
+            ),
+          ),
+        ),
+        _CheckoutButton(items: items, userModel: userModel, subtotal: subtotal, total: totalWithTax),
+        _TermsText(),
+        const SizedBox(height: 16),
+        _SecurityInfo(),
+      ],
+    );
+  }
+}
+
+class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final userProfileAsync = ref.watch(userProfileProvider);
+
+    return Scaffold(
+      appBar: AppBarFactory.simple(title: 'Checkout'),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: userProfileAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) => Center(child: Text(AppError.getMessage(error))),
+            data: (userProfile) {
+              if (userProfile == null) {
+                return const Center(child: Text('Please log in to checkout'));
+              }
+              return _CheckoutContent(items: widget.items, subtotal: widget.total, userModel: userProfile, onRefreshShipping: _refreshShipping);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeCheckout();
+    });
+  }
+
+  Future<void> _initializeCheckout() async {
+    final notifier = ref.read(checkoutStateProvider.notifier);
+    await notifier.initialize();
+
+    final state = ref.read(checkoutStateProvider);
+    if (state.address != null) {
+      await notifier.calculateShipping(widget.items);
+      notifier.calculateTaxes(widget.total);
+    }
+  }
+
+  Future<void> _refreshShipping() async {
+    final notifier = ref.read(checkoutStateProvider.notifier);
+    await notifier.calculateShipping(widget.items);
+    notifier.calculateTaxes(widget.total);
+  }
+}
+
 /// Delivery speed options selection
 class _DeliveryOptionsSection extends ConsumerWidget {
   const _DeliveryOptionsSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final checkoutState = ref.watch(checkoutStateProvider);
-    final availableSpeeds = checkoutState.availableDeliverySpeeds;
-    final selectedSpeed = checkoutState.deliverySpeed;
-    final isCalculating = checkoutState.isCalculatingShipping;
+    final availableSpeeds = ref.watch(checkoutStateProvider.select((state) => state.availableDeliverySpeeds));
+    final selectedSpeed = ref.watch(checkoutStateProvider.select((state) => state.deliverySpeed));
+    final isCalculating = ref.watch(checkoutStateProvider.select((state) => state.isCalculatingShipping));
 
     if (isCalculating) {
       return const SizedBox.shrink();
@@ -342,6 +359,48 @@ class _DeliveryOptionsSection extends ConsumerWidget {
   }
 }
 
+class _NoAddressView extends StatelessWidget {
+  final VoidCallback onRefreshShipping;
+
+  const _NoAddressView({required this.onRefreshShipping});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.location_off, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 24),
+            const Text('No Delivery Address', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Text(
+              'Please add a delivery address to continue with checkout',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEditAddressScreen())).then((_) => onRefreshShipping());
+              },
+              icon: const Icon(Icons.add_location),
+              label: const Text('Add Address'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF6B35),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _OrderSummary extends ConsumerWidget {
   final List<CartItemDetailModel> items;
   final double subtotal;
@@ -351,10 +410,9 @@ class _OrderSummary extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final checkoutState = ref.watch(checkoutStateProvider);
-    final shippingCost = checkoutState.shippingCost;
-    final isCalculating = checkoutState.isCalculatingShipping;
-    final shippingError = checkoutState.shippingError;
+    final shippingCost = ref.watch(checkoutStateProvider.select((state) => state.shippingCost));
+    final isCalculating = ref.watch(checkoutStateProvider.select((state) => state.isCalculatingShipping));
+    final shippingError = ref.watch(checkoutStateProvider.select((state) => state.shippingError));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,61 +516,22 @@ class _OrderSummary extends ConsumerWidget {
   }
 }
 
-class _CheckoutButton extends ConsumerWidget {
-  final List<CartItemDetailModel> items;
-  final UserModel userModel;
-  final double subtotal;
-  final double total;
-
-  const _CheckoutButton({required this.items, required this.userModel, required this.subtotal, required this.total});
-
+class _SecurityInfo extends StatelessWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final checkoutState = ref.watch(checkoutStateProvider);
-    final isDisabled = checkoutState.isProcessing || checkoutState.isCalculatingShipping || checkoutState.shippingError != null;
-
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -5))],
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 54,
-        child: ElevatedButton(
-          onPressed: isDisabled ? null : () => _startCheckout(context, ref),
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
-          child: checkoutState.isProcessing
-              ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-              : const Text('Place Order', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ),
+      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+      child: Row(
+        children: [
+          Icon(Icons.lock_outline, color: Colors.blue.shade700),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text('Secure payment powered by Stripe. Your card information is encrypted.', style: TextStyle(color: Colors.blue.shade700, fontSize: 14)),
+          ),
+        ],
       ),
     );
-  }
-
-  Future<void> _startCheckout(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final notifier = ref.read(checkoutStateProvider.notifier);
-
-    final result = await notifier.startCheckout(items: items, user: userModel, subtotal: subtotal);
-    if (!context.mounted) return;
-
-    switch (result) {
-      case CheckoutSuccess(:final checkoutUrl):
-        await _redirectToStripe(checkoutUrl);
-      case CheckoutError(:final message):
-        messenger.showSnackBar(SnackBar(content: Text('Checkout error: $message'), backgroundColor: Colors.red, duration: const Duration(seconds: 5)));
-      case CheckoutAlreadyProcessed(:final existingOrderId):
-        messenger.showSnackBar(SnackBar(content: Text('Order already exists: $existingOrderId'), backgroundColor: Colors.orange));
-    }
-  }
-
-  Future<void> _redirectToStripe(String url) async {
-    final uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      debugPrint('Could not redirect to Stripe');
-    }
   }
 }
 
@@ -545,25 +564,6 @@ class _TermsText extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SecurityInfo extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
-      child: Row(
-        children: [
-          Icon(Icons.lock_outline, color: Colors.blue.shade700),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text('Secure payment powered by Stripe. Your card information is encrypted.', style: TextStyle(color: Colors.blue.shade700, fontSize: 14)),
           ),
         ],
       ),

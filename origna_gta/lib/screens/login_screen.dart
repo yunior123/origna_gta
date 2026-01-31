@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/screens/terms_screen.dart';
+
 import '../features/auth/login_viewmodel.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -21,38 +22,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
   late Animation<Offset> _slideAnimation;
 
   @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
-    _fadeAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeInOut);
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
-    _animationController.forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  void _onAuthSuccess() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Welcome back!'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-    Navigator.of(context).pop();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final state = ref.watch(loginViewModelProvider);
     final viewModel = ref.read(loginViewModelProvider.notifier);
@@ -62,13 +31,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
       if (next.isSuccess) {
         _onAuthSuccess();
       } else if (next.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.errorMessage!),
-            backgroundColor: Colors.red[700],
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: Colors.red[700], behavior: SnackBarBehavior.floating));
       }
     });
 
@@ -99,13 +64,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                 end: Alignment.bottomRight,
                               ),
                               borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFFFF6B35).withValues(alpha: 0.3),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 10),
-                                )
-                              ],
+                              boxShadow: [BoxShadow(color: const Color(0xFFFF6B35).withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
                             ),
                             child: const Icon(Icons.shopping_bag, size: 60, color: Colors.white),
                           ),
@@ -126,10 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                               if (!state.isLogin) ...[
                                 TextFormField(
                                   controller: _nameController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Full Name',
-                                    prefixIcon: Icon(Icons.person_outline),
-                                  ),
+                                  decoration: const InputDecoration(labelText: 'Full Name', prefixIcon: Icon(Icons.person_outline)),
                                   validator: (value) {
                                     if (state.isLogin) return null;
                                     if (value == null || value.isEmpty) return 'Please enter your name';
@@ -141,10 +97,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                               TextFormField(
                                 controller: _emailController,
                                 keyboardType: TextInputType.emailAddress,
-                                decoration: const InputDecoration(
-                                  labelText: 'Email',
-                                  prefixIcon: Icon(Icons.email_outlined),
-                                ),
+                                decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined)),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) return 'Please enter your email';
                                   if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) return 'Please enter a valid email';
@@ -201,10 +154,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                                 ),
                                                 recognizer: TapGestureRecognizer()
                                                   ..onTap = () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(builder: (_) => const TermsScreen()),
-                                                    );
+                                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
                                                   },
                                               ),
                                             ],
@@ -269,7 +219,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                           SizedBox(
                             width: double.infinity,
                             height: 54,
-                            child: OutlinedButton.icon(
+                            child: ElevatedButton.icon(
                               onPressed: state.isLoading ? null : viewModel.handleGoogleSignIn,
                               icon: Image.network(
                                 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
@@ -278,9 +228,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                 errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata, size: 24),
                               ),
                               label: const Text('Continue with Google', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.grey[800],
-                                side: BorderSide(color: Colors.grey[300]!),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.black87,
+                                disabledBackgroundColor: Colors.grey[200],
+                                disabledForegroundColor: Colors.grey[500],
+                                elevation: 0,
+                                side: const BorderSide(color: Color(0xFF4285F4), width: 1.5),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
@@ -309,6 +263,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _fadeAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeInOut);
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
+    _animationController.forward();
+  }
+
+  void _onAuthSuccess() {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Welcome back!'), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating));
+    Navigator.of(context).pop();
   }
 
   void _showForgotPasswordDialog(BuildContext context) {
@@ -350,7 +332,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                   onPressed: isSending
                       ? null
                       : () async {
-                            final messanger = ScaffoldMessenger.of(context);
+                          final messanger = ScaffoldMessenger.of(context);
 
                           if (!formKey.currentState!.validate()) return;
                           setState(() => isSending = true);
@@ -358,14 +340,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                             await ref.read(loginViewModelProvider.notifier).resetPassword(emailController.text.trim());
                             if (dialogContext.mounted) {
                               Navigator.pop(dialogContext);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Password reset link sent!'), backgroundColor: Colors.green),
-                              );
+                              ScaffoldMessenger.of(
+                                context,
+                              ).showSnackBar(const SnackBar(content: Text('Password reset link sent!'), backgroundColor: Colors.green));
                             }
                           } catch (e) {
-                            messanger.showSnackBar(
-                              const SnackBar(content: Text('Failed to send reset link'), backgroundColor: Colors.red),
-                            );
+                            messanger.showSnackBar(const SnackBar(content: Text('Failed to send reset link'), backgroundColor: Colors.red));
                           } finally {
                             setState(() => isSending = false);
                           }

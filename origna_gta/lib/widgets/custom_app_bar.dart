@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/screens/cart_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
+import 'package:origna_gta/screens/cart_screen.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 /// Factory methods for common AppBar configurations
@@ -48,7 +48,7 @@ class AppBarIconButton extends StatelessWidget {
 
 /// Reusable custom AppBar with gradient background.
 /// Provides consistent styling across the app.
-class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
+class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final List<Widget>? actions;
   final Widget? leading;
@@ -72,10 +72,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   Size get preferredSize => Size.fromHeight(height);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-    final cartCount = ref.watch(cartItemCountProvider);
-
+  Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(colors: [Color(0xFFFF6B35), Color(0xFFFF8E53)], begin: Alignment.topLeft, end: Alignment.bottomRight),
@@ -109,7 +106,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
               if (actions != null) ...actions!,
 
               // Cart badge (optional)
-              if (showCartBadge) _buildCartBadge(context, cartCount, user != null),
+              if (showCartBadge) const _CartBadge(),
             ],
           ),
         ),
@@ -117,11 +114,26 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
     );
   }
 
-  Widget _buildCartBadge(BuildContext context, int count, bool isLoggedIn) {
+  static Widget _buildIconButton({required IconData icon, required VoidCallback onPressed}) {
+    return IconButton(
+      icon: Icon(icon, color: Colors.white),
+      onPressed: onPressed,
+    );
+  }
+}
+
+class _CartBadge extends ConsumerWidget {
+  const _CartBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoggedIn = ref.watch(currentUserProvider.select((user) => user != null));
+    final cartCount = ref.watch(cartItemCountProvider);
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        _buildIconButton(
+        CustomAppBar._buildIconButton(
           icon: Icons.shopping_cart_outlined,
           onPressed: () {
             if (!isLoggedIn) {
@@ -131,7 +143,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
           },
         ),
-        if (count > 0)
+        if (cartCount > 0)
           Positioned(
             right: 4,
             top: 4,
@@ -140,20 +152,13 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
               decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
               constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
               child: Text(
-                count > 99 ? '99+' : count.toString(),
+                cartCount > 99 ? '99+' : cartCount.toString(),
                 style: const TextStyle(color: Color(0xFFFF6B35), fontSize: 10, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
             ),
           ),
       ],
-    );
-  }
-
-  static Widget _buildIconButton({required IconData icon, required VoidCallback onPressed}) {
-    return IconButton(
-      icon: Icon(icon, color: Colors.white),
-      onPressed: onPressed,
     );
   }
 }

@@ -87,8 +87,8 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
     final order = widget.order;
     final items = order.items;
     final estimatedShipping = order.shippingCost;
-    final actualShipping = (order.deliveryInfo['actualShipping'] ?? 0.0).toDouble();
-    final pendingTotal = (order.deliveryInfo['pendingTotal'] ?? 0.0).toDouble();
+    final actualShipping = order.actualShipping;
+    final pendingTotal = order.pendingTotal;
     final originalTotal = order.total;
     final shippingDifference = actualShipping - estimatedShipping;
     final percentIncrease = estimatedShipping > 0 ? ((shippingDifference / estimatedShipping) * 100).toStringAsFixed(0) : '0';

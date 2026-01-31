@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/screens/addproduct_screen.dart';
-import 'package:origna_gta/screens/cart_screen.dart';
-import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/home/home_viewmodel.dart';
-import 'package:origna_gta/features/home/home_state.dart';
+import 'package:origna_gta/screens/addproduct_screen.dart';
+import 'package:origna_gta/screens/cart_screen.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
 import 'package:origna_gta/screens/profile_screen.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -53,9 +52,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final homeState = ref.watch(homeViewModelProvider);
     final homeNotifier = ref.read(homeViewModelProvider.notifier);
-    final userProfile = ref.watch(userProfileProvider).valueOrNull;
 
     return Scaffold(
       appBar: _buildAppBar(),
@@ -82,45 +79,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
 
           // Category Chips
-          SliverToBoxAdapter(child: _buildCategoryList(homeState, homeNotifier)),
+          SliverToBoxAdapter(child: _CategoryChips(homeNotifier: homeNotifier)),
 
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
           // Product Grid
-          if (homeState.products.isEmpty && !homeState.isLoading)
-            _buildEmptyState()
-          else if (homeState.isLoading)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 64),
-                child: Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35))),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: getCrossAxisCount(context),
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: _getCardAspectRatio(context),
-                ),
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final product = homeState.products[index];
-                  return ProductCard(productId: product.id, product: product, userModel: userProfile ?? widget.userModel);
-                }, childCount: homeState.products.length),
-              ),
-            ),
+          _ProductGrid(cardAspectRatio: _getCardAspectRatio(context), fallbackUserModel: widget.userModel),
 
           // Pagination Loader
-          if (homeState.isLoadingMore)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 32),
-                child: Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35))),
-              ),
-            ),
+          const _PaginationLoader(),
 
           const SliverToBoxAdapter(child: SizedBox(height: 50)),
         ],
@@ -167,61 +134,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ],
                 ),
-                const Row(
-                  children: [
-                    _SettingsButton(),
-                    _AddProductButton(),
-                    _CartBadge(),
-                  ],
-                ),
+                const Row(children: [_SettingsButton(), _AddProductButton(), _CartBadge()]),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryList(HomeState state, HomeViewModel notifier) {
-    return Container(
-      height: 50,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: productCategories.length + 1,
-        itemBuilder: (context, index) {
-          final isAll = index == 0;
-          final category = isAll ? null : productCategories[index - 1];
-          final isSelected = isAll ? state.selectedCategoryId == null : state.selectedCategoryId == category?.categoryId;
-
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(isAll ? 'All' : category!.name),
-              selected: isSelected,
-              onSelected: (selected) {
-                notifier.onCategorySelected(isAll ? null : category!.categoryId);
-              },
-              selectedColor: const Color(0xFFFF6B35),
-              labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return SliverToBoxAdapter(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(64),
-          child: Column(
-            children: [
-              Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey[300]),
-              const SizedBox(height: 16),
-              const Text('No products matching your filters'),
-            ],
           ),
         ),
       ),
@@ -321,6 +236,118 @@ class _CartBadge extends ConsumerWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _CategoryChips extends ConsumerWidget {
+  final HomeViewModel homeNotifier;
+
+  const _CategoryChips({required this.homeNotifier});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedCategoryId = ref.watch(homeViewModelProvider.select((state) => state.selectedCategoryId));
+
+    return Container(
+      height: 50,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: productCategories.length + 1,
+        itemBuilder: (context, index) {
+          final isAll = index == 0;
+          final category = isAll ? null : productCategories[index - 1];
+          final isSelected = isAll ? selectedCategoryId == null : selectedCategoryId == category?.categoryId;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: Text(isAll ? 'All' : category!.name),
+              selected: isSelected,
+              onSelected: (selected) {
+                homeNotifier.onCategorySelected(isAll ? null : category!.categoryId);
+              },
+              selectedColor: const Color(0xFFFF6B35),
+              labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ProductGrid extends ConsumerWidget {
+  final double cardAspectRatio;
+  final UserModel? fallbackUserModel;
+
+  const _ProductGrid({required this.cardAspectRatio, required this.fallbackUserModel});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoading = ref.watch(homeViewModelProvider.select((state) => state.isLoading));
+    final products = ref.watch(homeViewModelProvider.select((state) => state.products));
+    final userProfile = ref.watch(userProfileProvider).valueOrNull;
+
+    if (products.isEmpty && !isLoading) {
+      return SliverToBoxAdapter(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(64),
+            child: Column(
+              children: [
+                Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey[300]),
+                const SizedBox(height: 16),
+                const Text('No products matching your filters'),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (isLoading) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 64),
+          child: Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35))),
+        ),
+      );
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.all(16),
+      sliver: SliverGrid(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: getCrossAxisCount(context),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: cardAspectRatio,
+        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final product = products[index];
+          return ProductCard(productId: product.id, product: product, userModel: userProfile ?? fallbackUserModel);
+        }, childCount: products.length),
+      ),
+    );
+  }
+}
+
+class _PaginationLoader extends ConsumerWidget {
+  const _PaginationLoader();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoadingMore = ref.watch(homeViewModelProvider.select((state) => state.isLoadingMore));
+
+    if (!isLoadingMore) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    return const SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 32),
+        child: Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35))),
+      ),
     );
   }
 }

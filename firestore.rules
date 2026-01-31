@@ -26,6 +26,10 @@ service cloud.firestore {
     function isSeller() {
       return hasRole('seller') || isAdmin();
     }
+
+    function isProductOwner() {
+      return isAuthenticated() && resource.data.sellerId == request.auth.uid;
+    }
     
     // ================================================================
     // USERS COLLECTION
@@ -35,12 +39,34 @@ service cloud.firestore {
       // Admins can read any profile
       allow read: if isOwner(userId) || isAdmin();
       
-      // Users can update their own profile (except roles)
-      allow update: if isOwner(userId) && 
-        request.resource.data.roles == resource.data.roles;
+      // Users can update their own profile (limited fields only)
+      // Admins can update any user profile fields
+      allow update: if isAdmin() || (isOwner(userId) &&
+        request.resource.data.roles == resource.data.roles &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name',
+          'address',
+          'lastCheckoutSession',
+          'lastOrderId',
+          'lastCheckoutTimestamp'
+        ]));
       
-      // Only backend can create users
-      allow create: if false;
+      // Users can create their own profile with strict fields only
+      allow create: if isOwner(userId) &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.keys().hasOnly([
+          'uid',
+          'email',
+          'name',
+          'roles',
+          'address',
+          'createdAt',
+          'lastCheckoutSession',
+          'lastOrderId',
+          'lastCheckoutTimestamp'
+        ]) &&
+        request.resource.data.roles.size() == 1 &&
+        request.resource.data.roles[0] == 'buyer';
       
       // Users can't delete their own account (use Cloud Function)
       allow delete: if false;
@@ -60,8 +86,8 @@ service cloud.firestore {
     // PRODUCTS COLLECTION
     // ================================================================
     match /products/{productId} {
-      // Anyone can read products
-      allow read: if true;
+      // Anyone can read active products; owners/admins can read all
+      allow read: if resource.data.isActive != false || isAdmin() || isProductOwner();
 
       // Only sellers can create products
       // Must set correct sellerId
@@ -71,24 +97,17 @@ service cloud.firestore {
           'name', 'price', 'sellerId', 'categoryId',
           'stockQuantity', 'imageUrls'
         ]) &&
+        request.resource.data.isActive == true &&
         request.resource.data.stockQuantity >= 0 &&
         request.resource.data.price > 0;
 
-      // Product updates have multiple allowed scenarios
-      allow update: if isAuthenticated() && (
-        // Scenario 1: Product owner or admin can update all fields (except sellerId)
+      // Product updates - owner/admin only (ratings updated via backend)
+      allow update: if isAuthenticated() &&
         ((resource.data.sellerId == request.auth.uid || isAdmin()) &&
           request.resource.data.sellerId == resource.data.sellerId &&
-          request.resource.data.stockQuantity >= 0) ||
-
-        // Scenario 2: Any authenticated user can update rating fields only
-        // This allows users to rate products they've purchased
-        (request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['rating', 'ratingCount']) &&
-          request.resource.data.rating >= 0 &&
-          request.resource.data.rating <= 5 &&
-          request.resource.data.ratingCount >= resource.data.ratingCount)
-      );
+          request.resource.data.stockQuantity >= 0 &&
+          request.resource.data.isActive == resource.data.isActive &&
+          !request.resource.data.keys().hasAny(['deletedAt']));
 
       // Only product owner or admin can delete
       allow delete: if isAuthenticated() &&
@@ -112,28 +131,8 @@ service cloud.firestore {
       // This prevents client-side order manipulation
       allow create: if false;
       
-      // Sellers can update delivery status of their items only
-      // Backend can update payment status
-      // Users can add ratings to their orders
-      allow update: if isAuthenticated() && (
-        // Seller updating their items
-        (resource.data.sellerIds.hasAny([request.auth.uid]) &&
-         // Verify only updating delivery status
-         request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['items', 'updatedAt']) &&
-         // Verify seller only updates their own items
-         validateSellerItemUpdate(
-           resource.data.items,
-           request.resource.data.items,
-           request.auth.uid
-         )) ||
-        // Order owner can add ratings
-        (resource.data.userId == request.auth.uid &&
-         request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['ratings'])) ||
-        // Admin can update anything
-        isAdmin()
-      );
+      // Backend/admin only
+      allow update: if isAdmin();
       
       // No one can delete orders (only backend)
       allow delete: if false;
@@ -142,9 +141,5 @@ service cloud.firestore {
     // ================================================================
     // VALIDATION FUNCTIONS
     // ================================================================
-    function validateSellerItemUpdate(oldItems, newItems, sellerId) {
-      // Ensure seller only updates items they own
-      return true; // Simplified - implement in Cloud Function
-    }
   }
 }

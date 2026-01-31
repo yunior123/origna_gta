@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <title>OrignaGTA Firestore Database Diagram</title>
+  <desc>Editable in VS Code with the Draw.io Integration extension.</desc>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="30" y="50" font-family="Arial" font-size="24" fill="#111111">OrignaGTA Firestore Database Diagram</text>
+  <text x="30" y="90" font-family="Arial" font-size="14" fill="#555555">Open this file with the Draw.io Integration extension to edit.</text>
+  <text x="30" y="130" font-family="Arial" font-size="14" fill="#555555">Source of truth: docs/database_schema.json</text>
+  <rect x="30" y="180" width="520" height="560" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="50" y="210" font-family="Arial" font-size="16" fill="#111111">Collections</text>
+  <text x="50" y="240" font-family="Arial" font-size="13" fill="#111111">users</text>
+  <text x="50" y="260" font-family="Arial" font-size="13" fill="#111111">products</text>
+  <text x="50" y="280" font-family="Arial" font-size="13" fill="#111111">orders</text>
+  <text x="50" y="300" font-family="Arial" font-size="13" fill="#111111">webhook_logs</text>
+  <text x="50" y="320" font-family="Arial" font-size="13" fill="#111111">webhook_events</text>
+  <text x="50" y="360" font-family="Arial" font-size="13" fill="#111111">users/{userId}/cart</text>
+  <text x="50" y="380" font-family="Arial" font-size="13" fill="#111111">users/{userId}/favorites</text>
+  <rect x="600" y="180" width="560" height="560" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="620" y="210" font-family="Arial" font-size="16" fill="#111111">Relationships</text>
+  <text x="620" y="240" font-family="Arial" font-size="13" fill="#111111">users (1) → products (many)</text>
+  <text x="620" y="260" font-family="Arial" font-size="13" fill="#111111">users (1) → orders (many)</text>
+  <text x="620" y="280" font-family="Arial" font-size="13" fill="#111111">orders (1) → items (many)</text>
+  <text x="620" y="300" font-family="Arial" font-size="13" fill="#111111">orders (1) → sellerPayouts (many)</text>
+  <text x="620" y="320" font-family="Arial" font-size="13" fill="#111111">webhook_events (1) → webhook_logs (many)</text>
+</svg>

@@ -27,8 +27,8 @@
         "roles": {
           "type": "array<string>",
           "required": true,
-          "description": "User roles: 'admin', 'seller', 'assistant'",
-          "values": ["admin", "seller", "assistant"]
+          "description": "User roles: 'admin', 'seller', 'buyer'",
+          "values": ["admin", "seller", "buyer"]
         },
         "address": {
           "type": "map",
@@ -81,6 +81,16 @@
           "default": false,
           "description": "Whether Stripe Connect onboarding is complete"
         },
+        "suspended": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the account is suspended"
+        },
+        "suspendedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When the account was suspended"
+        },
         "updatedAt": {
           "type": "timestamp",
           "required": false,
@@ -130,6 +140,10 @@
         {
           "fields": ["stripeAccountId"],
           "description": "For looking up users by Stripe Connect account"
+        },
+        {
+          "fields": ["roles", "createdAt desc"],
+          "description": "For admin seller listing"
         }
       ]
     },
@@ -194,6 +208,16 @@
           "required": true,
           "description": "Keywords for search functionality"
         },
+        "isActive": {
+          "type": "boolean",
+          "default": true,
+          "description": "Soft delete flag for product visibility"
+        },
+        "deletedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When product was soft deleted"
+        },
         "dateCreated": {
           "type": "timestamp",
           "required": true,
@@ -202,16 +226,20 @@
       },
       "indexes": [
         {
-          "fields": ["sellerId", "dateCreated"],
+          "fields": ["sellerId", "dateCreated desc"],
           "description": "For seller's product listings"
         },
         {
-          "fields": ["categoryId", "dateCreated"],
-          "description": "For category browsing"
+          "fields": ["isActive", "categoryId", "dateCreated desc"],
+          "description": "For category browsing (active only)"
         },
         {
-          "fields": ["searchKeywords"],
-          "description": "For product search"
+          "fields": ["isActive", "searchKeywords", "dateCreated desc"],
+          "description": "For product search (active only)"
+        },
+        {
+          "fields": ["isActive", "__name__"],
+          "description": "For ID batch fetch with active filter"
         }
       ]
     },
@@ -349,7 +377,7 @@
         "ratings": {
           "type": "map<string, number>",
           "required": false,
-          "description": "Product ratings by productId"
+          "description": "Product ratings by productId (server-managed)"
         },
         "refundAmount": {
           "type": "number",
@@ -372,8 +400,28 @@
           "description": "For seller's order view"
         },
         {
+          "fields": ["paymentStatus", "createdAt desc"],
+          "description": "For admin orders by status"
+        },
+        {
+          "fields": ["stripeSessionId", "paymentStatus"],
+          "description": "For session lookup"
+        },
+        {
           "fields": ["paymentStatus", "confirmedByClient", "payoutStatus"],
           "description": "For auto-release payout job"
+        },
+        {
+          "fields": ["paymentStatus", "authorizationExpiresAt"],
+          "description": "For expired authorization job"
+        },
+        {
+          "fields": ["paymentStatus", "captureMethod"],
+          "description": "For expiring authorization job"
+        },
+        {
+          "fields": ["userId", "idempotencyKey"],
+          "description": "For idempotent checkout lookups"
         },
         {
           "fields": ["stripePaymentIntentId"],

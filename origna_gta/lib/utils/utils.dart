@@ -5,10 +5,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:origna_gta/utils/constants.dart';
-import 'package:origna_gta/screens/login_screen.dart';
 import 'package:origna_gta/models/models.dart';
+import 'package:origna_gta/screens/login_screen.dart';
 import 'package:origna_gta/services/conf_services.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 export 'package:origna_gta/models/models.dart';
@@ -85,6 +85,13 @@ Future<bool> addToCart({required String productId, required int quantity, requir
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => LoginScreen()));
+    return false;
+  }
+
+  if (quantity <= 0) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid quantity'), backgroundColor: Colors.red));
+    }
     return false;
   }
 

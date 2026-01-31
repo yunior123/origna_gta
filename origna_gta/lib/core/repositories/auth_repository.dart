@@ -1,16 +1,17 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 abstract class AuthRepository {
-  Future<UserCredential> signInWithEmail(String email, String password);
-  Future<UserCredential> registerWithEmail(String email, String password, String name);
-  Future<void> signOut();
-  Future<void> sendPasswordResetEmail(String email);
-  Future<UserCredential> signInWithGoogle();
   Future<void> deleteAccount();
+  Future<UserCredential> registerWithEmail(String email, String password, String name);
+  Future<void> sendPasswordResetEmail(String email);
+  Future<UserCredential> signInWithEmail(String email, String password);
+  Future<UserCredential> signInWithGoogle();
+  Future<void> signOut();
   Stream<UserModel?> watchProfile(String userId);
 }
 
@@ -22,8 +23,12 @@ class FirebaseAuthRepository implements AuthRepository {
   FirebaseAuthRepository(this._auth, this._firestore, this._functions);
 
   @override
-  Future<UserCredential> signInWithEmail(String email, String password) async {
-    return await _auth.signInWithEmailAndPassword(email: email, password: password);
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    // Call the collective delete function which handles Firestore, Auth, and Stripe
+    await _functions.httpsCallable('delete_account').call({'confirmation': 'DELETE_MY_ACCOUNT'});
   }
 
   @override
@@ -34,13 +39,13 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> signOut() async {
-    await _auth.signOut();
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
   }
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {
-    await _auth.sendPasswordResetEmail(email: email);
+  Future<UserCredential> signInWithEmail(String email, String password) async {
+    return await _auth.signInWithEmailAndPassword(email: email, password: password);
   }
 
   @override
@@ -61,12 +66,8 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> deleteAccount() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    
-    // Call the collective delete function which handles Firestore, Auth, and Stripe
-    await _functions.httpsCallable('delete_account').call({'confirmation': 'DELETE_MY_ACCOUNT'});
+  Future<void> signOut() async {
+    await _auth.signOut();
   }
 
   @override
@@ -83,14 +84,21 @@ class FirebaseAuthRepository implements AuthRepository {
     final docSnapshot = await userDoc.get();
 
     if (!docSnapshot.exists) {
-      final newUser = UserModel(
-        uid: user.uid,
-        email: user.email ?? '',
-        name: name ?? user.displayName ?? 'User',
-        roles: ['buyer'],
-        createdAt: DateTime.now(),
-      );
-      await userDoc.set(newUser.toMap());
+      await userDoc.set({
+        'uid': user.uid,
+        'email': user.email ?? '',
+        'name': name ?? user.displayName ?? 'User',
+        'roles': [UserRoles.buyer],
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      final data = docSnapshot.data();
+      final roles = List<String>.from(data?['roles'] ?? const []);
+      if (!roles.contains(UserRoles.buyer)) {
+        await userDoc.update({
+          'roles': FieldValue.arrayUnion([UserRoles.buyer]),
+        });
+      }
     }
   }
 }

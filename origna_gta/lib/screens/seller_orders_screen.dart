@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/seller_orders_viewmodel.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 
@@ -15,7 +15,10 @@ class SellerOrdersScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     if (user == null) {
-      return Scaffold(appBar: AppBar(title: const Text('Seller Orders')), body: const Center(child: Text('Please log in')));
+      return Scaffold(
+        appBar: AppBar(title: const Text('Seller Orders')),
+        body: const Center(child: Text('Please log in')),
+      );
     }
 
     final ordersAsync = ref.watch(sellerOrdersProvider);
@@ -85,7 +88,10 @@ class _SellerOrderCard extends ConsumerWidget {
                     Text(DateFormat('MMM dd, yyyy').format(order.createdAt), style: const TextStyle(fontSize: 12, color: Colors.grey)),
                   ],
                 ),
-                Text('\$${sellerTotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B35))),
+                Text(
+                  '\$${sellerTotal.toStringAsFixed(2)}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
+                ),
               ],
             ),
             if (order.deliveryInfo.isNotEmpty) ...[
@@ -105,19 +111,23 @@ class _SellerOrderCard extends ConsumerWidget {
   Widget _buildAuthorizationBanner(BuildContext context, WidgetRef ref) {
     final actualShipping = order.deliveryInfo['actualShipping'];
     final approvalStatus = order.deliveryInfo['shippingApprovalStatus'] as String?;
-    final state = ref.watch(sellerOrdersViewModelProvider);
+    final isLoading = ref.watch(sellerOrdersViewModelProvider.select((state) => state.isLoading));
 
     return Container(
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-          color: Colors.orange.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.orange.withValues(alpha: 0.3))),
+        color: Colors.orange.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Payment Authorized', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+          const Text(
+            'Payment Authorized',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+          ),
           const SizedBox(height: 4),
           Text(
             actualShipping == null
@@ -130,46 +140,12 @@ class _SellerOrderCard extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: state.isLoading ? null : () => _showUpdateShippingDialog(context, ref),
+                onPressed: isLoading ? null : () => _showUpdateShippingDialog(context, ref),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
-                child: state.isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Confirm Shipping & Ship'),
+                child: isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Confirm Shipping & Ship'),
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  void _showUpdateShippingDialog(BuildContext context, WidgetRef ref) {
-    final estimatedShipping = order.shippingCost;
-    final shippingController = TextEditingController(text: estimatedShipping.toStringAsFixed(2));
-    final trackingController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Shipping'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: shippingController, decoration: const InputDecoration(labelText: 'Actual Cost'), keyboardType: TextInputType.number),
-            TextField(controller: trackingController, decoration: const InputDecoration(labelText: 'Tracking Number')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              final cost = double.tryParse(shippingController.text);
-              final tracking = trackingController.text.trim();
-              if (cost != null && tracking.isNotEmpty) {
-                Navigator.pop(context);
-                ref.read(sellerOrdersViewModelProvider.notifier).updateShippingAndCapture(order.orderId, cost, tracking);
-              }
-            },
-            child: const Text('Confirm'),
-          ),
         ],
       ),
     );
@@ -204,7 +180,10 @@ class _SellerOrderCard extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Mark as Shipped'),
-        content: TextField(controller: trackingController, decoration: const InputDecoration(labelText: 'Tracking Number')),
+        content: TextField(
+          controller: trackingController,
+          decoration: const InputDecoration(labelText: 'Tracking Number'),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
@@ -213,6 +192,47 @@ class _SellerOrderCard extends ConsumerWidget {
               if (tracking.isNotEmpty) {
                 Navigator.pop(context);
                 ref.read(sellerOrdersViewModelProvider.notifier).updateItemStatus(order.orderId, item.productId, 'shipped', trackingNumber: tracking);
+              }
+            },
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUpdateShippingDialog(BuildContext context, WidgetRef ref) {
+    final estimatedShipping = order.shippingCost;
+    final shippingController = TextEditingController(text: estimatedShipping.toStringAsFixed(2));
+    final trackingController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Shipping'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: shippingController,
+              decoration: const InputDecoration(labelText: 'Actual Cost'),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: trackingController,
+              decoration: const InputDecoration(labelText: 'Tracking Number'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final cost = double.tryParse(shippingController.text);
+              final tracking = trackingController.text.trim();
+              if (cost != null && tracking.isNotEmpty) {
+                Navigator.pop(context);
+                ref.read(sellerOrdersViewModelProvider.notifier).updateShippingAndCapture(order.orderId, cost, tracking);
               }
             },
             child: const Text('Confirm'),

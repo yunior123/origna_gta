@@ -44,7 +44,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                   DropdownMenuItem(value: 'all', child: Text('All')),
                   DropdownMenuItem(value: 'seller', child: Text('Sellers')),
                   DropdownMenuItem(value: 'admin', child: Text('Admins')),
-                  DropdownMenuItem(value: 'buyer', child: Text('Buyers')),
+                  DropdownMenuItem(value: UserRoles.buyer, child: Text('Buyers')),
                 ],
                 onChanged: (value) => setState(() => _roleFilter = value ?? 'all'),
               ),
@@ -70,7 +70,11 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                     final roles = data.roles;
 
                     final matchesSearch = _searchQuery.isEmpty || name.contains(_searchQuery) || email.contains(_searchQuery);
-                    final matchesRole = _roleFilter == 'all' || roles.contains(_roleFilter);
+                    final matchesRole = _roleFilter == 'all'
+                        ? true
+                        : _roleFilter == 'buyer'
+                        ? !roles.contains(UserRoles.seller) && !roles.contains(UserRoles.admin)
+                        : roles.contains(_roleFilter);
 
                     return matchesSearch && matchesRole;
                   }).toList();

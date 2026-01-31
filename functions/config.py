@@ -33,6 +33,7 @@ class DeliveryStatus:
 class UserRoles:
     ADMIN = 'admin'
     SELLER = 'seller'
+    BUYER = 'buyer'
 
 class Collections:
     USERS = 'users'

@@ -21,7 +21,12 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> deleteProduct(String productId) async {
-    await _firestore.collection('products').doc(productId).delete();
+    await _firestore.collection('products').doc(productId).update({
+      'isActive': false,
+      'deletedAt': FieldValue.serverTimestamp(),
+      'stockQuantity': 0,
+      'searchKeywords': [],
+    });
   }
 
   @override
@@ -75,10 +80,11 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Stream<List<ProductModel>> watchProducts({int limit = 100, String? sellerId}) {
-    Query query = _firestore.collection('products').orderBy('dateCreated', descending: true).limit(limit);
+    Query query = _firestore.collection('products');
     if (sellerId != null && sellerId.isNotEmpty) {
-      query = _firestore.collection('products').where('sellerId', isEqualTo: sellerId);
+      query = query.where('sellerId', isEqualTo: sellerId);
     }
+    query = query.orderBy('dateCreated', descending: true).limit(limit);
     return query.snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;

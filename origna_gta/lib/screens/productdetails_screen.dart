@@ -67,7 +67,6 @@ class ProductDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productAsync = ref.watch(productByIdProvider(productId));
-    final state = ref.watch(productDetailViewModelProvider);
     final viewModel = ref.read(productDetailViewModelProvider.notifier);
 
     return Scaffold(
@@ -123,34 +122,17 @@ class ProductDetailScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      if (imageUrls.length > 1)
-                        Positioned(
-                          bottom: 16,
-                          left: 0,
-                          right: 0,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(
-                              imageUrls.length,
-                              (index) => Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: state.currentImageIndex == index ? Colors.white : Colors.white.withValues(alpha: 0.5),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+                      Positioned(bottom: 16, left: 0, right: 0, child: _ImageDots(imageCount: imageUrls.length)),
                     ],
                   ),
                 ),
                 bottom: const PreferredSize(
                   preferredSize: Size.fromHeight(20),
                   child: DecoratedBox(
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
                   ),
                 ),
               ),
@@ -173,62 +155,18 @@ class ProductDetailScreen extends ConsumerWidget {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Text('\$${product.price.toStringAsFixed(2)}',
-                              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35))),
+                          Text(
+                            '\$${product.price.toStringAsFixed(2)}',
+                            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
+                          ),
                           const SizedBox(height: 24),
                           const Text('Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
                           Text(product.description, style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.5)),
                           const SizedBox(height: 24),
-                          Row(
-                            children: [
-                              const Text('Quantity:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                              const SizedBox(width: 16),
-                              Container(
-                                decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
-                                child: Row(
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.remove),
-                                      onPressed: state.quantity > 1 ? viewModel.decrementQuantity : null,
-                                    ),
-                                    Text('${state.quantity}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                    IconButton(
-                                      icon: const Icon(Icons.add),
-                                      onPressed: viewModel.incrementQuantity,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                          _QuantitySelector(viewModel: viewModel),
                           const SizedBox(height: 24),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 54,
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                final user = ref.read(currentUserProvider);
-                                if (user == null) {
-                                  showLoginPrompt(context);
-                                  return;
-                                }
-                                final messenger = ScaffoldMessenger.of(context);
-                                final success = await ref.read(cartControllerProvider).addToCart(productId, state.quantity);
-                                if (success) {
-                                  messenger.showSnackBar(const SnackBar(content: Text('Added to cart'), backgroundColor: Colors.green));
-                                } else {
-                                  messenger.showSnackBar(const SnackBar(content: Text('Failed to add to cart'), backgroundColor: Colors.red));
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFF6B35),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              child: const Text('Add to Cart', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
+                          _AddToCartButton(productId: productId),
                         ],
                       ),
                     ),
@@ -240,6 +178,101 @@ class ProductDetailScreen extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, s) => Center(child: Text('Error: $e')),
+      ),
+    );
+  }
+}
+
+class _ImageDots extends ConsumerWidget {
+  final int imageCount;
+
+  const _ImageDots({required this.imageCount});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (imageCount <= 1) return const SizedBox.shrink();
+
+    final currentIndex = ref.watch(productDetailViewModelProvider.select((state) => state.currentImageIndex));
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(
+        imageCount,
+        (index) => Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: currentIndex == index ? Colors.white : Colors.white.withValues(alpha: 0.5)),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuantitySelector extends ConsumerWidget {
+  final ProductDetailViewModel viewModel;
+
+  const _QuantitySelector({required this.viewModel});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final quantity = ref.watch(productDetailViewModelProvider.select((state) => state.quantity));
+
+    return Row(
+      children: [
+        const Text('Quantity:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(width: 16),
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[300]!),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              IconButton(icon: const Icon(Icons.remove), onPressed: quantity > 1 ? viewModel.decrementQuantity : null),
+              Text('$quantity', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              IconButton(icon: const Icon(Icons.add), onPressed: viewModel.incrementQuantity),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AddToCartButton extends ConsumerWidget {
+  final String productId;
+
+  const _AddToCartButton({required this.productId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final quantity = ref.watch(productDetailViewModelProvider.select((state) => state.quantity));
+
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton(
+        onPressed: () async {
+          final user = ref.read(currentUserProvider);
+          if (user == null) {
+            showLoginPrompt(context);
+            return;
+          }
+          final messenger = ScaffoldMessenger.of(context);
+          final success = await ref.read(cartControllerProvider).addToCart(productId, quantity);
+          if (success) {
+            messenger.showSnackBar(const SnackBar(content: Text('Added to cart'), backgroundColor: Colors.green));
+          } else {
+            messenger.showSnackBar(const SnackBar(content: Text('Failed to add to cart'), backgroundColor: Colors.red));
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFF6B35),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        child: const Text('Add to Cart', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       ),
     );
   }

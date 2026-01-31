@@ -317,6 +317,10 @@ class OrderModel {
   final int amount;
   final List<String> sellerIds;
   final String stripeSessionId;
+  final String shippingApprovalStatus;
+  final bool shippingApprovalRequired;
+  final double actualShipping;
+  final double pendingTotal;
   // Payout tracking fields
   final List<SellerPayout> sellerPayouts; // Per-seller payout breakdown
   final bool confirmedByClient; // Client confirmed receipt
@@ -342,6 +346,10 @@ class OrderModel {
     required this.currency,
     required this.sellerIds,
     required this.stripeSessionId,
+    this.shippingApprovalStatus = 'not_required',
+    this.shippingApprovalRequired = false,
+    this.actualShipping = 0.0,
+    this.pendingTotal = 0.0,
     String? paymentStatus,
     this.sellerPayouts = const [],
     this.confirmedByClient = false,
@@ -382,6 +390,13 @@ class OrderModel {
     final total = (data['total'] ?? 0).toDouble();
     final platformFeeTotal = (data['platformFeeTotal'] ?? (subtotal > 0 ? subtotal * 0.025 : total * 0.025)).toDouble();
 
+    final createdAtRaw = data['createdAt'];
+    final createdAt = createdAtRaw is Timestamp
+        ? createdAtRaw.toDate()
+        : createdAtRaw is DateTime
+        ? createdAtRaw
+        : DateTime.now();
+
     return OrderModel(
       orderId: data['orderId'] ?? doc.id,
       userId: data['userId'] ?? '',
@@ -390,7 +405,7 @@ class OrderModel {
       status: data['status'] ?? OrderStatus.pending.value,
       paymentStatus: data['paymentStatus'] ?? data['status'] ?? PaymentStatus.awaitingPayment.value,
       deliveryInfo: data['deliveryInfo'] ?? {},
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      createdAt: createdAt,
       customerId: data['customerId'] ?? '',
       customerEmail: data['customerEmail'] ?? '',
       taxes: Map<String, double>.from(data['taxes'] ?? {}),
@@ -400,6 +415,10 @@ class OrderModel {
       currency: data["currency"] ?? '',
       sellerIds: List<String>.from(data["sellerIds"] ?? []),
       stripeSessionId: data["stripeSessionId"] ?? "",
+      shippingApprovalStatus: data['shippingApprovalStatus'] ?? ShippingApprovalStatus.notRequired.value,
+      shippingApprovalRequired: data['shippingApprovalRequired'] ?? false,
+      actualShipping: (data['actualShipping'] ?? 0).toDouble(),
+      pendingTotal: (data['pendingTotal'] ?? 0).toDouble(),
       sellerPayouts: sellerPayouts,
       confirmedByClient: data['confirmedByClient'] ?? false,
       confirmedAt: (data['confirmedAt'] as Timestamp?)?.toDate(),
@@ -438,6 +457,13 @@ class OrderModel {
     final total = (data['total'] ?? 0).toDouble();
     final platformFeeTotal = (data['platformFeeTotal'] ?? (subtotal > 0 ? subtotal * 0.025 : total * 0.025)).toDouble();
 
+    final createdAtRaw = data['createdAt'];
+    final createdAt = createdAtRaw is Timestamp
+        ? createdAtRaw.toDate()
+        : createdAtRaw is DateTime
+        ? createdAtRaw
+        : DateTime.now();
+
     return OrderModel(
       orderId: data['orderId'] ?? '',
       userId: data['userId'] ?? '',
@@ -446,7 +472,7 @@ class OrderModel {
       status: data['status'] ?? OrderStatus.pending.value,
       paymentStatus: data['paymentStatus'] ?? data['status'] ?? PaymentStatus.awaitingPayment.value,
       deliveryInfo: Map<String, dynamic>.from(data['deliveryInfo'] ?? {}),
-      createdAt: (data['createdAt'] is Timestamp) ? (data['createdAt'] as Timestamp).toDate() : DateTime.now(),
+      createdAt: createdAt,
       customerId: data['customerId'] ?? '',
       customerEmail: data['customerEmail'] ?? '',
       taxes: Map<String, double>.from(data['taxes'] ?? {}),
@@ -456,6 +482,10 @@ class OrderModel {
       currency: data['currency'] ?? 'cad',
       sellerIds: List<String>.from(data['sellerIds'] ?? []),
       stripeSessionId: data['stripeSessionId'] ?? '',
+      shippingApprovalStatus: data['shippingApprovalStatus'] ?? ShippingApprovalStatus.notRequired.value,
+      shippingApprovalRequired: data['shippingApprovalRequired'] ?? false,
+      actualShipping: (data['actualShipping'] ?? 0).toDouble(),
+      pendingTotal: (data['pendingTotal'] ?? 0).toDouble(),
       sellerPayouts: sellerPayouts,
       confirmedByClient: data['confirmedByClient'] ?? false,
       confirmedAt: (data['confirmedAt'] is Timestamp?) ? (data['confirmedAt'] as Timestamp?)?.toDate() : null,
@@ -492,6 +522,10 @@ class OrderModel {
       "amount": amount,
       "sellerIds": sellerIds,
       'sellerPayouts': sellerPayouts.map((p) => p.toMap()).toList(),
+      'shippingApprovalStatus': shippingApprovalStatus,
+      'shippingApprovalRequired': shippingApprovalRequired,
+      'actualShipping': actualShipping,
+      'pendingTotal': pendingTotal,
       'confirmedByClient': confirmedByClient,
       if (confirmedAt != null) 'confirmedAt': Timestamp.fromDate(confirmedAt!),
       'platformFeeTotal': platformFeeTotal,
@@ -536,6 +570,8 @@ class ProductModel {
   final bool isPerishable; // Food, flowers, etc. - affects same-day delivery logic
   final int minimumOrderQuantity;
   final bool freeShipping;
+  final bool isActive;
+  final Timestamp? deletedAt;
 
   ProductModel({
     required this.id,
@@ -562,6 +598,8 @@ class ProductModel {
     this.isPerishable = false,
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
+    this.isActive = true,
+    this.deletedAt,
   }) : deliveryOptions = deliveryOptions ?? SellerDeliveryOption.defaultOptions();
 
   factory ProductModel.fromDocument(DocumentSnapshot doc) {
@@ -605,8 +643,10 @@ class ProductModel {
       taxCode: map['taxCode']?.toString(),
       deliveryOptions: parsedDeliveryOptions,
       isPerishable: map['isPerishable'] ?? false,
-      minimumOrderQuantity: _parseInt(map['minimumOrderQuantity']),
+      minimumOrderQuantity: _parseIntOr(map['minimumOrderQuantity'], defaultValue: 1),
       freeShipping: map['freeShipping'] ?? false,
+      isActive: map['isActive'] ?? true,
+      deletedAt: map['deletedAt'] as Timestamp?,
     );
   }
 
@@ -642,6 +682,8 @@ class ProductModel {
       'isPerishable': isPerishable,
       'minimumOrderQuantity': minimumOrderQuantity,
       'freeShipping': freeShipping,
+      'isActive': isActive,
+      if (deletedAt != null) 'deletedAt': deletedAt,
     };
   }
 
@@ -663,6 +705,12 @@ class ProductModel {
     if (value == null) return 0;
     if (value is int) return value;
     return int.tryParse(value.toString()) ?? 0;
+  }
+
+  static int _parseIntOr(dynamic value, {required int defaultValue}) {
+    if (value == null) return defaultValue;
+    if (value is int) return value;
+    return int.tryParse(value.toString()) ?? defaultValue;
   }
 
   static List<String> _parseStringList(dynamic value) {

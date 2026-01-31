@@ -109,7 +109,10 @@ class _SellerCard extends ConsumerWidget {
                 ),
                 if (stripeAccountId != null) ...[
                   const SizedBox(width: 8),
-                  Text('(${stripeAccountId.substring(0, 12)}...)', style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                  Text(
+                    '(${stripeAccountId.length > 12 ? stripeAccountId.substring(0, 12) : stripeAccountId}...)',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                  ),
                 ],
               ],
             ),

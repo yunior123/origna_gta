@@ -8,6 +8,7 @@ This repo contains:
 - MVVM in Flutter
 - Functions own payment/shipping validation
 - Idempotent payment and webhook processing
+- Product ratings are submitted via Cloud Function (server-validated)
 
 ## End-to-end flow (payments)
 ```mermaid
@@ -31,6 +32,9 @@ sequenceDiagram
 
 ## Quick commands
 - Run all tests: scripts/run_all_tests.sh
+- Deploy Firestore rules: scripts/deploy_rules.sh
+- Install pre-push hook (deploys rules): scripts/install_git_hooks.sh
+- Firestore indexes: firebase deploy --only firestore:indexes
 - Flutter analyze: (cd origna_gta) flutter analyze
 - Flutter tests: (cd origna_gta) flutter test
 - Functions tests: (cd functions) pytest

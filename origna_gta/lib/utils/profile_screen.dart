@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/screens/addressmanagement_screen.dart';
 import 'package:origna_gta/admin/admin_panel_screen.dart';
-import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/screens/addressmanagement_screen.dart';
 import 'package:origna_gta/screens/favorites_screen.dart';
 import 'package:origna_gta/screens/orders_screen.dart';
 import 'package:origna_gta/screens/seller_orders_screen.dart';
 import 'package:origna_gta/screens/seller_registration_screen.dart';
 import 'package:origna_gta/screens/terms_screen.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
-import '../features/auth/auth_provider.dart';
-import '../features/profile/profile_viewmodel.dart';
+import '../../features/auth/auth_provider.dart';
+import '../../features/profile/profile_viewmodel.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -23,6 +23,14 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfileAsync = ref.watch(userProfileProvider);
     final viewModel = ref.read(profileViewModelProvider.notifier);
+
+    ref.listen(profileViewModelProvider, (previous, next) {
+      if (next.isDeleted && previous?.isDeleted != true) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account deleted'), backgroundColor: Colors.green));
+      } else if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: Colors.red));
+      }
+    });
 
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'Settings & Profile'),
@@ -203,21 +211,21 @@ class ProfileScreen extends ConsumerWidget {
 
   void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
     final confirmController = TextEditingController();
+    bool listenerAttached = false;
     showDialog(
       context: context,
       builder: (context) => Consumer(
         builder: (context, ref, child) {
           final profileState = ref.watch(profileViewModelProvider);
           final viewModel = ref.read(profileViewModelProvider.notifier);
-
-          ref.listen(profileViewModelProvider, (previous, next) {
-            if (next.isDeleted) {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account deleted'), backgroundColor: Colors.green));
-            } else if (next.errorMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: Colors.red));
-            }
-          });
+          if (!listenerAttached) {
+            ref.listen(profileViewModelProvider, (previous, next) {
+              if (next.isDeleted && previous?.isDeleted != true) {
+                Navigator.pop(context);
+              }
+            });
+            listenerAttached = true;
+          }
 
           return AlertDialog(
             title: const Text('Delete Account'),

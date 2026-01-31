@@ -5,8 +5,8 @@ import 'package:origna_gta/screens/productaddimages_screen.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 
-import '../features/products/add_product_state.dart';
-import '../features/products/add_product_viewmodel.dart';
+import '../../features/products/add_product_state.dart';
+import '../../features/products/add_product_viewmodel.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
   const AddProductScreen({super.key});

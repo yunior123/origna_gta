@@ -11,6 +11,8 @@ PROJECT
 OrignaGta — Canada-only e-commerce marketplace.
 Scale target: 100M+ users/year.
 Single developer project optimized for maintainability, cost, and safety.
+Always update tests, database rules, indexes, sh deploy file, schema file, backend code and readme when changing code. Keep everything in sync. A nice project with good practices and solid architecture and folders and files structure.
+We start from empty database and no users for production.
 
 TECH STACK
 Frontend: Flutter (Web, Android, iOS)

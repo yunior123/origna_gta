@@ -1672,7 +1672,7 @@ def get_r2_presigned_url(req: https_fn.CallableRequest) -> Any:
 @https_fn.on_call()
 def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
-    Delete a product and clean up from all carts and favorites.
+    Soft-delete a product (scalable).
     Only the product owner or an admin can delete.
     """
     # Verify authentication
@@ -1722,34 +1722,19 @@ def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
 
         print(f"  ✓ Authorization verified (admin={is_admin}, owner={seller_id == user_id})")
 
-        # 1. Remove from all carts using collectionGroup query
-        print(f"  🛒 Removing from carts...")
-        cart_items = db.collection_group(Collections.CART).where('productId', '==', product_id).get()
-        cart_count = 0
-        for cart_item in cart_items:
-            cart_item.reference.delete()
-            cart_count += 1
-        print(f"    ✓ Removed from {cart_count} carts")
-
-        # 2. Remove from all favorites using collectionGroup query
-        print(f"  ❤️ Removing from favorites...")
-        fav_items = db.collection_group(Collections.FAVORITES).where('productId', '==', product_id).get()
-        fav_count = 0
-        for fav_item in fav_items:
-            fav_item.reference.delete()
-            fav_count += 1
-        print(f"    ✓ Removed from {fav_count} favorites")
-
-        # 3. Delete the product document
-        print(f"  📦 Deleting product document...")
-        product_ref.delete()
-        print(f"  ✓ Product deleted successfully")
+        # Soft delete (no collectionGroup scans)
+        print(f"  📦 Soft-deleting product document...")
+        product_ref.update({
+            'isActive': False,
+            'deletedAt': firestore.SERVER_TIMESTAMP,
+            'stockQuantity': 0,
+            'searchKeywords': [],
+        })
+        print(f"  ✓ Product soft-deleted successfully")
 
         return {
             "success": True,
-            "message": "Product deleted successfully",
-            "cleanedCarts": cart_count,
-            "cleanedFavorites": fav_count,
+            "message": "Product soft-deleted successfully",
         }
 
     except https_fn.HttpsError:
@@ -2988,6 +2973,226 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError(
             code=https_fn.FunctionsErrorCode.INTERNAL,
             message=f"Failed to capture payment: {str(e)}"
+        )
+
+
+@https_fn.on_call()
+def update_item_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Seller updates delivery status for their own order items.
+    Allowed transitions: pending -> shipped, shipped -> delivered.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    seller_id = req.auth.uid
+    order_id = req.data.get('orderId')
+    product_id = req.data.get('productId')
+    status = req.data.get('status')
+    tracking_number = req.data.get('trackingNumber')
+
+    if not order_id or not product_id or not status:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="orderId, productId and status are required"
+        )
+
+    if status not in [DeliveryStatus.SHIPPED, DeliveryStatus.DELIVERED]:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="Invalid status"
+        )
+
+    try:
+        order_ref = db.collection(Collections.ORDERS).document(order_id)
+        order_doc = order_ref.get()
+
+        if not order_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Order not found"
+            )
+
+        order_data = order_doc.to_dict()
+        payment_status = order_data.get('paymentStatus')
+        if payment_status not in ['authorized', PaymentStatus.PAID]:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message="Order is not in a shippable state"
+            )
+
+        items = order_data.get('items', [])
+        item_index = next((i for i, item in enumerate(items) if item.get('productId') == product_id), None)
+        if item_index is None:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Item not found"
+            )
+
+        item = items[item_index]
+        if item.get('sellerId') != seller_id:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+                message="You don't have permission to update this item"
+            )
+
+        current_status = item.get('deliveryStatus', DeliveryStatus.PENDING)
+        if status == DeliveryStatus.SHIPPED and current_status != DeliveryStatus.PENDING:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message="Item must be pending to mark as shipped"
+            )
+
+        if status == DeliveryStatus.DELIVERED and current_status != DeliveryStatus.SHIPPED:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message="Item must be shipped to mark as delivered"
+            )
+
+        item['deliveryStatus'] = status
+        if tracking_number and status == DeliveryStatus.SHIPPED:
+            item['trackingNumber'] = tracking_number
+
+        items[item_index] = item
+        order_ref.update({
+            'items': items,
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+        })
+
+        return {
+            "success": True,
+            "message": f"Item marked as {status}"
+        }
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Error updating item status: {str(e)}")
+        print(traceback.format_exc())
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to update item status: {str(e)}"
+        )
+
+
+@https_fn.on_call()
+def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Buyer submits rating for a delivered item.
+    Updates product rating and order ratings atomically.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    user_id = req.auth.uid
+    order_id = req.data.get('orderId')
+    product_id = req.data.get('productId')
+    rating = req.data.get('rating')
+
+    if not order_id or not product_id or rating is None:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="orderId, productId and rating are required"
+        )
+
+    if not isinstance(rating, int) or rating < 1 or rating > 5:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="rating must be an integer between 1 and 5"
+        )
+
+    order_ref = db.collection(Collections.ORDERS).document(order_id)
+    product_ref = db.collection(Collections.PRODUCTS).document(product_id)
+
+    @firestore.transactional
+    def _submit_rating_txn(transaction):
+        order_doc = order_ref.get(transaction=transaction)
+        if not order_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Order not found"
+            )
+
+        product_doc = product_ref.get(transaction=transaction)
+        if not product_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Product not found"
+            )
+
+        order_data = order_doc.to_dict() or {}
+        if order_data.get('userId') != user_id:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+                message="Not authorized to rate this order"
+            )
+
+        if order_data.get('paymentStatus') != PaymentStatus.PAID:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message="Order is not paid"
+            )
+
+        items = order_data.get('items', [])
+        matching_item = next((item for item in items if item.get('productId') == product_id), None)
+        if not matching_item:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message="Product not found in order"
+            )
+
+        if matching_item.get('deliveryStatus') != DeliveryStatus.DELIVERED:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message="Item not delivered"
+            )
+
+        ratings_map = order_data.get('ratings', {}) or {}
+        if str(product_id) in ratings_map:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.ALREADY_EXISTS,
+                message="Product already rated"
+            )
+
+        product_data = product_doc.to_dict() or {}
+        current_rating = float(product_data.get('rating', 0.0))
+        current_count = int(product_data.get('ratingCount', 0))
+        new_count = current_count + 1
+        new_rating = ((current_rating * current_count) + rating) / new_count
+
+        transaction.update(product_ref, {
+            'rating': new_rating,
+            'ratingCount': new_count,
+        })
+
+        transaction.update(order_ref, {
+            f'ratings.{product_id}': {
+                'rating': rating,
+                'ratedAt': firestore.SERVER_TIMESTAMP,
+            },
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+        })
+
+    try:
+        _submit_rating_txn(db.transaction())
+        return {
+            "success": True,
+            "message": "Rating submitted"
+        }
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Error submitting rating: {str(e)}")
+        print(traceback.format_exc())
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to submit rating: {str(e)}"
         )
 
 

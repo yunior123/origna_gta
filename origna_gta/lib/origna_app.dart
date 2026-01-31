@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/screens/authwrapper_screen.dart';
+import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/app/seller_account_status_viewmodel.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
+import 'package:origna_gta/screens/authwrapper_screen.dart';
+import 'package:origna_gta/screens/login_screen.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
 import 'package:origna_gta/screens/seller_registration_screen.dart';
 
@@ -14,24 +16,38 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   if (uri != null && uri.path == '/payment-success') {
     final sessionId = uri.queryParameters['session_id'];
     if (sessionId != null && sessionId.isNotEmpty) {
-      return [MaterialPageRoute(builder: (_) => const AuthWrapper()), MaterialPageRoute(builder: (_) => _OrderSuccessGate(sessionId: sessionId))];
+      return [
+        MaterialPageRoute(builder: (_) => const AuthWrapper()),
+        MaterialPageRoute(
+          builder: (_) => _AuthRequiredGate(child: _OrderSuccessGate(sessionId: sessionId)),
+        ),
+      ];
     }
     return [MaterialPageRoute(builder: (_) => const AuthWrapper()), MaterialPageRoute(builder: (_) => const _ErrorScreen(message: 'Invalid payment link'))];
   }
 
   // Handle payment cancellation redirect
   if (uri != null && uri.path == '/payment-cancel') {
-    return [MaterialPageRoute(builder: (_) => const AuthWrapper()), MaterialPageRoute(builder: (_) => const _PaymentCanceledScreen())];
+    return [
+      MaterialPageRoute(builder: (_) => const AuthWrapper()),
+      MaterialPageRoute(builder: (_) => const _AuthRequiredGate(child: _PaymentCanceledScreen())),
+    ];
   }
 
   // Handle seller registration return from Stripe Connect
   if (uri != null && uri.path == '/seller/return') {
-    return [MaterialPageRoute(builder: (_) => const AuthWrapper()), MaterialPageRoute(builder: (_) => const _SellerSetupCompleteScreen())];
+    return [
+      MaterialPageRoute(builder: (_) => const AuthWrapper()),
+      MaterialPageRoute(builder: (_) => const _AuthRequiredGate(child: _SellerSetupCompleteScreen())),
+    ];
   }
 
   // Handle seller registration refresh (user needs to retry)
   if (uri != null && uri.path == '/seller/refresh') {
-    return [MaterialPageRoute(builder: (_) => const AuthWrapper()), MaterialPageRoute(builder: (_) => const _SellerSetupRefreshScreen())];
+    return [
+      MaterialPageRoute(builder: (_) => const AuthWrapper()),
+      MaterialPageRoute(builder: (_) => const _AuthRequiredGate(child: _SellerSetupRefreshScreen())),
+    ];
   }
 
   // Default: show AuthWrapper (home)
@@ -51,22 +67,24 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
       return MaterialPageRoute(builder: (_) => const _ErrorScreen(message: 'Invalid payment link'));
     }
 
-    return MaterialPageRoute(builder: (_) => _OrderSuccessGate(sessionId: sessionId));
+    return MaterialPageRoute(
+      builder: (_) => _AuthRequiredGate(child: _OrderSuccessGate(sessionId: sessionId)),
+    );
   }
 
   // Handle payment cancellation deep link
   if (uri.path == '/payment-cancel') {
-    return MaterialPageRoute(builder: (_) => const _PaymentCanceledScreen());
+    return MaterialPageRoute(builder: (_) => const _AuthRequiredGate(child: _PaymentCanceledScreen()));
   }
 
   // Handle seller registration return
   if (uri.path == '/seller/return') {
-    return MaterialPageRoute(builder: (_) => const _SellerSetupCompleteScreen());
+    return MaterialPageRoute(builder: (_) => const _AuthRequiredGate(child: _SellerSetupCompleteScreen()));
   }
 
   // Handle seller registration refresh
   if (uri.path == '/seller/refresh') {
-    return MaterialPageRoute(builder: (_) => const _SellerSetupRefreshScreen());
+    return MaterialPageRoute(builder: (_) => const _AuthRequiredGate(child: _SellerSetupRefreshScreen()));
   }
 
   return null;
@@ -142,6 +160,55 @@ class _ErrorScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AuthRequiredGate extends ConsumerWidget {
+  final Widget child;
+
+  const _AuthRequiredGate({required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
+
+    return authState.when(
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (error, _) => _ErrorScreen(message: 'Authentication error: $error'),
+      data: (user) {
+        if (user == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Sign In Required')),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.lock_outline, size: 64, color: Colors.orange),
+                    const SizedBox(height: 16),
+                    const Text('Please sign in to continue', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen())),
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+                        child: const Text('Sign In'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst), child: const Text('Go Home')),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+        return child;
+      },
     );
   }
 }

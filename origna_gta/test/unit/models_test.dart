@@ -246,6 +246,7 @@ void main() {
       expect(product.weightKg, 0.5);
       expect(product.isLocalDeliveryOnly, false);
       expect(product.estimatedShipDays, 3);
+      expect(product.isActive, true);
     });
 
     test('fromMap handles missing optional fields', () {
@@ -260,6 +261,7 @@ void main() {
       expect(product.ratingCount, 0);
       expect(product.stockQuantity, 0);
       expect(product.weightKg, null);
+      expect(product.isActive, true);
     });
 
     test('toMap returns correct map', () {
@@ -285,6 +287,7 @@ void main() {
       expect(map['price'], 29.99);
       expect(map['stockQuantity'], 50);
       expect(map['rating'], 4.5);
+      expect(map['isActive'], true);
     });
 
     test('price parsing handles various numeric types', () {
