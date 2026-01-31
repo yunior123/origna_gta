@@ -10,7 +10,6 @@ import 'package:origna_gta/screens/terms_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import '../features/auth/auth_provider.dart';

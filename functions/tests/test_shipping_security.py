@@ -112,19 +112,16 @@ class TestPaymentSecurity(unittest.TestCase):
         # Mock Stripe Return
         main.stripe.checkout.Session.create.return_value = MagicMock(id="sess_1", url="http://pay")
 
-        # Execute
-        create_checkout_session(req)
-
-        # CHECK STRIPE CALL
-        args, kwargs = main.stripe.checkout.Session.create.call_args
-        line_items = kwargs['line_items']
+        # Execute - Should REJECT the tampered price
+        with self.assertRaises(MockHttpsError) as context:
+            create_checkout_session(req)
         
-        # Verify line item 0 is the product
-        product_item = line_items[0]
-        unit_amount = product_item['price_data']['unit_amount']
+        # Verify the error message is generic (doesn't expose DB price)
+        self.assertIn("Price mismatch detected", context.exception.message)
+        self.assertIn("Tesla Cybertruck", context.exception.message)
         
-        # Should be 100000 * 100 cents = 10,000,000
-        self.assertEqual(unit_amount, 10000000, "Should use DB price (100k), not request price (1)")
+        # Verify Stripe was NOT called (transaction rejected before payment)
+        main.stripe.checkout.Session.create.assert_not_called()
 
     def test_server_side_shipping_calculation(self):
         """

@@ -382,7 +382,12 @@ class TestPaymentFlow(unittest.TestCase):
         mock_product_doc.exists = True
         mock_product_doc.to_dict.return_value = {
             "name": "Test Product",
-            "stockQuantity": 10
+            "price": 50.00,
+            "stockQuantity": 10,
+            "sellerId": "seller_1",
+            "sellerAddress": {"state": "ON", "longitude": -79.0, "latitude": 43.0},
+            "imageUrls": ["http://img.com/1.jpg"],
+            "categoryId": 1
         }
         
         # When transaction.get() is called with a ref, return the product doc
