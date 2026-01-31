@@ -1,0 +1,224 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/features/orders/orders_provider.dart';
+import 'package:origna_gta/features/orders/seller_orders_viewmodel.dart';
+import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/widgets/custom_app_bar.dart';
+
+class SellerOrdersScreen extends ConsumerWidget {
+  const SellerOrdersScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    if (user == null) {
+      return Scaffold(appBar: AppBar(title: const Text('Seller Orders')), body: const Center(child: Text('Please log in')));
+    }
+
+    final ordersAsync = ref.watch(sellerOrdersProvider);
+
+    return Scaffold(
+      appBar: AppBarFactory.simple(title: 'Seller Orders'),
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: ordersAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(child: Text('Error: $error')),
+        data: (orders) {
+          if (orders.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.store_outlined, size: 80, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text('No seller orders yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: orders.length,
+            itemBuilder: (context, index) {
+              final order = orders[index];
+              return _SellerOrderCard(order: order, sellerId: user.uid);
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SellerOrderCard extends ConsumerWidget {
+  final OrderModel order;
+  final String sellerId;
+
+  const _SellerOrderCard({required this.order, required this.sellerId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sellerItems = order.items.where((item) => item.sellerId == sellerId).toList();
+    if (sellerItems.isEmpty) return const SizedBox.shrink();
+
+    final sellerTotal = sellerItems.fold<double>(0.0, (acc, item) => acc + (item.price * item.quantity));
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Order #${order.orderId.substring(0, 8).toUpperCase()}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(DateFormat('MMM dd, yyyy').format(order.createdAt), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                ),
+                Text('\$${sellerTotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B35))),
+              ],
+            ),
+            if (order.deliveryInfo.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(order.deliveryInfo['formattedAddress'] ?? '', style: const TextStyle(fontSize: 12)),
+            ],
+            const Divider(height: 24),
+            if (order.status == PaymentStatus.authorized.value) _buildAuthorizationBanner(context, ref),
+            const Text('Your Items', style: TextStyle(fontWeight: FontWeight.bold)),
+            ...sellerItems.map((item) => _buildSellerItem(context, ref, item)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAuthorizationBanner(BuildContext context, WidgetRef ref) {
+    final actualShipping = order.deliveryInfo['actualShipping'];
+    final approvalStatus = order.deliveryInfo['shippingApprovalStatus'] as String?;
+    final state = ref.watch(sellerOrdersViewModelProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.orange.withValues(alpha: 0.3))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Payment Authorized', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+          const SizedBox(height: 4),
+          Text(
+            actualShipping == null
+                ? 'Enter actual shipping cost to capture payment.'
+                : (approvalStatus == ShippingApprovalStatus.pending.value ? 'Waiting for buyer approval.' : 'Ready to capture.'),
+            style: const TextStyle(fontSize: 11),
+          ),
+          if (actualShipping == null) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: state.isLoading ? null : () => _showUpdateShippingDialog(context, ref),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+                child: state.isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Confirm Shipping & Ship'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showUpdateShippingDialog(BuildContext context, WidgetRef ref) {
+    final estimatedShipping = order.shippingCost;
+    final shippingController = TextEditingController(text: estimatedShipping.toStringAsFixed(2));
+    final trackingController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Shipping'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: shippingController, decoration: const InputDecoration(labelText: 'Actual Cost'), keyboardType: TextInputType.number),
+            TextField(controller: trackingController, decoration: const InputDecoration(labelText: 'Tracking Number')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final cost = double.tryParse(shippingController.text);
+              final tracking = trackingController.text.trim();
+              if (cost != null && tracking.isNotEmpty) {
+                Navigator.pop(context);
+                ref.read(sellerOrdersViewModelProvider.notifier).updateShippingAndCapture(order.orderId, cost, tracking);
+              }
+            },
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSellerItem(BuildContext context, WidgetRef ref, CartItemDetailModel item) {
+    final status = DeliveryStatus.fromValue(item.deliveryStatus);
+    final isAuthorized = order.status == PaymentStatus.authorized.value;
+
+    return ListTile(
+      leading: Image.network(item.imageUrls.first, width: 40, height: 40, fit: BoxFit.cover, errorBuilder: (_, _, _) => const Icon(Icons.image)),
+      title: Text(item.name, style: const TextStyle(fontSize: 14)),
+      subtitle: Text('Qty: ${item.quantity} • ${status.displayText}', style: const TextStyle(fontSize: 12)),
+      trailing: !isAuthorized && status != DeliveryStatus.delivered
+          ? IconButton(
+              icon: Icon(status == DeliveryStatus.shipped ? Icons.check_circle : Icons.local_shipping),
+              onPressed: () {
+                if (status == DeliveryStatus.pending) {
+                  _showMarkAsShippedDialog(context, ref, item);
+                } else {
+                  ref.read(sellerOrdersViewModelProvider.notifier).updateItemStatus(order.orderId, item.productId, 'delivered');
+                }
+              },
+            )
+          : null,
+    );
+  }
+
+  void _showMarkAsShippedDialog(BuildContext context, WidgetRef ref, CartItemDetailModel item) {
+    final trackingController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mark as Shipped'),
+        content: TextField(controller: trackingController, decoration: const InputDecoration(labelText: 'Tracking Number')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final tracking = trackingController.text.trim();
+              if (tracking.isNotEmpty) {
+                Navigator.pop(context);
+                ref.read(sellerOrdersViewModelProvider.notifier).updateItemStatus(order.orderId, item.productId, 'shipped', trackingNumber: tracking);
+              }
+            },
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+  }
+}

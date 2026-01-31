@@ -29,67 +29,30 @@ from enum import Enum
 import requests
 
 # ============================================================================
-# CONSTANTS - Must match Flutter constants.dart
+# MODULAR IMPORTS
 # ============================================================================
 
-class OrderStatus:
-    PENDING = 'pending'
-    CONFIRMED = 'confirmed'
-    PROCESSING = 'processing'
-    SHIPPED = 'shipped'
-    DELIVERED = 'delivered'
-    CANCELLED = 'cancelled'
-    FAILED = 'failed'
-    EXPIRED = 'expired'
-    REFUNDED = 'refunded'
-    PARTIALLY_REFUNDED = 'partially_refunded'
+from config import (
+    OrderStatus, PaymentStatus, DeliveryStatus, UserRoles, Collections,
+    PayoutStatus, CaptureMethod, ShippingApprovalStatus,
+    PLATFORM_FEE_PERCENT, AUTO_CONFIRM_DAYS, AUTHORIZATION_VALID_DAYS,
+    SHIPPING_APPROVAL_THRESHOLD, IS_EMULATOR, STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET, MAILJET_API_KEY, MAILJET_SECRET_KEY,
+    GEOAPIFY_API_KEY, SELLER_EMAIL, CATEGORY_TAX_CODE_MAP
+)
 
-class PaymentStatus:
-    AWAITING_PAYMENT = 'awaiting_payment'
-    PROCESSING = 'processing'
-    PAID = 'paid'
-    PAYMENT_FAILED = 'payment_failed'
-    REFUNDED = 'refunded'
-    SESSION_EXPIRED = 'session_expired'
+from email_service import (
+    get_order_confirmation_email, get_seller_notification_email, send_email
+)
 
-class DeliveryStatus:
-    PENDING = 'pending'
-    SHIPPED = 'shipped'
-    DELIVERED = 'delivered'
+from shipping_service import (
+    get_tax_rate, calculate_shipping_cost
+)
 
-class UserRoles:
-    ADMIN = 'admin'
-    SELLER = 'seller'
-
-class Collections:
-    USERS = 'users'
-    PRODUCTS = 'products'
-    ORDERS = 'orders'
-    CART = 'cart'
-    FAVORITES = 'favorites'
-
-class PayoutStatus:
-    PENDING = 'pending'
-    PROCESSING = 'processing'
-    COMPLETED = 'completed'
-    PARTIAL = 'partial'
-    FAILED = 'failed'
-
-class CaptureMethod:
-    MANUAL = 'manual'
-    AUTOMATIC = 'automatic'
-
-class ShippingApprovalStatus:
-    NOT_REQUIRED = 'not_required'
-    PENDING = 'pending'
-    APPROVED = 'approved'
-    REJECTED = 'rejected'
-
-# Platform configuration
-PLATFORM_FEE_PERCENT = 0.025  # 2.5% platform fee
-AUTO_CONFIRM_DAYS = 14  # Auto-confirm orders after 14 days
-AUTHORIZATION_VALID_DAYS = 7  # Stripe authorization valid for 7 days
-SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20% - require buyer approval if actual shipping exceeds estimate by this much
+from utils import (
+    create_success_response, create_error_response, sanitize_email,
+    validate_item, validate_order_data, log_webhook_to_database
+)
 
 # ============================================================================
 # FIREBASE INITIALIZATION
@@ -112,26 +75,11 @@ db = firestore.client()
 # CONFIGURATION
 # ============================================================================
 
-IS_EMULATOR = os.environ.get('FUNCTIONS_EMULATOR') == 'true'
-
 # Stripe keys
+# IS_EMULATOR, STRIPE_SECRET_KEY, etc. are now imported from config.py
 if IS_EMULATOR:
-    STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "sk_test_...")
-    STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "STRIPE_WEBHOOK_SECRET_REDACTED...")
-    MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_API_KEY", "")
-    MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_SECRET_KEY", "")
-    GEOAPIFY_API_KEY = os.environ.get("GEOAPIFY_API_KEY", "")
-    SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "seller@orignagta.com")
     print("🧪 Running in EMULATOR mode")
 else:
-    from firebase_functions import params
-    
-    STRIPE_SECRET_KEY = params.SecretParam("STRIPE_SECRET_KEY").value
-    STRIPE_WEBHOOK_SECRET = params.SecretParam("STRIPE_WEBHOOK_SECRET").value
-    MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_API_KEY").value
-    MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_SECRET_KEY").value
-    GEOAPIFY_API_KEY = params.SecretParam("GEOAPIFY_API_KEY").value
-    SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "seller@orignagta.com")
     print("🚀 Running in PRODUCTION mode")
 
 stripe.api_key = STRIPE_SECRET_KEY
@@ -159,551 +107,9 @@ else:
     cors_config = cors_config_p
 
 # ============================================================================
-# EMAIL TEMPLATES
-# ============================================================================
-
-def get_order_confirmation_email(order_data: Dict[str, Any]) -> str:
-    """Generate HTML email for customer order confirmation"""
-    items_html = ""
-    for item in order_data.get('items', []):
-        items_html += f"""
-        <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #eee;">
-                {item.get('name', 'Product')}
-            </td>
-            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">
-                {item.get('quantity', 1)}
-            </td>
-            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
-                ${(item.get('price', 0) * item.get('quantity', 1)):.2f}
-            </td>
-        </tr>
-        """
-    
-    delivery_info = order_data.get('deliveryInfo', {})
-    
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Order Confirmed!</h1>
-            <p style="color: white; margin: 10px 0 0 0;">Thank you for your purchase</p>
-        </div>
-        
-        <div style="background: #ffffff; padding: 30px; border: 1px solid #eee; border-top: none;">
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <h2 style="margin: 0 0 10px 0; color: #FF6B35;">Order Details</h2>
-                <p style="margin: 5px 0;"><strong>Order ID:</strong> {order_data.get('orderId', 'N/A')}</p>
-                <p style="margin: 5px 0;"><strong>Order Date:</strong> {datetime.now().strftime('%B %d, %Y')}</p>
-            </div>
-            
-            <h3 style="color: #333; border-bottom: 2px solid #FF6B35; padding-bottom: 10px;">Items Ordered</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                <thead>
-                    <tr style="background: #f8f9fa;">
-                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Item</th>
-                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Qty</th>
-                        <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Price</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items_html}
-                    <tr style="font-weight: bold; background: #f8f9fa;">
-                        <td colspan="2" style="padding: 12px; text-align: right; border-top: 2px solid #ddd;">Total:</td>
-                        <td style="padding: 12px; text-align: right; color: #FF6B35; font-size: 18px; border-top: 2px solid #ddd;">${order_data.get('total', 0):.2f} CAD</td>
-                    </tr>
-                </tbody>
-            </table>
-            
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <h3 style="margin: 0 0 10px 0; color: #333;">Delivery Address</h3>
-                <p style="margin: 0; line-height: 1.8;">
-                    {delivery_info.get('formattedAddress', 'N/A')}<br>
-                    {f"Phone: {delivery_info.get('phoneNumber', 'N/A')}" if delivery_info.get('phoneNumber') else ''}
-                </p>
-            </div>
-            
-            <div style="text-align: center; margin-top: 30px;">
-                <a href="https://orignagta.ca/orders" style="background: #FF6B35; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Track Your Order</a>
-            </div>
-        </div>
-        
-        <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-            <p>Questions? Contact us at support@orignagta.com</p>
-            <p>© 2025 Origna GTA. All rights reserved.</p>
-        </div>
-    </body>
-    </html>
-    """
-
-
-def get_seller_notification_email(order_data: Dict[str, Any]) -> str:
-    """Generate HTML email for seller notification"""
-    items_html = ""
-    for item in order_data.get('items', []):
-        items_html += f"""
-        <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #eee;">
-                {item.get('name', 'Product')}
-            </td>
-            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">
-                {item.get('quantity', 1)}
-            </td>
-            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
-                ${(item.get('price', 0) * item.get('quantity', 1)):.2f}
-            </td>
-        </tr>
-        """
-    
-    delivery_info = order_data.get('deliveryInfo', {})
-    address_html = f"""
-        {delivery_info.get('formattedAddress', 'N/A')}<br>
-        {f"Phone: {delivery_info.get('phoneNumber', 'N/A')}" if delivery_info.get('phoneNumber') else ''}
-    """
-    
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">🎉 New Order Received!</h1>
-        </div>
-        
-        <div style="background: #ffffff; padding: 30px; border: 1px solid #eee; border-top: none; border-radius: 0 0 10px 10px;">
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <h2 style="margin: 0 0 10px 0; color: #FF6B35;">Order Details</h2>
-                <p style="margin: 5px 0;"><strong>Order ID:</strong> {order_data.get('orderId', 'N/A')}</p>
-                <p style="margin: 5px 0;"><strong>Customer Email:</strong> {order_data.get('customerEmail', 'N/A')}</p>
-                <p style="margin: 5px 0;"><strong>Order Date:</strong> {datetime.now().strftime('%B %d, %Y at %I:%M %p UTC')}</p>
-            </div>
-            
-            <h3 style="color: #333; border-bottom: 2px solid #FF6B35; padding-bottom: 10px;">Items Ordered</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                <thead>
-                    <tr style="background: #f8f9fa;">
-                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Item</th>
-                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">Qty</th>
-                        <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Price</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items_html}
-                </tbody>
-            </table>
-            
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <h3 style="margin: 0 0 10px 0; color: #333;">Delivery Address</h3>
-                <p style="margin: 0; line-height: 1.8;">{address_html}</p>
-            </div>
-            
-            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px;">
-                <h3 style="margin: 0 0 10px 0; color: #856404;">Order Summary</h3>
-                <table style="width: 100%;">
-                    <tr>
-                        <td style="padding: 5px 0;">Subtotal:</td>
-                        <td style="text-align: right; padding: 5px 0;">${order_data.get('subtotal', 0):.2f}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 5px 0;">Shipping:</td>
-                        <td style="text-align: right; padding: 5px 0;">${order_data.get('shippingCost', 0):.2f}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 5px 0;">Taxes:</td>
-                        <td style="text-align: right; padding: 5px 0;">${sum(order_data.get('taxes', {}).values()):.2f}</td>
-                    </tr>
-                    <tr style="font-size: 18px; font-weight: bold; border-top: 2px solid #856404;">
-                        <td style="padding: 10px 0 5px 0;">Total:</td>
-                        <td style="text-align: right; padding: 10px 0 5px 0; color: #FF6B35;">${order_data.get('total', 0):.2f} CAD</td>
-                    </tr>
-                </table>
-            </div>
-            
-            <div style="text-align: center; margin-top: 30px;">
-                <a href="https://orignagta.ca/seller/orders" style="background: #FF6B35; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Manage Orders</a>
-            </div>
-        </div>
-        
-        <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-            <p>© 2025 Origna GTA. All rights reserved.</p>
-        </div>
-    </body>
-    </html>
-    """
-
-# ============================================================================
-# EMAIL FUNCTIONS
-# ============================================================================
-
-def send_email(
-    to_email: str,
-    subject: str,
-    html_content: str,
-    from_email: str = "orders@orignagta.com"
-) -> bool:
-    """Send email using Mailjet"""
-    try:
-        if IS_EMULATOR or not MAILJET_API_KEY:
-            print(f"📧 [EMULATOR] Would send email to {to_email}: {subject}")
-            return True
-
-        mailjet = Client(
-            auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY),
-            version='v3.1'
-        )
-
-        data = {
-            'Messages': [
-                {
-                    "From": {
-                        "Email": from_email,
-                        "Name": "Origna GTA"
-                    },
-                    "To": [
-                        {
-                            "Email": to_email
-                        }
-                    ],
-                    "Subject": subject,
-                    "HTMLPart": html_content
-                }
-            ]
-        }
-
-        result = mailjet.send.create(data=data)
-
-        status = result.status_code
-        if status == 200:
-            print(f"✉️ Mailjet email sent to {to_email}")
-            return True
-        else:
-            print(f"❌ Mailjet failed: {result.json()}")
-            return False
-
-    except Exception as e:
-        print(f"❌ Mailjet error: {str(e)}")
-        return False
-
-
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
-def create_success_response(data: Dict[str, Any], status_code: int = 200) -> https_fn.Response:
-    """Create standardized success response"""
-    response_data = {"success": True, **data}
-    return https_fn.Response(
-        json.dumps(response_data),
-        status=status_code,
-        headers={"Content-Type": "application/json"}
-    )
-
-
-def create_error_response(error: str, status_code: int = 400, details: Optional[str] = None) -> https_fn.Response:
-    """Create standardized error response"""
-    response_data = {
-        "success": False,
-        "error": error,
-        "details": details,
-        "timestamp": datetime.now().isoformat()
-    }
-    return https_fn.Response(
-        json.dumps(response_data),
-        status=status_code,
-        headers={"Content-Type": "application/json"}
-    )
-
-
-def sanitize_email(email: str) -> str:
-    """Sanitize and validate email address"""
-    email = email.strip().lower()
-    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
-        raise ValueError("Invalid email format")
-    return email
-
-
-def validate_item(item: Dict) -> tuple[bool, str]:
-    """Validate individual item data"""
-    if not item.get('sellerId'):
-        return False, "sellerId required for all items"
-    if not item.get('productId'):
-        return False, "productId required for all items"
-    if item.get('quantity', 0) <= 0:
-        return False, "quantity must be positive"
-    if item.get('price', 0) < 0:
-        return False, "price cannot be negative"
-    if not item.get('name'):
-        return False, "name required for all items"
-    return True, ""
-
-
-def validate_order_data(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
-    """Validate order data structure"""
-    required_fields = ['userId', 'customerEmail', 'amount', 'items', 'deliveryInfo']
-    
-    for field in required_fields:
-        if field not in data:
-            return False, f"Missing required field: {field}"
-    
-    if not isinstance(data['amount'], (int, float)) or data['amount'] <= 0:
-        return False, "Invalid amount: must be positive number"
-    
-    if not isinstance(data['items'], list) or len(data['items']) == 0:
-        return False, "Invalid items: must be non-empty array"
-    
-    # Validate email format
-    try:
-        sanitize_email(data['customerEmail'])
-    except ValueError:
-        return False, "Invalid email address format"
-    
-    # Validate each item
-    for idx, item in enumerate(data['items']):
-        is_valid, error_msg = validate_item(item)
-        if not is_valid:
-            return False, f"Item {idx}: {error_msg}"
-    
-    return True, None
-
-
-def log_webhook_to_database(
-    event_id: str,
-    event_type: str,
-    payload_size: int,
-    signature_verified: bool,
-    processing_status: str,
-    order_id: Optional[str] = None,
-    error_message: Optional[str] = None,
-    raw_event_data: Optional[Dict] = None
-) -> None:
-    """
-    Log all webhook calls to database for audit trail and debugging
-    
-    Args:
-        event_id: Stripe event ID
-        event_type: Type of Stripe event
-        payload_size: Size of payload in bytes
-        signature_verified: Whether signature verification passed
-        processing_status: success, failed, skipped, etc.
-        order_id: Associated order ID if found
-        error_message: Error message if processing failed
-        raw_event_data: Complete event data for debugging
-    """
-    try:
-        log_data = {
-            "eventId": event_id,
-            "eventType": event_type,
-            "payloadSize": payload_size,
-            "signatureVerified": signature_verified,
-            "processingStatus": processing_status,
-            "orderId": order_id,
-            "errorMessage": error_message,
-            "timestamp": firestore.SERVER_TIMESTAMP,
-            "environment": "emulator" if IS_EMULATOR else "production",
-        }
-        
-        # Store limited event data to avoid bloat
-        if raw_event_data:
-            log_data["eventData"] = {
-                "id": raw_event_data.get("id"),
-                "type": raw_event_data.get("type"),
-                "created": raw_event_data.get("created"),
-                "livemode": raw_event_data.get("livemode"),
-                "object_id": raw_event_data.get("data", {}).get("object", {}).get("id"),
-            }
-        
-        db.collection('webhook_logs').document(event_id).set(log_data)
-        print(f"✅ Logged webhook {event_id} to database")
-        
-    except Exception as e:
-        print(f"⚠️ Failed to log webhook to database: {str(e)}")
-
-
 # ============================================================================
 # STRIPE CHECKOUT FUNCTIONS
 # ============================================================================
-
-
-# ============================================================================
-# SHIPPING & TAX CALCULATION HELPER FUNCTIONS
-# ============================================================================
-
-def get_tax_rate(province: str) -> float:
-    """Get tax rate for a Canadian province"""
-    tax_rates = {
-        'AB': 0.05,
-        'BC': 0.12,
-        'MB': 0.12,
-        'NB': 0.15,
-        'NL': 0.15,
-        'NT': 0.05,
-        'NS': 0.15,
-        'NU': 0.05,
-        'ON': 0.13,
-        'PE': 0.15,
-        'QC': 0.14975,
-        'SK': 0.11,
-        'YT': 0.05,
-    }
-    return tax_rates.get(province, 0.13)
-
-
-def _are_adjacent_provinces(p1: str, p2: str) -> bool:
-    """Check if two provinces are adjacent"""
-    adjacency = {
-        'BC': ['AB', 'YT', 'NT'],
-        'AB': ['BC', 'SK', 'NT'],
-        'SK': ['AB', 'MB', 'NT', 'NU'],
-        'MB': ['SK', 'ON', 'NU'],
-        'ON': ['MB', 'QC'],
-        'QC': ['ON', 'NB', 'NL'],
-        'NB': ['QC', 'NS', 'PE'],
-        'NS': ['NB', 'PE'],
-        'PE': ['NB', 'NS'],
-        'NL': ['QC'],
-        'YT': ['BC', 'NT'],
-        'NT': ['BC', 'AB', 'SK', 'YT', 'NU'],
-        'NU': ['SK', 'MB', 'NT'],
-    }
-    return p2 in adjacency.get(p1, [])
-
-
-def _are_same_region(p1: str, p2: str) -> bool:
-    """Check if two provinces are in the same region"""
-    regions = {
-        'West': ['BC', 'AB'],
-        'Prairies': ['SK', 'MB'],
-        'Central': ['ON', 'QC'],
-        'Atlantic': ['NB', 'NS', 'PE', 'NL'],
-        'North': ['YT', 'NT', 'NU'],
-    }
-    for region_provinces in regions.values():
-        if p1 in region_provinces and p2 in region_provinces:
-            return True
-    return False
-
-
-def _calculate_tiered_shipping(distance_km: float, item_count: int) -> float:
-    """Calculate shipping cost based on distance and item count"""
-    base_cost = 34.99  # Default high
-
-    if distance_km <= 50:
-        base_cost = 5.99
-    elif distance_km <= 150:
-        base_cost = 8.99
-    elif distance_km <= 500:
-        base_cost = 12.99
-    elif distance_km <= 1000:
-        base_cost = 16.99
-    elif distance_km <= 2000:
-        base_cost = 22.99
-    elif distance_km <= 4000:
-        base_cost = 28.99
-    
-    # Additional items cost
-    additional_items_cost = (item_count - 1) * (base_cost * 0.2)
-    
-    # Cap additional cost at 50% of base
-    capped_additional = min(additional_items_cost, base_cost * 0.5)
-    
-    return base_cost + capped_additional
-
-
-def _calculate_fallback_shipping(item_count: int, seller_province: str, buyer_province: str) -> float:
-    """Fallback shipping calculation using province matrix"""
-    base_cost = 29.99  # Default Cross-country
-
-    if seller_province == buyer_province:
-        base_cost = 12.99
-    elif _are_adjacent_provinces(seller_province, buyer_province):
-        base_cost = 18.99
-    elif _are_same_region(seller_province, buyer_province):
-        base_cost = 24.99
-    
-    additional_cost = (item_count - 1) * (base_cost * 0.2)
-    capped_additional = min(additional_cost, base_cost * 0.5)
-    
-    return base_cost + capped_additional
-
-
-def calculate_shipping_cost(items: List[Dict], buyer_address: Dict) -> float:
-    """
-    Server-side shipping calculation.
-    Fetches distances via Geoapify or falls back to province rules.
-    """
-    if not buyer_address or not buyer_address.get('latitude') or not buyer_address.get('longitude'):
-        print("⚠️ Buyer address missing coordinates")
-        return 0.0
-
-    total_shipping = 0.0
-    
-    # Group items by seller
-    items_by_seller = {}
-    for item in items:
-        seller_id = item.get('sellerId')
-        if seller_id:
-            if seller_id not in items_by_seller:
-                items_by_seller[seller_id] = []
-            items_by_seller[seller_id].append(item)
-    
-    for seller_id, seller_items in items_by_seller.items():
-        # Get seller address from first item (enriched by main function)
-        seller_address = seller_items[0].get('sellerAddress', {})
-        
-        seller_lat = seller_address.get('latitude')
-        seller_lon = seller_address.get('longitude')
-        seller_state = seller_address.get('state', 'ON')
-        buyer_state = buyer_address.get('state', 'ON')
-        
-        item_count = sum(item.get('quantity', 1) for item in seller_items)
-        
-        if seller_lat and seller_lon and GEOAPIFY_API_KEY:
-            try:
-                # Call Geoapify Route Matrix
-                url = f"https://api.geoapify.com/v1/routematrix?apiKey={GEOAPIFY_API_KEY}"
-                payload = {
-                    "mode": "drive",
-                    "sources": [{"location": [seller_lon, seller_lat]}],
-                    "targets": [{"location": [buyer_address['longitude'], buyer_address['latitude']]}]
-                }
-                
-                response = requests.post(url, json=payload, timeout=5)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    distance_km = data['sources_to_targets'][0][0]['distance'] / 1000.0
-                    cost = _calculate_tiered_shipping(distance_km, item_count)
-                    total_shipping += cost
-                    continue
-            except Exception as e:
-                print(f"⚠️ Geoapify error: {str(e)}")
-        
-        # Fallback
-        cost = _calculate_fallback_shipping(item_count, seller_state, buyer_state)
-        total_shipping += cost
-        
-    return total_shipping
-
-# Stripe Tax Code Mapping
-# Maps internal categoryId to Stripe Tax Codes (TXCD)
-# https://stripe.com/docs/tax/tax-categories
-CATEGORY_TAX_CODE_MAP = {
-    14: "txcd_10000000", # Books
-    17: "txcd_20030002", # Baby & Kids -> Mapping to Children's Clothing to handle rebates
-    19: "txcd_30060005", # Groceries -> Basic Groceries (Zero-rated)
-    21: "txcd_10000001", # Digital Products
-    # Defaults to txcd_99999999 (General Merchandise) for others
-}
-
-# ... (Previous imports and setup)
 
 @https_fn.on_call(cors=cors_config)
 def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
@@ -749,6 +155,30 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         requested_items = data['items']
 
         # ================================================================
+        # IDEMPOTENCY CHECK (CLIENT-SUPPLIED KEY)
+        # ================================================================
+        idem_key = data.get('idempotencyKey')
+        if idem_key:
+            existing = db.collection(Collections.ORDERS) \
+                .where('userId', '==', user_id) \
+                .where('idempotencyKey', '==', idem_key) \
+                .limit(1) \
+                .get()
+            if existing:
+                existing_doc = existing[0]
+                existing_data = existing_doc.to_dict() or {}
+                existing_session_id = existing_data.get('stripeSessionId')
+                if existing_session_id:
+                    try:
+                        session = stripe.checkout.Session.retrieve(existing_session_id)
+                        if session and session.get('url'):
+                            return {
+                                "url": session['url'],
+                                "sessionId": existing_session_id,
+                                "orderId": existing_data.get('orderId', existing_doc.id)
+                            }
+                    except Exception:
+                        pass
         # CANADA-ONLY SHIPPING VALIDATION
         # ================================================================
         CANADIAN_PROVINCES = ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT']
@@ -765,6 +195,15 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             raise https_fn.HttpsError(
                 code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
                 message="Shipping is only available within Canada"
+            )
+
+        # Required address fields
+        required_address_fields = ['street', 'city', 'state', 'postalCode', 'country']
+        missing_address = [f for f in required_address_fields if not str(delivery_info.get(f, '')).strip()]
+        if missing_address:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+                message=f"Missing address fields: {', '.join(missing_address)}"
             )
 
         print(f"✓ Delivery address validated: {delivery_state}")
@@ -828,10 +267,21 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                     'sellerId': seller_id,
                     'sellerAddress': seller_address,
                     'categoryId': category_id,
+                    'category_id': category_id,
                     'taxCode': product_tax_code, # Explicit tax code from product
                     'deliveryStatus': DeliveryStatus.PENDING,
                     'trackingNumber': None,
-                    'confirmedByBuyer': False
+                    'confirmedByBuyer': False,
+                    # Shipping Metadata
+                    'weightKg': product_data.get('weightKg'),
+                    'lengthCm': product_data.get('lengthCm'),
+                    'widthCm': product_data.get('widthCm'),
+                    'heightCm': product_data.get('heightCm'),
+                    'isLocalDeliveryOnly': product_data.get('isLocalDeliveryOnly', False),
+                    'isPerishable': product_data.get('isPerishable', False),
+                    'deliveryOptions': product_data.get('deliveryOptions', []),
+                    'minimumOrderQuantity': int(product_data.get('minimumOrderQuantity', 1)),
+                    'freeShipping': bool(product_data.get('freeShipping', False))
                 })
 
             # Commit stock updates
@@ -859,7 +309,12 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         subtotal = sum(item['price'] * item['quantity'] for item in trusted_items)
         
         # 2. Shipping Cost
-        shipping_cost = calculate_shipping_cost(trusted_items, delivery_info)
+        requested_speed = data.get('deliverySpeed', 'standard')
+        if requested_speed not in ['standard', 'express', 'same_day']:
+            requested_speed = 'standard'
+        shipping_cost = calculate_shipping_cost(trusted_items, delivery_info, speed=requested_speed)
+
+        expected_subtotal_cents = int(round((subtotal + shipping_cost) * 100))
         
         # 3. Taxes - DELEGATED TO STRIPE
         # We no longer calculate taxes here. Stripe Tax handles it.
@@ -886,6 +341,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             # 2. Category mapping
             # 3. General merchandise fallback
             tax_code = item.get('taxCode')
+            if tax_code and not re.match(r'^txcd_\d{8}$', str(tax_code)):
+                tax_code = None
             if not tax_code:
                 cat_id = item.get('categoryId', 0)
                 tax_code = CATEGORY_TAX_CODE_MAP.get(cat_id, "txcd_99999999")
@@ -929,6 +386,11 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         cancel_url = f"{base_url}/payment-cancel"
         
         print(f"💳 Creating Stripe session for order {order_id} (Stripe Tax Enabled)")
+        stripe_idem_key = None
+        if idem_key:
+            stripe_idem_key = str(idem_key)[:255]
+        else:
+            stripe_idem_key = f"checkout_{order_id}"[:255]
         session = stripe.checkout.Session.create(
             mode="payment",
             payment_method_types=["card"],
@@ -954,7 +416,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             shipping_address_collection={
                  "allowed_countries": ["CA"]
             },
-            expires_at=int((datetime.now().timestamp() + 1800))
+            expires_at=int((datetime.now().timestamp() + 1800)),
+            idempotency_key=stripe_idem_key,
         )
         
         auth_expires_at = datetime.now() + timedelta(days=AUTHORIZATION_VALID_DAYS)
@@ -968,6 +431,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         # Save order to Firestore
         order_data = {
             "orderId": order_id,
+            "idempotencyKey": data.get('idempotencyKey'),
             "userId": user_id,
             "customerId": customer_id,
             "customerEmail": customer_email,
@@ -980,6 +444,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             "total": None, # Will be populated by Webhook or Session result
             "currency": currency,
             "amount": None, # Will be populated by Webhook
+            "expectedSubtotalCents": expected_subtotal_cents,
             "status": OrderStatus.PENDING,
             "paymentStatus": PaymentStatus.AWAITING_PAYMENT,
             "stripeSessionId": session.id,
@@ -1073,6 +538,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             error_msg = "Missing Stripe signature header"
             print(f"❌ {error_msg}")
             log_webhook_to_database(
+                db,
                 event_id="missing_signature",
                 event_type="unknown",
                 payload_size=payload_size,
@@ -1105,6 +571,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             error_msg = f"Invalid payload: {str(e)}"
             print(f"❌ {error_msg}")
             log_webhook_to_database(
+                db,
                 event_id="invalid_payload",
                 event_type="unknown",
                 payload_size=payload_size,
@@ -1122,6 +589,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             print(f"Webhook secret length: {len(STRIPE_WEBHOOK_SECRET)}")
             
             log_webhook_to_database(
+                db,
                 event_id="invalid_signature",
                 event_type="unknown",
                 payload_size=payload_size,
@@ -1155,6 +623,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         if event_log.exists:
             print(f"ℹ️ Event {event_id} already processed - skipping")
             log_webhook_to_database(
+                db,
                 event_id=event_id,
                 event_type=event_type,
                 payload_size=payload_size,
@@ -1264,6 +733,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         # STEP 7: LOG TO DATABASE FOR AUDIT TRAIL
         # ====================================================================
         log_webhook_to_database(
+            db,
             event_id=event_id,
             event_type=event_type,
             payload_size=payload_size,
@@ -1285,6 +755,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         print(traceback.format_exc())
         
         log_webhook_to_database(
+            db,
             event_id=event_id,
             event_type="unknown",
             payload_size=payload_size,
@@ -1333,28 +804,50 @@ def process_checkout_session_completed(session: Dict) -> Optional[str]:
     # ================================================================
     # AMOUNT VERIFICATION - Fraud Protection
     # ================================================================
-    stripe_amount = session.get('amount_total', 0)  # In cents
-    stored_amount = order_data.get('amount', 0)  # In cents
+    stripe_amount_total = session.get('amount_total')  # In cents
+    stripe_amount_subtotal = session.get('amount_subtotal')  # In cents (pre-tax)
+    stored_amount = order_data.get('amount')  # In cents
+    expected_subtotal = order_data.get('expectedSubtotalCents')
 
     # Allow small tolerance for rounding (1 cent)
-    if abs(stripe_amount - stored_amount) > 1:
-        print(f"  🚨 FRAUD ALERT: Amount mismatch!")
-        print(f"     Stripe amount: {stripe_amount} cents")
-        print(f"     Stored amount: {stored_amount} cents")
+    if stored_amount is not None and stripe_amount_total is not None:
+        if abs(stripe_amount_total - stored_amount) > 1:
+            print(f"  🚨 FRAUD ALERT: Amount mismatch!")
+            print(f"     Stripe amount: {stripe_amount_total} cents")
+            print(f"     Stored amount: {stored_amount} cents")
 
-        # Flag the order as potentially fraudulent
-        order_ref.update({
-            "status": OrderStatus.FAILED,
-            "paymentStatus": PaymentStatus.PAYMENT_FAILED,
-            "fraudAlert": True,
-            "fraudReason": f"Amount mismatch: Stripe={stripe_amount}, Order={stored_amount}",
-            "updatedAt": firestore.SERVER_TIMESTAMP,
-        })
+            # Flag the order as potentially fraudulent
+            order_ref.update({
+                "status": OrderStatus.FAILED,
+                "paymentStatus": PaymentStatus.PAYMENT_FAILED,
+                "fraudAlert": True,
+                "fraudReason": f"Amount mismatch: Stripe={stripe_amount_total}, Order={stored_amount}",
+                "updatedAt": firestore.SERVER_TIMESTAMP,
+            })
 
-        # Restore stock since payment is rejected
-        _restore_stock_for_order(order_data)
+            # Restore stock since payment is rejected
+            _restore_stock_for_order(order_data)
 
-        raise ValueError(f"Amount verification failed: mismatch detected")
+            raise ValueError("Amount verification failed: mismatch detected")
+    elif expected_subtotal is not None and stripe_amount_subtotal is not None:
+        if abs(stripe_amount_subtotal - expected_subtotal) > 1:
+            print(f"  🚨 FRAUD ALERT: Subtotal mismatch!")
+            print(f"     Stripe subtotal: {stripe_amount_subtotal} cents")
+            print(f"     Expected subtotal: {expected_subtotal} cents")
+
+            # Flag the order as potentially fraudulent
+            order_ref.update({
+                "status": OrderStatus.FAILED,
+                "paymentStatus": PaymentStatus.PAYMENT_FAILED,
+                "fraudAlert": True,
+                "fraudReason": f"Subtotal mismatch: Stripe={stripe_amount_subtotal}, Expected={expected_subtotal}",
+                "updatedAt": firestore.SERVER_TIMESTAMP,
+            })
+
+            # Restore stock since payment is rejected
+            _restore_stock_for_order(order_data)
+
+            raise ValueError("Amount verification failed: subtotal mismatch")
     
     # Check payment status - some payments are async
     payment_status = session.get('payment_status')
@@ -1365,8 +858,17 @@ def process_checkout_session_completed(session: Dict) -> Optional[str]:
         "stripeCustomerId": session.get('customer'),
         "updatedAt": firestore.SERVER_TIMESTAMP,
         "paymentMethod": session.get('payment_method_types', [])[0] if session.get('payment_method_types') else None,
-        "amountTotal": session.get('amount_total', 0) / 100,
+        "amountTotal": (stripe_amount_total or 0) / 100,
     }
+
+    if stripe_amount_total is not None:
+        update_data["amount"] = stripe_amount_total
+        update_data["total"] = stripe_amount_total / 100
+
+    total_details = session.get('total_details', {}) or {}
+    stripe_tax_cents = total_details.get('amount_tax')
+    if stripe_tax_cents is not None:
+        update_data["taxes"] = {"stripeTax": stripe_tax_cents / 100}
 
     if payment_status == 'paid':
         # Check if this is manual capture or automatic
@@ -1377,6 +879,7 @@ def process_checkout_session_completed(session: Dict) -> Optional[str]:
                 "status": OrderStatus.CONFIRMED,
                 "paymentStatus": "authorized",  # Custom status for manual capture
                 "authorizedAt": firestore.SERVER_TIMESTAMP,
+                "authorizedAmount": stripe_amount_total,
             })
             print(f"  ✅ Payment AUTHORIZED (manual capture - awaiting seller shipping confirmation)")
         else:

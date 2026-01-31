@@ -78,6 +78,9 @@ class TestTaxAudit(unittest.TestCase):
                 "name": "Kids Shirt"
             }],
             "deliveryInfo": {
+                "street": "123 Kids St",
+                "city": "Toronto",
+                "postalCode": "M5V 1A1",
                 "state": "ON",
                 "country": "Canada"
             }
@@ -141,7 +144,13 @@ class TestTaxAudit(unittest.TestCase):
                 "name": "Apple",
                 "price": 1.00
             }],
-            "deliveryInfo": {"state": "ON", "country": "Canada"}
+            "deliveryInfo": {
+                "street": "123 Grocery St",
+                "city": "Toronto",
+                "postalCode": "M5V 1A1",
+                "state": "ON",
+                "country": "Canada"
+            }
         }
 
         mock_product = MagicMock()

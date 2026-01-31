@@ -1,60 +1,54 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:origna_gta/constants.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/admin/admin_actions_viewmodel.dart';
+import 'package:origna_gta/admin/admin_providers.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 
-class AdminSellersTab extends StatelessWidget {
+class AdminSellersTab extends ConsumerWidget {
   const AdminSellersTab({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('users').where('roles', arrayContains: UserRoles.seller).orderBy('createdAt', descending: true).snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref
+        .watch(adminSellersProvider)
+        .when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => const Center(child: Text('Error Fetching from Database')),
+          data: (sellers) {
+            if (sellers.isEmpty) {
+              return const AnimatedEmptyState(icon: Icons.store_outlined, title: 'No sellers yet', subtitle: 'Sellers will appear here when they register');
+            }
 
-        if (snapshot.hasError) {
-          debugPrint('Error: ${snapshot.error}');
-          return Center(child: Text('Error Fetching from Database'));
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const AnimatedEmptyState(icon: Icons.store_outlined, title: 'No sellers yet', subtitle: 'Sellers will appear here when they register');
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: snapshot.data!.docs.length,
-          itemBuilder: (context, index) {
-            final doc = snapshot.data!.docs[index];
-            final data = doc.data() as Map<String, dynamic>;
-            return FadeSlideIn(
-              delay: Duration(milliseconds: 50 * index),
-              child: _SellerCard(userId: doc.id, data: data),
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: sellers.length,
+              itemBuilder: (context, index) {
+                final data = sellers[index]; // Keep this line for context
+                return FadeSlideIn(
+                  delay: Duration(milliseconds: 50 * index),
+                  child: _SellerCard(user: data),
+                );
+              },
             );
           },
         );
-      },
-    );
   }
 }
 
-class _SellerCard extends StatelessWidget {
-  final String userId;
-  final Map<String, dynamic> data;
+class _SellerCard extends ConsumerWidget {
+  final UserModel user;
 
-  const _SellerCard({required this.userId, required this.data});
+  const _SellerCard({required this.user});
 
   @override
-  Widget build(BuildContext context) {
-    final name = data['name'] ?? 'Unknown';
-    final email = data['email'] ?? '';
-    final stripeAccountId = data['stripeAccountId'] as String?;
-    final stripeOnboarded = data['stripeOnboardingComplete'] == true;
-    final isSuspended = data['suspended'] == true;
-    final createdAt = data['createdAt'] as Timestamp?;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final name = user.name.isNotEmpty ? user.name : 'Unknown';
+    final email = user.email;
+    final stripeAccountId = user.stripeAccountId;
+    final stripeOnboarded = user.onboardingCompleted;
+    final isSuspended = user.suspended;
+    final createdAt = user.createdAt;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -120,10 +114,8 @@ class _SellerCard extends StatelessWidget {
               ],
             ),
 
-            if (createdAt != null) ...[
-              const SizedBox(height: 8),
-              Text('Joined: ${_formatDate(createdAt.toDate())}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-            ],
+            const SizedBox(height: 8),
+            Text('Joined: ${_formatDate(createdAt)}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
 
             const SizedBox(height: 12),
 
@@ -133,21 +125,21 @@ class _SellerCard extends StatelessWidget {
               children: [
                 if (!isSuspended)
                   TextButton.icon(
-                    onPressed: () => _suspendSeller(context, userId, name),
+                    onPressed: () => _suspendSeller(context, ref, user.uid, name),
                     icon: const Icon(Icons.block, size: 18),
                     label: const Text('Suspend'),
                     style: TextButton.styleFrom(foregroundColor: Colors.red),
                   )
                 else
                   TextButton.icon(
-                    onPressed: () => _unsuspendSeller(context, userId, name),
+                    onPressed: () => _unsuspendSeller(context, ref, user.uid, name),
                     icon: const Icon(Icons.check_circle_outline, size: 18),
                     label: const Text('Unsuspend'),
                     style: TextButton.styleFrom(foregroundColor: Colors.green),
                   ),
                 const SizedBox(width: 8),
                 TextButton.icon(
-                  onPressed: () => _viewSellerProducts(context, userId, name),
+                  onPressed: () => _viewSellerProducts(context, user.uid, name),
                   icon: const Icon(Icons.inventory_2_outlined, size: 18),
                   label: const Text('Products'),
                 ),
@@ -163,7 +155,7 @@ class _SellerCard extends StatelessWidget {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  void _suspendSeller(BuildContext context, String userId, String name) {
+  void _suspendSeller(BuildContext context, WidgetRef ref, String userId, String name) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -174,9 +166,16 @@ class _SellerCard extends StatelessWidget {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await FirebaseFirestore.instance.collection('users').doc(userId).update({'suspended': true, 'suspendedAt': FieldValue.serverTimestamp()});
+              final messenger = ScaffoldMessenger.of(context);
+              final success = await ref.read(adminActionsViewModelProvider.notifier).setUserSuspended(userId, true);
+              if (!context.mounted) return;
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seller suspended'), backgroundColor: Colors.orange));
+                if (success) {
+                  messenger.showSnackBar(const SnackBar(content: Text('Seller suspended'), backgroundColor: Colors.orange));
+                } else {
+                  final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to suspend seller';
+                  messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
@@ -187,10 +186,16 @@ class _SellerCard extends StatelessWidget {
     );
   }
 
-  void _unsuspendSeller(BuildContext context, String userId, String name) async {
-    await FirebaseFirestore.instance.collection('users').doc(userId).update({'suspended': false, 'suspendedAt': FieldValue.delete()});
+  void _unsuspendSeller(BuildContext context, WidgetRef ref, String userId, String name) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final success = await ref.read(adminActionsViewModelProvider.notifier).setUserSuspended(userId, false);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seller unsuspended'), backgroundColor: Colors.green));
+      if (success) {
+        messenger.showSnackBar(const SnackBar(content: Text('Seller unsuspended'), backgroundColor: Colors.green));
+      } else {
+        final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to unsuspend seller';
+        messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+      }
     }
   }
 
@@ -204,55 +209,53 @@ class _SellerCard extends StatelessWidget {
   }
 }
 
-class _SellerProductsScreen extends StatelessWidget {
+class _SellerProductsScreen extends ConsumerWidget {
   final String sellerId;
   final String sellerName;
 
   const _SellerProductsScreen({required this.sellerId, required this.sellerName});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(title: Text('$sellerName\'s Products'), backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('products').where('sellerId', isEqualTo: sellerId).snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: ref
+          .watch(adminProductsProvider(sellerId))
+          .when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) => const Center(child: Text('Error loading products')),
+            data: (products) {
+              if (products.isEmpty) {
+                return const Center(child: Text('No products'));
+              }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No products'));
-          }
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final product = products[index];
+                  final name = product.name;
+                  final price = product.price;
+                  final stock = product.stockQuantity;
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: snapshot.data!.docs.length,
-            itemBuilder: (context, index) {
-              final doc = snapshot.data!.docs[index];
-              final data = doc.data() as Map<String, dynamic>;
-              final name = data['name'] ?? 'Unknown';
-              final price = (data['price'] ?? 0.0).toDouble();
-              final stock = data['stockQuantity'] ?? 0;
-
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  title: Text(name),
-                  subtitle: Text('Stock: $stock • \$${price.toStringAsFixed(2)}'),
-                  trailing: stock == 0
-                      ? const Chip(
-                          label: Text('Out of Stock', style: TextStyle(fontSize: 11)),
-                          backgroundColor: Colors.red,
-                          labelStyle: TextStyle(color: Colors.white),
-                        )
-                      : null,
-                ),
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      title: Text(name),
+                      subtitle: Text('Stock: $stock • \$${price.toStringAsFixed(2)}'),
+                      trailing: stock == 0
+                          ? const Chip(
+                              label: Text('Out of Stock', style: TextStyle(fontSize: 11)),
+                              backgroundColor: Colors.red,
+                              labelStyle: TextStyle(color: Colors.white),
+                            )
+                          : null,
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
-      ),
+          ),
     );
   }
 }

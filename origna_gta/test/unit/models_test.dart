@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 void main() {
   group('Address', () {
@@ -80,26 +80,13 @@ void main() {
     });
 
     test('fullAddress returns formatted string', () {
-      final address = Address(
-        street: '123 Main St',
-        apartment: 'Unit 4B',
-        city: 'Toronto',
-        state: 'ON',
-        postalCode: 'M5V 1A1',
-        country: 'Canada',
-      );
+      final address = Address(street: '123 Main St', apartment: 'Unit 4B', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada');
 
       expect(address.fullAddress, '123 Main St, Unit 4B, Toronto, ON, M5V 1A1, Canada');
     });
 
     test('copyWith creates new instance with updated fields', () {
-      final original = Address(
-        street: '123 Main St',
-        city: 'Toronto',
-        state: 'ON',
-        postalCode: 'M5V 1A1',
-        country: 'Canada',
-      );
+      final original = Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada');
 
       final updated = original.copyWith(city: 'Vancouver', state: 'BC');
 
@@ -117,13 +104,7 @@ void main() {
         'email': 'test@example.com',
         'name': 'John Doe',
         'roles': ['buyer', 'seller'],
-        'address': {
-          'street': '123 Main St',
-          'city': 'Toronto',
-          'state': 'ON',
-          'postalCode': 'M5V 1A1',
-          'country': 'Canada',
-        },
+        'address': {'street': '123 Main St', 'city': 'Toronto', 'state': 'ON', 'postalCode': 'M5V 1A1', 'country': 'Canada'},
         'createdAt': Timestamp.fromDate(DateTime(2024, 1, 15)),
         'customerId': 'cus_123',
         'stripeAccountId': 'acct_456',
@@ -218,13 +199,7 @@ void main() {
     });
 
     test('copyWith creates new instance with updated fields', () {
-      final original = UserModel(
-        uid: 'user123',
-        email: 'test@example.com',
-        name: 'John Doe',
-        roles: ['buyer'],
-        createdAt: DateTime(2024, 1, 15),
-      );
+      final original = UserModel(uid: 'user123', email: 'test@example.com', name: 'John Doe', roles: ['buyer'], createdAt: DateTime(2024, 1, 15));
 
       final updated = original.copyWith(name: 'Jane Doe', roles: ['buyer', 'seller']);
 
@@ -238,17 +213,11 @@ void main() {
   group('ProductModel', () {
     test('fromMap creates correct ProductModel', () {
       final map = {
-        'id': 'prod123',
+        'productId': 'prod123',
         'name': 'Test Product',
         'price': 29.99,
         'imageUrls': ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
-        'sellerAddress': {
-          'street': '123 Main St',
-          'city': 'Toronto',
-          'state': 'ON',
-          'postalCode': 'M5V 1A1',
-          'country': 'Canada',
-        },
+        'sellerAddress': {'street': '123 Main St', 'city': 'Toronto', 'state': 'ON', 'postalCode': 'M5V 1A1', 'country': 'Canada'},
         'description': 'A great product',
         'sellerId': 'seller123',
         'stockQuantity': 50,
@@ -280,12 +249,7 @@ void main() {
     });
 
     test('fromMap handles missing optional fields', () {
-      final map = {
-        'id': 'prod123',
-        'name': 'Test Product',
-        'price': 29.99,
-        'categoryId': 1,
-      };
+      final map = {'productId': 'prod123', 'name': 'Test Product', 'price': 29.99, 'categoryId': 1};
 
       final product = ProductModel.fromMap(map);
 
@@ -304,13 +268,7 @@ void main() {
         name: 'Test Product',
         price: 29.99,
         imageUrls: ['https://example.com/image.jpg'],
-        sellerAddress: Address(
-          street: '123 Main St',
-          city: 'Toronto',
-          state: 'ON',
-          postalCode: 'M5V 1A1',
-          country: 'Canada',
-        ),
+        sellerAddress: Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada'),
         description: 'A great product',
         sellerId: 'seller123',
         stockQuantity: 50,
@@ -347,11 +305,7 @@ void main() {
   group('CartModel', () {
     test('fromMap creates correct CartModel', () {
       final now = DateTime(2024, 1, 15, 10, 30);
-      final map = {
-        'productId': 'prod123',
-        'quantity': 3,
-        'dateCreated': Timestamp.fromDate(now),
-      };
+      final map = {'productId': 'prod123', 'quantity': 3, 'dateCreated': Timestamp.fromDate(now)};
 
       final cart = CartModel.fromMap(map);
 
@@ -362,11 +316,7 @@ void main() {
 
     test('toMap returns correct map', () {
       final now = DateTime(2024, 1, 15, 10, 30);
-      final cart = CartModel(
-        productId: 'prod123',
-        quantity: 2,
-        dateCreated: now,
-      );
+      final cart = CartModel(productId: 'prod123', quantity: 2, dateCreated: now);
 
       final map = cart.toMap();
 
@@ -376,10 +326,7 @@ void main() {
     });
 
     test('default quantity is 1', () {
-      final cart = CartModel(
-        productId: 'prod123',
-        dateCreated: DateTime.now(),
-      );
+      final cart = CartModel(productId: 'prod123', dateCreated: DateTime.now());
 
       expect(cart.quantity, 1);
     });
@@ -387,11 +334,7 @@ void main() {
 
   group('CartItemModel', () {
     test('fromMap creates correct CartItemModel', () {
-      final map = {
-        'productId': 'prod123',
-        'quantity': 5,
-        'dateCreated': Timestamp.fromDate(DateTime(2024, 1, 15)),
-      };
+      final map = {'productId': 'prod123', 'quantity': 5, 'dateCreated': Timestamp.fromDate(DateTime(2024, 1, 15))};
 
       final item = CartItemModel.fromMap(map);
 
@@ -401,11 +344,7 @@ void main() {
 
     test('toMap returns correct map', () {
       final now = Timestamp.fromDate(DateTime(2024, 1, 15));
-      final item = CartItemModel(
-        productId: 'prod123',
-        quantity: 3,
-        dateCreated: now,
-      );
+      final item = CartItemModel(productId: 'prod123', quantity: 3, dateCreated: now);
 
       final map = item.toMap();
 
@@ -441,14 +380,7 @@ void main() {
     });
 
     test('toMap returns correct map', () {
-      final payout = SellerPayout(
-        sellerId: 'seller123',
-        stripeAccountId: 'acct_456',
-        gross: 100.0,
-        platformFee: 2.5,
-        net: 97.5,
-        paid: false,
-      );
+      final payout = SellerPayout(sellerId: 'seller123', stripeAccountId: 'acct_456', gross: 100.0, platformFee: 2.5, net: 97.5, paid: false);
 
       final map = payout.toMap();
 
@@ -461,12 +393,7 @@ void main() {
     });
 
     test('copyWith creates new instance with updated fields', () {
-      final original = SellerPayout(
-        sellerId: 'seller123',
-        gross: 100.0,
-        platformFee: 2.5,
-        net: 97.5,
-      );
+      final original = SellerPayout(sellerId: 'seller123', gross: 100.0, platformFee: 2.5, net: 97.5);
 
       final updated = original.copyWith(paid: true, transferId: 'tr_123');
 

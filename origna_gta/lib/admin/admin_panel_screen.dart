@@ -4,7 +4,7 @@ import 'package:origna_gta/admin/tabs/admin_orders_tab.dart';
 import 'package:origna_gta/admin/tabs/admin_products_tab.dart';
 import 'package:origna_gta/admin/tabs/admin_sellers_tab.dart';
 import 'package:origna_gta/admin/tabs/admin_users_tab.dart';
-import 'package:origna_gta/constants.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 

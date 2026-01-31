@@ -1,153 +1,101 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/core/repositories/cart_repository.dart';
+import 'package:origna_gta/utils/utils.dart';
 
-// ============================================================================
-// CART PROVIDERS
-// ============================================================================
-
-/// Stream of cart items for current user
-/// Uses Firestore snapshots for real-time updates when cart changes
-final cartItemsProvider = StreamProvider.autoDispose<List<CartItemModel>>((ref) {
-  final userId = ref.watch(userIdProvider);
-
-  // Return empty stream immediately if no user
-  if (userId == null) {
-    return Stream.value([]);
-  }
-
-  return ref
-      .watch(firestoreProvider)
-      .collection('users')
-      .doc(userId)
-      .collection('cart')
-      .snapshots()
-      .handleError((error) {
-        debugPrint('Error in cart stream: $error');
-        // Return empty list on error to prevent UI issues
-      })
-      .map((snapshot) {
-        return snapshot.docs.map((doc) {
-          try {
-            return CartItemModel.fromMap(doc.data());
-          } catch (e) {
-            debugPrint('Error parsing cart item: $e');
-            // Return a placeholder item to prevent crashes
-            return CartItemModel(
-              productId: doc.id,
-              quantity: 0,
-              dateCreated: Timestamp.now(),
-            );
-          }
-        }).where((item) => item.quantity > 0).toList();
-      });
+final cartControllerProvider = Provider<CartController>((ref) {
+  return CartController(ref);
 });
 
-/// Cart item count for badge display
 final cartItemCountProvider = Provider<int>((ref) {
   final cartItems = ref.watch(cartItemsProvider);
   return cartItems.maybeWhen(data: (items) => items.fold(0, (total, item) => total + item.quantity), orElse: () => 0);
 });
 
-/// Cart controller for mutations
-final cartControllerProvider = Provider<CartController>((ref) {
-  return CartController(ref);
+/// Provider for cart item creation date (used to avoid rebuilding item UI on quantity changes)
+final cartItemDateProvider = Provider.autoDispose.family<Timestamp?, String>((ref, productId) {
+  return ref.watch(
+    cartItemsProvider.select((async) {
+      return async.maybeWhen(data: (items) => items.where((i) => i.productId == productId).firstOrNull?.dateCreated, orElse: () => null);
+    }),
+  );
 });
 
-class CartController {
-  final Ref _ref;
+/// Family provider for individual cart item details - cached by Riverpod
+final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailModel?, String>((ref, productId) async {
+  final firestore = ref.watch(firestoreProvider);
+  final dateCreated = ref.watch(cartItemDateProvider(productId));
+  if (dateCreated == null) return null;
 
-  CartController(this._ref);
+  final quantity = ref.read(cartItemQuantityProvider(productId)).valueOrNull ?? 1;
 
-  FirebaseFirestore get _firestore => _ref.read(firestoreProvider);
-  String? get _userId => _ref.read(userIdProvider);
+  final productDoc = await firestore.collection('products').doc(productId).get();
+  if (!productDoc.exists) return null;
 
-  /// Add item to cart (or increment quantity if exists)
-  Future<bool> addToCart(String productId, int quantity) async {
-    final userId = _userId;
-    if (userId == null) return false;
-
-    final cartItemRef = _firestore.collection('users').doc(userId).collection('cart').doc(productId);
-
-    try {
-      await _firestore.runTransaction((transaction) async {
-        final snapshot = await transaction.get(cartItemRef);
-
-        if (snapshot.exists) {
-          int currentQty = snapshot.data()?['quantity'] ?? 0;
-          transaction.update(cartItemRef, {'quantity': currentQty + quantity});
-        } else {
-          transaction.set(cartItemRef, CartModel(productId: productId, quantity: quantity, dateCreated: DateTime.now()).toMap());
-        }
-      });
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// Update cart item quantity
-  Future<void> updateQuantity(String productId, int newQuantity) async {
-    final userId = _userId;
-    if (userId == null) return;
-
-    final cartItemRef = _firestore.collection('users').doc(userId).collection('cart').doc(productId);
-
-    if (newQuantity <= 0) {
-      await cartItemRef.delete();
-    } else {
-      await cartItemRef.update({'quantity': newQuantity});
-    }
-  }
-
-  /// Remove item from cart
-  Future<void> removeFromCart(String productId) async {
-    final userId = _userId;
-    if (userId == null) return;
-
-    await _firestore.collection('users').doc(userId).collection('cart').doc(productId).delete();
-  }
-
-  /// Clear entire cart
-  Future<void> clearCart() async {
-    final userId = _userId;
-    if (userId == null) return;
-
-    try {
-      final cartRef = _firestore.collection('users').doc(userId).collection('cart');
-      final snapshot = await cartRef.get();
-
-      if (snapshot.docs.isEmpty) {
-        debugPrint('Cart is already empty');
-        return;
-      }
-
-      final batch = _firestore.batch();
-      for (final doc in snapshot.docs) {
-        batch.delete(doc.reference);
-      }
-
-      await batch.commit();
-      debugPrint('Cart cleared successfully');
-
-      // Force refresh the cart provider to ensure UI updates
-      _ref.invalidate(cartItemsProvider);
-    } catch (e) {
-      debugPrint('Error clearing cart: $e');
-      rethrow;
-    }
-  }
-
-  /// Force refresh cart state - call this after external cart modifications
-  void refreshCart() {
-    _ref.invalidate(cartItemsProvider);
-  }
-}
+  final productData = productDoc.data()!;
+  return CartItemDetailModel(
+    productId: productId,
+    name: productData['name'] ?? '',
+    description: productData['description'] ?? '',
+    price: (productData['price'] ?? 0).toDouble(),
+    imageUrls: List<String>.from(productData['imageUrls'] ?? []),
+    quantity: quantity,
+    dateCreated: dateCreated,
+    sellerAddress: Address.fromMap(productData['sellerAddress'] ?? {}),
+    sellerId: productData['sellerId'] ?? '',
+    deliveryStatus: 'pending',
+    weightKg: productData['weightKg'] != null ? (productData['weightKg'] as num).toDouble() : null,
+    lengthCm: productData['lengthCm'] != null ? (productData['lengthCm'] as num).toDouble() : null,
+    widthCm: productData['widthCm'] != null ? (productData['widthCm'] as num).toDouble() : null,
+    heightCm: productData['heightCm'] != null ? (productData['heightCm'] as num).toDouble() : null,
+    isLocalDeliveryOnly: productData['isLocalDeliveryOnly'] ?? false,
+    isPerishable: productData['isPerishable'] ?? false,
+    estimatedShipDays: productData['estimatedShipDays'] ?? 3,
+    deliveryOptions: productData['deliveryOptions'] != null
+        ? (productData['deliveryOptions'] as List).map((o) => SellerDeliveryOption.fromMap(o as Map<String, dynamic>)).toList()
+        : [],
+    minimumOrderQuantity: (productData['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
+    freeShipping: productData['freeShipping'] ?? false,
+  );
+});
 
 // ============================================================================
 // CART DETAILS PROVIDER (with product info) - BATCH FETCH
+// ============================================================================
+
+/// Provider that returns the current quantity for a specific product in cart
+/// Uses document-level stream to prevent rebuilds when other items change
+final cartItemQuantityProvider = StreamProvider.autoDispose.family<int, String>((ref, productId) {
+  final userId = ref.watch(userIdProvider);
+  if (userId == null) return Stream.value(0);
+
+  return ref.watch(firestoreProvider).collection('users').doc(userId).collection('cart').doc(productId).snapshots().map((doc) {
+    if (!doc.exists) return 0;
+    return (doc.data()?['quantity'] ?? 0) as int;
+  });
+});
+
+// ============================================================================
+// CART PROVIDERS
+// ============================================================================
+
+final cartItemsProvider = StreamProvider.autoDispose<List<CartItemModel>>((ref) {
+  final userId = ref.watch(userIdProvider);
+  if (userId == null) return Stream.value([]);
+
+  return ref.watch(cartRepositoryProvider).watchCart(userId);
+});
+
+/// Cart subtotal - computed from cartWithDetailsProvider
+final cartSubtotalProvider = Provider<double>((ref) {
+  final cartDetails = ref.watch(cartWithDetailsProvider);
+  return cartDetails.maybeWhen(data: (items) => items.fold(0.0, (total, item) => total + (item.price * item.quantity)), orElse: () => 0.0);
+});
+
+// ============================================================================
+// SINGLE CART ITEM DETAIL PROVIDER (Family)
 // ============================================================================
 
 /// Fetches cart items with full product details using batch fetch
@@ -189,6 +137,18 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
                 sellerAddress: Address.fromMap(productData['sellerAddress'] ?? {}),
                 sellerId: productData['sellerId'] ?? '',
                 deliveryStatus: 'pending',
+                weightKg: productData['weightKg'] != null ? (productData['weightKg'] as num).toDouble() : null,
+                lengthCm: productData['lengthCm'] != null ? (productData['lengthCm'] as num).toDouble() : null,
+                widthCm: productData['widthCm'] != null ? (productData['widthCm'] as num).toDouble() : null,
+                heightCm: productData['heightCm'] != null ? (productData['heightCm'] as num).toDouble() : null,
+                isLocalDeliveryOnly: productData['isLocalDeliveryOnly'] ?? false,
+                isPerishable: productData['isPerishable'] ?? false,
+                estimatedShipDays: productData['estimatedShipDays'] ?? 3,
+                deliveryOptions: productData['deliveryOptions'] != null
+                    ? (productData['deliveryOptions'] as List).map((o) => SellerDeliveryOption.fromMap(o as Map<String, dynamic>)).toList()
+                    : [],
+                minimumOrderQuantity: (productData['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
+                freeShipping: productData['freeShipping'] ?? false,
               ),
             );
           }
@@ -202,45 +162,44 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
   );
 });
 
-/// Cart subtotal - computed from cartWithDetailsProvider
-final cartSubtotalProvider = Provider<double>((ref) {
-  final cartDetails = ref.watch(cartWithDetailsProvider);
-  return cartDetails.maybeWhen(data: (items) => items.fold(0.0, (total, item) => total + (item.price * item.quantity)), orElse: () => 0.0);
-});
+class CartController {
+  final Ref _ref;
 
-// ============================================================================
-// SINGLE CART ITEM DETAIL PROVIDER (Family)
-// ============================================================================
+  CartController(this._ref);
 
-/// Family provider for individual cart item details - cached by Riverpod
-final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailModel?, String>((ref, productId) async {
-  final firestore = ref.watch(firestoreProvider);
-  final cartItems = ref.watch(cartItemsProvider).valueOrNull ?? [];
+  CartRepository get _repository => _ref.read(cartRepositoryProvider);
+  String? get _userId => _ref.read(userIdProvider);
 
-  final cartItem = cartItems.where((i) => i.productId == productId).firstOrNull;
-  if (cartItem == null) return null;
+  Future<bool> addToCart(String productId, int quantity) async {
+    final userId = _userId;
+    if (userId == null) return false;
+    try {
+      await _repository.addToCart(userId, productId, quantity);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 
-  final productDoc = await firestore.collection('products').doc(productId).get();
-  if (!productDoc.exists) return null;
+  Future<void> clearCart() async {
+    final userId = _userId;
+    if (userId == null) return;
+    await _repository.clearCart(userId);
+  }
 
-  final productData = productDoc.data()!;
-  return CartItemDetailModel(
-    productId: productId,
-    name: productData['name'] ?? '',
-    description: productData['description'] ?? '',
-    price: (productData['price'] ?? 0).toDouble(),
-    imageUrls: List<String>.from(productData['imageUrls'] ?? []),
-    quantity: cartItem.quantity,
-    dateCreated: cartItem.dateCreated,
-    sellerAddress: Address.fromMap(productData['sellerAddress'] ?? {}),
-    sellerId: productData['sellerId'] ?? '',
-    deliveryStatus: 'pending',
-  );
-});
+  void refreshCart() {
+    _ref.invalidate(cartItemsProvider);
+  }
 
-/// Provider that returns the current quantity for a specific product in cart
-final cartItemQuantityProvider = Provider.autoDispose.family<int, String>((ref, productId) {
-  final cartItems = ref.watch(cartItemsProvider).valueOrNull ?? [];
-  final cartItem = cartItems.where((i) => i.productId == productId).firstOrNull;
-  return cartItem?.quantity ?? 0;
-});
+  Future<void> removeFromCart(String productId) async {
+    final userId = _userId;
+    if (userId == null) return;
+    await _repository.removeFromCart(userId, productId);
+  }
+
+  Future<void> updateQuantity(String productId, int newQuantity) async {
+    final userId = _userId;
+    if (userId == null) return;
+    await _repository.updateQuantity(userId, productId, newQuantity);
+  }
+}

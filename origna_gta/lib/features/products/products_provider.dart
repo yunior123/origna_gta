@@ -1,7 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/core/repositories/product_repository.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 // ============================================================================
 // FILTER STATE PROVIDERS
@@ -42,33 +42,15 @@ class ProductQuery {
   int get hashCode => categoryId.hashCode ^ searchQuery.hashCode ^ limit.hashCode;
 }
 
-/// Fetches products based on query parameters
+/// Fetches products based on query parameters (legacy, kept for compat if needed, but home uses VM now)
 final productsProvider = FutureProvider.autoDispose.family<List<ProductModel>, ProductQuery>((ref, query) async {
-  final firestore = ref.watch(firestoreProvider);
-  
-  Query productsQuery = firestore
-      .collection('products')
-      .where('stockQuantity', isGreaterThan: 0);
-
-  // Apply category filter
-  if (query.categoryId != null) {
-    productsQuery = productsQuery.where('categoryId', isEqualTo: query.categoryId);
-  }
-
-  // Apply search filter
-  if (query.searchQuery.isNotEmpty) {
-    final searchLower = query.searchQuery.toLowerCase();
-    productsQuery = productsQuery.where('searchKeywords', arrayContains: searchLower);
-  }
-
-  // Apply limit
-  productsQuery = productsQuery.limit(query.limit);
-
-  final snapshot = await productsQuery.get();
-  
-  return snapshot.docs
-      .map((doc) => ProductModel.fromDocument(doc))
-      .toList();
+  final repository = ref.watch(productRepositoryProvider);
+  final result = await repository.fetchProducts(
+    categoryId: query.categoryId,
+    searchQuery: query.searchQuery,
+    pageSize: query.limit,
+  );
+  return result.products;
 });
 
 /// Convenience provider that uses current filter state
@@ -84,19 +66,10 @@ final filteredProductsProvider = FutureProvider.autoDispose<List<ProductModel>>(
   return ref.watch(productsProvider(query).future);
 });
 
-// ============================================================================
-// SINGLE PRODUCT PROVIDER
-// ============================================================================
-
 /// Fetches a single product by ID
 final productByIdProvider = FutureProvider.autoDispose.family<ProductModel?, String>((ref, productId) async {
-  final firestore = ref.watch(firestoreProvider);
-  
-  final doc = await firestore.collection('products').doc(productId).get();
-  
-  if (!doc.exists) return null;
-  
-  return ProductModel.fromDocument(doc);
+  final repository = ref.watch(productRepositoryProvider);
+  return repository.fetchProductById(productId);
 });
 
 // ============================================================================
@@ -108,12 +81,8 @@ final favoritesProvider = StreamProvider.autoDispose<Set<String>>((ref) {
   final userId = ref.watch(userIdProvider);
   if (userId == null) return Stream.value({});
 
-  return ref.watch(firestoreProvider)
-      .collection('users')
-      .doc(userId)
-      .collection('favorites')
-      .snapshots()
-      .map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
+  final repository = ref.watch(productRepositoryProvider);
+  return repository.watchFavorites(userId);
 });
 
 /// Favorites controller
@@ -126,30 +95,14 @@ class FavoritesController {
   
   FavoritesController(this._ref);
 
-  FirebaseFirestore get _firestore => _ref.read(firestoreProvider);
   String? get _userId => _ref.read(userIdProvider);
+  ProductRepository get _repository => _ref.read(productRepositoryProvider);
 
   /// Toggle favorite status
   Future<void> toggleFavorite(String productId) async {
     final userId = _userId;
     if (userId == null) return;
-
-    final favRef = _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('favorites')
-        .doc(productId);
-
-    final doc = await favRef.get();
-    
-    if (doc.exists) {
-      await favRef.delete();
-    } else {
-      await favRef.set({
-        'productId': productId,
-        'dateFavorited': Timestamp.now(),
-      });
-    }
+    await _repository.toggleFavorite(userId, productId);
   }
 
   /// Check if product is favorited
@@ -158,3 +111,12 @@ class FavoritesController {
     return favorites.contains(productId);
   }
 }
+
+/// Full product details for all favorites
+final favoritedProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((ref) async {
+  final favoriteIds = ref.watch(favoritesProvider).valueOrNull ?? {};
+  if (favoriteIds.isEmpty) return [];
+
+  final repository = ref.watch(productRepositoryProvider);
+  return repository.fetchProductsByIds(favoriteIds.toList());
+});

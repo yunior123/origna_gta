@@ -1,16 +1,19 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/admin/admin_actions_viewmodel.dart';
+import 'package:origna_gta/admin/admin_providers.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 
-class AdminProductsTab extends StatefulWidget {
+class AdminProductsTab extends ConsumerStatefulWidget {
   const AdminProductsTab({super.key});
 
   @override
-  State<AdminProductsTab> createState() => _AdminProductsTabState();
+  ConsumerState<AdminProductsTab> createState() => _AdminProductsTabState();
 }
 
-class _AdminProductsTabState extends State<AdminProductsTab> {
+class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
   String _searchQuery = '';
   String _stockFilter = 'all';
 
@@ -50,65 +53,55 @@ class _AdminProductsTabState extends State<AdminProductsTab> {
 
         // Products List
         Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('products')
-                .orderBy('dateCreated', descending: true)
-                .limit(100)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          child: ref
+              .watch(adminProductsProvider(null))
+              .when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, stack) => const Center(child: Text('Error Fetching from Database')),
+                data: (productsRaw) {
+                  if (productsRaw.isEmpty) {
+                    return const AnimatedEmptyState(icon: Icons.inventory_2_outlined, title: 'No products found');
+                  }
 
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const AnimatedEmptyState(
-                  icon: Icons.inventory_2_outlined,
-                  title: 'No products found',
-                );
-              }
+                  final products = productsRaw.where((data) {
+                    final name = data.name.toLowerCase();
+                    final stock = data.stockQuantity;
 
-              var products = snapshot.data!.docs.where((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                final name = (data['name'] ?? '').toString().toLowerCase();
-                final stock = data['stockQuantity'] ?? 0;
+                    final matchesSearch = _searchQuery.isEmpty || name.contains(_searchQuery);
 
-                final matchesSearch = _searchQuery.isEmpty || name.contains(_searchQuery);
+                    bool matchesStock = true;
+                    switch (_stockFilter) {
+                      case 'in_stock':
+                        matchesStock = stock > 0;
+                        break;
+                      case 'out_of_stock':
+                        matchesStock = stock == 0;
+                        break;
+                      case 'low_stock':
+                        matchesStock = stock > 0 && stock < 5;
+                        break;
+                    }
 
-                bool matchesStock = true;
-                switch (_stockFilter) {
-                  case 'in_stock':
-                    matchesStock = stock > 0;
-                    break;
-                  case 'out_of_stock':
-                    matchesStock = stock == 0;
-                    break;
-                  case 'low_stock':
-                    matchesStock = stock > 0 && stock < 5;
-                    break;
-                }
+                    return matchesSearch && matchesStock;
+                  }).toList();
 
-                return matchesSearch && matchesStock;
-              }).toList();
+                  if (products.isEmpty) {
+                    return const Center(child: Text('No products match your filters'));
+                  }
 
-              if (products.isEmpty) {
-                return const Center(child: Text('No products match your filters'));
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: products.length,
-                itemBuilder: (context, index) {
-                  final doc = products[index];
-                  final data = doc.data() as Map<String, dynamic>;
-                  return FadeSlideIn(
-                    delay: Duration(milliseconds: 30 * index),
-                    child: _ProductCard(productId: doc.id, data: data),
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: products.length,
+                    itemBuilder: (context, index) {
+                      final data = products[index];
+                      return FadeSlideIn(
+                        delay: Duration(milliseconds: 30 * index),
+                        child: _ProductCard(product: data),
+                      );
+                    },
                   );
                 },
-              );
-            },
-          ),
+              ),
         ),
       ],
     );
@@ -129,18 +122,17 @@ class _AdminProductsTabState extends State<AdminProductsTab> {
   }
 }
 
-class _ProductCard extends StatelessWidget {
-  final String productId;
-  final Map<String, dynamic> data;
+class _ProductCard extends ConsumerWidget {
+  final ProductModel product;
 
-  const _ProductCard({required this.productId, required this.data});
+  const _ProductCard({required this.product});
 
   @override
-  Widget build(BuildContext context) {
-    final name = data['name'] ?? 'Unknown';
-    final price = (data['price'] ?? 0.0).toDouble();
-    final stock = data['stockQuantity'] ?? 0;
-    final imageUrls = List<String>.from(data['imageUrls'] ?? []);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final name = product.name;
+    final price = product.price;
+    final stock = product.stockQuantity;
+    final imageUrls = product.imageUrls;
 
     Color stockColor;
     String stockText;
@@ -171,25 +163,10 @@ class _ProductCard extends StatelessWidget {
                       width: 70,
                       height: 70,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        width: 70,
-                        height: 70,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.image),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        width: 70,
-                        height: 70,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.broken_image),
-                      ),
+                      placeholder: (context, url) => Container(width: 70, height: 70, color: Colors.grey[200], child: const Icon(Icons.image)),
+                      errorWidget: (context, url, error) => Container(width: 70, height: 70, color: Colors.grey[200], child: const Icon(Icons.broken_image)),
                     )
-                  : Container(
-                      width: 70,
-                      height: 70,
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.image),
-                    ),
+                  : Container(width: 70, height: 70, color: Colors.grey[200], child: const Icon(Icons.image)),
             ),
             const SizedBox(width: 12),
 
@@ -212,10 +189,7 @@ class _ProductCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: stockColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    decoration: BoxDecoration(color: stockColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                     child: Text(
                       stockText,
                       style: TextStyle(color: stockColor, fontSize: 11, fontWeight: FontWeight.w600),
@@ -227,7 +201,7 @@ class _ProductCard extends StatelessWidget {
 
             // Actions
             PopupMenuButton<String>(
-              onSelected: (value) => _handleAction(context, value),
+              onSelected: (value) => _handleAction(context, ref, value),
               itemBuilder: (context) => [
                 const PopupMenuItem(value: 'set_stock', child: Text('Set Stock')),
                 const PopupMenuItem(value: 'mark_out_of_stock', child: Text('Mark Out of Stock')),
@@ -244,25 +218,71 @@ class _ProductCard extends StatelessWidget {
     );
   }
 
-  void _handleAction(BuildContext context, String action) {
+  void _handleAction(BuildContext context, WidgetRef ref, String action) {
     switch (action) {
       case 'set_stock':
-        _showSetStockDialog(context);
+        _showSetStockDialog(context, ref);
         break;
       case 'mark_out_of_stock':
-        _setStock(context, 0);
+        _setStock(context, ref, 0);
         break;
       case 'view_seller':
-        _viewSeller(context);
+        _viewSeller(context, ref);
         break;
       case 'delete':
-        _showDeleteDialog(context);
+        _showDeleteDialog(context, ref);
         break;
     }
   }
 
-  void _showSetStockDialog(BuildContext context) {
-    final controller = TextEditingController(text: (data['stockQuantity'] ?? 0).toString());
+  void _setStock(BuildContext context, WidgetRef ref, int quantity) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final success = await ref.read(adminActionsViewModelProvider.notifier).updateProductStock(product.id, quantity);
+    if (!context.mounted) return;
+    if (success) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(quantity == 0 ? 'Product marked as out of stock' : 'Stock updated to $quantity'),
+          backgroundColor: quantity == 0 ? Colors.orange : Colors.green,
+        ),
+      );
+    } else {
+      final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to update stock';
+      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+    }
+  }
+
+  void _showDeleteDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Product'),
+        content: Text('Are you sure you want to delete "${product.name}"? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final messenger = ScaffoldMessenger.of(context);
+              final success = await ref.read(adminActionsViewModelProvider.notifier).deleteProduct(product.id);
+              if (!context.mounted) return;
+              if (success) {
+                messenger.showSnackBar(const SnackBar(content: Text('Product deleted'), backgroundColor: Colors.red));
+              } else {
+                final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to delete product';
+                messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSetStockDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController(text: product.stockQuantity.toString());
 
     showDialog(
       context: context,
@@ -271,10 +291,7 @@ class _ProductCard extends StatelessWidget {
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Stock Quantity',
-            border: OutlineInputBorder(),
-          ),
+          decoration: const InputDecoration(labelText: 'Stock Quantity', border: OutlineInputBorder()),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
@@ -282,7 +299,7 @@ class _ProductCard extends StatelessWidget {
             onPressed: () {
               final newStock = int.tryParse(controller.text) ?? 0;
               Navigator.pop(ctx);
-              _setStock(context, newStock);
+              _setStock(context, ref, newStock);
             },
             child: const Text('Update'),
           ),
@@ -291,35 +308,17 @@ class _ProductCard extends StatelessWidget {
     );
   }
 
-  void _setStock(BuildContext context, int quantity) async {
-    await FirebaseFirestore.instance.collection('products').doc(productId).update({
-      'stockQuantity': quantity,
-    });
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(quantity == 0 ? 'Product marked as out of stock' : 'Stock updated to $quantity'),
-          backgroundColor: quantity == 0 ? Colors.orange : Colors.green,
-        ),
-      );
-    }
-  }
+  void _viewSeller(BuildContext context, WidgetRef ref) async {
+    final sellerId = product.sellerId;
 
-  void _viewSeller(BuildContext context) async {
-    final sellerId = data['sellerId'];
-    if (sellerId == null) return;
-
-    final sellerDoc = await FirebaseFirestore.instance.collection('users').doc(sellerId).get();
-    if (!sellerDoc.exists) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Seller not found'), backgroundColor: Colors.red),
-        );
-      }
+    final messenger = ScaffoldMessenger.of(context);
+    final sellerData = await ref.read(adminActionsViewModelProvider.notifier).fetchUserById(sellerId);
+    if (!context.mounted) return;
+    if (sellerData == null) {
+      messenger.showSnackBar(const SnackBar(content: Text('Seller not found'), backgroundColor: Colors.red));
       return;
     }
 
-    final sellerData = sellerDoc.data()!;
     if (context.mounted) {
       showDialog(
         context: context,
@@ -329,42 +328,14 @@ class _ProductCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Name: ${sellerData['name'] ?? 'Unknown'}'),
-              Text('Email: ${sellerData['email'] ?? 'Unknown'}'),
-              Text('Stripe: ${sellerData['stripeOnboardingComplete'] == true ? 'Connected' : 'Pending'}'),
+              Text('Name: ${sellerData.name.isNotEmpty ? sellerData.name : 'Unknown'}'),
+              Text('Email: ${sellerData.email.isNotEmpty ? sellerData.email : 'Unknown'}'),
+              Text('Stripe: ${sellerData.onboardingCompleted ? 'Connected' : 'Pending'}'),
             ],
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
-          ],
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
         ),
       );
     }
-  }
-
-  void _showDeleteDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Product'),
-        content: Text('Are you sure you want to delete "${data['name']}"? This cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await FirebaseFirestore.instance.collection('products').doc(productId).delete();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Product deleted'), backgroundColor: Colors.red),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
   }
 }

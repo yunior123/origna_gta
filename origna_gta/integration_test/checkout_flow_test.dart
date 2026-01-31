@@ -1,7 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 /// Integration tests for the checkout flow
 ///
@@ -16,11 +17,7 @@ void main() {
   group('Cart Operations', () {
     test('CartModel serialization round-trip', () {
       final now = DateTime(2024, 1, 15, 10, 30);
-      final original = CartModel(
-        productId: 'prod_123',
-        quantity: 3,
-        dateCreated: now,
-      );
+      final original = CartModel(productId: 'prod_123', quantity: 3, dateCreated: now);
 
       final map = original.toMap();
       final restored = CartModel.fromMap(map);
@@ -39,17 +36,13 @@ void main() {
         imageUrls: ['https://example.com/image.jpg'],
         quantity: 2,
         dateCreated: Timestamp.now(),
-        sellerAddress: Address(
-          street: '123 Main St',
-          city: 'Toronto',
-          state: 'ON',
-          postalCode: 'M5V 1A1',
-          country: 'Canada',
-        ),
+        sellerAddress: Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada'),
         sellerId: 'seller_456',
         deliveryStatus: 'pending',
         trackingNumber: null,
         confirmedByBuyer: false,
+        minimumOrderQuantity: 2,
+        freeShipping: true,
       );
 
       expect(item.productId, 'prod_123');
@@ -65,6 +58,8 @@ void main() {
       expect(map['productId'], 'prod_123');
       expect(map['name'], 'Test Product');
       expect(map['price'], 29.99);
+      expect(map['minimumOrderQuantity'], 2);
+      expect(map['freeShipping'], true);
     });
   });
 
@@ -99,6 +94,15 @@ void main() {
       expect(total, closeTo(125.99, 0.01));
     });
 
+    test('shipping calculation skips free shipping items', () async {
+      final items = [_createMockItem(price: 10.0, quantity: 1, freeShipping: true)];
+
+      final buyer = Address(street: '123 Test St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada', latitude: 43.0, longitude: -79.0);
+
+      final cost = await calculateShippingCost(items, buyer);
+      expect(cost, closeTo(0.0, 0.01));
+    });
+
     test('platform fee calculation at 2.5%', () {
       const orderTotal = 100.0;
       const platformFeeRate = 0.025;
@@ -115,12 +119,7 @@ void main() {
 
       expect(net, closeTo(97.5, 0.01));
 
-      final payout = SellerPayout(
-        sellerId: 'seller_123',
-        gross: gross,
-        platformFee: platformFee,
-        net: net,
-      );
+      final payout = SellerPayout(sellerId: 'seller_123', gross: gross, platformFee: platformFee, net: net);
 
       expect(payout.gross, 100.0);
       expect(payout.platformFee, closeTo(2.5, 0.01));
@@ -132,14 +131,7 @@ void main() {
     test('order status transitions', () {
       // Verify the expected order status flow:
       // pending -> authorized -> paid -> shipped -> delivered -> completed
-      const statuses = [
-        'pending',
-        'authorized',
-        'paid',
-        'shipped',
-        'delivered',
-        'completed',
-      ];
+      const statuses = ['pending', 'authorized', 'paid', 'shipped', 'delivered', 'completed'];
 
       expect(statuses.length, 6);
       expect(statuses.first, 'pending');
@@ -149,12 +141,7 @@ void main() {
     test('delivery status transitions', () {
       // Verify the expected delivery status flow:
       // pending -> shipped -> in_transit -> delivered
-      const statuses = [
-        'pending',
-        'shipped',
-        'in_transit',
-        'delivered',
-      ];
+      const statuses = ['pending', 'shipped', 'in_transit', 'delivered'];
 
       expect(statuses.length, 4);
       expect(statuses.first, 'pending');
@@ -181,10 +168,8 @@ void main() {
       expect(itemsBySeller['seller_B']!.length, 1);
 
       // Calculate per-seller totals
-      final sellerATotal = itemsBySeller['seller_A']!
-          .fold<double>(0, (acc, i) => acc + (i.price * i.quantity));
-      final sellerBTotal = itemsBySeller['seller_B']!
-          .fold<double>(0, (acc, i) => acc + (i.price * i.quantity));
+      final sellerATotal = itemsBySeller['seller_A']!.fold<double>(0, (acc, i) => acc + (i.price * i.quantity));
+      final sellerBTotal = itemsBySeller['seller_B']!.fold<double>(0, (acc, i) => acc + (i.price * i.quantity));
 
       expect(sellerATotal, closeTo(80.0, 0.01)); // 20 + 60
       expect(sellerBTotal, closeTo(50.0, 0.01));
@@ -204,6 +189,32 @@ void main() {
       expect(sellerIds.contains('seller_A'), true);
       expect(sellerIds.contains('seller_B'), true);
       expect(sellerIds.contains('seller_C'), true);
+    });
+  });
+
+  group('Checkout Guardrails', () {
+    test('delivery speed availability reflects item constraints', () {
+      const items = [
+        DeliveryItemCheck(estimatedShipDays: 5, isPerishable: false, isLocalOnly: false),
+        DeliveryItemCheck(estimatedShipDays: 1, isPerishable: true, isLocalOnly: false),
+      ];
+
+      expect(DeliverySpeed.standard.isAvailableForItems(items, true), true);
+      expect(DeliverySpeed.express.isAvailableForItems(items, true), true);
+      expect(DeliverySpeed.sameDay.isAvailableForItems(items, false), false);
+    });
+
+    test('address validation rejects incomplete delivery info', () {
+      final address = Address(street: '', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada');
+
+      expect(hasValidAddress(address), false);
+    });
+
+    test('tax code validation allows empty or valid txcd', () {
+      expect(isValidTaxCode(null), true);
+      expect(isValidTaxCode(''), true);
+      expect(isValidTaxCode('txcd_12345678'), true);
+      expect(isValidTaxCode('txcd_invalid'), false);
     });
   });
 
@@ -243,6 +254,7 @@ CartItemDetailModel _createMockItem({
   int quantity = 1,
   String sellerId = 'seller_test',
   String deliveryStatus = 'pending',
+  bool freeShipping = false,
 }) {
   return CartItemDetailModel(
     productId: productId,
@@ -252,14 +264,9 @@ CartItemDetailModel _createMockItem({
     imageUrls: [],
     quantity: quantity,
     dateCreated: Timestamp.now(),
-    sellerAddress: Address(
-      street: '123 Test St',
-      city: 'Toronto',
-      state: 'ON',
-      postalCode: 'M5V 1A1',
-      country: 'Canada',
-    ),
+    sellerAddress: Address(street: '123 Test St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada'),
     sellerId: sellerId,
     deliveryStatus: deliveryStatus,
+    freeShipping: freeShipping,
   );
 }

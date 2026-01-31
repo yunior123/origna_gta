@@ -1,76 +1,35 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/repositories/order_repository.dart';
+import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
-import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/utils/utils.dart';
 
-// ============================================================================
-// CHECKOUT STATE
-// ============================================================================
+/// StateNotifierProvider for checkout
+final checkoutStateProvider = StateNotifierProvider.autoDispose<CheckoutNotifier, CheckoutState>((ref) {
+  return CheckoutNotifier(ref);
+});
 
-@immutable
-class CheckoutState {
-  final Address? address;
-  final double shippingCost;
-  final Map<String, double> taxBreakdown;
-  final bool isCalculatingShipping;
-  final String? shippingError;
-  final bool isProcessing;
-  final String? idempotencyKey;
-  final String? checkoutError;
+/// Computed provider for tax rate based on address
+final checkoutTaxRateProvider = Provider.autoDispose<double>((ref) {
+  final checkoutState = ref.watch(checkoutStateProvider);
+  if (checkoutState.address == null) return 0.13; // Default Ontario HST
+  return getTaxRate(checkoutState.address!.state);
+});
 
-  const CheckoutState({
-    this.address,
-    this.shippingCost = 0.0,
-    this.taxBreakdown = const {},
-    this.isCalculatingShipping = false,
-    this.shippingError,
-    this.isProcessing = false,
-    this.idempotencyKey,
-    this.checkoutError,
-  });
+/// Computed provider for checkout total
+final checkoutTotalProvider = Provider.autoDispose<double>((ref) {
+  final checkoutState = ref.watch(checkoutStateProvider);
+  final subtotal = ref.watch(cartSubtotalProvider);
+  return subtotal + checkoutState.taxAmount + checkoutState.shippingCost;
+});
 
-  double get taxAmount => taxBreakdown.values.fold(0.0, (total, v) => total + v);
+class CheckoutAlreadyProcessed extends CheckoutResult {
+  final String existingOrderId;
 
-  CheckoutState copyWith({
-    Address? address,
-    double? shippingCost,
-    Map<String, double>? taxBreakdown,
-    bool? isCalculatingShipping,
-    String? shippingError,
-    bool? isProcessing,
-    String? idempotencyKey,
-    String? checkoutError,
-    bool clearShippingError = false,
-    bool clearCheckoutError = false,
-  }) {
-    return CheckoutState(
-      address: address ?? this.address,
-      shippingCost: shippingCost ?? this.shippingCost,
-      taxBreakdown: taxBreakdown ?? this.taxBreakdown,
-      isCalculatingShipping: isCalculatingShipping ?? this.isCalculatingShipping,
-      shippingError: clearShippingError ? null : (shippingError ?? this.shippingError),
-      isProcessing: isProcessing ?? this.isProcessing,
-      idempotencyKey: idempotencyKey ?? this.idempotencyKey,
-      checkoutError: clearCheckoutError ? null : (checkoutError ?? this.checkoutError),
-    );
-  }
-}
-
-// ============================================================================
-// CHECKOUT RESULT
-// ============================================================================
-
-sealed class CheckoutResult {}
-
-class CheckoutSuccess extends CheckoutResult {
-  final String checkoutUrl;
-  final String orderId;
-  final String sessionId;
-
-  CheckoutSuccess({required this.checkoutUrl, required this.orderId, required this.sessionId});
+  CheckoutAlreadyProcessed({required this.existingOrderId});
 }
 
 class CheckoutError extends CheckoutResult {
@@ -78,12 +37,6 @@ class CheckoutError extends CheckoutResult {
   final String? code;
 
   CheckoutError({required this.message, this.code});
-}
-
-class CheckoutAlreadyProcessed extends CheckoutResult {
-  final String existingOrderId;
-
-  CheckoutAlreadyProcessed({required this.existingOrderId});
 }
 
 // ============================================================================
@@ -95,31 +48,18 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
   CheckoutNotifier(this._ref) : super(const CheckoutState());
 
-  FirebaseFirestore get _firestore => _ref.read(firestoreProvider);
+  OrderRepository get _orderRepository => _ref.read(orderRepositoryProvider);
   String? get _userId => _ref.read(userIdProvider);
+  UserRepository get _userRepository => _ref.read(userRepositoryProvider);
 
-  /// Initialize checkout with user's address
-  Future<void> initialize() async {
-    final userId = _userId;
-    if (userId == null) return;
-
-    try {
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      final addressMap = userDoc.data()?['address'] as Map<String, dynamic>?;
-
-      if (addressMap != null) {
-        final address = Address.fromMap(addressMap);
-        state = state.copyWith(address: address);
-      }
-    } catch (e) {
-      debugPrint('Error initializing checkout: $e');
-    }
-  }
-
-  /// Calculate shipping cost for cart items
+  /// Calculate shipping cost for cart items and determine available delivery options
   Future<void> calculateShipping(List<CartItemDetailModel> items) async {
     if (state.address == null) {
       state = state.copyWith(shippingError: 'No address found');
+      return;
+    }
+    if (items.isEmpty) {
+      state = state.copyWith(shippingError: 'No items to ship');
       return;
     }
 
@@ -127,12 +67,27 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
     try {
       final cost = await calculateShippingCost(items, state.address);
-      state = state.copyWith(shippingCost: cost, isCalculatingShipping: false);
-    } catch (e) {
+
+      // Determine if local delivery (check if any seller is within ~50km)
+      final isLocal = await _checkLocalDelivery(items, state.address!);
+
+      // Build delivery item checks from cart items
+      final itemChecks = items
+          .map((item) => DeliveryItemCheck(estimatedShipDays: item.estimatedShipDays, isPerishable: item.isPerishable, isLocalOnly: item.isLocalDeliveryOnly))
+          .toList();
+
+      // Determine available delivery speeds
+      final availableSpeeds = DeliverySpeed.values.where((speed) => speed.isAvailableForItems(itemChecks, isLocal)).toList();
+
       state = state.copyWith(
-        shippingError: 'Failed to calculate shipping',
+        baseShippingCost: cost,
+        isLocalDelivery: isLocal,
+        availableDeliverySpeeds: availableSpeeds,
+        deliverySpeed: DeliverySpeed.standard,
         isCalculatingShipping: false,
       );
+    } catch (e) {
+      state = state.copyWith(shippingError: 'Failed to calculate shipping', isCalculatingShipping: false);
     }
   }
 
@@ -144,25 +99,49 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     state = state.copyWith(taxBreakdown: taxes);
   }
 
-  /// Update address and recalculate shipping
-  void updateAddress(Address address) {
-    state = state.copyWith(address: address);
+  /// Initialize checkout with user's address
+  Future<void> initialize() async {
+    final userId = _userId;
+    if (userId == null) return;
+
+    try {
+      final user = await _userRepository.getUserProfile(userId);
+      if (user?.address != null) {
+        state = state.copyWith(address: user!.address);
+      }
+    } catch (e) {
+      debugPrint('Error initializing checkout: $e');
+    }
   }
 
-  /// Generate idempotency key for payment safety
-  String _generateIdempotencyKey(String userId, List<CartItemDetailModel> items) {
-    final itemsHash = items.map((i) => '${i.productId}:${i.quantity}').join(',').hashCode;
-    return '${userId}_${itemsHash}_${DateTime.now().millisecondsSinceEpoch}';
+  /// Reset checkout state
+  void reset() {
+    state = const CheckoutState();
+  }
+
+  /// Update selected delivery speed
+  void setDeliverySpeed(DeliverySpeed speed) {
+    if (state.availableDeliverySpeeds.contains(speed)) {
+      state = state.copyWith(deliverySpeed: speed);
+    }
   }
 
   /// Start Stripe checkout with idempotency
-  Future<CheckoutResult> startCheckout({
-    required List<CartItemDetailModel> items,
-    required UserModel user,
-    required double subtotal,
-  }) async {
-    if (state.address == null) {
-      return CheckoutError(message: 'No delivery address');
+  Future<CheckoutResult> startCheckout({required List<CartItemDetailModel> items, required UserModel user, required double subtotal}) async {
+    if (items.isEmpty) {
+      return CheckoutError(message: 'Your cart is empty');
+    }
+
+    if (!hasValidAddress(state.address)) {
+      return CheckoutError(message: 'Delivery address is required');
+    }
+
+    if (subtotal <= 0) {
+      return CheckoutError(message: 'Invalid order total');
+    }
+
+    if (user.email.trim().isEmpty) {
+      return CheckoutError(message: 'Missing customer email');
     }
 
     if (state.isProcessing) {
@@ -177,119 +156,264 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         throw Exception('User not logged in');
       }
 
-      // Generate idempotency key
       final idempotencyKey = _generateIdempotencyKey(userId, items);
       state = state.copyWith(idempotencyKey: idempotencyKey);
 
-      // Calculate totals
       final taxRate = getTaxRate(state.address!.state);
       final tax = subtotal * taxRate;
       final totalWithTax = subtotal + tax + state.shippingCost;
 
-      // Get detailed taxes
       final taxes = calculateDetailedTaxes(state.address, subtotal);
-
-      // Get seller IDs
       final sellerIds = items.map((item) => item.sellerId).toSet().toList();
 
-      // Prepare delivery info
-      final deliveryInfo = state.address!.toMap();
-
-      // Build checkout request data for cloud function
-      // Note: Cloud function creates the actual OrderModel server-side
       final orderData = {
         'userId': userId,
         'customerId': user.customerId ?? '',
         'customerEmail': user.email,
         'items': items
-            .map((item) => {
-                  'sellerId': item.sellerId,
-                  'productId': item.productId,
-                  'name': item.name,
-                  'description': item.description,
-                  'price': item.price,
-                  'quantity': item.quantity,
-                  'imageUrls': item.imageUrls,
-                })
+            .map(
+              (item) => {
+                'sellerId': item.sellerId,
+                'productId': item.productId,
+                'name': item.name,
+                'description': item.description,
+                'price': item.price,
+                'quantity': item.quantity,
+                'imageUrls': item.imageUrls,
+              },
+            )
             .toList(),
         'total': totalWithTax,
         'taxes': taxes,
         'shippingCost': state.shippingCost,
         'subtotal': subtotal,
-        'deliveryInfo': deliveryInfo,
+        'deliveryInfo': state.address!.toMap(),
         'currency': 'cad',
         'amount': (totalWithTax * 100).toInt(),
         'sellerIds': sellerIds,
         'idempotencyKey': idempotencyKey,
+        'deliverySpeed': state.deliverySpeed.value,
       };
 
       debugPrint('Sending checkout request with idempotency key: $idempotencyKey');
 
-      final functions = FirebaseFunctions.instance;
-      if (kDebugMode) {
-        functions.useFunctionsEmulator('127.0.0.1', 8081);
-      }
+      final result = await _orderRepository.createCheckoutSession(orderData);
 
-      final callable = functions.httpsCallable('create_checkout_session');
-      final response = await callable.call(orderData);
+      final checkoutUrl = result['url'] as String;
+      final orderId = result['orderId'] as String;
+      final sessionId = result['sessionId'] as String;
 
-      final checkoutUrl = response.data['url'] as String;
-      final orderId = response.data['orderId'] as String;
-      final sessionId = response.data['sessionId'] as String;
-
-      // Update user with checkout tracking
-      await _firestore.collection('users').doc(userId).update({
-        'lastCheckoutSession': sessionId,
-        'lastOrderId': orderId,
-        'lastCheckoutTimestamp': FieldValue.serverTimestamp(),
-      });
+      await _orderRepository.updateLastSession(userId, sessionId, orderId);
 
       state = state.copyWith(isProcessing: false);
 
-      return CheckoutSuccess(
-        checkoutUrl: checkoutUrl,
-        orderId: orderId,
-        sessionId: sessionId,
-      );
-    } on FirebaseFunctionsException catch (e) {
-      debugPrint('Firebase Function Error: ${e.code} - ${e.message}');
-      state = state.copyWith(
-        isProcessing: false,
-        checkoutError: e.message ?? e.code,
-      );
-      return CheckoutError(message: e.message ?? e.code, code: e.code);
+      return CheckoutSuccess(checkoutUrl: checkoutUrl, orderId: orderId, sessionId: sessionId);
     } catch (e) {
       debugPrint('Checkout error: $e');
-      state = state.copyWith(isProcessing: false, checkoutError: e.toString());
-      return CheckoutError(message: e.toString());
+      state = state.copyWith(isProcessing: false, checkoutError: AppError.getMessage(e));
+      return CheckoutError(message: AppError.getMessage(e));
     }
   }
 
-  /// Reset checkout state
-  void reset() {
-    state = const CheckoutState();
+  /// Update address and recalculate shipping
+  void updateAddress(Address address) {
+    state = state.copyWith(address: address);
   }
+
+  double _atan2(double y, double x) => _taylorAtan2(y, x);
+
+  /// Calculate distance between two coordinates in km (Haversine formula)
+  double _calculateDistanceKm(double lat1, double lon1, double lat2, double lon2) {
+    const earthRadiusKm = 6371.0;
+    final dLat = _toRadians(lat2 - lat1);
+    final dLon = _toRadians(lon2 - lon1);
+
+    final a = _sin(dLat / 2) * _sin(dLat / 2) + _cos(_toRadians(lat1)) * _cos(_toRadians(lat2)) * _sin(dLon / 2) * _sin(dLon / 2);
+    final c = 2 * _atan2(_sqrt(a), _sqrt(1 - a));
+
+    return earthRadiusKm * c;
+  }
+
+  /// Check if buyer is within local delivery range (~50km) of sellers
+  Future<bool> _checkLocalDelivery(List<CartItemDetailModel> items, Address buyerAddress) async {
+    if (buyerAddress.latitude == null || buyerAddress.longitude == null) {
+      return false;
+    }
+
+    // Check if all sellers are within local range
+    for (final item in items) {
+      final sellerAddr = item.sellerAddress;
+      if (sellerAddr.latitude == null || sellerAddr.longitude == null) {
+        return false;
+      }
+
+      // Simple distance check using Haversine approximation
+      final distance = _calculateDistanceKm(buyerAddress.latitude!, buyerAddress.longitude!, sellerAddr.latitude!, sellerAddr.longitude!);
+
+      if (distance > 50) {
+        return false; // Not local if any seller is > 50km away
+      }
+    }
+    return true;
+  }
+
+  double _cos(double x) => _taylorSin(x + 1.5707963267948966);
+
+  /// Generate deterministic idempotency key for payment safety
+  String _generateIdempotencyKey(String userId, List<CartItemDetailModel> items) {
+    final sortedItems = List<CartItemDetailModel>.from(items)..sort((a, b) => a.productId.compareTo(b.productId));
+
+    final itemsString = sortedItems.map((i) => '${i.productId}:${i.quantity}').join('|');
+
+    var hash = 0;
+    for (var i = 0; i < itemsString.length; i++) {
+      hash = (31 * hash + itemsString.codeUnitAt(i)) & 0x7FFFFFFF;
+    }
+
+    final date = DateTime.now();
+    final dateKey = '${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}';
+
+    return 'chk_${userId}_${hash.toRadixString(36)}_$dateKey';
+  }
+
+  double _newtonSqrt(double x) {
+    double guess = x / 2;
+    for (int i = 0; i < 20; i++) {
+      guess = (guess + x / guess) / 2;
+    }
+    return guess;
+  }
+
+  double _sin(double x) => _taylorSin(x);
+
+  double _sqrt(double x) => x <= 0 ? 0 : _newtonSqrt(x);
+
+  double _taylorAtan(double x) {
+    if (x > 1) return 1.5707963267948966 - _taylorAtan(1 / x);
+    if (x < -1) return -1.5707963267948966 - _taylorAtan(1 / x);
+    double result = x;
+    double term = x;
+    for (int i = 1; i <= 20; i++) {
+      term *= -x * x;
+      result += term / (2 * i + 1);
+    }
+    return result;
+  }
+
+  double _taylorAtan2(double y, double x) {
+    if (x > 0) return _taylorAtan(y / x);
+    if (x < 0 && y >= 0) return _taylorAtan(y / x) + 3.141592653589793;
+    if (x < 0 && y < 0) return _taylorAtan(y / x) - 3.141592653589793;
+    if (x == 0 && y > 0) return 1.5707963267948966;
+    if (x == 0 && y < 0) return -1.5707963267948966;
+    return 0;
+  }
+
+  // Taylor series approximations for math functions
+  double _taylorSin(double x) {
+    x = x % 6.283185307179586;
+    if (x > 3.141592653589793) x -= 6.283185307179586;
+    if (x < -3.141592653589793) x += 6.283185307179586;
+    double result = x;
+    double term = x;
+    for (int i = 1; i <= 10; i++) {
+      term *= -x * x / ((2 * i) * (2 * i + 1));
+      result += term;
+    }
+    return result;
+  }
+
+  double _toRadians(double deg) => deg * 3.141592653589793 / 180;
 }
 
 // ============================================================================
 // PROVIDERS
 // ============================================================================
 
-/// StateNotifierProvider for checkout
-final checkoutStateProvider = StateNotifierProvider.autoDispose<CheckoutNotifier, CheckoutState>((ref) {
-  return CheckoutNotifier(ref);
-});
+// ============================================================================
+// CHECKOUT RESULT
+// ============================================================================
 
-/// Computed provider for checkout total
-final checkoutTotalProvider = Provider.autoDispose<double>((ref) {
-  final checkoutState = ref.watch(checkoutStateProvider);
-  final subtotal = ref.watch(cartSubtotalProvider);
-  return subtotal + checkoutState.taxAmount + checkoutState.shippingCost;
-});
+sealed class CheckoutResult {}
 
-/// Computed provider for tax rate based on address
-final checkoutTaxRateProvider = Provider.autoDispose<double>((ref) {
-  final checkoutState = ref.watch(checkoutStateProvider);
-  if (checkoutState.address == null) return 0.13; // Default Ontario HST
-  return getTaxRate(checkoutState.address!.state);
-});
+// ============================================================================
+// CHECKOUT STATE
+// ============================================================================
+
+@immutable
+class CheckoutState {
+  final Address? address;
+  final double baseShippingCost; // Base shipping before delivery speed surcharge
+  final DeliverySpeed deliverySpeed;
+  final List<DeliverySpeed> availableDeliverySpeeds;
+  final bool isLocalDelivery; // Within ~50km of seller
+  final Map<String, double> taxBreakdown;
+  final bool isCalculatingShipping;
+  final String? shippingError;
+  final bool isProcessing;
+  final String? idempotencyKey;
+  final String? checkoutError;
+
+  const CheckoutState({
+    this.address,
+    this.baseShippingCost = 0.0,
+    this.deliverySpeed = DeliverySpeed.standard,
+    this.availableDeliverySpeeds = const [DeliverySpeed.standard],
+    this.isLocalDelivery = false,
+    this.taxBreakdown = const {},
+    this.isCalculatingShipping = false,
+    this.shippingError,
+    this.isProcessing = false,
+    this.idempotencyKey,
+    this.checkoutError,
+  });
+
+  /// Total shipping cost including delivery speed surcharge
+  /// Standard (free) uses base cost, express/same-day add surcharge
+  double get shippingCost {
+    if (deliverySpeed == DeliverySpeed.standard) {
+      return baseShippingCost;
+    }
+    return baseShippingCost + deliverySpeed.baseSurcharge;
+  }
+
+  double get taxAmount => taxBreakdown.values.fold(0.0, (total, v) => total + v);
+
+  CheckoutState copyWith({
+    Address? address,
+    double? baseShippingCost,
+    DeliverySpeed? deliverySpeed,
+    List<DeliverySpeed>? availableDeliverySpeeds,
+    bool? isLocalDelivery,
+    Map<String, double>? taxBreakdown,
+    bool? isCalculatingShipping,
+    String? shippingError,
+    bool? isProcessing,
+    String? idempotencyKey,
+    String? checkoutError,
+    bool clearShippingError = false,
+    bool clearCheckoutError = false,
+  }) {
+    return CheckoutState(
+      address: address ?? this.address,
+      baseShippingCost: baseShippingCost ?? this.baseShippingCost,
+      deliverySpeed: deliverySpeed ?? this.deliverySpeed,
+      availableDeliverySpeeds: availableDeliverySpeeds ?? this.availableDeliverySpeeds,
+      isLocalDelivery: isLocalDelivery ?? this.isLocalDelivery,
+      taxBreakdown: taxBreakdown ?? this.taxBreakdown,
+      isCalculatingShipping: isCalculatingShipping ?? this.isCalculatingShipping,
+      shippingError: clearShippingError ? null : (shippingError ?? this.shippingError),
+      isProcessing: isProcessing ?? this.isProcessing,
+      idempotencyKey: idempotencyKey ?? this.idempotencyKey,
+      checkoutError: clearCheckoutError ? null : (checkoutError ?? this.checkoutError),
+    );
+  }
+}
+
+class CheckoutSuccess extends CheckoutResult {
+  final String checkoutUrl;
+  final String orderId;
+  final String sessionId;
+
+  CheckoutSuccess({required this.checkoutUrl, required this.orderId, required this.sessionId});
+}

@@ -26,6 +26,14 @@ mock_firebase_functions.scheduler_fn.on_schedule.side_effect = pass_through_deco
 # Configure params
 mock_firebase_functions.params.SecretParam.return_value.value = "test_secret"
 
+class MockHttpsError(Exception):
+    def __init__(self, code, message, details=None):
+        self.code = code
+        self.message = message
+        self.details = details
+
+mock_firebase_functions.https_fn.HttpsError = MockHttpsError
+
 module_mocks = {
     'firebase_functions': mock_firebase_functions,
     'firebase_functions.https_fn': mock_firebase_functions.https_fn,
@@ -208,6 +216,65 @@ class TestPaymentFlow(unittest.TestCase):
         # In main.py: if capture_method == CaptureMethod.MANUAL: update paymentStatus="authorized"
         self.assertEqual(call_args.get("paymentStatus"), "authorized")
 
+    def test_webhook_persists_stripe_amounts_and_taxes(self):
+        """
+        Scenario: Webhook includes amount_total, amount_subtotal, and tax details.
+        Expectation: Order is updated with amount/total/taxes and authorizedAmount.
+        """
+        req = MagicMock()
+        req.data = b'raw_payload'
+        req.headers = {'stripe-signature': 'sig_456'}
+
+        mock_event = {
+            "id": "evt_456",
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_456",
+                    "client_reference_id": "order_456",
+                    "payment_status": "paid",
+                    "amount_total": 6200,
+                    "amount_subtotal": 6000,
+                    "total_details": {"amount_tax": 200},
+                    "metadata": {"userId": "u2"},
+                    "payment_intent": "pi_456"
+                }
+            }
+        }
+        main.stripe.Webhook.construct_event.return_value = mock_event
+
+        mock_order_ref = MagicMock()
+        mock_order_doc = MagicMock()
+        mock_order_doc.exists = True
+        mock_order_doc.to_dict.return_value = {
+            "orderId": "order_456",
+            "status": OrderStatus.PENDING,
+            "captureMethod": "manual",
+            "amount": None,
+            "expectedSubtotalCents": 6000,
+        }
+
+        mock_event_log = MagicMock()
+        mock_event_log.get.return_value.exists = False
+
+        def doc_side_effect(arg):
+            if arg == "evt_456":
+                return mock_event_log
+            if arg == "order_456":
+                return mock_order_ref
+            return MagicMock()
+
+        main.db.collection.return_value.document.side_effect = doc_side_effect
+        mock_order_ref.get.return_value = mock_order_doc
+
+        stripe_webhook(req)
+
+        call_args = mock_order_ref.update.call_args[0][0]
+        self.assertEqual(call_args.get("amount"), 6200)
+        self.assertEqual(call_args.get("total"), 62.0)
+        self.assertEqual(call_args.get("taxes"), {"stripeTax": 2.0})
+        self.assertEqual(call_args.get("authorizedAmount"), 6200)
+
     def test_create_checkout_session_flow(self):
         """
         Scenario: User initiates checkout.
@@ -231,9 +298,12 @@ class TestPaymentFlow(unittest.TestCase):
                 }
             ],
             "deliveryInfo": {
+                "street": "123 Test St",
+                "city": "Toronto",
+                "postalCode": "M5V 1A1",
                 "state": "ON", # Needs to be Canadian
                 "country": "Canada",
-                "formattedAddress": "123 Test St"
+                "formattedAddress": "123 Test St, Toronto, ON"
             },
             "subtotal": 50.00,
             "total": 50.00,

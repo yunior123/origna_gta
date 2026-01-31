@@ -4,7 +4,7 @@
 // More comprehensive tests are in the unit/ and widget/ subdirectories.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:origna_gta/utils.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 void main() {
   group('App Smoke Tests', () {

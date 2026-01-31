@@ -1,0 +1,105 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/utils.dart';
+
+abstract class AdminRepository {
+  Future<void> deleteProduct(String productId);
+  Future<UserModel?> fetchUserById(String userId);
+  Future<void> setUserSuspended(String userId, bool suspended);
+  Future<void> updateProductStock(String productId, int quantity);
+  Future<void> updateUserRoles(String userId, {List<String> add, List<String> remove});
+  Stream<List<OrderModel>> watchOrders({String? status, int limit});
+  Stream<List<ProductModel>> watchProducts({int limit, String? sellerId});
+  Stream<List<UserModel>> watchSellers({int limit});
+  Stream<List<UserModel>> watchUsers({int limit});
+}
+
+class FirebaseAdminRepository implements AdminRepository {
+  final FirebaseFirestore _firestore;
+
+  FirebaseAdminRepository(this._firestore);
+
+  @override
+  Future<void> deleteProduct(String productId) async {
+    await _firestore.collection('products').doc(productId).delete();
+  }
+
+  @override
+  Future<UserModel?> fetchUserById(String userId) async {
+    final doc = await _firestore.collection('users').doc(userId).get();
+    if (!doc.exists) return null;
+    return UserModel.fromMap({'uid': doc.id, ...doc.data()!});
+  }
+
+  @override
+  Future<void> setUserSuspended(String userId, bool suspended) async {
+    await _firestore.collection('users').doc(userId).update({
+      'suspended': suspended,
+      'suspendedAt': suspended ? FieldValue.serverTimestamp() : FieldValue.delete(),
+    });
+  }
+
+  @override
+  Future<void> updateProductStock(String productId, int quantity) async {
+    await _firestore.collection('products').doc(productId).update({'stockQuantity': quantity});
+  }
+
+  @override
+  Future<void> updateUserRoles(String userId, {List<String> add = const [], List<String> remove = const []}) async {
+    final userRef = _firestore.collection('users').doc(userId);
+    final updates = <String, dynamic>{};
+    if (add.isNotEmpty) {
+      updates['roles'] = FieldValue.arrayUnion(add);
+    }
+    if (remove.isNotEmpty) {
+      updates['roles'] = FieldValue.arrayRemove(remove);
+    }
+    if (updates.isNotEmpty) {
+      await userRef.update(updates);
+    }
+  }
+
+  @override
+  Stream<List<OrderModel>> watchOrders({String? status, int limit = 50}) {
+    Query query = _firestore.collection('orders').orderBy('createdAt', descending: true).limit(limit);
+    if (status != null && status != 'all') {
+      query = query.where('paymentStatus', isEqualTo: status);
+    }
+    return query.snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return OrderModel.fromMap({'orderId': doc.id, ...data});
+      }).toList();
+    });
+  }
+
+  @override
+  Stream<List<ProductModel>> watchProducts({int limit = 100, String? sellerId}) {
+    Query query = _firestore.collection('products').orderBy('dateCreated', descending: true).limit(limit);
+    if (sellerId != null && sellerId.isNotEmpty) {
+      query = _firestore.collection('products').where('sellerId', isEqualTo: sellerId);
+    }
+    return query.snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return ProductModel.fromMap({'productId': doc.id, ...data});
+      }).toList();
+    });
+  }
+
+  @override
+  Stream<List<UserModel>> watchSellers({int limit = 100}) {
+    return _firestore.collection('users').where('roles', arrayContains: UserRoles.seller).orderBy('createdAt', descending: true).limit(limit).snapshots().map((
+      snapshot,
+    ) {
+      return snapshot.docs.map((doc) => UserModel.fromMap({'uid': doc.id, ...doc.data()})).toList();
+    });
+  }
+
+  @override
+  Stream<List<UserModel>> watchUsers({int limit = 100}) {
+    return _firestore.collection('users').orderBy('createdAt', descending: true).limit(limit).snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => UserModel.fromMap({'uid': doc.id, ...doc.data()})).toList();
+    });
+  }
+}
