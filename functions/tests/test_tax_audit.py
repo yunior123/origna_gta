@@ -92,6 +92,17 @@ class TestTaxAudit(unittest.TestCase):
             }
         }
 
+        # Mock Seller Document (Required by _assert_seller_active)
+        mock_seller_doc = MagicMock()
+        mock_seller_doc.exists = True
+        mock_seller_doc.to_dict.return_value = {
+            "roles": ["seller"],
+            "suspended": False,
+            "onboardingCompleted": True,
+            "chargesEnabled": True,
+            "payoutsEnabled": True
+        }
+
         # Mock DB Product (Category 17 = Baby & Kids)
         mock_product = MagicMock()
         mock_product.exists = True
@@ -105,7 +116,15 @@ class TestTaxAudit(unittest.TestCase):
         }
 
         mock_transaction = MagicMock()
+        
+        # transaction.get() is ONLY called for seller lookup
+        mock_transaction.get.return_value = mock_seller_doc
+        
+        # Configure both the context manager AND direct return
+        main.db.transaction.return_value = mock_transaction
         main.db.transaction.return_value.__enter__.return_value = mock_transaction
+        
+        # Create document chain for product lookups
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_product
         main.db.collection.return_value.document.return_value = mock_doc_ref
@@ -163,6 +182,18 @@ class TestTaxAudit(unittest.TestCase):
             }
         }
 
+        # Mock Seller Document (Required by _assert_seller_active)
+        mock_seller_doc = MagicMock()
+        mock_seller_doc.exists = True
+        mock_seller_doc.to_dict.return_value = {
+            "roles": ["seller"],
+            "suspended": False,
+            "onboardingCompleted": True,
+            "chargesEnabled": True,
+            "payoutsEnabled": True
+        }
+
+
         mock_product = MagicMock()
         mock_product.exists = True
         mock_product.to_dict.return_value = {
@@ -174,9 +205,20 @@ class TestTaxAudit(unittest.TestCase):
              "sellerAddress": {"state": "ON"}
         }
 
+        # Create document chain for product lookups
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_product
         main.db.collection.return_value.document.return_value = mock_doc_ref
+        
+        # Mock transaction for seller lookup
+        mock_transaction = MagicMock()
+        
+        # transaction.get() is ONLY called for seller lookup
+        mock_transaction.get.return_value = mock_seller_doc
+        
+        # Configure both the context manager AND direct return
+        main.db.transaction.return_value = mock_transaction
+        main.db.transaction.return_value.__enter__.return_value = mock_transaction
         
         main.stripe.checkout.Session.create.return_value = MagicMock(id="sess_2", url="http://test")
 
