@@ -68,5 +68,4 @@ algoliasearch==4.6.1
 
 # Pydantic for data validation and schema generation
 pydantic==2.11.2
-pydantic-core==2.27.2
 email-validator==2.2.0
