@@ -76,10 +76,10 @@ TODO 🚧 P2.9: E2E tests (Playwright suite created: checkout, seller, order lif
 
 TIER 3 - MEDIUM (NICE TO HAVE)
 ───────────────────────────────
-TODO 🚧 P3.1: Home screen aesthetic (2100 design: gradient appbar, category chips, modernized layout ✓)
-TODO 🚧 P3.2: Responsive layout audit (test 320px, 480px, 768px, 1024px+ - add responsive breakpoints)
-TODO 🚧 P3.3: Glassmorphism polish (add subtle blur effects across app)
-TODO 🚧 P3.4: Splash screen redesign (unique, orignaventures.ca-inspired)
+TODO ✅ P3.1: Home screen aesthetic (2100 design: gradient appbar, category chips, modernized layout ✓)
+TODO ✅ P3.2: Responsive layout audit (320px→480px→768px→1024px+ breakpoints, ResponsiveBreakpoints + ResponsiveText utilities created, see RESPONSIVE_LAYOUT_AUDIT_2026_02_03.md)
+TODO ✅ P3.3: Glassmorphism polish (BackdropFilter blur effects: GlassContainer, GlassButton, GlassCard, GlassModal, GlassFloatingActionButton, GlassAppBar, GlassBadge)
+TODO ✅ P3.4: Splash screen redesign (SplashScreen + PremiumSplashScreen with gradient bg, animated logo, OrignaVentures branding)
 TODO ✅ P3.5: Legal text update (Terms & Conditions contact → orignaventures.ca, verify Canada-specific)
 TODO ✅ P3.6: Product schema alignment (verify frontend form matches backend, R2 upload best practices)
 
