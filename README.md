@@ -26,6 +26,26 @@ This repo contains:
 - ✅ Idempotent payments with client-supplied + Stripe keys
 - ✅ Atomic stock transactions prevent race conditions
 
+## Phase 3.5: Edge Case Fixes (2026-02-02)
+**Status**: ✅ Complete | [Full Audit](EDGE_CASES_AUDIT.md)
+
+**6 Critical Edge Cases Fixed**:
+1. ✅ **Seller Suspension** (URGENT): `suspend_seller()` Cloud Function - auto-cancels orders, refunds buyers, restores stock
+2. ✅ **Multi-Seller Capture** (URGENT): Per-seller tracking via `sellerCaptures` dict - prevents double-charging
+3. ✅ **Auto-Capture Failure** (HIGH): Tracks `captureAttempts`, flags for manual review after 3 failures
+4. ✅ **Rate Limiter Race** (HIGH): Transaction-based rate limiting - atomic increment prevents bypass
+5. ✅ **Product Deletion** (MEDIUM): Pre-delete check for active orders - prevents stock issues
+6. ✅ **Dispute Fraud** (MEDIUM): Fraud scoring system (30-90pts) - flags post-delivery disputes
+
+**New Collections**:
+- `security_alerts`: Immutable audit log for fraud/suspension events (admin read-only)
+
+**New Order Fields**:
+- `sellerCaptures`: Per-seller capture tracking
+- `captureAttempts`: Auto-capture failure counter
+- `requiresManualReview`: Admin intervention flag
+- `fraudScore`: Dispute risk score (0-100)
+
 **Cronjobs**:
 - `check_expired_authorizations_scheduled`: Daily 2 AM UTC (cancels expired payment holds)
 
