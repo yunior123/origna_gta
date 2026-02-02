@@ -88,9 +88,9 @@ class CartScreen extends ConsumerWidget {
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: LinearGradient(colors: [DesignTokens.primary.withOpacity(0.1), DesignTokens.secondary.withOpacity(0.1)]),
+                            gradient: LinearGradient(colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.1)]),
                           ),
-                          child: Icon(Icons.shopping_cart_outlined, size: 80, color: DesignTokens.primary.withOpacity(0.6)),
+                          child: Icon(Icons.shopping_cart_outlined, size: 80, color: DesignTokens.primary.withValues(alpha: 0.6)),
                         ),
                         const SizedBox(height: 24),
                         Text(
@@ -180,7 +180,7 @@ class _CartSummary extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           decoration: BoxDecoration(
             color: isDark ? Colors.grey[900] : Colors.white,
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -8))],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -8))],
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(children: [const _CartTotalDisplay(), const SizedBox(height: 20), const _CheckoutButton()]),
@@ -209,12 +209,12 @@ class _CartTotalDisplay extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [DesignTokens.primary.withOpacity(0.08), DesignTokens.secondary.withOpacity(0.08)],
+              colors: [DesignTokens.primary.withValues(alpha: 0.08), DesignTokens.secondary.withValues(alpha: 0.08)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(DesignTokens.radius16),
-            border: Border.all(color: DesignTokens.primary.withOpacity(0.2), width: 1),
+            border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

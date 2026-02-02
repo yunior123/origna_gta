@@ -49,7 +49,7 @@ class OrdersScreen extends ConsumerWidget {
                   child: SizedBox(
                     width: 50,
                     height: 50,
-                    child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(0.8))),
+                    child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white.withValues(alpha: 0.8))),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -72,7 +72,7 @@ class OrdersScreen extends ConsumerWidget {
                       height: 120,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [DesignTokens.primary.withOpacity(0.2), DesignTokens.secondary.withOpacity(0.2)],
+                          colors: [DesignTokens.primary.withValues(alpha: 0.2), DesignTokens.secondary.withValues(alpha: 0.2)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -137,7 +137,7 @@ class OrdersScreen extends ConsumerWidget {
               height: 100,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.red[300]!.withOpacity(0.2), Colors.red[400]!.withOpacity(0.2)],
+                  colors: [Colors.red[300]!.withValues(alpha: 0.2), Colors.red[400]!.withValues(alpha: 0.2)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -195,15 +195,15 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            isDark ? Colors.grey[800]!.withOpacity(0.6) : Colors.white.withOpacity(0.8),
-            isDark ? Colors.grey[900]!.withOpacity(0.4) : Colors.grey[50]!.withOpacity(0.6),
+            isDark ? Colors.grey[800]!.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.8),
+            isDark ? Colors.grey[900]!.withValues(alpha: 0.4) : Colors.grey[50]!.withValues(alpha: 0.6),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        border: Border.all(color: DesignTokens.primary.withOpacity(0.2), width: 1),
-        boxShadow: [BoxShadow(color: DesignTokens.primary.withOpacity(0.1), blurRadius: 16, offset: const Offset(0, 4))],
+        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1),
+        boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.1), blurRadius: 16, offset: const Offset(0, 4))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -235,12 +235,12 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [DesignTokens.primary.withOpacity(0.2), DesignTokens.secondary.withOpacity(0.2)],
+                      colors: [DesignTokens.primary.withValues(alpha: 0.2), DesignTokens.secondary.withValues(alpha: 0.2)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                    border: Border.all(color: DesignTokens.primary.withOpacity(0.3), width: 1),
+                    border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.3), width: 1),
                   ),
                   child: Text(
                     '\$${order.total.toStringAsFixed(2)}',
@@ -258,7 +258,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? Colors.grey[800]!.withOpacity(0.5) : Colors.grey[100]!.withOpacity(0.6),
+                color: isDark ? Colors.grey[800]!.withValues(alpha: 0.5) : Colors.grey[100]!.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
               ),
               child: Row(
@@ -273,7 +273,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
             ),
 
             const SizedBox(height: 16),
-            Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
+            Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
             const SizedBox(height: 16),
 
             // Items List
@@ -343,9 +343,9 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [Colors.blue[200]!.withOpacity(0.2), Colors.blue[300]!.withOpacity(0.1)]),
+                          gradient: LinearGradient(colors: [Colors.blue[200]!.withValues(alpha: 0.2), Colors.blue[300]!.withValues(alpha: 0.1)]),
                           borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                          border: Border.all(color: Colors.blue[400]!.withOpacity(0.3)),
+                          border: Border.all(color: Colors.blue[400]!.withValues(alpha: 0.3)),
                         ),
                         child: Text(
                           'Tracking: ${item.trackingNumber}',
@@ -363,9 +363,9 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [statusColor.withOpacity(0.2), statusColor.withOpacity(0.1)]),
+                  gradient: LinearGradient(colors: [statusColor.withValues(alpha: 0.2), statusColor.withValues(alpha: 0.1)]),
                   borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                  border: Border.all(color: statusColor.withOpacity(0.4), width: 1),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.4), width: 1),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -392,9 +392,9 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                 if (!isConfirmed && !isOrderConfirmed)
                   Container(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [Colors.green[300]!.withOpacity(0.2), Colors.green[400]!.withOpacity(0.1)]),
+                      gradient: LinearGradient(colors: [Colors.green[300]!.withValues(alpha: 0.2), Colors.green[400]!.withValues(alpha: 0.1)]),
                       borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                      border: Border.all(color: Colors.green[400]!.withOpacity(0.3)),
+                      border: Border.all(color: Colors.green[400]!.withValues(alpha: 0.3)),
                     ),
                     child: Material(
                       color: Colors.transparent,
@@ -442,9 +442,9 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                 if (!isRated)
                   Container(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [Colors.amber[200]!.withOpacity(0.2), Colors.amber[300]!.withOpacity(0.1)]),
+                      gradient: LinearGradient(colors: [Colors.amber[200]!.withValues(alpha: 0.2), Colors.amber[300]!.withValues(alpha: 0.1)]),
                       borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                      border: Border.all(color: Colors.amber[600]!.withOpacity(0.3)),
+                      border: Border.all(color: Colors.amber[600]!.withValues(alpha: 0.3)),
                     ),
                     child: Material(
                       color: Colors.transparent,
@@ -496,9 +496,9 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [bannerColor.withOpacity(0.15), bannerColor.withOpacity(0.08)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        gradient: LinearGradient(colors: [bannerColor.withValues(alpha: 0.15), bannerColor.withValues(alpha: 0.08)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
-        border: Border.all(color: bannerColor.withOpacity(0.3), width: 1),
+        border: Border.all(color: bannerColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         children: [
@@ -594,12 +594,12 @@ class _PendingApprovalsBanner extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.orange.shade300.withOpacity(0.7), Colors.orange.shade600.withOpacity(0.7)],
+            colors: [Colors.orange.shade300.withValues(alpha: 0.7), Colors.orange.shade600.withValues(alpha: 0.7)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.orange.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
         ),
         child: Material(
           color: Colors.transparent,
@@ -612,7 +612,7 @@ class _PendingApprovalsBanner extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
                   child: const Icon(Icons.pending_actions, color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 16),
@@ -634,7 +634,7 @@ class _PendingApprovalsBanner extends StatelessWidget {
                 ),
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
                   child: const Icon(Icons.chevron_right, color: Colors.white, size: 20),
                 ),
               ],

@@ -76,7 +76,7 @@ class _ModernTextFieldState extends State<ModernTextField> {
             hintText: widget.hint,
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             filled: true,
-            fillColor: isDark ? DesignTokens.darkSurfaceVariant.withOpacity(0.5) : DesignTokens.surfaceVariant.withOpacity(0.7),
+            fillColor: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.surfaceVariant.withValues(alpha: 0.7),
             prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon, color: DesignTokens.primary, size: 20) : null,
             suffixIcon: widget.suffixIcon != null
                 ? GestureDetector(
@@ -90,7 +90,7 @@ class _ModernTextFieldState extends State<ModernTextField> {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              borderSide: BorderSide(color: DesignTokens.outline.withOpacity(0.2), width: 1),
+              borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.2), width: 1),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(DesignTokens.radius12),

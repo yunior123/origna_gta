@@ -52,12 +52,12 @@ class _ModernCardState extends State<ModernCard> with SingleTickerProviderStateM
                 width: widget.width,
                 height: widget.height,
                 decoration: BoxDecoration(
-                  color: widget.backgroundColor ?? (isDark ? DesignTokens.darkSurfaceVariant.withOpacity(0.6) : DesignTokens.surface),
+                  color: widget.backgroundColor ?? (isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.6) : DesignTokens.surface),
                   borderRadius: widget.borderRadius,
-                  border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: DesignTokens.primary.withOpacity(0.1),
+                      color: DesignTokens.primary.withValues(alpha: 0.1),
                       blurRadius: _elevationAnimation.value,
                       offset: Offset(0, _elevationAnimation.value / 2),
                     ),

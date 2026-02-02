@@ -59,8 +59,8 @@ class _PremiumSplashScreenState extends State<PremiumSplashScreen> with TickerPr
                 height: 300,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.05),
-                  boxShadow: [BoxShadow(color: Colors.white.withOpacity(0.1), blurRadius: 60)],
+                  color: Colors.white.withValues(alpha: 0.05),
+                  boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.1), blurRadius: 60)],
                 ),
               ),
             ),
@@ -72,8 +72,8 @@ class _PremiumSplashScreenState extends State<PremiumSplashScreen> with TickerPr
                 height: 300,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.05),
-                  boxShadow: [BoxShadow(color: Colors.white.withOpacity(0.1), blurRadius: 60)],
+                  color: Colors.white.withValues(alpha: 0.05),
+                  boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.1), blurRadius: 60)],
                 ),
               ),
             ),
@@ -91,9 +91,9 @@ class _PremiumSplashScreenState extends State<PremiumSplashScreen> with TickerPr
                       height: 140,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.15),
-                        border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10))],
+                        color: Colors.white.withValues(alpha: 0.15),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10))],
                       ),
                       child: Center(
                         child: Text(
@@ -103,7 +103,7 @@ class _PremiumSplashScreenState extends State<PremiumSplashScreen> with TickerPr
                             fontWeight: FontWeight.w900,
                             color: Colors.white,
                             letterSpacing: 2,
-                            shadows: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
+                            shadows: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
                           ),
                         ),
                       ),
@@ -116,13 +116,13 @@ class _PremiumSplashScreenState extends State<PremiumSplashScreen> with TickerPr
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                         letterSpacing: 1.2,
-                        shadows: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4))],
+                        shadows: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))],
                       ),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       'The Canadian Marketplace',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, color: Colors.white.withOpacity(0.8), letterSpacing: 0.5),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, color: Colors.white.withValues(alpha: 0.8), letterSpacing: 0.5),
                     ),
                   ],
                 ),
@@ -195,7 +195,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
               child: Container(
                 width: 200,
                 height: 200,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.08)),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.08)),
               ),
             ),
             Positioned(
@@ -204,7 +204,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
               child: Container(
                 width: 250,
                 height: 250,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.06)),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.06)),
               ),
             ),
 
@@ -233,13 +233,13 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                             letterSpacing: 1.5,
-                            shadows: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4))],
+                            shadows: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))],
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Premium Canadian Marketplace',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w300, color: Colors.white.withOpacity(0.85), letterSpacing: 0.5),
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w300, color: Colors.white.withValues(alpha: 0.85), letterSpacing: 0.5),
                         ),
                       ],
                     ),
@@ -261,9 +261,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.0),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.0),
                         ),
                         child: const Text(
                           'by OrignaVentures',
@@ -277,8 +277,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(2),
                           child: LinearProgressIndicator(
-                            backgroundColor: Colors.white.withOpacity(0.2),
-                            valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(0.7)),
+                            backgroundColor: Colors.white.withValues(alpha: 0.2),
+                            valueColor: AlwaysStoppedAnimation(Colors.white.withValues(alpha: 0.7)),
                           ),
                         ),
                       ),
@@ -344,7 +344,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             height: 120,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
             ),
           ),
 
@@ -357,7 +357,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Colors.white.withOpacity(0.3), Colors.white.withOpacity(0.1)],
+                colors: [Colors.white.withValues(alpha: 0.3), Colors.white.withValues(alpha: 0.1)],
               ),
             ),
           ),

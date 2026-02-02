@@ -130,15 +130,15 @@ class _CategoryChips extends ConsumerWidget {
               decoration: BoxDecoration(
                 gradient: isSelected
                     ? LinearGradient(
-                        colors: [DesignTokens.primary.withOpacity(0.9), DesignTokens.secondary.withOpacity(0.9)],
+                        colors: [DesignTokens.primary.withValues(alpha: 0.9), DesignTokens.secondary.withValues(alpha: 0.9)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       )
                     : null,
                 color: !isSelected ? DesignTokens.surface : null,
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                border: Border.all(color: isSelected ? DesignTokens.primary : Colors.grey.withOpacity(0.3), width: 1.5),
-                boxShadow: isSelected ? [BoxShadow(color: DesignTokens.primary.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))] : [],
+                border: Border.all(color: isSelected ? DesignTokens.primary : Colors.grey.withValues(alpha: 0.3), width: 1.5),
+                boxShadow: isSelected ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))] : [],
               ),
               child: Material(
                 color: Colors.transparent,
@@ -147,7 +147,7 @@ class _CategoryChips extends ConsumerWidget {
                     homeNotifier.onCategorySelected(isAll ? null : category!.categoryId);
                   },
                   borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                  splashColor: Colors.white.withOpacity(0.2),
+                  splashColor: Colors.white.withValues(alpha: 0.2),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Center(
@@ -236,11 +236,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [DesignTokens.primary.withOpacity(0.95), DesignTokens.secondary.withOpacity(0.95)],
+            colors: [DesignTokens.primary.withValues(alpha: 0.95), DesignTokens.secondary.withValues(alpha: 0.95)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          boxShadow: [BoxShadow(color: DesignTokens.primary.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 8))],
+          boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 8))],
         ),
         child: SafeArea(
           child: Padding(
@@ -260,9 +260,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                              border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
                             ),
                             child: const Icon(Icons.shopping_bag, color: Colors.white, size: 28),
                           ),
@@ -272,7 +272,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(width: 12),
                     ShaderMask(
                       shaderCallback: (bounds) => LinearGradient(
-                        colors: [Colors.white, Colors.white.withOpacity(0.8)],
+                        colors: [Colors.white, Colors.white.withValues(alpha: 0.8)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ).createShader(bounds),
@@ -319,7 +319,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12), borderSide: BorderSide.none),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
-            borderSide: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
+            borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2), width: 1),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
@@ -398,12 +398,12 @@ class _ProductGrid extends ConsumerWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [DesignTokens.primary.withOpacity(0.1), DesignTokens.secondary.withOpacity(0.1)],
+                      colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.1)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                   ),
-                  child: Icon(Icons.inventory_2_outlined, size: 80, color: DesignTokens.primary.withOpacity(0.6)),
+                  child: Icon(Icons.inventory_2_outlined, size: 80, color: DesignTokens.primary.withValues(alpha: 0.6)),
                 ),
                 const SizedBox(height: 24),
                 Text(

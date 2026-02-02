@@ -184,7 +184,7 @@ class ProfileScreen extends ConsumerWidget {
                               child: InkWell(
                                 onTap: () => _showDeleteAccountDialog(context, ref),
                                 borderRadius: BorderRadius.circular(12),
-                                splashColor: Colors.red.withOpacity(0.1),
+                                splashColor: Colors.red.withValues(alpha: 0.1),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                   child: Center(
@@ -217,17 +217,17 @@ class ProfileScreen extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[800]!.withOpacity(0.5) : Colors.white,
+        color: isDark ? Colors.grey[800]!.withValues(alpha: 0.5) : Colors.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[200]!, width: 1),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(DesignTokens.radius12),
-          splashColor: DesignTokens.primary.withOpacity(0.1),
+          splashColor: DesignTokens.primary.withValues(alpha: 0.1),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
@@ -236,7 +236,7 @@ class ProfileScreen extends ConsumerWidget {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [DesignTokens.primary.withOpacity(0.15), DesignTokens.secondary.withOpacity(0.15)],
+                      colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -273,12 +273,12 @@ class ProfileScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [DesignTokens.primary.withOpacity(0.95), DesignTokens.secondary.withOpacity(0.95)],
+          colors: [DesignTokens.primary.withValues(alpha: 0.95), DesignTokens.secondary.withValues(alpha: 0.95)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(DesignTokens.radius20),
-        boxShadow: [BoxShadow(color: DesignTokens.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+        boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
       ),
       child: Column(
         children: [
@@ -287,8 +287,8 @@ class ProfileScreen extends ConsumerWidget {
             height: 80,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withOpacity(0.2),
-              border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+              color: Colors.white.withValues(alpha: 0.2),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
             ),
             child: Center(
               child: Text(
@@ -303,7 +303,7 @@ class ProfileScreen extends ConsumerWidget {
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white),
           ),
           const SizedBox(height: 6),
-          Text(userModel.email, style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.8))),
+          Text(userModel.email, style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.8))),
         ],
       ),
     );
@@ -335,7 +335,7 @@ class ProfileScreen extends ConsumerWidget {
                   }
                 },
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                splashColor: DesignTokens.primary.withOpacity(0.1),
+                splashColor: DesignTokens.primary.withValues(alpha: 0.1),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                   child: Row(

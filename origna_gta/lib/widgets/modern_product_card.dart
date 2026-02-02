@@ -46,9 +46,9 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
           onTap: widget.onTap,
           child: Container(
             decoration: BoxDecoration(
-              color: isDark ? DesignTokens.darkSurfaceVariant.withOpacity(0.6) : DesignTokens.surface,
+              color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.6) : DesignTokens.surface,
               borderRadius: BorderRadius.circular(DesignTokens.radius16),
-              border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
               boxShadow: DesignTokens.shadowMd,
             ),
             child: ClipRRect(
@@ -66,7 +66,7 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [DesignTokens.primary.withOpacity(0.1), DesignTokens.secondary.withOpacity(0.1)],
+                            colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.1)],
                           ),
                         ),
                         child: widget.imageUrl.isNotEmpty

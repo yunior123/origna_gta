@@ -47,8 +47,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              DesignTokens.primary.withOpacity(0.05),
-              DesignTokens.secondary.withOpacity(0.05),
+              DesignTokens.primary.withValues(alpha: 0.05),
+              DesignTokens.secondary.withValues(alpha: 0.05),
             ],
           ),
         ),

@@ -58,7 +58,7 @@ class _AddressSection extends StatelessWidget {
                   ).then((_) => onRefreshShipping());
                 },
                 borderRadius: BorderRadius.circular(8),
-                splashColor: DesignTokens.primary.withOpacity(0.3),
+                splashColor: DesignTokens.primary.withValues(alpha: 0.3),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Row(
@@ -87,7 +87,7 @@ class _AddressSection extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [DesignTokens.primary.withOpacity(0.2), DesignTokens.secondary.withOpacity(0.2)],
+                      colors: [DesignTokens.primary.withValues(alpha: 0.2), DesignTokens.secondary.withValues(alpha: 0.2)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -138,7 +138,7 @@ class _CheckoutButton extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[900] : Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -8))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -8))],
       ),
       child: ModernButton(
         label: isProcessing ? 'Processing...' : 'Place Order',

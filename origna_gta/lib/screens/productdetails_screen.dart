@@ -52,7 +52,7 @@ class ProductDetailScreen extends ConsumerWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [DesignTokens.primary.withOpacity(0.1), DesignTokens.secondary.withOpacity(0.1)],
+                        colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.1)],
                       ),
                     ),
                     child: Stack(
@@ -87,9 +87,9 @@ class ProductDetailScreen extends ConsumerWidget {
                           left: 12,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.5),
+                              color: Colors.black.withValues(alpha: 0.5),
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
                             ),
                             child: IconButton(
                               icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -108,7 +108,7 @@ class ProductDetailScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: isDark ? Colors.grey[900] : Colors.white,
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 16, offset: const Offset(0, -4))],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, -4))],
                     ),
                   ),
                 ),
@@ -138,7 +138,7 @@ class ProductDetailScreen extends ConsumerWidget {
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(color: DesignTokens.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                                 child: Row(
                                   children: [
                                     Icon(Icons.star, size: 18, color: Colors.amber[600]),
@@ -157,12 +157,12 @@ class ProductDetailScreen extends ConsumerWidget {
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [DesignTokens.primary.withOpacity(0.95), DesignTokens.secondary.withOpacity(0.95)],
+                                colors: [DesignTokens.primary.withValues(alpha: 0.95), DesignTokens.secondary.withValues(alpha: 0.95)],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
                               borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                              boxShadow: [BoxShadow(color: DesignTokens.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+                              boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
                             ),
                             child: Row(
                               children: [
@@ -354,7 +354,7 @@ class _QuantityButton extends StatelessWidget {
       child: InkWell(
         onTap: onPressed,
         borderRadius: BorderRadius.circular(8),
-        splashColor: DesignTokens.primary.withOpacity(0.3),
+        splashColor: DesignTokens.primary.withValues(alpha: 0.3),
         child: Padding(
           padding: const EdgeInsets.all(8),
           child: Icon(icon, color: onPressed != null ? DesignTokens.primary : Colors.grey[400], size: 20),

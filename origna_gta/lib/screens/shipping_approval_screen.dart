@@ -39,7 +39,7 @@ class ShippingApprovalScreen extends ConsumerWidget {
                   child: SizedBox(
                     width: 50,
                     height: 50,
-                    child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(0.8))),
+                    child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white.withValues(alpha: 0.8))),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -64,7 +64,7 @@ class ShippingApprovalScreen extends ConsumerWidget {
                       height: 120,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.green[300]!.withOpacity(0.2), Colors.green[400]!.withOpacity(0.1)],
+                          colors: [Colors.green[300]!.withValues(alpha: 0.2), Colors.green[400]!.withValues(alpha: 0.1)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -132,15 +132,15 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            isDark ? Colors.grey[800]!.withOpacity(0.6) : Colors.white.withOpacity(0.8),
-            isDark ? Colors.grey[900]!.withOpacity(0.4) : Colors.grey[50]!.withOpacity(0.6),
+            isDark ? Colors.grey[800]!.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.8),
+            isDark ? Colors.grey[900]!.withValues(alpha: 0.4) : Colors.grey[50]!.withValues(alpha: 0.6),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        border: Border.all(color: Colors.orange.withOpacity(0.2), width: 1),
-        boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, 4))],
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.2), width: 1),
+        boxShadow: [BoxShadow(color: Colors.orange.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -171,9 +171,9 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [Colors.orange.withOpacity(0.2), Colors.orange.withOpacity(0.1)]),
+                    gradient: LinearGradient(colors: [Colors.orange.withValues(alpha: 0.2), Colors.orange.withValues(alpha: 0.1)]),
                     borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -191,7 +191,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             ),
 
             const SizedBox(height: 20),
-            Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
+            Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
             const SizedBox(height: 20),
 
             // Shipping cost comparison
@@ -199,12 +199,12 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.orange[200]!.withOpacity(0.2), Colors.orange[300]!.withOpacity(0.1)],
+                  colors: [Colors.orange[200]!.withValues(alpha: 0.2), Colors.orange[300]!.withValues(alpha: 0.1)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                border: Border.all(color: Colors.orange.withOpacity(0.3), width: 1),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.3), width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,9 +255,9 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [Colors.red[200]!.withOpacity(0.3), Colors.red[300]!.withOpacity(0.1)]),
+                      gradient: LinearGradient(colors: [Colors.red[200]!.withValues(alpha: 0.3), Colors.red[300]!.withValues(alpha: 0.1)]),
                       borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                      border: Border.all(color: Colors.red[400]!.withOpacity(0.3)),
+                      border: Border.all(color: Colors.red[400]!.withValues(alpha: 0.3)),
                     ),
                     child: Text(
                       '+\$${shippingDifference.toStringAsFixed(2)} (+$percentIncrease%)',
@@ -305,7 +305,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
               ),
 
             const SizedBox(height: 20),
-            Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
+            Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
             const SizedBox(height: 20),
 
             // Total comparison
@@ -353,7 +353,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   child: SizedBox(
                     width: 40,
                     height: 40,
-                    child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(0.8))),
+                    child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white.withValues(alpha: 0.8))),
                   ),
                 ),
               )
@@ -363,9 +363,9 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [Colors.red[300]!.withOpacity(0.2), Colors.red[400]!.withOpacity(0.1)]),
+                        gradient: LinearGradient(colors: [Colors.red[300]!.withValues(alpha: 0.2), Colors.red[400]!.withValues(alpha: 0.1)]),
                         borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                        border: Border.all(color: Colors.red[400]!.withOpacity(0.4)),
+                        border: Border.all(color: Colors.red[400]!.withValues(alpha: 0.4)),
                       ),
                       child: Material(
                         color: Colors.transparent,
