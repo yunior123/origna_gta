@@ -11,9 +11,9 @@ from pydantic import ValidationError
 # Import Pydantic Product model for type-safe operations
 from models.product import Product
 
-# Initialize Algolia client
-algolia_client = SearchClient.create(ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY) if ALGOLIA_APP_ID and ALGOLIA_WRITE_API_KEY else None
-products_index = algolia_client.init_index('products') if algolia_client else None
+# Initialize Algolia client (v4 API)
+algolia_client = SearchClient(ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY) if ALGOLIA_APP_ID and ALGOLIA_WRITE_API_KEY else None
+products_index = algolia_client if algolia_client else None
 
 
 def format_product_for_algolia(product_id: str, product_data: Union[dict, Product]) -> dict:
@@ -107,7 +107,7 @@ def index_product(product_id: str, product_data: dict) -> bool:
             return True
         
         algolia_object = format_product_for_algolia(product_id, product_data)
-        products_index.save_object(algolia_object)
+        products_index.save_object(index_name='products', body=algolia_object)
         print(f"  ✅ Indexed product {product_id} to Algolia")
         return True
     except Exception as e:
@@ -130,7 +130,7 @@ def delete_product(product_id: str) -> bool:
         return False
     
     try:
-        products_index.delete_object(product_id)
+        products_index.delete_object(index_name='products', object_id=product_id)
         print(f"  ✅ Deleted product {product_id} from Algolia")
         return True
     except Exception as e:
@@ -160,7 +160,7 @@ def batch_index_products(products: list) -> tuple:
                 algolia_objects.append(format_product_for_algolia(product_id, product_data))
         
         if algolia_objects:
-            products_index.save_objects(algolia_objects)
+            products_index.save_objects(index_name='products', objects=algolia_objects)
             print(f"  ✅ Batch indexed {len(algolia_objects)} products to Algolia")
             return (len(algolia_objects), len(products) - len(algolia_objects))
         

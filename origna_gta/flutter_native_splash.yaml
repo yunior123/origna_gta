@@ -23,29 +23,26 @@ flutter_native_splash:
 
   #======================================================================
   
-  # uncomment this if you want to disable this package for specific platform:
+  # Disable splash generator for specific platforms:
   # android: false
   # ios: false
-  # web: false
+  web: false  # Custom CSS animations in index.html, prevent overwriting
   
   #======================================================================
 
   #! FOR ALL PLATFORM, except Android 12+:
 
-  # general color for all platform (except android 12+):
-  # see there only 2 lines in all parameters that marked as [required], so others
-  # remain optional. NOTE that if you specify the [required] color, then you cant 
-  # use the [required] background_image in the next section. the reverse is true.
-  # select one, they cant work together.
-  color: "#FFFFFF"  ##====================================[REQUIRED]==========
-  #color_dark: "#042a49"
-  # platform-specific color. will override general color if active:
-  #color_android: "#42a5f5"
-  #color_dark_android: "#042a49"
-  #color_ios: "#42a5f5"
-  #color_dark_ios: "#042a49"
-  #color_web: "#42a5f5"
-  #color_dark_web: "#042a49"
+  # Modern gradient background (2100 aesthetic)
+  # Purple gradient for light mode, deep space for dark mode
+  color: "#667eea"  ##====================================[REQUIRED]==========
+  color_dark: "#1a1a2e"
+  # platform-specific color overrides:
+  color_android: "#667eea"
+  color_dark_android: "#1a1a2e"
+  color_ios: "#667eea"
+  color_dark_ios: "#1a1a2e"
+  color_web: "#667eea"
+  color_dark_web: "#1a1a2e"
 
   # general background_image for all platform (except android 12+)
   # if you specify this [required] background_image, then you should comment the 
@@ -127,29 +124,29 @@ flutter_native_splash:
 
   #========================================================================
 
-  # what we did above won't affect Android 12 and newer at all. they have different
-  # handling concept. visit https://developer.android.com/guide/topics/ui/splash-screen
+  # Android 12+ uses different splash screen API
+  # visit https://developer.android.com/guide/topics/ui/splash-screen
   
-  # #! ANDROID 12+ configuration:
-  # android_12:
-  #   # background color
-  #   color: "#42a5f5"
-  #   # color_dark: "#042a49"
+  #! ANDROID 12+ configuration:
+  android_12:
+    # Modern gradient purple for light mode, deep space for dark mode
+    color: "#667eea"
+    color_dark: "#1a1a2e"
 
-  #   # center-logo
-  #   # If this parameter is not specified, the app's launcher icon will be used instead. 
-  #   # Please note that the splash screen will be clipped to a circle on the center of the screen. 
-  #   # with background: 960×960 px (fit within circle 640px in diameter)    
-  #   # without background: 1152×1152 px (fit within circle 768px in diameter)
-  #   # ensure that the most important design elements of your image are placed within a circular area 
-  #   image: images/1.png    
-  #   # image_dark: assets/images/logo/logo-splash2.png  
+    # center-logo
+    # If this parameter is not specified, the app's launcher icon will be used instead. 
+    # Please note that the splash screen will be clipped to a circle on the center of the screen. 
+    # with background: 960×960 px (fit within circle 640px in diameter)    
+    # without background: 1152×1152 px (fit within circle 768px in diameter)
+    # ensure that the most important design elements of your image are placed within a circular area 
+    image: images/33.png    
+    image_dark: images/33.png
 
-  #   # center-logo background color
-  #   icon_background_color: "#111111"
-  #   # icon_background_color_dark: "#eeeeee"
+    # center-logo background color (transparent for modern look)
+    icon_background_color: "#667eea"
+    icon_background_color_dark: "#1a1a2e"
 
-  #   # branding:
-  #   # The branding image dimensions must be 800x320 px.
-  #   #branding:      assets/dart.png      
-  #   #branding_dark: assets/dart_dark.png
+    # branding:
+    # The branding image dimensions must be 800x320 px.
+    #branding:      assets/dart.png      
+    #branding_dark: assets/dart_dark.png

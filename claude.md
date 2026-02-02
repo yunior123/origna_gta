@@ -47,12 +47,14 @@ TODO ✅ HIGH: Add auto-capture failure compensation (captureAttempts + requires
 TODO ✅ HIGH: Fix rate limiter race condition (Firestore transactions)
 TODO ✅ MEDIUM: Product deletion with active orders (check before delete, prevent stock issues)
 TODO ✅ MEDIUM: Dispute after delivery fraud detection (fraud scoring 30-90pts, security_alerts log)
+TODO ✅ Phase 3.5: Updated firestore.rules for new fields (sellerCaptures, requiresManualReview, fraudScore, security_alerts)
+TODO ✅ Phase 3.5: Fixed Algolia v4 API compatibility (SearchClient init, save_object, delete_object)
 TODO Phase 4: Add E2E tests for edge cases (checkout, seller onboarding, order lifecycle, shipping, disputes)
-TODO Phase 4: Update firestore.rules for new fields (sellerCaptures, requiresManualReview, fraudScore)
 TODO implement Admin MFA (TOTP) - deferred to Phase 4
 TODO production deploy: Replace sanctions check placeholder with real KYC API (ComplyAdvantage/Trulioo/Onfido)
 TODO production monitoring: Set up Sentry alerts for KYC API failures, rate limit exhaustion, session timeout errors, auto-capture failures, dispute losses 
-
+TODO improve ui ux in the entire app, make it mindblowing ,  make it beautiful and mind blowing, something from 2100
+TODO index file, improve splash similar to origna ventures project, visit orignaventures.ca so the splash looks similar but adapted to this project, make it beautiful and mind blowing, something from 2100
 
 TECH STACK
 Frontend: Flutter (Web, Android, iOS)

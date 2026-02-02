@@ -134,15 +134,31 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
         onGenerateRoute: _onGenerateRoute,
         theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF6B35), brightness: Brightness.light),
+        // 2100 Aesthetic: Deep purple gradient palette
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF667EEA),
+          primary: const Color(0xFF667EEA),
+          secondary: const Color(0xFF764BA2),
+          tertiary: const Color(0xFFFF6B6B),
+          surface: const Color(0xFFF8F9FA),
+          brightness: Brightness.light,
+        ),
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
         fontFamily: 'Roboto',
-        appBarTheme: const AppBarTheme(centerTitle: false, elevation: 0, scrolledUnderElevation: 2),
+        appBarTheme: const AppBarTheme(
+          centerTitle: false,
+          elevation: 0,
+          scrolledUnderElevation: 1,
+          backgroundColor: Colors.white,
+          foregroundColor: Color(0xFF1a1a2e),
+        ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            backgroundColor: const Color(0xFF667EEA),
+            foregroundColor: Colors.white,
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
@@ -159,8 +175,19 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFFF6B35), width: 2),
+            borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
           ),
+        ),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          color: Colors.white,
+          surfaceTintColor: Colors.transparent,
+        ),
+        dividerTheme: DividerThemeData(
+          color: Colors.grey[200],
+          thickness: 1,
+          space: 1,
         ),
       ),
       ),
