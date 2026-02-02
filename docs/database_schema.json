@@ -230,6 +230,12 @@
           "type": "timestamp",
           "required": true,
           "description": "Product creation date"
+        },
+        "isDigital": {
+          "type": "boolean",
+          "default": false,
+          "required": false,
+          "description": "True if product is digital (no shipping required). Examples: ebooks, software, courses"
         }
       },
       "indexes": [

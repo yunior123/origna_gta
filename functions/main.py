@@ -350,11 +350,18 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         subtotal = sum(item['price'] * item['quantity'] for item in trusted_items)
         
         # 2. Shipping Cost
-        requested_speed = data.get('deliverySpeed', 'standard')
-        if requested_speed not in ['standard', 'express', 'same_day']:
-            requested_speed = 'standard'
-        # Use delivery_info_dict for backward compatibility with calculate_shipping_cost
-        shipping_cost = calculate_shipping_cost(trusted_items, delivery_info_dict, speed=requested_speed)
+        # Skip shipping for digital products (no shipping needed)
+        shipping_cost = 0.0
+        
+        # Check if there are any physical items that need shipping
+        has_physical_items = any(not item.get('isDigital', False) for item in trusted_items)
+        
+        if has_physical_items:
+            requested_speed = data.get('deliverySpeed', 'standard')
+            if requested_speed not in ['standard', 'express', 'same_day']:
+                requested_speed = 'standard'
+            # Only calculate shipping for physical items
+            shipping_cost = calculate_shipping_cost(trusted_items, delivery_info_dict, speed=requested_speed)
 
         # 3. SERVER-SIDE TOTAL VALIDATION
         server_total_pre_tax = subtotal + shipping_cost

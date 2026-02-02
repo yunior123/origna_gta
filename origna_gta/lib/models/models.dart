@@ -572,6 +572,7 @@ class ProductModel {
   final bool freeShipping;
   final bool isActive;
   final Timestamp? deletedAt;
+  final bool isDigital; // True if product is digital (no shipping required)
 
   ProductModel({
     required this.id,
@@ -600,6 +601,7 @@ class ProductModel {
     this.freeShipping = false,
     this.isActive = true,
     this.deletedAt,
+    this.isDigital = false,
   }) : deliveryOptions = deliveryOptions ?? SellerDeliveryOption.defaultOptions(),
        searchKeywords = keywords;
 
@@ -635,6 +637,7 @@ class ProductModel {
       sellerId: map['sellerId']?.toString() ?? '',
       keywords: _parseStringList(map['keywords']),
       stockQuantity: _parseInt(map['stockQuantity']),
+      isDigital: map['isDigital'] as bool? ?? false,
       weightKg: map['weightKg'] != null ? _parseDouble(map['weightKg']) : null,
       lengthCm: map['lengthCm'] != null ? _parseDouble(map['lengthCm']) : null,
       widthCm: map['widthCm'] != null ? _parseDouble(map['widthCm']) : null,
@@ -684,6 +687,7 @@ class ProductModel {
       'minimumOrderQuantity': minimumOrderQuantity,
       'freeShipping': freeShipping,
       'isActive': isActive,
+      'isDigital': isDigital,
       if (deletedAt != null) 'deletedAt': deletedAt,
     };
   }
