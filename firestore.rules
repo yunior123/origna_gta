@@ -228,12 +228,32 @@ service cloud.firestore {
       allow create: if false;
       
       // Backend/admin only with state machine validation
+      // Phase 3.5 fields: sellerCaptures, captureAttempts, requiresManualReview, fraudScore
       allow update: if isAdmin() &&
         // CRITICAL: Validate order status transitions
-        isValidOrderStateTransition(resource.data.status, request.resource.data.status);
+        isValidOrderStateTransition(resource.data.status, request.resource.data.status) &&
+        // Phase 3.5: Validate new fields if present
+        (!request.resource.data.keys().hasAny(['sellerCaptures']) || request.resource.data.sellerCaptures is map) &&
+        (!request.resource.data.keys().hasAny(['captureAttempts']) || request.resource.data.captureAttempts is int) &&
+        (!request.resource.data.keys().hasAny(['requiresManualReview']) || request.resource.data.requiresManualReview is bool) &&
+        (!request.resource.data.keys().hasAny(['fraudScore']) || (request.resource.data.fraudScore is int && request.resource.data.fraudScore >= 0 && request.resource.data.fraudScore <= 100));
       
       // No one can delete orders (only backend)
       allow delete: if false;
+    }
+    
+    // ================================================================
+    // SECURITY_ALERTS COLLECTION (Phase 3.5)
+    // ================================================================
+    match /security_alerts/{alertId} {
+      // Only admins can read security alerts
+      allow read: if isAdmin();
+      
+      // Only backend can create alerts
+      allow create: if false;
+      
+      // No updates or deletes (immutable audit log)
+      allow update, delete: if false;
     }
     
     // ================================================================

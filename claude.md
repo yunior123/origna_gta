@@ -40,14 +40,15 @@ Add tests to github workflow
 
 
 
-TODO ✅ Edge cases audit complete (see EDGE_CASES_AUDIT.md) - 10 scenarios analyzed, 6 require fixes
+TODO ✅ Phase 3.5 COMPLETE: All 6 edge case fixes implemented (see EDGE_CASES_AUDIT.md)
 TODO ✅ URGENT: Fix seller suspension with active orders (suspend_seller Cloud Function - 184 lines)
 TODO ✅ URGENT: Fix multi-seller partial capture tracking (sellerCaptures dict)
 TODO ✅ HIGH: Add auto-capture failure compensation (captureAttempts + requiresManualReview)
 TODO ✅ HIGH: Fix rate limiter race condition (Firestore transactions)
-TODO MEDIUM: Product deletion with active orders (check before delete, prevent stock issues)
-TODO MEDIUM: Dispute after delivery fraud detection (flag suspicious patterns)
-TODO add more e2e tests for critical flows like checkout, seller onboarding, seller orders view, shipping confirmation, order lifecycle
+TODO ✅ MEDIUM: Product deletion with active orders (check before delete, prevent stock issues)
+TODO ✅ MEDIUM: Dispute after delivery fraud detection (fraud scoring 30-90pts, security_alerts log)
+TODO Phase 4: Add E2E tests for edge cases (checkout, seller onboarding, order lifecycle, shipping, disputes)
+TODO Phase 4: Update firestore.rules for new fields (sellerCaptures, requiresManualReview, fraudScore)
 TODO implement Admin MFA (TOTP) - deferred to Phase 4
 TODO production deploy: Replace sanctions check placeholder with real KYC API (ComplyAdvantage/Trulioo/Onfido)
 TODO production monitoring: Set up Sentry alerts for KYC API failures, rate limit exhaustion, session timeout errors, auto-capture failures, dispute losses 
