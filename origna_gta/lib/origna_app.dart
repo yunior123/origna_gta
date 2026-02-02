@@ -7,6 +7,7 @@ import 'package:origna_gta/screens/authwrapper_screen.dart';
 import 'package:origna_gta/screens/login_screen.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
 import 'package:origna_gta/screens/seller_registration_screen.dart';
+import 'package:origna_gta/services/session_timeout_service.dart';
 
 /// Handle initial route from URL (critical for web redirects from Stripe)
 List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
@@ -90,18 +91,48 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   return null;
 }
 
-class OrignaApp extends StatelessWidget {
+class OrignaApp extends ConsumerStatefulWidget {
   const OrignaApp({super.key});
 
   @override
+  ConsumerState<OrignaApp> createState() => _OrignaAppState();
+}
+
+class _OrignaAppState extends ConsumerState<OrignaApp> {
+  final _sessionTimeout = SessionTimeoutService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen to auth state changes
+    ref.read(firebaseAuthProvider).authStateChanges().listen((user) {
+      if (user != null && mounted) {
+        _sessionTimeout.startMonitoring(context);
+      } else {
+        _sessionTimeout.stopMonitoring();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _sessionTimeout.stopMonitoring();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'OrignaGta',
-      debugShowCheckedModeBanner: false,
-      // Handle initial URL from web (e.g., Stripe redirect to /payment-success)
-      onGenerateInitialRoutes: _onGenerateInitialRoutes,
-      onGenerateRoute: _onGenerateRoute,
-      theme: ThemeData(
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => _sessionTimeout.recordActivity(context),
+      onPanDown: (_) => _sessionTimeout.recordActivity(context),
+      child: MaterialApp(
+        title: 'OrignaGta',
+        debugShowCheckedModeBanner: false,
+        // Handle initial URL from web (e.g., Stripe redirect to /payment-success)
+        onGenerateInitialRoutes: _onGenerateInitialRoutes,
+        onGenerateRoute: _onGenerateRoute,
+        theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF6B35), brightness: Brightness.light),
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
@@ -131,6 +162,7 @@ class OrignaApp extends StatelessWidget {
             borderSide: const BorderSide(color: Color(0xFFFF6B35), width: 2),
           ),
         ),
+      ),
       ),
     );
   }

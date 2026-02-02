@@ -2026,11 +2026,49 @@ def _check_sanctions_list(name: str, email: str) -> tuple[bool, str]:
     Check if user is on international sanctions lists.
     Returns: (is_sanctioned, reason)
     
-    NOTE: This is a placeholder implementation. In production, integrate with:
-    - OFAC (Office of Foreign Assets Control)
-    - UN Security Council Consolidated List
-    - EU Sanctions List
-    - Or use third-party KYC services like ComplyAdvantage, Trulioo, etc.
+    PRODUCTION KYC INTEGRATION:
+    Use a real KYC service provider. Recommended options:
+    
+    1. ComplyAdvantage API:
+       - POST https://api.complyadvantage.com/searches
+       - Headers: Authorization: Token REDACTED_SECRET
+       - Body: {"search_term": name, "client_ref": email, "fuzziness": 0.6}
+       - Returns: {"data": {"hits": [...sanctions matches...]}}
+    
+    2. Trulioo GlobalGateway:
+       - POST https://api.globaldatacompany.com/verifications/v1/search
+       - Headers: x-api-key: YOUR_KEY
+       - Body: {"AcceptTruliooTermsAndConditions": true, "CountryCode": "CA", ...}
+    
+    3. Onfido KYC:
+       - POST https://api.onfido.com/v3/checks
+       - Headers: Authorization: Token token=YOUR_TOKEN
+       - Body: {"applicant_id": ..., "report_names": ["watchlist_standard"]}
+    
+    4. OFAC Direct (Free but complex):
+       - Download https://www.treasury.gov/ofac/downloads/sdn.xml
+       - Parse XML, check against entity names
+       - Update weekly via cron job
+    
+    Example integration with ComplyAdvantage:
+    ```python
+    import requests
+    
+    response = requests.post(
+        'https://api.complyadvantage.com/searches',
+        headers={'Authorization': f'Token {os.environ["COMPLYADVANTAGE_API_KEY"]}'},
+        json={
+            'search_term': name,
+            'client_ref': email,
+            'fuzziness': 0.6,
+            'filters': {'types': ['sanction', 'warning', 'fitness-probity']}
+        }
+    )
+    data = response.json()
+    if data.get('data', {}).get('total_hits', 0) > 0:
+        return True, f"Sanctions match: {data['data']['hits'][0]['doc']['name']}"
+    return False, "No match"
+    ```
     """
     # Placeholder sanctions list (replace with real API calls)
     SANCTIONED_KEYWORDS = [
@@ -2047,14 +2085,22 @@ def _check_sanctions_list(name: str, email: str) -> tuple[bool, str]:
         if keyword in name_lower or keyword in email_lower:
             return True, f"Matched sanctions keyword: {keyword}"
     
-    # In production: Call external KYC API here
+    # TODO PRODUCTION: Replace with real KYC API call (ComplyAdvantage recommended)
     # Example:
-    # response = requests.post('https://api.kyc-provider.com/check', {
-    #     'name': name,
-    #     'email': email,
-    #     'dob': dob,  # Would need to collect this
-    # })
-    # return response.json()['is_sanctioned'], response.json()['reason']
+    # try:
+    #     response = requests.post(
+    #         'https://api.complyadvantage.com/searches',
+    #         headers={'Authorization': f'Token {COMPLYADVANTAGE_API_KEY}'},
+    #         json={'search_term': name, 'client_ref': email, 'fuzziness': 0.6},
+    #         timeout=5
+    #     )
+    #     data = response.json()
+    #     if data.get('data', {}).get('total_hits', 0) > 0:
+    #         hit = data['data']['hits'][0]
+    #         return True, f"Match: {hit['doc']['name']} ({hit['match_status']})"
+    # except Exception as e:
+    #     print(f"⚠️ KYC API error: {e}")
+    #     # Fail open on API errors (don't block legitimate sellers)
     
     return False, "No sanctions match found"
 
