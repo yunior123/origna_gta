@@ -64,7 +64,6 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       if (!hasPhysicalItems) {
         state = state.copyWith(
           baseShippingCost: 0,
-          shippingCost: 0,
           isLocalDelivery: false,
           availableDeliverySpeeds: const [],
           deliverySpeed: DeliverySpeed.standard,
@@ -79,7 +78,6 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     if (!hasPhysicalItems) {
       state = state.copyWith(
         baseShippingCost: 0,
-        shippingCost: 0,
         isLocalDelivery: false,
         availableDeliverySpeeds: const [],
         deliverySpeed: DeliverySpeed.standard,
