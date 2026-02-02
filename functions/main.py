@@ -13,6 +13,11 @@ Setup Instructions:
    - R2_SECRET_KEY (optional)
    - R2_ACCOUNT_ID (optional)
 3. Deploy: firebase deploy --only functions
+
+IMPORTANT: This file should NEVER be deployed when FUNCTIONS_EMULATOR=true
+           The emulator runs these functions locally, and production deployment
+           during emulation would overwrite production code.
+           Always verify: echo $FUNCTIONS_EMULATOR before running 'firebase deploy --only functions'
 """
 
 from firebase_functions import https_fn, options, firestore_fn, scheduler_fn
@@ -41,6 +46,16 @@ from config import (
     STRIPE_WEBHOOK_SECRET, MAILJET_API_KEY, MAILJET_SECRET_KEY,
     GEOAPIFY_API_KEY, SELLER_EMAIL, CATEGORY_TAX_CODE_MAP
 )
+
+# ============================================================================
+# EMULATOR SAFETY CHECK
+# ============================================================================
+if IS_EMULATOR:
+    print("\n" + "="*80)
+    print("⚠️  RUNNING IN EMULATOR MODE")
+    print("Cloud Functions will execute locally only.")
+    print("Set FUNCTIONS_EMULATOR=false before deploying to production!")
+    print("="*80 + "\n")
 
 from email_service import (
     get_order_confirmation_email, get_seller_notification_email, send_email

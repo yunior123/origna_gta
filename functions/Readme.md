@@ -1,4 +1,35 @@
-# Set your Stripe keys
+# Firebase Cloud Functions
+
+## ⚠️ CRITICAL: Emulator Safety
+
+**NEVER deploy Cloud Functions while running the Firestore/Functions emulator locally.**
+
+### Preventing accidental deployment during emulator use:
+
+```bash
+# Always check before deploying
+echo $FUNCTIONS_EMULATOR
+
+# If it shows "true", you're in emulator mode - DO NOT DEPLOY
+# Unset it first:
+unset FUNCTIONS_EMULATOR
+
+# Then deploy:
+firebase deploy --only functions
+```
+
+### Safe workflow:
+```bash
+# Local testing with emulator
+export FUNCTIONS_EMULATOR=true
+firebase emulators:start --only functions
+
+# When done testing, unset before deploying to production
+unset FUNCTIONS_EMULATOR
+firebase deploy --only functions
+```
+
+## Setup Instructions
 firebase functions:config:set stripe.secret_key="STRIPE_SECRET_KEY_REDACTED"
 firebase functions:config:set stripe.webhook_secret="STRIPE_WEBHOOK_SECRET_REDACTED"
 firebase functions:secrets:set MAILJET_API_KEY
