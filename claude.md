@@ -58,6 +58,12 @@ PHASE 4 PRIORITIES (IN ORDER)
 
 TIER 1 - CRITICAL (MUST DO BEFORE PROD)
 ────────────────────────────────────────
+TODO move to is emulator logic    self.api_key = os.environ.get('AIRWALLEX_API_KEY')
+        self.client_id = os.environ.get('AIRWALLEX_CLIENT_ID')
+        self.webhook_secret = os.environ.get('AIRWALLEX_WEBHOOK_SECRET')
+        self.base_url = os.environ.get('AIRWALLEX_BASE_URL', 'https://api.airwallex.com/api/v1')
+        self.token = None
+        self.token_expiry = None
 TODO P1: Audit digital products workflow (no shipping required, update checkout, orders, shipping logic)
 TODO P1: Audit auth flows (sign up, email verification, sign in, forgot password, sign out, session timeout)
 TODO P1: Audit seller approval workflow (check that only approved sellers can add products)
