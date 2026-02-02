@@ -72,32 +72,25 @@ TODO ✅ P2.1-P2.5: Airwallex backend service (complete: account, payment, payou
 TODO ✅ P2.6: Airwallex frontend integration (add provider toggle in seller registration, payment selection UI)
 TODO ✅ P2.7: Airwallex config (move API keys to config.py with IS_EMULATOR logic)
 TODO ✅ P2.8: Admin MFA/TOTP (PyOTP: enroll→secret+backup codes, verify→10min window, disable; MFA required for suspend/roles/Algolia)
-TODO P2.9: E2E tests (Playwright/Appium for checkout, seller onboarding, order lifecycle, auth flows)
+TODO 🚧 P2.9: E2E tests (Playwright suite created: checkout, seller, order lifecycle, auth flows)
 
 TIER 3 - MEDIUM (NICE TO HAVE)
 ───────────────────────────────
-TODO P3: UI/UX refinements:
-TODO P3: Content updates:
-TODO P3: Product addition alignment:
-  TODO P3.1: Home screen aesthetic (fix blue background to match 2100 design)
-  TODO P3.2: Responsive layout audit (test 320px, 480px, 768px, 1024px+ - ensure no text collapse)
-  TODO P3.3: Glassmorphism polish (add subtle blur effects across app)
-  TODO P3.4: Splash screen redesign (unique, orignaventures.ca-inspired)
-  TODO ✅ P3.5: Legal text update (Terms & Conditions contact → orignaventures.ca, verify Canada-specific)
-  TODO ✅ P3.6: Product schema alignment (verify frontend form matches backend, R2 upload best practices)
+TODO 🚧 P3.1: Home screen aesthetic (2100 design: gradient appbar, category chips, modernized layout ✓)
+TODO 🚧 P3.2: Responsive layout audit (test 320px, 480px, 768px, 1024px+ - add responsive breakpoints)
+TODO 🚧 P3.3: Glassmorphism polish (add subtle blur effects across app)
+TODO 🚧 P3.4: Splash screen redesign (unique, orignaventures.ca-inspired)
+TODO ✅ P3.5: Legal text update (Terms & Conditions contact → orignaventures.ca, verify Canada-specific)
+TODO ✅ P3.6: Product schema alignment (verify frontend form matches backend, R2 upload best practices)
 
 TIER 4 - VALIDATION (DO BEFORE EVERY RELEASE)
 ────────────────────────────────────────────────
-TODO P4: Backend regulations audit:
-TODO P4: Admin dashboard audit:
-TODO P4: Seller dashboard audit:
-TODO P4: Consumer flows audit:
-  TODO P4.1: Backend security audit (Cloud Functions best practices, schema consistency, edge cases, rate limits, idempotency)
-  TODO P4.2: Admin dashboard audit (permissions, suspension flow, dispute resolution, payout tracking)
-  TODO P4.3: Seller dashboard audit (order isolation, product permissions, payout history, suspension enforcement)
-  TODO P4.4: Consumer flows audit (favorites, addresses, orders, search/filters, shipping calculation)
-  TODO - UI polish  (consistent spacing, font sizes, color palette, button styles, input fields)
-  TODO verify generated code, json schema, and the logic for it, when generating code again it cannot break existing code
+TODO 🚧 P4.1: Backend security audit (Cloud Functions best practices, schema consistency, edge cases, rate limits, idempotency)
+TODO 🚧 P4.2: Admin dashboard audit (permissions, suspension flow, dispute resolution, payout tracking)
+TODO 🚧 P4.3: Seller dashboard audit (order isolation, product permissions, payout history, suspension enforcement)
+TODO 🚧 P4.4: Consumer flows audit (favorites, addresses, orders, search/filters, shipping calculation)
+TODO 🚧 - UI polish (consistent spacing, font sizes, color palette, button styles, input fields)
+TODO 🚧 verify generated code, json schema, and the logic for it, when generating code again it cannot break existing code
 
 ══════════════════════════════════════════════════════════════
 PHASE 4 SUMMARY (Updated: Feb 2, 2026)
