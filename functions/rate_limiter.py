@@ -22,6 +22,9 @@ class RateLimiter:
     ) -> Tuple[bool, str]:
         """
         Returns (allowed: bool, message: str)
+        
+        EDGE CASE FIX #4: Use Firestore transaction to prevent race conditions.
+        Without transaction, concurrent requests could bypass rate limit.
         """
         now = datetime.utcnow()
         window_start = now - timedelta(minutes=window_minutes)
@@ -30,40 +33,47 @@ class RateLimiter:
         ref = self.db.collection(self.collection).document(doc_id)
         
         try:
-            doc = ref.get()
-            
-            if doc.exists:
-                data = doc.to_dict()
-                count = data.get('count', 0)
-                first_request = data.get('first_request').replace(tzinfo=None)
+            # FIXED: Use transaction to prevent race conditions
+            @firestore.transactional
+            def check_and_increment(transaction, ref):
+                doc = ref.get(transaction=transaction)
                 
-                # Window expired, reset
-                if first_request < window_start:
-                    ref.set({
+                if doc.exists:
+                    data = doc.to_dict()
+                    count = data.get('count', 0)
+                    first_request = data.get('first_request').replace(tzinfo=None)
+                    
+                    # Window expired, reset
+                    if first_request < window_start:
+                        transaction.set(ref, {
+                            'count': 1,
+                            'first_request': now,
+                            'last_request': now
+                        })
+                        return True, "OK"
+                    
+                    # Within window, check limit
+                    if count >= max_requests:
+                        return False, f"Rate limit exceeded: {max_requests} requests per {window_minutes} minutes"
+                    
+                    # Increment atomically
+                    transaction.update(ref, {
+                        'count': count + 1,
+                        'last_request': now
+                    })
+                    return True, "OK"
+                else:
+                    # First request
+                    transaction.set(ref, {
                         'count': 1,
                         'first_request': now,
                         'last_request': now
                     })
                     return True, "OK"
-                
-                # Within window, check limit
-                if count >= max_requests:
-                    return False, f"Rate limit exceeded: {max_requests} requests per {window_minutes} minutes"
-                
-                # Increment
-                ref.update({
-                    'count': firestore.Increment(1),
-                    'last_request': now
-                })
-                return True, "OK"
-            else:
-                # First request
-                ref.set({
-                    'count': 1,
-                    'first_request': now,
-                    'last_request': now
-                })
-                return True, "OK"
+            
+            # Execute transaction
+            transaction = self.db.transaction()
+            return check_and_increment(transaction, ref)
                 
         except Exception as e:
             # Fail open on errors (don't block legitimate users)

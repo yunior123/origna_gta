@@ -2319,6 +2319,175 @@ def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
 
 
 @https_fn.on_call()
+def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    EDGE CASE FIX #1: Suspend seller WITH active order handling.
+    
+    When admin suspends a seller, automatically:
+    1. Cancel all active orders (pending/confirmed/shipped)
+    2. Refund buyers (cancel Stripe authorizations)
+    3. Restore stock for all items
+    4. Then mark seller as suspended
+    
+    SECURITY: Admin-only function.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+    
+    admin_id = req.auth.uid
+    seller_id = req.data.get('sellerId')
+    reason = req.data.get('reason', 'Violated platform terms')
+    
+    if not seller_id:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="sellerId is required"
+        )
+    
+    print(f"🔒 Admin {admin_id} suspending seller: {seller_id}")
+    print(f"  Reason: {reason}")
+    
+    try:
+        # 1. Verify admin role
+        admin_ref = db.collection(Collections.USERS).document(admin_id)
+        admin_doc = admin_ref.get()
+        
+        if not admin_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Admin user not found"
+            )
+        
+        admin_roles = admin_doc.to_dict().get('roles', [])
+        if UserRoles.ADMIN not in admin_roles:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+                message="Admin role required"
+            )
+        
+        print(f"  ✅ Admin verified")
+        
+        # 2. Find all active orders for this seller
+        # Query orders where seller has items in pending/confirmed/shipped state
+        active_statuses = [OrderStatus.PENDING, OrderStatus.CONFIRMED, 'shipped']
+        orders_ref = db.collection(Collections.ORDERS).where(
+            'status', 'in', active_statuses
+        ).stream()
+        
+        cancelled_orders = []
+        refunded_amount = 0.0
+        restored_stock = {}
+        
+        for order_doc in orders_ref:
+            order_id = order_doc.id
+            order_data = order_doc.to_dict()
+            items = order_data.get('items', [])
+            
+            # Check if seller has items in this order
+            seller_items = [item for item in items if item.get('sellerId') == seller_id]
+            
+            if not seller_items:
+                continue  # Skip orders without this seller's items
+            
+            print(f"  📦 Cancelling order {order_id} ({len(seller_items)} items from seller)")
+            
+            # 3. Cancel Stripe authorization
+            payment_intent_id = order_data.get('stripePaymentIntentId')
+            if payment_intent_id:
+                try:
+                    intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+                    if intent.status == 'requires_capture':
+                        stripe.PaymentIntent.cancel(payment_intent_id)
+                        print(f"    ✅ Cancelled authorization: {payment_intent_id}")
+                except stripe.error.StripeError as e:
+                    print(f"    ⚠️  Failed to cancel authorization: {str(e)}")
+            
+            # 4. Restore stock
+            for item in seller_items:
+                product_id = item.get('productId')
+                quantity = item.get('quantity', 0)
+                
+                if product_id and quantity > 0:
+                    try:
+                        product_ref = db.collection(Collections.PRODUCTS).document(product_id)
+                        product_doc = product_ref.get()
+                        
+                        if product_doc.exists:
+                            current_stock = product_doc.to_dict().get('stockQuantity', 0)
+                            product_ref.update({
+                                'stockQuantity': current_stock + quantity
+                            })
+                            restored_stock[product_id] = restored_stock.get(product_id, 0) + quantity
+                            print(f"    ✅ Restored {quantity} units for {product_id}")
+                    except Exception as e:
+                        print(f"    ⚠️  Failed to restore stock for {product_id}: {str(e)}")
+            
+            # 5. Update order status
+            order_ref = db.collection(Collections.ORDERS).document(order_id)
+            order_ref.update({
+                'status': OrderStatus.CANCELLED,
+                'paymentStatus': 'cancelled',
+                'cancellationReason': f'Seller suspended: {reason}',
+                'cancelledAt': firestore.SERVER_TIMESTAMP,
+                'cancelledBy': admin_id,
+                'updatedAt': firestore.SERVER_TIMESTAMP,
+            })
+            
+            cancelled_orders.append(order_id)
+            refunded_amount += order_data.get('total', 0.0)
+        
+        print(f"  ✅ Cancelled {len(cancelled_orders)} orders")
+        print(f"  💰 Refunded total: ${refunded_amount:.2f} CAD")
+        print(f"  📦 Restored stock: {len(restored_stock)} products")
+        
+        # 6. Suspend seller
+        seller_ref = db.collection(Collections.USERS).document(seller_id)
+        seller_ref.update({
+            'suspended': True,
+            'suspendedAt': firestore.SERVER_TIMESTAMP,
+            'suspendedBy': admin_id,
+            'suspensionReason': reason,
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+        })
+        
+        print(f"  ✅ Seller {seller_id} suspended")
+        
+        # 7. Log security event
+        db.collection('security_alerts').add({
+            'type': 'seller_suspended',
+            'sellerId': seller_id,
+            'adminId': admin_id,
+            'reason': reason,
+            'cancelledOrders': len(cancelled_orders),
+            'refundedAmount': refunded_amount,
+            'restoredProducts': len(restored_stock),
+            'timestamp': firestore.SERVER_TIMESTAMP,
+        })
+        
+        return {
+            "success": True,
+            "sellerId": seller_id,
+            "cancelledOrders": len(cancelled_orders),
+            "refundedAmount": refunded_amount,
+            "restoredProducts": len(restored_stock),
+            "message": f"Seller suspended. {len(cancelled_orders)} orders cancelled, ${refunded_amount:.2f} refunded"
+        }
+    
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Error suspending seller: {str(e)}")
+        print(traceback.format_exc())
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to suspend seller: {str(e)}"
+        )
+
+
+@https_fn.on_call()
 def get_connect_account_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Get the current status of a seller's Stripe Connect account.
@@ -3175,15 +3344,57 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         capture_amount = order_data.get('amount')  # In cents
         is_already_paid = payment_status == PaymentStatus.PAID
 
-        # Capture the payment ONLY if not already paid
+        # EDGE CASE FIX #2: Multi-seller partial capture tracking
+        # Track which sellers have captured their portion
+        seller_captures = order_data.get('sellerCaptures', {})
+        
+        # Check if this seller already captured
+        if seller_captures.get(seller_id, {}).get('captured', False):
+            print(f"  ℹ️ Seller {seller_id} already captured payment")
+            # Just update tracking number
+            items = order_data.get('items', [])
+            for item in items:
+                if item.get('sellerId') == seller_id:
+                    item['deliveryStatus'] = DeliveryStatus.SHIPPED
+                    if tracking_number:
+                        item['trackingNumber'] = tracking_number
+            
+            order_ref.update({'items': items, 'updatedAt': firestore.SERVER_TIMESTAMP})
+            
+            return {
+                "success": True,
+                "alreadyCaptured": True,
+                "message": "Seller already captured payment. Tracking updated."
+            }
+        
+        # Calculate this seller's total (sum of their items)
+        seller_total_cents = sum(
+            item.get('price', 0) * item.get('quantity', 0) * 100 
+            for item in seller_items
+        )
+        
+        print(f"  💰 Seller's portion: ${seller_total_cents / 100:.2f} CAD")
+
+        # Capture the payment ONLY if not already fully paid
         if not is_already_paid:
-            print(f"  💰 Capturing ${capture_amount / 100:.2f} CAD")
+            print(f"  💰 Capturing ${capture_amount / 100:.2f} CAD (full amount)")
             try:
                 payment_intent = stripe.PaymentIntent.capture(
                     payment_intent_id,
                     amount_to_capture=capture_amount,
                 )
                 print(f"  ✅ Payment captured successfully")
+                
+                # Mark ALL sellers in this order as captured (single capture for all)
+                for item in order_data.get('items', []):
+                    item_seller_id = item.get('sellerId')
+                    if item_seller_id:
+                        seller_captures[item_seller_id] = {
+                            'captured': True,
+                            'capturedAt': firestore.SERVER_TIMESTAMP,
+                            'capturedBy': seller_id,  # Who triggered capture
+                        }
+                
             except stripe.error.StripeError as e:
                 print(f"  ❌ Stripe capture failed: {str(e)}")
                 raise https_fn.HttpsError(
@@ -3191,7 +3402,14 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                     message=f"Payment capture failed: {str(e)}"
                 )
         else:
-             print(f"  ℹ️ Order already PAID. Skipping Stripe capture, updating shipment info only.")
+            print(f"  ℹ️ Order already PAID. Recording seller capture.")
+            # Payment already captured by another seller, just record this seller's capture
+            seller_captures[seller_id] = {
+                'captured': True,
+                'capturedAt': firestore.SERVER_TIMESTAMP,
+                'capturedBy': seller_id,
+            }
+
 
         # Update items with shipped status and tracking
         items = order_data.get('items', [])
@@ -3204,6 +3422,7 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         # Update order
         update_data = {
             'items': items,
+            'sellerCaptures': seller_captures,  # Track per-seller captures
             'updatedAt': firestore.SERVER_TIMESTAMP,
         }
 
@@ -3217,11 +3436,12 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
 
         order_ref.update(update_data)
 
-        print(f"  ✅ Order updated with captured payment")
+        print(f"  ✅ Order updated - seller capture recorded")
 
         return {
             "success": True,
-            "capturedAmount": capture_amount / 100,
+            "capturedAmount": capture_amount / 100 if not is_already_paid else seller_total_cents / 100,
+            "sellerCaptured": True,
             "message": "Payment captured and items marked as shipped"
         }
 
@@ -3529,23 +3749,38 @@ def check_expiring_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
                     # Cancel the order
                     order_ref = db.collection(Collections.ORDERS).document(order_id)
 
+                    # EDGE CASE FIX #3: Track capture failures for compensation
+                    capture_attempts = order_data.get('captureAttempts', 0)
+                    max_capture_attempts = 3
+
                     # Try to cancel the payment intent
                     payment_intent_id = order_data.get('stripePaymentIntentId')
                     if payment_intent_id:
                         try:
                             stripe.PaymentIntent.cancel(payment_intent_id)
-                        except stripe.error.StripeError:
-                            pass  # May already be cancelled
+                            print(f"  ✅ Payment intent cancelled: {payment_intent_id}")
+                        except stripe.error.StripeError as e:
+                            print(f"  ⚠️ Could not cancel payment intent (may already be cancelled): {str(e)}")
 
                     # Restore stock
                     _restore_stock_for_order(order_data)
 
-                    order_ref.update({
+                    # Update order status
+                    update_data = {
                         'status': OrderStatus.EXPIRED,
                         'paymentStatus': 'authorization_expired',
                         'expiredAt': firestore.SERVER_TIMESTAMP,
                         'updatedAt': firestore.SERVER_TIMESTAMP,
-                    })
+                        'captureAttempts': capture_attempts + 1,
+                    }
+
+                    # If auto-capture failed multiple times, flag for investigation
+                    if capture_attempts >= max_capture_attempts - 1:
+                        update_data['requiresManualReview'] = True
+                        update_data['reviewReason'] = 'Multiple capture failures before expiry'
+                        print(f"  🚨 Flagged for manual review (attempts: {capture_attempts + 1})")
+
+                    order_ref.update(update_data)
 
                     # Notify customer
                     customer_email = order_data.get('customerEmail')

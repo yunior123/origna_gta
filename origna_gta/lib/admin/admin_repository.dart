@@ -40,10 +40,13 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> setUserSuspended(String userId, bool suspended) async {
-    await _firestore.collection('users').doc(userId).update({
-      'suspended': suspended,
-      'suspendedAt': suspended ? FieldValue.serverTimestamp() : FieldValue.delete(),
-    });
+    if (suspended) {
+      // EDGE CASE FIX #1: Call backend to handle active orders
+      await _functions.httpsCallable('suspend_seller').call({'sellerId': userId, 'reason': 'Suspended by admin'});
+    } else {
+      // Unsuspend: just update Firestore
+      await _firestore.collection('users').doc(userId).update({'suspended': false, 'unsuspendedAt': FieldValue.serverTimestamp()});
+    }
   }
 
   @override
