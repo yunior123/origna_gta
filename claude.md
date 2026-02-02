@@ -38,21 +38,17 @@ Always use common schema between frontend and backend. Database schema is source
 make sure rules are strict and safe. 
 Add tests to github workflow
 
-✅ DONE audit json schema application in backend and frontend - 100% Pydantic (backend) + Freezed (frontend)
-✅ DONE audit the logic of different workflow - See APPLICATION_LOGIC_AUDIT_REPORT.md (8/10 overall score)
-   - Auth: 8/10 (missing session timeout) → FIXED (SessionTimeoutService integrated)
-   - Products: 8/10 (solid validation)
-   - Checkout: 9/10 (excellent idempotency)
-   - Payments: 9/10 (strong fraud detection) → ENHANCED (KYC sanctions check added)
-   - Orders: 7/10 (state validation) → FIXED (Firestore rules + auto-approval)
-   - Seller: 7/10 (no KYC) → FIXED (sanctions check implemented)
-   - Shipping: 6/10 (approval timeout) → FIXED (24h auto-approval scheduler)
 
+
+TODO ✅ Edge cases audit complete (see EDGE_CASES_AUDIT.md) - 10 scenarios analyzed, 6 require fixes
+TODO URGENT: Fix seller suspension with active orders (auto-cancel + refund)
+TODO URGENT: Fix multi-seller partial capture tracking
+TODO HIGH: Add auto-capture failure compensation (cancel after 3 failures)
+TODO HIGH: Fix rate limiter race condition (use transactions)
 TODO add more e2e tests for critical flows like checkout, seller onboarding, seller orders view, shipping confirmation, order lifecycle
 TODO implement Admin MFA (TOTP) - deferred to Phase 4
 TODO production deploy: Replace sanctions check placeholder with real KYC API (ComplyAdvantage/Trulioo/Onfido)
-TODO production monitoring: Set up Sentry alerts for KYC API failures, rate limit exhaustion, session timeout errorsetc, 
-TODO go hunting for edge cases, unhandled workflows
+TODO production monitoring: Set up Sentry alerts for KYC API failures, rate limit exhaustion, session timeout errors, auto-capture failures, dispute losses 
 
 
 TECH STACK
