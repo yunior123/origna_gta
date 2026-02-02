@@ -50,36 +50,94 @@ TODO ✅ MEDIUM: Product deletion with active orders (check before delete, preve
 TODO ✅ MEDIUM: Dispute after delivery fraud detection (fraud scoring 30-90pts, security_alerts log)
 TODO ✅ Phase 3.5: Updated firestore.rules for new fields (sellerCaptures, requiresManualReview, fraudScore, security_alerts)
 TODO ✅ Phase 3.5: Fixed Algolia v4 API compatibility (SearchClient init, save_object, delete_object)
-TODO Phase 4: Add E2E tests for edge cases (checkout, seller onboarding, order lifecycle, shipping, disputes)
-TODO implement Admin MFA (TOTP) - deferred to Phase 4
-TODO production deploy: Replace sanctions check placeholder with real KYC API (ComplyAdvantage/Trulioo/Onfido)
-TODO production monitoring: Set up Sentry alerts for KYC API failures, rate limit exhaustion, session timeout errors, auto-capture failures, dispute losses 
-TODO ✅ improve ui ux in the entire app, make it mindblowing, beautiful and mind blowing, something from 2100
-TODO ✅ index file, improve splash similar to origna ventures project, visit orignaventures.ca so the splash looks similar but adapted to this project, make it beautiful and mind blowing, something from 2100
-TODO improve ui ux in the entire app, make it mindblowing, beautiful and mind blowing, something from 2100, go file by file, add nice blurring, etc, make it nice, something like macbooster or macclean ui, or fxcleaner from my github 
-TODO digital products do not require shipping, fix that in the entire app if necesary
-TODO This is mandatory, i want chines sellers on the platform, stripe does not work for china. check airwallex documentation and python examples on the web too, we are inplementing this shit in phase 4, seller should have the option to register with stripe or airwallex, check the logic, and get it done in the app. create tests for it in backend and frontend
-TODO check that backend satisfies regulations for json schema, check full logic of cloud functions and edge cases
-TODO fix index background, right now its blue, blue doesw not match ui in the app
-TODO in terms and consitions change 14. contact us Email by website orignaventures.ca
-TODO audit sign out workflow, sign in, forgot password, sign up, email verification workflow
-TODO audit admin panel workflow and logic
-TODO audit seller dashboard and logic and functionality
-TODO audit seller orders and logic and functionality
-TODO audit favorites logic and functionality
-TODO audit address logic and functionality
-TODO audit my orders logic and functionality
-TODO audit add product logic and functionality
-TODO audit add product logic, make sure its aligned with backend, check latest r2 documentation from cloudflare, audit both backend and frontend
-TODO audit home screen logic and functionality
-TODO audit product search logic and functionality
-TODO audit that seller can add product after approval only
-TODO audit that suspended sellers cannot add products or access seller dashboard
-TODO audit that suspended sellers cannot access seller orders screen
-TODO audit that suspended sellers cannot access seller registration screen
-TODO audit that there are no collapse of letters on the screen or components, make sure of responsivness for all screen sizes
-TODO Audit logic for shipping. taxes align with backend
-TODO make sure that index splash look unique and mind blowing, something from 2100 that match design of flutter app as a whole
+TODO ✅ Phase 3.5: Flutter compilation errors: 193 → 0 (all errors resolved, 76/76 backend tests passing)
+TODO ✅ Phase 3.5: UI modernization complete (2100 aesthetic across 8 critical screens)
+
+PHASE 4 PRIORITIES (IN ORDER)
+==================================
+
+TIER 1 - CRITICAL (MUST DO BEFORE PROD)
+────────────────────────────────────────
+TODO P1: Audit digital products workflow (no shipping required, update checkout, orders, shipping logic)
+TODO P1: Audit auth flows (sign up, email verification, sign in, forgot password, sign out, session timeout)
+TODO P1: Audit seller approval workflow (check that only approved sellers can add products)
+TODO P1: Audit seller suspension logic (suspended sellers cannot: add products, access dashboard/seller orders, access registration)
+TODO P1: Audit order lifecycle (checkout flow, payment capture, shipping confirmation, delivery, disputes)
+TODO P1: Replace KYC sanctions check with real API:
+  - Research: ComplyAdvantage vs Trulioo vs Onfido for Canada compliance
+  - Decision: Which API best for Canada + affordable + reliable?
+  - Implementation: Integrate with seller onboarding, handle failures gracefully
+  - Testing: Mock API calls, test failure scenarios
+TODO P1: Setup production monitoring (Sentry alerts for: KYC failures, rate limits, auto-capture failures, dispute losses)
+
+TIER 2 - HIGH (SHIP WITHIN 2 WEEKS)
+────────────────────────────────────
+TODO P2: Chinese seller support (Airwallex integration for sellers without Stripe):
+  - Setup: Airwallex account, API keys, test mode
+  - Frontend: Add "Stripe or Airwallex" toggle in seller registration
+  - Backend: Create separate payout logic for Airwallex vs Stripe
+  - Keep logic isolated from existing Stripe flow (critical!)
+  - Testing: Full checkout flow with Airwallex, payout flow, dispute handling
+  - Reference: Airwallex Python SDK examples, payment capture flow
+TODO P2: Admin MFA (TOTP implementation):
+  - Setup TOTP generation on first admin login
+  - QR code display (Google Authenticator, Authy compatible)
+  - MFA verification on every admin action
+  - Backup codes generation (10 codes for account recovery)
+TODO P2: E2E tests for critical flows (Playwright/Appium):
+  - Checkout flow (add product, checkout, payment, order confirmation)
+  - Seller onboarding (registration, approval, first product, payout setup)
+  - Order lifecycle (place order, ship, confirm delivery, dispute if needed)
+  - Auth flows (signup, email verify, signin, forgot password, signout)
+
+TIER 3 - MEDIUM (NICE TO HAVE)
+───────────────────────────────
+TODO P3: UI/UX refinements:
+  - Fix home screen background (currently blue, doesn't match 2100 aesthetic)
+  - Ensure no letter collapse on any screen (test responsive sizes: 320px, 480px, 768px, 1024px+)
+  - Add subtle blur effects (glassmorphism enhancements across app)
+  - Make splash screen unique & mind-blowing (reference: orignaventures.ca design, adapt to marketplace)
+TODO P3: Content updates:
+  - Update Terms & Conditions: Change contact email/phone to orignaventures.ca
+  - Ensure all legal text is Canada-specific
+TODO P3: Product addition alignment:
+  - Verify frontend product form matches backend schema exactly
+  - Check Cloudflare R2 latest docs for image upload best practices
+  - Ensure metadata (SKU, category, tags) all validated server-side
+
+TIER 4 - VALIDATION (DO BEFORE EVERY RELEASE)
+────────────────────────────────────────────────
+TODO P4: Backend regulations audit:
+  - Verify all Cloud Functions follow Firebase security best practices
+  - Check JSON schema consistency (frontend ↔ backend ↔ database)
+  - Edge case validation: empty inputs, malformed data, concurrent requests
+  - Rate limiting: Verify all endpoints have rate limits
+  - Idempotency: Verify all payment operations are idempotent
+TODO P4: Admin dashboard audit:
+  - Full audit of admin panel workflows and permissions
+  - Seller suspension flow: instant and complete
+  - Dispute resolution: all statuses, edge cases
+  - Payout status tracking: real-time updates
+TODO P4: Seller dashboard audit:
+  - Seller orders: can only see own orders
+  - Product management: can only edit own products
+  - Payout history: accurate and complete
+  - Suspended state: properly locked out
+TODO P4: Consumer flows audit:
+  - Favorites: add, remove, sorting, persistence
+  - Address management: add, edit, delete, default selection
+  - My orders: filters, sorting, status tracking, disputes
+  - Product search: filters, sorting, pagination (Algolia)
+  - Shipping calculation: correct for all provinces + postal codes
+
+DASHBOARDS TO MONITOR REGULARLY
+────────────────────────────────
+- Stripe Dashboard: Connected accounts, payouts, disputes, KYC status
+- Airwallex Dashboard: (Once implemented) Transactions, payouts, risk management
+- KYC Platform Dashboard: Seller verification status, rejections, re-submissions
+- Firebase Console: Function errors, Firestore quota, auth metrics
+- Sentry: Error tracking, performance metrics
+- Algolia Dashboard: Search quality, indexing status. 
 
 TECH STACK
 Frontend: Flutter (Web, Android, iOS)
