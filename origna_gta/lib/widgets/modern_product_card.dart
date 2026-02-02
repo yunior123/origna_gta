@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../utils/design_tokens.dart';
 
 /// Modern 2100 Product Card with glassmorphism
@@ -13,7 +14,7 @@ class ModernProductCard extends StatefulWidget {
   final VoidCallback? onAddToCart;
 
   const ModernProductCard({
-    Key? key,
+    super.key,
     required this.productName,
     required this.price,
     required this.imageUrl,
@@ -22,34 +23,15 @@ class ModernProductCard extends StatefulWidget {
     this.reviewCount = 0,
     required this.onTap,
     this.onAddToCart,
-  }) : super(key: key);
+  });
 
   @override
   State<ModernProductCard> createState() => _ModernProductCardState();
 }
 
-class _ModernProductCardState extends State<ModernProductCard>
-    with SingleTickerProviderStateMixin {
+class _ModernProductCardState extends State<ModernProductCard> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: DesignTokens.durationNormal,
-      vsync: this,
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
-      CurvedAnimation(parent: _controller, curve: DesignTokens.easeOutCubic),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,14 +46,9 @@ class _ModernProductCardState extends State<ModernProductCard>
           onTap: widget.onTap,
           child: Container(
             decoration: BoxDecoration(
-              color: isDark
-                  ? DesignTokens.darkSurfaceVariant.withOpacity(0.6)
-                  : DesignTokens.surface,
+              color: isDark ? DesignTokens.darkSurfaceVariant.withOpacity(0.6) : DesignTokens.surface,
               borderRadius: BorderRadius.circular(DesignTokens.radius16),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.1),
-                width: 1,
-              ),
+              border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
               boxShadow: DesignTokens.shadowMd,
             ),
             child: ClipRRect(
@@ -89,52 +66,27 @@ class _ModernProductCardState extends State<ModernProductCard>
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [
-                              DesignTokens.primary.withOpacity(0.1),
-                              DesignTokens.secondary.withOpacity(0.1),
-                            ],
+                            colors: [DesignTokens.primary.withOpacity(0.1), DesignTokens.secondary.withOpacity(0.1)],
                           ),
                         ),
                         child: widget.imageUrl.isNotEmpty
                             ? Image.network(
                                 widget.imageUrl,
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const Icon(
-                                  Icons.image_not_supported_outlined,
-                                  color: Colors.grey,
-                                  size: 48,
-                                ),
+                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 48),
                               )
-                            : const Icon(
-                                Icons.image_not_supported_outlined,
-                                color: Colors.grey,
-                                size: 48,
-                              ),
+                            : const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 48),
                       ),
                       // Badge (optional)
                       Positioned(
                         top: 8,
                         right: 8,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: DesignTokens.spacing8,
-                            vertical: DesignTokens.spacing4,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: DesignTokens.primaryGradient,
-                            borderRadius: BorderRadius.circular(
-                              DesignTokens.radius8,
-                            ),
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing8, vertical: DesignTokens.spacing4),
+                          decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(DesignTokens.radius8)),
                           child: const Text(
                             'New',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                            ),
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5),
                           ),
                         ),
                       ),
@@ -151,47 +103,23 @@ class _ModernProductCardState extends State<ModernProductCard>
                             widget.productName,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              height: 1.4,
-                            ),
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.4),
                           ),
                           const SizedBox(height: DesignTokens.spacing4),
                           Text(
                             widget.sellerName,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade500,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
                           ),
                           const Spacer(),
                           // Rating
                           Row(
                             children: [
-                              Icon(
-                                Icons.star_rounded,
-                                size: 14,
-                                color: Colors.amber.shade500,
-                              ),
+                              Icon(Icons.star_rounded, size: 14, color: Colors.amber.shade500),
                               const SizedBox(width: 4),
-                              Text(
-                                widget.rating.toStringAsFixed(1),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                              Text(widget.rating.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                               if (widget.reviewCount > 0) ...[
                                 const SizedBox(width: 4),
-                                Text(
-                                  '(${widget.reviewCount})',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade500,
-                                  ),
-                                ),
+                                Text('(${widget.reviewCount})', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
                               ],
                             ],
                           ),
@@ -202,11 +130,7 @@ class _ModernProductCardState extends State<ModernProductCard>
                             children: [
                               Text(
                                 '\$${widget.price.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: DesignTokens.primary,
-                                ),
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.primary),
                               ),
                               if (widget.onAddToCart != null)
                                 GestureDetector(
@@ -215,15 +139,9 @@ class _ModernProductCardState extends State<ModernProductCard>
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
                                       gradient: DesignTokens.primaryGradient,
-                                      borderRadius: BorderRadius.circular(
-                                        DesignTokens.radius8,
-                                      ),
+                                      borderRadius: BorderRadius.circular(DesignTokens.radius8),
                                     ),
-                                    child: const Icon(
-                                      Icons.add,
-                                      size: 16,
-                                      color: Colors.white,
-                                    ),
+                                    child: const Icon(Icons.add, size: 16, color: Colors.white),
                                   ),
                                 ),
                             ],
@@ -239,5 +157,18 @@ class _ModernProductCardState extends State<ModernProductCard>
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(duration: DesignTokens.durationNormal, vsync: this);
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(CurvedAnimation(parent: _controller, curve: DesignTokens.easeOutCubic));
   }
 }

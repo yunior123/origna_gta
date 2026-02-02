@@ -104,7 +104,7 @@ class _CategoryChips extends ConsumerWidget {
     final selectedCategoryId = ref.watch(homeViewModelProvider.select((state) => state.selectedCategoryId));
 
     return Container(
-      height: 50,
+      height: 52,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
@@ -116,14 +116,45 @@ class _CategoryChips extends ConsumerWidget {
 
           return Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(isAll ? 'All' : category!.name),
-              selected: isSelected,
-              onSelected: (selected) {
-                homeNotifier.onCategorySelected(isAll ? null : category!.categoryId);
-              },
-              selectedColor: const Color(0xFFFF6B35),
-              labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+            child: AnimatedContainer(
+              duration: Duration(milliseconds: DesignTokens.durationNormal),
+              curve: Curves.easeOutCubic,
+              decoration: BoxDecoration(
+                gradient: isSelected
+                    ? LinearGradient(
+                        colors: [DesignTokens.primary.withOpacity(0.9), DesignTokens.secondary.withOpacity(0.9)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: !isSelected ? DesignTokens.surface : null,
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                border: Border.all(color: isSelected ? DesignTokens.primary : Colors.grey.withOpacity(0.3), width: 1.5),
+                boxShadow: isSelected ? [BoxShadow(color: DesignTokens.primary.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))] : [],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    homeNotifier.onCategorySelected(isAll ? null : category!.categoryId);
+                  },
+                  borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                  splashColor: Colors.white.withOpacity(0.2),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Center(
+                      child: Text(
+                        isAll ? 'All' : category!.name,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.grey[700],
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           );
         },
@@ -139,44 +170,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final homeNotifier = ref.read(homeViewModelProvider.notifier);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: _buildAppBar(),
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          // Search Bar
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: TextField(
-                controller: _searchController,
-                onChanged: homeNotifier.onSearchChanged,
-                decoration: InputDecoration(
-                  hintText: 'Search products...',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                ),
-              ),
-            ),
+      appBar: _buildModernAppBar(),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [isDark ? Colors.grey[900]! : Colors.grey[50]!, isDark ? Colors.grey[800]! : Colors.white],
           ),
+        ),
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            // Animated Search Bar
+            SliverToBoxAdapter(
+              child: Padding(padding: const EdgeInsets.all(16), child: _buildModernSearchBar(homeNotifier)),
+            ),
 
-          // Category Chips
-          SliverToBoxAdapter(child: _CategoryChips(homeNotifier: homeNotifier)),
+            // Category Chips
+            SliverToBoxAdapter(child: _CategoryChips(homeNotifier: homeNotifier)),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+            const SliverToBoxAdapter(child: SizedBox(height: DesignTokens.spacing20)),
 
-          // Product Grid
-          _ProductGrid(cardAspectRatio: _getCardAspectRatio(context), fallbackUserModel: widget.userModel),
+            // Product Grid
+            _ProductGrid(cardAspectRatio: _getCardAspectRatio(context), fallbackUserModel: widget.userModel),
 
-          // Pagination Loader
-          const _PaginationLoader(),
+            // Pagination Loader
+            const _PaginationLoader(),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 50)),
-        ],
+            const SliverToBoxAdapter(child: SizedBox(height: 50)),
+          ],
+        ),
       ),
     );
   }
@@ -192,16 +219,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _searchController.addListener(() => setState(() {}));
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildModernAppBar() {
     return PreferredSize(
-      preferredSize: const Size.fromHeight(70),
+      preferredSize: const Size.fromHeight(64),
       child: Container(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFFFF6B35), Color(0xFFFF8E53)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-          borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
-          boxShadow: [BoxShadow(color: const Color(0xFFFF6B35).withValues(alpha: 0.4), blurRadius: 15, offset: const Offset(0, 5))],
+          gradient: LinearGradient(
+            colors: [DesignTokens.primary.withOpacity(0.95), DesignTokens.secondary.withOpacity(0.95)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [BoxShadow(color: DesignTokens.primary.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 8))],
         ),
         child: SafeArea(
           child: Padding(
@@ -220,16 +251,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           scale: value,
                           child: Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(15)),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                              border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                            ),
                             child: const Icon(Icons.shopping_bag, color: Colors.white, size: 28),
                           ),
                         );
                       },
                     ),
                     const SizedBox(width: 12),
-                    const Text(
-                      'OrignaGta',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22, letterSpacing: 0.5),
+                    ShaderMask(
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: [Colors.white, Colors.white.withOpacity(0.8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(bounds),
+                      child: const Text(
+                        'OrignaGta',
+                        style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 24, letterSpacing: 0.5),
+                      ),
                     ),
                   ],
                 ),
@@ -237,6 +279,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernSearchBar(HomeViewModel homeNotifier) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GlassContainer(
+      child: TextField(
+        controller: _searchController,
+        onChanged: homeNotifier.onSearchChanged,
+        style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+        cursorColor: DesignTokens.primary,
+        decoration: InputDecoration(
+          hintText: 'Search products...',
+          hintStyle: TextStyle(color: Colors.grey[500]),
+          prefixIcon: Icon(Icons.search, color: DesignTokens.primary),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? GestureDetector(
+                  onTap: () {
+                    _searchController.clear();
+                    homeNotifier.onSearchChanged('');
+                  },
+                  child: Icon(Icons.close, color: Colors.grey[500]),
+                )
+              : null,
+          filled: true,
+          fillColor: Colors.transparent,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12), borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            borderSide: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            borderSide: BorderSide(color: DesignTokens.primary, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
     );
@@ -266,10 +347,19 @@ class _PaginationLoader extends ConsumerWidget {
 
     if (!isLoadingMore) return const SliverToBoxAdapter(child: SizedBox.shrink());
 
-    return const SliverToBoxAdapter(
+    return SliverToBoxAdapter(
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 32),
-        child: Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35))),
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: Center(
+          child: ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [DesignTokens.primary, DesignTokens.secondary],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ).createShader(bounds),
+            child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+          ),
+        ),
       ),
     );
   }
@@ -286,6 +376,7 @@ class _ProductGrid extends ConsumerWidget {
     final isLoading = ref.watch(homeViewModelProvider.select((state) => state.isLoading));
     final products = ref.watch(homeViewModelProvider.select((state) => state.products));
     final userProfile = ref.watch(userProfileProvider).valueOrNull;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (products.isEmpty && !isLoading) {
       return SliverToBoxAdapter(
@@ -294,9 +385,25 @@ class _ProductGrid extends ConsumerWidget {
             padding: const EdgeInsets.all(64),
             child: Column(
               children: [
-                Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey[300]),
-                const SizedBox(height: 16),
-                const Text('No products matching your filters'),
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [DesignTokens.primary.withOpacity(0.1), DesignTokens.secondary.withOpacity(0.1)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Icon(Icons.inventory_2_outlined, size: 80, color: DesignTokens.primary.withOpacity(0.6)),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'No products found',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.grey[700]),
+                ),
+                const SizedBox(height: 8),
+                Text('Try adjusting your filters or search terms', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
               ],
             ),
           ),
@@ -305,10 +412,19 @@ class _ProductGrid extends ConsumerWidget {
     }
 
     if (isLoading) {
-      return const SliverToBoxAdapter(
+      return SliverToBoxAdapter(
         child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 64),
-          child: Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35))),
+          padding: const EdgeInsets.symmetric(vertical: 64),
+          child: Center(
+            child: ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [DesignTokens.primary, DesignTokens.secondary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ).createShader(bounds),
+              child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+            ),
+          ),
         ),
       );
     }
@@ -324,7 +440,10 @@ class _ProductGrid extends ConsumerWidget {
         ),
         delegate: SliverChildBuilderDelegate((context, index) {
           final product = products[index];
-          return ProductCard(productId: product.productId, product: product, userModel: userProfile ?? fallbackUserModel);
+          return FadeTransition(
+            opacity: AlwaysStoppedAnimation(1.0),
+            child: ProductCard(productId: product.productId, product: product, userModel: userProfile ?? fallbackUserModel),
+          );
         }, childCount: products.length),
       ),
     );

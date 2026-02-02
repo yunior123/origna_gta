@@ -14,6 +14,252 @@ class ProductDetailScreen extends ConsumerWidget {
 
   const ProductDetailScreen({super.key, required this.productId, this.product});
 
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final productAsync = ref.watch(productByIdProvider(productId));
+    final viewModel = ref.read(productDetailViewModelProvider.notifier);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      body: productAsync.when(
+        data: (product) {
+          if (product == null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 80, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text('Product not found', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+                ],
+              ),
+            );
+          }
+          final imageUrls = product.imageUrls;
+          return CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                automaticallyImplyLeading: false,
+                pinned: true,
+                floating: true,
+                expandedHeight: 340,
+                backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          DesignTokens.primary.withOpacity(0.1),
+                          DesignTokens.secondary.withOpacity(0.1),
+                        ],
+                      ),
+                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        imageUrls.isNotEmpty
+                            ? PageView.builder(
+                                itemCount: imageUrls.length,
+                                onPageChanged: viewModel.setImageIndex,
+                                itemBuilder: (context, index) {
+                                  return GestureDetector(
+                                    onTap: () => _showImageDialog(context, imageUrls, index),
+                                    child: SizedBox.expand(
+                                      child: CachedNetworkImage(
+                                        imageUrl: imageUrls[index],
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) => Shimmer.fromColors(
+                                          baseColor: Colors.grey[300]!,
+                                          highlightColor: Colors.grey[100]!,
+                                          child: Container(color: Colors.white),
+                                        ),
+                                        errorWidget: (context, url, error) => Container(
+                                          color: Colors.grey[200],
+                                          child: const Icon(Icons.image_not_supported, size: 100),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              )
+                            : Container(
+                                color: Colors.grey[200],
+                                child: const Icon(Icons.image_not_supported, size: 100),
+                              ),
+                        Positioned(
+                          top: MediaQuery.of(context).padding.top + 8,
+                          left: 12,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.5),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.arrow_back, color: Colors.white),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 16,
+                          left: 0,
+                          right: 0,
+                          child: _ImageDots(imageCount: imageUrls.length),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(20),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[900] : Colors.white,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, -4),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 600),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ShaderMask(
+                            shaderCallback: (bounds) => LinearGradient(
+                              colors: [DesignTokens.primary, DesignTokens.secondary],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ).createShader(bounds),
+                            child: Text(
+                              product.name,
+                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: DesignTokens.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.star, size: 18, color: Colors.amber[600]),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      product.rating.toStringAsFixed(1),
+                                      style: TextStyle(fontWeight: FontWeight.w600, color: DesignTokens.primary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [DesignTokens.primary.withOpacity(0.95), DesignTokens.secondary.withOpacity(0.95)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: DesignTokens.primary.withOpacity(0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                const Text('Price:', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                                const SizedBox(width: 12),
+                                Text(
+                                  '\$${product.price.toStringAsFixed(2)}',
+                                  style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          Text(
+                            'Description',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : Colors.grey[900],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          GlassContainer(
+                            child: Text(
+                              product.description,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: isDark ? Colors.grey[300] : Colors.grey[700],
+                                height: 1.6,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          _QuantitySelector(viewModel: viewModel),
+                          const SizedBox(height: 24),
+                          _AddToCartButton(productId: productId),
+                          const SizedBox(height: 40),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+        loading: () => Center(
+          child: ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [DesignTokens.primary, DesignTokens.secondary],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ).createShader(bounds),
+            child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+          ),
+        ),
+        error: (e, s) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 80, color: Colors.red[300]),
+              const SizedBox(height: 16),
+              Text('Error: $e', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showImageDialog(BuildContext context, List<String> imageUrls, int initialIndex) {
     showDialog(
       context: context,
@@ -63,122 +309,40 @@ class ProductDetailScreen extends ConsumerWidget {
       },
     );
   }
+}
+
+class _AddToCartButton extends ConsumerWidget {
+  final String productId;
+
+  const _AddToCartButton({required this.productId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final productAsync = ref.watch(productByIdProvider(productId));
-    final viewModel = ref.read(productDetailViewModelProvider.notifier);
+    final quantity = ref.watch(productDetailViewModelProvider.select((state) => state.quantity));
 
-    return Scaffold(
-      body: productAsync.when(
-        data: (product) {
-          if (product == null) {
-            return const Center(child: Text('Product not found'));
-          }
-          final imageUrls = product.imageUrls;
-          return CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                automaticallyImplyLeading: false,
-                pinned: true,
-                floating: true,
-                expandedHeight: 300,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      imageUrls.isNotEmpty
-                          ? PageView.builder(
-                              itemCount: imageUrls.length,
-                              onPageChanged: viewModel.setImageIndex,
-                              itemBuilder: (context, index) {
-                                return GestureDetector(
-                                  onTap: () => _showImageDialog(context, imageUrls, index),
-                                  child: SizedBox.expand(
-                                    child: CachedNetworkImage(
-                                      imageUrl: imageUrls[index],
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) => Shimmer.fromColors(
-                                        baseColor: Colors.grey[300]!,
-                                        highlightColor: Colors.grey[100]!,
-                                        child: Container(color: Colors.white),
-                                      ),
-                                      errorWidget: (context, url, error) =>
-                                          Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported, size: 100)),
-                                    ),
-                                  ),
-                                );
-                              },
-                            )
-                          : Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported, size: 100)),
-                      Positioned(
-                        top: MediaQuery.of(context).padding.top + 5,
-                        left: 16,
-                        child: Container(
-                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
-                          child: IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.white),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ),
-                      ),
-                      Positioned(bottom: 16, left: 0, right: 0, child: _ImageDots(imageCount: imageUrls.length)),
-                    ],
-                  ),
-                ),
-                bottom: const PreferredSize(
-                  preferredSize: Size.fromHeight(20),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                    ),
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 600),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(product.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(Icons.star, size: 20, color: Colors.amber[700]),
-                              const SizedBox(width: 4),
-                              Text(product.rating.toStringAsFixed(1), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            '\$${product.price.toStringAsFixed(2)}',
-                            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
-                          ),
-                          const SizedBox(height: 24),
-                          const Text('Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          Text(product.description, style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.5)),
-                          const SizedBox(height: 24),
-                          _QuantitySelector(viewModel: viewModel),
-                          const SizedBox(height: 24),
-                          _AddToCartButton(productId: productId),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+    return ModernButton(
+      text: 'Add to Cart',
+      onPressed: () async {
+        final user = ref.read(currentUserProvider);
+        if (user == null) {
+          if (context.mounted) showLoginPrompt(context);
+          return;
+        }
+        final messenger = ScaffoldMessenger.of(context);
+        final success = await ref.read(cartControllerProvider).addToCart(productId, quantity);
+        if (context.mounted) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(success ? 'Added to cart successfully! 🎉' : 'Failed to add to cart'),
+              backgroundColor: success ? Colors.green : Colors.red,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+            ),
           );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, s) => Center(child: Text('Error: $e')),
-      ),
+        }
+      },
+      fullWidth: true,
+      icon: Icons.shopping_cart_checkout,
     );
   }
 }
@@ -220,18 +384,36 @@ class _QuantitySelector extends ConsumerWidget {
 
     return Row(
       children: [
-        const Text('Quantity:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-        const SizedBox(width: 16),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!),
-            borderRadius: BorderRadius.circular(8),
+        Text(
+          'Quantity:',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.grey[900],
           ),
+        ),
+        const SizedBox(width: 20),
+        GlassContainer(
           child: Row(
             children: [
-              IconButton(icon: const Icon(Icons.remove), onPressed: quantity > 1 ? viewModel.decrementQuantity : null),
-              Text('$quantity', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              IconButton(icon: const Icon(Icons.add), onPressed: viewModel.incrementQuantity),
+              _QuantityButton(
+                icon: Icons.remove,
+                onPressed: quantity > 1 ? viewModel.decrementQuantity : null,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  '$quantity',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              _QuantityButton(
+                icon: Icons.add,
+                onPressed: viewModel.incrementQuantity,
+              ),
             ],
           ),
         ),
@@ -240,39 +422,28 @@ class _QuantitySelector extends ConsumerWidget {
   }
 }
 
-class _AddToCartButton extends ConsumerWidget {
-  final String productId;
+class _QuantityButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
 
-  const _AddToCartButton({required this.productId});
+  const _QuantityButton({required this.icon, required this.onPressed});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final quantity = ref.watch(productDetailViewModelProvider.select((state) => state.quantity));
-
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: ElevatedButton(
-        onPressed: () async {
-          final user = ref.read(currentUserProvider);
-          if (user == null) {
-            showLoginPrompt(context);
-            return;
-          }
-          final messenger = ScaffoldMessenger.of(context);
-          final success = await ref.read(cartControllerProvider).addToCart(productId, quantity);
-          if (success) {
-            messenger.showSnackBar(const SnackBar(content: Text('Added to cart'), backgroundColor: Colors.green));
-          } else {
-            messenger.showSnackBar(const SnackBar(content: Text('Failed to add to cart'), backgroundColor: Colors.red));
-          }
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFF6B35),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        splashColor: DesignTokens.primary.withOpacity(0.3),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(
+            icon,
+            color: onPressed != null ? DesignTokens.primary : Colors.grey[400],
+            size: 20,
+          ),
         ),
-        child: const Text('Add to Cart', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       ),
     );
   }

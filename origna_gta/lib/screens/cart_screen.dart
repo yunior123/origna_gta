@@ -6,8 +6,10 @@ import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/screens/cartitem_screen.dart';
 import 'package:origna_gta/screens/checkout_screen.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 
 /// Cart screen using optimized Riverpod patterns
 /// - Main screen only watches cart item IDs (lightweight)
@@ -19,9 +21,24 @@ class CartScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (user == null) {
-      return const Scaffold(body: Center(child: Text('Please log in to view cart')));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_outline, size: 80, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                'Sign in to view cart',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     // Use select to only rebuild when product IDs change (not quantities)
@@ -29,41 +46,107 @@ class CartScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'Shopping Cart'),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: productIdsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => Center(child: Text('Error: $error')),
-            data: (productIds) {
-              if (productIds.isEmpty) {
-                return const AnimatedEmptyState(icon: Icons.shopping_cart_outlined, title: 'Your cart is empty', subtitle: 'Add items to get started');
-              }
-
-              return Column(
-                children: [
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      itemCount: productIds.length,
-                      itemBuilder: (context, index) {
-                        final productId = productIds[index];
-                        return FadeSlideIn(
-                          delay: Duration(milliseconds: 50 * index),
-                          // Each cart item is isolated - only rebuilds when its own data changes
-                          child: _CartItemWidget(key: ValueKey(productId), productId: productId),
-                        );
-                      },
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              isDark ? Colors.grey[900]! : Colors.grey[50]!,
+              isDark ? Colors.grey[800]! : Colors.white,
+            ],
+          ),
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: productIdsAsync.when(
+              loading: () => Center(
+                child: ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [DesignTokens.primary, DesignTokens.secondary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ).createShader(bounds),
+                  child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                ),
+              ),
+              error: (error, stack) => Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 80, color: Colors.red[300]),
+                    const SizedBox(height: 16),
+                    Text('Error: $error', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                  ],
+                ),
+              ),
+              data: (productIds) {
+                if (productIds.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                DesignTokens.primary.withOpacity(0.1),
+                                DesignTokens.secondary.withOpacity(0.1),
+                              ],
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.shopping_cart_outlined,
+                            size: 80,
+                            color: DesignTokens.primary.withOpacity(0.6),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Your cart is empty',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : Colors.grey[900],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Start shopping to add items',
+                          style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+                        ),
+                      ],
                     ),
-                  ),
-                  FadeSlideIn(
-                    delay: Duration(milliseconds: 50 * productIds.length),
-                    beginOffset: const Offset(0, 0.2),
-                    child: const _CartSummary(),
-                  ),
-                ],
-              );
-            },
+                  );
+                }
+
+                return Column(
+                  children: [
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        itemCount: productIds.length,
+                        itemBuilder: (context, index) {
+                          final productId = productIds[index];
+                          return FadeSlideIn(
+                            delay: Duration(milliseconds: 50 * index),
+                            child: _CartItemWidget(key: ValueKey(productId), productId: productId),
+                          );
+                        },
+                      ),
+                    ),
+                    FadeSlideIn(
+                      delay: Duration(milliseconds: 50 * productIds.length),
+                      beginOffset: const Offset(0, 0.2),
+                      child: const _CartSummary(),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -104,6 +187,7 @@ class _CartSummary extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Watch only if cart is empty (for visibility logic)
     final isEmpty = ref.watch(cartWithDetailsProvider.select((async) => async.whenData((items) => items.isEmpty)));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return isEmpty.when(
       loading: () => const SizedBox.shrink(),
@@ -112,12 +196,25 @@ class _CartSummary extends ConsumerWidget {
         if (isEmpty) return const SizedBox.shrink();
 
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -5))],
+            color: isDark ? Colors.grey[900] : Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, -8),
+              ),
+            ],
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: Column(children: [const _CartTotalDisplay(), const SizedBox(height: 16), const _CheckoutButton()]),
+          child: Column(
+            children: [
+              const _CartTotalDisplay(),
+              const SizedBox(height: 20),
+              const _CheckoutButton(),
+            ],
+          ),
         );
       },
     );
@@ -139,15 +236,45 @@ class _CartTotalDisplay extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       error: (error, stack) => const SizedBox.shrink(),
       data: (subtotal) {
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Total:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            Text(
-              NumberFormat.currency(locale: "en_CA", symbol: "CAD \$").format(subtotal),
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [DesignTokens.primary.withOpacity(0.08), DesignTokens.secondary.withOpacity(0.08)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ],
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+            border: Border.all(color: DesignTokens.primary.withOpacity(0.2), width: 1),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Subtotal:',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.grey[900],
+                ),
+              ),
+              ShaderMask(
+                shaderCallback: (bounds) => LinearGradient(
+                  colors: [DesignTokens.primary, DesignTokens.secondary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ).createShader(bounds),
+                child: Text(
+                  NumberFormat.currency(locale: "en_CA", symbol: "CAD \$").format(subtotal),
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -167,24 +294,21 @@ class _CheckoutButton extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       error: (error, stack) => const SizedBox.shrink(),
       data: (itemsWithDetails) {
-        return SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: ElevatedButton(
-            onPressed: itemsWithDetails.isEmpty
-                ? null
-                : () {
-                    final subtotal = itemsWithDetails.fold(0.0, (total, item) => total + (item.price * item.quantity));
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CheckoutScreen(items: itemsWithDetails, total: subtotal),
-                      ),
-                    );
-                  },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
-            child: const Text('Proceed to Checkout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ),
+        return ModernButton(
+          text: 'Proceed to Checkout',
+          onPressed: itemsWithDetails.isEmpty
+              ? null
+              : () {
+                  final subtotal = itemsWithDetails.fold(0.0, (total, item) => total + (item.price * item.quantity));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CheckoutScreen(items: itemsWithDetails, total: subtotal),
+                    ),
+                  );
+                },
+          fullWidth: true,
+          icon: Icons.payment,
         );
       },
     );
