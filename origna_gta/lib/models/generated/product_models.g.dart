@@ -39,6 +39,7 @@ _$ProductImpl _$$ProductImplFromJson(
       const [],
   minimumOrderQuantity: (json['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
   freeShipping: json['freeShipping'] as bool? ?? false,
+  isDigital: json['isDigital'] as bool? ?? false,
   taxCode: json['taxCode'] as String?,
   keywords:
       (json['keywords'] as List<dynamic>?)?.map((e) => e as String).toList() ??
@@ -69,6 +70,7 @@ Map<String, dynamic> _$$ProductImplToJson(_$ProductImpl instance) =>
       'deliveryOptions': instance.deliveryOptions,
       'minimumOrderQuantity': instance.minimumOrderQuantity,
       'freeShipping': instance.freeShipping,
+      'isDigital': instance.isDigital,
       'taxCode': instance.taxCode,
       'keywords': instance.keywords,
     };
@@ -104,6 +106,7 @@ _$ProductCreateImpl _$$ProductCreateImplFromJson(
       const [],
   minimumOrderQuantity: (json['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
   freeShipping: json['freeShipping'] as bool? ?? false,
+  isDigital: json['isDigital'] as bool? ?? false,
   taxCode: json['taxCode'] as String?,
   keywords:
       (json['keywords'] as List<dynamic>?)?.map((e) => e as String).toList() ??
@@ -132,6 +135,7 @@ Map<String, dynamic> _$$ProductCreateImplToJson(_$ProductCreateImpl instance) =>
       'deliveryOptions': instance.deliveryOptions,
       'minimumOrderQuantity': instance.minimumOrderQuantity,
       'freeShipping': instance.freeShipping,
+      'isDigital': instance.isDigital,
       'taxCode': instance.taxCode,
       'keywords': instance.keywords,
     };

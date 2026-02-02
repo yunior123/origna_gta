@@ -46,7 +46,8 @@ mixin _$Product {
       throw _privateConstructorUsedError;
   int get minimumOrderQuantity => throw _privateConstructorUsedError;
   bool get freeShipping =>
-      throw _privateConstructorUsedError; // Tax and metadata
+      throw _privateConstructorUsedError; // Digital product flag
+  bool get isDigital => throw _privateConstructorUsedError; // Tax and metadata
   String? get taxCode => throw _privateConstructorUsedError;
   List<String> get keywords => throw _privateConstructorUsedError;
 
@@ -87,6 +88,7 @@ abstract class $ProductCopyWith<$Res> {
     List<SellerDeliveryOption> deliveryOptions,
     int minimumOrderQuantity,
     bool freeShipping,
+    bool isDigital,
     String? taxCode,
     List<String> keywords,
   });
@@ -131,6 +133,7 @@ class _$ProductCopyWithImpl<$Res, $Val extends Product>
     Object? deliveryOptions = null,
     Object? minimumOrderQuantity = null,
     Object? freeShipping = null,
+    Object? isDigital = null,
     Object? taxCode = freezed,
     Object? keywords = null,
   }) {
@@ -224,6 +227,10 @@ class _$ProductCopyWithImpl<$Res, $Val extends Product>
                 ? _value.freeShipping
                 : freeShipping // ignore: cast_nullable_to_non_nullable
                       as bool,
+            isDigital: null == isDigital
+                ? _value.isDigital
+                : isDigital // ignore: cast_nullable_to_non_nullable
+                      as bool,
             taxCode: freezed == taxCode
                 ? _value.taxCode
                 : taxCode // ignore: cast_nullable_to_non_nullable
@@ -279,6 +286,7 @@ abstract class _$$ProductImplCopyWith<$Res> implements $ProductCopyWith<$Res> {
     List<SellerDeliveryOption> deliveryOptions,
     int minimumOrderQuantity,
     bool freeShipping,
+    bool isDigital,
     String? taxCode,
     List<String> keywords,
   });
@@ -323,6 +331,7 @@ class __$$ProductImplCopyWithImpl<$Res>
     Object? deliveryOptions = null,
     Object? minimumOrderQuantity = null,
     Object? freeShipping = null,
+    Object? isDigital = null,
     Object? taxCode = freezed,
     Object? keywords = null,
   }) {
@@ -416,6 +425,10 @@ class __$$ProductImplCopyWithImpl<$Res>
             ? _value.freeShipping
             : freeShipping // ignore: cast_nullable_to_non_nullable
                   as bool,
+        isDigital: null == isDigital
+            ? _value.isDigital
+            : isDigital // ignore: cast_nullable_to_non_nullable
+                  as bool,
         taxCode: freezed == taxCode
             ? _value.taxCode
             : taxCode // ignore: cast_nullable_to_non_nullable
@@ -455,6 +468,7 @@ class _$ProductImpl implements _Product {
     final List<SellerDeliveryOption> deliveryOptions = const [],
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
+    this.isDigital = false,
     this.taxCode,
     final List<String> keywords = const [],
   }) : _imageUrls = imageUrls,
@@ -530,6 +544,10 @@ class _$ProductImpl implements _Product {
   @override
   @JsonKey()
   final bool freeShipping;
+  // Digital product flag
+  @override
+  @JsonKey()
+  final bool isDigital;
   // Tax and metadata
   @override
   final String? taxCode;
@@ -544,7 +562,7 @@ class _$ProductImpl implements _Product {
 
   @override
   String toString() {
-    return 'Product(productId: $productId, name: $name, price: $price, description: $description, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, categoryId: $categoryId, stockQuantity: $stockQuantity, rating: $rating, dateCreated: $dateCreated, isActive: $isActive, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, taxCode: $taxCode, keywords: $keywords)';
+    return 'Product(productId: $productId, name: $name, price: $price, description: $description, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, categoryId: $categoryId, stockQuantity: $stockQuantity, rating: $rating, dateCreated: $dateCreated, isActive: $isActive, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, taxCode: $taxCode, keywords: $keywords)';
   }
 
   @override
@@ -596,6 +614,8 @@ class _$ProductImpl implements _Product {
                 other.minimumOrderQuantity == minimumOrderQuantity) &&
             (identical(other.freeShipping, freeShipping) ||
                 other.freeShipping == freeShipping) &&
+            (identical(other.isDigital, isDigital) ||
+                other.isDigital == isDigital) &&
             (identical(other.taxCode, taxCode) || other.taxCode == taxCode) &&
             const DeepCollectionEquality().equals(other._keywords, _keywords));
   }
@@ -626,6 +646,7 @@ class _$ProductImpl implements _Product {
     const DeepCollectionEquality().hash(_deliveryOptions),
     minimumOrderQuantity,
     freeShipping,
+    isDigital,
     taxCode,
     const DeepCollectionEquality().hash(_keywords),
   ]);
@@ -668,6 +689,7 @@ abstract class _Product implements Product {
     final List<SellerDeliveryOption> deliveryOptions,
     final int minimumOrderQuantity,
     final bool freeShipping,
+    final bool isDigital,
     final String? taxCode,
     final List<String> keywords,
   }) = _$ProductImpl;
@@ -717,7 +739,9 @@ abstract class _Product implements Product {
   @override
   int get minimumOrderQuantity;
   @override
-  bool get freeShipping; // Tax and metadata
+  bool get freeShipping; // Digital product flag
+  @override
+  bool get isDigital; // Tax and metadata
   @override
   String? get taxCode;
   @override
@@ -758,6 +782,7 @@ mixin _$ProductCreate {
       throw _privateConstructorUsedError;
   int get minimumOrderQuantity => throw _privateConstructorUsedError;
   bool get freeShipping => throw _privateConstructorUsedError;
+  bool get isDigital => throw _privateConstructorUsedError;
   String? get taxCode => throw _privateConstructorUsedError;
   List<String> get keywords => throw _privateConstructorUsedError;
 
@@ -799,6 +824,7 @@ abstract class $ProductCreateCopyWith<$Res> {
     List<SellerDeliveryOption> deliveryOptions,
     int minimumOrderQuantity,
     bool freeShipping,
+    bool isDigital,
     String? taxCode,
     List<String> keywords,
   });
@@ -841,6 +867,7 @@ class _$ProductCreateCopyWithImpl<$Res, $Val extends ProductCreate>
     Object? deliveryOptions = null,
     Object? minimumOrderQuantity = null,
     Object? freeShipping = null,
+    Object? isDigital = null,
     Object? taxCode = freezed,
     Object? keywords = null,
   }) {
@@ -926,6 +953,10 @@ class _$ProductCreateCopyWithImpl<$Res, $Val extends ProductCreate>
                 ? _value.freeShipping
                 : freeShipping // ignore: cast_nullable_to_non_nullable
                       as bool,
+            isDigital: null == isDigital
+                ? _value.isDigital
+                : isDigital // ignore: cast_nullable_to_non_nullable
+                      as bool,
             taxCode: freezed == taxCode
                 ? _value.taxCode
                 : taxCode // ignore: cast_nullable_to_non_nullable
@@ -980,6 +1011,7 @@ abstract class _$$ProductCreateImplCopyWith<$Res>
     List<SellerDeliveryOption> deliveryOptions,
     int minimumOrderQuantity,
     bool freeShipping,
+    bool isDigital,
     String? taxCode,
     List<String> keywords,
   });
@@ -1022,6 +1054,7 @@ class __$$ProductCreateImplCopyWithImpl<$Res>
     Object? deliveryOptions = null,
     Object? minimumOrderQuantity = null,
     Object? freeShipping = null,
+    Object? isDigital = null,
     Object? taxCode = freezed,
     Object? keywords = null,
   }) {
@@ -1107,6 +1140,10 @@ class __$$ProductCreateImplCopyWithImpl<$Res>
             ? _value.freeShipping
             : freeShipping // ignore: cast_nullable_to_non_nullable
                   as bool,
+        isDigital: null == isDigital
+            ? _value.isDigital
+            : isDigital // ignore: cast_nullable_to_non_nullable
+                  as bool,
         taxCode: freezed == taxCode
             ? _value.taxCode
             : taxCode // ignore: cast_nullable_to_non_nullable
@@ -1144,6 +1181,7 @@ class _$ProductCreateImpl implements _ProductCreate {
     final List<SellerDeliveryOption> deliveryOptions = const [],
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
+    this.isDigital = false,
     this.taxCode,
     final List<String> keywords = const [],
   }) : _imageUrls = imageUrls,
@@ -1214,6 +1252,9 @@ class _$ProductCreateImpl implements _ProductCreate {
   @JsonKey()
   final bool freeShipping;
   @override
+  @JsonKey()
+  final bool isDigital;
+  @override
   final String? taxCode;
   final List<String> _keywords;
   @override
@@ -1226,7 +1267,7 @@ class _$ProductCreateImpl implements _ProductCreate {
 
   @override
   String toString() {
-    return 'ProductCreate(name: $name, price: $price, description: $description, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, categoryId: $categoryId, stockQuantity: $stockQuantity, rating: $rating, isActive: $isActive, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, taxCode: $taxCode, keywords: $keywords)';
+    return 'ProductCreate(name: $name, price: $price, description: $description, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, categoryId: $categoryId, stockQuantity: $stockQuantity, rating: $rating, isActive: $isActive, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, taxCode: $taxCode, keywords: $keywords)';
   }
 
   @override
@@ -1274,6 +1315,8 @@ class _$ProductCreateImpl implements _ProductCreate {
                 other.minimumOrderQuantity == minimumOrderQuantity) &&
             (identical(other.freeShipping, freeShipping) ||
                 other.freeShipping == freeShipping) &&
+            (identical(other.isDigital, isDigital) ||
+                other.isDigital == isDigital) &&
             (identical(other.taxCode, taxCode) || other.taxCode == taxCode) &&
             const DeepCollectionEquality().equals(other._keywords, _keywords));
   }
@@ -1302,6 +1345,7 @@ class _$ProductCreateImpl implements _ProductCreate {
     const DeepCollectionEquality().hash(_deliveryOptions),
     minimumOrderQuantity,
     freeShipping,
+    isDigital,
     taxCode,
     const DeepCollectionEquality().hash(_keywords),
   ]);
@@ -1342,6 +1386,7 @@ abstract class _ProductCreate implements ProductCreate {
     final List<SellerDeliveryOption> deliveryOptions,
     final int minimumOrderQuantity,
     final bool freeShipping,
+    final bool isDigital,
     final String? taxCode,
     final List<String> keywords,
   }) = _$ProductCreateImpl;
@@ -1389,6 +1434,8 @@ abstract class _ProductCreate implements ProductCreate {
   int get minimumOrderQuantity;
   @override
   bool get freeShipping;
+  @override
+  bool get isDigital;
   @override
   String? get taxCode;
   @override
