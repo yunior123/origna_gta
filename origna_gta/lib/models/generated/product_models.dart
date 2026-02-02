@@ -41,6 +41,8 @@ class Product with _$Product {
     @Default([]) List<SellerDeliveryOption> deliveryOptions,
     @Default(1) int minimumOrderQuantity,
     @Default(false) bool freeShipping,
+    // Digital product flag
+    @Default(false) bool isDigital,
     // Tax and metadata
     String? taxCode,
     @Default([]) List<String> keywords,
@@ -85,6 +87,7 @@ class ProductCreate with _$ProductCreate {
     @Default([]) List<SellerDeliveryOption> deliveryOptions,
     @Default(1) int minimumOrderQuantity,
     @Default(false) bool freeShipping,
+    @Default(false) bool isDigital,
     String? taxCode,
     @Default([]) List<String> keywords,
   }) = _ProductCreate;

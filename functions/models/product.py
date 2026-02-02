@@ -205,6 +205,12 @@ class Product(BaseModel):
         description="Free shipping offered by seller"
     )
     
+    # Digital product flag
+    isDigital: bool = Field(
+        default=False,
+        description="Whether this is a digital product (no shipping required)"
+    )
+    
     # Tax and metadata
     taxCode: Optional[str] = Field(
         default=None,
@@ -261,5 +267,6 @@ class ProductCreate(BaseModel):
     deliveryOptions: List[SellerDeliveryOption] = Field(default_factory=list)
     minimumOrderQuantity: int = Field(default=1, ge=1, le=100)
     freeShipping: bool = Field(default=False)
+    isDigital: bool = Field(default=False)
     taxCode: Optional[str] = None
     keywords: List[str] = Field(default_factory=list)
