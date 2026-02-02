@@ -85,10 +85,10 @@ TODO ✅ P3.6: Product schema alignment (verify frontend form matches backend, R
 
 TIER 4 - VALIDATION (DO BEFORE EVERY RELEASE)
 ────────────────────────────────────────────────
-TODO 🚧 P4.1: Backend security audit (Cloud Functions best practices, schema consistency, edge cases, rate limits, idempotency)
-TODO 🚧 P4.2: Admin dashboard audit (permissions, suspension flow, dispute resolution, payout tracking)
-TODO 🚧 P4.3: Seller dashboard audit (order isolation, product permissions, payout history, suspension enforcement)
-TODO 🚧 P4.4: Consumer flows audit (favorites, addresses, orders, search/filters, shipping calculation)
+TODO ✅ P4.1: Backend security audit (Cloud Functions best practices, schema consistency, edge cases, rate limits, idempotency - see BACKEND_SECURITY_AUDIT_2026_02_03.md)
+TODO ✅ P4.2: Admin dashboard audit (permissions, suspension flow, dispute resolution, payout tracking - see ADMIN_DASHBOARD_AUDIT_2026_02_03.md)
+TODO ✅ P4.3: Seller dashboard audit (order isolation, product permissions, payout history, suspension enforcement - see SELLER_DASHBOARD_AUDIT_2026_02_03.md)
+TODO ✅ P4.4: Consumer flows audit (favorites, addresses, orders, search/filters, shipping calculation - see CONSUMER_FLOWS_AUDIT_2026_02_03.md)
 TODO 🚧 - UI polish (consistent spacing, font sizes, color palette, button styles, input fields)
 TODO 🚧 verify generated code, json schema, and the logic for it, when generating code again it cannot break existing code
 
