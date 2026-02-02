@@ -59,8 +59,27 @@ TODO ✅ index file, improve splash similar to origna ventures project, visit or
 TODO improve ui ux in the entire app, make it mindblowing, beautiful and mind blowing, something from 2100, go file by file, add nice blurring, etc, make it nice, something like macbooster or macclean ui, or fxcleaner from my github 
 TODO digital products do not require shipping, fix that in the entire app if necesary
 TODO check airwallex documentation and python examples on the web too, we are inplementing this shit in phase 4, seller should have the option to register with stripe or airwallex, check the logic, and get it done in the app. create tests for it in backend and frontend
-TODO make sure that while IS Emulator is true in env there are no deployement of cloud fn
 TODO check that backend satisfies regulations for json schema, check full logic of cloud functions and edge cases
+TODO fix index background, right now its blue, blue doesw not match ui in the app
+TODO in terms and consitions change 14. contact us Email by website orignaventures.ca
+TODO audit sign out workflow, sign in, forgot password, sign up, email verification workflow
+TODO audit admin panel workflow and logic
+TODO audit seller dashboard and logic and functionality
+TODO audit seller orders and logic and functionality
+TODO audit favorites logic and functionality
+TODO audit address logic and functionality
+TODO audit my orders logic and functionality
+TODO audit add product logic and functionality
+TODO audit add product logic, make sure its aligned with backend, check latest r2 documentation from cloudflare, audit both backend and frontend
+TODO audit home screen logic and functionality
+TODO audit product search logic and functionality
+TODO audit that seller can add product after approval only
+TODO audit that suspended sellers cannot add products or access seller dashboard
+TODO audit that suspended sellers cannot access seller orders screen
+TODO audit that suspended sellers cannot access seller registration screen
+TODO audit that there are no collapse of letters on the screen or components, make sure of responsivness for all screen sizes
+TODO Audit logic for shipping. taxes align with backend
+TODO make sure that index splash look unique and mind blowing, something from 2100 that match design of flutter app as a whole
 
 TECH STACK
 Frontend: Flutter (Web, Android, iOS)

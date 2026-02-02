@@ -4,8 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/shipping_approval_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
-import 'package:origna_gta/widgets/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 
 /// Screen for buyers to approve or reject shipping cost changes
@@ -23,10 +23,7 @@ class ShippingApprovalScreen extends ConsumerWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            isDark ? Colors.grey[900]! : Colors.grey[50]!,
-            isDark ? Colors.grey[800]! : Colors.white,
-          ],
+          colors: [isDark ? Colors.grey[900]! : Colors.grey[50]!, isDark ? Colors.grey[800]! : Colors.white],
         ),
       ),
       child: Scaffold(
@@ -38,16 +35,11 @@ class ShippingApprovalScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [DesignTokens.primary, DesignTokens.secondary],
-                  ).createShader(bounds),
+                  shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
                   child: SizedBox(
                     width: 50,
                     height: 50,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(0.8)),
-                    ),
+                    child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(0.8))),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -59,10 +51,7 @@ class ShippingApprovalScreen extends ConsumerWidget {
             ),
           ),
           error: (error, stack) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text('Error: $error'),
-            ),
+            child: Padding(padding: const EdgeInsets.all(24), child: Text('Error: $error')),
           ),
           data: (approvals) {
             if (approvals.isEmpty) {
@@ -81,20 +70,12 @@ class ShippingApprovalScreen extends ConsumerWidget {
                         ),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        Icons.check_circle_outline,
-                        size: 60,
-                        color: Colors.green[600],
-                      ),
+                      child: Icon(Icons.check_circle_outline, size: 60, color: Colors.green[600]),
                     ),
                     const SizedBox(height: 24),
                     Text(
                       'No pending approvals',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white : Colors.grey[900],
-                      ),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.grey[900]),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -158,17 +139,8 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        border: Border.all(
-          color: Colors.orange.withOpacity(0.2),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.withOpacity(0.1),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: Colors.orange.withOpacity(0.2), width: 1),
+        boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -183,16 +155,10 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ShaderMask(
-                      shaderCallback: (bounds) => LinearGradient(
-                        colors: [DesignTokens.primary, DesignTokens.secondary],
-                      ).createShader(bounds),
+                      shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
                       child: Text(
                         'Order #${order.orderId.substring(0, 8).toUpperCase()}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -205,9 +171,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.orange.withOpacity(0.2), Colors.orange.withOpacity(0.1)],
-                    ),
+                    gradient: LinearGradient(colors: [Colors.orange.withOpacity(0.2), Colors.orange.withOpacity(0.1)]),
                     borderRadius: BorderRadius.circular(DesignTokens.radius12),
                     border: Border.all(color: Colors.orange.withOpacity(0.3)),
                   ),
@@ -218,11 +182,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                       const SizedBox(width: 6),
                       Text(
                         'Approval Needed',
-                        style: TextStyle(
-                          color: Colors.orange[600],
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: Colors.orange[600], fontWeight: FontWeight.w600, fontSize: 12),
                       ),
                     ],
                   ),
@@ -266,7 +226,10 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Estimated', style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w500)),
+                          Text(
+                            'Estimated',
+                            style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
                           const SizedBox(height: 4),
                           Text('\$${estimatedShipping.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                         ],
@@ -275,7 +238,10 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('Actual', style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w500)),
+                          Text(
+                            'Actual',
+                            style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             '\$${actualShipping.toStringAsFixed(2)}',
@@ -289,9 +255,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.red[200]!.withOpacity(0.3), Colors.red[300]!.withOpacity(0.1)],
-                      ),
+                      gradient: LinearGradient(colors: [Colors.red[200]!.withOpacity(0.3), Colors.red[300]!.withOpacity(0.1)]),
                       borderRadius: BorderRadius.circular(DesignTokens.radius8),
                       border: Border.all(color: Colors.red[400]!.withOpacity(0.3)),
                     ),
@@ -351,31 +315,28 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Original Total', style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w500)),
+                    Text(
+                      'Original Total',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       '\$${originalTotal.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[500],
-                        decoration: TextDecoration.lineThrough,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.grey[500], decoration: TextDecoration.lineThrough, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('New Total', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[700])),
+                    Text(
+                      'New Total',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[700]),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       '\$${pendingTotal.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: DesignTokens.primary,
-                      ),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: DesignTokens.primary),
                     ),
                   ],
                 ),
@@ -388,16 +349,11 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             if (_isProcessing)
               Center(
                 child: ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [DesignTokens.primary, DesignTokens.secondary],
-                  ).createShader(bounds),
+                  shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
                   child: SizedBox(
                     width: 40,
                     height: 40,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(0.8)),
-                    ),
+                    child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(0.8))),
                   ),
                 ),
               )
@@ -407,9 +363,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.red[300]!.withOpacity(0.2), Colors.red[400]!.withOpacity(0.1)],
-                        ),
+                        gradient: LinearGradient(colors: [Colors.red[300]!.withOpacity(0.2), Colors.red[400]!.withOpacity(0.1)]),
                         borderRadius: BorderRadius.circular(DesignTokens.radius12),
                         border: Border.all(color: Colors.red[400]!.withOpacity(0.4)),
                       ),
@@ -423,11 +377,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                             child: Center(
                               child: Text(
                                 'Reject & Cancel',
-                                style: TextStyle(
-                                  color: Colors.red[600],
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                ),
+                                style: TextStyle(color: Colors.red[600], fontWeight: FontWeight.w700, fontSize: 14),
                               ),
                             ),
                           ),
@@ -437,11 +387,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ModernButton(
-                      onPressed: () => _handleApproval(true),
-                      label: 'Approve',
-                      icon: Icons.check_circle,
-                    ),
+                    child: ModernButton(onPressed: () => _handleApproval(true), label: 'Approve', icon: Icons.check_circle),
                   ),
                 ],
               ),
@@ -484,38 +430,42 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             const SizedBox(width: 12),
             Text(
               'Cancel Order?',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : Colors.grey[900],
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.grey[900]),
             ),
           ],
         ),
         content: Text(
           'Rejecting the shipping cost will cancel your order. '
           'The payment authorization will be released and you will not be charged.',
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 13,
-            height: 1.6,
-          ),
+          style: TextStyle(color: Colors.grey[600], fontSize: 13, height: 1.6),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text(
-              'Go Back',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
+            child: Text('Go Back', style: TextStyle(color: Colors.grey[600])),
           ),
-          ModernButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              _handleApproval(false);
-            },
-            label: 'Yes, Cancel Order',
-            backgroundColor: Colors.orange[400],
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [Colors.orange[400]!.withValues(alpha: 0.9), Colors.orange[500]!.withValues(alpha: 0.9)]),
+              borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  Navigator.pop(dialogContext);
+                  _handleApproval(false);
+                },
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Text(
+                    'Yes, Cancel Order',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),

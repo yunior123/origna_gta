@@ -5,7 +5,9 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:shimmer/shimmer.dart';
 
 class ProductDetailScreen extends ConsumerWidget {
@@ -287,7 +289,7 @@ class _AddToCartButton extends ConsumerWidget {
     final quantity = ref.watch(productDetailViewModelProvider.select((state) => state.quantity));
 
     return ModernButton(
-      text: 'Add to Cart',
+      label: 'Add to Cart',
       onPressed: () async {
         final user = ref.read(currentUserProvider);
         if (user == null) {

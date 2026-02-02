@@ -7,10 +7,10 @@ import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/models/enum_extensions.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/shipping_approval_screen.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
-import 'package:origna_gta/widgets/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/rating_dialog.dart';
 
@@ -60,7 +60,7 @@ class OrdersScreen extends ConsumerWidget {
               ],
             ),
           ),
-          error: (error, stack) => _buildErrorState(ref, error),
+          error: (error, stack) => _buildErrorState(context, ref, error),
           data: (orders) {
             if (orders.isEmpty) {
               return Center(
@@ -124,7 +124,7 @@ class OrdersScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildErrorState(WidgetRef ref, Object error) {
+  Widget _buildErrorState(BuildContext context, WidgetRef ref, Object error) {
     final message = AppError.getMessage(error);
     return Center(
       child: Padding(
@@ -343,19 +343,13 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.blue[200]!.withOpacity(0.2), Colors.blue[300]!.withOpacity(0.1)],
-                          ),
+                          gradient: LinearGradient(colors: [Colors.blue[200]!.withOpacity(0.2), Colors.blue[300]!.withOpacity(0.1)]),
                           borderRadius: BorderRadius.circular(DesignTokens.radius8),
                           border: Border.all(color: Colors.blue[400]!.withOpacity(0.3)),
                         ),
                         child: Text(
                           'Tracking: ${item.trackingNumber}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.blue[600],
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: TextStyle(fontSize: 11, color: Colors.blue[600], fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
@@ -369,9 +363,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [statusColor.withOpacity(0.2), statusColor.withOpacity(0.1)],
-                  ),
+                  gradient: LinearGradient(colors: [statusColor.withOpacity(0.2), statusColor.withOpacity(0.1)]),
                   borderRadius: BorderRadius.circular(DesignTokens.radius12),
                   border: Border.all(color: statusColor.withOpacity(0.4), width: 1),
                 ),
@@ -382,11 +374,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                     const SizedBox(height: 4),
                     Text(
                       statusText,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: statusColor,
-                      ),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -404,9 +392,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                 if (!isConfirmed && !isOrderConfirmed)
                   Container(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.green[300]!.withOpacity(0.2), Colors.green[400]!.withOpacity(0.1)],
-                      ),
+                      gradient: LinearGradient(colors: [Colors.green[300]!.withOpacity(0.2), Colors.green[400]!.withOpacity(0.1)]),
                       borderRadius: BorderRadius.circular(DesignTokens.radius8),
                       border: Border.all(color: Colors.green[400]!.withOpacity(0.3)),
                     ),
@@ -424,20 +410,13 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                                   ? SizedBox(
                                       width: 14,
                                       height: 14,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation(Colors.green[400]),
-                                      ),
+                                      child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.green[400])),
                                     )
                                   : Icon(Icons.check_circle_outline, size: 16, color: Colors.green[600]),
                               const SizedBox(width: 6),
                               Text(
                                 isConfirmingThis ? 'Confirming...' : 'Confirm Receipt',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.green[600],
-                                ),
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.green[600]),
                               ),
                             ],
                           ),
@@ -463,9 +442,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                 if (!isRated)
                   Container(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.amber[200]!.withOpacity(0.2), Colors.amber[300]!.withOpacity(0.1)],
-                      ),
+                      gradient: LinearGradient(colors: [Colors.amber[200]!.withOpacity(0.2), Colors.amber[300]!.withOpacity(0.1)]),
                       borderRadius: BorderRadius.circular(DesignTokens.radius8),
                       border: Border.all(color: Colors.amber[600]!.withOpacity(0.3)),
                     ),
@@ -483,11 +460,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                               const SizedBox(width: 6),
                               Text(
                                 'Rate',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.amber[700],
-                                ),
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.amber[700]),
                               ),
                             ],
                           ),
@@ -626,13 +599,7 @@ class _PendingApprovalsBanner extends StatelessWidget {
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.orange.withOpacity(0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
         ),
         child: Material(
           color: Colors.transparent,
@@ -645,10 +612,7 @@ class _PendingApprovalsBanner extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
                   child: const Icon(Icons.pending_actions, color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 16),
@@ -658,30 +622,19 @@ class _PendingApprovalsBanner extends StatelessWidget {
                     children: [
                       Text(
                         '$count order${count > 1 ? 's' : ''} need${count == 1 ? 's' : ''} approval',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
                       ),
                       const SizedBox(height: 4),
                       const Text(
                         'Tap to review shipping cost changes',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
                   child: const Icon(Icons.chevron_right, color: Colors.white, size: 20),
                 ),
               ],

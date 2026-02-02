@@ -5,7 +5,7 @@ import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/utils/utils.dart'; // For UserModel
 import 'package:origna_gta/widgets/custom_app_bar.dart'; // Assuming this exists based on your code
-import 'package:origna_gta/widgets/design_tokens.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import '../features/seller/seller_registration_view_model.dart';
 
@@ -160,15 +160,6 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       ),
     );
   }
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 
   Widget _buildHeaderCard() {
     return Container(
@@ -280,12 +271,6 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
           const SizedBox(height: 12),
           _buildBenefitItem(Icons.speed, 'Fast payouts via Stripe'),
           const SizedBox(height: 12),
-          _buildBenefitItem(Icons.analytics, 'Track your sales easily'),
-        ],
-      ),
-    );
-  }
-            const SizedBox(height: 12),
           _buildBenefitItem(Icons.analytics, 'Track your sales easily'),
         ],
       ),
@@ -496,8 +481,9 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
               height: 1.4,
             ),
           ),
-        ],
-      );
+        ),
+      ],
+    );
   }
 
   Widget _buildActionButton(UserModel user, bool isLoading, SellerRegistrationViewModel viewModel) {

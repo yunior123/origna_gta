@@ -9,6 +9,7 @@ import 'package:origna_gta/screens/cart_screen.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
 import 'package:origna_gta/screens/profile_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -117,7 +118,7 @@ class _CategoryChips extends ConsumerWidget {
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: AnimatedContainer(
-              duration: Duration(milliseconds: DesignTokens.durationNormal),
+              duration: DesignTokens.durationNormal,
               curve: Curves.easeOutCubic,
               decoration: BoxDecoration(
                 gradient: isSelected

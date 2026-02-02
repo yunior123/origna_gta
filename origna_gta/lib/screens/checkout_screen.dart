@@ -8,6 +8,7 @@ import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
@@ -137,19 +138,12 @@ class _CheckoutButton extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[900] : Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, -8),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -8))],
       ),
       child: ModernButton(
-        text: isProcessing ? '' : 'Place Order',
+        label: isProcessing ? 'Processing...' : 'Place Order',
         onPressed: isDisabled ? null : () => _startCheckout(context, ref),
-        fullWidth: true,
-        loading: isProcessing,
+        isLoading: isProcessing,
         icon: Icons.payment,
       ),
     );
@@ -207,10 +201,7 @@ class _CheckoutContent extends ConsumerWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            isDark ? Colors.grey[900]! : Colors.grey[50]!,
-            isDark ? Colors.grey[800]! : Colors.white,
-          ],
+          colors: [isDark ? Colors.grey[900]! : Colors.grey[50]!, isDark ? Colors.grey[800]! : Colors.white],
         ),
       ),
       child: Column(

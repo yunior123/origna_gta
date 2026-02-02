@@ -9,6 +9,7 @@ import 'package:origna_gta/screens/seller_registration_screen.dart';
 import 'package:origna_gta/screens/terms_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -176,13 +177,7 @@ class ProfileScreen extends ConsumerWidget {
                         delay: const Duration(milliseconds: 150),
                         child: Column(
                           children: [
-                            ModernButton(
-                              text: 'Sign Out',
-                              onPressed: viewModel.signOut,
-                              fullWidth: true,
-                              variant: ModernButtonVariant.outlined,
-                              icon: Icons.logout,
-                            ),
+                            ModernButton(label: 'Sign Out', onPressed: viewModel.signOut, icon: Icons.logout),
                             const SizedBox(height: 12),
                             Material(
                               color: Colors.transparent,
@@ -369,103 +364,96 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
+    showDialog(context: context, builder: (context) => const _DeleteAccountDialog());
+  }
+}
+
+class _DeleteAccountDialog extends ConsumerStatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  ConsumerState<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
+  late final TextEditingController confirmController;
+
+  @override
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final confirmController = TextEditingController();
-    
-    showDialog(
-      context: context,
-      builder: (context) => Consumer(
-        builder: (context, ref, child) {
-          final profileState = ref.watch(profileViewModelProvider);
-          final viewModel = ref.read(profileViewModelProvider.notifier);
+    final profileState = ref.watch(profileViewModelProvider);
+    final viewModel = ref.read(profileViewModelProvider.notifier);
 
-          ref.listen(profileViewModelProvider, (previous, next) {
-            if (next.isDeleted) {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Account deleted successfully'),
-                  backgroundColor: Colors.green[600],
-                ),
-              );
-            } else if (next.errorMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(next.errorMessage!),
-                  backgroundColor: Colors.red[400],
-                ),
-              );
-            }
-          });
+    ref.listen(profileViewModelProvider, (previous, next) {
+      if (next.isDeleted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Account deleted successfully'), backgroundColor: Colors.green[600]));
+      } else if (next.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: Colors.red[400]));
+      }
+    });
 
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
-            backgroundColor: isDark ? Colors.grey[900] : Colors.white,
-            title: Row(
-              children: [
-                Icon(Icons.warning_rounded, color: Colors.red[400], size: 28),
-                const SizedBox(width: 12),
-                Text(
-                  'Delete Account',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : Colors.grey[900],
-                  ),
-                ),
-              ],
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'This action cannot be undone. All your data will be permanently deleted.',
-                    style: TextStyle(
-                      color: Colors.red[400],
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Type DELETE to confirm:',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ModernTextField(
-                    controller: confirmController,
-                    hint: 'Type DELETE',
-                    icon: Icons.lock_outline,
-                    onChanged: (value) => setState(() {}),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ),
-              ModernButton(
-                onPressed: confirmController.text == 'DELETE' && !profileState.isLoading
-                    ? () => viewModel.deleteAccount(confirmController.text.trim())
-                    : null,
-                label: 'Delete Account',
-                isLoading: profileState.isLoading,
-                backgroundColor: confirmController.text == 'DELETE' ? Colors.red[400] : Colors.grey[400],
-              ),
-            ],
-          );
-        },
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
+      backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+      title: Row(
+        children: [
+          Icon(Icons.warning_rounded, color: Colors.red[400], size: 28),
+          const SizedBox(width: 12),
+          Text(
+            'Delete Account',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.grey[900]),
+          ),
+        ],
       ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This action cannot be undone. All your data will be permanently deleted.',
+              style: TextStyle(color: Colors.red[400], fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Text('Type DELETE to confirm:', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmController,
+              decoration: InputDecoration(
+                hintText: 'Type DELETE',
+                prefixIcon: const Icon(Icons.lock_outline),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+              ),
+              onChanged: (value) => setState(() {}),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+        ),
+        ModernButton(
+          onPressed: confirmController.text == 'DELETE' && !profileState.isLoading ? () => viewModel.deleteAccount(confirmController.text.trim()) : null,
+          label: 'Delete Account',
+          isLoading: profileState.isLoading,
+          backgroundColor: confirmController.text == 'DELETE' ? Colors.red[400] : Colors.grey[400],
+        ),
+      ],
     );
+  }
+
+  @override
+  void dispose() {
+    confirmController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    confirmController = TextEditingController();
   }
 }

@@ -260,7 +260,7 @@ class _CheckoutButton extends ConsumerWidget {
       error: (error, stack) => const SizedBox.shrink(),
       data: (itemsWithDetails) {
         return ModernButton(
-          text: 'Proceed to Checkout',
+          label: 'Proceed to Checkout',
           onPressed: itemsWithDetails.isEmpty
               ? null
               : () {
