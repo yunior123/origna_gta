@@ -270,6 +270,8 @@ void main() {
         roles: [UserRole.seller],
         createdAt: DateTime.now(),
         onboardingCompleted: true,
+        chargesEnabled: true,
+        payoutsEnabled: true,
       );
       expect(sellerComplete.isSeller, true);
       expect(sellerComplete.canSell, true);
