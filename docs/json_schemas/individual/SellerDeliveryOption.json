@@ -1,0 +1,44 @@
+{
+  "description": "Seller-specific delivery options",
+  "example": {
+    "cost": 0.0,
+    "description": "Free local pickup",
+    "estimatedDays": 0,
+    "type": "pickup"
+  },
+  "properties": {
+    "type": {
+      "description": "Delivery type: pickup, standard, express, same_day",
+      "title": "Type",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of delivery option",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "cost": {
+      "description": "Cost in CAD",
+      "minimum": 0,
+      "title": "Cost",
+      "type": "number"
+    },
+    "estimatedDays": {
+      "description": "Estimated delivery days",
+      "maximum": 90,
+      "minimum": 0,
+      "title": "Estimateddays",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "type",
+    "description",
+    "cost",
+    "estimatedDays"
+  ],
+  "title": "SellerDeliveryOption",
+  "type": "object"
+}

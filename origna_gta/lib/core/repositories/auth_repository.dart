@@ -10,7 +10,9 @@ final _emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
 
 abstract class AuthRepository {
   Future<void> deleteAccount();
+  Future<bool> isEmailVerified();
   Future<UserCredential> registerWithEmail(String email, String password, String name);
+  Future<void> sendEmailVerification();
   Future<void> sendPasswordResetEmail(String email);
   Future<UserCredential> signInWithEmail(String email, String password);
   Future<UserCredential> signInWithGoogle();
@@ -35,6 +37,18 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<bool> isEmailVerified() async {
+    /// Check if current user's email is verified
+    /// Required before allowing checkout
+    final user = _auth.currentUser;
+    if (user == null) return false;
+
+    // Refresh user data to get latest verification status
+    await user.reload();
+    return user.emailVerified;
+  }
+
+  @override
   Future<UserCredential> registerWithEmail(String email, String password, String name) async {
     final trimmedEmail = email.trim().toLowerCase();
 
@@ -44,7 +58,56 @@ class FirebaseAuthRepository implements AuthRepository {
 
     final userCredential = await _auth.createUserWithEmailAndPassword(email: trimmedEmail, password: password);
     await _createUserDocumentIfNeeded(userCredential.user, name: name);
+
+    // AUTO-SEND VERIFICATION EMAIL after registration
+    // User must verify email before checkout is allowed
+    if (userCredential.user != null) {
+      try {
+        await userCredential.user!.sendEmailVerification();
+        debugPrint('✅ Verification email sent to $trimmedEmail during registration');
+      } catch (e) {
+        debugPrint('⚠️  Failed to send verification email during registration: $e');
+        // Don't fail registration if email send fails - user can request resend later
+      }
+    }
+
     return userCredential;
+  }
+
+  @override
+  Future<void> sendEmailVerification() async {
+    /// EMAIL VERIFICATION - CRITICAL BUSINESS LOGIC
+    ///
+    /// Issue: Users with typo emails lose access to their account.
+    /// Solution: Require email verification before checkout is possible.
+    ///
+    /// This function:
+    /// 1. Sends verification email to user's email address
+    /// 2. User must click link and return to app
+    /// 3. App checks emailVerified flag before allowing checkout
+    ///
+    /// Risk if NOT implemented:
+    /// - Users register with typo (john@gmial.com instead of john@gmail.com)
+    /// - Can't reset password (no email access)
+    /// - Loses order history (linked to wrong email)
+    /// - Bad UX: can't complete purchases
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(code: 'no-current-user', message: 'No authenticated user');
+    }
+
+    if (user.emailVerified) {
+      debugPrint('✅ Email already verified for ${user.email}');
+      return;
+    }
+
+    try {
+      await user.sendEmailVerification();
+      debugPrint('✅ Verification email sent to ${user.email}');
+    } catch (e) {
+      debugPrint('❌ Failed to send verification email: $e');
+      rethrow;
+    }
   }
 
   @override

@@ -5,8 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/services/conf_services.dart';
-import 'package:origna_gta/utils/utils.dart';
 
 class FirebaseProductRepository implements ProductRepository {
   final FirebaseFirestore _firestore;
@@ -15,8 +15,8 @@ class FirebaseProductRepository implements ProductRepository {
   FirebaseProductRepository(this._firestore, this._functions);
 
   @override
-  Future<String> addProduct(ProductModel product) async {
-    final docRef = await _firestore.collection('products').add(product.toMap());
+  Future<String> addProduct(Product product) async {
+    final docRef = await _firestore.collection('products').add(product.toJson());
     return docRef.id;
   }
 
@@ -26,13 +26,13 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
-  Future<ProductModel?> fetchProductById(String productId) async {
+  Future<Product?> fetchProductById(String productId) async {
     final doc = await _firestore.collection('products').doc(productId).get();
     if (!doc.exists) return null;
     final data = doc.data();
     if (data == null) return null;
     if (data['isActive'] == false) return null;
-    return ProductModel.fromDocument(doc);
+    return Product.fromFirestore(doc);
   }
 
   @override
@@ -42,7 +42,7 @@ class FirebaseProductRepository implements ProductRepository {
     query = query.where('isActive', isEqualTo: true);
 
     if (searchQuery != null && searchQuery.isNotEmpty) {
-      query = query.where('searchKeywords', arrayContains: searchQuery.toLowerCase().trim());
+      query = query.where('keywords', arrayContains: searchQuery.toLowerCase().trim());
     }
 
     if (categoryId != null) {
@@ -56,23 +56,23 @@ class FirebaseProductRepository implements ProductRepository {
     }
 
     final snapshot = await query.get();
-    final products = snapshot.docs.map((doc) => ProductModel.fromDocument(doc)).where((p) => p.isActive).toList();
+    final products = snapshot.docs.map((doc) => Product.fromFirestore(doc)).where((p) => p.isActive).toList();
     final hasMore = snapshot.docs.length >= pageSize;
 
     return ProductQueryResult(products: products, lastDocument: snapshot.docs.isNotEmpty ? snapshot.docs.last : null, hasMore: hasMore);
   }
 
   @override
-  Future<List<ProductModel>> fetchProductsByIds(List<String> productIds) async {
+  Future<List<Product>> fetchProductsByIds(List<String> productIds) async {
     if (productIds.isEmpty) return [];
 
-    final List<ProductModel> results = [];
+    final List<Product> results = [];
     // Firestore whereIn has a limit of 30 (previously 10, now 30 in some versions, but let's be safe with 10 or 30)
     // Actually current limit is 30. Let's use 30.
     for (int i = 0; i < productIds.length; i += 30) {
       final chunk = productIds.skip(i).take(30).toList();
       final snapshot = await _firestore.collection('products').where(FieldPath.documentId, whereIn: chunk).where('isActive', isEqualTo: true).get();
-      results.addAll(snapshot.docs.map((doc) => ProductModel.fromDocument(doc)).where((p) => p.isActive));
+      results.addAll(snapshot.docs.map((doc) => Product.fromFirestore(doc)).where((p) => p.isActive));
     }
     return results;
   }
@@ -156,7 +156,7 @@ class FirebaseProductRepository implements ProductRepository {
 }
 
 class ProductQueryResult {
-  final List<ProductModel> products;
+  final List<Product> products;
   final DocumentSnapshot? lastDocument;
   final bool hasMore;
 
@@ -164,11 +164,11 @@ class ProductQueryResult {
 }
 
 abstract class ProductRepository {
-  Future<String> addProduct(ProductModel product);
+  Future<String> addProduct(Product product);
   Future<void> deleteProduct(String productId);
-  Future<ProductModel?> fetchProductById(String productId);
+  Future<Product?> fetchProductById(String productId);
   Future<ProductQueryResult> fetchProducts({String? searchQuery, int? categoryId, DocumentSnapshot? lastDocument, int pageSize = 20});
-  Future<List<ProductModel>> fetchProductsByIds(List<String> productIds);
+  Future<List<Product>> fetchProductsByIds(List<String> productIds);
   Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(String query);
   Future<String?> getUploadUrl(String fileName);
   Future<void> submitRating(String orderId, String productId, int rating);

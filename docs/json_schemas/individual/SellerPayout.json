@@ -1,0 +1,100 @@
+{
+  "description": "Payout information for a seller in an order",
+  "example": {
+    "amount": 47.5,
+    "netAmount": 46.31,
+    "platformFee": 1.19,
+    "sellerId": "seller_123",
+    "sellerStripeAccountId": "acct_123",
+    "status": "pending"
+  },
+  "properties": {
+    "sellerId": {
+      "minLength": 1,
+      "title": "Sellerid",
+      "type": "string"
+    },
+    "sellerStripeAccountId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sellerstripeaccountid"
+    },
+    "amount": {
+      "description": "Seller's portion before platform fee",
+      "minimum": 0,
+      "title": "Amount",
+      "type": "number"
+    },
+    "platformFee": {
+      "description": "Platform fee (2.5%)",
+      "minimum": 0,
+      "title": "Platformfee",
+      "type": "number"
+    },
+    "netAmount": {
+      "description": "Net amount after platform fee",
+      "minimum": 0,
+      "title": "Netamount",
+      "type": "number"
+    },
+    "status": {
+      "default": "pending",
+      "description": "Payout status: pending, processing, completed, failed",
+      "title": "Status",
+      "type": "string"
+    },
+    "payoutDate": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Payoutdate"
+    },
+    "stripeTransferId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Stripetransferid"
+    },
+    "failureReason": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failurereason"
+    }
+  },
+  "required": [
+    "sellerId",
+    "amount",
+    "platformFee",
+    "netAmount"
+  ],
+  "title": "SellerPayout",
+  "type": "object"
+}

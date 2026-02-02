@@ -1,0 +1,358 @@
+{
+  "$defs": {
+    "Address": {
+      "description": "Complete address model with validation\nUsed for delivery, seller locations, and user addresses",
+      "example": {
+        "apartment": "Apt 4B",
+        "city": "Toronto",
+        "country": "Canada",
+        "isDefault": true,
+        "label": "Home",
+        "phoneNumber": "4165551234",
+        "postalCode": "M5V 3A8",
+        "state": "ON",
+        "street": "123 Main Street"
+      },
+      "properties": {
+        "street": {
+          "description": "Street address",
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Street",
+          "type": "string"
+        },
+        "apartment": {
+          "default": "",
+          "description": "Unit, Suite, Apt number",
+          "maxLength": 20,
+          "title": "Apartment",
+          "type": "string"
+        },
+        "city": {
+          "description": "City name",
+          "maxLength": 50,
+          "minLength": 2,
+          "title": "City",
+          "type": "string"
+        },
+        "state": {
+          "description": "Province/State code (e.g., ON, QC, BC)",
+          "maxLength": 2,
+          "minLength": 2,
+          "title": "State",
+          "type": "string"
+        },
+        "postalCode": {
+          "description": "Canadian postal code (e.g., M5V 3A8)",
+          "title": "Postalcode",
+          "type": "string"
+        },
+        "country": {
+          "default": "Canada",
+          "description": "Country name",
+          "title": "Country",
+          "type": "string"
+        },
+        "phoneNumber": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Contact phone number for delivery",
+          "title": "Phonenumber"
+        },
+        "isDefault": {
+          "default": false,
+          "description": "Whether this is the default address",
+          "title": "Isdefault",
+          "type": "boolean"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Address label (Home, Work, Other)",
+          "title": "Label"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Latitude for mapping/delivery routing",
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Longitude for mapping/delivery routing",
+          "title": "Longitude"
+        }
+      },
+      "required": [
+        "street",
+        "city",
+        "state",
+        "postalCode"
+      ],
+      "title": "Address",
+      "type": "object"
+    },
+    "SellerDeliveryOption": {
+      "description": "Seller-specific delivery options",
+      "example": {
+        "cost": 0.0,
+        "description": "Free local pickup",
+        "estimatedDays": 0,
+        "type": "pickup"
+      },
+      "properties": {
+        "type": {
+          "description": "Delivery type: pickup, standard, express, same_day",
+          "title": "Type",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of delivery option",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "cost": {
+          "description": "Cost in CAD",
+          "minimum": 0,
+          "title": "Cost",
+          "type": "number"
+        },
+        "estimatedDays": {
+          "description": "Estimated delivery days",
+          "maximum": 90,
+          "minimum": 0,
+          "title": "Estimateddays",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "description",
+        "cost",
+        "estimatedDays"
+      ],
+      "title": "SellerDeliveryOption",
+      "type": "object"
+    }
+  },
+  "description": "Model for creating new products\n(excludes productId and dateCreated which are generated)",
+  "properties": {
+    "name": {
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "price": {
+      "exclusiveMinimum": 0,
+      "maximum": 100000,
+      "title": "Price",
+      "type": "number"
+    },
+    "description": {
+      "maxLength": 4000,
+      "minLength": 10,
+      "title": "Description",
+      "type": "string"
+    },
+    "imageUrls": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 5,
+      "minItems": 1,
+      "title": "Imageurls",
+      "type": "array"
+    },
+    "sellerId": {
+      "minLength": 1,
+      "title": "Sellerid",
+      "type": "string"
+    },
+    "sellerAddress": {
+      "$ref": "#/$defs/Address"
+    },
+    "categoryId": {
+      "maximum": 21,
+      "minimum": 1,
+      "title": "Categoryid",
+      "type": "integer"
+    },
+    "stockQuantity": {
+      "minimum": 0,
+      "title": "Stockquantity",
+      "type": "integer"
+    },
+    "rating": {
+      "default": 0.0,
+      "maximum": 5,
+      "minimum": 0,
+      "title": "Rating",
+      "type": "number"
+    },
+    "isActive": {
+      "default": true,
+      "title": "Isactive",
+      "type": "boolean"
+    },
+    "weightKg": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "maximum": 1000,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Weightkg"
+    },
+    "lengthCm": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "maximum": 1000,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lengthcm"
+    },
+    "widthCm": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "maximum": 1000,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Widthcm"
+    },
+    "heightCm": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "maximum": 1000,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Heightcm"
+    },
+    "isLocalDeliveryOnly": {
+      "default": false,
+      "title": "Islocaldeliveryonly",
+      "type": "boolean"
+    },
+    "isPerishable": {
+      "default": false,
+      "title": "Isperishable",
+      "type": "boolean"
+    },
+    "estimatedShipDays": {
+      "default": 3,
+      "maximum": 90,
+      "minimum": 0,
+      "title": "Estimatedshipdays",
+      "type": "integer"
+    },
+    "deliveryOptions": {
+      "items": {
+        "$ref": "#/$defs/SellerDeliveryOption"
+      },
+      "title": "Deliveryoptions",
+      "type": "array"
+    },
+    "minimumOrderQuantity": {
+      "default": 1,
+      "maximum": 100,
+      "minimum": 1,
+      "title": "Minimumorderquantity",
+      "type": "integer"
+    },
+    "freeShipping": {
+      "default": false,
+      "title": "Freeshipping",
+      "type": "boolean"
+    },
+    "taxCode": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Taxcode"
+    },
+    "keywords": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Keywords",
+      "type": "array"
+    }
+  },
+  "required": [
+    "name",
+    "price",
+    "description",
+    "imageUrls",
+    "sellerId",
+    "sellerAddress",
+    "categoryId",
+    "stockQuantity"
+  ],
+  "title": "ProductCreate",
+  "type": "object"
+}

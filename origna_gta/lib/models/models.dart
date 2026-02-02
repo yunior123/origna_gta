@@ -583,7 +583,7 @@ class ProductModel {
     required this.stockQuantity,
     required this.categoryId,
     required this.sellerId,
-    required this.searchKeywords,
+    required List<String> keywords,
     this.rating = 0.0,
     this.ratingCount = 0,
     this.dateCreated,
@@ -600,7 +600,8 @@ class ProductModel {
     this.freeShipping = false,
     this.isActive = true,
     this.deletedAt,
-  }) : deliveryOptions = deliveryOptions ?? SellerDeliveryOption.defaultOptions();
+  }) : deliveryOptions = deliveryOptions ?? SellerDeliveryOption.defaultOptions(),
+       searchKeywords = keywords;
 
   factory ProductModel.fromDocument(DocumentSnapshot doc) {
     assert(doc.data() != null, 'Product document data is null');
@@ -632,7 +633,7 @@ class ProductModel {
       ratingCount: _parseInt(map['ratingCount']),
       dateCreated: map['dateCreated'] as Timestamp?,
       sellerId: map['sellerId']?.toString() ?? '',
-      searchKeywords: _parseStringList(map['searchKeywords']),
+      keywords: _parseStringList(map['keywords']),
       stockQuantity: _parseInt(map['stockQuantity']),
       weightKg: map['weightKg'] != null ? _parseDouble(map['weightKg']) : null,
       lengthCm: map['lengthCm'] != null ? _parseDouble(map['lengthCm']) : null,
@@ -670,7 +671,7 @@ class ProductModel {
       'rating': rating,
       'ratingCount': ratingCount,
       'dateCreated': dateCreated,
-      'searchKeywords': searchKeywords,
+      'keywords': searchKeywords,
       if (weightKg != null) 'weightKg': weightKg,
       if (lengthCm != null) 'lengthCm': lengthCm,
       if (widthCm != null) 'widthCm': widthCm,

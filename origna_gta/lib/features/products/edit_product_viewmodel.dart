@@ -1,20 +1,24 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
-import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
+import 'package:origna_gta/models/generated/models.dart' as models;
 import 'package:origna_gta/utils/utils.dart';
 
 import 'edit_product_state.dart';
 
-final editProductViewModelProvider = StateNotifierProvider.autoDispose.family<EditProductViewModel, EditProductState, ProductModel>((ref, product) {
+final editProductViewModelProvider = StateNotifierProvider.autoDispose.family<EditProductViewModel, EditProductState, models.Product>((ref, product) {
   return EditProductViewModel(ref, product);
 });
 
 class EditProductViewModel extends StateNotifier<EditProductState> {
+  static const String _standardType = 'standard';
+  static const String _expressType = 'express';
+  static const String _sameDayType = 'same_day';
+
   final Ref _ref;
-  final ProductModel _product;
+  final models.Product _product;
 
   EditProductViewModel(this._ref, this._product)
     : super(
@@ -26,9 +30,9 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           selectedProvince: _product.sellerAddress.state.isNotEmpty ? _product.sellerAddress.state : 'ON',
           latitude: _product.sellerAddress.latitude,
           longitude: _product.sellerAddress.longitude,
-          standardEnabled: _product.getDeliveryOption(DeliverySpeed.standard)?.isEnabled ?? true,
-          expressEnabled: _product.getDeliveryOption(DeliverySpeed.express)?.isEnabled ?? false,
-          sameDayEnabled: _product.getDeliveryOption(DeliverySpeed.sameDay)?.isEnabled ?? false,
+          standardEnabled: _product.deliveryOptions.any((o) => o.type == _standardType),
+          expressEnabled: _product.deliveryOptions.any((o) => o.type == _expressType),
+          sameDayEnabled: _product.deliveryOptions.any((o) => o.type == _sameDayType),
         ),
       );
 
@@ -63,13 +67,13 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     );
   }
 
-  void setDeliveryEnabled(DeliverySpeed speed, bool value) {
-    if (speed == DeliverySpeed.standard) state = state.copyWith(standardEnabled: value);
-    if (speed == DeliverySpeed.express) state = state.copyWith(expressEnabled: value);
-    if (speed == DeliverySpeed.sameDay) state = state.copyWith(sameDayEnabled: value);
-  }
+  void setExpressEnabled(bool value) => state = state.copyWith(expressEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
 
   void setProvince(String province) => state = state.copyWith(selectedProvince: province);
+
+  void setSameDayEnabled(bool value) => state = state.copyWith(sameDayEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
+
+  void setStandardEnabled(bool value) => state = state.copyWith(standardEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
 
   void toggleLocalDelivery(bool value) => state = state.copyWith(isLocalDeliveryOnly: value);
 
@@ -92,7 +96,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     double? width,
     double? height,
     required int shipDays,
-    required List<SellerDeliveryOption> deliveryOptions,
+    required List<models.SellerDeliveryOption> deliveryOptions,
   }) async {
     if (name.trim().isEmpty) {
       state = state.copyWith(errorMessage: 'Product name is required');
@@ -141,7 +145,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
 
       if (state.newImages.isNotEmpty) {
         final processedImages = await _processImages(state.newImages);
-        final successfulUrls = await _repository.uploadImages(processedImages, _product.id);
+        final successfulUrls = await _repository.uploadImages(processedImages, _product.productId);
         allImageUrls.addAll(successfulUrls);
       }
 
@@ -152,8 +156,8 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
         stockQuantity: state.isSoldOut ? 0 : stock,
         categoryId: categoryId,
         imageUrls: allImageUrls,
-        searchKeywords: keywords,
-        sellerAddress: Address(
+        keywords: keywords,
+        sellerAddress: models.Address(
           street: street,
           apartment: apartment,
           city: city,
@@ -173,7 +177,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
         deliveryOptions: deliveryOptions,
       );
 
-      await _repository.updateProduct(_product.id, updatedProduct.toMap());
+      await _repository.updateProduct(_product.productId, updatedProduct.toJson());
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e));
@@ -204,50 +208,5 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     }
 
     return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
-  }
-}
-
-extension ProductModelCopyWith on ProductModel {
-  ProductModel copyWith({
-    String? name,
-    double? price,
-    List<String>? imageUrls,
-    Address? sellerAddress,
-    String? description,
-    int? stockQuantity,
-    int? categoryId,
-    List<String>? searchKeywords,
-    double? weightKg,
-    double? lengthCm,
-    double? widthCm,
-    double? heightCm,
-    bool? isLocalDeliveryOnly,
-    int? estimatedShipDays,
-    List<SellerDeliveryOption>? deliveryOptions,
-    bool? isPerishable,
-  }) {
-    return ProductModel(
-      id: id,
-      name: name ?? this.name,
-      price: price ?? this.price,
-      imageUrls: imageUrls ?? this.imageUrls,
-      sellerAddress: sellerAddress ?? this.sellerAddress,
-      description: description ?? this.description,
-      stockQuantity: stockQuantity ?? this.stockQuantity,
-      categoryId: categoryId ?? this.categoryId,
-      sellerId: sellerId,
-      searchKeywords: searchKeywords ?? this.searchKeywords,
-      rating: rating,
-      ratingCount: ratingCount,
-      dateCreated: dateCreated,
-      weightKg: weightKg ?? this.weightKg,
-      lengthCm: lengthCm ?? this.lengthCm,
-      widthCm: widthCm ?? this.widthCm,
-      heightCm: heightCm ?? this.heightCm,
-      isLocalDeliveryOnly: isLocalDeliveryOnly ?? this.isLocalDeliveryOnly,
-      estimatedShipDays: estimatedShipDays ?? this.estimatedShipDays,
-      deliveryOptions: deliveryOptions ?? this.deliveryOptions,
-      isPerishable: isPerishable ?? this.isPerishable,
-    );
   }
 }

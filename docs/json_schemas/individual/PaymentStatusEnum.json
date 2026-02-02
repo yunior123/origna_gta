@@ -1,0 +1,11 @@
+{
+  "type": "string",
+  "enum": [
+    "awaiting_payment",
+    "payment_received",
+    "payment_failed",
+    "refunded",
+    "partially_refunded"
+  ],
+  "description": "Payment status values"
+}

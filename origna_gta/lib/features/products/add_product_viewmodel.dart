@@ -1,11 +1,10 @@
 import 'dart:typed_data';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
-import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/models/generated/models.dart' as models;
 import 'package:origna_gta/utils/utils.dart';
 
 import 'add_product_state.dart';
@@ -35,7 +34,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     double? width,
     double? height,
     String? taxCode,
-    required List<SellerDeliveryOption> deliveryOptions,
+    required List<models.SellerDeliveryOption> deliveryOptions,
   }) async {
     if (name.trim().isEmpty) {
       state = state.copyWith(errorMessage: 'Product name is required');
@@ -83,15 +82,14 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
     try {
       final productRepository = _ref.read(productRepositoryProvider);
-      final product = ProductModel(
-        id: '',
+      final productCreate = models.ProductCreate(
         sellerId: _ref.read(userIdProvider)!,
         name: name,
-        searchKeywords: generateSearchKeywords(name),
+        keywords: generateSearchKeywords(name),
         stockQuantity: stock,
         price: price,
         imageUrls: [],
-        sellerAddress: Address(
+        sellerAddress: models.Address(
           street: street,
           apartment: apartment,
           city: city,
@@ -103,7 +101,6 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         ),
         description: description,
         categoryId: categoryId,
-        dateCreated: Timestamp.now(),
         weightKg: weight,
         lengthCm: length,
         widthCm: width,
@@ -115,13 +112,24 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         isPerishable: state.isPerishable,
       );
 
+      // Convert ProductCreate to JSON, then create Product for repository
+      final productData = productCreate.toJson();
+      // Create a Product instance from the JSON (repository expects Product type)
+      final product = models.Product.fromJson({
+        ...productData,
+        'productId': '', // Will be set by Firestore
+        'dateCreated': DateTime.now().toIso8601String(),
+        'rating': 0.0,
+        'isActive': true,
+      });
+
       final productId = await productRepository.addProduct(product);
       final compressedImages = await _compressImages(state.imageModels);
       final urls = await productRepository.uploadImages(compressedImages, productId);
 
       if (urls.isEmpty) throw Exception('Failed to upload images');
 
-      await productRepository.updateProduct(productId, {'id': productId, 'imageUrls': urls});
+      await productRepository.updateProduct(productId, {'productId': productId, 'imageUrls': urls});
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());

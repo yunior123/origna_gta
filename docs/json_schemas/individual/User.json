@@ -1,0 +1,325 @@
+{
+  "$defs": {
+    "Address": {
+      "description": "Complete address model with validation\nUsed for delivery, seller locations, and user addresses",
+      "example": {
+        "apartment": "Apt 4B",
+        "city": "Toronto",
+        "country": "Canada",
+        "isDefault": true,
+        "label": "Home",
+        "phoneNumber": "4165551234",
+        "postalCode": "M5V 3A8",
+        "state": "ON",
+        "street": "123 Main Street"
+      },
+      "properties": {
+        "street": {
+          "description": "Street address",
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Street",
+          "type": "string"
+        },
+        "apartment": {
+          "default": "",
+          "description": "Unit, Suite, Apt number",
+          "maxLength": 20,
+          "title": "Apartment",
+          "type": "string"
+        },
+        "city": {
+          "description": "City name",
+          "maxLength": 50,
+          "minLength": 2,
+          "title": "City",
+          "type": "string"
+        },
+        "state": {
+          "description": "Province/State code (e.g., ON, QC, BC)",
+          "maxLength": 2,
+          "minLength": 2,
+          "title": "State",
+          "type": "string"
+        },
+        "postalCode": {
+          "description": "Canadian postal code (e.g., M5V 3A8)",
+          "title": "Postalcode",
+          "type": "string"
+        },
+        "country": {
+          "default": "Canada",
+          "description": "Country name",
+          "title": "Country",
+          "type": "string"
+        },
+        "phoneNumber": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Contact phone number for delivery",
+          "title": "Phonenumber"
+        },
+        "isDefault": {
+          "default": false,
+          "description": "Whether this is the default address",
+          "title": "Isdefault",
+          "type": "boolean"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Address label (Home, Work, Other)",
+          "title": "Label"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Latitude for mapping/delivery routing",
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Longitude for mapping/delivery routing",
+          "title": "Longitude"
+        }
+      },
+      "required": [
+        "street",
+        "city",
+        "state",
+        "postalCode"
+      ],
+      "title": "Address",
+      "type": "object"
+    },
+    "UserRole": {
+      "description": "User roles",
+      "enum": [
+        "admin",
+        "seller",
+        "buyer"
+      ],
+      "title": "UserRole",
+      "type": "string"
+    }
+  },
+  "description": "Complete user model\nIncludes buyer, seller, and admin information",
+  "example": {
+    "createdAt": "2026-02-01T10:00:00Z",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "roles": [
+      "buyer"
+    ],
+    "uid": "user_123abc"
+  },
+  "properties": {
+    "uid": {
+      "description": "Firebase Auth User ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Uid",
+      "type": "string"
+    },
+    "email": {
+      "description": "User email address",
+      "format": "email",
+      "title": "Email",
+      "type": "string"
+    },
+    "name": {
+      "description": "User display name",
+      "maxLength": 60,
+      "minLength": 2,
+      "title": "Name",
+      "type": "string"
+    },
+    "roles": {
+      "description": "User roles (buyer, seller, admin)",
+      "items": {
+        "$ref": "#/$defs/UserRole"
+      },
+      "minItems": 1,
+      "title": "Roles",
+      "type": "array"
+    },
+    "address": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Address"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "User's default address"
+    },
+    "createdAt": {
+      "description": "Account creation timestamp",
+      "format": "date-time",
+      "title": "Createdat",
+      "type": "string"
+    },
+    "customerId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Stripe Customer ID for payments",
+      "title": "Customerid"
+    },
+    "lastCheckoutSession": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Last Stripe Checkout Session ID",
+      "title": "Lastcheckoutsession"
+    },
+    "lastOrderId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Last created order ID",
+      "title": "Lastorderid"
+    },
+    "lastCheckoutTimestamp": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Timestamp of last checkout",
+      "title": "Lastcheckouttimestamp"
+    },
+    "stripeAccountId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Stripe Connect account ID (for sellers)",
+      "title": "Stripeaccountid"
+    },
+    "payoutsEnabled": {
+      "default": false,
+      "description": "Whether seller can receive payouts",
+      "title": "Payoutsenabled",
+      "type": "boolean"
+    },
+    "chargesEnabled": {
+      "default": false,
+      "description": "Whether seller can accept charges",
+      "title": "Chargesenabled",
+      "type": "boolean"
+    },
+    "onboardingCompleted": {
+      "default": false,
+      "description": "Whether Stripe Connect onboarding is complete",
+      "title": "Onboardingcompleted",
+      "type": "boolean"
+    },
+    "suspended": {
+      "default": false,
+      "description": "Whether account is suspended",
+      "title": "Suspended",
+      "type": "boolean"
+    },
+    "suspendedAt": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "When account was suspended",
+      "title": "Suspendedat"
+    },
+    "updatedAt": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Last update timestamp",
+      "title": "Updatedat"
+    }
+  },
+  "required": [
+    "uid",
+    "email",
+    "name",
+    "roles"
+  ],
+  "title": "User",
+  "type": "object"
+}

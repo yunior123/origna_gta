@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -411,25 +411,27 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   List<SellerDeliveryOption> _buildDeliveryOptions(AddProductState state) {
     return [
-      SellerDeliveryOption(
-        speed: DeliverySpeed.standard,
-        isEnabled: state.standardEnabled,
-        estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
-        price: double.tryParse(_standardPriceController.text) ?? 0.0,
-      ),
-      SellerDeliveryOption(
-        speed: DeliverySpeed.express,
-        isEnabled: state.expressEnabled,
-        estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
-        price: double.tryParse(_expressPriceController.text) ?? 9.99,
-      ),
-      SellerDeliveryOption(
-        speed: DeliverySpeed.sameDay,
-        isEnabled: state.sameDayEnabled,
-        estimatedDays: 0,
-        price: double.tryParse(_sameDayPriceController.text) ?? 14.99,
-        maxRadiusKm: int.tryParse(_sameDayRadiusController.text) ?? 50,
-      ),
+      if (state.standardEnabled)
+        SellerDeliveryOption(
+          type: 'standard',
+          description: 'Standard Delivery',
+          estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
+          cost: double.tryParse(_standardPriceController.text) ?? 0.0,
+        ),
+      if (state.expressEnabled)
+        SellerDeliveryOption(
+          type: 'express',
+          description: 'Express Delivery',
+          estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
+          cost: double.tryParse(_expressPriceController.text) ?? 9.99,
+        ),
+      if (state.sameDayEnabled)
+        SellerDeliveryOption(
+          type: 'same_day',
+          description: 'Same Day Delivery',
+          estimatedDays: 0,
+          cost: double.tryParse(_sameDayPriceController.text) ?? 14.99,
+        ),
     ];
   }
 

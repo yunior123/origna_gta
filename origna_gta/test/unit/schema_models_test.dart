@@ -1,0 +1,329 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:origna_gta/models/generated/models.dart';
+
+void main() {
+  group('Address Model Tests', () {
+    test('Address creates immutable object with all fields', () {
+      final address = Address(
+        street: '123 Main Street',
+        apartment: 'Apt 4B',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'Canada',
+        phoneNumber: '4165551234',
+        isDefault: true,
+        label: 'Home',
+        latitude: 43.6532,
+        longitude: -79.3832,
+      );
+
+      expect(address.street, '123 Main Street');
+      expect(address.city, 'Toronto');
+      expect(address.state, 'ON');
+      expect(address.postalCode, 'M5V 3A8');
+      expect(address.isDefault, true);
+    });
+
+    test('Address formatted address works correctly', () {
+      final address = Address(street: '123 Main Street', apartment: 'Apt 4B', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+
+      final formatted = address.formattedAddress;
+      expect(formatted.contains('123 Main Street'), true);
+      expect(formatted.contains('Apt 4B'), true);
+      expect(formatted.contains('Toronto, ON M5V 3A8'), true);
+    });
+
+    test('Address copyWith maintains immutability', () {
+      final address = Address(street: '123 Main Street', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+
+      final updated = address.copyWith(city: 'Montreal', state: 'QC');
+      expect(updated.city, 'Montreal');
+      expect(updated.state, 'QC');
+      expect(updated.street, address.street);
+      expect(address.city, 'Toronto'); // Original unchanged
+    });
+  });
+
+  group('Product Model Tests', () {
+    test('Product creates immutable object with nested Address', () {
+      final address = Address(street: '123 Farm Road', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+
+      final product = Product(
+        productId: 'prod_123',
+        name: 'Organic Apples',
+        price: 4.99,
+        description: 'Fresh organic apples from local farm',
+        imageUrls: ['https://example.com/image1.jpg'],
+        sellerId: 'seller_123',
+        sellerAddress: address,
+        categoryId: 1,
+        stockQuantity: 100,
+        rating: 4.5,
+        dateCreated: DateTime(2026, 2, 1),
+        isActive: true,
+      );
+
+      expect(product.name, 'Organic Apples');
+      expect(product.price, 4.99);
+      expect(product.sellerAddress.city, 'Toronto');
+    });
+
+    test('Product copyWith maintains immutability', () {
+      final address = Address(street: '123 Farm Road', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+
+      final product = Product(
+        productId: 'prod_123',
+        name: 'Organic Apples',
+        price: 4.99,
+        description: 'Fresh apples',
+        imageUrls: ['url'],
+        sellerId: 'seller_123',
+        sellerAddress: address,
+        categoryId: 1,
+        stockQuantity: 100,
+        dateCreated: DateTime.now(),
+      );
+
+      final updated = product.copyWith(name: 'Updated Apples', price: 5.99);
+      expect(updated.name, 'Updated Apples');
+      expect(updated.price, 5.99);
+      expect(updated.productId, product.productId);
+      expect(product.name, 'Organic Apples'); // Original unchanged
+    });
+  });
+
+  group('Taxes Model Tests', () {
+    test('Taxes total calculation', () {
+      final taxes1 = Taxes(gst: 2.5, pst: 3.5);
+      expect(taxes1.total, 6.0);
+
+      final taxes2 = Taxes(hst: 13.0);
+      expect(taxes2.total, 13.0);
+
+      final taxes3 = Taxes(gst: 2.5, hst: 13.0);
+      expect(taxes3.total, 15.5);
+    });
+
+    test('Taxes toMap/fromMap compatibility', () {
+      final taxes = Taxes(gst: 2.5, pst: 3.5);
+
+      final map = taxes.toMap();
+      expect(map['GST'], 2.5);
+      expect(map['PST'], 3.5);
+
+      final taxes2 = Taxes.fromMap(map);
+      expect(taxes2.gst, taxes.gst);
+      expect(taxes2.pst, taxes.pst);
+    });
+  });
+
+  group('OrderItem Model Tests', () {
+    test('OrderItem subtotal calculation', () {
+      final address = Address(street: '123 Farm Road', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+
+      final item = OrderItem(
+        productId: 'prod_123',
+        name: 'Organic Apples',
+        description: 'Fresh apples',
+        price: 4.99,
+        quantity: 3,
+        imageUrls: ['url'],
+        sellerId: 'seller_123',
+        sellerAddress: address,
+      );
+
+      expect(item.subtotal, 14.97); // 4.99 * 3
+    });
+
+    test('OrderItem copyWith maintains immutability', () {
+      final address = Address(street: '123 Farm Road', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+
+      final item = OrderItem(
+        productId: 'prod_123',
+        name: 'Organic Apples',
+        description: 'Fresh apples',
+        price: 4.99,
+        quantity: 2,
+        imageUrls: ['url'],
+        sellerId: 'seller_123',
+        sellerAddress: address,
+        deliveryStatus: DeliveryStatus.shipped,
+      );
+
+      final updated = item.copyWith(deliveryStatus: DeliveryStatus.delivered, confirmedByBuyer: true);
+      expect(updated.deliveryStatus, DeliveryStatus.delivered);
+      expect(updated.confirmedByBuyer, true);
+      expect(item.deliveryStatus, DeliveryStatus.shipped); // Original unchanged
+    });
+  });
+
+  group('SellerPayout Model Tests', () {
+    test('SellerPayout toMap/fromMap compatibility', () {
+      final payout = SellerPayout(sellerId: 'seller_123', amount: 100.0, platformFee: 2.5, netAmount: 97.5, status: 'completed');
+
+      final map = payout.toMap();
+      expect(map['sellerId'], 'seller_123');
+      expect(map['amount'], 100.0);
+
+      final payout2 = SellerPayout.fromMap(map);
+      expect(payout2.sellerId, payout.sellerId);
+      expect(payout2.amount, payout.amount);
+    });
+  });
+
+  group('Order Model Tests', () {
+    test('Order calculateTotals', () {
+      final address = Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+
+      final item1 = OrderItem(
+        productId: 'prod_1',
+        name: 'Product 1',
+        description: 'Description',
+        price: 10.0,
+        quantity: 2,
+        imageUrls: ['url'],
+        sellerId: 'seller_1',
+        sellerAddress: address,
+      );
+
+      final item2 = OrderItem(
+        productId: 'prod_2',
+        name: 'Product 2',
+        description: 'Description',
+        price: 15.0,
+        quantity: 1,
+        imageUrls: ['url'],
+        sellerId: 'seller_2',
+        sellerAddress: address,
+      );
+
+      final order = Order(
+        orderId: 'order_123',
+        userId: 'user_123',
+        customerId: 'cus_123',
+        customerEmail: 'buyer@example.com',
+        items: [item1, item2],
+        total: 0.0,
+        subtotal: 0.0,
+        shippingCost: 5.0,
+        taxes: Taxes(gst: 2.0, pst: 3.0),
+        deliveryInfo: address,
+        createdAt: DateTime.now(),
+        amount: 4000,
+        stripeSessionId: 'session_123',
+      );
+
+      final updated = order.calculateTotals();
+      expect(updated.subtotal, 35.0); // 20 + 15
+      expect(updated.total, 45.0); // 35 + 5 + 2 + 3
+    });
+
+    test('Order copyWith maintains immutability', () {
+      final address = Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+
+      final item = OrderItem(
+        productId: 'prod_1',
+        name: 'Product 1',
+        description: 'Description',
+        price: 10.0,
+        quantity: 1,
+        imageUrls: ['url'],
+        sellerId: 'seller_1',
+        sellerAddress: address,
+      );
+
+      final order = Order(
+        orderId: 'order_123',
+        userId: 'user_123',
+        customerId: 'cus_123',
+        customerEmail: 'buyer@example.com',
+        items: [item],
+        total: 15.0,
+        subtotal: 10.0,
+        shippingCost: 5.0,
+        taxes: Taxes(gst: 0.5),
+        deliveryInfo: address,
+        createdAt: DateTime(2026, 2, 1),
+        amount: 1500,
+        stripeSessionId: 'session_123',
+      );
+
+      final updated = order.copyWith(status: OrderStatus.delivered, confirmedByClient: true);
+      expect(updated.status, OrderStatus.delivered);
+      expect(updated.confirmedByClient, true);
+      expect(order.status, OrderStatus.pending); // Original unchanged
+    });
+  });
+
+  group('User Model Tests', () {
+    test('User helper methods', () {
+      final buyer = User(uid: 'user_1', email: 'buyer@example.com', name: 'Jane Buyer', roles: [UserRole.buyer], createdAt: DateTime.now());
+      expect(buyer.isSeller, false);
+      expect(buyer.isAdmin, false);
+      expect(buyer.canSell, false);
+
+      final sellerComplete = User(
+        uid: 'user_2',
+        email: 'seller@example.com',
+        name: 'John Seller',
+        roles: [UserRole.seller],
+        createdAt: DateTime.now(),
+        onboardingCompleted: true,
+      );
+      expect(sellerComplete.isSeller, true);
+      expect(sellerComplete.canSell, true);
+
+      final sellerIncomplete = User(
+        uid: 'user_3',
+        email: 'seller2@example.com',
+        name: 'Jane Seller',
+        roles: [UserRole.seller],
+        createdAt: DateTime.now(),
+        onboardingCompleted: false,
+      );
+      expect(sellerIncomplete.isSeller, true);
+      expect(sellerIncomplete.canSell, false);
+
+      final admin = User(uid: 'user_4', email: 'admin@example.com', name: 'Admin User', roles: [UserRole.admin], createdAt: DateTime.now());
+      expect(admin.isAdmin, true);
+    });
+
+    test('User copyWith maintains immutability', () {
+      final user = User(uid: 'user_123', email: 'user@example.com', name: 'John Doe', roles: [UserRole.buyer], createdAt: DateTime.now());
+
+      final updated = user.copyWith(name: 'Jane Doe', onboardingCompleted: true);
+      expect(updated.name, 'Jane Doe');
+      expect(updated.onboardingCompleted, true);
+      expect(user.name, 'John Doe'); // Original unchanged
+    });
+  });
+
+  group('Enum Tests', () {
+    test('OrderStatus values', () {
+      expect(OrderStatus.pending.name, 'pending');
+      expect(OrderStatus.delivered.name, 'delivered');
+      expect(OrderStatus.values.length, 6);
+    });
+
+    test('PaymentStatus values', () {
+      expect(PaymentStatus.awaitingPayment.name, 'awaitingPayment');
+      expect(PaymentStatus.paymentReceived.name, 'paymentReceived');
+      expect(PaymentStatus.values.length, 5);
+    });
+
+    test('DeliveryStatus values', () {
+      expect(DeliveryStatus.pending.name, 'pending');
+      expect(DeliveryStatus.shipped.name, 'shipped');
+      expect(DeliveryStatus.delivered.name, 'delivered');
+      expect(DeliveryStatus.values.length, 6);
+    });
+
+    test('UserRole values', () {
+      expect(UserRole.buyer.name, 'buyer');
+      expect(UserRole.seller.name, 'seller');
+      expect(UserRole.admin.name, 'admin');
+      expect(UserRole.values.length, 3);
+    });
+  });
+}

@@ -4,8 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/seller_orders_viewmodel.dart';
-import 'package:origna_gta/utils/constants.dart';
-import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/models/enum_extensions.dart';
+import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 
 class SellerOrdersScreen extends ConsumerWidget {
@@ -58,7 +58,7 @@ class SellerOrdersScreen extends ConsumerWidget {
 }
 
 class _SellerOrderCard extends ConsumerWidget {
-  final OrderModel order;
+  final Order order;
   final String sellerId;
 
   const _SellerOrderCard({required this.order, required this.sellerId});
@@ -94,12 +94,10 @@ class _SellerOrderCard extends ConsumerWidget {
                 ),
               ],
             ),
-            if (order.deliveryInfo.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(order.deliveryInfo['formattedAddress'] ?? '', style: const TextStyle(fontSize: 12)),
-            ],
+            const SizedBox(height: 12),
+            Text(order.deliveryInfo.formattedAddress, style: const TextStyle(fontSize: 12)),
             const Divider(height: 24),
-            if (order.status == PaymentStatus.authorized.value) _buildAuthorizationBanner(context, ref),
+            if (order.paymentStatus == PaymentStatus.awaitingPayment) _buildAuthorizationBanner(context, ref),
             const Text('Your Items', style: TextStyle(fontWeight: FontWeight.bold)),
             ...sellerItems.map((item) => _buildSellerItem(context, ref, item)),
           ],
@@ -109,8 +107,8 @@ class _SellerOrderCard extends ConsumerWidget {
   }
 
   Widget _buildAuthorizationBanner(BuildContext context, WidgetRef ref) {
-    final actualShipping = order.deliveryInfo['actualShipping'];
-    final approvalStatus = order.deliveryInfo['shippingApprovalStatus'] as String?;
+    final actualShipping = order.actualShipping;
+    final approvalStatus = order.shippingApprovalStatus;
     final isLoading = ref.watch(sellerOrdersViewModelProvider.select((state) => state.isLoading));
 
     return Container(
@@ -130,12 +128,12 @@ class _SellerOrderCard extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            actualShipping == null
+            actualShipping <= 0.0
                 ? 'Enter actual shipping cost to capture payment.'
-                : (approvalStatus == ShippingApprovalStatus.pending.value ? 'Waiting for buyer approval.' : 'Ready to capture.'),
+                : (approvalStatus == ShippingApprovalStatus.pending ? 'Waiting for buyer approval.' : 'Ready to capture.'),
             style: const TextStyle(fontSize: 11),
           ),
-          if (actualShipping == null) ...[
+          if (actualShipping <= 0.0) ...[
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
@@ -151,9 +149,9 @@ class _SellerOrderCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildSellerItem(BuildContext context, WidgetRef ref, CartItemDetailModel item) {
-    final status = DeliveryStatus.fromValue(item.deliveryStatus);
-    final isAuthorized = order.status == PaymentStatus.authorized.value;
+  Widget _buildSellerItem(BuildContext context, WidgetRef ref, OrderItem item) {
+    final status = item.deliveryStatus;
+    final isAuthorized = order.paymentStatus == PaymentStatus.awaitingPayment;
 
     return ListTile(
       leading: Image.network(item.imageUrls.first, width: 40, height: 40, fit: BoxFit.cover, errorBuilder: (_, _, _) => const Icon(Icons.image)),
@@ -166,7 +164,7 @@ class _SellerOrderCard extends ConsumerWidget {
                 if (status == DeliveryStatus.pending) {
                   _showMarkAsShippedDialog(context, ref, item);
                 } else {
-                  ref.read(sellerOrdersViewModelProvider.notifier).updateItemStatus(order.orderId, item.productId, 'delivered');
+                  ref.read(sellerOrdersViewModelProvider.notifier).updateItemStatus(order.orderId, item.productId, DeliveryStatus.delivered.value);
                 }
               },
             )
@@ -174,7 +172,7 @@ class _SellerOrderCard extends ConsumerWidget {
     );
   }
 
-  void _showMarkAsShippedDialog(BuildContext context, WidgetRef ref, CartItemDetailModel item) {
+  void _showMarkAsShippedDialog(BuildContext context, WidgetRef ref, OrderItem item) {
     final trackingController = TextEditingController();
     showDialog(
       context: context,

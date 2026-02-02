@@ -58,6 +58,12 @@ dependencies:
   collection: ^1.19.0
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.7
+  algolia_helper_flutter: ^1.6.0
+  algoliasearch: ^1.1.1
+  
+  # JSON serialization with immutable models
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
 
 
 dev_dependencies:
@@ -68,6 +74,10 @@ dev_dependencies:
   mockito: ^5.4.4
   build_runner: ^2.4.13
   fake_cloud_firestore: ^4.0.1
+  
+  # Code generation for freezed and json_serializable
+  freezed: ^2.5.7
+  json_serializable: ^6.9.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

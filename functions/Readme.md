@@ -3,6 +3,9 @@ firebase functions:config:set stripe.secret_key="STRIPE_SECRET_KEY_REDACTED"
 firebase functions:config:set stripe.webhook_secret="STRIPE_WEBHOOK_SECRET_REDACTED"
 firebase functions:secrets:set MAILJET_API_KEY
 firebase functions:secrets:set MAILJET_SECRET_KEY
+firebase functions:secrets:set ALGOLIA_APP_ID
+firebase functions:secrets:set ALGOLIA_SEARCH_API_KEY
+firebase functions:secrets:set ALGOLIA_WRITE_API_KEY
 
 
 

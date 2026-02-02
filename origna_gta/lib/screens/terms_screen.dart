@@ -35,7 +35,7 @@ class TermsScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B35).withValues(alpha: 0.08),
+                      color: const Color(0xFFFF6B35).withValues(alpha: 0.081),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: const Color(0xFFFF6B35).withValues(alpha: 0.2), width: 1),
                     ),

@@ -75,6 +75,8 @@ if IS_EMULATOR:
     MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_API_KEY", "")
     MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_SECRET_KEY", "")
     GEOAPIFY_API_KEY = os.environ.get("GEOAPIFY_API_KEY", "")
+    ALGOLIA_APP_ID = os.environ.get("ALGOLIA_APP_ID", "")
+    ALGOLIA_WRITE_API_KEY = os.environ.get("ALGOLIA_WRITE_API_KEY", "")
     SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "seller@orignagta.com")
 else:
     STRIPE_SECRET_KEY = params.SecretParam("STRIPE_SECRET_KEY").value
@@ -82,6 +84,8 @@ else:
     MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_API_KEY").value
     MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_SECRET_KEY").value
     GEOAPIFY_API_KEY = params.SecretParam("GEOAPIFY_API_KEY").value
+    ALGOLIA_APP_ID = params.SecretParam("ALGOLIA_APP_ID").value
+    ALGOLIA_WRITE_API_KEY = params.SecretParam("ALGOLIA_WRITE_API_KEY").value
     SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "seller@orignagta.com")
 
 # Stripe Tax Code Mapping

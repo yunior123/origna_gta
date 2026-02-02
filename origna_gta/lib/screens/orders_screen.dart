@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/orders/buyer_orders_viewmodel.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
-import 'package:origna_gta/widgets/rating_dialog.dart';
+import 'package:origna_gta/models/enum_extensions.dart';
+import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/shipping_approval_screen.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:origna_gta/widgets/rating_dialog.dart';
 
 class OrdersScreen extends ConsumerWidget {
   const OrdersScreen({super.key});
@@ -37,7 +38,7 @@ class OrdersScreen extends ConsumerWidget {
 
           // Check for pending shipping approvals
           final pendingApprovals = orders.where((o) {
-            return o.deliveryInfo['shippingApprovalStatus'] == ShippingApprovalStatus.pending.value;
+            return o.shippingApprovalStatus == ShippingApprovalStatus.pending;
           }).toList();
 
           return Column(
@@ -98,7 +99,7 @@ class OrdersScreen extends ConsumerWidget {
 
 /// Order card using ConsumerStatefulWidget for proper state management
 class _BuyerOrderCard extends ConsumerStatefulWidget {
-  final OrderModel order;
+  final Order order;
 
   const _BuyerOrderCard({required this.order});
 
@@ -113,8 +114,8 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
-    final isAuthorized = order.status == PaymentStatus.authorized.value;
-    final isPendingApproval = order.deliveryInfo['shippingApprovalStatus'] == ShippingApprovalStatus.pending.value;
+    final isAuthorized = order.paymentStatus == PaymentStatus.paymentReceived;
+    final isPendingApproval = order.shippingApprovalStatus == ShippingApprovalStatus.pending;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -147,22 +148,21 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
             if (isAuthorized) ...[const SizedBox(height: 12), _buildPaymentStatusBanner(isPendingApproval)],
 
             // Delivery Address
-            if (order.deliveryInfo.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
-                child: Row(
-                  children: [
-                    Icon(Icons.location_on_outlined, size: 18, color: Colors.grey[700]),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(order.deliveryInfo['formattedAddress'] ?? 'Address not provided', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                    ),
-                  ],
-                ),
+            // Delivery address section
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
+              child: Row(
+                children: [
+                  Icon(Icons.location_on_outlined, size: 18, color: Colors.grey[700]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(order.deliveryInfo.formattedAddress, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                  ),
+                ],
               ),
-            ],
+            ),
 
             const Divider(height: 24),
 
@@ -176,8 +176,8 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     );
   }
 
-  Widget _buildOrderItem(BuildContext context, CartItemDetailModel item, bool isOrderConfirmed) {
-    final deliveryStatus = DeliveryStatus.fromValue(item.deliveryStatus);
+  Widget _buildOrderItem(BuildContext context, OrderItem item, bool isOrderConfirmed) {
+    final deliveryStatus = item.deliveryStatus;
     final isShipped = deliveryStatus == DeliveryStatus.shipped;
     final isDelivered = deliveryStatus == DeliveryStatus.delivered;
     final isRated = _isProductRated(item.productId);
@@ -344,7 +344,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     );
   }
 
-  Future<void> _confirmReceipt(CartItemDetailModel item) async {
+  Future<void> _confirmReceipt(OrderItem item) async {
     final messenger = ScaffoldMessenger.of(context);
     final viewModel = ref.read(buyerOrdersViewModelProvider.notifier);
 
@@ -370,13 +370,13 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
   }
 
   /// Check if item is confirmed by buyer
-  bool _isItemConfirmed(CartItemDetailModel item) {
+  bool _isItemConfirmed(OrderItem item) {
     return item.confirmedByBuyer;
   }
 
   /// Check if a product has already been rated in this order
   bool _isProductRated(String productId) {
-    return widget.order.ratings.containsKey(productId);
+    return widget.order.ratings.any((rating) => rating.productId == productId);
   }
 
   Widget _productImage(String? url) {

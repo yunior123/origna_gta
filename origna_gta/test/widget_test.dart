@@ -9,26 +9,14 @@ import 'package:origna_gta/utils/utils.dart';
 void main() {
   group('App Smoke Tests', () {
     test('Address model can be instantiated', () {
-      final address = Address(
-        street: '123 Test St',
-        city: 'Toronto',
-        state: 'ON',
-        postalCode: 'M5V 1A1',
-        country: 'Canada',
-      );
+      final address = Address(street: '123 Test St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada');
 
       expect(address.city, 'Toronto');
       expect(address.state, 'ON');
     });
 
     test('UserModel can be instantiated', () {
-      final user = UserModel(
-        uid: 'test_user',
-        email: 'test@example.com',
-        name: 'Test User',
-        roles: ['buyer'],
-        createdAt: DateTime.now(),
-      );
+      final user = UserModel(uid: 'test_user', email: 'test@example.com', name: 'Test User', roles: ['buyer'], createdAt: DateTime.now());
 
       expect(user.uid, 'test_user');
       expect(user.roles.contains('buyer'), true);
@@ -40,18 +28,12 @@ void main() {
         name: 'Test Product',
         price: 29.99,
         imageUrls: [],
-        sellerAddress: Address(
-          street: '123 Test St',
-          city: 'Toronto',
-          state: 'ON',
-          postalCode: 'M5V 1A1',
-          country: 'Canada',
-        ),
+        sellerAddress: Address(street: '123 Test St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada'),
         description: 'A test product',
         sellerId: 'seller_123',
         stockQuantity: 10,
         categoryId: 1,
-        searchKeywords: ['test'],
+        keywords: ['test'],
       );
 
       expect(product.name, 'Test Product');

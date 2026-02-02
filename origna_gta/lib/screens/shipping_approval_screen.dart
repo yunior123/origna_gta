@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/shipping_approval_viewmodel.dart';
-import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 
 /// Screen for buyers to approve or reject shipping cost changes
@@ -52,7 +52,7 @@ class ShippingApprovalScreen extends ConsumerWidget {
 }
 
 class _ApprovalCard extends ConsumerStatefulWidget {
-  final OrderModel order;
+  final Order order;
 
   const _ApprovalCard({required this.order});
 

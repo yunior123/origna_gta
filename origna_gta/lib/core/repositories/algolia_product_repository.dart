@@ -1,0 +1,200 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:origna_gta/models/generated/models.dart';
+import 'package:origna_gta/services/algolia_service.dart';
+import 'package:origna_gta/utils/constants.dart';
+
+import 'product_repository.dart';
+
+/// Algolia-based product repository with Firestore fallback
+/// Provides fast search with automatic fallback to reliable Firestore queries
+class AlgoliaProductRepository implements ProductRepository {
+  final AlgoliaService _algoliaService;
+  final FirebaseFirestore _firestore;
+
+  AlgoliaProductRepository(this._algoliaService, this._firestore);
+
+  @override
+  Future<String> addProduct(Product product) async {
+    final docRef = await _firestore.collection(Collections.products).add(product.toJson());
+    return docRef.id;
+  }
+
+  @override
+  Future<void> deleteProduct(String productId) async {
+    await _firestore.collection(Collections.products).doc(productId).delete();
+  }
+
+  @override
+  Future<Product?> fetchProductById(String productId) async {
+    try {
+      final doc = await _firestore.collection(Collections.products).doc(productId).get();
+      if (!doc.exists) return null;
+      return Product.fromFirestore(doc);
+    } catch (e) {
+      if (kDebugMode) print('Error fetching product: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<ProductQueryResult> fetchProducts({String? searchQuery, int? categoryId, DocumentSnapshot? lastDocument, int pageSize = 20}) async {
+    try {
+      // Use Algolia for search
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        return await _searchWithAlgolia(searchQuery, categoryId, pageSize);
+      }
+
+      // Use Algolia for category filtering if available
+      if (categoryId != null) {
+        return await _searchWithAlgolia('', categoryId, pageSize);
+      }
+
+      // For empty queries, fall back to Firestore
+      return await _fetchFromFirestore(searchQuery: searchQuery, categoryId: categoryId, lastDocument: lastDocument, pageSize: pageSize);
+    } catch (e) {
+      if (kDebugMode) print('⚠️  Algolia error, falling back to Firestore: $e');
+
+      // Fallback to Firestore on any error
+      return await _fetchFromFirestore(searchQuery: searchQuery, categoryId: categoryId, lastDocument: lastDocument, pageSize: pageSize);
+    }
+  }
+
+  @override
+  Future<List<Product>> fetchProductsByIds(List<String> productIds) async {
+    if (productIds.isEmpty) return [];
+
+    final List<Product> results = [];
+    for (int i = 0; i < productIds.length; i += 30) {
+      final chunk = productIds.skip(i).take(30).toList();
+      final snapshot = await _firestore.collection(Collections.products).where(FieldPath.documentId, whereIn: chunk).where('isActive', isEqualTo: true).get();
+      results.addAll(snapshot.docs.map((doc) => Product.fromFirestore(doc)));
+    }
+    return results;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(String query) async {
+    // Could be enhanced with Algolia autocomplete in the future
+    if (query.isEmpty) return [];
+
+    final snapshot = await _firestore
+        .collection(Collections.products)
+        .where('keywords', arrayContains: query.toLowerCase())
+        .where('isActive', isEqualTo: true)
+        .limit(5)
+        .get();
+
+    return snapshot.docs.map((doc) => {'name': doc.data()['name'], 'productId': doc.id}).toList();
+  }
+
+  @override
+  Future<String?> getUploadUrl(String fileName) async {
+    throw UnimplementedError('Image upload URLs should be handled by FirebaseProductRepository');
+  }
+
+  @override
+  Future<void> submitRating(String orderId, String productId, int rating) async {
+    await _firestore.collection(Collections.products).doc(productId).update({
+      'rating': FieldValue.increment(rating.toDouble()),
+      'ratingCount': FieldValue.increment(1),
+    });
+  }
+
+  @override
+  Future<void> toggleFavorite(String userId, String productId) async {
+    final favRef = _firestore.collection(Collections.users).doc(userId).collection(Collections.favorites).doc(productId);
+
+    final doc = await favRef.get();
+    if (doc.exists) {
+      await favRef.delete();
+    } else {
+      await favRef.set({'timestamp': FieldValue.serverTimestamp()});
+    }
+  }
+
+  @override
+  Future<void> updateProduct(String productId, Map<String, dynamic> updates) async {
+    await _firestore.collection(Collections.products).doc(productId).update(updates);
+  }
+
+  @override
+  Future<List<String>> uploadImages(List<Uint8List> images, String productId) async {
+    throw UnimplementedError('Image upload should be handled by FirebaseProductRepository');
+  }
+
+  @override
+  Stream<Set<String>> watchFavorites(String userId) {
+    return _firestore
+        .collection(Collections.users)
+        .doc(userId)
+        .collection(Collections.favorites)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
+  }
+
+  Future<ProductQueryResult> _fetchFromFirestore({String? searchQuery, int? categoryId, DocumentSnapshot? lastDocument, int pageSize = 20}) async {
+    if (kDebugMode) print('📍 Using Firestore fallback');
+
+    Query<Map<String, dynamic>> query = _firestore.collection(Collections.products);
+
+    // Apply filters
+    query = query.where('isActive', isEqualTo: true);
+
+    if (categoryId != null) {
+      query = query.where('categoryId', isEqualTo: categoryId);
+    }
+
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      // Firestore array-contains search on keywords
+      final keywords = searchQuery.toLowerCase().split(' ');
+      if (keywords.isNotEmpty) {
+        query = query.where('keywords', arrayContains: keywords.first);
+      }
+    }
+
+    query = query.orderBy('dateCreated', descending: true);
+
+    if (lastDocument != null) {
+      query = query.startAfterDocument(lastDocument);
+    }
+
+    query = query.limit(pageSize);
+
+    final snapshot = await query.get();
+    final products = snapshot.docs.map((doc) => Product.fromFirestore(doc)).toList();
+
+    return ProductQueryResult(
+      products: products,
+      hasMore: snapshot.docs.length >= pageSize,
+      lastDocument: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
+    );
+  }
+
+  Future<ProductQueryResult> _searchWithAlgolia(String query, int? categoryId, int pageSize) async {
+    try {
+      // Trigger search
+      _algoliaService.search(query, categoryId: categoryId);
+
+      // Wait for response
+      final response = await _algoliaService.responses.first;
+
+      // Convert Algolia hits to Product
+      final products = response.hits.map((hit) {
+        final data = AlgoliaService.hitToProductMap(hit);
+        return Product.fromJson({...data, 'productId': data['productId'] ?? ''});
+      }).toList();
+
+      if (kDebugMode) print('✅ Algolia search returned ${products.length} products');
+
+      return ProductQueryResult(
+        products: products,
+        hasMore: response.hits.length >= pageSize,
+        lastDocument: null, // Algolia uses pagination differently
+      );
+    } catch (e) {
+      if (kDebugMode) print('❌ Algolia search failed: $e');
+      rethrow;
+    }
+  }
+}

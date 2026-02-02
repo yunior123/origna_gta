@@ -1,0 +1,12 @@
+{
+  "type": "string",
+  "enum": [
+    "pending",
+    "confirmed",
+    "shipped",
+    "delivered",
+    "cancelled",
+    "refunded"
+  ],
+  "description": "Order status values"
+}

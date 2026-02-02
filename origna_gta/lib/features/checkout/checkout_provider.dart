@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 /// StateNotifierProvider for checkout
@@ -142,6 +142,20 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
     if (user.email.trim().isEmpty) {
       return CheckoutError(message: 'Missing customer email');
+    }
+
+    // EMAIL VERIFICATION CHECK - CRITICAL BUSINESS LOGIC
+    // Prevent checkout if email is not verified
+    try {
+      final authRepository = _ref.read(authRepositoryProvider);
+      final isEmailVerified = await authRepository.isEmailVerified();
+
+      if (!isEmailVerified) {
+        return CheckoutError(message: 'Please verify your email before checkout', code: 'email-not-verified');
+      }
+    } catch (e) {
+      debugPrint('⚠️  Error checking email verification: $e');
+      // Don't block checkout if we can't verify, but log it
     }
 
     if (state.isProcessing) {

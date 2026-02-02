@@ -9,13 +9,6 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});
 
-  double _getCardAspectRatio(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (width < 360) return 0.6;
-    if (width < 600) return 0.65;
-    return 0.75;
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final favoritesAsync = ref.watch(favoritedProductsProvider);
@@ -53,11 +46,18 @@ class FavoritesScreen extends ConsumerWidget {
             itemCount: products.length,
             itemBuilder: (context, index) {
               final product = products[index];
-              return ProductCard(productId: product.id, product: product, userModel: userModel);
+              return ProductCard(productId: product.productId, product: product, userModel: userModel);
             },
           );
         },
       ),
     );
+  }
+
+  double _getCardAspectRatio(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 360) return 0.6;
+    if (width < 600) return 0.65;
+    return 0.75;
   }
 }

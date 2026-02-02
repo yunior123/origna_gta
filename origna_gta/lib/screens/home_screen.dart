@@ -19,156 +19,6 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final TextEditingController _searchController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-
-  /// Get responsive aspect ratio for product cards
-  double _getCardAspectRatio(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (width < 360) return 0.6; // Very small phones
-    if (width < 600) return 0.65; // Mobile phones
-    return 0.75; // Tablets and desktop
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
-      ref.read(homeViewModelProvider.notifier).loadProducts();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final homeNotifier = ref.read(homeViewModelProvider.notifier);
-
-    return Scaffold(
-      appBar: _buildAppBar(),
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          // Search Bar
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: TextField(
-                controller: _searchController,
-                onChanged: homeNotifier.onSearchChanged,
-                decoration: InputDecoration(
-                  hintText: 'Search products...',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                ),
-              ),
-            ),
-          ),
-
-          // Category Chips
-          SliverToBoxAdapter(child: _CategoryChips(homeNotifier: homeNotifier)),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-          // Product Grid
-          _ProductGrid(cardAspectRatio: _getCardAspectRatio(context), fallbackUserModel: widget.userModel),
-
-          // Pagination Loader
-          const _PaginationLoader(),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 50)),
-        ],
-      ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar() {
-    return PreferredSize(
-      preferredSize: const Size.fromHeight(70),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFFFF6B35), Color(0xFFFF8E53)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-          borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
-          boxShadow: [BoxShadow(color: const Color(0xFFFF6B35).withValues(alpha: 0.4), blurRadius: 15, offset: const Offset(0, 5))],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      duration: const Duration(milliseconds: 800),
-                      curve: Curves.elasticOut,
-                      builder: (context, value, child) {
-                        return Transform.scale(
-                          scale: value,
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(15)),
-                            child: const Icon(Icons.shopping_bag, color: Colors.white, size: 28),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'OrignaGta',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22, letterSpacing: 0.5),
-                    ),
-                  ],
-                ),
-                const Row(children: [_SettingsButton(), _AddProductButton(), _CartBadge()]),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// EXTRACTED WIDGETS - Each only rebuilds when its specific data changes
-// ============================================================================
-
-/// Settings button - only rebuilds when auth state changes
-class _SettingsButton extends ConsumerWidget {
-  const _SettingsButton();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-
-    return IconButton(
-      icon: const Icon(Icons.settings_outlined, color: Colors.white),
-      onPressed: () {
-        if (user == null) {
-          showLoginPrompt(context, text: "You need to sign in to access settings");
-          return;
-        }
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
-      },
-    );
-  }
-}
-
 /// Add product button - only rebuilds when user profile changes
 class _AddProductButton extends ConsumerWidget {
   const _AddProductButton();
@@ -193,6 +43,10 @@ class _AddProductButton extends ConsumerWidget {
     );
   }
 }
+
+// ============================================================================
+// EXTRACTED WIDGETS - Each only rebuilds when its specific data changes
+// ============================================================================
 
 /// Cart badge - only rebuilds when cart count or auth state changes
 class _CartBadge extends ConsumerWidget {
@@ -278,6 +132,149 @@ class _CategoryChips extends ConsumerWidget {
   }
 }
 
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  Widget build(BuildContext context) {
+    final homeNotifier = ref.read(homeViewModelProvider.notifier);
+
+    return Scaffold(
+      appBar: _buildAppBar(),
+      body: CustomScrollView(
+        controller: _scrollController,
+        slivers: [
+          // Search Bar
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextField(
+                controller: _searchController,
+                onChanged: homeNotifier.onSearchChanged,
+                decoration: InputDecoration(
+                  hintText: 'Search products...',
+                  prefixIcon: const Icon(Icons.search),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                ),
+              ),
+            ),
+          ),
+
+          // Category Chips
+          SliverToBoxAdapter(child: _CategoryChips(homeNotifier: homeNotifier)),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+          // Product Grid
+          _ProductGrid(cardAspectRatio: _getCardAspectRatio(context), fallbackUserModel: widget.userModel),
+
+          // Pagination Loader
+          const _PaginationLoader(),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 50)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(70),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [Color(0xFFFF6B35), Color(0xFFFF8E53)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
+          boxShadow: [BoxShadow(color: const Color(0xFFFF6B35).withValues(alpha: 0.4), blurRadius: 15, offset: const Offset(0, 5))],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.elasticOut,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(15)),
+                            child: const Icon(Icons.shopping_bag, color: Colors.white, size: 28),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'OrignaGta',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22, letterSpacing: 0.5),
+                    ),
+                  ],
+                ),
+                const Row(children: [_SettingsButton(), _AddProductButton(), _CartBadge()]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Get responsive aspect ratio for product cards
+  double _getCardAspectRatio(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 360) return 0.6; // Very small phones
+    if (width < 600) return 0.65; // Mobile phones
+    return 0.75; // Tablets and desktop
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
+      ref.read(homeViewModelProvider.notifier).loadProducts();
+    }
+  }
+}
+
+class _PaginationLoader extends ConsumerWidget {
+  const _PaginationLoader();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoadingMore = ref.watch(homeViewModelProvider.select((state) => state.isLoadingMore));
+
+    if (!isLoadingMore) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    return const SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 32),
+        child: Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35))),
+      ),
+    );
+  }
+}
+
 class _ProductGrid extends ConsumerWidget {
   final double cardAspectRatio;
   final UserModel? fallbackUserModel;
@@ -327,27 +324,30 @@ class _ProductGrid extends ConsumerWidget {
         ),
         delegate: SliverChildBuilderDelegate((context, index) {
           final product = products[index];
-          return ProductCard(productId: product.id, product: product, userModel: userProfile ?? fallbackUserModel);
+          return ProductCard(productId: product.productId, product: product, userModel: userProfile ?? fallbackUserModel);
         }, childCount: products.length),
       ),
     );
   }
 }
 
-class _PaginationLoader extends ConsumerWidget {
-  const _PaginationLoader();
+/// Settings button - only rebuilds when auth state changes
+class _SettingsButton extends ConsumerWidget {
+  const _SettingsButton();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isLoadingMore = ref.watch(homeViewModelProvider.select((state) => state.isLoadingMore));
+    final user = ref.watch(currentUserProvider);
 
-    if (!isLoadingMore) return const SliverToBoxAdapter(child: SizedBox.shrink());
-
-    return const SliverToBoxAdapter(
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 32),
-        child: Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35))),
-      ),
+    return IconButton(
+      icon: const Icon(Icons.settings_outlined, color: Colors.white),
+      onPressed: () {
+        if (user == null) {
+          showLoginPrompt(context, text: "You need to sign in to access settings");
+          return;
+        }
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+      },
     );
   }
 }

@@ -2021,11 +2021,52 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
 # STRIPE CONNECT - SELLER ONBOARDING & PAYOUTS
 # ============================================================================
 
+def _check_sanctions_list(name: str, email: str) -> tuple[bool, str]:
+    """
+    Check if user is on international sanctions lists.
+    Returns: (is_sanctioned, reason)
+    
+    NOTE: This is a placeholder implementation. In production, integrate with:
+    - OFAC (Office of Foreign Assets Control)
+    - UN Security Council Consolidated List
+    - EU Sanctions List
+    - Or use third-party KYC services like ComplyAdvantage, Trulioo, etc.
+    """
+    # Placeholder sanctions list (replace with real API calls)
+    SANCTIONED_KEYWORDS = [
+        'terrorist', 'sanctioned', 'blocked', 'denied',
+        # Add real sanctioned entities from official lists
+    ]
+    
+    # Convert to lowercase for case-insensitive matching
+    name_lower = name.lower()
+    email_lower = email.lower()
+    
+    # Check for obvious matches (very basic - NOT production-ready)
+    for keyword in SANCTIONED_KEYWORDS:
+        if keyword in name_lower or keyword in email_lower:
+            return True, f"Matched sanctions keyword: {keyword}"
+    
+    # In production: Call external KYC API here
+    # Example:
+    # response = requests.post('https://api.kyc-provider.com/check', {
+    #     'name': name,
+    #     'email': email,
+    #     'dob': dob,  # Would need to collect this
+    # })
+    # return response.json()['is_sanctioned'], response.json()['reason']
+    
+    return False, "No sanctions match found"
+
+
 @https_fn.on_call()
 def create_connect_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Create a Stripe Connect Express account for a seller.
     Called when a user wants to become a seller.
+    
+    SECURITY: Includes sanctions list checking (basic implementation).
+    TODO: Integrate with production KYC service (OFAC, ComplyAdvantage, etc.)
     """
     if not req.auth:
         raise https_fn.HttpsError(
@@ -2048,6 +2089,35 @@ def create_connect_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
             )
 
         user_data = user_doc.to_dict()
+        
+        # ============================================
+        # 🔒 SECURITY: Sanctions List Check
+        # ============================================
+        user_name = user_data.get('displayName', '')
+        user_email = user_data.get('email', '')
+        
+        is_sanctioned, sanction_reason = _check_sanctions_list(user_name, user_email)
+        
+        if is_sanctioned:
+            print(f"🚨 SANCTIONS ALERT: User {user_id} failed KYC check: {sanction_reason}")
+            
+            # Log to security collection for admin review
+            db.collection('security_alerts').add({
+                'type': 'sanctions_match',
+                'userId': user_id,
+                'userName': user_name,
+                'userEmail': user_email,
+                'reason': sanction_reason,
+                'action': 'seller_registration_blocked',
+                'timestamp': firestore.SERVER_TIMESTAMP,
+            })
+            
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+                message="Unable to complete seller registration. Please contact support for assistance."
+            )
+        
+        print(f"  ✅ KYC check passed for {user_email}")
 
         # Check if user already has a Stripe account
         existing_account_id = user_data.get('stripeAccountId')
@@ -2125,11 +2195,26 @@ def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Generate Stripe onboarding link for a seller.
     Called to start or resume the onboarding process.
+    SECURITY: Rate limited to 10 requests per 5 minutes.
     """
     if not req.auth:
         raise https_fn.HttpsError(
             code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
             message="Must be logged in"
+        )
+    
+    # Rate limiting: 10 requests per 5 minutes (prevent link generation spam)
+    identifier = rate_limiter.get_identifier(req)
+    allowed, message = rate_limiter.check_rate_limit(
+        identifier=identifier,
+        action='create_account_link',
+        max_requests=10,
+        window_minutes=5
+    )
+    if not allowed:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.RESOURCE_EXHAUSTED,
+            message=message
         )
 
     user_id = req.auth.uid

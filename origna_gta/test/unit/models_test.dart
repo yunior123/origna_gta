@@ -224,7 +224,7 @@ void main() {
         'categoryId': 1,
         'rating': 4.5,
         'ratingCount': 100,
-        'searchKeywords': ['test', 'product'],
+        'keywords': ['test', 'product'],
         'weightKg': 0.5,
         'isLocalDeliveryOnly': false,
         'estimatedShipDays': 3,
@@ -275,7 +275,7 @@ void main() {
         sellerId: 'seller123',
         stockQuantity: 50,
         categoryId: 1,
-        searchKeywords: ['test'],
+        keywords: ['test'],
         rating: 4.5,
         ratingCount: 100,
       );

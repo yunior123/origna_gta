@@ -28,4 +28,7 @@ class ConfigService {
   String get geoapifyKey => _remoteConfig.getString('geoapify_api_key');
 
   String get sentryDnsKey => _remoteConfig.getString('sentry_dns');
+
+  String get algoliaAppId => _remoteConfig.getString('algolia_app_id');
+  String get algoliaSearchApiKey => _remoteConfig.getString('algolia_search_api_key');
 }

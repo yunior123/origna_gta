@@ -14,10 +14,18 @@ Scale target: 100M+ users/year.
 Single developer project optimized for maintainability, cost, and safety.
 Always update tests, database rules, indexes, sh deploy file, schema file, backend code and readme when changing code. Keep everything in sync. A nice project with good practices and solid architecture and folders and files structure.
 We start from empty database and no users for production.
+Always use common schema between frontend and backend. Database schema is source of truth.
+make sure rules are strict and safe. 
+Add tests to github workflow
+
+TODO audit json schema application in backend and frontend, make sure that it  si used 100 percent
+TODO audit the logic of different workflow of the app, auth, paytments,seller creation, orders, shipping, make sure there are no loose ends
+TODO add more e2e tests for critical flows like checkout, seller onboarding, seller orders view, shipping confirmation, order lifecycle, etc, 
+
 
 TECH STACK
 Frontend: Flutter (Web, Android, iOS)
-Backend: Firebase (Auth, Functions, Firestore), Stripe Connect Express, R2 Cloudflare, Geoapify
+Backend: Firebase (Auth, Functions, Firestore), Stripe Connect Express, R2 Cloudflare, Geoapify, Algolia
 Monitoring: Sentry
 Hosting: Firebase Hosting + Cloudflare
 Future: OCI (Appwrite + Typesense), Cloudflare R2

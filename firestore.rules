@@ -71,6 +71,30 @@ service cloud.firestore {
     }
     
     // ================================================================
+    // ORDER STATE MACHINE VALIDATION - CRITICAL BUSINESS LOGIC
+    // ================================================================
+    function isValidOrderStateTransition(currentStatus, newStatus) {
+      // Define valid state transitions
+      // This prevents data corruption from invalid status changes
+      let validTransitions = {
+        'pending': ['confirmed', 'cancelled', 'failed'],           // Initial state -> completed states
+        'confirmed': ['processing', 'cancelled'],                  // After payment confirmed
+        'processing': ['shipped', 'cancelled'],                    // Seller processing
+        'shipped': ['delivered', 'cancelled'],                     // In transit
+        'delivered': ['refunded', 'partially_refunded'],           // After delivery
+        'cancelled': [],                                            // Terminal state - no transitions
+        'failed': ['pending'],                                      // Retry -> pending
+        'expired': ['pending'],                                     // Retry -> pending
+        'refunded': [],                                             // Terminal state
+        'partially_refunded': ['refunded'],                         // Can become fully refunded
+      };
+      
+      // Get valid next states for current status
+      let allowedNextStates = validTransitions.get(currentStatus, []);
+      return newStatus in allowedNextStates;
+    }
+    
+    // ================================================================
     // USERS COLLECTION
     // ================================================================
     match /users/{userId} {
@@ -153,15 +177,15 @@ service cloud.firestore {
         request.resource.data.keys().hasAll([
           'name', 'price', 'sellerId', 'categoryId',
           'stockQuantity', 'imageUrls', 'description',
-          'sellerAddress', 'searchKeywords', 'dateCreated'
+          'sellerAddress', 'keywords', 'dateCreated'
         ]) &&
         isStringWithLen(request.resource.data.name, 2, 120) &&
         isStringWithLen(request.resource.data.description, 10, 4000) &&
         isValidAddress(request.resource.data.sellerAddress) &&
         request.resource.data.imageUrls is list &&
         request.resource.data.imageUrls.size() >= 1 && request.resource.data.imageUrls.size() <= 5 &&
-        request.resource.data.searchKeywords is list &&
-        request.resource.data.searchKeywords.size() <= 30 &&
+        request.resource.data.keywords is list &&
+        request.resource.data.keywords.size() <= 30 &&
         request.resource.data.isActive == true &&
         request.resource.data.stockQuantity >= 0 &&
         request.resource.data.price > 0;
@@ -175,8 +199,8 @@ service cloud.firestore {
           isValidAddress(request.resource.data.sellerAddress) &&
           request.resource.data.imageUrls is list &&
           request.resource.data.imageUrls.size() >= 1 && request.resource.data.imageUrls.size() <= 5 &&
-          request.resource.data.searchKeywords is list &&
-          request.resource.data.searchKeywords.size() <= 30 &&
+          request.resource.data.keywords is list &&
+          request.resource.data.keywords.size() <= 30 &&
           request.resource.data.stockQuantity >= 0 &&
           request.resource.data.isActive == resource.data.isActive &&
           !request.resource.data.keys().hasAny(['deletedAt']));
@@ -203,8 +227,10 @@ service cloud.firestore {
       // This prevents client-side order manipulation
       allow create: if false;
       
-      // Backend/admin only
-      allow update: if isAdmin();
+      // Backend/admin only with state machine validation
+      allow update: if isAdmin() &&
+        // CRITICAL: Validate order status transitions
+        isValidOrderStateTransition(resource.data.status, request.resource.data.status);
       
       // No one can delete orders (only backend)
       allow delete: if false;

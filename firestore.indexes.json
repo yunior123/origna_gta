@@ -5,7 +5,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {"fieldPath": "isActive", "order": "ASCENDING"},
-        {"fieldPath": "searchKeywords", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "keywords", "arrayConfig": "CONTAINS"},
         {"fieldPath": "dateCreated", "order": "DESCENDING"}
       ]
     },

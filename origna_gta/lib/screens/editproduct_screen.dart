@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -9,7 +9,7 @@ import '../../features/products/edit_product_state.dart';
 import '../../features/products/edit_product_viewmodel.dart';
 
 class EditProductScreen extends ConsumerStatefulWidget {
-  final ProductModel product;
+  final Product product;
 
   const EditProductScreen({super.key, required this.product});
 
@@ -323,16 +323,28 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _shipDaysController = TextEditingController(text: p.estimatedShipDays.toString());
 
     // Initialize delivery options
-    final standardOpt = p.getDeliveryOption(DeliverySpeed.standard) ?? SellerDeliveryOption.defaultOptions()[0];
-    final expressOpt = p.getDeliveryOption(DeliverySpeed.express) ?? SellerDeliveryOption.defaultOptions()[1];
-    final sameDayOpt = p.getDeliveryOption(DeliverySpeed.sameDay) ?? SellerDeliveryOption.defaultOptions()[2];
+    final standardOpt = _findOption(
+      p.deliveryOptions,
+      'standard',
+      const SellerDeliveryOption(type: 'standard', description: 'Standard Delivery', cost: 0.0, estimatedDays: 5),
+    );
+    final expressOpt = _findOption(
+      p.deliveryOptions,
+      'express',
+      const SellerDeliveryOption(type: 'express', description: 'Express Delivery', cost: 9.99, estimatedDays: 2),
+    );
+    final sameDayOpt = _findOption(
+      p.deliveryOptions,
+      'same_day',
+      const SellerDeliveryOption(type: 'same_day', description: 'Same Day Delivery', cost: 14.99, estimatedDays: 0),
+    );
 
     _standardDaysController = TextEditingController(text: standardOpt.estimatedDays.toString());
-    _standardPriceController = TextEditingController(text: standardOpt.price.toStringAsFixed(2));
+    _standardPriceController = TextEditingController(text: standardOpt.cost.toStringAsFixed(2));
     _expressDaysController = TextEditingController(text: expressOpt.estimatedDays.toString());
-    _expressPriceController = TextEditingController(text: expressOpt.price.toStringAsFixed(2));
-    _sameDayPriceController = TextEditingController(text: sameDayOpt.price.toStringAsFixed(2));
-    _sameDayRadiusController = TextEditingController(text: (sameDayOpt.maxRadiusKm ?? 50).toString());
+    _expressPriceController = TextEditingController(text: expressOpt.cost.toStringAsFixed(2));
+    _sameDayPriceController = TextEditingController(text: sameDayOpt.cost.toStringAsFixed(2));
+    _sameDayRadiusController = TextEditingController(text: '50');
   }
 
   Widget _buildAddressSuggestions(EditProductState state, EditProductViewModel viewModel) {
@@ -366,7 +378,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             _buildDeliveryTile(
               'Standard Delivery',
               state.standardEnabled,
-              (v) => viewModel.setDeliveryEnabled(DeliverySpeed.standard, v),
+              (v) => viewModel.setStandardEnabled(v),
               _standardDaysController,
               _standardPriceController,
               'Days',
@@ -374,7 +386,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             _buildDeliveryTile(
               'Express Delivery',
               state.expressEnabled,
-              (v) => viewModel.setDeliveryEnabled(DeliverySpeed.express, v),
+              (v) => viewModel.setExpressEnabled(v),
               _expressDaysController,
               _expressPriceController,
               'Days',
@@ -382,7 +394,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             _buildDeliveryTile(
               'Same Day Delivery',
               state.sameDayEnabled,
-              (v) => viewModel.setDeliveryEnabled(DeliverySpeed.sameDay, v),
+              (v) => viewModel.setSameDayEnabled(v),
               null,
               _sameDayPriceController,
               'Radius (km)',
@@ -488,29 +500,36 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
   }
 
+  SellerDeliveryOption _findOption(List<SellerDeliveryOption> options, String type, SellerDeliveryOption fallback) {
+    return options.firstWhere((o) => o.type == type, orElse: () => fallback);
+  }
+
   void _handleSave(EditProductViewModel viewModel) {
     if (!_formKey.currentState!.validate()) return;
 
-    final deliveryOptions = [
-      SellerDeliveryOption(
-        speed: DeliverySpeed.standard,
-        isEnabled: ref.read(editProductViewModelProvider(widget.product)).standardEnabled,
-        estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
-        price: double.tryParse(_standardPriceController.text) ?? 0.0,
-      ),
-      SellerDeliveryOption(
-        speed: DeliverySpeed.express,
-        isEnabled: ref.read(editProductViewModelProvider(widget.product)).expressEnabled,
-        estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
-        price: double.tryParse(_expressPriceController.text) ?? 9.99,
-      ),
-      SellerDeliveryOption(
-        speed: DeliverySpeed.sameDay,
-        isEnabled: ref.read(editProductViewModelProvider(widget.product)).sameDayEnabled,
-        estimatedDays: 0,
-        price: double.tryParse(_sameDayPriceController.text) ?? 14.99,
-        maxRadiusKm: int.tryParse(_sameDayRadiusController.text) ?? 50,
-      ),
+    final state = ref.read(editProductViewModelProvider(widget.product));
+    final deliveryOptions = <SellerDeliveryOption>[
+      if (state.standardEnabled)
+        SellerDeliveryOption(
+          type: 'standard',
+          description: 'Standard Delivery',
+          estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
+          cost: double.tryParse(_standardPriceController.text) ?? 0.0,
+        ),
+      if (state.expressEnabled)
+        SellerDeliveryOption(
+          type: 'express',
+          description: 'Express Delivery',
+          estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
+          cost: double.tryParse(_expressPriceController.text) ?? 9.99,
+        ),
+      if (state.sameDayEnabled)
+        SellerDeliveryOption(
+          type: 'same_day',
+          description: 'Same Day Delivery',
+          estimatedDays: 0,
+          cost: double.tryParse(_sameDayPriceController.text) ?? 14.99,
+        ),
     ];
 
     viewModel.updateProduct(

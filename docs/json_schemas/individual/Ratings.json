@@ -1,0 +1,40 @@
+{
+  "description": "Product ratings for an order\nReplaces Map<String, dynamic> with typed object",
+  "properties": {
+    "productId": {
+      "minLength": 1,
+      "title": "Productid",
+      "type": "string"
+    },
+    "rating": {
+      "maximum": 5,
+      "minimum": 0,
+      "title": "Rating",
+      "type": "number"
+    },
+    "review": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Review"
+    },
+    "createdAt": {
+      "format": "date-time",
+      "title": "Createdat",
+      "type": "string"
+    }
+  },
+  "required": [
+    "productId",
+    "rating"
+  ],
+  "title": "Ratings",
+  "type": "object"
+}

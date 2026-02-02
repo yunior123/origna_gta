@@ -57,6 +57,31 @@ sequenceDiagram
 - Flutter analyze: (cd origna_gta) flutter analyze
 - Flutter tests: (cd origna_gta) flutter test
 - Functions tests: (cd functions) pytest
+- Configure Algolia index: Call `configure_algolia` Cloud Function (admin only)
+
+## Search Architecture (Algolia)
+- **Primary Search**: Algolia for fast, typo-tolerant product search
+- **Fallback**: Firestore keyword search if Algolia unavailable
+- **Auto-Indexing**: Products automatically synced to Algolia via Firestore triggers
+- **Credentials**: Stored in Firebase Remote Config and Google Secret Manager
+  - `ALGOLIA_APP_ID` (public)
+  - `ALGOLIA_SEARCH_API_KEY` (search-only, frontend-safe)
+  - `ALGOLIA_WRITE_API_KEY` (backend-only, in Cloud Functions)
+
+**Algolia Features**:
+- Instant search with debouncing (500ms)
+- Category filtering
+- Searchable attributes: name, description, keywords
+- Firestore field name: keywords (array) for both Algolia and fallback
+- Custom ranking: rating → ratingCount → dateCreated
+- Highlighting enabled
+- 20 results per page
+
+**Setup**:
+1. Add keys to `.env` and Firebase Remote Config
+2. Deploy Cloud Functions: `firebase deploy --only functions`
+3. Configure index settings: Call `configure_algolia` function once
+4. Products auto-index on create/update/delete
 
 ## Docs
 - App README: origna_gta/README.md
@@ -65,3 +90,4 @@ sequenceDiagram
 ## Environments
 - Canada-only delivery enforced in Functions.
 - Stripe Connect Express direct charges, manual capture.
+- Algolia search with Firestore fallback.

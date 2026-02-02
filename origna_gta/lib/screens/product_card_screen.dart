@@ -5,6 +5,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/product_actions_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
+import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/editproduct_screen.dart';
 import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
@@ -13,7 +14,7 @@ import 'package:shimmer/shimmer.dart';
 
 class ProductCard extends ConsumerStatefulWidget {
   final String productId;
-  final ProductModel product;
+  final Product product;
   final UserModel? userModel;
 
   const ProductCard({super.key, required this.productId, required this.product, required this.userModel});
@@ -54,7 +55,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => ProductDetailScreen(productId: widget.productId, product: widget.product.toMap()),
+            builder: (_) => ProductDetailScreen(productId: widget.productId, product: widget.product.toJson()),
           ),
         );
       },
@@ -266,6 +267,11 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
   }
 
+  // Add a utility function to validate image URLs
+  bool isValidImageUrl(String url) {
+    return url.isNotEmpty && Uri.tryParse(url)?.hasAbsolutePath == true;
+  }
+
   Future<void> _deleteProduct() async {
     final messenger = ScaffoldMessenger.of(context);
     final viewModel = ref.read(productActionsViewModelProvider.notifier);
@@ -323,10 +329,5 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
         messenger.showSnackBar(SnackBar(content: Text('Error updating favorites: $e'), backgroundColor: Colors.red[700]));
       }
     }
-  }
-
-  // Add a utility function to validate image URLs
-  bool isValidImageUrl(String url) {
-    return url.isNotEmpty && Uri.tryParse(url)?.hasAbsolutePath == true;
   }
 }

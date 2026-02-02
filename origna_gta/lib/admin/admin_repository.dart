@@ -27,7 +27,7 @@ class FirebaseAdminRepository implements AdminRepository {
       'isActive': false,
       'deletedAt': FieldValue.serverTimestamp(),
       'stockQuantity': 0,
-      'searchKeywords': [],
+      'keywords': [],
     });
   }
 

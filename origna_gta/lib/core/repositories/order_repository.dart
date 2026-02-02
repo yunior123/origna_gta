@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/models/generated/models.dart' as models;
+import 'package:origna_gta/utils/constants.dart' as constants;
 
 class FirebaseOrderRepository implements OrderRepository {
   final FirebaseFirestore _firestore;
@@ -31,10 +32,10 @@ class FirebaseOrderRepository implements OrderRepository {
   }
 
   @override
-  Future<Map<String, dynamic>?> fetchOrderById(String orderId) async {
+  Future<models.Order?> fetchOrderById(String orderId) async {
     final doc = await _firestore.collection('orders').doc(orderId).get();
     if (!doc.exists) return null;
-    return {'id': doc.id, ...doc.data()!};
+    return models.Order.fromFirestore(doc);
   }
 
   @override
@@ -63,40 +64,39 @@ class FirebaseOrderRepository implements OrderRepository {
   }
 
   @override
-  Stream<List<Map<String, dynamic>>> watchBuyerOrders(String userId) {
+  Stream<List<models.Order>> watchBuyerOrders(String userId) {
     return _firestore
         .collection('orders')
         .where('userId', isEqualTo: userId)
-        .where('paymentStatus', whereIn: [PaymentStatus.paid.value, PaymentStatus.authorized.value])
+        .where('paymentStatus', whereIn: [constants.PaymentStatus.paid.value, constants.PaymentStatus.authorized.value])
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
+        .map((snapshot) => snapshot.docs.map((doc) => models.Order.fromFirestore(doc)).toList());
   }
 
   @override
-  Stream<Map<String, dynamic>?> watchPaidOrderBySession(String sessionId) {
+  Stream<models.Order?> watchPaidOrderBySession(String sessionId) {
     return _firestore
         .collection('orders')
         .where('stripeSessionId', isEqualTo: sessionId)
-        .where('paymentStatus', isEqualTo: PaymentStatus.paid.value)
+        .where('paymentStatus', isEqualTo: constants.PaymentStatus.paid.value)
         .limit(1)
         .snapshots()
         .map((snapshot) {
           if (snapshot.docs.isEmpty) return null;
-          final doc = snapshot.docs.first;
-          return {'id': doc.id, ...doc.data()};
+          return models.Order.fromFirestore(snapshot.docs.first);
         });
   }
 
   @override
-  Stream<List<Map<String, dynamic>>> watchSellerOrders(String userId) {
+  Stream<List<models.Order>> watchSellerOrders(String userId) {
     return _firestore
         .collection('orders')
         .where('sellerIds', arrayContains: userId)
         .where('paymentStatus', whereIn: ['paid', 'authorized'])
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
+        .map((snapshot) => snapshot.docs.map((doc) => models.Order.fromFirestore(doc)).toList());
   }
 }
 
@@ -105,11 +105,11 @@ abstract class OrderRepository {
   Future<void> capturePayment(String orderId);
   Future<void> confirmReceipt(String orderId, List<String> itemIds);
   Future<Map<String, dynamic>> createCheckoutSession(Map<String, dynamic> orderData);
-  Future<Map<String, dynamic>?> fetchOrderById(String orderId);
+  Future<models.Order?> fetchOrderById(String orderId);
   Future<void> updateItemStatus(String orderId, String itemId, String status, {String? trackingNumber, String? carrier});
   Future<void> updateLastSession(String userId, String sessionId, String orderId);
   Future<void> updateShippingCost(String orderId, double newShippingCost, String reason);
-  Stream<List<Map<String, dynamic>>> watchBuyerOrders(String userId);
-  Stream<Map<String, dynamic>?> watchPaidOrderBySession(String sessionId);
-  Stream<List<Map<String, dynamic>>> watchSellerOrders(String userId);
+  Stream<List<models.Order>> watchBuyerOrders(String userId);
+  Stream<models.Order?> watchPaidOrderBySession(String sessionId);
+  Stream<List<models.Order>> watchSellerOrders(String userId);
 }

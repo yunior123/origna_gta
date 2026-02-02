@@ -5,6 +5,13 @@ from typing import Any, Dict, Optional
 from firebase_functions import https_fn
 from firebase_admin import firestore
 from config import IS_EMULATOR
+from pydantic import ValidationError
+
+# Import Pydantic models
+from models.base import Address
+from models.product import Product
+from models.order import OrderItem, Order
+from models.user import User
 
 def create_success_response(data: Dict[str, Any], status_code: int = 200) -> https_fn.Response:
     """Create standardized success response"""
@@ -107,86 +114,55 @@ def validate_postal_code(postal_code: str) -> str:
     return cleaned
 
 
-def validate_address_map(address: Dict[str, Any]) -> Dict[str, Any]:
-    """Validate and sanitize delivery address."""
-    if not isinstance(address, dict):
-        raise ValueError("Invalid address payload")
-
-    required_fields = ['street', 'city', 'state', 'postalCode', 'country']
-    missing = [f for f in required_fields if not str(address.get(f, '')).strip()]
-    if missing:
-        raise ValueError(f"Missing address fields: {', '.join(missing)}")
-
-    street = sanitize_text(address.get('street'), MAX_STREET_LENGTH, field_name="street", min_length=3)
-    city = sanitize_text(address.get('city'), MAX_CITY_LENGTH, field_name="city", min_length=2)
-    state = sanitize_text(address.get('state'), 2, field_name="state", min_length=2).upper()
-    country = sanitize_text(address.get('country'), 20, field_name="country", min_length=2)
-    postal_code = validate_postal_code(address.get('postalCode'))
-
-    sanitized = {
-        "street": street,
-        "city": city,
-        "state": state,
-        "postalCode": postal_code,
-        "country": country
-    }
-
-    apartment = address.get('apartment')
-    if apartment is not None and str(apartment).strip() != "":
-        sanitized["apartment"] = sanitize_text(apartment, 20, field_name="apartment", min_length=1)
-
-    phone_number = address.get('phoneNumber')
-    if phone_number is not None and str(phone_number).strip() != "":
-        sanitized["phoneNumber"] = validate_phone(phone_number)
-
-    label = address.get('label')
-    if label is not None and str(label).strip() != "":
-        sanitized["label"] = sanitize_text(label, 30, field_name="label", min_length=1)
-
-    is_default = address.get('isDefault')
-    if is_default is not None:
-        if not isinstance(is_default, bool):
-            raise ValueError("Invalid isDefault flag")
-        sanitized["isDefault"] = is_default
-
-    latitude = address.get('latitude')
-    longitude = address.get('longitude')
-    if latitude is not None:
-        if not isinstance(latitude, (int, float)) or latitude < -90 or latitude > 90:
-            raise ValueError("Invalid latitude")
-        sanitized["latitude"] = float(latitude)
-    if longitude is not None:
-        if not isinstance(longitude, (int, float)) or longitude < -180 or longitude > 180:
-            raise ValueError("Invalid longitude")
-        sanitized["longitude"] = float(longitude)
-
-    return sanitized
+def validate_address_map(address: Dict[str, Any]) -> Address:
+    """
+    Validate and sanitize delivery address using Pydantic Address model.
+    Returns validated Address object.
+    Raises ValueError with detailed error message on validation failure.
+    """
+    try:
+        # Pydantic will handle all validation automatically
+        validated_address = Address(**address)
+        return validated_address
+    except ValidationError as e:
+        # Extract first error for cleaner message
+        errors = e.errors()
+        if errors:
+            field = errors[0].get('loc', ['unknown'])[0]
+            msg = errors[0].get('msg', 'Invalid value')
+            raise ValueError(f"Address validation failed - {field}: {msg}")
+        raise ValueError("Invalid address data")
 
 def validate_item(item: Dict) -> tuple[bool, str]:
-    """Validate individual item data"""
-    if not item.get('sellerId'):
-        return False, "sellerId required for all items"
-    if not item.get('productId'):
-        return False, "productId required for all items"
-    quantity = item.get('quantity', 0)
-    if not isinstance(quantity, int):
-        return False, "quantity must be integer"
-    if quantity <= 0:
-        return False, "quantity must be positive"
-    if quantity > 100:
-        return False, "quantity exceeds maximum"
-    if item.get('price', 0) < 0:
-        return False, "price cannot be negative"
-    if not item.get('name'):
-        return False, "name required for all items"
+    """
+    Validate individual item data using OrderItem model.
+    Returns (True, "") on success or (False, error_message) on failure.
+    """
     try:
-        sanitize_text(item.get('name'), 120, field_name="item name", min_length=1)
-    except ValueError as e:
+        # Create OrderItem to validate structure
+        validated_item = OrderItem(**item)
+        
+        # Additional business rules
+        if validated_item.quantity > 100:
+            return False, "quantity exceeds maximum (100)"
+        
+        return True, ""
+    except ValidationError as e:
+        errors = e.errors()
+        if errors:
+            field = errors[0].get('loc', ['unknown'])[0]
+            msg = errors[0].get('msg', 'Invalid value')
+            return False, f"{field}: {msg}"
+        return False, "Invalid item data"
+    except Exception as e:
         return False, str(e)
-    return True, ""
 
 def validate_order_data(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
-    """Validate order data structure"""
+    """
+    Validate order data structure using Pydantic models.
+    This is a lightweight check before creating full Order object.
+    Returns (True, None) on success or (False, error_message) on failure.
+    """
     required_fields = ['userId', 'customerEmail', 'amount', 'items', 'deliveryInfo']
     for field in required_fields:
         if field not in data:
@@ -197,20 +173,25 @@ def validate_order_data(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
     if not isinstance(data['items'], list) or len(data['items']) == 0:
         return False, "Invalid items: must be non-empty array"
     
+    # Validate email using Pydantic (faster than regex)
     try:
-        sanitize_email(data['customerEmail'])
-    except ValueError:
+        from pydantic import EmailStr
+        EmailStr._validate(data['customerEmail'])
+    except Exception:
         return False, "Invalid email address format"
 
+    # Validate address using Pydantic Address model
     try:
         validate_address_map(data['deliveryInfo'])
     except ValueError as e:
         return False, str(e)
     
+    # Validate each item
     for idx, item in enumerate(data['items']):
         is_valid, error_msg = validate_item(item)
         if not is_valid:
             return False, f"Item {idx}: {error_msg}"
+    
     return True, None
 
 def log_webhook_to_database(db, event_id: str, event_type: str, payload_size: int, signature_verified: bool, 
@@ -241,3 +222,49 @@ def log_webhook_to_database(db, event_id: str, event_type: str, payload_size: in
         print(f"✅ Logged webhook {event_id} to database")
     except Exception as e:
         print(f"⚠️ Failed to log webhook to database: {str(e)}")
+
+# ============================================================================
+# ORDER STATE MACHINE VALIDATION - CRITICAL BUSINESS LOGIC
+# ============================================================================
+
+def is_valid_order_status_transition(current_status: str, new_status: str) -> bool:
+    """
+    CRITICAL BUSINESS LOGIC: Validate order status transitions
+    
+    Prevents data corruption from invalid state changes.
+    This mirrors the Firestore rules validation.
+    
+    Valid transitions:
+    - pending -> [confirmed, cancelled, failed]
+    - confirmed -> [processing, cancelled]
+    - processing -> [shipped, cancelled]
+    - shipped -> [delivered, cancelled]
+    - delivered -> [refunded, partially_refunded]
+    - cancelled -> [] (terminal)
+    - failed -> [pending] (retry)
+    - expired -> [pending] (retry)
+    - refunded -> [] (terminal)
+    - partially_refunded -> [refunded]
+    """
+    valid_transitions = {
+        'pending': ['confirmed', 'cancelled', 'failed'],
+        'confirmed': ['processing', 'cancelled'],
+        'processing': ['shipped', 'cancelled'],
+        'shipped': ['delivered', 'cancelled'],
+        'delivered': ['refunded', 'partially_refunded'],
+        'cancelled': [],
+        'failed': ['pending'],
+        'expired': ['pending'],
+        'refunded': [],
+        'partially_refunded': ['refunded'],
+    }
+    
+    allowed_next_states = valid_transitions.get(current_status, [])
+    is_valid = new_status in allowed_next_states
+    
+    if not is_valid:
+        print(f"❌ INVALID STATE TRANSITION: {current_status} → {new_status}")
+    else:
+        print(f"✅ Valid state transition: {current_status} → {new_status}")
+    
+    return is_valid

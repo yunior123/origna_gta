@@ -210,7 +210,7 @@
           "default": 0,
           "description": "Number of ratings received"
         },
-        "searchKeywords": {
+        "keywords": {
           "type": "array<string>",
           "required": true,
           "description": "Keywords for search functionality",
@@ -242,9 +242,9 @@
           "description": "For category browsing (active only)"
         },
         {
-          "fields": ["isActive", "searchKeywords", "dateCreated desc"],
+          "fields": ["isActive", "keywords", "dateCreated desc"],
           "description": "For product search (active only)"
-        },
+        }
         {
           "fields": ["isActive", "__name__"],
           "description": "For ID batch fetch with active filter"

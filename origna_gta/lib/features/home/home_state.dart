@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/models/generated/models.dart';
 
 class HomeState {
-  final List<ProductModel> products;
+  final List<Product> products;
   final bool isLoading;
   final bool isLoadingMore;
   final bool hasMore;
@@ -23,7 +23,7 @@ class HomeState {
   });
 
   HomeState copyWith({
-    List<ProductModel>? products,
+    List<Product>? products,
     bool? isLoading,
     bool? isLoadingMore,
     bool? hasMore,
