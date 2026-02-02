@@ -5,6 +5,8 @@ import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/utils/utils.dart'; // For UserModel
 import 'package:origna_gta/widgets/custom_app_bar.dart'; // Assuming this exists based on your code
+import 'package:origna_gta/widgets/design_tokens.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 import '../features/seller/seller_registration_view_model.dart';
 
 class SellerRegistrationScreen extends ConsumerStatefulWidget {
@@ -38,66 +40,126 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     // Watch User Data
     final userProfileAsync = ref.watch(userProfileProvider);
     // Watch ViewModel State (Loading/Error)
     final viewState = ref.watch(sellerRegistrationViewModelProvider);
     final viewModel = ref.read(sellerRegistrationViewModelProvider.notifier);
 
-    return Scaffold(
-       appBar: AppBarFactory.simple(title: 'Become a Seller'),
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: userProfileAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text('Error loading profile: $error')),
-        data: (userModel) {
-          if (userModel == null) {
-            return const Center(child: Text('Please log in to continue'));
-          }
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            isDark ? Colors.grey[900]! : Colors.grey[50]!,
+            isDark ? Colors.grey[800]! : Colors.white,
+          ],
+        ),
+      ),
+      child: Scaffold(
+        appBar: AppBarFactory.simple(title: 'Become a Seller'),
+        backgroundColor: Colors.transparent,
+        body: userProfileAsync.when(
+          loading: () => Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [DesignTokens.primary, DesignTokens.secondary],
+                  ).createShader(bounds),
+                  child: SizedBox(
+                    width: 50,
+                    height: 50,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation(Colors.white.withOpacity(0.8)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Loading...',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+          error: (error, stack) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('Error loading profile: $error'),
+            ),
+          ),
+          data: (userModel) {
+            if (userModel == null) {
+              return const Center(child: Text('Please log in to continue'));
+            }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // --- Header Card ---
-                    _buildHeaderCard(),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // --- Status Card ---
-                    _buildStatusCard(userModel),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // --- Benefits Card ---
-                    _buildBenefitsCard(),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // --- Error Display ---
-                    if (viewState.error != null)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // --- Header Card ---
+                      _buildHeaderCard(),
+                      
+                      const SizedBox(height: 20),
+                      
+                      // --- Status Card ---
+                      _buildStatusCard(userModel),
+                      
+                      const SizedBox(height: 20),
+                      
+                      // --- Benefits Card ---
+                      _buildBenefitsCard(),
+                      
+                      const SizedBox(height: 20),
+                      
+                      // --- Error Display ---
+                      if (viewState.error != null)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          margin: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.red[300]!.withOpacity(0.2), Colors.red[400]!.withOpacity(0.1)],
+                            ),
+                            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                            border: Border.all(color: Colors.red[400]!.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline, color: Colors.red[400], size: 20),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  viewState.error!,
+                                  style: TextStyle(color: Colors.red[600], fontSize: 13, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.error_outline, color: Colors.red),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text(viewState.error!, style: const TextStyle(color: Colors.red))),
-                          ],
-                        ),
-                      ),
-                    
-                    // --- Action Button ---
-                    _buildActionButton(userModel, viewState.isLoading, viewModel),
+                      
+                      // --- Action Button ---
+                      _buildActionButton(userModel, viewState.isLoading, viewModel),
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
                   ],
                 ),
               ),
@@ -109,82 +171,129 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
   }
 
   Widget _buildHeaderCard() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(40),
-              ),
-              child: const Icon(Icons.store, size: 40, color: Color(0xFFFF6B35)),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Sell on OrignaGTA',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Reach customers across the GTA and grow your business',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600]),
-            ),
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            DesignTokens.primary.withOpacity(0.95),
+            DesignTokens.secondary.withOpacity(0.95),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(DesignTokens.radius20),
+        boxShadow: [
+          BoxShadow(
+            color: DesignTokens.primary.withOpacity(0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.store,
+              size: 50,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Sell on OrignaGTA',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Reach customers across the GTA and grow your business',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildBenefitsCard() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Why sell with us?',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            _buildBenefitItem(Icons.people, 'Access thousands of customers'),
-            _buildBenefitItem(Icons.credit_card, 'Secure payment processing'),
-            _buildBenefitItem(Icons.speed, 'Fast payouts via Stripe'),
-            _buildBenefitItem(Icons.analytics, 'Track your sales easily'),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Platform fee: ${(AppConfig.platformFeePercent * 100).toStringAsFixed(1)}% per sale',
-                      style: const TextStyle(color: Colors.blue, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            isDark ? Colors.grey[800]!.withOpacity(0.6) : Colors.white.withOpacity(0.8),
+            isDark ? Colors.grey[900]!.withOpacity(0.4) : Colors.grey[50]!.withOpacity(0.6),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        border: Border.all(
+          color: DesignTokens.primary.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: DesignTokens.primary.withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [DesignTokens.primary, DesignTokens.secondary],
+            ).createShader(bounds),
+            child: const Text(
+              'Why sell with us?',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildBenefitItem(Icons.people, 'Access thousands of customers'),
+          const SizedBox(height: 12),
+          _buildBenefitItem(Icons.credit_card, 'Secure payment processing'),
+          const SizedBox(height: 12),
+          _buildBenefitItem(Icons.speed, 'Fast payouts via Stripe'),
+          const SizedBox(height: 12),
+          _buildBenefitItem(Icons.analytics, 'Track your sales easily'),
+        ],
+      ),
+    );
+  }
+            const SizedBox(height: 12),
+          _buildBenefitItem(Icons.analytics, 'Track your sales easily'),
+        ],
       ),
     );
   }
 
   Widget _buildStatusCard(UserModel user) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasAccount = user.stripeAccountId != null && user.stripeAccountId!.isNotEmpty;
     final isComplete = user.onboardingCompleted;
     final canReceivePayouts = user.payoutsEnabled;
@@ -216,22 +325,45 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       statusIcon = Icons.person_add;
     }
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            statusColor.withOpacity(0.15),
+            statusColor.withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        border: Border.all(
+          color: statusColor.withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(24),
+                    gradient: LinearGradient(
+                      colors: [statusColor.withOpacity(0.3), statusColor.withOpacity(0.1)],
+                    ),
+                    shape: BoxShape.circle,
                   ),
-                  child: Icon(statusIcon, color: statusColor),
+                  child: Icon(statusIcon, color: statusColor, size: 28),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -241,15 +373,19 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                       Text(
                         statusText,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: statusColor,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
                         statusDescription,
-                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
                       ),
                     ],
                   ),
@@ -257,11 +393,42 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
               ],
             ),
             if (hasAccount) ...[
-              const Divider(height: 32),
+              const SizedBox(height: 24),
+              Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
+              const SizedBox(height: 20),
               _buildStatusRow('Stripe Account', hasAccount),
+              const SizedBox(height: 12),
               _buildStatusRow('Onboarding Complete', isComplete),
+              const SizedBox(height: 12),
               _buildStatusRow('Can Receive Payouts', canReceivePayouts),
             ],
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue[200]!.withOpacity(0.2), Colors.blue[300]!.withOpacity(0.1)],
+                ),
+                borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                border: Border.all(color: Colors.blue[400]!.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue[600], size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Platform fee: ${(AppConfig.platformFeePercent * 100).toStringAsFixed(1)}% per sale',
+                      style: TextStyle(
+                        color: Colors.blue[600],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -269,33 +436,68 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
   }
 
   Widget _buildStatusRow(String label, bool isActive) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(
-            isActive ? Icons.check_circle : Icons.cancel,
-            size: 18,
-            color: isActive ? Colors.green : Colors.grey,
+    return Row(
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                isActive ? Colors.green[300]!.withOpacity(0.3) : Colors.grey[300]!.withOpacity(0.3),
+                isActive ? Colors.green[400]!.withOpacity(0.1) : Colors.grey[400]!.withOpacity(0.1),
+              ],
+            ),
+            shape: BoxShape.circle,
           ),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(color: isActive ? Colors.black : Colors.grey)),
-        ],
-      ),
+          child: Icon(
+            isActive ? Icons.check_circle : Icons.cancel,
+            size: 16,
+            color: isActive ? Colors.green[600] : Colors.grey[600],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: TextStyle(
+            color: isActive ? Colors.green[600] : Colors.grey[600],
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 13,
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildBenefitItem(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, color: const Color(0xFFFF6B35), size: 20),
-          const SizedBox(width: 12),
-          Expanded(child: Text(text)),
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                DesignTokens.primary.withOpacity(0.2),
+                DesignTokens.secondary.withOpacity(0.1),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(DesignTokens.radius8),
+          ),
+          child: Icon(icon, color: DesignTokens.primary, size: 20),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              height: 1.4,
+            ),
+          ),
         ],
-      ),
-    );
+      );
   }
 
   Widget _buildActionButton(UserModel user, bool isLoading, SellerRegistrationViewModel viewModel) {
@@ -316,24 +518,11 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       onPressed = viewModel.startRegistration;
     }
 
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFF6B35),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        child: isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-              )
-            : Text(buttonText, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-      ),
+    return ModernButton(
+      onPressed: isLoading ? null : onPressed,
+      label: buttonText,
+      isLoading: isLoading,
+      icon: canReceivePayouts ? Icons.dashboard : hasAccount ? Icons.check_circle : Icons.store,
     );
   }
 }
