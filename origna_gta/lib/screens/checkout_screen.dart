@@ -5,6 +5,7 @@ import 'package:origna_gta/features/checkout/checkout_provider.dart';
 import 'package:origna_gta/screens/editaddress_screen.dart';
 import 'package:origna_gta/screens/terms_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -27,53 +28,87 @@ class _AddressSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Delivery Address', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            TextButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => AddEditAddressScreen(address: address.formattedAddress.isEmpty ? null : address)),
-                ).then((_) => onRefreshShipping());
-              },
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              label: const Text('Edit'),
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFFFF6B35)),
+            ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [DesignTokens.primary, DesignTokens.secondary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ).createShader(bounds),
+              child: const Text(
+                'Delivery Address',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white),
+              ),
+            ),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => AddEditAddressScreen(address: address.formattedAddress.isEmpty ? null : address)),
+                  ).then((_) => onRefreshShipping());
+                },
+                borderRadius: BorderRadius.circular(8),
+                splashColor: DesignTokens.primary.withOpacity(0.3),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.edit_outlined, size: 18, color: DesignTokens.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Edit',
+                        style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
-          ),
+        const SizedBox(height: 16),
+        GlassContainer(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (address.label != null) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: const Color(0xFFFF6B35).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [DesignTokens.primary.withOpacity(0.2), DesignTokens.secondary.withOpacity(0.2)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: Text(
                     address.label!,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.primary),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
               ],
-              Text(address.formattedAddress, style: const TextStyle(fontSize: 14, height: 1.5)),
+              Text(address.formattedAddress, style: TextStyle(fontSize: 15, height: 1.6, color: isDark ? Colors.grey[300] : Colors.grey[700])),
               if (address.phoneNumber != null) ...[
-                const SizedBox(height: 8),
-                Row(children: [const Icon(Icons.phone_outlined, size: 16), const SizedBox(width: 8), Text(address.phoneNumber!)]),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(Icons.phone_outlined, size: 16, color: DesignTokens.primary),
+                    const SizedBox(width: 10),
+                    Text(address.phoneNumber!, style: TextStyle(color: isDark ? Colors.grey[300] : Colors.grey[700])),
+                  ],
+                ),
               ],
             ],
           ),
@@ -101,19 +136,21 @@ class _CheckoutButton extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -5))],
+        color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[900] : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, -8),
+          ),
+        ],
       ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 54,
-        child: ElevatedButton(
-          onPressed: isDisabled ? null : () => _startCheckout(context, ref),
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
-          child: isProcessing
-              ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-              : const Text('Place Order', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ),
+      child: ModernButton(
+        text: isProcessing ? '' : 'Place Order',
+        onPressed: isDisabled ? null : () => _startCheckout(context, ref),
+        fullWidth: true,
+        loading: isProcessing,
+        icon: Icons.payment,
       ),
     );
   }
@@ -155,6 +192,7 @@ class _CheckoutContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final address = ref.watch(checkoutStateProvider.select((state) => state.address));
     final shippingCost = ref.watch(checkoutStateProvider.select((state) => state.shippingCost));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (address == null) {
       return _NoAddressView(onRefreshShipping: onRefreshShipping);
@@ -164,28 +202,41 @@ class _CheckoutContent extends ConsumerWidget {
     final tax = subtotal * taxRate;
     final totalWithTax = subtotal + tax + shippingCost;
 
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _AddressSection(address: address, onRefreshShipping: onRefreshShipping),
-                const SizedBox(height: 24),
-                const _DeliveryOptionsSection(),
-                const SizedBox(height: 24),
-                _OrderSummary(items: items, subtotal: subtotal, state: address.state),
-              ],
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            isDark ? Colors.grey[900]! : Colors.grey[50]!,
+            isDark ? Colors.grey[800]! : Colors.white,
+          ],
+        ),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _AddressSection(address: address, onRefreshShipping: onRefreshShipping),
+                  const SizedBox(height: 28),
+                  const _DeliveryOptionsSection(),
+                  const SizedBox(height: 28),
+                  _OrderSummary(items: items, subtotal: subtotal, state: address.state),
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
           ),
-        ),
-        _CheckoutButton(items: items, userModel: userModel, subtotal: subtotal, total: totalWithTax),
-        _TermsText(),
-        const SizedBox(height: 16),
-        _SecurityInfo(),
-      ],
+          _CheckoutButton(items: items, userModel: userModel, subtotal: subtotal, total: totalWithTax),
+          _TermsText(),
+          const SizedBox(height: 16),
+          _SecurityInfo(),
+        ],
+      ),
     );
   }
 }

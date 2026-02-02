@@ -50,10 +50,7 @@ class ProductDetailScreen extends ConsumerWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
-                          DesignTokens.primary.withOpacity(0.1),
-                          DesignTokens.secondary.withOpacity(0.1),
-                        ],
+                        colors: [DesignTokens.primary.withOpacity(0.1), DesignTokens.secondary.withOpacity(0.1)],
                       ),
                     ),
                     child: Stack(
@@ -75,19 +72,14 @@ class ProductDetailScreen extends ConsumerWidget {
                                           highlightColor: Colors.grey[100]!,
                                           child: Container(color: Colors.white),
                                         ),
-                                        errorWidget: (context, url, error) => Container(
-                                          color: Colors.grey[200],
-                                          child: const Icon(Icons.image_not_supported, size: 100),
-                                        ),
+                                        errorWidget: (context, url, error) =>
+                                            Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported, size: 100)),
                                       ),
                                     ),
                                   );
                                 },
                               )
-                            : Container(
-                                color: Colors.grey[200],
-                                child: const Icon(Icons.image_not_supported, size: 100),
-                              ),
+                            : Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported, size: 100)),
                         Positioned(
                           top: MediaQuery.of(context).padding.top + 8,
                           left: 12,
@@ -103,12 +95,7 @@ class ProductDetailScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        Positioned(
-                          bottom: 16,
-                          left: 0,
-                          right: 0,
-                          child: _ImageDots(imageCount: imageUrls.length),
-                        ),
+                        Positioned(bottom: 16, left: 0, right: 0, child: _ImageDots(imageCount: imageUrls.length)),
                       ],
                     ),
                   ),
@@ -119,13 +106,7 @@ class ProductDetailScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: isDark ? Colors.grey[900] : Colors.white,
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 16,
-                          offset: const Offset(0, -4),
-                        ),
-                      ],
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 16, offset: const Offset(0, -4))],
                     ),
                   ),
                 ),
@@ -155,10 +136,7 @@ class ProductDetailScreen extends ConsumerWidget {
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: DesignTokens.primary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
+                                decoration: BoxDecoration(color: DesignTokens.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
                                 child: Row(
                                   children: [
                                     Icon(Icons.star, size: 18, color: Colors.amber[600]),
@@ -182,17 +160,14 @@ class ProductDetailScreen extends ConsumerWidget {
                                 end: Alignment.bottomRight,
                               ),
                               borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: DesignTokens.primary.withOpacity(0.3),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
+                              boxShadow: [BoxShadow(color: DesignTokens.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
                             ),
                             child: Row(
                               children: [
-                                const Text('Price:', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                                const Text(
+                                  'Price:',
+                                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                                ),
                                 const SizedBox(width: 12),
                                 Text(
                                   '\$${product.price.toStringAsFixed(2)}',
@@ -204,22 +179,13 @@ class ProductDetailScreen extends ConsumerWidget {
                           const SizedBox(height: 28),
                           Text(
                             'Description',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: isDark ? Colors.white : Colors.grey[900],
-                            ),
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.grey[900]),
                           ),
                           const SizedBox(height: 12),
                           GlassContainer(
                             child: Text(
                               product.description,
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: isDark ? Colors.grey[300] : Colors.grey[700],
-                                height: 1.6,
-                                fontWeight: FontWeight.w400,
-                              ),
+                              style: TextStyle(fontSize: 15, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.6, fontWeight: FontWeight.w400),
                             ),
                           ),
                           const SizedBox(height: 28),
@@ -373,55 +339,6 @@ class _ImageDots extends ConsumerWidget {
   }
 }
 
-class _QuantitySelector extends ConsumerWidget {
-  final ProductDetailViewModel viewModel;
-
-  const _QuantitySelector({required this.viewModel});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final quantity = ref.watch(productDetailViewModelProvider.select((state) => state.quantity));
-
-    return Row(
-      children: [
-        Text(
-          'Quantity:',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.grey[900],
-          ),
-        ),
-        const SizedBox(width: 20),
-        GlassContainer(
-          child: Row(
-            children: [
-              _QuantityButton(
-                icon: Icons.remove,
-                onPressed: quantity > 1 ? viewModel.decrementQuantity : null,
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  '$quantity',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              _QuantityButton(
-                icon: Icons.add,
-                onPressed: viewModel.incrementQuantity,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _QuantityButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
@@ -438,13 +355,42 @@ class _QuantityButton extends StatelessWidget {
         splashColor: DesignTokens.primary.withOpacity(0.3),
         child: Padding(
           padding: const EdgeInsets.all(8),
-          child: Icon(
-            icon,
-            color: onPressed != null ? DesignTokens.primary : Colors.grey[400],
-            size: 20,
-          ),
+          child: Icon(icon, color: onPressed != null ? DesignTokens.primary : Colors.grey[400], size: 20),
         ),
       ),
+    );
+  }
+}
+
+class _QuantitySelector extends ConsumerWidget {
+  final ProductDetailViewModel viewModel;
+
+  const _QuantitySelector({required this.viewModel});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final quantity = ref.watch(productDetailViewModelProvider.select((state) => state.quantity));
+
+    return Row(
+      children: [
+        Text(
+          'Quantity:',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.grey[900]),
+        ),
+        const SizedBox(width: 20),
+        GlassContainer(
+          child: Row(
+            children: [
+              _QuantityButton(icon: Icons.remove, onPressed: quantity > 1 ? viewModel.decrementQuantity : null),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text('$quantity', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              ),
+              _QuantityButton(icon: Icons.add, onPressed: viewModel.incrementQuantity),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

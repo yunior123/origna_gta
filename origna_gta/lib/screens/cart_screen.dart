@@ -5,8 +5,8 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/screens/cartitem_screen.dart';
 import 'package:origna_gta/screens/checkout_screen.dart';
-import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -51,10 +51,7 @@ class CartScreen extends ConsumerWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              isDark ? Colors.grey[900]! : Colors.grey[50]!,
-              isDark ? Colors.grey[800]! : Colors.white,
-            ],
+            colors: [isDark ? Colors.grey[900]! : Colors.grey[50]!, isDark ? Colors.grey[800]! : Colors.white],
           ),
         ),
         child: Center(
@@ -91,33 +88,17 @@ class CartScreen extends ConsumerWidget {
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [
-                                DesignTokens.primary.withOpacity(0.1),
-                                DesignTokens.secondary.withOpacity(0.1),
-                              ],
-                            ),
+                            gradient: LinearGradient(colors: [DesignTokens.primary.withOpacity(0.1), DesignTokens.secondary.withOpacity(0.1)]),
                           ),
-                          child: Icon(
-                            Icons.shopping_cart_outlined,
-                            size: 80,
-                            color: DesignTokens.primary.withOpacity(0.6),
-                          ),
+                          child: Icon(Icons.shopping_cart_outlined, size: 80, color: DesignTokens.primary.withOpacity(0.6)),
                         ),
                         const SizedBox(height: 24),
                         Text(
                           'Your cart is empty',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? Colors.white : Colors.grey[900],
-                          ),
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.grey[900]),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          'Start shopping to add items',
-                          style: TextStyle(fontSize: 16, color: Colors.grey[500]),
-                        ),
+                        Text('Start shopping to add items', style: TextStyle(fontSize: 16, color: Colors.grey[500])),
                       ],
                     ),
                   );
@@ -199,22 +180,10 @@ class _CartSummary extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           decoration: BoxDecoration(
             color: isDark ? Colors.grey[900] : Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                offset: const Offset(0, -8),
-              ),
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -8))],
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: Column(
-            children: [
-              const _CartTotalDisplay(),
-              const SizedBox(height: 20),
-              const _CheckoutButton(),
-            ],
-          ),
+          child: Column(children: [const _CartTotalDisplay(), const SizedBox(height: 20), const _CheckoutButton()]),
         );
       },
     );
@@ -266,11 +235,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                 ).createShader(bounds),
                 child: Text(
                   NumberFormat.currency(locale: "en_CA", symbol: "CAD \$").format(subtotal),
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                  ),
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white),
                 ),
               ),
             ],
