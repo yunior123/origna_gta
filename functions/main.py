@@ -4441,7 +4441,7 @@ def auto_capture_authorized_payments(req: scheduler_fn.ScheduledEvent) -> None:
         print(traceback.format_exc())
 
 
-@scheduler_fn.on_schedule(schedule="every day at 02:00")
+@scheduler_fn.on_schedule(schedule="0 2 * * *")  # Daily at 02:00 UTC
 def reconcile_firestore_algolia(req: scheduler_fn.ScheduledEvent) -> None:
     """
     Daily Firestore↔Algolia synchronization check.
