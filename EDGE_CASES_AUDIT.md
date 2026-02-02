@@ -81,11 +81,17 @@ def suspend_seller(seller_id):
 
 ---
 
-## 3. ❌ AUTO-CAPTURE FAILURE → STUCK AUTHORIZATION
+## 3. ✅ AUTO-CAPTURE FAILURE COMPENSATION (FIXED - Phase 3.5)
 
-### Current Behavior
+### Previous Behavior
 - Auto-capture job runs every 30min
 - If capture fails: logged, but no compensation
+
+### Solution Implemented
+✅ Track `captureAttempts` counter on orders
+✅ After 3 failures: Flag for manual review
+✅ Added `requiresManualReview` and `reviewReason` fields
+✅ Admin notified via dashboard
 
 ```python
 # functions/main.py line 4095
