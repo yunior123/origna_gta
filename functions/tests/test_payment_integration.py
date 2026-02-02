@@ -76,6 +76,11 @@ class TestPaymentFlow(unittest.TestCase):
         main.stripe = mock_stripe # Ensure we use the same mock object
         main.stripe.api_key = "STRIPE_SECRET_KEY_REDACTED"
         
+        # Mock rate limiter to always allow requests
+        main.rate_limiter = MagicMock()
+        main.rate_limiter.check_rate_limit.return_value = (True, "OK")
+        main.rate_limiter.get_identifier.return_value = "test_user"
+        
         # Determine strict behaviors
         mock_stripe.PaymentIntent.capture.reset_mock()
         mock_stripe.checkout.Session.create.reset_mock()
@@ -356,7 +361,10 @@ class TestPaymentFlow(unittest.TestCase):
                     "quantity": 1,
                     "productId": "prod_1",
                     "sellerId": "seller_1",
-                    "imageUrls": ["http://img.com/1.jpg"]
+                    "imageUrls": ["http://img.com/1.jpg"],
+                    "description": "Test product description",
+                    "sellerAddress": {"street": "1 Test St", "city": "Toronto", "state": "ON", "postalCode": "M5V 1A1", "country": "Canada"},
+                    "categoryId": 1
                 }
             ],
             "deliveryInfo": {

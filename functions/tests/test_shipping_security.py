@@ -9,7 +9,7 @@ mock_firebase_admin = MagicMock()
 mock_stripe = MagicMock()
 mock_boto3 = MagicMock()
 mock_mailjet = MagicMock()
-mock_requests = MagicMock()
+# mock_requests removed to avoid conflict with algoliasearch's use of requests
 
 # Decorator passthrough
 def pass_through_decorator(*args, **kwargs):
@@ -43,8 +43,8 @@ module_mocks = {
     'stripe': mock_stripe,
     'google.cloud.firestore': MagicMock(),
     'mailjet_rest': mock_mailjet,
-    'boto3': mock_boto3,
-    'requests': mock_requests
+    'boto3': mock_boto3
+    # 'requests' removed - algoliasearch needs real requests module
 }
 
 with patch.dict(sys.modules, module_mocks):
@@ -56,8 +56,12 @@ class TestPaymentSecurity(unittest.TestCase):
     def setUp(self):
         main.db = MagicMock()
         main.stripe = mock_stripe
-        main.requests = mock_requests
         mock_stripe.checkout.Session.create.reset_mock()
+        
+        # Mock rate limiter to always allow requests
+        main.rate_limiter = MagicMock()
+        main.rate_limiter.check_rate_limit.return_value = (True, "OK")
+        main.rate_limiter.get_identifier.return_value = "test_user"
 
     def test_price_tampering_protection(self):
         """
@@ -76,8 +80,11 @@ class TestPaymentSecurity(unittest.TestCase):
                 "productId": "prod_1",
                 "quantity": 1,
                 "price": 1.00, # FAKE PRICE
-                "sellerId": "seller_elon", 
-                "name": "Tesla Cybertruck"
+                "sellerId": "seller_elon",
+                "name": "Tesla Cybertruck",
+                "description": "Electric pickup truck",  # Required field
+                "imageUrls": ["http://img.com/truck.jpg"],
+                "sellerAddress": {"street": "1 Tesla St", "city": "Markham", "state": "ON", "postalCode": "L3R 4H5", "country": "Canada"}
             }],
             "deliveryInfo": {
                     "street": "123 Test St",

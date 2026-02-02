@@ -7,7 +7,6 @@ import os
 mock_firebase_functions = MagicMock()
 mock_firebase_admin = MagicMock()
 mock_stripe = MagicMock()
-mock_requests = MagicMock()
 
 # Decorator passthrough
 def pass_through_decorator(*args, **kwargs):
@@ -39,7 +38,6 @@ module_mocks = {
     'firebase_admin.auth': mock_firebase_admin.auth,
     'stripe': mock_stripe,
     'google.cloud.firestore': MagicMock(),
-    'requests': mock_requests,
     'mailjet_rest': MagicMock(),
     'boto3': MagicMock(),
     'botocore': MagicMock(),
@@ -56,8 +54,12 @@ class TestTaxAudit(unittest.TestCase):
     def setUp(self):
         main.db = MagicMock()
         main.stripe = mock_stripe
-        main.requests = mock_requests
         mock_stripe.checkout.Session.create.reset_mock()
+        
+        # Mock rate limiter to always allow requests
+        main.rate_limiter = MagicMock()
+        main.rate_limiter.check_rate_limit.return_value = (True, "OK")
+        main.rate_limiter.get_identifier.return_value = "test_user"
 
     def test_ontario_children_clothing_tax_code(self):
         """
@@ -75,7 +77,11 @@ class TestTaxAudit(unittest.TestCase):
                 "quantity": 1,
                 "price": 100.00,
                 "sellerId": "seller_1",
-                "name": "Kids Shirt"
+                "name": "Kids Shirt",
+                "description": "Children's clothing item",  # Required field
+                "imageUrls": ["http://img.com/shirt.jpg"],
+                "sellerAddress": {"street": "123 Test St", "city": "Toronto", "state": "ON", "postalCode": "M5V 1A1", "country": "Canada"},
+                "categoryId": 17
             }],
             "deliveryInfo": {
                 "street": "123 Kids St",
@@ -138,11 +144,15 @@ class TestTaxAudit(unittest.TestCase):
             "customerEmail": "shopper@example.com",
             "amount": 100, # Required by validator
             "items": [{
-                "productId": "prod_apple", 
+                "productId": "prod_apple",
                 "quantity": 1,
                 "sellerId": "seller_1",
                 "name": "Apple",
-                "price": 1.00
+                "price": 1.00,
+                "description": "Fresh fruit",  # Required field
+                "imageUrls": ["http://img.com/apple.jpg"],
+                "sellerAddress": {"street": "123 Farm St", "city": "Toronto", "state": "ON", "postalCode": "M5V 1A1", "country": "Canada"},
+                "categoryId": 19
             }],
             "deliveryInfo": {
                 "street": "123 Grocery St",

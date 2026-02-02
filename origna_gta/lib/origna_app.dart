@@ -98,131 +98,6 @@ class OrignaApp extends ConsumerStatefulWidget {
   ConsumerState<OrignaApp> createState() => _OrignaAppState();
 }
 
-class _OrignaAppState extends ConsumerState<OrignaApp> {
-  final _sessionTimeout = SessionTimeoutService();
-
-  @override
-  void initState() {
-    super.initState();
-    // Listen to auth state changes
-    ref.read(firebaseAuthProvider).authStateChanges().listen((user) {
-      if (user != null && mounted) {
-        _sessionTimeout.startMonitoring(context);
-      } else {
-        _sessionTimeout.stopMonitoring();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _sessionTimeout.stopMonitoring();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: () => _sessionTimeout.recordActivity(context),
-      onPanDown: (_) => _sessionTimeout.recordActivity(context),
-      child: MaterialApp(
-        title: 'OrignaGta',
-        debugShowCheckedModeBanner: false,
-        // Handle initial URL from web (e.g., Stripe redirect to /payment-success)
-        onGenerateInitialRoutes: _onGenerateInitialRoutes,
-        onGenerateRoute: _onGenerateRoute,
-        theme: ThemeData(
-        useMaterial3: true,
-        // 2100 Aesthetic: Deep purple gradient palette
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF667EEA),
-          primary: const Color(0xFF667EEA),
-          secondary: const Color(0xFF764BA2),
-          tertiary: const Color(0xFFFF6B6B),
-          surface: const Color(0xFFF8F9FA),
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        fontFamily: 'Roboto',
-        appBarTheme: const AppBarTheme(
-          centerTitle: false,
-          elevation: 0,
-          scrolledUnderElevation: 1,
-          backgroundColor: Colors.white,
-          foregroundColor: Color(0xFF1a1a2e),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            backgroundColor: const Color(0xFF667EEA),
-            foregroundColor: Colors.white,
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[300]!),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[300]!),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
-          ),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          color: Colors.white,
-          surfaceTintColor: Colors.transparent,
-        ),
-        dividerTheme: DividerThemeData(
-          color: Colors.grey[200],
-          thickness: 1,
-          space: 1,
-        ),
-      ),
-      ),
-    );
-  }
-}
-
-class _ErrorScreen extends StatelessWidget {
-  final String message;
-
-  const _ErrorScreen({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Error')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 80, color: Colors.red[400]),
-              const SizedBox(height: 24),
-              Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
-              const SizedBox(height: 32),
-              ElevatedButton(onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst), child: const Text('Go Home')),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _AuthRequiredGate extends ConsumerWidget {
   final Widget child;
 
@@ -272,6 +147,34 @@ class _AuthRequiredGate extends ConsumerWidget {
   }
 }
 
+class _ErrorScreen extends StatelessWidget {
+  final String message;
+
+  const _ErrorScreen({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Error')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 80, color: Colors.red[400]),
+              const SizedBox(height: 24),
+              Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+              const SizedBox(height: 32),
+              ElevatedButton(onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst), child: const Text('Go Home')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _OrderSuccessGate extends ConsumerWidget {
   final String sessionId;
 
@@ -312,6 +215,99 @@ class _OrderSuccessGate extends ConsumerWidget {
         return OrderSuccessScreen(orderId: order.orderId);
       },
     );
+  }
+}
+
+class _OrignaAppState extends ConsumerState<OrignaApp> {
+  final _sessionTimeout = SessionTimeoutService();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => _sessionTimeout.recordActivity(context),
+      onPanDown: (_) => _sessionTimeout.recordActivity(context),
+      child: MaterialApp(
+        title: 'OrignaGta',
+        debugShowCheckedModeBanner: false,
+        // Handle initial URL from web (e.g., Stripe redirect to /payment-success)
+        onGenerateInitialRoutes: _onGenerateInitialRoutes,
+        onGenerateRoute: _onGenerateRoute,
+        theme: ThemeData(
+          useMaterial3: true,
+          // 2100 Aesthetic: Deep purple gradient palette
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF667EEA),
+            primary: const Color(0xFF667EEA),
+            secondary: const Color(0xFF764BA2),
+            tertiary: const Color(0xFFFF6B6B),
+            surface: const Color(0xFFF8F9FA),
+            brightness: Brightness.light,
+          ),
+          scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+          fontFamily: 'Roboto',
+          appBarTheme: const AppBarTheme(
+            centerTitle: false,
+            elevation: 0,
+            scrolledUnderElevation: 1,
+            backgroundColor: Colors.white,
+            foregroundColor: Color(0xFF1a1a2e),
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              backgroundColor: const Color(0xFF667EEA),
+              foregroundColor: Colors.white,
+            ),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
+            ),
+          ),
+          cardTheme: CardThemeData(
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            color: Colors.white,
+            surfaceTintColor: Colors.transparent,
+          ),
+          dividerTheme: DividerThemeData(color: Colors.grey[200], thickness: 1, space: 1),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _sessionTimeout.stopMonitoring();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen to auth state changes
+    ref.read(firebaseAuthProvider).authStateChanges().listen((user) {
+      if (user != null && mounted) {
+        _sessionTimeout.startMonitoring(context);
+      } else {
+        _sessionTimeout.stopMonitoring();
+      }
+    });
   }
 }
 

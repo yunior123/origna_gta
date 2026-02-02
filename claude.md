@@ -37,6 +37,7 @@ We start from empty database and no users for production.
 Always use common schema between frontend and backend. Database schema is source of truth.
 make sure rules are strict and safe. 
 Add tests to github workflow
+Before making any changes, analyze the entire codebase and architecture for potential impacts.
 
 
 
@@ -53,8 +54,11 @@ TODO Phase 4: Add E2E tests for edge cases (checkout, seller onboarding, order l
 TODO implement Admin MFA (TOTP) - deferred to Phase 4
 TODO production deploy: Replace sanctions check placeholder with real KYC API (ComplyAdvantage/Trulioo/Onfido)
 TODO production monitoring: Set up Sentry alerts for KYC API failures, rate limit exhaustion, session timeout errors, auto-capture failures, dispute losses 
-TODO improve ui ux in the entire app, make it mindblowing ,  make it beautiful and mind blowing, something from 2100
-TODO index file, improve splash similar to origna ventures project, visit orignaventures.ca so the splash looks similar but adapted to this project, make it beautiful and mind blowing, something from 2100
+TODO ✅ improve ui ux in the entire app, make it mindblowing, beautiful and mind blowing, something from 2100
+TODO ✅ index file, improve splash similar to origna ventures project, visit orignaventures.ca so the splash looks similar but adapted to this project, make it beautiful and mind blowing, something from 2100
+TODO improve ui ux in the entire app, make it mindblowing, beautiful and mind blowing, something from 2100, go file by file, add nice blurring, etc, make it nice, something like macbooster or macclean ui, or fxcleaner from my github 
+TODO digital products do not require shipping, fix that in the entire app if necesary
+TODO check airwallex 
 
 TECH STACK
 Frontend: Flutter (Web, Android, iOS)
