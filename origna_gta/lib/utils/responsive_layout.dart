@@ -68,9 +68,9 @@ class ResponsiveBreakpoints {
   static T getValue<T>({required BuildContext context, required T mobile, required T mobilePlus, required T tablet, required T desktop}) {
     final width = MediaQuery.of(context).size.width;
 
-    if (width < mobilePlus) return mobile;
-    if (width < tablet) return mobilePlus;
-    if (width < desktop) return tablet;
+    if (width < ResponsiveBreakpoints.mobilePlus) return mobile;
+    if (width < ResponsiveBreakpoints.tablet) return mobilePlus;
+    if (width < ResponsiveBreakpoints.desktop) return tablet;
     return desktop;
   }
 

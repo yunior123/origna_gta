@@ -490,7 +490,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
   }
 
   Widget _buildPaymentStatusBanner(bool isPendingApproval) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Theme detection for future dark mode support
     final (bannerColor, bannerIcon) = isPendingApproval ? (Colors.orange, Icons.pending_actions) : (DesignTokens.primary, Icons.credit_card);
 
     return Container(

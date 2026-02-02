@@ -39,7 +39,7 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Theme detection for future dark mode support
     final isDisabled = widget.onPressed == null || widget.isLoading;
 
     return GestureDetector(

@@ -15,7 +15,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
   String? _qrCodeUri;
   List<String> _backupCodes = [];
   final TextEditingController _mfaCodeController = TextEditingController();
-  final bool _showBackupCodes = false;
+  // Backup codes visibility state - reserved for future use
 
   @override
   Widget build(BuildContext context) {

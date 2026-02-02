@@ -94,7 +94,7 @@ class _NavBarItem extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
 
-  const _NavBarItem({super.key, required this.item, required this.isActive, required this.onTap});
+  const _NavBarItem({required this.item, required this.isActive, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

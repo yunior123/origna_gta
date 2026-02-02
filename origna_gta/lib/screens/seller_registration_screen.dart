@@ -328,31 +328,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
     );
   }
 
-  Widget _buildStatusRow(String label, bool isActive) {
-    return Row(
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                isActive ? Colors.green[300]!.withOpacity(0.3) : Colors.grey[300]!.withOpacity(0.3),
-                isActive ? Colors.green[400]!.withOpacity(0.1) : Colors.grey[400]!.withOpacity(0.1),
-              ],
-            ),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(isActive ? Icons.check_circle : Icons.cancel, size: 16, color: isActive ? Colors.green[600] : Colors.grey[600]),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          label,
-          style: TextStyle(color: isActive ? Colors.green[600] : Colors.grey[600], fontWeight: isActive ? FontWeight.w600 : FontWeight.w500, fontSize: 13),
-        ),
-      ],
-    );
-  }
+  // Status row builder - reserved for future use if needed
 }
 
 // import 'package:cloud_functions/cloud_functions.dart';
