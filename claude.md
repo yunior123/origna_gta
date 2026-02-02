@@ -58,7 +58,7 @@ TODO ✅ improve ui ux in the entire app, make it mindblowing, beautiful and min
 TODO ✅ index file, improve splash similar to origna ventures project, visit orignaventures.ca so the splash looks similar but adapted to this project, make it beautiful and mind blowing, something from 2100
 TODO improve ui ux in the entire app, make it mindblowing, beautiful and mind blowing, something from 2100, go file by file, add nice blurring, etc, make it nice, something like macbooster or macclean ui, or fxcleaner from my github 
 TODO digital products do not require shipping, fix that in the entire app if necesary
-TODO check airwallex documentation and python examples on the web too, we are inplementing this shit in phase 4, seller should have the option to register with stripe or airwallex, check the logic, and get it done in the app. 
+TODO check airwallex documentation and python examples on the web too, we are inplementing this shit in phase 4, seller should have the option to register with stripe or airwallex, check the logic, and get it done in the app. create tests for it in backend and frontend
 
 TECH STACK
 Frontend: Flutter (Web, Android, iOS)
