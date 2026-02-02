@@ -8,8 +8,10 @@ import 'package:origna_gta/screens/seller_orders_screen.dart';
 import 'package:origna_gta/screens/seller_registration_screen.dart';
 import 'package:origna_gta/screens/terms_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import '../features/auth/auth_provider.dart';
@@ -22,141 +24,292 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfileAsync = ref.watch(userProfileProvider);
     final viewModel = ref.read(profileViewModelProvider.notifier);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'Settings & Profile'),
-      body: userProfileAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => const Center(child: Text('Error loading profile')),
-        data: (userModel) {
-          if (userModel == null) {
-            return const Center(child: Text('Please log in'));
-          }
-
-          final isSeller = userModel.roles.contains(UserRoles.seller) || userModel.roles.contains(UserRoles.admin);
-          final isAdmin = userModel.roles.contains(UserRoles.admin);
-
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [isDark ? Colors.grey[900]! : Colors.grey[50]!, isDark ? Colors.grey[800]! : Colors.white],
+          ),
+        ),
+        child: userProfileAsync.when(
+          loading: () => Center(
+            child: ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [DesignTokens.primary, DesignTokens.secondary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ).createShader(bounds),
+              child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+            ),
+          ),
+          error: (err, stack) => Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 80, color: Colors.red[300]),
+                const SizedBox(height: 16),
+                Text('Error loading profile', style: TextStyle(color: Colors.grey[600])),
+              ],
+            ),
+          ),
+          data: (userModel) {
+            if (userModel == null) {
+              return Center(
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    FadeSlideIn(
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: const Color(0xFFFF6B35),
-                        child: Text(
-                          userModel.name.isNotEmpty ? userModel.name[0].toUpperCase() : 'U',
-                          style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
+                    Icon(Icons.lock_outline, size: 80, color: Colors.grey[400]),
                     const SizedBox(height: 16),
-                    FadeSlideIn(
-                      delay: const Duration(milliseconds: 50),
-                      child: Text(userModel.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(height: 4),
-                    FadeSlideIn(
-                      delay: const Duration(milliseconds: 100),
-                      child: Text(userModel.email, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-                    ),
-                    const SizedBox(height: 32),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.shopping_bag_outlined,
-                      title: 'My Orders',
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen())),
-                    ),
-                    if (isSeller) ...[
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.store_outlined,
-                        title: 'Seller Orders',
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerOrdersScreen())),
-                      ),
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.account_balance,
-                        title: 'Seller Dashboard',
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerRegistrationScreen())),
-                      ),
-                    ] else
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.storefront,
-                        title: 'Become a Seller',
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerRegistrationScreen())),
-                      ),
-                    if (isAdmin)
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.admin_panel_settings,
-                        title: 'Admin Panel',
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPanelScreen())),
-                      ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.favorite_outline,
-                      title: 'Favorites',
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen())),
-                    ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.location_on_outlined,
-                      title: 'Address',
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressManagementScreen())),
-                    ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.description_outlined,
-                      title: 'Terms & Conditions',
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen())),
-                    ),
-                    _buildMenuItem(context, icon: Icons.mail_outline, title: 'Contact Us', onTap: () => _showContactDialog(context)),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: viewModel.signOut,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red[600],
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: const Text('Sign Out', style: TextStyle(fontSize: 16)),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: () => _showDeleteAccountDialog(context, ref),
-                      child: Text('Delete Account', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-                    ),
+                    Text('Please log in', style: TextStyle(fontSize: 18, color: Colors.grey[700])),
                   ],
                 ),
+              );
+            }
+
+            final isSeller = userModel.roles.contains(UserRoles.seller) || userModel.roles.contains(UserRoles.admin);
+            final isAdmin = userModel.roles.contains(UserRoles.admin);
+
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      // Profile Header
+                      FadeSlideIn(child: _buildProfileHeader(userModel, isDark)),
+                      const SizedBox(height: 32),
+
+                      // Main Navigation Menu
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 50),
+                        child: Column(
+                          children: [
+                            _buildMenuItem(
+                              context,
+                              icon: Icons.shopping_bag_outlined,
+                              title: 'My Orders',
+                              subtitle: 'View your purchases',
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen())),
+                            ),
+                            if (isSeller) ...[
+                              _buildMenuItem(
+                                context,
+                                icon: Icons.store_outlined,
+                                title: 'Seller Orders',
+                                subtitle: 'Manage your sales',
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerOrdersScreen())),
+                              ),
+                              _buildMenuItem(
+                                context,
+                                icon: Icons.dashboard_outlined,
+                                title: 'Seller Dashboard',
+                                subtitle: 'Manage products & account',
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerRegistrationScreen())),
+                              ),
+                            ] else
+                              _buildMenuItem(
+                                context,
+                                icon: Icons.storefront,
+                                title: 'Become a Seller',
+                                subtitle: 'Start selling on OrignaGta',
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SellerRegistrationScreen())),
+                              ),
+                            if (isAdmin)
+                              _buildMenuItem(
+                                context,
+                                icon: Icons.admin_panel_settings,
+                                title: 'Admin Panel',
+                                subtitle: 'Platform management',
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPanelScreen())),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Account Settings Section
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 100),
+                        child: Column(
+                          children: [
+                            _buildMenuItem(
+                              context,
+                              icon: Icons.favorite_outline,
+                              title: 'Favorites',
+                              subtitle: 'Your saved products',
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen())),
+                            ),
+                            _buildMenuItem(
+                              context,
+                              icon: Icons.location_on_outlined,
+                              title: 'Addresses',
+                              subtitle: 'Manage delivery addresses',
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressManagementScreen())),
+                            ),
+                            _buildMenuItem(
+                              context,
+                              icon: Icons.description_outlined,
+                              title: 'Terms & Conditions',
+                              subtitle: 'Legal agreements',
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen())),
+                            ),
+                            _buildMenuItem(
+                              context,
+                              icon: Icons.mail_outline,
+                              title: 'Contact Us',
+                              subtitle: 'Get in touch with support',
+                              onTap: () => _showContactDialog(context),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Danger Zone
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 150),
+                        child: Column(
+                          children: [
+                            ModernButton(
+                              text: 'Sign Out',
+                              onPressed: viewModel.signOut,
+                              fullWidth: true,
+                              variant: ModernButtonVariant.outlined,
+                              icon: Icons.logout,
+                            ),
+                            const SizedBox(height: 12),
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => _showDeleteAccountDialog(context, ref),
+                                borderRadius: BorderRadius.circular(12),
+                                splashColor: Colors.red.withOpacity(0.1),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  child: Center(
+                                    child: Text(
+                                      'Delete Account',
+                                      style: TextStyle(color: Colors.red[600], fontSize: 15, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildMenuItem(BuildContext context, {required IconData icon, required String title, required VoidCallback onTap}) {
+  Widget _buildMenuItem(BuildContext context, {required IconData icon, required String title, String? subtitle, required VoidCallback onTap}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        color: isDark ? Colors.grey[800]!.withOpacity(0.5) : Colors.white,
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+        border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[200]!, width: 1),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
-      child: ListTile(
-        leading: Icon(icon, color: const Color(0xFFFF6B35)),
-        title: Text(title),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(DesignTokens.radius12),
+          splashColor: DesignTokens.primary.withOpacity(0.1),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [DesignTokens.primary.withOpacity(0.15), DesignTokens.secondary.withOpacity(0.15)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                  ),
+                  child: Icon(icon, color: DesignTokens.primary, size: 20),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.grey[900]),
+                      ),
+                      if (subtitle != null) ...[const SizedBox(height: 4), Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500]))],
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: Colors.grey[400], size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader(UserModel userModel, bool isDark) {
+    final initials = userModel.name.isNotEmpty ? userModel.name[0].toUpperCase() : 'U';
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [DesignTokens.primary.withOpacity(0.95), DesignTokens.secondary.withOpacity(0.95)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(DesignTokens.radius20),
+        boxShadow: [BoxShadow(color: DesignTokens.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.2),
+              border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+            ),
+            child: Center(
+              child: Text(
+                initials,
+                style: const TextStyle(fontSize: 36, color: Colors.white, fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            userModel.name,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white),
+          ),
+          const SizedBox(height: 6),
+          Text(userModel.email, style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.8))),
+        ],
       ),
     );
   }
@@ -165,43 +318,60 @@ class ProfileScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Contact Us'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
+        backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[900] : Colors.white,
+        title: Text(
+          'Contact Us',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.grey[900]),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Have questions or need help? Reach out to us!', style: TextStyle(color: Colors.grey)),
-            // The email is not registered yet, so commenting out for now
-            // ListTile(
-            //   contentPadding: EdgeInsets.zero,
-            //   leading: const Icon(Icons.email, color: Color(0xFFFF6B35)),
-            //   title: const Text(AppConfig.supportEmail),
-            //   onTap: () async {
-            //     final uri = Uri(scheme: 'mailto', path: AppConfig.supportEmail, queryParameters: {'subject': 'Support Request'});
-            //     if (await canLaunchUrl(uri)) await launchUrl(uri);
-            //   },
-            // ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.language, color: Color(0xFFFF6B35)),
-              title: const Text('orignaventures.ca'),
-              onTap: () async {
-                const url = 'https://orignaventures.ca';
-                if (await canLaunchUrlString(url)) {
-                  await launchUrlString(url, mode: LaunchMode.externalApplication);
-                }
-              },
+            Text('Have questions or need help? Reach out to us!', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+            const SizedBox(height: 16),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () async {
+                  const url = 'https://orignaventures.ca';
+                  if (await canLaunchUrlString(url)) {
+                    await launchUrlString(url, mode: LaunchMode.externalApplication);
+                  }
+                },
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                splashColor: DesignTokens.primary.withOpacity(0.1),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.language, color: DesignTokens.primary, size: 20),
+                      const SizedBox(width: 12),
+                      Text(
+                        'orignaventures.ca',
+                        style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close', style: TextStyle(color: DesignTokens.primary)),
+          ),
+        ],
       ),
     );
   }
 
   void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final confirmController = TextEditingController();
+    
     showDialog(
       context: context,
       builder: (context) => Consumer(
@@ -212,30 +382,85 @@ class ProfileScreen extends ConsumerWidget {
           ref.listen(profileViewModelProvider, (previous, next) {
             if (next.isDeleted) {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account deleted'), backgroundColor: Colors.green));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Account deleted successfully'),
+                  backgroundColor: Colors.green[600],
+                ),
+              );
             } else if (next.errorMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: Colors.red));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(next.errorMessage!),
+                  backgroundColor: Colors.red[400],
+                ),
+              );
             }
           });
 
           return AlertDialog(
-            title: const Text('Delete Account'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
+            backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+            title: Row(
               children: [
-                const Text('Permanent action. Type "DELETE" to confirm:', style: TextStyle(color: Colors.red)),
-                TextField(
-                  controller: confirmController,
-                  decoration: const InputDecoration(hintText: 'DELETE'),
+                Icon(Icons.warning_rounded, color: Colors.red[400], size: 28),
+                const SizedBox(width: 12),
+                Text(
+                  'Delete Account',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : Colors.grey[900],
+                  ),
                 ),
               ],
             ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'This action cannot be undone. All your data will be permanently deleted.',
+                    style: TextStyle(
+                      color: Colors.red[400],
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Type DELETE to confirm:',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ModernTextField(
+                    controller: confirmController,
+                    hint: 'Type DELETE',
+                    icon: Icons.lock_outline,
+                    onChanged: (value) => setState(() {}),
+                  ),
+                ],
+              ),
+            ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-              ElevatedButton(
-                onPressed: profileState.isLoading ? null : () => viewModel.deleteAccount(confirmController.text.trim()),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: profileState.isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Delete'),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+              ),
+              ModernButton(
+                onPressed: confirmController.text == 'DELETE' && !profileState.isLoading
+                    ? () => viewModel.deleteAccount(confirmController.text.trim())
+                    : null,
+                label: 'Delete Account',
+                isLoading: profileState.isLoading,
+                backgroundColor: confirmController.text == 'DELETE' ? Colors.red[400] : Colors.grey[400],
               ),
             ],
           );
