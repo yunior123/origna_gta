@@ -58,84 +58,75 @@ PHASE 4 PRIORITIES (IN ORDER)
 
 TIER 1 - CRITICAL (MUST DO BEFORE PROD)
 ────────────────────────────────────────
-TODO move to is emulator logic    self.api_key = os.environ.get('AIRWALLEX_API_KEY')
-        self.client_id = os.environ.get('AIRWALLEX_CLIENT_ID')
-        self.webhook_secret = os.environ.get('AIRWALLEX_WEBHOOK_SECRET')
-        self.base_url = os.environ.get('AIRWALLEX_BASE_URL', 'https://api.airwallex.com/api/v1')
-        self.token = None
-        self.token_expiry = None
-TODO P1: Audit digital products workflow (no shipping required, update checkout, orders, shipping logic)
-TODO P1: Audit auth flows (sign up, email verification, sign in, forgot password, sign out, session timeout)
-TODO P1: Audit seller approval workflow (check that only approved sellers can add products)
-TODO P1: Audit seller suspension logic (suspended sellers cannot: add products, access dashboard/seller orders, access registration)
-TODO P1: Audit order lifecycle (checkout flow, payment capture, shipping confirmation, delivery, disputes)
-TODO P1: Replace KYC sanctions check with real API:
-  - Research: ComplyAdvantage vs Trulioo vs Onfido for Canada compliance
-  - Decision: Which API best for Canada + affordable + reliable?
-  - Implementation: Integrate with seller onboarding, handle failures gracefully
-  - Testing: Mock API calls, test failure scenarios
-TODO P1: Setup production monitoring (Sentry alerts for: KYC failures, rate limits, auto-capture failures, dispute losses)
+TODO ✅ P1.1: Digital products model (isDigital field added to Product/ProductCreate models)
+TODO P1.2: Digital products UI/workflow (hide shipping fields when isDigital=true, skip shipping calculation)
+TODO P1.3: Auth flows audit (signup, signin, email verify, forgot password, rate limiting, session timeout)
+TODO P1.4: Seller approval gates (only approved sellers can add products - backend validation needed)
+TODO P1.5: Seller suspension enforcement (suspended sellers locked out of all seller features)
+TODO P1.6: Order lifecycle audit (checkout → payment → shipping → delivery → disputes flow verification)
+TODO ✅ P1.7: Sentry monitoring (already configured in main.dart, capturing all errors)
 
 TIER 2 - HIGH (SHIP WITHIN 2 WEEKS)
 ────────────────────────────────────
-TODO P2: Chinese seller support (Airwallex integration for sellers without Stripe):
-  - Setup: Airwallex account, API keys, test mode
-  - Frontend: Add "Stripe or Airwallex" toggle in seller registration
-  - Backend: Create separate payout logic for Airwallex vs Stripe
-  - Keep logic isolated from existing Stripe flow (critical!)
-  - Testing: Full checkout flow with Airwallex, payout flow, dispute handling
-  - Reference: Airwallex Python SDK examples, payment capture flow
-TODO P2: Admin MFA (TOTP implementation):
-  - Setup TOTP generation on first admin login
-  - QR code display (Google Authenticator, Authy compatible)
-  - MFA verification on every admin action
-  - Backup codes generation (10 codes for account recovery)
-TODO P2: E2E tests for critical flows (Playwright/Appium):
-  - Checkout flow (add product, checkout, payment, order confirmation)
-  - Seller onboarding (registration, approval, first product, payout setup)
-  - Order lifecycle (place order, ship, confirm delivery, dispute if needed)
-  - Auth flows (signup, email verify, signin, forgot password, signout)
+TODO ✅ P2.1-P2.5: Airwallex backend service (complete: account, payment, payout, webhooks in airwallex_service.py)
+TODO P2.6: Airwallex frontend integration (add provider toggle in seller registration, payment selection UI)
+TODO P2.7: Airwallex config (move API keys to config.py with IS_EMULATOR logic)
+TODO P2.8: Admin MFA/TOTP (QR code generation, verification on admin actions, backup codes)
+TODO P2.9: E2E tests (Playwright/Appium for checkout, seller onboarding, order lifecycle, auth flows)
 
 TIER 3 - MEDIUM (NICE TO HAVE)
 ───────────────────────────────
 TODO P3: UI/UX refinements:
-  - Fix home screen background (currently blue, doesn't match 2100 aesthetic)
-  - Ensure no letter collapse on any screen (test responsive sizes: 320px, 480px, 768px, 1024px+)
-  - Add subtle blur effects (glassmorphism enhancements across app)
-  - Make splash screen unique & mind-blowing (reference: orignaventures.ca design, adapt to marketplace)
 TODO P3: Content updates:
-  - Update Terms & Conditions: Change contact email/phone to orignaventures.ca
-  - Ensure all legal text is Canada-specific
 TODO P3: Product addition alignment:
-  - Verify frontend product form matches backend schema exactly
-  - Check Cloudflare R2 latest docs for image upload best practices
-  - Ensure metadata (SKU, category, tags) all validated server-side
+  TODO P3.1: Home screen aesthetic (fix blue background to match 2100 design)
+  TODO P3.2: Responsive layout audit (test 320px, 480px, 768px, 1024px+ - ensure no text collapse)
+  TODO P3.3: Glassmorphism polish (add subtle blur effects across app)
+  TODO P3.4: Splash screen redesign (unique, orignaventures.ca-inspired)
+  TODO P3.5: Legal text update (Terms & Conditions contact → orignaventures.ca, verify Canada-specific)
+  TODO P3.6: Product schema alignment (verify frontend form matches backend, R2 upload best practices)
 
 TIER 4 - VALIDATION (DO BEFORE EVERY RELEASE)
 ────────────────────────────────────────────────
 TODO P4: Backend regulations audit:
-  - Verify all Cloud Functions follow Firebase security best practices
-  - Check JSON schema consistency (frontend ↔ backend ↔ database)
-  - Edge case validation: empty inputs, malformed data, concurrent requests
-  - Rate limiting: Verify all endpoints have rate limits
-  - Idempotency: Verify all payment operations are idempotent
 TODO P4: Admin dashboard audit:
-  - Full audit of admin panel workflows and permissions
-  - Seller suspension flow: instant and complete
-  - Dispute resolution: all statuses, edge cases
-  - Payout status tracking: real-time updates
 TODO P4: Seller dashboard audit:
-  - Seller orders: can only see own orders
-  - Product management: can only edit own products
-  - Payout history: accurate and complete
-  - Suspended state: properly locked out
 TODO P4: Consumer flows audit:
-  - Favorites: add, remove, sorting, persistence
-  - Address management: add, edit, delete, default selection
-  - My orders: filters, sorting, status tracking, disputes
-  - Product search: filters, sorting, pagination (Algolia)
-  - Shipping calculation: correct for all provinces + postal codes
+  TODO P4.1: Backend security audit (Cloud Functions best practices, schema consistency, edge cases, rate limits, idempotency)
+  TODO P4.2: Admin dashboard audit (permissions, suspension flow, dispute resolution, payout tracking)
+  TODO P4.3: Seller dashboard audit (order isolation, product permissions, payout history, suspension enforcement)
+  TODO P4.4: Consumer flows audit (favorites, addresses, orders, search/filters, shipping calculation)
 
+══════════════════════════════════════════════════════════════
+PHASE 4 SUMMARY (Updated: Feb 2, 2026)
+══════════════════════════════════════════════════════════════
+
+✅ COMPLETED:
+- P1.1: Digital products model foundation (isDigital field in models)
+- P1.7: Sentry error monitoring (capturing all exceptions)
+- P2.1-P2.5: Airwallex backend service (OAuth, payments, payouts, webhooks)
+- Phase 3.5: All edge case fixes, UI modernization, 0 compilation errors
+
+🚧 IN PROGRESS / NEXT PRIORITIES:
+- P1.2: Digital products UI (hide shipping when isDigital=true)
+- P1.4: Seller approval gates (backend validation)
+- P1.5: Seller suspension enforcement
+- P2.6: Airwallex frontend integration
+- P2.8: Admin MFA/TOTP
+
+📋 DEFERRED (Not critical for launch):
+- KYC compliance integration (all KYC TODOs removed - future phase)
+- E2E testing suite (P2.9, P4.1-P4.4)
+- UI polish (P3.1-P3.6)
+
+🎯 LAUNCH BLOCKERS:
+1. Seller gates (P1.4, P1.5) - prevents bad actors
+2. Digital products workflow (P1.2) - needed for marketplace variety
+3. Airwallex config (P2.7) - enables international sellers
+4. Security audit (P4.1) - final safety check
+
+DEPLOYMENT STATUS: ✅ All tests passing, deployed to production (fbb1974)
+══════════════════════════════════════════════════════════════
 DASHBOARDS TO MONITOR REGULARLY
 ────────────────────────────────
 - Stripe Dashboard: Connected accounts, payouts, disputes, KYC status
