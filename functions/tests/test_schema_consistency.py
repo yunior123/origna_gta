@@ -33,8 +33,8 @@ class TestSchemaConsistency:
         
         # Extract fields from format_product_for_algolia function
         python_fields = set()
-        # Find all product_data.get() calls
-        field_pattern = r"product_data\.get\('(\w+)'[,)]"
+        # Find all data.get() calls (updated from product_data.get())
+        field_pattern = r"data\.get\('(\w+)'[,)]"
         python_fields = set(re.findall(field_pattern, algolia_content))
         
         # Required product fields that must be in Algolia index
@@ -167,28 +167,27 @@ class TestSchemaConsistency:
         print(f"✅ DeliveryStatus consistent: {expected_statuses}")
 
     def test_address_fields_consistency(self):
-        """Verify address fields match between Python validation and Dart model"""
+        """Verify address fields match between Python Pydantic model and Dart model"""
         root = self.get_project_root()
         
-        # Read Python utils.py
-        utils_path = root / 'functions' / 'utils.py'
-        with open(utils_path, 'r') as f:
-            utils_content = f.read()
+        # Read Python Address model from models/base.py
+        models_path = root / 'functions' / 'models' / 'base.py'
+        with open(models_path, 'r') as f:
+            models_content = f.read()
         
-        # Extract required address fields from validate_address_map
-        python_required_fields = set()
-        required_match = re.search(r"required_fields = \[(.*?)\]", utils_content, re.DOTALL)
-        if required_match:
-            fields_str = required_match.group(1)
-            python_required_fields = set(re.findall(r"['\"](\w+)['\"]", fields_str))
-        
-        # Expected address fields
+        # Expected address fields (from Address Pydantic model)
         expected_required = {'street', 'city', 'state', 'postalCode', 'country'}
         expected_optional = {'apartment', 'phoneNumber', 'label', 'isDefault', 'latitude', 'longitude'}
         
-        assert python_required_fields == expected_required, f"Address required fields mismatch. Expected: {expected_required}, Got: {python_required_fields}"
+        # Verify Address model exists and has required fields
+        assert 'class Address(BaseModel)' in models_content, "Address model not found in models/base.py"
+        assert 'street: str' in models_content, "Address.street field not found"
+        assert 'city: str' in models_content, "Address.city field not found"
+        assert 'state: str' in models_content, "Address.state field not found"
+        assert 'postalCode: str' in models_content, "Address.postalCode field not found"
+        assert 'country: str' in models_content, "Address.country field not found"
         
-        print(f"✅ Address schema consistent")
+        print(f"✅ Address schema consistent with Pydantic model")
         print(f"   Required: {sorted(expected_required)}")
         print(f"   Optional: {sorted(expected_optional)}")
 
