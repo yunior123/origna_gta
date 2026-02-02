@@ -41,10 +41,12 @@ Add tests to github workflow
 
 
 TODO ✅ Edge cases audit complete (see EDGE_CASES_AUDIT.md) - 10 scenarios analyzed, 6 require fixes
-TODO URGENT: Fix seller suspension with active orders (auto-cancel + refund)
-TODO URGENT: Fix multi-seller partial capture tracking
-TODO HIGH: Add auto-capture failure compensation (cancel after 3 failures)
-TODO HIGH: Fix rate limiter race condition (use transactions)
+TODO ✅ URGENT: Fix seller suspension with active orders (suspend_seller Cloud Function - 184 lines)
+TODO ✅ URGENT: Fix multi-seller partial capture tracking (sellerCaptures dict)
+TODO ✅ HIGH: Add auto-capture failure compensation (captureAttempts + requiresManualReview)
+TODO ✅ HIGH: Fix rate limiter race condition (Firestore transactions)
+TODO MEDIUM: Product deletion with active orders (check before delete, prevent stock issues)
+TODO MEDIUM: Dispute after delivery fraud detection (flag suspicious patterns)
 TODO add more e2e tests for critical flows like checkout, seller onboarding, seller orders view, shipping confirmation, order lifecycle
 TODO implement Admin MFA (TOTP) - deferred to Phase 4
 TODO production deploy: Replace sanctions check placeholder with real KYC API (ComplyAdvantage/Trulioo/Onfido)

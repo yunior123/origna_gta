@@ -1256,7 +1256,11 @@ def process_charge_refunded(charge: Dict) -> Optional[str]:
 
 
 def process_dispute_created(dispute: Dict) -> Optional[str]:
-    """Process charge.dispute.created - freeze payouts for disputed orders"""
+    """
+    Process charge.dispute.created - freeze payouts for disputed orders.
+    
+    EDGE CASE FIX #6: Detect post-delivery disputes as potential fraud.
+    """
     print("\n⚠️ Processing: charge.dispute.created")
 
     charge_id = dispute.get('charge')
@@ -1283,14 +1287,48 @@ def process_dispute_created(dispute: Dict) -> Optional[str]:
     if orders:
         order_ref = orders[0].reference
         order_id = order_ref.id
+        order_data = orders[0].to_dict()
 
         print(f"  Order: {order_id}")
         print(f"  Dispute ID: {dispute.get('id')}")
         print(f"  Reason: {dispute.get('reason')}")
         print(f"  Amount: ${dispute.get('amount', 0) / 100}")
 
+        # EDGE CASE FIX #6: Check if this is a post-delivery dispute (fraud risk)
+        order_status = order_data.get('status')
+        is_post_delivery_dispute = order_status in ['delivered', 'completed']
+        
+        # Check for fraud patterns
+        fraud_score = 0
+        fraud_indicators = []
+        
+        if is_post_delivery_dispute:
+            fraud_score += 30
+            fraud_indicators.append('dispute_after_delivery')
+            
+            # Additional fraud checks
+            dispute_reason = dispute.get('reason')
+            if dispute_reason in ['fraudulent', 'product_not_received']:
+                fraud_score += 40
+                fraud_indicators.append(f'suspicious_reason_{dispute_reason}')
+            
+            # Check buyer's dispute history
+            buyer_id = order_data.get('customerId')
+            if buyer_id:
+                buyer_disputes = db.collection(Collections.ORDERS).where(
+                    'customerId', '==', buyer_id
+                ).where('hasDispute', '==', True).limit(5).get()
+                
+                dispute_count = len(list(buyer_disputes))
+                if dispute_count >= 2:
+                    fraud_score += 20 * dispute_count
+                    fraud_indicators.append(f'repeat_disputer_{dispute_count}')
+        
+        # Flag high-risk disputes
+        requires_investigation = fraud_score >= 50
+        
         # Update order with dispute info - freeze payouts
-        order_ref.update({
+        update_data = {
             "hasDispute": True,
             "disputeId": dispute.get('id'),
             "disputeReason": dispute.get('reason'),
@@ -1299,9 +1337,34 @@ def process_dispute_created(dispute: Dict) -> Optional[str]:
             "disputeCreatedAt": firestore.SERVER_TIMESTAMP,
             "payoutStatus": PayoutStatus.PENDING,  # Freeze payouts
             "updatedAt": firestore.SERVER_TIMESTAMP,
-        })
+        }
+        
+        if requires_investigation:
+            update_data['requiresManualReview'] = True
+            update_data['reviewReason'] = 'High fraud risk: ' + ', '.join(fraud_indicators)
+            update_data['fraudScore'] = fraud_score
+            print(f"  🚨 HIGH FRAUD RISK: Score={fraud_score}, Indicators={fraud_indicators}")
+            
+            # Log to security_alerts collection
+            db.collection('security_alerts').add({
+                'type': 'fraud_dispute',
+                'orderId': order_id,
+                'buyerId': order_data.get('customerId'),
+                'fraudScore': fraud_score,
+                'indicators': fraud_indicators,
+                'disputeId': dispute.get('id'),
+                'disputeReason': dispute.get('reason'),
+                'disputeAmount': dispute.get('amount', 0) / 100,
+                'orderStatus': order_status,
+                'createdAt': firestore.SERVER_TIMESTAMP,
+            })
+        
+        order_ref.update(update_data)
 
         print(f"  ⚠️ Dispute created - payouts frozen")
+        if requires_investigation:
+            print(f"  🔔 Admin notification required")
+        
         return order_id
 
     return None
@@ -1763,6 +1826,8 @@ def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Soft-delete a product (scalable).
     Only the product owner or an admin can delete.
+    
+    EDGE CASE FIX #5: Check for active orders before deletion.
     """
     # Verify authentication
     if not req.auth:
@@ -1810,6 +1875,31 @@ def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
             )
 
         print(f"  ✓ Authorization verified (admin={is_admin}, owner={seller_id == user_id})")
+
+        # EDGE CASE FIX #5: Check for active orders with this product
+        print(f"  🔍 Checking for active orders with product {product_id}...")
+        active_orders_query = db.collection(Collections.ORDERS).where(
+            'status', 'in', ['pending', 'confirmed', 'shipped']
+        ).stream()
+
+        active_orders_with_product = []
+        for order_doc in active_orders_query:
+            order_data = order_doc.to_dict()
+            items = order_data.get('items', [])
+            for item in items:
+                if item.get('productId') == product_id:
+                    active_orders_with_product.append(order_doc.id)
+                    break
+
+        if active_orders_with_product:
+            # Product has active orders - prevent deletion
+            print(f"  ❌ Product has {len(active_orders_with_product)} active orders - cannot delete")
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message=f"Cannot delete product with {len(active_orders_with_product)} active order(s). Wait for orders to complete or cancel them first."
+            )
+
+        print(f"  ✓ No active orders found - safe to delete")
 
         # Soft delete (no collectionGroup scans)
         print(f"  📦 Soft-deleting product document...")
