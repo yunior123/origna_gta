@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../utils/design_tokens.dart';
 
 /// Modern 2100 Text Input Field with glassmorphism
@@ -20,7 +21,7 @@ class ModernTextField extends StatefulWidget {
   final bool showCounter;
 
   const ModernTextField({
-    Key? key,
+    super.key,
     this.label,
     this.hint,
     this.controller,
@@ -36,7 +37,7 @@ class ModernTextField extends StatefulWidget {
     this.minLines = 1,
     this.maxLength,
     this.showCounter = false,
-  }) : super(key: key);
+  });
 
   @override
   State<ModernTextField> createState() => _ModernTextFieldState();
@@ -45,19 +46,6 @@ class ModernTextField extends StatefulWidget {
 class _ModernTextFieldState extends State<ModernTextField> {
   late FocusNode _focusNode;
   late bool _obscureText;
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode = FocusNode();
-    _obscureText = widget.isPassword;
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,12 +57,7 @@ class _ModernTextFieldState extends State<ModernTextField> {
         if (widget.label != null) ...[
           Text(
             widget.label!,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : Colors.black87,
-              letterSpacing: 0.3,
-            ),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87, letterSpacing: 0.3),
           ),
           const SizedBox(height: DesignTokens.spacing8),
         ],
@@ -91,77 +74,55 @@ class _ModernTextFieldState extends State<ModernTextField> {
           cursorColor: DesignTokens.primary,
           decoration: InputDecoration(
             hintText: widget.hint,
-            hintStyle: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 14,
-            ),
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             filled: true,
-            fillColor: isDark
-                ? DesignTokens.darkSurfaceVariant.withOpacity(0.5)
-                : DesignTokens.surfaceVariant.withOpacity(0.7),
-            prefixIcon: widget.prefixIcon != null
-                ? Icon(
-                    widget.prefixIcon,
-                    color: DesignTokens.primary,
-                    size: 20,
-                  )
-                : null,
+            fillColor: isDark ? DesignTokens.darkSurfaceVariant.withOpacity(0.5) : DesignTokens.surfaceVariant.withOpacity(0.7),
+            prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon, color: DesignTokens.primary, size: 20) : null,
             suffixIcon: widget.suffixIcon != null
                 ? GestureDetector(
                     onTap: widget.onSuffixTap,
-                    child: Icon(
-                      widget.suffixIcon,
-                      color: DesignTokens.primary,
-                      size: 20,
-                    ),
+                    child: Icon(widget.suffixIcon, color: DesignTokens.primary, size: 20),
                   )
                 : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              borderSide: BorderSide(
-                color: Colors.transparent,
-              ),
+              borderSide: BorderSide(color: Colors.transparent),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              borderSide: BorderSide(
-                color: DesignTokens.outline.withOpacity(0.2),
-                width: 1,
-              ),
+              borderSide: BorderSide(color: DesignTokens.outline.withOpacity(0.2), width: 1),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              borderSide: BorderSide(
-                color: DesignTokens.primary,
-                width: 2,
-              ),
+              borderSide: BorderSide(color: DesignTokens.primary, width: 2),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              borderSide: BorderSide(
-                color: DesignTokens.error,
-                width: 1.5,
-              ),
+              borderSide: BorderSide(color: DesignTokens.error, width: 1.5),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              borderSide: BorderSide(
-                color: DesignTokens.error,
-                width: 2,
-              ),
+              borderSide: BorderSide(color: DesignTokens.error, width: 2),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: DesignTokens.spacing16,
-              vertical: DesignTokens.spacing12,
-            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing16, vertical: DesignTokens.spacing12),
             counterText: widget.showCounter ? null : '',
           ),
-          style: TextStyle(
-            fontSize: 15,
-            color: isDark ? Colors.white : Colors.black87,
-          ),
+          style: TextStyle(fontSize: 15, color: isDark ? Colors.white : Colors.black87),
         ),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _obscureText = widget.isPassword;
   }
 }

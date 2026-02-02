@@ -1,17 +1,20 @@
 /// 2100 Design System - OrignaGTA
 /// Futuristic, modern aesthetic with glassmorphism and fluid animations
+library;
+
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 class DesignTokens {
   // Primary Palette (2100 Aesthetic)
-  static const Color primary = Color(0xFF667EEA);      // Deep Purple
-  static const Color secondary = Color(0xFF764BA2);    // Violet
-  static const Color tertiary = Color(0xFFFF6B6B);     // Coral
-  static const Color accent = Color(0xFF00D4FF);       // Cyan
+  static const Color primary = Color(0xFF667EEA); // Deep Purple
+  static const Color secondary = Color(0xFF764BA2); // Violet
+  static const Color tertiary = Color(0xFFFF6B6B); // Coral
+  static const Color accent = Color(0xFF00D4FF); // Cyan
 
   // Neutral Palette
-  static const Color surface = Color(0xFFFAFAFC);      // Near white
+  static const Color surface = Color(0xFFFAFAFC); // Near white
   static const Color surfaceVariant = Color(0xFFF3F4F9);
   static const Color outline = Color(0xFFD0D5E0);
   static const Color outlineVariant = Color(0xFFE8EBF0);
@@ -22,10 +25,10 @@ class DesignTokens {
   static const Color darkOutline = Color(0xFF444B63);
 
   // Semantic
-  static const Color success = Color(0xFF10B981);      // Emerald
-  static const Color warning = Color(0xFFF59E0B);      // Amber
-  static const Color error = Color(0xFFEF4444);        // Red
-  static const Color info = Color(0xFF3B82F6);         // Blue
+  static const Color success = Color(0xFF10B981); // Emerald
+  static const Color warning = Color(0xFFF59E0B); // Amber
+  static const Color error = Color(0xFFEF4444); // Red
+  static const Color info = Color(0xFF3B82F6); // Blue
 
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
@@ -66,37 +69,13 @@ class DesignTokens {
   static const double radius32 = 32;
 
   // Elevation / Shadow
-  static const List<BoxShadow> shadowSm = [
-    BoxShadow(
-      color: Color(0x0A000000),
-      blurRadius: 2,
-      offset: Offset(0, 1),
-    ),
-  ];
+  static const List<BoxShadow> shadowSm = [BoxShadow(color: Color(0x0A000000), blurRadius: 2, offset: Offset(0, 1))];
 
-  static const List<BoxShadow> shadowMd = [
-    BoxShadow(
-      color: Color(0x10000000),
-      blurRadius: 4,
-      offset: Offset(0, 2),
-    ),
-  ];
+  static const List<BoxShadow> shadowMd = [BoxShadow(color: Color(0x10000000), blurRadius: 4, offset: Offset(0, 2))];
 
-  static const List<BoxShadow> shadowLg = [
-    BoxShadow(
-      color: Color(0x15000000),
-      blurRadius: 12,
-      offset: Offset(0, 4),
-    ),
-  ];
+  static const List<BoxShadow> shadowLg = [BoxShadow(color: Color(0x15000000), blurRadius: 12, offset: Offset(0, 4))];
 
-  static const List<BoxShadow> shadowXl = [
-    BoxShadow(
-      color: Color(0x1A000000),
-      blurRadius: 20,
-      offset: Offset(0, 8),
-    ),
-  ];
+  static const List<BoxShadow> shadowXl = [BoxShadow(color: Color(0x1A000000), blurRadius: 20, offset: Offset(0, 8))];
 
   // Glassmorphism
   static const double glassOpacity = 0.8;
@@ -126,7 +105,7 @@ class GlassContainer extends StatelessWidget {
   final EdgeInsets padding;
 
   const GlassContainer({
-    Key? key,
+    super.key,
     required this.child,
     this.color = const Color(0xFFFFFFFF),
     this.opacity = DesignTokens.glassOpacity,
@@ -134,7 +113,7 @@ class GlassContainer extends StatelessWidget {
     this.borderRadius = const BorderRadius.all(Radius.circular(DesignTokens.radius16)),
     this.shadows = DesignTokens.shadowMd,
     this.padding = const EdgeInsets.all(DesignTokens.spacing16),
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -147,10 +126,7 @@ class GlassContainer extends StatelessWidget {
           decoration: BoxDecoration(
             color: color.withOpacity(opacity),
             borderRadius: borderRadius,
-            border: Border.all(
-              color: Colors.white.withOpacity(0.2),
-              width: 1.5,
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
             boxShadow: shadows,
           ),
           child: child,

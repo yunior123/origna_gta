@@ -2,6 +2,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/screens/terms_screen.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_textfield.dart';
 
 import '../features/auth/login_viewmodel.dart';
 
@@ -38,222 +41,320 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
     });
 
     return Scaffold(
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Hero(
-                          tag: 'app_logo',
-                          child: Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFFF6B35), Color(0xFFFF8E53)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              DesignTokens.primary.withOpacity(0.05),
+              DesignTokens.secondary.withOpacity(0.05),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: DesignTokens.spacing20,
+                      vertical: DesignTokens.spacing24,
+                    ),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Logo with animation
+                          Hero(
+                            tag: 'app_logo',
+                            child: Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                gradient: DesignTokens.primaryGradient,
+                                borderRadius: BorderRadius.circular(
+                                  DesignTokens.radius24,
+                                ),
+                                boxShadow: DesignTokens.shadowLg,
                               ),
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [BoxShadow(color: const Color(0xFFFF6B35).withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
+                              child: const Icon(
+                                Icons.shopping_bag_outlined,
+                                size: 56,
+                                color: Colors.white,
+                              ),
                             ),
-                            child: const Icon(Icons.shopping_bag, size: 60, color: Colors.white),
                           ),
-                        ),
-                        const SizedBox(height: 40),
-                        const Text('OrignaGta', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
-                        const SizedBox(height: 8),
-                        Text(
-                          state.isLogin ? 'Welcome back!' : 'Create your account',
-                          style: TextStyle(fontSize: 16, color: Colors.grey[600], fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(height: 48),
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                          child: Column(
-                            children: [
-                              if (!state.isLogin) ...[
-                                TextFormField(
-                                  controller: _nameController,
-                                  decoration: const InputDecoration(labelText: 'Full Name', prefixIcon: Icon(Icons.person_outline)),
-                                  validator: (value) {
-                                    if (state.isLogin) return null;
-                                    if (value == null || value.isEmpty) return 'Please enter your name';
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-                              TextFormField(
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined)),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) return 'Please enter your email';
-                                  if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(value)) return 'Please enter a valid email';
-                                  return null;
-                                },
+                          const SizedBox(height: 32),
+
+                          // Title
+                          ShaderMask(
+                            shaderCallback: (bounds) =>
+                                DesignTokens.primaryGradient.createShader(bounds),
+                            child: const Text(
+                              'OrignaGta',
+                              style: TextStyle(
+                                fontSize: 40,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: -0.5,
                               ),
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _passwordController,
-                                obscureText: state.obscurePassword,
-                                decoration: InputDecoration(
-                                  labelText: 'Password',
-                                  prefixIcon: const Icon(Icons.lock_outline),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(state.obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                                    onPressed: viewModel.toggleObscurePassword,
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) return 'Please enter your password';
-                                  if (value.length < 6) return 'Password must be at least 6 characters';
-                                  return null;
-                                },
-                              ),
-                              if (!state.isLogin) ...[
-                                const SizedBox(height: 16),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    SizedBox(
-                                      height: 24,
-                                      width: 24,
-                                      child: Checkbox(
-                                        value: state.acceptedTerms,
-                                        onChanged: (v) => viewModel.setAcceptedTerms(v ?? false),
-                                        activeColor: const Color(0xFFFF6B35),
-                                      ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Subtitle
+                          Text(
+                            state.isLogin
+                                ? 'Welcome back to your marketplace'
+                                : 'Start selling or shopping today',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 40),
+
+                          // Form fields in glass container
+                          GlassContainer(
+                            child: AnimatedSize(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                              child: Column(
+                                children: [
+                                  if (!state.isLogin) ...[
+                                    ModernTextField(
+                                      label: 'Full Name',
+                                      hint: 'John Doe',
+                                      controller: _nameController,
+                                      prefixIcon: Icons.person_outline,
+                                      validator: (value) {
+                                        if (state.isLogin) return null;
+                                        if (value == null || value.isEmpty) {
+                                          return 'Name is required';
+                                        }
+                                        return null;
+                                      },
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: GestureDetector(
-                                        onTap: () => viewModel.setAcceptedTerms(!state.acceptedTerms),
-                                        child: RichText(
-                                          text: TextSpan(
-                                            style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                                            children: [
-                                              const TextSpan(text: 'I agree to the '),
-                                              TextSpan(
-                                                text: 'Terms and Conditions',
-                                                style: const TextStyle(
-                                                  color: Color(0xFFFF6B35),
-                                                  fontWeight: FontWeight.w600,
-                                                  decoration: TextDecoration.underline,
-                                                ),
-                                                recognizer: TapGestureRecognizer()
-                                                  ..onTap = () {
-                                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
-                                                  },
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
+                                    const SizedBox(
+                                      height: DesignTokens.spacing16,
                                     ),
                                   ],
-                                ),
-                              ],
-                            ],
+                                  ModernTextField(
+                                    label: 'Email Address',
+                                    hint: 'you@example.com',
+                                    controller: _emailController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    prefixIcon: Icons.mail_outline,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Email is required';
+                                      }
+                                      if (!RegExp(
+                                        r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                                      ).hasMatch(value)) {
+                                        return 'Enter a valid email';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(
+                                    height: DesignTokens.spacing16,
+                                  ),
+                                  ModernTextField(
+                                    label: 'Password',
+                                    hint: '••••••••',
+                                    controller: _passwordController,
+                                    isPassword: state.obscurePassword,
+                                    prefixIcon: Icons.lock_outline,
+                                    suffixIcon: state.obscurePassword
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    onSuffixTap: viewModel.toggleObscurePassword,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Password is required';
+                                      }
+                                      if (value.length < 6) {
+                                        return 'Minimum 6 characters';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  if (!state.isLogin) ...[
+                                    const SizedBox(
+                                      height: DesignTokens.spacing16,
+                                    ),
+                                    Row(
+                                      children: [
+                                        Checkbox(
+                                          value: state.acceptedTerms,
+                                          onChanged: (v) =>
+                                              viewModel.setAcceptedTerms(v ?? false),
+                                          activeColor: DesignTokens.primary,
+                                        ),
+                                        Expanded(
+                                          child: RichText(
+                                            text: TextSpan(
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.grey.shade700,
+                                                height: 1.4,
+                                              ),
+                                              children: [
+                                                const TextSpan(
+                                                  text: 'I agree to the ',
+                                                ),
+                                                TextSpan(
+                                                  text: 'Terms & Conditions',
+                                                  style: const TextStyle(
+                                                    color: DesignTokens.primary,
+                                                    fontWeight: FontWeight.w600,
+                                                    decoration:
+                                                        TextDecoration.underline,
+                                                  ),
+                                                  recognizer:
+                                                      TapGestureRecognizer()
+                                                        ..onTap = () {
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder: (_) =>
+                                                                  const TermsScreen(),
+                                                            ),
+                                                          );
+                                                        },
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 54,
-                          child: ElevatedButton(
-                            onPressed: state.isLoading || (!state.isLogin && !state.acceptedTerms)
-                                ? null
+                          const SizedBox(height: 24),
+
+                          // Primary action button
+                          ModernButton(
+                            label: state.isLogin ? 'Sign In' : 'Create Account',
+                            isLoading: state.isLoading,
+                            isPrimary: true,
+                            onPressed: state.isLoading ||
+                                    (!state.isLogin && !state.acceptedTerms)
+                                ? () {}
                                 : () {
                                     if (_formKey.currentState!.validate()) {
                                       viewModel.handleAuth(
                                         email: _emailController.text.trim(),
                                         password: _passwordController.text.trim(),
-                                        name: !state.isLogin ? _nameController.text.trim() : null,
+                                        name: !state.isLogin
+                                            ? _nameController.text.trim()
+                                            : null,
                                       );
                                     }
                                   },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF6B35),
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: Colors.grey[300],
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            child: state.isLoading
-                                ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                                : Text(state.isLogin ? 'Sign In' : 'Sign Up', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        if (state.isLogin) ...[
-                          TextButton(
-                            onPressed: () => _showForgotPasswordDialog(context),
-                            child: const Text(
-                              'Forgot Password?',
-                              style: TextStyle(color: Color(0xFFFF6B35), fontWeight: FontWeight.w600),
-                            ),
                           ),
                           const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: Text('Or continue with', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+
+                          if (state.isLogin) ...[
+                            TextButton(
+                              onPressed: () => _showForgotPasswordDialog(context),
+                              child: const Text(
+                                'Forgot Password?',
+                                style: TextStyle(
+                                  color: DesignTokens.primary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
                               ),
-                              Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 54,
-                            child: ElevatedButton.icon(
-                              onPressed: state.isLoading ? null : viewModel.handleGoogleSignIn,
-                              icon: Image.network(
-                                'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
-                                height: 24,
-                                width: 24,
-                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata, size: 24),
-                              ),
-                              label: const Text('Continue with Google', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: Colors.black87,
-                                disabledBackgroundColor: Colors.grey[200],
-                                disabledForegroundColor: Colors.grey[500],
-                                elevation: 0,
-                                side: const BorderSide(color: Color(0xFF4285F4), width: 1.5),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Divider(
+                                    color: Colors.grey.shade300,
+                                    thickness: 0.8,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: DesignTokens.spacing12,
+                                  ),
+                                  child: Text(
+                                    'or continue with',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade500,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Divider(
+                                    color: Colors.grey.shade300,
+                                    thickness: 0.8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            ModernButton(
+                              label: 'Google',
+                              icon: Icons.g_mobiledata,
+                              isPrimary: false,
+                              isLoading: state.isLoading,
+                              onPressed: state.isLoading
+                                  ? () {}
+                                  : viewModel.handleGoogleSignIn,
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+
+                          // Toggle auth mode
+                          GestureDetector(
+                            onTap: state.isLoading
+                                ? null
+                                : () {
+                                    viewModel.toggleAuthMode();
+                                    _formKey.currentState?.reset();
+                                  },
+                            child: RichText(
+                              text: TextSpan(
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: state.isLogin
+                                        ? "Don't have an account? "
+                                        : 'Already have an account? ',
+                                  ),
+                                  TextSpan(
+                                    text: state.isLogin ? 'Sign Up' : 'Sign In',
+                                    style: const TextStyle(
+                                      color: DesignTokens.primary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
                         ],
-                        TextButton(
-                          onPressed: state.isLoading
-                              ? null
-                              : () {
-                                  viewModel.toggleAuthMode();
-                                  _formKey.currentState?.reset();
-                                },
-                          child: Text(
-                            state.isLogin ? 'Don\'t have an account? Sign Up' : 'Already have an account? Sign In',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
