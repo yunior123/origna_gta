@@ -293,6 +293,7 @@ extension CartItemDetailModelExtension on CartItemDetailModel {
     Address? sellerAddress,
     String? sellerId,
     String? deliveryStatus,
+    bool? isDigital,
   }) {
     return CartItemDetailModel(
       productId: productId ?? this.productId,
@@ -305,6 +306,7 @@ extension CartItemDetailModelExtension on CartItemDetailModel {
       sellerAddress: sellerAddress ?? this.sellerAddress,
       sellerId: sellerId ?? this.sellerId,
       deliveryStatus: deliveryStatus ?? this.deliveryStatus,
+      isDigital: isDigital ?? this.isDigital,
     );
   }
 }

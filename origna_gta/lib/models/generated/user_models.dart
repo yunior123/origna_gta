@@ -71,8 +71,8 @@ class User with _$User {
 
   const User._();
 
-  /// Check if user can sell products (seller + onboarding complete)
-  bool get canSell => isSeller && onboardingCompleted && !suspended;
+  /// Check if user can sell products (seller/admin + onboarding + payouts/charges enabled)
+  bool get canSell => (isAdmin || isSeller) && onboardingCompleted && chargesEnabled && payoutsEnabled && !suspended;
 
   /// Check if user has admin role
   bool get isAdmin => roles.contains(UserRole.admin);

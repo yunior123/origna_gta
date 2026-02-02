@@ -26,6 +26,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _cityController = TextEditingController();
   final _postalCodeController = TextEditingController();
   final _stockController = TextEditingController(text: '1');
+  final _minOrderController = TextEditingController(text: '1');
   final _weightController = TextEditingController();
   final _lengthController = TextEditingController();
   final _widthController = TextEditingController();
@@ -114,132 +115,173 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _minOrderController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Min Order Qty', prefixIcon: Icon(Icons.format_list_numbered)),
+                          validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                          onChanged: (v) => viewModel.setMinimumOrderQuantity(int.tryParse(v) ?? 1),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Free Shipping'),
+                          value: state.freeShipping,
+                          activeThumbColor: const Color(0xFFFF6B35),
+                          onChanged: viewModel.toggleFreeShipping,
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 20),
-                  const Text('Delivery Options', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Perishable Item'),
-                    value: state.isPerishable,
+                    title: const Text('Digital Product (No Shipping)'),
+                    subtitle: const Text('Hide shipping options and deliver digitally'),
+                    value: state.isDigital,
                     activeThumbColor: const Color(0xFFFF6B35),
-                    onChanged: viewModel.togglePerishable,
+                    onChanged: viewModel.toggleDigital,
                   ),
-                  _buildDeliveryOptionCard(
-                    title: 'Standard Delivery',
-                    isEnabled: state.standardEnabled,
-                    onChanged: viewModel.setStandardEnabled,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _standardDaysController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Days'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _standardPriceController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Price (\$)', hintText: '0.00 = Free'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  _buildDeliveryOptionCard(
-                    title: 'Express Delivery',
-                    isEnabled: state.expressEnabled,
-                    onChanged: viewModel.setExpressEnabled,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _expressDaysController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Days'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _expressPriceController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Price (\$)'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  _buildDeliveryOptionCard(
-                    title: 'Same-Day Delivery',
-                    isEnabled: state.sameDayEnabled,
-                    onChanged: viewModel.setSameDayEnabled,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _sameDayPriceController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Price (\$)'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _sameDayRadiusController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Radius (km)'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  const Text('Package & Pickup', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Local Pickup/Delivery Only'),
-                    value: state.isLocalDeliveryOnly,
-                    onChanged: viewModel.setLocalDeliveryOnly,
-                  ),
-                  if (!state.isLocalDeliveryOnly) ...[
-                    TextFormField(
-                      controller: _weightController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Weight (kg)', prefixIcon: Icon(Icons.scale_outlined)),
+                  if (state.isDigital)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text('Digital products skip shipping calculation and delivery options.', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
+                  const Text('Delivery Options', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  if (!state.isDigital) ...[
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Perishable Item'),
+                      value: state.isPerishable,
+                      activeThumbColor: const Color(0xFFFF6B35),
+                      onChanged: viewModel.togglePerishable,
+                    ),
+                    _buildDeliveryOptionCard(
+                      title: 'Standard Delivery',
+                      isEnabled: state.standardEnabled,
+                      onChanged: viewModel.setStandardEnabled,
                       children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _lengthController,
-                            decoration: const InputDecoration(labelText: 'L'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _widthController,
-                            decoration: const InputDecoration(labelText: 'W'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _heightController,
-                            decoration: const InputDecoration(labelText: 'H'),
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _standardDaysController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(labelText: 'Days'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _standardPriceController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(labelText: 'Price (\$)', hintText: '0.00 = Free'),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                    _buildDeliveryOptionCard(
+                      title: 'Express Delivery',
+                      isEnabled: state.expressEnabled,
+                      onChanged: viewModel.setExpressEnabled,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _expressDaysController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(labelText: 'Days'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _expressPriceController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(labelText: 'Price (\$)'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    _buildDeliveryOptionCard(
+                      title: 'Same-Day Delivery',
+                      isEnabled: state.sameDayEnabled,
+                      onChanged: viewModel.setSameDayEnabled,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _sameDayPriceController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(labelText: 'Price (\$)'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _sameDayRadiusController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(labelText: 'Radius (km)'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  const Text('Package & Pickup', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  if (!state.isDigital) ...[
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Local Pickup/Delivery Only'),
+                      value: state.isLocalDeliveryOnly,
+                      onChanged: viewModel.setLocalDeliveryOnly,
+                    ),
+                    if (!state.isLocalDeliveryOnly) ...[
+                      TextFormField(
+                        controller: _weightController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Weight (kg)', prefixIcon: Icon(Icons.scale_outlined)),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _lengthController,
+                              decoration: const InputDecoration(labelText: 'L'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _widthController,
+                              decoration: const InputDecoration(labelText: 'W'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _heightController,
+                              decoration: const InputDecoration(labelText: 'H'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -346,6 +388,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                   height: double.tryParse(_heightController.text),
                                   taxCode: _taxCodeController.text.trim(),
                                   deliveryOptions: _buildDeliveryOptions(state),
+                                  minimumOrderQuantity: int.tryParse(_minOrderController.text) ?? 1,
+                                  freeShipping: state.freeShipping,
                                 );
                               }
                             },
@@ -380,6 +424,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _widthController.dispose();
     _heightController.dispose();
     _taxCodeController.dispose();
+    _minOrderController.dispose();
     _standardDaysController.dispose();
     _standardPriceController.dispose();
     _expressDaysController.dispose();
@@ -410,6 +455,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   List<SellerDeliveryOption> _buildDeliveryOptions(AddProductState state) {
+    if (state.isDigital) return [];
     return [
       if (state.standardEnabled)
         SellerDeliveryOption(

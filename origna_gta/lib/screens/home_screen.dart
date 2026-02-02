@@ -31,6 +31,8 @@ class _AddProductButton extends ConsumerWidget {
     // Only show for sellers or admins
     final isSeller = userProfile?.roles.contains(UserRoles.seller) ?? false;
     final isAdmin = userProfile?.roles.contains(UserRoles.admin) ?? false;
+    final canSell = userProfile?.canSell ?? false;
+    final isSuspended = userProfile?.suspended ?? false;
 
     if (!isSeller && !isAdmin) {
       return const SizedBox.shrink();
@@ -39,6 +41,11 @@ class _AddProductButton extends ConsumerWidget {
     return IconButton(
       icon: const Icon(Icons.add_box_outlined, color: Colors.white),
       onPressed: () {
+        if (!canSell && !isAdmin) {
+          final message = isSuspended ? 'Seller account suspended. Contact support.' : 'Complete seller onboarding to add products.';
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.orange));
+          return;
+        }
         Navigator.push(context, MaterialPageRoute(builder: (_) => const AddProductScreen()));
       },
     );

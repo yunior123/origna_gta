@@ -54,12 +54,38 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
   /// Calculate shipping cost for cart items and determine available delivery options
   Future<void> calculateShipping(List<CartItemDetailModel> items) async {
+    if (items.isEmpty) {
+      state = state.copyWith(shippingError: 'No items to ship');
+      return;
+    }
+
+    final hasPhysicalItems = items.any((item) => !item.isDigital);
     if (state.address == null) {
+      if (!hasPhysicalItems) {
+        state = state.copyWith(
+          baseShippingCost: 0,
+          shippingCost: 0,
+          isLocalDelivery: false,
+          availableDeliverySpeeds: const [],
+          deliverySpeed: DeliverySpeed.standard,
+          isCalculatingShipping: false,
+          clearShippingError: true,
+        );
+        return;
+      }
       state = state.copyWith(shippingError: 'No address found');
       return;
     }
-    if (items.isEmpty) {
-      state = state.copyWith(shippingError: 'No items to ship');
+    if (!hasPhysicalItems) {
+      state = state.copyWith(
+        baseShippingCost: 0,
+        shippingCost: 0,
+        isLocalDelivery: false,
+        availableDeliverySpeeds: const [],
+        deliverySpeed: DeliverySpeed.standard,
+        isCalculatingShipping: false,
+        clearShippingError: true,
+      );
       return;
     }
 
@@ -126,13 +152,20 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     }
   }
 
+  void setPaymentProvider(String provider) {
+    if (provider == 'stripe' || provider == 'airwallex') {
+      state = state.copyWith(paymentProvider: provider);
+    }
+  }
+
   /// Start Stripe checkout with idempotency
   Future<CheckoutResult> startCheckout({required List<CartItemDetailModel> items, required UserModel user, required double subtotal}) async {
     if (items.isEmpty) {
       return CheckoutError(message: 'Your cart is empty');
     }
 
-    if (!hasValidAddress(state.address)) {
+    final hasPhysicalItems = items.any((item) => !item.isDigital);
+    if (hasPhysicalItems && !hasValidAddress(state.address)) {
       return CheckoutError(message: 'Delivery address is required');
     }
 
@@ -173,11 +206,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       final idempotencyKey = _generateIdempotencyKey(userId, items);
       state = state.copyWith(idempotencyKey: idempotencyKey);
 
-      final taxRate = getTaxRate(state.address!.state);
-      final tax = subtotal * taxRate;
+      final taxes = hasPhysicalItems && state.address != null ? calculateDetailedTaxes(state.address, subtotal) : <String, double>{};
+      final tax = taxes.values.fold(0.0, (acc, v) => acc + v);
       final totalWithTax = subtotal + tax + state.shippingCost;
-
-      final taxes = calculateDetailedTaxes(state.address, subtotal);
       final sellerIds = items.map((item) => item.sellerId).toSet().toList();
 
       final orderData = {
@@ -194,6 +225,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
                 'price': item.price,
                 'quantity': item.quantity,
                 'imageUrls': item.imageUrls,
+                'isDigital': item.isDigital,
               },
             )
             .toList(),
@@ -201,12 +233,13 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         'taxes': taxes,
         'shippingCost': state.shippingCost,
         'subtotal': subtotal,
-        'deliveryInfo': state.address!.toMap(),
+        'deliveryInfo': state.address?.toMap(),
         'currency': 'cad',
         'amount': (totalWithTax * 100).toInt(),
         'sellerIds': sellerIds,
         'idempotencyKey': idempotencyKey,
         'deliverySpeed': state.deliverySpeed.value,
+        'paymentProvider': state.paymentProvider,
       };
 
       debugPrint('Sending checkout request with idempotency key: $idempotencyKey');
@@ -367,6 +400,7 @@ class CheckoutState {
   final bool isProcessing;
   final String? idempotencyKey;
   final String? checkoutError;
+  final String paymentProvider;
 
   const CheckoutState({
     this.address,
@@ -380,6 +414,7 @@ class CheckoutState {
     this.isProcessing = false,
     this.idempotencyKey,
     this.checkoutError,
+    this.paymentProvider = 'stripe',
   });
 
   /// Total shipping cost including delivery speed surcharge
@@ -405,6 +440,7 @@ class CheckoutState {
     bool? isProcessing,
     String? idempotencyKey,
     String? checkoutError,
+    String? paymentProvider,
     bool clearShippingError = false,
     bool clearCheckoutError = false,
   }) {
@@ -420,6 +456,7 @@ class CheckoutState {
       isProcessing: isProcessing ?? this.isProcessing,
       idempotencyKey: idempotencyKey ?? this.idempotencyKey,
       checkoutError: clearCheckoutError ? null : (checkoutError ?? this.checkoutError),
+      paymentProvider: paymentProvider ?? this.paymentProvider,
     );
   }
 }

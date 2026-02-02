@@ -187,8 +187,59 @@ class _CheckoutContent extends ConsumerWidget {
     final address = ref.watch(checkoutStateProvider.select((state) => state.address));
     final shippingCost = ref.watch(checkoutStateProvider.select((state) => state.shippingCost));
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasPhysicalItems = items.any((item) => !item.isDigital);
+    final paymentProvider = ref.watch(checkoutStateProvider.select((state) => state.paymentProvider));
+    final notifier = ref.read(checkoutStateProvider.notifier);
 
     if (address == null) {
+      if (!hasPhysicalItems) {
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [isDark ? Colors.grey[900]! : Colors.grey[50]!, isDark ? Colors.grey[800]! : Colors.white],
+            ),
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      GlassContainer(
+                        child: Row(
+                          children: [
+                            Icon(Icons.download_done, color: DesignTokens.primary),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Digital delivery — no shipping or address required',
+                                style: TextStyle(color: isDark ? Colors.grey[200] : Colors.grey[700], fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      _PaymentProviderSection(selectedProvider: paymentProvider, onChanged: notifier.setPaymentProvider),
+                      const SizedBox(height: 28),
+                      _OrderSummary(items: items, subtotal: subtotal, state: 'ON'),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ),
+              _CheckoutButton(items: items, userModel: userModel, subtotal: subtotal, total: subtotal),
+              _TermsText(),
+              const SizedBox(height: 16),
+              _SecurityInfo(),
+            ],
+          ),
+        );
+      }
       return _NoAddressView(onRefreshShipping: onRefreshShipping);
     }
 
@@ -214,7 +265,27 @@ class _CheckoutContent extends ConsumerWidget {
                 children: [
                   _AddressSection(address: address, onRefreshShipping: onRefreshShipping),
                   const SizedBox(height: 28),
-                  const _DeliveryOptionsSection(),
+                  if (hasPhysicalItems) ...[
+                    const _DeliveryOptionsSection(),
+                    const SizedBox(height: 28),
+                  ] else ...[
+                    GlassContainer(
+                      child: Row(
+                        children: [
+                          Icon(Icons.download_done, color: DesignTokens.primary),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Digital delivery — no shipping required',
+                              style: TextStyle(color: isDark ? Colors.grey[200] : Colors.grey[700], fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                  ],
+                  _PaymentProviderSection(selectedProvider: paymentProvider, onChanged: notifier.setPaymentProvider),
                   const SizedBox(height: 28),
                   _OrderSummary(items: items, subtotal: subtotal, state: address.state),
                   const SizedBox(height: 40),
@@ -615,6 +686,50 @@ class _OrderSummary extends ConsumerWidget {
     });
 
     return widgets;
+  }
+}
+
+class _PaymentProviderSection extends StatelessWidget {
+  final String selectedProvider;
+  final ValueChanged<String> onChanged;
+
+  const _PaymentProviderSection({required this.selectedProvider, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Payment Method', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            ChoiceChip(
+              label: const Text('Stripe'),
+              selected: selectedProvider == 'stripe',
+              onSelected: (selected) {
+                if (selected) onChanged('stripe');
+              },
+            ),
+            const SizedBox(width: 12),
+            ChoiceChip(
+              label: const Text('Airwallex'),
+              selected: selectedProvider == 'airwallex',
+              onSelected: (selected) {
+                if (selected) onChanged('airwallex');
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          selectedProvider == 'airwallex'
+              ? 'Airwallex supports international cards and multi-currency settlement.'
+              : 'Stripe is the default and fastest checkout experience.',
+          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+        ),
+      ],
+    );
   }
 }
 

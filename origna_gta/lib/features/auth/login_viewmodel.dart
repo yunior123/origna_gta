@@ -16,6 +16,14 @@ class LoginViewModel extends StateNotifier<LoginState> {
   Future<void> handleAuth({required String email, required String password, String? name}) async {
     if (state.isLoading) return;
 
+    final now = DateTime.now();
+    final lockoutUntil = state.lockoutUntil;
+    if (lockoutUntil != null && now.isBefore(lockoutUntil)) {
+      final remaining = lockoutUntil.difference(now).inMinutes + 1;
+      state = state.copyWith(errorMessage: 'Too many attempts. Try again in ${remaining}m.');
+      return;
+    }
+
     // SECURITY FIX M-3: Enforce strong password policy for registration
     if (!state.isLogin) {
       final passwordError = _validatePasswordStrength(password);
@@ -31,12 +39,25 @@ class LoginViewModel extends StateNotifier<LoginState> {
     try {
       if (state.isLogin) {
         await repository.signInWithEmail(email, password);
+        final isVerified = await repository.isEmailVerified();
+        if (!isVerified) {
+          await repository.sendEmailVerification();
+          await repository.signOut();
+          state = state.copyWith(isLoading: false, errorMessage: 'Email not verified. Verification link sent.');
+          return;
+        }
       } else {
         await repository.registerWithEmail(email, password, name ?? 'User');
       }
-      state = state.copyWith(isLoading: false, isSuccess: true);
+      state = state.copyWith(isLoading: false, isSuccess: true, failedAttempts: 0, lockoutUntil: null);
     } on FirebaseAuthException catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.message ?? 'Authentication failed');
+      final attempts = state.failedAttempts + 1;
+      DateTime? newLockout;
+      if (attempts >= 5) {
+        final backoffMinutes = attempts >= 8 ? 15 : 5;
+        newLockout = DateTime.now().add(Duration(minutes: backoffMinutes));
+      }
+      state = state.copyWith(isLoading: false, errorMessage: e.message ?? 'Authentication failed', failedAttempts: attempts, lockoutUntil: newLockout);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: 'An error occurred. Please try again.');
     }

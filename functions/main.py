@@ -33,6 +33,9 @@ import re
 from enum import Enum
 import requests
 from pydantic import ValidationError
+import pyotp
+
+from airwallex_service import AirwallexService
 
 # ============================================================================
 # MODULAR IMPORTS
@@ -97,6 +100,77 @@ except Exception as e:
 db = firestore.client()
 rate_limiter = RateLimiter(db)
 
+# ==========================================================================
+# SELLER STATUS VALIDATION
+# ==========================================================================
+
+def _assert_seller_active(seller_id: str, require_approval: bool = True) -> Dict[str, Any]:
+    """
+    Ensure seller is not suspended and (optionally) approved for selling.
+    Approval requires: seller role OR admin role + onboardingCompleted + chargesEnabled + payoutsEnabled.
+    """
+    seller_ref = db.collection(Collections.USERS).document(seller_id)
+    seller_doc = seller_ref.get()
+    if not seller_doc.exists:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.NOT_FOUND,
+            message="Seller not found"
+        )
+
+    seller_data = seller_doc.to_dict() or {}
+    if seller_data.get('suspended', False):
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+            message="Seller account is suspended"
+        )
+
+    if not require_approval:
+        return seller_data
+
+    roles = seller_data.get('roles', [])
+    if UserRoles.ADMIN in roles:
+        return seller_data
+
+    if UserRoles.SELLER not in roles:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+            message="Seller role required"
+        )
+
+    if not seller_data.get('onboardingCompleted', False) or not seller_data.get('chargesEnabled', False) or not seller_data.get('payoutsEnabled', False):
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+            message="Seller is not approved to sell yet"
+        )
+
+    return seller_data
+
+
+def _require_recent_admin_mfa(admin_data: Dict[str, Any]) -> None:
+    """Require admin MFA verification within the last 10 minutes when enabled."""
+    if not admin_data.get('adminMfaEnabled', False):
+        return
+
+    verified_at = admin_data.get('adminMfaVerifiedAt')
+    if not verified_at:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+            message="Admin MFA verification required"
+        )
+
+    try:
+        # Firestore timestamp may be provided as datetime already
+        if hasattr(verified_at, 'to_datetime'):
+            verified_at = verified_at.to_datetime()
+    except Exception:
+        pass
+
+    if not isinstance(verified_at, datetime) or datetime.now() - verified_at > timedelta(minutes=10):
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+            message="Admin MFA session expired. Please verify again."
+        )
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
@@ -109,6 +183,7 @@ else:
     print("🚀 Running in PRODUCTION mode")
 
 stripe.api_key = STRIPE_SECRET_KEY
+airwallex_service = AirwallexService()
 
 cors_config_p = options.CorsOptions(
     cors_origins=[
@@ -193,19 +268,10 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         customer_email = sanitize_email(data['customerEmail'])
         customer_id = data.get('customerId', '')
         currency = data.get('currency', 'cad').lower()
-        delivery_info_raw = data['deliveryInfo']
+        delivery_info_raw = data.get('deliveryInfo')
         requested_items = data['items']
-
-        # Validate and convert delivery address to Pydantic Address object
-        try:
-            delivery_info = validate_address_map(delivery_info_raw)
-            # Convert back to dict for Firestore storage (preserve compatibility)
-            delivery_info_dict = delivery_info.model_dump(exclude_none=True)
-        except ValueError as e:
-            raise https_fn.HttpsError(
-                code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
-                message=str(e)
-            )
+        delivery_info = None
+        delivery_info_dict = None
 
         # ================================================================
         # IDEMPOTENCY CHECK (CLIENT-SUPPLIED KEY)
@@ -232,27 +298,6 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                             }
                     except Exception:
                         pass
-        # CANADA-ONLY SHIPPING VALIDATION
-        # ================================================================
-        CANADIAN_PROVINCES = ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT']
-        delivery_state = delivery_info.state.upper()
-        delivery_country = delivery_info.country
-
-        if delivery_state not in CANADIAN_PROVINCES:
-            raise https_fn.HttpsError(
-                code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
-                message=f"Shipping is only available within Canada. Invalid province: {delivery_state}"
-            )
-
-        if delivery_country.lower() not in ['canada', 'ca']:
-            raise https_fn.HttpsError(
-                code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
-                message="Shipping is only available within Canada"
-            )
-
-        if IS_EMULATOR:
-            print(f"✓ Delivery address validated: {delivery_state}")
-
         # ================================================================
         # ATOMIC VALIDATION: STOCK & PRICE FETCHING
         # ================================================================
@@ -305,6 +350,23 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 image_urls = product_data.get('imageUrls', [])
                 category_id = product_data.get('categoryId', 0)
                 product_tax_code = product_data.get('taxCode') # Optional override
+
+                # Verify seller is active and approved
+                if not seller_id:
+                    raise ValueError(f"Product {product_id} has no seller")
+                seller_ref = db.collection(Collections.USERS).document(seller_id)
+                seller_doc = transaction.get(seller_ref)
+                if not seller_doc.exists:
+                    raise ValueError(f"Seller {seller_id} not found for product {product_id}")
+                seller_data = seller_doc.to_dict() or {}
+                if seller_data.get('suspended', False):
+                    raise ValueError(f"Seller {seller_id} is suspended")
+                roles = seller_data.get('roles', [])
+                if UserRoles.ADMIN not in roles:
+                    if UserRoles.SELLER not in roles:
+                        raise ValueError(f"Seller {seller_id} role not valid")
+                    if not seller_data.get('onboardingCompleted', False) or not seller_data.get('chargesEnabled', False) or not seller_data.get('payoutsEnabled', False):
+                        raise ValueError(f"Seller {seller_id} is not approved to sell")
                 
                 # Check stock
                 if current_stock < quantity:
@@ -337,7 +399,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                     'isPerishable': product_data.get('isPerishable', False),
                     'deliveryOptions': product_data.get('deliveryOptions', []),
                     'minimumOrderQuantity': int(product_data.get('minimumOrderQuantity', 1)),
-                    'freeShipping': bool(product_data.get('freeShipping', False))
+                    'freeShipping': bool(product_data.get('freeShipping', False)),
+                    'isDigital': bool(product_data.get('isDigital', False))
                 })
 
             # Commit stock updates
@@ -358,6 +421,47 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             )
 
         # ================================================================
+        # DELIVERY VALIDATION (PHYSICAL ITEMS ONLY)
+        # ================================================================
+        has_physical_items = any(not item.get('isDigital', False) for item in trusted_items)
+
+        if has_physical_items:
+            if not delivery_info_raw:
+                raise https_fn.HttpsError(
+                    code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+                    message="Delivery address is required for physical items"
+                )
+
+            try:
+                delivery_info = validate_address_map(delivery_info_raw)
+                delivery_info_dict = delivery_info.model_dump(exclude_none=True)
+            except ValueError as e:
+                raise https_fn.HttpsError(
+                    code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+                    message=str(e)
+                )
+
+            # CANADA-ONLY SHIPPING VALIDATION
+            CANADIAN_PROVINCES = ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT']
+            delivery_state = delivery_info.state.upper()
+            delivery_country = delivery_info.country
+
+            if delivery_state not in CANADIAN_PROVINCES:
+                raise https_fn.HttpsError(
+                    code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+                    message=f"Shipping is only available within Canada. Invalid province: {delivery_state}"
+                )
+
+            if delivery_country.lower() not in ['canada', 'ca']:
+                raise https_fn.HttpsError(
+                    code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+                    message="Shipping is only available within Canada"
+                )
+
+            if IS_EMULATOR:
+                print(f"✓ Delivery address validated: {delivery_state}")
+
+        # ================================================================
         # SERVER-SIDE CALCULATIONS (SUBTOTAL & SHIPPING)
         # ================================================================
         
@@ -367,9 +471,6 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         # 2. Shipping Cost
         # Skip shipping for digital products (no shipping needed)
         shipping_cost = 0.0
-        
-        # Check if there are any physical items that need shipping
-        has_physical_items = any(not item.get('isDigital', False) for item in trusted_items)
         
         if has_physical_items:
             requested_speed = data.get('deliverySpeed', 'standard')
@@ -455,7 +556,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                     "currency": currency,
                     "product_data": {
                         "name": "Shipping",
-                        "description": f"Delivery to {delivery_state}",
+                        "description": f"Delivery to {delivery_info.state.upper()}",
                         "tax_code": "txcd_92010001" # Shipping tax code
                     },
                     "unit_amount": int(shipping_cost * 100),
@@ -472,6 +573,12 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         success_url = f"{base_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}&order_id={order_id}"
         cancel_url = f"{base_url}/payment-cancel"
         
+        shipping_address_collection = None
+        if has_physical_items:
+            shipping_address_collection = {
+                "allowed_countries": ["CA"]
+            }
+
         print(f"💳 Creating Stripe session for order {order_id} (Stripe Tax Enabled)")
         stripe_idem_key = None
         if idem_key:
@@ -500,9 +607,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             },
             client_reference_id=order_id,
             billing_address_collection="auto",
-            shipping_address_collection={
-                 "allowed_countries": ["CA"]
-            },
+            shipping_address_collection=shipping_address_collection,
             expires_at=int((datetime.now().timestamp() + 1800)),
             idempotency_key=stripe_idem_key,
         )
@@ -1003,6 +1108,9 @@ def process_checkout_session_completed(session: Dict) -> Optional[str]:
         })
         print(f"  ⏳ Payment processing (async)")
 
+    if "status" in update_data:
+        _assert_order_status_transition(order_data, update_data["status"])
+
     order_ref.update(update_data)
     print(f"  ✓ Order updated")
 
@@ -1041,6 +1149,13 @@ def _restore_stock_for_order(order_data: Dict) -> None:
         print(f"  ⚠️ Failed to restore stock: {str(e)}")
 
 
+def _assert_order_status_transition(order_data: Dict, new_status: str) -> None:
+    """Validate order status transitions to prevent invalid lifecycle changes."""
+    current_status = order_data.get('status', OrderStatus.PENDING)
+    if not is_valid_order_status_transition(current_status, new_status):
+        raise ValueError(f"Invalid order status transition: {current_status} → {new_status}")
+
+
 def process_async_payment_succeeded(session: Dict) -> Optional[str]:
     """Process checkout.session.async_payment_succeeded event"""
     print("\n✅ Processing: checkout.session.async_payment_succeeded")
@@ -1060,6 +1175,8 @@ def process_async_payment_succeeded(session: Dict) -> Optional[str]:
     order_doc = order_ref.get()
 
     if order_doc.exists:
+        order_data = order_doc.to_dict() or {}
+        _assert_order_status_transition(order_data, OrderStatus.CONFIRMED)
         order_ref.update({
             "status": OrderStatus.CONFIRMED,
             "paymentStatus": PaymentStatus.PAID,
@@ -1098,6 +1215,7 @@ def process_async_payment_failed(session: Dict) -> Optional[str]:
         order_doc = order_ref.get()
         if order_doc.exists:
             order_data = order_doc.to_dict()
+            _assert_order_status_transition(order_data, OrderStatus.FAILED)
             order_ref.update({
                 "status": OrderStatus.FAILED,
                 "paymentStatus": PaymentStatus.PAYMENT_FAILED,
@@ -1127,6 +1245,7 @@ def process_session_expired(session: Dict) -> Optional[str]:
         order_doc = order_ref.get()
         if order_doc.exists:
             order_data = order_doc.to_dict()
+            _assert_order_status_transition(order_data, OrderStatus.EXPIRED)
             order_ref.update({
                 "status": OrderStatus.EXPIRED,
                 "paymentStatus": PaymentStatus.SESSION_EXPIRED,
@@ -2247,6 +2366,9 @@ def create_connect_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
             )
 
         user_data = user_doc.to_dict()
+
+        # Block suspended sellers from onboarding
+        _assert_seller_active(user_id, require_approval=False)
         
         # ============================================
         # 🔒 SECURITY: Sanctions List Check
@@ -2382,6 +2504,8 @@ def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
     print(f"🔗 Creating account link for user: {user_id}")
 
     try:
+        # Block suspended sellers from onboarding
+        _assert_seller_active(user_id, require_approval=False)
         # Get user's Stripe account ID
         user_ref = db.collection(Collections.USERS).document(user_id)
         user_doc = user_ref.get()
@@ -2428,6 +2552,443 @@ def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
             code=https_fn.FunctionsErrorCode.INTERNAL,
             message=f"Failed to create onboarding link: {str(e)}"
         )
+
+
+# ==========================================================================
+# ADMIN MFA (TOTP)
+# ==========================================================================
+
+@https_fn.on_call()
+def admin_mfa_enroll(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Generate TOTP secret for admin MFA and return provisioning URI.
+    Admin-only.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    admin_id = req.auth.uid
+    admin_ref = db.collection(Collections.USERS).document(admin_id)
+    admin_doc = admin_ref.get()
+
+    if not admin_doc.exists:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.NOT_FOUND,
+            message="Admin user not found"
+        )
+
+    admin_data = admin_doc.to_dict() or {}
+    if UserRoles.ADMIN not in admin_data.get('roles', []):
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+            message="Admin access required"
+        )
+
+    secret = pyotp.random_base32()
+    email = admin_data.get('email', 'admin@orignagta.com')
+    totp = pyotp.TOTP(secret)
+    otpauth_url = totp.provisioning_uri(name=email, issuer_name="OrignaGTA Admin")
+
+    backup_codes = [pyotp.random_base32()[:10] for _ in range(6)]
+
+    admin_ref.update({
+        'adminMfaSecret': secret,
+        'adminMfaEnabled': False,
+        'adminMfaVerifiedAt': None,
+        'adminMfaBackupCodes': backup_codes,
+        'updatedAt': firestore.SERVER_TIMESTAMP,
+    })
+
+    return {
+        'secret': secret,
+        'otpauthUrl': otpauth_url,
+        'backupCodes': backup_codes,
+    }
+
+
+@https_fn.on_call()
+def admin_mfa_verify(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Verify admin TOTP or backup code.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    code = (req.data.get('code') or '').replace(' ', '')
+    if not code:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="code is required"
+        )
+
+    admin_id = req.auth.uid
+    admin_ref = db.collection(Collections.USERS).document(admin_id)
+    admin_doc = admin_ref.get()
+
+    if not admin_doc.exists:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.NOT_FOUND,
+            message="Admin user not found"
+        )
+
+    admin_data = admin_doc.to_dict() or {}
+    if UserRoles.ADMIN not in admin_data.get('roles', []):
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+            message="Admin access required"
+        )
+
+    secret = admin_data.get('adminMfaSecret')
+    backup_codes = admin_data.get('adminMfaBackupCodes', [])
+
+    is_valid = False
+    used_backup = False
+
+    if secret:
+        totp = pyotp.TOTP(secret)
+        is_valid = totp.verify(code, valid_window=1)
+
+    if not is_valid and code in backup_codes:
+        is_valid = True
+        used_backup = True
+        backup_codes = [c for c in backup_codes if c != code]
+
+    if not is_valid:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+            message="Invalid MFA code"
+        )
+
+    updates = {
+        'adminMfaEnabled': True,
+        'adminMfaVerifiedAt': firestore.SERVER_TIMESTAMP,
+        'updatedAt': firestore.SERVER_TIMESTAMP,
+    }
+    if used_backup:
+        updates['adminMfaBackupCodes'] = backup_codes
+
+    admin_ref.update(updates)
+
+    return {
+        'success': True,
+        'usedBackupCode': used_backup,
+        'backupCodesRemaining': len(backup_codes),
+    }
+
+
+@https_fn.on_call()
+def admin_mfa_disable(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """Disable admin MFA (admin-only)."""
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    admin_id = req.auth.uid
+    admin_ref = db.collection(Collections.USERS).document(admin_id)
+    admin_doc = admin_ref.get()
+
+    if not admin_doc.exists:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.NOT_FOUND,
+            message="Admin user not found"
+        )
+
+    admin_data = admin_doc.to_dict() or {}
+    if UserRoles.ADMIN not in admin_data.get('roles', []):
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+            message="Admin access required"
+        )
+
+    admin_ref.update({
+        'adminMfaEnabled': False,
+        'adminMfaVerifiedAt': None,
+        'adminMfaSecret': None,
+        'adminMfaBackupCodes': [],
+        'updatedAt': firestore.SERVER_TIMESTAMP,
+    })
+
+    return {'success': True}
+
+
+@https_fn.on_call()
+def set_payment_provider(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Set seller payment provider (stripe or airwallex).
+    SECURITY: Authenticated users only, blocked if suspended.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    provider = req.data.get('provider')
+    if provider not in ['stripe', 'airwallex']:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="provider must be 'stripe' or 'airwallex'"
+        )
+
+    user_id = req.auth.uid
+    _assert_seller_active(user_id, require_approval=False)
+
+    user_ref = db.collection(Collections.USERS).document(user_id)
+    user_ref.update({
+        'paymentProvider': provider,
+        'updatedAt': firestore.SERVER_TIMESTAMP,
+    })
+
+    return {
+        'success': True,
+        'provider': provider,
+    }
+
+
+@https_fn.on_call()
+def airwallex_create_seller_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Create Airwallex account for seller and store in Firestore.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    user_id = req.auth.uid
+    _assert_seller_active(user_id, require_approval=False)
+
+    try:
+        user_ref = db.collection(Collections.USERS).document(user_id)
+        user_doc = user_ref.get()
+        if not user_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="User not found"
+            )
+
+        user_data = user_doc.to_dict() or {}
+
+        existing_account = user_data.get('airwallexAccountId')
+        if existing_account:
+            return {
+                'success': True,
+                'alreadyExists': True,
+                'accountId': existing_account,
+            }
+
+        seller_data = {
+            'full_name': user_data.get('name') or user_data.get('displayName', 'Seller'),
+            'email': user_data.get('email'),
+            'country': user_data.get('country', 'CA'),
+            'is_corporate': False,
+        }
+
+        account = airwallex_service.create_connected_account(user_id, seller_data)
+        account_id = account.get('id') or account.get('account_id')
+
+        if not account_id:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.INTERNAL,
+                message="Airwallex account creation failed"
+            )
+
+        # Update user document
+        updates = {
+            'paymentProvider': 'airwallex',
+            'airwallexAccountId': account_id,
+            'airwallexCustomerId': account.get('customer_id'),
+            'airwallexStatus': account.get('status', 'active'),
+            'onboardingCompleted': True,
+            'chargesEnabled': True,
+            'payoutsEnabled': True,
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+        }
+
+        # Add seller role if missing
+        current_roles = user_data.get('roles', [])
+        if UserRoles.SELLER not in current_roles:
+            updates['roles'] = current_roles + [UserRoles.SELLER]
+
+        user_ref.update(updates)
+
+        return {
+            'success': True,
+            'accountId': account_id,
+            'status': updates['airwallexStatus'],
+        }
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Airwallex account error: {str(e)}")
+        print(traceback.format_exc())
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to create Airwallex account: {str(e)}"
+        )
+
+
+@https_fn.on_call()
+def airwallex_process_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Create Airwallex payment intent (authorize only).
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    order_id = req.data.get('orderId')
+    seller_id = req.data.get('sellerId')
+    amount_cents = req.data.get('amountCents')
+
+    if not order_id or not seller_id or not amount_cents:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="orderId, sellerId, and amountCents are required"
+        )
+
+    _assert_seller_active(seller_id, require_approval=True)
+
+    try:
+        order_ref = db.collection(Collections.ORDERS).document(order_id)
+        order_doc = order_ref.get()
+        if not order_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Order not found"
+            )
+
+        order_data = order_doc.to_dict() or {}
+        if seller_id not in order_data.get('sellerIds', []):
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+                message="Seller not part of this order"
+            )
+
+        payment = airwallex_service.create_payment_intent(
+            seller_id=seller_id,
+            order_id=order_id,
+            amount_cents=int(amount_cents),
+            currency=order_data.get('currency', 'CAD').upper(),
+            capture=False,
+        )
+
+        order_ref.update({
+            'airwallexPaymentId': payment.get('id'),
+            'paymentProvider': 'airwallex',
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+        })
+
+        return {
+            'success': True,
+            'payment': payment,
+        }
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Airwallex payment error: {str(e)}")
+        print(traceback.format_exc())
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to process Airwallex payment: {str(e)}"
+        )
+
+
+@https_fn.on_call()
+def airwallex_capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Capture Airwallex payment after shipping confirmation.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Must be logged in"
+        )
+
+    order_id = req.data.get('orderId')
+    if not order_id:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="orderId is required"
+        )
+
+    try:
+        order_ref = db.collection(Collections.ORDERS).document(order_id)
+        order_doc = order_ref.get()
+        if not order_doc.exists:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.NOT_FOUND,
+                message="Order not found"
+            )
+
+        order_data = order_doc.to_dict() or {}
+        payment_id = order_data.get('airwallexPaymentId')
+        if not payment_id:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.FAILED_PRECONDITION,
+                message="No Airwallex payment intent found"
+            )
+
+        result = airwallex_service.capture_payment(payment_id)
+
+        order_ref.update({
+            'paymentStatus': PaymentStatus.PAID,
+            'capturedAt': firestore.SERVER_TIMESTAMP,
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+        })
+
+        return {
+            'success': True,
+            'payment': result,
+        }
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        print(f"❌ Airwallex capture error: {str(e)}")
+        print(traceback.format_exc())
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=f"Failed to capture Airwallex payment: {str(e)}"
+        )
+
+
+@https_fn.on_request(timeout_sec=60)
+def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
+    """
+    Handle Airwallex webhook events with signature verification.
+    """
+    signature = req.headers.get('x-signature') or req.headers.get('airwallex-signature')
+    payload = req.data.decode('utf-8') if isinstance(req.data, (bytes, bytearray)) else str(req.data)
+
+    try:
+        if not signature or not airwallex_service.verify_webhook_signature(payload, signature):
+            return create_error_response("Invalid Airwallex signature", 400)
+
+        body = req.get_json(silent=True) or {}
+        event_type = body.get('name') or body.get('type')
+        event_data = body.get('data') or body.get('data', {}).get('object', {})
+
+        result = airwallex_service.handle_webhook_event(event_type, event_data)
+        return create_success_response(result)
+
+    except Exception as e:
+        print(f"❌ Airwallex webhook error: {str(e)}")
+        print(traceback.format_exc())
+        return create_error_response("Webhook processing failed", 500)
 
 
 @https_fn.on_call()
@@ -2479,7 +3040,8 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
                 message="Admin role required"
             )
-        
+
+        _require_recent_admin_mfa(admin_doc.to_dict() or {})
         print(f"  ✅ Admin verified")
         
         # 2. Find all active orders for this seller
@@ -3167,6 +3729,7 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
         )
 
     seller_id = req.auth.uid
+    _assert_seller_active(seller_id, require_approval=True)
     order_id = req.data.get('orderId')
     actual_shipping = req.data.get('actualShipping')
 
@@ -3391,6 +3954,7 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         )
 
     seller_id = req.auth.uid
+    _assert_seller_active(seller_id, require_approval=True)
     order_id = req.data.get('orderId')
     tracking_number = req.data.get('trackingNumber')
 
@@ -3581,6 +4145,7 @@ def update_item_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
         )
 
     seller_id = req.auth.uid
+    _assert_seller_active(seller_id, require_approval=True)
     order_id = req.data.get('orderId')
     product_id = req.data.get('productId')
     status = req.data.get('status')
@@ -4018,7 +4583,9 @@ def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
             )
         
         print(f"  ✓ Admin verified: {caller_data.get('email')}")
-        
+
+        _require_recent_admin_mfa(caller_data)
+
     except https_fn.HttpsError:
         raise
     except Exception as e:
@@ -4271,7 +4838,9 @@ def configure_algolia(req: https_fn.CallableRequest) -> dict:
                 code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
                 message="Admin access required"
             )
-        
+
+        _require_recent_admin_mfa(user_data)
+
         print(f"⚙️  Configuring Algolia index (called by {user_data.get('email')})")
         success = configure_algolia_index()
         

@@ -1,6 +1,5 @@
 import 'package:origna_gta/utils/utils.dart';
 
-
 class EditProductState {
   final bool isLoading;
   final String? errorMessage;
@@ -8,6 +7,7 @@ class EditProductState {
   final bool isSoldOut;
   final bool isLocalDeliveryOnly;
   final bool isPerishable;
+  final bool isDigital;
   final List<String> existingImageUrls;
   final List<ImageModel> newImages;
   final List<Map<String, dynamic>> addressSuggestions;
@@ -18,6 +18,8 @@ class EditProductState {
   final bool standardEnabled;
   final bool expressEnabled;
   final bool sameDayEnabled;
+  final int minimumOrderQuantity;
+  final bool freeShipping;
 
   EditProductState({
     this.isLoading = false,
@@ -26,6 +28,7 @@ class EditProductState {
     this.isSoldOut = false,
     this.isLocalDeliveryOnly = false,
     this.isPerishable = false,
+    this.isDigital = false,
     this.existingImageUrls = const [],
     this.newImages = const [],
     this.addressSuggestions = const [],
@@ -36,6 +39,8 @@ class EditProductState {
     this.standardEnabled = true,
     this.expressEnabled = false,
     this.sameDayEnabled = false,
+    this.minimumOrderQuantity = 1,
+    this.freeShipping = false,
   });
 
   EditProductState copyWith({
@@ -45,6 +50,7 @@ class EditProductState {
     bool? isSoldOut,
     bool? isLocalDeliveryOnly,
     bool? isPerishable,
+    bool? isDigital,
     List<String>? existingImageUrls,
     List<ImageModel>? newImages,
     List<Map<String, dynamic>>? addressSuggestions,
@@ -55,6 +61,8 @@ class EditProductState {
     bool? standardEnabled,
     bool? expressEnabled,
     bool? sameDayEnabled,
+    int? minimumOrderQuantity,
+    bool? freeShipping,
   }) {
     return EditProductState(
       isLoading: isLoading ?? this.isLoading,
@@ -63,6 +71,7 @@ class EditProductState {
       isSoldOut: isSoldOut ?? this.isSoldOut,
       isLocalDeliveryOnly: isLocalDeliveryOnly ?? this.isLocalDeliveryOnly,
       isPerishable: isPerishable ?? this.isPerishable,
+      isDigital: isDigital ?? this.isDigital,
       existingImageUrls: existingImageUrls ?? this.existingImageUrls,
       newImages: newImages ?? this.newImages,
       addressSuggestions: addressSuggestions ?? this.addressSuggestions,
@@ -73,6 +82,8 @@ class EditProductState {
       standardEnabled: standardEnabled ?? this.standardEnabled,
       expressEnabled: expressEnabled ?? this.expressEnabled,
       sameDayEnabled: sameDayEnabled ?? this.sameDayEnabled,
+      minimumOrderQuantity: minimumOrderQuantity ?? this.minimumOrderQuantity,
+      freeShipping: freeShipping ?? this.freeShipping,
     );
   }
 }

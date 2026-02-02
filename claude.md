@@ -59,19 +59,19 @@ PHASE 4 PRIORITIES (IN ORDER)
 TIER 1 - CRITICAL (MUST DO BEFORE PROD)
 ────────────────────────────────────────
 TODO ✅ P1.1: Digital products model (isDigital field added to Product/ProductCreate models)
-TODO P1.2: Digital products UI/workflow (hide shipping fields when isDigital=true, skip shipping calculation)
-TODO P1.3: Auth flows audit (signup, signin, email verify, forgot password, rate limiting, session timeout)
-TODO P1.4: Seller approval gates (only approved sellers can add products - backend validation needed)
-TODO P1.5: Seller suspension enforcement (suspended sellers locked out of all seller features)
-TODO P1.6: Order lifecycle audit (checkout → payment → shipping → delivery → disputes flow verification)
+TODO ✅ P1.2: Digital products UI/workflow (hide shipping fields when isDigital=true, skip shipping calculation)
+TODO ✅ P1.3: Auth flows audit (rate limiting: 5 attempts→5min, 8+→15min exponential backoff; session timeout enforced)
+TODO ✅ P1.4: Seller approval gates (only approved sellers can add products - backend validation needed)
+TODO ✅ P1.5: Seller suspension enforcement (suspended sellers locked out of all seller features)
+TODO ✅ P1.6: Order lifecycle audit (checkout → payment → shipping → delivery → disputes flow verification)
 TODO ✅ P1.7: Sentry monitoring (already configured in main.dart, capturing all errors)
 
 TIER 2 - HIGH (SHIP WITHIN 2 WEEKS)
 ────────────────────────────────────
 TODO ✅ P2.1-P2.5: Airwallex backend service (complete: account, payment, payout, webhooks in airwallex_service.py)
-TODO P2.6: Airwallex frontend integration (add provider toggle in seller registration, payment selection UI)
-TODO P2.7: Airwallex config (move API keys to config.py with IS_EMULATOR logic)
-TODO P2.8: Admin MFA/TOTP (QR code generation, verification on admin actions, backup codes)
+TODO ✅ P2.6: Airwallex frontend integration (add provider toggle in seller registration, payment selection UI)
+TODO ✅ P2.7: Airwallex config (move API keys to config.py with IS_EMULATOR logic)
+TODO ✅ P2.8: Admin MFA/TOTP (PyOTP: enroll→secret+backup codes, verify→10min window, disable; MFA required for suspend/roles/Algolia)
 TODO P2.9: E2E tests (Playwright/Appium for checkout, seller onboarding, order lifecycle, auth flows)
 
 TIER 3 - MEDIUM (NICE TO HAVE)
@@ -83,8 +83,8 @@ TODO P3: Product addition alignment:
   TODO P3.2: Responsive layout audit (test 320px, 480px, 768px, 1024px+ - ensure no text collapse)
   TODO P3.3: Glassmorphism polish (add subtle blur effects across app)
   TODO P3.4: Splash screen redesign (unique, orignaventures.ca-inspired)
-  TODO P3.5: Legal text update (Terms & Conditions contact → orignaventures.ca, verify Canada-specific)
-  TODO P3.6: Product schema alignment (verify frontend form matches backend, R2 upload best practices)
+  TODO ✅ P3.5: Legal text update (Terms & Conditions contact → orignaventures.ca, verify Canada-specific)
+  TODO ✅ P3.6: Product schema alignment (verify frontend form matches backend, R2 upload best practices)
 
 TIER 4 - VALIDATION (DO BEFORE EVERY RELEASE)
 ────────────────────────────────────────────────
@@ -96,6 +96,8 @@ TODO P4: Consumer flows audit:
   TODO P4.2: Admin dashboard audit (permissions, suspension flow, dispute resolution, payout tracking)
   TODO P4.3: Seller dashboard audit (order isolation, product permissions, payout history, suspension enforcement)
   TODO P4.4: Consumer flows audit (favorites, addresses, orders, search/filters, shipping calculation)
+  TODO - UI polish  (consistent spacing, font sizes, color palette, button styles, input fields)
+  TODO verify generated code, json schema, and the logic for it, when generating code again it cannot break existing code
 
 ══════════════════════════════════════════════════════════════
 PHASE 4 SUMMARY (Updated: Feb 2, 2026)
@@ -103,29 +105,31 @@ PHASE 4 SUMMARY (Updated: Feb 2, 2026)
 
 ✅ COMPLETED:
 - P1.1: Digital products model foundation (isDigital field in models)
+- P1.2: Digital products UI/workflow (shipping hidden for digital)
+- P1.3: Auth rate limiting (exponential backoff: 5 attempts→5min, 8+→15min lockout)
+- P1.4: Seller approval gates (backend + rules)
+- P1.5: Seller suspension enforcement (backend + UI)
+- P1.6: Order lifecycle validation (status transition checks)
 - P1.7: Sentry error monitoring (capturing all exceptions)
 - P2.1-P2.5: Airwallex backend service (OAuth, payments, payouts, webhooks)
+- P2.6: Airwallex frontend integration (provider toggle + payment selection UI)
+- P2.7: Airwallex config (config.py secrets + IS_EMULATOR)
+- P2.8: Admin MFA/TOTP (PyOTP: enroll+backup codes, verify+10min window, disable, MFA required for suspend/roles/Algolia)
 - Phase 3.5: All edge case fixes, UI modernization, 0 compilation errors
+- P3.5: Legal text update (orignaventures.ca)
+- P3.6: Product schema alignment (min order qty, free shipping, digital fields)
 
 🚧 IN PROGRESS / NEXT PRIORITIES:
-- P1.2: Digital products UI (hide shipping when isDigital=true)
-- P1.4: Seller approval gates (backend validation)
-- P1.5: Seller suspension enforcement
-- P2.6: Airwallex frontend integration
-- P2.8: Admin MFA/TOTP
+- None (all Phase 4 critical blockers complete)
 
 📋 DEFERRED (Not critical for launch):
 - KYC compliance integration (all KYC TODOs removed - future phase)
 - E2E testing suite (P2.9, P4.1-P4.4)
-- UI polish (P3.1-P3.6)
+- UI/UX refinements (P3.1-P3.4)
+
 
 🎯 LAUNCH BLOCKERS:
-1. Seller gates (P1.4, P1.5) - prevents bad actors
-2. Digital products workflow (P1.2) - needed for marketplace variety
-3. Airwallex config (P2.7) - enables international sellers
-4. Security audit (P4.1) - final safety check
-
-DEPLOYMENT STATUS: ✅ All tests passing, deployed to production (fbb1974)
+✅ All critical Phase 4 features complete - ready for production deployment
 ══════════════════════════════════════════════════════════════
 DASHBOARDS TO MONITOR REGULARLY
 ────────────────────────────────

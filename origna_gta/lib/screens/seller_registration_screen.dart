@@ -7,6 +7,7 @@ import 'package:origna_gta/utils/utils.dart'; // For UserModel
 import 'package:origna_gta/widgets/custom_app_bar.dart'; // Assuming this exists based on your code
 import 'package:origna_gta/widgets/modern_button.dart';
 
+import '../features/seller/seller_registration_state.dart';
 import '../features/seller/seller_registration_view_model.dart';
 
 class SellerRegistrationScreen extends ConsumerStatefulWidget {
@@ -79,6 +80,10 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
 
                       const SizedBox(height: 20),
 
+                      _buildProviderSelector(userModel, viewState, viewModel),
+
+                      const SizedBox(height: 20),
+
                       // --- Status Card (commented out - function needs refactoring) ---
                       // _buildStatusCard(userModel),
                       const SizedBox(height: 20),
@@ -113,7 +118,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                         ),
 
                       // --- Action Button ---
-                      _buildActionButton(userModel, viewState.isLoading, viewModel),
+                      _buildActionButton(userModel, viewState.isLoading, viewState.paymentProvider, viewModel),
                       const SizedBox(height: 32),
                     ],
                   ),
@@ -146,7 +151,17 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
     WidgetsBinding.instance.addObserver(this);
   }
 
-  Widget _buildActionButton(UserModel user, bool isLoading, SellerRegistrationViewModel viewModel) {
+  Widget _buildActionButton(UserModel user, bool isLoading, String paymentProvider, SellerRegistrationViewModel viewModel) {
+    if (paymentProvider == 'airwallex') {
+      final hasAirwallex = user.airwallexAccountId != null && user.airwallexAccountId!.isNotEmpty;
+      return ModernButton(
+        onPressed: isLoading ? null : viewModel.startRegistration,
+        label: hasAirwallex ? 'Airwallex Connected' : 'Connect Airwallex',
+        isLoading: isLoading,
+        icon: Icons.public,
+      );
+    }
+
     final hasAccount = user.stripeAccountId != null && user.stripeAccountId!.isNotEmpty;
     final canReceivePayouts = user.payoutsEnabled;
 
@@ -267,6 +282,46 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
             'Reach customers across the GTA and grow your business',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProviderSelector(UserModel user, SellerRegistrationState state, SellerRegistrationViewModel viewModel) {
+    final provider = user.paymentProvider.isNotEmpty ? user.paymentProvider : state.paymentProvider;
+    return GlassContainer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Payment Provider',
+            style: TextStyle(fontWeight: FontWeight.w700, color: DesignTokens.primary),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              ChoiceChip(
+                label: const Text('Stripe'),
+                selected: provider == 'stripe',
+                onSelected: (selected) {
+                  if (selected) viewModel.setPaymentProvider('stripe');
+                },
+              ),
+              const SizedBox(width: 12),
+              ChoiceChip(
+                label: const Text('Airwallex'),
+                selected: provider == 'airwallex',
+                onSelected: (selected) {
+                  if (selected) viewModel.setPaymentProvider('airwallex');
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            provider == 'airwallex' ? 'Best for international sellers and multi-currency payouts.' : 'Best for Canada-based sellers with Stripe Express.',
+            style: TextStyle(color: Colors.grey[600], fontSize: 12),
           ),
         ],
       ),

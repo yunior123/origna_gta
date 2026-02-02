@@ -35,6 +35,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     double? height,
     String? taxCode,
     required List<models.SellerDeliveryOption> deliveryOptions,
+    int? minimumOrderQuantity,
+    bool? freeShipping,
   }) async {
     if (name.trim().isEmpty) {
       state = state.copyWith(errorMessage: 'Product name is required');
@@ -50,6 +52,11 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }
     if (stock < 0) {
       state = state.copyWith(errorMessage: 'Stock cannot be negative');
+      return;
+    }
+    final minOrderQty = minimumOrderQuantity ?? state.minimumOrderQuantity;
+    if (minOrderQty < 1) {
+      state = state.copyWith(errorMessage: 'Minimum order quantity must be at least 1');
       return;
     }
     if (categoryId <= 0) {
@@ -82,6 +89,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
     try {
       final productRepository = _ref.read(productRepositoryProvider);
+      final sanitizedDeliveryOptions = state.isDigital ? <models.SellerDeliveryOption>[] : deliveryOptions;
       final productCreate = models.ProductCreate(
         sellerId: _ref.read(userIdProvider)!,
         name: name,
@@ -101,15 +109,18 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         ),
         description: description,
         categoryId: categoryId,
-        weightKg: weight,
-        lengthCm: length,
-        widthCm: width,
-        heightCm: height,
-        isLocalDeliveryOnly: state.isLocalDeliveryOnly,
-        estimatedShipDays: (deliveryOptions.isNotEmpty) ? deliveryOptions.first.estimatedDays : 5,
+        weightKg: state.isDigital ? null : weight,
+        lengthCm: state.isDigital ? null : length,
+        widthCm: state.isDigital ? null : width,
+        heightCm: state.isDigital ? null : height,
+        isLocalDeliveryOnly: state.isDigital ? false : state.isLocalDeliveryOnly,
+        estimatedShipDays: sanitizedDeliveryOptions.isNotEmpty ? sanitizedDeliveryOptions.first.estimatedDays : 0,
         taxCode: taxCode,
-        deliveryOptions: deliveryOptions,
-        isPerishable: state.isPerishable,
+        deliveryOptions: sanitizedDeliveryOptions,
+        isPerishable: state.isDigital ? false : state.isPerishable,
+        isDigital: state.isDigital,
+        minimumOrderQuantity: minOrderQty,
+        freeShipping: freeShipping ?? state.freeShipping,
       );
 
       // Convert ProductCreate to JSON, then create Product for repository
@@ -163,11 +174,24 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     standardEnabled: value ? false : state.standardEnabled,
     expressEnabled: value ? false : state.expressEnabled,
   );
+  void setMinimumOrderQuantity(int value) => state = state.copyWith(minimumOrderQuantity: value);
+
   void setProvince(String province) => state = state.copyWith(selectedProvince: province);
 
   void setSameDayEnabled(bool value) => state = state.copyWith(sameDayEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
 
   void setStandardEnabled(bool value) => state = state.copyWith(standardEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
+
+  void toggleDigital(bool value) => state = state.copyWith(
+    isDigital: value,
+    isPerishable: value ? false : state.isPerishable,
+    isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
+    standardEnabled: value ? false : state.standardEnabled,
+    expressEnabled: value ? false : state.expressEnabled,
+    sameDayEnabled: value ? false : state.sameDayEnabled,
+  );
+
+  void toggleFreeShipping(bool value) => state = state.copyWith(freeShipping: value);
 
   void togglePerishable(bool value) => state = state.copyWith(isPerishable: value);
 

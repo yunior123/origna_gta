@@ -5,10 +5,13 @@ import 'package:origna_gta/utils/utils.dart';
 
 abstract class AdminRepository {
   Future<void> deleteProduct(String productId);
+  Future<void> disableAdminMfa();
+  Future<Map<String, dynamic>> enableAdminMfa();
   Future<UserModel?> fetchUserById(String userId);
   Future<void> setUserSuspended(String userId, bool suspended);
   Future<void> updateProductStock(String productId, int quantity);
   Future<void> updateUserRoles(String userId, {List<String> add, List<String> remove, String? reason});
+  Future<Map<String, dynamic>> verifyAdminMfa(String code);
   Stream<List<OrderModel>> watchOrders({String? status, int limit});
   Stream<List<ProductModel>> watchProducts({int limit, String? sellerId});
   Stream<List<UserModel>> watchSellers({int limit});
@@ -29,6 +32,17 @@ class FirebaseAdminRepository implements AdminRepository {
       'stockQuantity': 0,
       'keywords': [],
     });
+  }
+
+  @override
+  Future<void> disableAdminMfa() async {
+    await _functions.httpsCallable('admin_mfa_disable').call();
+  }
+
+  @override
+  Future<Map<String, dynamic>> enableAdminMfa() async {
+    final result = await _functions.httpsCallable('admin_mfa_enroll').call();
+    return Map<String, dynamic>.from(result.data as Map);
   }
 
   @override
@@ -58,6 +72,12 @@ class FirebaseAdminRepository implements AdminRepository {
   Future<void> updateUserRoles(String userId, {List<String> add = const [], List<String> remove = const [], String? reason}) async {
     // SECURITY FIX H-1: Call Cloud Function with server-side validation
     await _functions.httpsCallable('update_user_roles').call({'userId': userId, 'add': add, 'remove': remove, 'reason': reason ?? 'No reason provided'});
+  }
+
+  @override
+  Future<Map<String, dynamic>> verifyAdminMfa(String code) async {
+    final result = await _functions.httpsCallable('admin_mfa_verify').call({'code': code});
+    return Map<String, dynamic>.from(result.data as Map);
   }
 
   @override

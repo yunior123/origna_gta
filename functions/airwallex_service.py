@@ -2,27 +2,35 @@
 Airwallex Payment Service - Complete Implementation
 P2.1-P2.5: Account, Backend, Payment, Payout, Webhooks
 """
-import os
 import hmac
 import hashlib
 import requests
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 
+from config import (
+    AIRWALLEX_API_KEY,
+    AIRWALLEX_CLIENT_ID,
+    AIRWALLEX_WEBHOOK_SECRET,
+    AIRWALLEX_BASE_URL,
+)
+
 
 class AirwallexService:
     """Airwallex API Integration for international sellers"""
     
     def __init__(self):
-        self.api_key = os.environ.get('AIRWALLEX_API_KEY')
-        self.client_id = os.environ.get('AIRWALLEX_CLIENT_ID')
-        self.webhook_secret = os.environ.get('AIRWALLEX_WEBHOOK_SECRET')
-        self.base_url = os.environ.get('AIRWALLEX_BASE_URL', 'https://api.airwallex.com/api/v1')
+        self.api_key = AIRWALLEX_API_KEY
+        self.client_id = AIRWALLEX_CLIENT_ID
+        self.webhook_secret = AIRWALLEX_WEBHOOK_SECRET
+        self.base_url = AIRWALLEX_BASE_URL
         self.token = None
         self.token_expiry = None
     
     def _authenticate(self) -> str:
         """Get OAuth bearer token"""
+        if not self.client_id or not self.api_key:
+            raise ValueError("Airwallex API credentials not configured")
         if self.token and self.token_expiry and datetime.now() < self.token_expiry:
             return self.token
         

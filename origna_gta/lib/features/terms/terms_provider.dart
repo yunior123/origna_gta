@@ -1,20 +1,6 @@
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final termsProvider = FutureProvider<String>((ref) async {
-  try {
-    final remoteConfig = FirebaseRemoteConfig.instance;
-    await remoteConfig.fetchAndActivate();
-    final content = remoteConfig.getString('terms_and_conditions');
-    if (content.isNotEmpty) {
-      return content;
-    }
-  } catch (e) {
-    // Return default if remote config fails
-  }
-  return _defaultTermsContent;
-});
-
 const String _defaultTermsContent = '''
 Welcome to OrignaGTA. By accessing or using our platform, you agree to be bound by these Terms and Conditions.
 
@@ -106,7 +92,21 @@ These Terms are governed by the laws of Ontario, Canada. Any disputes shall be r
 14. CONTACT US
 
 For questions about these Terms, please contact us at:
-Email: support@orignagta.com
+Email: support@orignaventures.ca
 
 By using OrignaGTA, you acknowledge that you have read and understood these Terms and Conditions and agree to be bound by them.
 ''';
+
+final termsProvider = FutureProvider<String>((ref) async {
+  try {
+    final remoteConfig = FirebaseRemoteConfig.instance;
+    await remoteConfig.fetchAndActivate();
+    final content = remoteConfig.getString('terms_and_conditions');
+    if (content.isNotEmpty) {
+      return content;
+    }
+  } catch (e) {
+    // Return default if remote config fails
+  }
+  return _defaultTermsContent;
+});

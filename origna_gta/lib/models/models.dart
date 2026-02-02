@@ -146,6 +146,7 @@ class CartItemDetailModel {
   final List<SellerDeliveryOption> deliveryOptions;
   final int minimumOrderQuantity;
   final bool freeShipping;
+  final bool isDigital;
 
   CartItemDetailModel({
     required this.productId,
@@ -170,6 +171,7 @@ class CartItemDetailModel {
     this.deliveryOptions = const [],
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
+    this.isDigital = false,
   });
 
   // Convert Firestore Map to CartItemDetailModel
@@ -199,6 +201,7 @@ class CartItemDetailModel {
           : [],
       minimumOrderQuantity: (map['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
       freeShipping: map['freeShipping'] ?? false,
+      isDigital: map['isDigital'] ?? false,
     );
   }
 
@@ -227,6 +230,7 @@ class CartItemDetailModel {
       'deliveryOptions': deliveryOptions.map((o) => o.toMap()).toList(),
       'minimumOrderQuantity': minimumOrderQuantity,
       'freeShipping': freeShipping,
+      'isDigital': isDigital,
     };
   }
 }
@@ -379,6 +383,7 @@ class OrderModel {
         deliveryStatus: map['deliveryStatus'] ?? DeliveryStatus.pending.value,
         trackingNumber: map['trackingNumber'],
         confirmedByBuyer: map['confirmedByBuyer'] ?? false,
+        isDigital: map['isDigital'] ?? false,
       );
     }).toList();
 
@@ -446,6 +451,7 @@ class OrderModel {
         deliveryStatus: map['deliveryStatus'] ?? DeliveryStatus.pending.value,
         trackingNumber: map['trackingNumber'],
         confirmedByBuyer: map['confirmedByBuyer'] ?? false,
+        isDigital: map['isDigital'] ?? false,
       );
     }).toList();
 
@@ -816,6 +822,10 @@ class UserModel {
   final bool onboardingCompleted; // Completed Stripe onboarding
   final bool suspended;
   final DateTime? suspendedAt;
+  final String paymentProvider; // stripe | airwallex
+  final String? airwallexAccountId;
+  final String? airwallexCustomerId;
+  final String? airwallexStatus;
 
   UserModel({
     required this.uid,
@@ -834,6 +844,10 @@ class UserModel {
     this.onboardingCompleted = false,
     this.suspended = false,
     this.suspendedAt,
+    this.paymentProvider = 'stripe',
+    this.airwallexAccountId,
+    this.airwallexCustomerId,
+    this.airwallexStatus,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -854,11 +868,19 @@ class UserModel {
       onboardingCompleted: map['onboardingCompleted'] ?? map['stripeOnboardingComplete'] ?? false,
       suspended: map['suspended'] ?? false,
       suspendedAt: (map['suspendedAt'] as Timestamp?)?.toDate(),
+      paymentProvider: map['paymentProvider'] ?? 'stripe',
+      airwallexAccountId: map['airwallexAccountId'] as String?,
+      airwallexCustomerId: map['airwallexCustomerId'] as String?,
+      airwallexStatus: map['airwallexStatus'] as String?,
     );
   }
 
   /// Check if user is a seller or admin with payouts enabled
   bool get canReceivePayouts => (roles.contains(UserRoles.seller) || roles.contains(UserRoles.admin)) && payoutsEnabled && onboardingCompleted;
+
+  /// Check if user can sell products (seller/admin + onboarding + payouts/charges enabled)
+  bool get canSell =>
+      (roles.contains(UserRoles.seller) || roles.contains(UserRoles.admin)) && onboardingCompleted && chargesEnabled && payoutsEnabled && !suspended;
 
   // copyWith method for updating specific fields
   UserModel copyWith({
@@ -876,6 +898,10 @@ class UserModel {
     bool? payoutsEnabled,
     bool? chargesEnabled,
     bool? onboardingCompleted,
+    String? paymentProvider,
+    String? airwallexAccountId,
+    String? airwallexCustomerId,
+    String? airwallexStatus,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -892,6 +918,10 @@ class UserModel {
       payoutsEnabled: payoutsEnabled ?? this.payoutsEnabled,
       chargesEnabled: chargesEnabled ?? this.chargesEnabled,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
+      paymentProvider: paymentProvider ?? this.paymentProvider,
+      airwallexAccountId: airwallexAccountId ?? this.airwallexAccountId,
+      airwallexCustomerId: airwallexCustomerId ?? this.airwallexCustomerId,
+      airwallexStatus: airwallexStatus ?? this.airwallexStatus,
     );
   }
 
@@ -911,6 +941,10 @@ class UserModel {
       'payoutsEnabled': payoutsEnabled,
       'chargesEnabled': chargesEnabled,
       'onboardingCompleted': onboardingCompleted,
+      'paymentProvider': paymentProvider,
+      if (airwallexAccountId != null) 'airwallexAccountId': airwallexAccountId,
+      if (airwallexCustomerId != null) 'airwallexCustomerId': airwallexCustomerId,
+      if (airwallexStatus != null) 'airwallexStatus': airwallexStatus,
     };
   }
 

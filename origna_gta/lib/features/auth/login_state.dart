@@ -5,6 +5,8 @@ class LoginState {
   final bool acceptedTerms;
   final String? errorMessage;
   final bool isSuccess;
+  final int failedAttempts;
+  final DateTime? lockoutUntil;
 
   LoginState({
     this.isLoading = false,
@@ -13,6 +15,8 @@ class LoginState {
     this.acceptedTerms = false,
     this.errorMessage,
     this.isSuccess = false,
+    this.failedAttempts = 0,
+    this.lockoutUntil,
   });
 
   LoginState copyWith({
@@ -22,6 +26,8 @@ class LoginState {
     bool? acceptedTerms,
     String? errorMessage,
     bool? isSuccess,
+    int? failedAttempts,
+    DateTime? lockoutUntil,
   }) {
     return LoginState(
       isLoading: isLoading ?? this.isLoading,
@@ -30,6 +36,8 @@ class LoginState {
       acceptedTerms: acceptedTerms ?? this.acceptedTerms,
       errorMessage: errorMessage,
       isSuccess: isSuccess ?? this.isSuccess,
+      failedAttempts: failedAttempts ?? this.failedAttempts,
+      lockoutUntil: lockoutUntil ?? this.lockoutUntil,
     );
   }
 }

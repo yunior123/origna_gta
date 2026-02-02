@@ -1,7 +1,7 @@
 {
   "$schema": "OrignaGTA Firestore Database Schema",
   "version": "1.0.1",
-  "lastUpdated": "2026-01-31",
+  "lastUpdated": "2026-02-02",
   "description": "Complete Firestore database schema for OrignaGTA e-commerce platform",
 
   "collections": {
@@ -84,6 +84,28 @@
           "type": "boolean",
           "default": false,
           "description": "Whether Stripe Connect onboarding is complete"
+        },
+        "paymentProvider": {
+          "type": "string",
+          "required": false,
+          "description": "Seller payout provider",
+          "values": ["stripe", "airwallex"],
+          "default": "stripe"
+        },
+        "airwallexAccountId": {
+          "type": "string",
+          "required": false,
+          "description": "Airwallex connected account ID"
+        },
+        "airwallexCustomerId": {
+          "type": "string",
+          "required": false,
+          "description": "Airwallex customer ID"
+        },
+        "airwallexStatus": {
+          "type": "string",
+          "required": false,
+          "description": "Airwallex account status"
         },
         "suspended": {
           "type": "boolean",
@@ -236,6 +258,66 @@
           "default": false,
           "required": false,
           "description": "True if product is digital (no shipping required). Examples: ebooks, software, courses"
+        },
+        "weightKg": {
+          "type": "number",
+          "required": false,
+          "description": "Product weight in kilograms"
+        },
+        "lengthCm": {
+          "type": "number",
+          "required": false,
+          "description": "Package length in centimeters"
+        },
+        "widthCm": {
+          "type": "number",
+          "required": false,
+          "description": "Package width in centimeters"
+        },
+        "heightCm": {
+          "type": "number",
+          "required": false,
+          "description": "Package height in centimeters"
+        },
+        "isLocalDeliveryOnly": {
+          "type": "boolean",
+          "default": false,
+          "required": false,
+          "description": "Only available for local delivery"
+        },
+        "isPerishable": {
+          "type": "boolean",
+          "default": false,
+          "required": false,
+          "description": "Perishable product (affects delivery options)"
+        },
+        "estimatedShipDays": {
+          "type": "number",
+          "default": 3,
+          "required": false,
+          "description": "Estimated shipping days"
+        },
+        "deliveryOptions": {
+          "type": "array<map>",
+          "required": false,
+          "description": "Seller-defined delivery options"
+        },
+        "minimumOrderQuantity": {
+          "type": "number",
+          "default": 1,
+          "required": false,
+          "description": "Minimum order quantity"
+        },
+        "freeShipping": {
+          "type": "boolean",
+          "default": false,
+          "required": false,
+          "description": "Free shipping offered by seller"
+        },
+        "taxCode": {
+          "type": "string",
+          "required": false,
+          "description": "Stripe tax code override"
         }
       },
       "indexes": [
@@ -250,7 +332,7 @@
         {
           "fields": ["isActive", "keywords", "dateCreated desc"],
           "description": "For product search (active only)"
-        }
+        },
         {
           "fields": ["isActive", "__name__"],
           "description": "For ID batch fetch with active filter"
@@ -679,6 +761,11 @@
           "type": "boolean",
           "default": false,
           "description": "Buyer confirmed receipt of this item"
+        },
+        "isDigital": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this item is a digital product"
         },
         "dateCreated": {
           "type": "timestamp",

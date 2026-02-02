@@ -38,6 +38,30 @@ class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
     }
   }
 
+  Future<bool> disableAdminMfa() async {
+    state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
+    try {
+      await _repository.disableAdminMfa();
+      state = state.copyWith(isLoading: false, isSuccess: true);
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> enableAdminMfa() async {
+    state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
+    try {
+      final result = await _repository.enableAdminMfa();
+      state = state.copyWith(isLoading: false, isSuccess: true);
+      return result;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      return null;
+    }
+  }
+
   Future<UserModel?> fetchUserById(String userId) async {
     try {
       return await _repository.fetchUserById(userId);
@@ -74,6 +98,18 @@ class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
     state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
     try {
       await _repository.updateUserRoles(userId, add: add, remove: remove);
+      state = state.copyWith(isLoading: false, isSuccess: true);
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> verifyAdminMfa(String code) async {
+    state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
+    try {
+      await _repository.verifyAdminMfa(code);
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
     } catch (e) {

@@ -101,6 +101,38 @@ class User(BaseModel):
         default=None,
         description="When account was suspended"
     )
+    paymentProvider: Optional[str] = Field(
+        default="stripe",
+        description="Payment provider for seller payouts (stripe or airwallex)"
+    )
+    airwallexAccountId: Optional[str] = Field(
+        default=None,
+        description="Airwallex connected account ID"
+    )
+    airwallexCustomerId: Optional[str] = Field(
+        default=None,
+        description="Airwallex customer ID"
+    )
+    airwallexStatus: Optional[str] = Field(
+        default=None,
+        description="Airwallex account status"
+    )
+    adminMfaEnabled: bool = Field(
+        default=False,
+        description="Whether admin MFA is enabled"
+    )
+    adminMfaSecret: Optional[str] = Field(
+        default=None,
+        description="Admin TOTP secret (server-only)"
+    )
+    adminMfaVerifiedAt: Optional[datetime] = Field(
+        default=None,
+        description="Last successful admin MFA verification"
+    )
+    adminMfaBackupCodes: Optional[List[str]] = Field(
+        default=None,
+        description="One-time admin MFA backup codes"
+    )
     updatedAt: Optional[datetime] = Field(
         default=None,
         description="Last update timestamp"

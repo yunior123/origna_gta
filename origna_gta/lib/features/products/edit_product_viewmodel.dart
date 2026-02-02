@@ -26,6 +26,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           isSoldOut: _product.stockQuantity == 0,
           isLocalDeliveryOnly: _product.isLocalDeliveryOnly,
           isPerishable: _product.isPerishable,
+          isDigital: _product.isDigital,
           existingImageUrls: List.from(_product.imageUrls),
           selectedProvince: _product.sellerAddress.state.isNotEmpty ? _product.sellerAddress.state : 'ON',
           latitude: _product.sellerAddress.latitude,
@@ -33,6 +34,8 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           standardEnabled: _product.deliveryOptions.any((o) => o.type == _standardType),
           expressEnabled: _product.deliveryOptions.any((o) => o.type == _expressType),
           sameDayEnabled: _product.deliveryOptions.any((o) => o.type == _sameDayType),
+          minimumOrderQuantity: _product.minimumOrderQuantity,
+          freeShipping: _product.freeShipping,
         ),
       );
 
@@ -69,11 +72,24 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
 
   void setExpressEnabled(bool value) => state = state.copyWith(expressEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
 
+  void setMinimumOrderQuantity(int value) => state = state.copyWith(minimumOrderQuantity: value);
+
   void setProvince(String province) => state = state.copyWith(selectedProvince: province);
 
   void setSameDayEnabled(bool value) => state = state.copyWith(sameDayEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
 
   void setStandardEnabled(bool value) => state = state.copyWith(standardEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
+
+  void toggleDigital(bool value) => state = state.copyWith(
+    isDigital: value,
+    isPerishable: value ? false : state.isPerishable,
+    isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
+    standardEnabled: value ? false : state.standardEnabled,
+    expressEnabled: value ? false : state.expressEnabled,
+    sameDayEnabled: value ? false : state.sameDayEnabled,
+  );
+
+  void toggleFreeShipping(bool value) => state = state.copyWith(freeShipping: value);
 
   void toggleLocalDelivery(bool value) => state = state.copyWith(isLocalDeliveryOnly: value);
 
@@ -149,6 +165,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
         allImageUrls.addAll(successfulUrls);
       }
 
+      final sanitizedDeliveryOptions = state.isDigital ? <models.SellerDeliveryOption>[] : deliveryOptions;
       final updatedProduct = _product.copyWith(
         name: name,
         description: description,
@@ -167,14 +184,17 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           latitude: state.latitude,
           longitude: state.longitude,
         ),
-        weightKg: weight,
-        lengthCm: length,
-        widthCm: width,
-        heightCm: height,
-        isLocalDeliveryOnly: state.isLocalDeliveryOnly,
-        estimatedShipDays: shipDays,
-        isPerishable: state.isPerishable,
-        deliveryOptions: deliveryOptions,
+        weightKg: state.isDigital ? null : weight,
+        lengthCm: state.isDigital ? null : length,
+        widthCm: state.isDigital ? null : width,
+        heightCm: state.isDigital ? null : height,
+        isLocalDeliveryOnly: state.isDigital ? false : state.isLocalDeliveryOnly,
+        estimatedShipDays: state.isDigital ? 0 : shipDays,
+        isPerishable: state.isDigital ? false : state.isPerishable,
+        deliveryOptions: sanitizedDeliveryOptions,
+        isDigital: state.isDigital,
+        minimumOrderQuantity: state.minimumOrderQuantity,
+        freeShipping: state.freeShipping,
       );
 
       await _repository.updateProduct(_product.productId, updatedProduct.toJson());

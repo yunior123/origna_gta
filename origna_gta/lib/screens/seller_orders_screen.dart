@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/seller_orders_viewmodel.dart';
 import 'package:origna_gta/models/enum_extensions.dart';
@@ -14,10 +15,30 @@ class SellerOrdersScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final userProfile = ref.watch(userProfileProvider).valueOrNull;
     if (user == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Seller Orders')),
         body: const Center(child: Text('Please log in')),
+      );
+    }
+
+    if (userProfile?.suspended == true) {
+      return Scaffold(
+        appBar: AppBarFactory.simple(title: 'Seller Orders'),
+        backgroundColor: const Color(0xFFF5F5F5),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.block, size: 72, color: Colors.redAccent),
+              const SizedBox(height: 16),
+              const Text('Seller account suspended', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('Contact support to restore access.', style: TextStyle(color: Colors.grey[600])),
+            ],
+          ),
+        ),
       );
     }
 

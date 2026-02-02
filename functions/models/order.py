@@ -61,6 +61,7 @@ class OrderItem(BaseModel):
     deliveryOptions: List[SellerDeliveryOption] = Field(default_factory=list)
     minimumOrderQuantity: int = Field(default=1, ge=1)
     freeShipping: bool = Field(default=False)
+    isDigital: bool = Field(default=False, description="Whether this item is a digital product")
 
     def subtotal(self) -> float:
         """Calculate item subtotal"""

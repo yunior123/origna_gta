@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/admin/tabs/admin_orders_tab.dart';
 import 'package:origna_gta/admin/tabs/admin_products_tab.dart';
+import 'package:origna_gta/admin/tabs/admin_security_tab.dart';
 import 'package:origna_gta/admin/tabs/admin_sellers_tab.dart';
 import 'package:origna_gta/admin/tabs/admin_users_tab.dart';
-import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/utils/constants.dart';
 
 class AdminPanelScreen extends ConsumerStatefulWidget {
   const AdminPanelScreen({super.key});
@@ -17,18 +18,6 @@ class AdminPanelScreen extends ConsumerStatefulWidget {
 
 class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,20 +61,28 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                 Tab(icon: Icon(Icons.people), text: 'Users'),
                 Tab(icon: Icon(Icons.receipt_long), text: 'Orders'),
                 Tab(icon: Icon(Icons.inventory), text: 'Products'),
+                Tab(icon: Icon(Icons.security), text: 'Security'),
               ],
             ),
           ),
           body: TabBarView(
             controller: _tabController,
-            children: const [
-              AdminSellersTab(),
-              AdminUsersTab(),
-              AdminOrdersTab(),
-              AdminProductsTab(),
-            ],
+            children: const [AdminSellersTab(), AdminUsersTab(), AdminOrdersTab(), AdminProductsTab(), AdminSecurityTab()],
           ),
         );
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 5, vsync: this);
   }
 }

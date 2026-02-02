@@ -78,6 +78,10 @@ if IS_EMULATOR:
     ALGOLIA_APP_ID = os.environ.get("ALGOLIA_APP_ID", "")
     ALGOLIA_WRITE_API_KEY = os.environ.get("ALGOLIA_WRITE_API_KEY", "")
     SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "seller@orignagta.com")
+    AIRWALLEX_API_KEY = os.environ.get("AIRWALLEX_API_KEY", "")
+    AIRWALLEX_CLIENT_ID = os.environ.get("AIRWALLEX_CLIENT_ID", "")
+    AIRWALLEX_WEBHOOK_SECRET = os.environ.get("AIRWALLEX_WEBHOOK_SECRET", "")
+    AIRWALLEX_BASE_URL = os.environ.get("AIRWALLEX_BASE_URL", "https://api.airwallex.com/api/v1")
 else:
     STRIPE_SECRET_KEY = params.SecretParam("STRIPE_SECRET_KEY").value
     STRIPE_WEBHOOK_SECRET = params.SecretParam("STRIPE_WEBHOOK_SECRET").value
@@ -87,6 +91,10 @@ else:
     ALGOLIA_APP_ID = params.SecretParam("ALGOLIA_APP_ID").value
     ALGOLIA_WRITE_API_KEY = params.SecretParam("ALGOLIA_WRITE_API_KEY").value
     SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "seller@orignagta.com")
+    AIRWALLEX_API_KEY = params.SecretParam("AIRWALLEX_API_KEY").value
+    AIRWALLEX_CLIENT_ID = params.SecretParam("AIRWALLEX_CLIENT_ID").value
+    AIRWALLEX_WEBHOOK_SECRET = params.SecretParam("AIRWALLEX_WEBHOOK_SECRET").value
+    AIRWALLEX_BASE_URL = os.environ.get("AIRWALLEX_BASE_URL", "https://api.airwallex.com/api/v1")
 
 # Stripe Tax Code Mapping
 CATEGORY_TAX_CODE_MAP = {

@@ -66,6 +66,21 @@ service cloud.firestore {
       return hasRole('seller') || isAdmin();
     }
 
+    function sellerProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isSellerApproved() {
+      return isAuthenticated() && (
+        sellerProfile().roles.hasAny(['admin']) || (
+          sellerProfile().roles.hasAny(['seller']) &&
+          sellerProfile().onboardingCompleted == true &&
+          sellerProfile().chargesEnabled == true &&
+          sellerProfile().payoutsEnabled == true
+        )
+      ) && sellerProfile().suspended != true;
+    }
+
     function isProductOwner() {
       return isAuthenticated() && resource.data.sellerId == request.auth.uid;
     }
@@ -172,7 +187,7 @@ service cloud.firestore {
 
       // Only sellers can create products
       // Must set correct sellerId
-      allow create: if isSeller() &&
+      allow create: if isSellerApproved() &&
         request.resource.data.sellerId == request.auth.uid &&
         request.resource.data.keys().hasAll([
           'name', 'price', 'sellerId', 'categoryId',
@@ -192,7 +207,7 @@ service cloud.firestore {
 
       // Product updates - owner/admin only (ratings updated via backend)
       allow update: if isAuthenticated() &&
-        ((resource.data.sellerId == request.auth.uid || isAdmin()) &&
+        ((resource.data.sellerId == request.auth.uid && isSellerApproved()) || isAdmin()) &&
           request.resource.data.sellerId == resource.data.sellerId &&
           isStringWithLen(request.resource.data.name, 2, 120) &&
           isStringWithLen(request.resource.data.description, 10, 4000) &&
@@ -207,7 +222,7 @@ service cloud.firestore {
 
       // Only product owner or admin can delete
       allow delete: if isAuthenticated() &&
-        (resource.data.sellerId == request.auth.uid || isAdmin());
+        (isAdmin() || (resource.data.sellerId == request.auth.uid && isSellerApproved()));
     }
     
     // ================================================================

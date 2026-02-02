@@ -163,7 +163,7 @@ def validate_order_data(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
     This is a lightweight check before creating full Order object.
     Returns (True, None) on success or (False, error_message) on failure.
     """
-    required_fields = ['userId', 'customerEmail', 'amount', 'items', 'deliveryInfo']
+    required_fields = ['userId', 'customerEmail', 'amount', 'items']
     for field in required_fields:
         if field not in data:
             return False, f"Missing required field: {field}"
@@ -180,11 +180,15 @@ def validate_order_data(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
     except Exception:
         return False, "Invalid email address format"
 
-    # Validate address using Pydantic Address model
-    try:
-        validate_address_map(data['deliveryInfo'])
-    except ValueError as e:
-        return False, str(e)
+    # Validate address using Pydantic Address model (only for physical items)
+    has_physical_items = any(not item.get('isDigital', False) for item in data['items'])
+    if has_physical_items:
+        if 'deliveryInfo' not in data or not data['deliveryInfo']:
+            return False, "Missing required field: deliveryInfo"
+        try:
+            validate_address_map(data['deliveryInfo'])
+        except ValueError as e:
+            return False, str(e)
     
     # Validate each item
     for idx, item in enumerate(data['items']):

@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/cart_repository.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 final cartControllerProvider = Provider<CartController>((ref) {
@@ -58,6 +58,7 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
         : [],
     minimumOrderQuantity: (productData['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
     freeShipping: productData['freeShipping'] ?? false,
+    isDigital: productData['isDigital'] ?? false,
   );
 });
 
@@ -149,6 +150,7 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
                     : [],
                 minimumOrderQuantity: (productData['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
                 freeShipping: productData['freeShipping'] ?? false,
+                isDigital: productData['isDigital'] ?? false,
               ),
             );
           }

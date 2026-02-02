@@ -10,9 +10,12 @@ class AddProductState {
   final List<Map<String, dynamic>> addressSuggestions;
   final bool showSuggestions;
   final bool isPerishable;
+  final bool isDigital;
   final bool standardEnabled;
   final bool expressEnabled;
   final bool sameDayEnabled;
+  final int minimumOrderQuantity;
+  final bool freeShipping;
   final String? errorMessage;
   final bool isSuccess;
 
@@ -26,9 +29,12 @@ class AddProductState {
     this.addressSuggestions = const [],
     this.showSuggestions = false,
     this.isPerishable = false,
+    this.isDigital = false,
     this.standardEnabled = true,
     this.expressEnabled = false,
     this.sameDayEnabled = false,
+    this.minimumOrderQuantity = 1,
+    this.freeShipping = false,
     this.errorMessage,
     this.isSuccess = false,
   });
@@ -43,9 +49,12 @@ class AddProductState {
     List<Map<String, dynamic>>? addressSuggestions,
     bool? showSuggestions,
     bool? isPerishable,
+    bool? isDigital,
     bool? standardEnabled,
     bool? expressEnabled,
     bool? sameDayEnabled,
+    int? minimumOrderQuantity,
+    bool? freeShipping,
     String? errorMessage,
     bool? isSuccess,
   }) {
@@ -59,9 +68,12 @@ class AddProductState {
       addressSuggestions: addressSuggestions ?? this.addressSuggestions,
       showSuggestions: showSuggestions ?? this.showSuggestions,
       isPerishable: isPerishable ?? this.isPerishable,
+      isDigital: isDigital ?? this.isDigital,
       standardEnabled: standardEnabled ?? this.standardEnabled,
       expressEnabled: expressEnabled ?? this.expressEnabled,
       sameDayEnabled: sameDayEnabled ?? this.sameDayEnabled,
+      minimumOrderQuantity: minimumOrderQuantity ?? this.minimumOrderQuantity,
+      freeShipping: freeShipping ?? this.freeShipping,
       errorMessage: errorMessage,
       isSuccess: isSuccess ?? this.isSuccess,
     );
