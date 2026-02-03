@@ -307,7 +307,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
       statusText = DeliveryStatus.shipped.displayText;
       statusIcon = Icons.local_shipping;
     } else {
-      statusColor = Colors.orange;
+      statusColor = const Color(0xFF764BA2);
       statusText = DeliveryStatus.pending.displayText;
       statusIcon = Icons.hourglass_empty;
     }
@@ -491,12 +491,16 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
 
   Widget _buildPaymentStatusBanner(bool isPendingApproval) {
     // Theme detection for future dark mode support
-    final (bannerColor, bannerIcon) = isPendingApproval ? (Colors.orange, Icons.pending_actions) : (DesignTokens.primary, Icons.credit_card);
+    final (bannerColor, bannerIcon) = isPendingApproval ? (const Color(0xFF764BA2), Icons.pending_actions) : (DesignTokens.primary, Icons.credit_card);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [bannerColor.withValues(alpha: 0.15), bannerColor.withValues(alpha: 0.08)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        gradient: LinearGradient(
+          colors: [bannerColor.withValues(alpha: 0.15), bannerColor.withValues(alpha: 0.08)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(color: bannerColor.withValues(alpha: 0.3), width: 1),
       ),

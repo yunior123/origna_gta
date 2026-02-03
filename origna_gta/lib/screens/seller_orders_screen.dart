@@ -111,7 +111,7 @@ class _SellerOrderCard extends ConsumerWidget {
                 ),
                 Text(
                   '\$${sellerTotal.toStringAsFixed(2)}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF667EEA)),
                 ),
               ],
             ),
@@ -136,16 +136,16 @@ class _SellerOrderCard extends ConsumerWidget {
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.1),
+        color: const Color(0xFF667EEA).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+        border: Border.all(color: const Color(0xFF667EEA).withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Payment Authorized',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+            style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF667EEA)),
           ),
           const SizedBox(height: 4),
           Text(
@@ -160,7 +160,7 @@ class _SellerOrderCard extends ConsumerWidget {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: isLoading ? null : () => _showUpdateShippingDialog(context, ref),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
                 child: isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Confirm Shipping & Ship'),
               ),
             ),

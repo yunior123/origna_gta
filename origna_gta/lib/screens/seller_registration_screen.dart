@@ -18,6 +18,8 @@ class SellerRegistrationScreen extends ConsumerStatefulWidget {
 }
 
 class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScreen> with WidgetsBindingObserver {
+  bool _termsAccepted = false;
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -117,6 +119,17 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                           ),
                         ),
 
+                      // --- Terms and Conditions ---
+                      CheckboxListTile(
+                        value: _termsAccepted,
+                        onChanged: (value) => setState(() => _termsAccepted = value ?? false),
+                        title: const Text('I accept the Terms and Conditions'),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        activeColor: DesignTokens.primary,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      const SizedBox(height: 12),
+
                       // --- Action Button ---
                       _buildActionButton(userModel, viewState.isLoading, viewState.paymentProvider, viewModel),
                       const SizedBox(height: 32),
@@ -155,7 +168,15 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
     if (paymentProvider == 'airwallex') {
       final hasAirwallex = user.airwallexAccountId != null && user.airwallexAccountId!.isNotEmpty;
       return ModernButton(
-        onPressed: isLoading ? null : viewModel.startRegistration,
+        onPressed: isLoading
+            ? null
+            : () {
+                if (!_termsAccepted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please accept the Terms and Conditions to continue')));
+                  return;
+                }
+                viewModel.startRegistration();
+              },
         label: hasAirwallex ? 'Airwallex Connected' : 'Connect Airwallex',
         isLoading: isLoading,
         icon: Icons.public,
@@ -179,8 +200,17 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       onPressed = viewModel.startRegistration;
     }
 
+    // Wrap onPressed with usage check
+    Null finalOnPressed() {
+      if (!_termsAccepted && !canReceivePayouts && !hasAccount) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please accept the Terms and Conditions to continue')));
+        return;
+      }
+      onPressed();
+    }
+
     return ModernButton(
-      onPressed: isLoading ? null : onPressed,
+      onPressed: isLoading ? null : finalOnPressed,
       label: buttonText,
       isLoading: isLoading,
       icon: canReceivePayouts
@@ -419,10 +449,10 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
 //                               width: 80,
 //                               height: 80,
 //                               decoration: BoxDecoration(
-//                                 color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
+//                                 color: const Color(0xFF667EEA).withValues(alpha: 0.1),
 //                                 borderRadius: BorderRadius.circular(40),
 //                               ),
-//                               child: const Icon(Icons.store, size: 40, color: Color(0xFFFF6B35)),
+//                               child: const Icon(Icons.store, size: 40, color: Color(0xFF667EEA)),
 //                             ),
 //                             const SizedBox(height: 16),
 //                             const Text(
@@ -616,7 +646,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
 //       padding: const EdgeInsets.symmetric(vertical: 8),
 //       child: Row(
 //         children: [
-//           Icon(icon, color: const Color(0xFFFF6B35), size: 20),
+//           Icon(icon, color: const Color(0xFF667EEA), size: 20),
 //           const SizedBox(width: 12),
 //           Expanded(child: Text(text)),
 //         ],
@@ -647,7 +677,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
 //       child: ElevatedButton(
 //         onPressed: _isLoading ? null : onPressed,
 //         style: ElevatedButton.styleFrom(
-//           backgroundColor: const Color(0xFFFF6B35),
+//           backgroundColor: const Color(0xFF667EEA),
 //           foregroundColor: Colors.white,
 //           padding: const EdgeInsets.symmetric(vertical: 16),
 //           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -845,7 +875,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
 //       padding: const EdgeInsets.symmetric(vertical: 8),
 //       child: Row(
 //         children: [
-//           Icon(icon, color: const Color(0xFFFF6B35), size: 20),
+//           Icon(icon, color: const Color(0xFF667EEA), size: 20),
 //           const SizedBox(width: 12),
 //           Expanded(child: Text(text)),
 //         ],
@@ -876,7 +906,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
 //       child: ElevatedButton(
 //         onPressed: _isLoading ? null : onPressed,
 //         style: ElevatedButton.styleFrom(
-//           backgroundColor: const Color(0xFFFF6B35),
+//           backgroundColor: const Color(0xFF667EEA),
 //           foregroundColor: Colors.white,
 //           padding: const EdgeInsets.symmetric(vertical: 16),
 //           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

@@ -61,7 +61,7 @@ class _SellerCard extends ConsumerWidget {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: isSuspended ? Colors.red : const Color(0xFFFF6B35),
+                  backgroundColor: isSuspended ? Colors.red : const Color(0xFF667EEA),
                   child: Text(
                     name.isNotEmpty ? name[0].toUpperCase() : 'S',
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -101,11 +101,11 @@ class _SellerCard extends ConsumerWidget {
             // Stripe Status
             Row(
               children: [
-                Icon(stripeOnboarded ? Icons.check_circle : Icons.pending, size: 18, color: stripeOnboarded ? Colors.green : Colors.orange),
+                Icon(stripeOnboarded ? Icons.check_circle : Icons.pending, size: 18, color: stripeOnboarded ? Colors.green : const Color(0xFF667EEA)),
                 const SizedBox(width: 8),
                 Text(
                   stripeOnboarded ? 'Stripe Connected' : 'Stripe Pending',
-                  style: TextStyle(color: stripeOnboarded ? Colors.green : Colors.orange, fontSize: 13, fontWeight: FontWeight.w500),
+                  style: TextStyle(color: stripeOnboarded ? Colors.green : const Color(0xFF667EEA), fontSize: 13, fontWeight: FontWeight.w500),
                 ),
                 if (stripeAccountId != null) ...[
                   const SizedBox(width: 8),
@@ -174,7 +174,7 @@ class _SellerCard extends ConsumerWidget {
               if (!context.mounted) return;
               if (context.mounted) {
                 if (success) {
-                  messenger.showSnackBar(const SnackBar(content: Text('Seller suspended'), backgroundColor: Colors.orange));
+                  messenger.showSnackBar(const SnackBar(content: Text('Seller suspended'), backgroundColor: Colors.redAccent));
                 } else {
                   final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to suspend seller';
                   messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
@@ -221,7 +221,7 @@ class _SellerProductsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: Text('$sellerName\'s Products'), backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+      appBar: AppBar(title: Text('$sellerName\'s Products'), backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
       body: ref
           .watch(adminProductsProvider(sellerId))
           .when(

@@ -33,6 +33,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
     ref.listen(loginViewModelProvider, (previous, next) {
       if (next.isSuccess) {
         _onAuthSuccess();
+      } else if (next.successMessage != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.successMessage!), backgroundColor: Colors.green[700], behavior: SnackBarBehavior.floating));
       } else if (next.errorMessage != null) {
         ScaffoldMessenger.of(
           context,
@@ -46,10 +50,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              DesignTokens.primary.withValues(alpha: 0.05),
-              DesignTokens.secondary.withValues(alpha: 0.05),
-            ],
+            colors: [DesignTokens.primary.withValues(alpha: 0.05), DesignTokens.secondary.withValues(alpha: 0.05)],
           ),
         ),
         child: SafeArea(
@@ -61,10 +62,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 500),
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: DesignTokens.spacing20,
-                      vertical: DesignTokens.spacing24,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing20, vertical: DesignTokens.spacing24),
                     child: Form(
                       key: _formKey,
                       child: Column(
@@ -77,47 +75,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
                                 gradient: DesignTokens.primaryGradient,
-                                borderRadius: BorderRadius.circular(
-                                  DesignTokens.radius24,
-                                ),
+                                borderRadius: BorderRadius.circular(DesignTokens.radius24),
                                 boxShadow: DesignTokens.shadowLg,
                               ),
-                              child: const Icon(
-                                Icons.shopping_bag_outlined,
-                                size: 56,
-                                color: Colors.white,
-                              ),
+                              child: const Icon(Icons.shopping_bag_outlined, size: 56, color: Colors.white),
                             ),
                           ),
                           const SizedBox(height: 32),
 
                           // Title
                           ShaderMask(
-                            shaderCallback: (bounds) =>
-                                DesignTokens.primaryGradient.createShader(bounds),
+                            shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
                             child: const Text(
                               'OrignaGta',
-                              style: TextStyle(
-                                fontSize: 40,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                letterSpacing: -0.5,
-                              ),
+                              style: TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: -0.5),
                             ),
                           ),
                           const SizedBox(height: 8),
 
                           // Subtitle
                           Text(
-                            state.isLogin
-                                ? 'Welcome back to your marketplace'
-                                : 'Start selling or shopping today',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.2,
-                            ),
+                            state.isLogin ? 'Welcome back to your marketplace' : 'Start selling or shopping today',
+                            style: TextStyle(fontSize: 15, color: Colors.grey.shade600, fontWeight: FontWeight.w500, letterSpacing: 0.2),
                           ),
                           const SizedBox(height: 40),
 
@@ -142,9 +121,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                         return null;
                                       },
                                     ),
-                                    const SizedBox(
-                                      height: DesignTokens.spacing16,
-                                    ),
+                                    const SizedBox(height: DesignTokens.spacing16),
                                   ],
                                   ModernTextField(
                                     label: 'Email Address',
@@ -156,26 +133,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                       if (value == null || value.isEmpty) {
                                         return 'Email is required';
                                       }
-                                      if (!RegExp(
-                                        r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-                                      ).hasMatch(value)) {
+                                      if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(value)) {
                                         return 'Enter a valid email';
                                       }
                                       return null;
                                     },
                                   ),
-                                  const SizedBox(
-                                    height: DesignTokens.spacing16,
-                                  ),
+                                  const SizedBox(height: DesignTokens.spacing16),
                                   ModernTextField(
                                     label: 'Password',
                                     hint: '••••••••',
                                     controller: _passwordController,
                                     isPassword: state.obscurePassword,
                                     prefixIcon: Icons.lock_outline,
-                                    suffixIcon: state.obscurePassword
-                                        ? Icons.visibility_off_outlined
-                                        : Icons.visibility_outlined,
+                                    suffixIcon: state.obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                                     onSuffixTap: viewModel.toggleObscurePassword,
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
@@ -188,48 +159,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                     },
                                   ),
                                   if (!state.isLogin) ...[
-                                    const SizedBox(
-                                      height: DesignTokens.spacing16,
-                                    ),
+                                    const SizedBox(height: DesignTokens.spacing16),
                                     Row(
                                       children: [
                                         Checkbox(
                                           value: state.acceptedTerms,
-                                          onChanged: (v) =>
-                                              viewModel.setAcceptedTerms(v ?? false),
+                                          onChanged: (v) => viewModel.setAcceptedTerms(v ?? false),
                                           activeColor: DesignTokens.primary,
                                         ),
                                         Expanded(
                                           child: RichText(
                                             text: TextSpan(
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: Colors.grey.shade700,
-                                                height: 1.4,
-                                              ),
+                                              style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4),
                                               children: [
-                                                const TextSpan(
-                                                  text: 'I agree to the ',
-                                                ),
+                                                const TextSpan(text: 'I agree to the '),
                                                 TextSpan(
                                                   text: 'Terms & Conditions',
                                                   style: const TextStyle(
                                                     color: DesignTokens.primary,
                                                     fontWeight: FontWeight.w600,
-                                                    decoration:
-                                                        TextDecoration.underline,
+                                                    decoration: TextDecoration.underline,
                                                   ),
-                                                  recognizer:
-                                                      TapGestureRecognizer()
-                                                        ..onTap = () {
-                                                          Navigator.push(
-                                                            context,
-                                                            MaterialPageRoute(
-                                                              builder: (_) =>
-                                                                  const TermsScreen(),
-                                                            ),
-                                                          );
-                                                        },
+                                                  recognizer: TapGestureRecognizer()
+                                                    ..onTap = () {
+                                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
+                                                    },
                                                 ),
                                               ],
                                             ),
@@ -249,20 +203,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                             label: state.isLogin ? 'Sign In' : 'Create Account',
                             isLoading: state.isLoading,
                             isPrimary: true,
-                            onPressed: state.isLoading ||
-                                    (!state.isLogin && !state.acceptedTerms)
-                                ? () {}
-                                : () {
-                                    if (_formKey.currentState!.validate()) {
-                                      viewModel.handleAuth(
-                                        email: _emailController.text.trim(),
-                                        password: _passwordController.text.trim(),
-                                        name: !state.isLogin
-                                            ? _nameController.text.trim()
-                                            : null,
-                                      );
-                                    }
-                                  },
+                            onPressed: () {
+                              // Terms Validation check
+                              if (!state.isLogin && !state.acceptedTerms) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please accept the Terms and Conditions to continue'),
+                                    backgroundColor: Colors.red,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              if (_formKey.currentState!.validate()) {
+                                viewModel.handleAuth(
+                                  email: _emailController.text.trim(),
+                                  password: _passwordController.text.trim(),
+                                  name: !state.isLogin ? _nameController.text.trim() : null,
+                                );
+                              }
+                            },
                           ),
                           const SizedBox(height: 16),
 
@@ -271,41 +232,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                               onPressed: () => _showForgotPasswordDialog(context),
                               child: const Text(
                                 'Forgot Password?',
-                                style: TextStyle(
-                                  color: DesignTokens.primary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
+                                style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600, fontSize: 14),
                               ),
                             ),
                             const SizedBox(height: 20),
                             Row(
                               children: [
-                                Expanded(
-                                  child: Divider(
-                                    color: Colors.grey.shade300,
-                                    thickness: 0.8,
-                                  ),
-                                ),
+                                Expanded(child: Divider(color: Colors.grey.shade300, thickness: 0.8)),
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: DesignTokens.spacing12,
-                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing12),
                                   child: Text(
                                     'or continue with',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade500,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w500),
                                   ),
                                 ),
-                                Expanded(
-                                  child: Divider(
-                                    color: Colors.grey.shade300,
-                                    thickness: 0.8,
-                                  ),
-                                ),
+                                Expanded(child: Divider(color: Colors.grey.shade300, thickness: 0.8)),
                               ],
                             ),
                             const SizedBox(height: 20),
@@ -314,9 +255,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                               icon: Icons.g_mobiledata,
                               isPrimary: false,
                               isLoading: state.isLoading,
-                              onPressed: state.isLoading
-                                  ? () {}
-                                  : viewModel.handleGoogleSignIn,
+                              onPressed: state.isLoading ? () {} : viewModel.handleGoogleSignIn,
                             ),
                             const SizedBox(height: 20),
                           ],
@@ -331,23 +270,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                   },
                             child: RichText(
                               text: TextSpan(
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                                style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500),
                                 children: [
-                                  TextSpan(
-                                    text: state.isLogin
-                                        ? "Don't have an account? "
-                                        : 'Already have an account? ',
-                                  ),
+                                  TextSpan(text: state.isLogin ? "Don't have an account? " : 'Already have an account? '),
                                   TextSpan(
                                     text: state.isLogin ? 'Sign Up' : 'Sign In',
-                                    style: const TextStyle(
-                                      color: DesignTokens.primary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                    style: const TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w700),
                                   ),
                                 ],
                               ),
@@ -451,7 +379,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                             setState(() => isSending = false);
                           }
                         },
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
                   child: isSending ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white)) : const Text('Send'),
                 ),
               ],

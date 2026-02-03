@@ -107,7 +107,7 @@ class CartItemScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '\$${(item['price'] ?? 0.0).toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF667EEA)),
                 ),
               ],
             ),

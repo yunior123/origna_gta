@@ -4,6 +4,7 @@ class LoginState {
   final bool obscurePassword;
   final bool acceptedTerms;
   final String? errorMessage;
+  final String? successMessage;
   final bool isSuccess;
   final int failedAttempts;
   final DateTime? lockoutUntil;
@@ -14,6 +15,7 @@ class LoginState {
     this.obscurePassword = true,
     this.acceptedTerms = false,
     this.errorMessage,
+    this.successMessage,
     this.isSuccess = false,
     this.failedAttempts = 0,
     this.lockoutUntil,
@@ -25,6 +27,7 @@ class LoginState {
     bool? obscurePassword,
     bool? acceptedTerms,
     String? errorMessage,
+    String? successMessage,
     bool? isSuccess,
     int? failedAttempts,
     DateTime? lockoutUntil,
@@ -35,6 +38,7 @@ class LoginState {
       obscurePassword: obscurePassword ?? this.obscurePassword,
       acceptedTerms: acceptedTerms ?? this.acceptedTerms,
       errorMessage: errorMessage,
+      successMessage: successMessage,
       isSuccess: isSuccess ?? this.isSuccess,
       failedAttempts: failedAttempts ?? this.failedAttempts,
       lockoutUntil: lockoutUntil ?? this.lockoutUntil,

@@ -128,7 +128,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   SwitchListTile(
                     title: const Text('Mark as Sold Out'),
                     value: state.isSoldOut,
-                    activeTrackColor: const Color(0xFFFF6B35),
+                    activeTrackColor: const Color(0xFF667EEA),
                     contentPadding: EdgeInsets.zero,
                     onChanged: (v) {
                       viewModel.toggleSoldOut(v);
@@ -139,7 +139,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     title: const Text('Digital Product (No Shipping)'),
                     subtitle: const Text('Hide shipping options and deliver digitally'),
                     value: state.isDigital,
-                    activeTrackColor: const Color(0xFFFF6B35),
+                    activeTrackColor: const Color(0xFF667EEA),
                     contentPadding: EdgeInsets.zero,
                     onChanged: viewModel.toggleDigital,
                   ),
@@ -158,7 +158,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       title: const Text('Local Delivery Only'),
                       subtitle: const Text('Restrict to buyers within 50km'),
                       value: state.isLocalDeliveryOnly,
-                      activeTrackColor: const Color(0xFFFF6B35),
+                      activeTrackColor: const Color(0xFF667EEA),
                       contentPadding: EdgeInsets.zero,
                       onChanged: viewModel.toggleLocalDelivery,
                     ),
@@ -166,7 +166,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       title: const Text('Perishable Item'),
                       subtitle: const Text('Food, flowers, etc. (Requires same-day)'),
                       value: state.isPerishable,
-                      activeTrackColor: const Color(0xFFFF6B35),
+                      activeTrackColor: const Color(0xFF667EEA),
                       contentPadding: EdgeInsets.zero,
                       onChanged: viewModel.togglePerishable,
                     ),
@@ -234,7 +234,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Free Shipping'),
                               value: state.freeShipping,
-                              activeTrackColor: const Color(0xFFFF6B35),
+                              activeTrackColor: const Color(0xFF667EEA),
                               onChanged: viewModel.toggleFreeShipping,
                             ),
                           ),
@@ -294,7 +294,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     child: ElevatedButton(
                       onPressed: state.isLoading ? null : () => _handleSave(viewModel),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF6B35),
+                        backgroundColor: const Color(0xFF667EEA),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
@@ -458,7 +458,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
           value: enabled,
           onChanged: onToggle,
-          activeThumbColor: const Color(0xFFFF6B35),
+          activeThumbColor: const Color(0xFF667EEA),
         ),
         if (enabled)
           Padding(
@@ -532,7 +532,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       padding: const EdgeInsets.only(bottom: 12, top: 4),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF667EEA)),
       ),
     );
   }

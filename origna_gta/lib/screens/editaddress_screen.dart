@@ -83,7 +83,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                     label: Text(label),
                     selected: state.selectedLabel == label,
                     onSelected: (selected) => viewModel.setLabel(label),
-                    selectedColor: const Color(0xFFFF6B35),
+                    selectedColor: const Color(0xFF667EEA),
                     labelStyle: TextStyle(color: state.selectedLabel == label ? Colors.white : Colors.black87),
                   );
                 }).toList(),
@@ -106,7 +106,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                     itemBuilder: (context, i) {
                       final s = state.addressSuggestions[i];
                       return ListTile(
-                        leading: const Icon(Icons.location_on, color: Color(0xFFFF6B35)),
+                        leading: const Icon(Icons.location_on, color: Color(0xFF667EEA)),
                         title: Text(s['properties']?['formatted'] ?? ''),
                         onTap: () {
                           viewModel.selectAddress(s);
@@ -154,7 +154,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                       );
                     }
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
                   child: state.isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Save Address', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),

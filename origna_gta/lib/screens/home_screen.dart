@@ -43,7 +43,7 @@ class _AddProductButton extends ConsumerWidget {
       onPressed: () {
         if (!canSell && !isAdmin) {
           final message = isSuspended ? 'Seller account suspended. Contact support.' : 'Complete seller onboarding to add products.';
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.orange));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: DesignTokens.primary));
           return;
         }
         Navigator.push(context, MaterialPageRoute(builder: (_) => const AddProductScreen()));
@@ -57,48 +57,96 @@ class _AddProductButton extends ConsumerWidget {
 // ============================================================================
 
 /// Cart badge - only rebuilds when cart count or auth state changes
-class _CartBadge extends ConsumerWidget {
+class _CartBadge extends ConsumerStatefulWidget {
   const _CartBadge();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CartBadge> createState() => _CartBadgeState();
+}
+
+class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final cartCount = ref.watch(cartItemCountProvider);
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
-          onPressed: () {
-            if (user == null) {
-              showLoginPrompt(context);
-              return;
-            }
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
-          },
-        ),
-        if (cartCount > 0)
-          Positioned(
-            right: -2,
-            top: -2,
-            child: Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFFF6B35), width: 2),
-              ),
-              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-              child: Text(
-                cartCount > 99 ? '99+' : '$cartCount',
-                style: const TextStyle(color: Color(0xFFFF6B35), fontSize: 10, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
+    return MouseRegion(
+      onEnter: (_) => _triggerAnimation(),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          AnimatedBuilder(
+            animation: _scaleAnimation,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _scaleAnimation.value,
+                child: IconButton(
+                  icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                  onPressed: () {
+                    _triggerAnimation();
+                    if (user == null) {
+                      showLoginPrompt(context);
+                      return;
+                    }
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
+                  },
+                ),
+              );
+            },
+          ),
+          if (cartCount > 0)
+            Positioned(
+              right: -2,
+              top: -2,
+              child: AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _pulseAnimation.value,
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFF667EEA), width: 2),
+                        boxShadow: [BoxShadow(color: const Color(0xFF667EEA).withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 2)],
+                      ),
+                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                      child: Text(
+                        cartCount > 99 ? '99+' : '$cartCount',
+                        style: const TextStyle(color: Color(0xFF667EEA), fontSize: 10, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  void _triggerAnimation() {
+    _controller.forward().then((_) => _controller.reverse());
   }
 }
 
@@ -459,22 +507,59 @@ class _ProductGrid extends ConsumerWidget {
 }
 
 /// Settings button - only rebuilds when auth state changes
-class _SettingsButton extends ConsumerWidget {
+class _SettingsButton extends ConsumerStatefulWidget {
   const _SettingsButton();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SettingsButton> createState() => _SettingsButtonState();
+}
+
+class _SettingsButtonState extends ConsumerState<_SettingsButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _rotationAnimation;
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
 
-    return IconButton(
-      icon: const Icon(Icons.settings_outlined, color: Colors.white),
-      onPressed: () {
-        if (user == null) {
-          showLoginPrompt(context, text: "You need to sign in to access settings");
-          return;
-        }
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
-      },
+    return MouseRegion(
+      onEnter: (_) => _triggerAnimation(),
+      child: AnimatedBuilder(
+        animation: _rotationAnimation,
+        builder: (context, child) {
+          return Transform.rotate(
+            angle: _rotationAnimation.value * 3.14159,
+            child: IconButton(
+              icon: const Icon(Icons.settings_outlined, color: Colors.white),
+              onPressed: () {
+                _triggerAnimation();
+                if (user == null) {
+                  showLoginPrompt(context, text: "You need to sign in to access settings");
+                  return;
+                }
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              },
+            ),
+          );
+        },
+      ),
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
+    _rotationAnimation = Tween<double>(begin: 0.0, end: 0.5).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  void _triggerAnimation() {
+    _controller.forward().then((_) => _controller.reverse());
   }
 }

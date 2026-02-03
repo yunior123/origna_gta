@@ -17,7 +17,7 @@ class FavoritesScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'Favorites'),
       body: favoritesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B35)))),
+        loading: () => const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF667EEA)))),
         error: (error, stack) => Center(child: Text('Error: $error')),
         data: (products) {
           if (products.isEmpty) {

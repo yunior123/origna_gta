@@ -133,7 +133,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Free Shipping'),
                           value: state.freeShipping,
-                          activeThumbColor: const Color(0xFFFF6B35),
+                          activeThumbColor: const Color(0xFF667EEA),
                           onChanged: viewModel.toggleFreeShipping,
                         ),
                       ),
@@ -145,7 +145,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     title: const Text('Digital Product (No Shipping)'),
                     subtitle: const Text('Hide shipping options and deliver digitally'),
                     value: state.isDigital,
-                    activeThumbColor: const Color(0xFFFF6B35),
+                    activeThumbColor: const Color(0xFF667EEA),
                     onChanged: viewModel.toggleDigital,
                   ),
                   if (state.isDigital)
@@ -159,7 +159,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Perishable Item'),
                       value: state.isPerishable,
-                      activeThumbColor: const Color(0xFFFF6B35),
+                      activeThumbColor: const Color(0xFF667EEA),
                       onChanged: viewModel.togglePerishable,
                     ),
                     _buildDeliveryOptionCard(
@@ -393,7 +393,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                 );
                               }
                             },
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
                       child: state.isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text('Add Product', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -438,12 +438,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     return Container(
       margin: const EdgeInsets.only(top: 12),
       decoration: BoxDecoration(
-        border: Border.all(color: isEnabled ? const Color(0xFFFF6B35) : Colors.grey[300]!),
+        border: Border.all(color: isEnabled ? const Color(0xFF667EEA) : Colors.grey[300]!),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
-          SwitchListTile(title: Text(title), value: isEnabled, onChanged: onChanged, activeThumbColor: const Color(0xFFFF6B35)),
+          SwitchListTile(title: Text(title), value: isEnabled, onChanged: onChanged, activeThumbColor: const Color(0xFF667EEA)),
           if (isEnabled)
             Padding(
               padding: const EdgeInsets.all(16),

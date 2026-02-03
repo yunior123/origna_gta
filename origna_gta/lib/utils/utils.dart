@@ -364,7 +364,7 @@ void showLoginPrompt(BuildContext context, {String text = 'You need to sign in t
             Navigator.pop(context);
             Navigator.push(context, MaterialPageRoute(builder: (_) => LoginScreen()));
           },
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
           child: const Text('Sign In'),
         ),
       ],

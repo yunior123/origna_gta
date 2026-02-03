@@ -156,7 +156,7 @@ class _AnimatedEmptyStateState extends State<AnimatedEmptyState> with SingleTick
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
+                    color: const Color(0xFF667EEA).withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(widget.icon, size: 64, color: Colors.grey[400]),

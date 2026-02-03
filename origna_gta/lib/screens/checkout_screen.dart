@@ -169,7 +169,7 @@ class _CheckoutButton extends ConsumerWidget {
       case CheckoutError(:final message):
         messenger.showSnackBar(SnackBar(content: Text('Checkout error: $message'), backgroundColor: Colors.red, duration: const Duration(seconds: 5)));
       case CheckoutAlreadyProcessed(:final existingOrderId):
-        messenger.showSnackBar(SnackBar(content: Text('Order already exists: $existingOrderId'), backgroundColor: Colors.orange));
+        messenger.showSnackBar(SnackBar(content: Text('Order already exists: $existingOrderId'), backgroundColor: const Color(0xFF667EEA)));
     }
   }
 }
@@ -398,9 +398,9 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFFF6B35).withValues(alpha: 0.08) : Colors.white,
+                  color: isSelected ? const Color(0xFF667EEA).withValues(alpha: 0.08) : Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isSelected ? const Color(0xFFFF6B35) : Colors.grey.shade200, width: isSelected ? 1.5 : 1),
+                  border: Border.all(color: isSelected ? const Color(0xFF667EEA) : Colors.grey.shade200, width: isSelected ? 1.5 : 1),
                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 1))],
                 ),
                 child: Opacity(
@@ -412,14 +412,14 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                         height: 24,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: isSelected ? const Color(0xFFFF6B35) : Colors.grey.shade300, width: 2),
+                          border: Border.all(color: isSelected ? const Color(0xFF667EEA) : Colors.grey.shade300, width: 2),
                         ),
                         child: isSelected
                             ? Center(
                                 child: Container(
                                   width: 12,
                                   height: 12,
-                                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFFF6B35)),
+                                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF667EEA)),
                                 ),
                               )
                             : null,
@@ -455,7 +455,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Text(
                                   'Only available for local orders within 50km',
-                                  style: TextStyle(fontSize: 11, color: Colors.orange.shade600, fontStyle: FontStyle.italic),
+                                  style: TextStyle(fontSize: 11, color: const Color(0xFFFF6B6B), fontStyle: FontStyle.italic),
                                 ),
                               ),
                           ],
@@ -562,7 +562,7 @@ class _NoAddressView extends StatelessWidget {
               icon: const Icon(Icons.add_location),
               label: const Text('Add Address'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF6B35),
+                backgroundColor: const Color(0xFF667EEA),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               ),
@@ -651,7 +651,7 @@ class _OrderSummary extends ConsumerWidget {
                   const Text('Estimated Total', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   Text(
                     '\$${(subtotal + (getTaxRate(state) * subtotal) + shippingCost).toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF667EEA)),
                   ),
                 ],
               ),
@@ -819,10 +819,10 @@ class _TermsTextState extends State<_TermsText> {
                           'Terms & Conditions',
                           style: TextStyle(
                             fontSize: 13,
-                            color: const Color(0xFFFF6B35),
+                            color: const Color(0xFF667EEA),
                             fontWeight: FontWeight.w600,
                             decoration: TextDecoration.underline,
-                            decorationColor: const Color(0xFFFF6B35),
+                            decorationColor: const Color(0xFF667EEA),
                           ),
                         ),
                       ),
@@ -837,10 +837,10 @@ class _TermsTextState extends State<_TermsText> {
                           'Privacy Policy',
                           style: TextStyle(
                             fontSize: 13,
-                            color: const Color(0xFFFF6B35),
+                            color: const Color(0xFF667EEA),
                             fontWeight: FontWeight.w600,
                             decoration: TextDecoration.underline,
-                            decorationColor: const Color(0xFFFF6B35),
+                            decorationColor: const Color(0xFF667EEA),
                           ),
                         ),
                       ),

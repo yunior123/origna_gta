@@ -48,6 +48,17 @@ class LoginViewModel extends StateNotifier<LoginState> {
         }
       } else {
         await repository.registerWithEmail(email, password, name ?? 'User');
+        // SECURITY FIX: Force logout and require email verification before login
+        await repository.signOut();
+        state = state.copyWith(
+          isLoading: false,
+          isLogin: true, // Redirect to Login mode
+          acceptedTerms: false, // Reset
+          successMessage: 'Registration successful! Verification email sent to $email.',
+          errorMessage: null,
+        );
+        // Do NOT set isSuccess=true, as that triggers navigation to home
+        return;
       }
       state = state.copyWith(isLoading: false, isSuccess: true, failedAttempts: 0, lockoutUntil: null);
     } on FirebaseAuthException catch (e) {

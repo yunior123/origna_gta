@@ -36,7 +36,7 @@ class AddressManagementScreen extends ConsumerWidget {
                     },
                     icon: const Icon(Icons.add),
                     label: const Text('Add Address'),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
                   ),
                 ],
               ),
@@ -51,7 +51,7 @@ class AddressManagementScreen extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFFF6B35), width: 2),
+                  border: Border.all(color: const Color(0xFF667EEA), width: 2),
                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
                 ),
                 child: Column(
@@ -63,7 +63,7 @@ class AddressManagementScreen extends ConsumerWidget {
                         if (address.label != null)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(color: const Color(0xFFFF6B35), borderRadius: BorderRadius.circular(12)),
+                            decoration: BoxDecoration(color: const Color(0xFF667EEA), borderRadius: BorderRadius.circular(12)),
                             child: Text(
                               address.label!,
                               style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),

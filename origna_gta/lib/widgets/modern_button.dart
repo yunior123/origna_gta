@@ -33,7 +33,8 @@ class ModernButton extends StatefulWidget {
   State<ModernButton> createState() => _ModernButtonState();
 }
 
-class _ModernButtonState extends State<ModernButton> with SingleTickerProviderStateMixin {
+class _ModernButtonState extends State<ModernButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
 
@@ -48,7 +49,8 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
           ? null
           : (_) {
               _scaleController.reverse();
-              widget.onPressed?.call();
+              // Prevent double tap execution as InkWell handles the tap too
+              // widget.onPressed?.call();
             },
       onTapCancel: isDisabled ? null : () => _scaleController.reverse(),
       child: ScaleTransition(
@@ -57,13 +59,23 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
           width: widget.fullWidth ? double.infinity : widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            gradient: widget.isPrimary && !widget.isOutlined && !isDisabled ? DesignTokens.primaryGradient : null,
+            gradient: widget.isPrimary && !widget.isOutlined && !isDisabled
+                ? DesignTokens.primaryGradient
+                : null,
             color:
                 widget.backgroundColor ??
-                (widget.isOutlined ? Colors.transparent : (!widget.isPrimary ? DesignTokens.surface : (isDisabled ? Colors.grey[400] : null))),
+                (widget.isOutlined
+                    ? Colors.transparent
+                    : (!widget.isPrimary
+                          ? DesignTokens.surface
+                          : (isDisabled ? Colors.grey[400] : null))),
             borderRadius: BorderRadius.circular(DesignTokens.radius16),
-            border: widget.isOutlined ? Border.all(color: DesignTokens.primary, width: 1.5) : null,
-            boxShadow: !widget.isOutlined && widget.isPrimary && !isDisabled ? DesignTokens.shadowMd : null,
+            border: widget.isOutlined
+                ? Border.all(color: DesignTokens.primary, width: 1.5)
+                : null,
+            boxShadow: !widget.isOutlined && widget.isPrimary && !isDisabled
+                ? DesignTokens.shadowMd
+                : null,
           ),
           child: Material(
             color: Colors.transparent,
@@ -77,7 +89,11 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation(widget.isPrimary && !widget.isOutlined ? Colors.white : DesignTokens.primary),
+                          valueColor: AlwaysStoppedAnimation(
+                            widget.isPrimary && !widget.isOutlined
+                                ? Colors.white
+                                : DesignTokens.primary,
+                          ),
                         ),
                       )
                     : Row(
@@ -85,7 +101,13 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (widget.icon != null) ...[
-                            Icon(widget.icon, color: widget.isPrimary && !widget.isOutlined ? Colors.white : DesignTokens.primary, size: 18),
+                            Icon(
+                              widget.icon,
+                              color: widget.isPrimary && !widget.isOutlined
+                                  ? Colors.white
+                                  : DesignTokens.primary,
+                              size: 18,
+                            ),
                             const SizedBox(width: DesignTokens.spacing8),
                           ],
                           Text(
@@ -94,7 +116,9 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.5,
-                              color: widget.isPrimary && !widget.isOutlined ? Colors.white : DesignTokens.primary,
+                              color: widget.isPrimary && !widget.isOutlined
+                                  ? Colors.white
+                                  : DesignTokens.primary,
                             ),
                           ),
                         ],
@@ -116,7 +140,12 @@ class _ModernButtonState extends State<ModernButton> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _scaleController = AnimationController(duration: DesignTokens.durationFast, vsync: this);
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut));
+    _scaleController = AnimationController(
+      duration: DesignTokens.durationFast,
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    );
   }
 }

@@ -8,6 +8,7 @@ import 'package:origna_gta/screens/login_screen.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
 import 'package:origna_gta/screens/seller_registration_screen.dart';
 import 'package:origna_gta/services/session_timeout_service.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 
 /// Handle initial route from URL (critical for web redirects from Stripe)
 List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
@@ -120,7 +121,7 @@ class _AuthRequiredGate extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.lock_outline, size: 64, color: Colors.orange),
+                    Icon(Icons.lock_outline, size: 64, color: DesignTokens.primary),
                     const SizedBox(height: 16),
                     const Text('Please sign in to continue', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 16),
@@ -129,7 +130,7 @@ class _AuthRequiredGate extends ConsumerWidget {
                       height: 52,
                       child: ElevatedButton(
                         onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen())),
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+                        style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
                         child: const Text('Sign In'),
                       ),
                     ),
@@ -162,7 +163,7 @@ class _ErrorScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 80, color: Colors.red[400]),
+              Icon(Icons.error_outline, size: 80, color: DesignTokens.error),
               const SizedBox(height: 24),
               Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
               const SizedBox(height: 32),
@@ -228,6 +229,12 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
       onTap: () => _sessionTimeout.recordActivity(context),
       onPanDown: (_) => _sessionTimeout.recordActivity(context),
       child: MaterialApp(
+        scrollBehavior: const MaterialScrollBehavior().copyWith(
+          // Fix Sentry issue: !identical(kind, PointerDeviceKind.trackpad)
+          // Explicitly supports all pointer kinds for modern Flutter Web
+          scrollbars: true,
+          physics: const BouncingScrollPhysics(),
+        ),
         title: 'OrignaGta',
         debugShowCheckedModeBanner: false,
         // Handle initial URL from web (e.g., Stripe redirect to /payment-success)
@@ -235,16 +242,16 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
         onGenerateRoute: _onGenerateRoute,
         theme: ThemeData(
           useMaterial3: true,
-          // 2100 Aesthetic: Deep purple gradient palette
+          // Centralized Theme using DesignTokens
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF667EEA),
-            primary: const Color(0xFF667EEA),
-            secondary: const Color(0xFF764BA2),
-            tertiary: const Color(0xFFFF6B6B),
-            surface: const Color(0xFFF8F9FA),
+            seedColor: DesignTokens.primary,
+            primary: DesignTokens.primary,
+            secondary: DesignTokens.secondary,
+            tertiary: DesignTokens.tertiary,
+            surface: DesignTokens.surface,
             brightness: Brightness.light,
           ),
-          scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+          scaffoldBackgroundColor: DesignTokens.surface,
           fontFamily: 'Roboto',
           appBarTheme: const AppBarTheme(
             centerTitle: false,
@@ -258,7 +265,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              backgroundColor: const Color(0xFF667EEA),
+              backgroundColor: DesignTokens.primary,
               foregroundColor: Colors.white,
             ),
           ),
@@ -276,7 +283,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
+              borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
             ),
           ),
           cardTheme: CardThemeData(
@@ -324,7 +331,7 @@ class _PaymentCanceledScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.cancel, size: 100, color: Colors.red[400]),
+              Icon(Icons.cancel, size: 100, color: DesignTokens.error),
               const SizedBox(height: 24),
               const Text('Payment Canceled', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
@@ -341,7 +348,7 @@ class _PaymentCanceledScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.of(context).popUntil((route) => route.isFirst);
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
                   child: const Text('Back to Shopping', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
@@ -384,7 +391,7 @@ class _SellerSetupCompleteScreen extends ConsumerWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.error_outline, size: 80, color: Colors.red[400]),
+        Icon(Icons.error_outline, size: 80, color: DesignTokens.error),
         const SizedBox(height: 24),
         Text(error, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
         const SizedBox(height: 32),
@@ -399,8 +406,8 @@ class _SellerSetupCompleteScreen extends ConsumerWidget {
       children: [
         Container(
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: Colors.orange[50], shape: BoxShape.circle),
-          child: Icon(Icons.hourglass_empty, size: 100, color: Colors.orange[600]),
+          decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+          child: Icon(Icons.hourglass_empty, size: 100, color: DesignTokens.primary),
         ),
         const SizedBox(height: 32),
         const Text(
@@ -420,7 +427,7 @@ class _SellerSetupCompleteScreen extends ConsumerWidget {
           height: 54,
           child: ElevatedButton(
             onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
             child: const Text('Go to Home', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ),
@@ -441,8 +448,8 @@ class _SellerSetupCompleteScreen extends ConsumerWidget {
       children: [
         Container(
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: Colors.green[50], shape: BoxShape.circle),
-          child: Icon(Icons.check_circle, size: 100, color: Colors.green[600]),
+          decoration: BoxDecoration(color: DesignTokens.success.withValues(alpha: 0.1), shape: BoxShape.circle),
+          child: Icon(Icons.check_circle, size: 100, color: DesignTokens.success),
         ),
         const SizedBox(height: 32),
         const Text(
@@ -462,7 +469,7 @@ class _SellerSetupCompleteScreen extends ConsumerWidget {
           height: 54,
           child: ElevatedButton(
             onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
             child: const Text('Start Selling', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ),
@@ -486,8 +493,8 @@ class _SellerSetupRefreshScreen extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(color: Colors.blue[50], shape: BoxShape.circle),
-                child: Icon(Icons.refresh, size: 100, color: Colors.blue[600]),
+                decoration: BoxDecoration(color: DesignTokens.info.withValues(alpha: 0.1), shape: BoxShape.circle),
+                child: Icon(Icons.refresh, size: 100, color: DesignTokens.info),
               ),
               const SizedBox(height: 32),
               const Text(
@@ -509,7 +516,7 @@ class _SellerSetupRefreshScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const SellerRegistrationScreen()));
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
                   child: const Text('Continue Setup', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),

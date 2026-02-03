@@ -297,7 +297,7 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
         label: Text(label),
         selected: isSelected,
         onSelected: (_) => setState(() => _statusFilter = value),
-        selectedColor: const Color(0xFFFF6B35),
+        selectedColor: const Color(0xFF667EEA),
         labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
       ),
     );

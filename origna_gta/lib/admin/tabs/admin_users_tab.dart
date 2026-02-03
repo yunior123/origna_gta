@@ -120,7 +120,7 @@ class _UserCard extends ConsumerWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: isSuspended ? Colors.red : const Color(0xFFFF6B35),
+          backgroundColor: isSuspended ? Colors.red : const Color(0xFF667EEA),
           child: Text(
             name.isNotEmpty ? name[0].toUpperCase() : 'U',
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),

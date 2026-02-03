@@ -115,7 +115,7 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
         label: Text(label),
         selected: isSelected,
         onSelected: (_) => setState(() => _stockFilter = value),
-        selectedColor: const Color(0xFFFF6B35),
+        selectedColor: const Color(0xFF667EEA),
         labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
       ),
     );
@@ -184,7 +184,7 @@ class _ProductCard extends ConsumerWidget {
                   const SizedBox(height: 4),
                   Text(
                     '\$${price.toStringAsFixed(2)}',
-                    style: const TextStyle(color: Color(0xFFFF6B35), fontWeight: FontWeight.w600),
+                    style: const TextStyle(color: Color(0xFF667EEA), fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 4),
                   Container(

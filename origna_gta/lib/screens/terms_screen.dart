@@ -35,16 +35,16 @@ class TermsScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B35).withValues(alpha: 0.081),
+                      color: const Color(0xFF667EEA).withValues(alpha: 0.081),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFF6B35).withValues(alpha: 0.2), width: 1),
+                      border: Border.all(color: const Color(0xFF667EEA).withValues(alpha: 0.2), width: 1),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
                           'Terms and Conditions',
-                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
+                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF667EEA)),
                         ),
                         const SizedBox(height: 8),
                         Text(

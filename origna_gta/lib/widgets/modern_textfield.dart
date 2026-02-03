@@ -114,6 +114,16 @@ class _ModernTextFieldState extends State<ModernTextField> {
   }
 
   @override
+  void didUpdateWidget(ModernTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isPassword != widget.isPassword) {
+      setState(() {
+        _obscureText = widget.isPassword;
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _focusNode.dispose();
     super.dispose();

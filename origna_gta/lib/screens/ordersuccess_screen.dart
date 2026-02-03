@@ -35,7 +35,7 @@ class OrderSuccessScreen extends StatelessWidget {
                 height: 54,
                 child: ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
                   child: const Text('Continue Shopping', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
@@ -47,10 +47,10 @@ class OrderSuccessScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const OrdersScreen()), (route) => route.isFirst);
                   },
-                  style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFFF6B35))),
+                  style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF667EEA))),
                   child: const Text(
                     'View My Orders',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFF6B35)),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF667EEA)),
                   ),
                 ),
               ),

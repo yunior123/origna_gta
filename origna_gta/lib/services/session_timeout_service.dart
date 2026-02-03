@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 
 /// Service to automatically logout users after 1 hour of inactivity.
 ///
@@ -65,10 +66,10 @@ class SessionTimeoutService {
       // Show snackbar to inform user
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Session expired due to inactivity. Please login again.'),
             duration: Duration(seconds: 5),
-            backgroundColor: Colors.orange,
+            backgroundColor: DesignTokens.warning,
           ),
         );
       }

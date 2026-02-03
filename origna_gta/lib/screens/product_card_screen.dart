@@ -184,13 +184,13 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                         Flexible(
                           child: Text(
                             '\$${price.toStringAsFixed(2)}',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: priceFontSize, color: const Color(0xFFFF6B35)),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: priceFontSize, color: const Color(0xFF667EEA)),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 4),
                         Material(
-                          color: const Color(0xFFFF6B35),
+                          color: const Color(0xFF667EEA),
                           borderRadius: BorderRadius.circular(isCompact ? 6 : 8),
                           child: InkWell(
                             onTap: () async {
@@ -233,7 +233,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     IconButton(
-                      icon: Icon(Icons.edit, color: const Color(0xFFFF6B35), size: iconSize),
+                      icon: Icon(Icons.edit, color: const Color(0xFF667EEA), size: iconSize),
                       onPressed: () => _editProduct(context),
                       tooltip: 'Edit Product',
                       padding: EdgeInsets.all(isCompact ? 4 : 8),

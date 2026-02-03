@@ -47,7 +47,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
         return Scaffold(
           appBar: AppBar(
             title: const Text('Admin Panel'),
-            backgroundColor: const Color(0xFFFF6B35),
+            backgroundColor: const Color(0xFF667EEA),
             foregroundColor: Colors.white,
             elevation: 0,
             bottom: TabBar(

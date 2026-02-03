@@ -7,14 +7,19 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class DesignTokens {
-  // Primary Palette (2100 Aesthetic)
-  static const Color primary = Color(0xFF667EEA); // Deep Purple
-  static const Color secondary = Color(0xFF764BA2); // Violet
+  // Primary Palette (Matched to Ecommerce Splash)
+  static const Color primary = Color(0xFF667EEA); // Soft Cornflower Blue
+  static const Color secondary = Color(0xFF764BA2); // Deep Violet
   static const Color tertiary = Color(0xFFFF6B6B); // Coral
-  static const Color accent = Color(0xFF00D4FF); // Cyan
+  static const Color accent = Color(0xFF5CE1E6); // Cyan (Matches web splash)
+
+  // Gradient Definition (Matches index.html splash)
+  static const Color gradientStart = Color(0xFF1F235A);
+  static const Color gradientMiddle = Color(0xFF2F3B8F);
+  static const Color gradientEnd = Color(0xFF764BA2);
 
   // Neutral Palette
-  static const Color surface = Color(0xFFFAFAFC); // Near white
+  static const Color surface = Color(0xFFF8F9FA); // Off-white background
   static const Color surfaceVariant = Color(0xFFF3F4F9);
   static const Color outline = Color(0xFFD0D5E0);
   static const Color outlineVariant = Color(0xFFE8EBF0);
@@ -31,17 +36,9 @@ class DesignTokens {
   static const Color info = Color(0xFF3B82F6); // Blue
 
   // Gradients
-  static const LinearGradient primaryGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-  );
+  static const LinearGradient primaryGradient = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [primary, secondary]);
 
-  static const LinearGradient secondaryGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFF764BA2), Color(0xFF667EEA)],
-  );
+  static const LinearGradient secondaryGradient = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [secondary, primary]);
 
   static const LinearGradient premiumGradient = LinearGradient(
     begin: Alignment.topLeft,

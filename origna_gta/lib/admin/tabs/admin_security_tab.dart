@@ -39,7 +39,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                     const Text('Admin Multi-Factor Authentication', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(color: _mfaEnabled ? Colors.green : Colors.orange, borderRadius: BorderRadius.circular(20)),
+                      decoration: BoxDecoration(color: _mfaEnabled ? Colors.green : Colors.grey, borderRadius: BorderRadius.circular(20)),
                       child: Text(
                         _mfaEnabled ? 'ENABLED' : 'DISABLED',
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
@@ -60,7 +60,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                     icon: const Icon(Icons.security),
                     label: const Text('Enable MFA'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF6B35),
+                      backgroundColor: const Color(0xFF667EEA),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
                     ),
@@ -289,7 +289,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   _qrCodeUri = null;
                   _backupCodes = [];
                 });
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('MFA disabled'), backgroundColor: Colors.orange));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('MFA disabled'), backgroundColor: Colors.grey[800]));
               }
             },
             child: const Text('Disable', style: TextStyle(color: Colors.red)),
