@@ -44,7 +44,8 @@ service cloud.firestore {
         isStringWithLen(addr.city, 2, 50) &&
         isValidProvince(addr.state) &&
         isValidPostalCode(addr.postalCode) &&
-        isStringWithLen(addr.country, 2, 20) &&
+        // CANADA-ONLY: Seller/Buyer addresses must be in Canada
+        (addr.country == 'Canada' || addr.country == 'CA' || addr.country == 'canada') &&
         (addr.phoneNumber == null || (addr.phoneNumber is string && addr.phoneNumber.matches('^\\d{10,15}$'))) &&
         (addr.isDefault == null || addr.isDefault is bool) &&
         (addr.label == null || isStringWithLen(addr.label, 1, 30)) &&
@@ -124,6 +125,12 @@ service cloud.firestore {
         isValidName(request.resource.data.name) &&
         isValidEmail(request.resource.data.email) &&
         (request.resource.data.address == null || isValidAddress(request.resource.data.address)) &&
+        // Prevent users from modifying seller-specific fields
+        request.resource.data.commissionRate == resource.data.commissionRate &&
+        request.resource.data.verified == resource.data.verified &&
+        request.resource.data.verificationStatus == resource.data.verificationStatus &&
+        request.resource.data.payoutHoldDays == resource.data.payoutHoldDays &&
+        request.resource.data.suspended == resource.data.suspended &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name',
           'address',
@@ -176,6 +183,18 @@ service cloud.firestore {
           request.resource.data.dateFavorited is timestamp;
         allow delete: if isOwner(userId);
       }
+      
+      // --- PAYOUTS SUBCOLLECTION (Seller payout history) ---
+      match /payouts/{payoutId} {
+        // Sellers can read their own payout history
+        allow read: if isOwner(userId) || isAdmin();
+        
+        // Only backend can create/update payouts
+        allow create, update: if false;
+        
+        // No deletes (audit trail)
+        allow delete: if false;
+      }
     }
     
     // ================================================================
@@ -187,27 +206,69 @@ service cloud.firestore {
 
       // Only sellers can create products
       // Must set correct sellerId
+      // CANADA-ONLY: Products must have Canadian seller address
+      // CAD-ONLY: All prices are in Canadian Dollars
       allow create: if isSellerApproved() &&
         request.resource.data.sellerId == request.auth.uid &&
-        request.resource.data.keys().hasAll([
-          'name', 'price', 'sellerId', 'categoryId',
-          'stockQuantity', 'imageUrls', 'description',
-          'sellerAddress', 'keywords', 'dateCreated'
+        // CRITICAL: Prevent client injecting arbitrary fields (e.g., rating)
+        request.resource.data.keys().hasOnly([
+          // Core
+          'name', 'price', 'description', 'imageUrls',
+          'sellerId', 'sellerAddress',
+          'categoryId', 'stockQuantity',
+          'keywords',
+          // Metadata
+          'dateCreated', 'isActive', 'rating', 'status', 'taxCode',
+          // Shipping / delivery
+          'weightKg', 'lengthCm', 'widthCm', 'heightCm',
+          'isLocalDeliveryOnly', 'isPerishable', 'estimatedShipDays',
+          'deliveryOptions', 'minimumOrderQuantity', 'freeShipping',
+          'isDigital',
+          // Supplier / inventory (structured)
+          'supplier', 'inventory',
+          // Legacy supplier fields (backward compatibility)
+          'cost', 'supplierSku', 'supplierUrl'
         ]) &&
         isStringWithLen(request.resource.data.name, 2, 120) &&
         isStringWithLen(request.resource.data.description, 10, 4000) &&
         isValidAddress(request.resource.data.sellerAddress) &&
+        // Enforce Canada-only seller address
+        (request.resource.data.sellerAddress.country == 'Canada' || 
+         request.resource.data.sellerAddress.country == 'CA' ||
+         request.resource.data.sellerAddress.country == 'canada') &&
+        request.resource.data.dateCreated is timestamp &&
         request.resource.data.imageUrls is list &&
-        request.resource.data.imageUrls.size() >= 1 && request.resource.data.imageUrls.size() <= 5 &&
+        // Allow empty images initially to support Create -> Upload -> Update flow
+        // request.resource.data.imageUrls.size() >= 1 && request.resource.data.imageUrls.size() <= 5 &&
         request.resource.data.keywords is list &&
         request.resource.data.keywords.size() <= 30 &&
+        // Client may include rating, but must start at 0
+        (!request.resource.data.keys().hasAny(['rating']) || request.resource.data.rating == 0) &&
         request.resource.data.isActive == true &&
         request.resource.data.stockQuantity >= 0 &&
-        request.resource.data.price > 0;
+        // CAD-ONLY: Price must be positive (all prices in CAD)
+        request.resource.data.price > 0 &&
+        request.resource.data.price <= 100000;
 
       // Product updates - owner/admin only (ratings updated via backend)
       allow update: if isAuthenticated() &&
         ((resource.data.sellerId == request.auth.uid && isSellerApproved()) || isAdmin()) &&
+          // Only allow specific fields to be changed via client updates
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'price', 'description', 'imageUrls',
+            'sellerAddress', 'keywords',
+            'stockQuantity',
+            'weightKg', 'lengthCm', 'widthCm', 'heightCm',
+            'isLocalDeliveryOnly', 'isPerishable', 'estimatedShipDays',
+            'deliveryOptions', 'minimumOrderQuantity', 'freeShipping',
+            'isDigital', 'taxCode',
+            'supplier', 'inventory', 'status',
+            'cost', 'supplierSku', 'supplierUrl',
+            // Admin-only toggles
+            'isActive'
+          ]) &&
+          // Never allow ratings from client updates
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['rating', 'ratingCount']) &&
           request.resource.data.sellerId == resource.data.sellerId &&
           isStringWithLen(request.resource.data.name, 2, 120) &&
           isStringWithLen(request.resource.data.description, 10, 4000) &&
@@ -217,8 +278,9 @@ service cloud.firestore {
           request.resource.data.keywords is list &&
           request.resource.data.keywords.size() <= 30 &&
           request.resource.data.stockQuantity >= 0 &&
-          request.resource.data.isActive == resource.data.isActive &&
-          !request.resource.data.keys().hasAny(['deletedAt']));
+          // Sellers cannot toggle isActive; admins can.
+          (isAdmin() || request.resource.data.isActive == resource.data.isActive) &&
+          !request.resource.data.keys().hasAny(['deletedAt']);
 
       // Only product owner or admin can delete
       allow delete: if isAuthenticated() &&

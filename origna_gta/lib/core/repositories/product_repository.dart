@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -16,8 +15,42 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Future<String> addProduct(Product product) async {
-    final docRef = await _firestore.collection('products').add(product.toJson());
-    return docRef.id;
+    if (kDebugMode) debugPrint('REPO: Attempting to add product: ${product.name}');
+    try {
+      final firestoreData = _sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
+      final docRef = await _firestore.collection('products').add(firestoreData);
+      if (kDebugMode) debugPrint('REPO: Product added successfully locally with ID: ${docRef.id}');
+
+      // DIAGNOSTIC: Check connectivity
+      try {
+        if (kDebugMode) debugPrint('REPO: [FirebaseProductRepository] Verifying write from SERVER...');
+        final docSnapshot = await docRef.get(const GetOptions(source: Source.server));
+        if (docSnapshot.exists) {
+          if (kDebugMode) debugPrint('REPO: SERVER VERIFICATION SUCCESS!');
+        } else {
+          if (kDebugMode) debugPrint('REPO: SERVER VERIFICATION FAILED: Document does not exist on server.');
+          throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'sync-failed',
+            message: '[FirebaseProductRepository] Write succeeded locally but failed to persist to server.',
+          );
+        }
+      } catch (e) {
+        if (kDebugMode) debugPrint('REPO: SERVER VERIFICATION ERROR: $e');
+        if (e is FirebaseException && e.code == 'sync-failed') rethrow;
+        // If network error on get(), it usually means offline/blocked
+        throw FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'sync-failed-network',
+          message: '[FirebaseProductRepository] Server verification threw error: $e',
+        );
+      }
+
+      return docRef.id;
+    } catch (e) {
+      if (kDebugMode) debugPrint('REPO: Error adding product: $e');
+      rethrow;
+    }
   }
 
   @override
@@ -113,7 +146,8 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Future<void> updateProduct(String productId, Map<String, dynamic> data) async {
-    await _firestore.collection('products').doc(productId).update(data);
+    final sanitized = _sanitizeProductForFirestore(data);
+    await _firestore.collection('products').doc(productId).update(sanitized);
   }
 
   @override
@@ -129,6 +163,37 @@ class FirebaseProductRepository implements ProductRepository {
   @override
   Stream<Set<String>> watchFavorites(String userId) {
     return _firestore.collection('users').doc(userId).collection('favorites').snapshots().map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
+  }
+
+  Map<String, dynamic> _deepToJsonEncodableMap(Map<String, dynamic> data) {
+    final encoded = jsonEncode(data);
+    final decoded = jsonDecode(encoded);
+    return (decoded as Map).cast<String, dynamic>();
+  }
+
+  Map<String, dynamic> _sanitizeProductForFirestore(Map<String, dynamic> rawData, {bool ensureDateCreated = false}) {
+    final data = _deepToJsonEncodableMap(rawData);
+
+    // productId is derived from document id; avoid storing a client-controlled field.
+    data.remove('productId');
+
+    // Ensure dateCreated is stored as a Firestore Timestamp (not ISO string)
+    if (data.containsKey('dateCreated') || ensureDateCreated) {
+      final dateCreated = data['dateCreated'];
+      if (dateCreated is String) {
+        try {
+          data['dateCreated'] = Timestamp.fromDate(DateTime.parse(dateCreated));
+        } catch (_) {
+          data['dateCreated'] = Timestamp.now();
+        }
+      } else if (dateCreated is DateTime) {
+        data['dateCreated'] = Timestamp.fromDate(dateCreated);
+      } else if (dateCreated == null && ensureDateCreated) {
+        data['dateCreated'] = Timestamp.now();
+      }
+    }
+
+    return data;
   }
 
   Future<String?> _uploadSingleImage(Uint8List bytes, String productId, int index) async {

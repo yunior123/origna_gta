@@ -826,6 +826,14 @@ class UserModel {
   final String? airwallexAccountId;
   final String? airwallexCustomerId;
   final String? airwallexStatus;
+  // Seller-specific fields
+  final double commissionRate; // Per-seller commission rate (default 0.025 = 2.5%)
+  final bool verified; // Manual verification by admin
+  final String? verificationStatus; // pending, approved, rejected
+  final String? platform; // alibaba, dhgate, direct
+  final String? country; // Seller's country (CN, CA, etc.)
+  final String? businessName; // Company name for business sellers
+  final int payoutHoldDays; // Custom hold period before payout (default 7)
 
   UserModel({
     required this.uid,
@@ -848,6 +856,13 @@ class UserModel {
     this.airwallexAccountId,
     this.airwallexCustomerId,
     this.airwallexStatus,
+    this.commissionRate = 0.025, // Default 2.5%
+    this.verified = false,
+    this.verificationStatus,
+    this.platform,
+    this.country,
+    this.businessName,
+    this.payoutHoldDays = 7,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -872,6 +887,14 @@ class UserModel {
       airwallexAccountId: map['airwallexAccountId'] as String?,
       airwallexCustomerId: map['airwallexCustomerId'] as String?,
       airwallexStatus: map['airwallexStatus'] as String?,
+      // Seller-specific fields
+      commissionRate: (map['commissionRate'] as num?)?.toDouble() ?? 0.025,
+      verified: map['verified'] ?? false,
+      verificationStatus: map['verificationStatus'] as String?,
+      platform: map['platform'] as String?,
+      country: map['country'] as String?,
+      businessName: map['businessName'] as String?,
+      payoutHoldDays: map['payoutHoldDays'] ?? 7,
     );
   }
 
@@ -898,10 +921,19 @@ class UserModel {
     bool? payoutsEnabled,
     bool? chargesEnabled,
     bool? onboardingCompleted,
+    bool? suspended,
+    DateTime? suspendedAt,
     String? paymentProvider,
     String? airwallexAccountId,
     String? airwallexCustomerId,
     String? airwallexStatus,
+    double? commissionRate,
+    bool? verified,
+    String? verificationStatus,
+    String? platform,
+    String? country,
+    String? businessName,
+    int? payoutHoldDays,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -918,10 +950,19 @@ class UserModel {
       payoutsEnabled: payoutsEnabled ?? this.payoutsEnabled,
       chargesEnabled: chargesEnabled ?? this.chargesEnabled,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
+      suspended: suspended ?? this.suspended,
+      suspendedAt: suspendedAt ?? this.suspendedAt,
       paymentProvider: paymentProvider ?? this.paymentProvider,
       airwallexAccountId: airwallexAccountId ?? this.airwallexAccountId,
       airwallexCustomerId: airwallexCustomerId ?? this.airwallexCustomerId,
       airwallexStatus: airwallexStatus ?? this.airwallexStatus,
+      commissionRate: commissionRate ?? this.commissionRate,
+      verified: verified ?? this.verified,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
+      platform: platform ?? this.platform,
+      country: country ?? this.country,
+      businessName: businessName ?? this.businessName,
+      payoutHoldDays: payoutHoldDays ?? this.payoutHoldDays,
     );
   }
 
@@ -941,10 +982,20 @@ class UserModel {
       'payoutsEnabled': payoutsEnabled,
       'chargesEnabled': chargesEnabled,
       'onboardingCompleted': onboardingCompleted,
+      'suspended': suspended,
+      if (suspendedAt != null) 'suspendedAt': Timestamp.fromDate(suspendedAt!),
       'paymentProvider': paymentProvider,
       if (airwallexAccountId != null) 'airwallexAccountId': airwallexAccountId,
       if (airwallexCustomerId != null) 'airwallexCustomerId': airwallexCustomerId,
       if (airwallexStatus != null) 'airwallexStatus': airwallexStatus,
+      // Seller-specific fields
+      'commissionRate': commissionRate,
+      'verified': verified,
+      if (verificationStatus != null) 'verificationStatus': verificationStatus,
+      if (platform != null) 'platform': platform,
+      if (country != null) 'country': country,
+      if (businessName != null) 'businessName': businessName,
+      'payoutHoldDays': payoutHoldDays,
     };
   }
 

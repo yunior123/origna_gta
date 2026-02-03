@@ -79,6 +79,30 @@ sequenceDiagram
 - Functions tests: (cd functions) pytest
 - Configure Algolia index: Call `configure_algolia` Cloud Function (admin only)
 
+## CI / E2E
+- GitHub Actions runs backend + Flutter tests and a stable Playwright suite.
+- Local E2E stack:
+  - Start: `./start-e2e-services.sh`
+  - Run: `(cd e2e && E2E_WORKERS=2 ./run-e2e-tests.sh flutter)`
+  - Stop: `./stop-e2e-services.sh`
+- Flutter web integration test:
+  - Run: `./scripts/run_flutter_integration_tests_web.sh integration_test/app_test.dart`
+- Playwright parallelism:
+  - `E2E_WORKERS` overrides the worker count (CI uses a conservative default).
+  - `E2E_PROJECT` can force a single browser project (e.g. `chromium`).
+
+## Flutter Web performance (release checklist)
+- Measure in profile mode:
+  - `cd origna_gta && flutter run -d chrome --profile`
+- Capture a trace in Chrome DevTools (Performance tab) on:
+  - cold start (first meaningful paint)
+  - home feed scroll
+  - add-to-cart → checkout navigation
+- Keep an eye on:
+  - excessive rebuilds (Flutter DevTools)
+  - large images (ensure resize/compress, cache headers)
+  - expensive JSON parsing on UI thread (move to isolates if needed)
+
 ## Search Architecture (Algolia)
 - **Primary Search**: Algolia for fast, typo-tolerant product search
 - **Fallback**: Firestore keyword search if Algolia unavailable

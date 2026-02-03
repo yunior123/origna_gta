@@ -4,6 +4,9 @@
 # Firebase Service Account
 serviceAccountKey.json
 
+# Stripe debug output (must never be committed)
+stripe.txt
+
 # Python
 venv/
 __pycache__/

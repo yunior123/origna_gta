@@ -8,6 +8,11 @@ Run with: pytest test_payment_security.py -v
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timedelta
+import hmac
+import hashlib
+import base64
+
+from airwallex_service import AirwallexService
 
 
 class TestPaymentFlowSecurity:
@@ -105,6 +110,22 @@ class TestPaymentFlowSecurity:
         # Emulator: Detailed error for debugging
         emulator_error = "Signature verification failed: Invalid signature format"
         assert "Invalid signature format" in emulator_error
+
+    def test_airwallex_webhook_signature_verification_bytes(self):
+        """HIGH: Airwallex signature verification uses raw bytes and supports common encodings."""
+        svc = AirwallexService()
+        svc.webhook_secret = "test_webhook_secret"
+
+        body = b'{"id":"evt_123","type":"payment_intent.succeeded"}'
+        digest = hmac.new(svc.webhook_secret.encode('utf-8'), body, hashlib.sha256).digest()
+
+        sig_hex = digest.hex()
+        sig_b64 = base64.b64encode(digest).decode('ascii')
+
+        assert svc.verify_webhook_signature(body, sig_hex) is True
+        assert svc.verify_webhook_signature(body, f"sha256={sig_hex}") is True
+        assert svc.verify_webhook_signature(body, sig_b64) is True
+        assert svc.verify_webhook_signature(body, "") is False
     
     def test_idempotency_key_handling(self):
         """HIGH: Duplicate requests return existing session"""

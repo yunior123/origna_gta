@@ -68,10 +68,6 @@
         {"fieldPath": "status", "order": "ASCENDING"}
       ],
       "comment": "MEDIUM PRIORITY #11: Index for seller-specific order queries with status filter"
-    }
-        {"fieldPath": "paymentStatus", "order": "ASCENDING"},
-        {"fieldPath": "createdAt", "order": "DESCENDING"}
-      ]
     },
     {
       "collectionGroup": "orders",

@@ -20,8 +20,9 @@ IMPORTANT: This file should NEVER be deployed when FUNCTIONS_EMULATOR=true
            Always verify: echo $FUNCTIONS_EMULATOR before running 'firebase deploy --only functions'
 """
 
-from firebase_functions import https_fn, options, firestore_fn, scheduler_fn
+from firebase_functions import https_fn, options, firestore_fn, scheduler_fn, identity_fn
 from firebase_admin import initialize_app, firestore, credentials, auth
+import functions_framework
 import stripe
 import json
 import os
@@ -5381,4 +5382,14 @@ def reconcile_firestore_algolia(req: scheduler_fn.ScheduledEvent) -> None:
     except Exception as e:
         print(f"❌ Error in reconciliation job: {str(e)}")
         print(traceback.format_exc())
+
+# ==============================================================================
+# AUTH TRIGGERS - USER PROFILE INTEGRITY
+# ==============================================================================
+# ==============================================================================
+# REMOVED: on_user_created
+# Reason: Requires GCIP (Identity Platform) to be enabled for Blocking Functions in Python v2.
+# Recommendation: Enable GCIP in Google Cloud Console to use the Blocking Function for profile creation security.
+# ==============================================================================
+
 

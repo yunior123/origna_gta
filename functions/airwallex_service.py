@@ -4,8 +4,9 @@ P2.1-P2.5: Account, Backend, Payment, Payout, Webhooks
 """
 import hmac
 import hashlib
+import base64
 import requests
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from datetime import datetime, timedelta
 
 from config import (
@@ -205,18 +206,49 @@ class AirwallexService:
         return resp.json()
     
     # ===== P2.5: Webhooks & Error Handling =====
-    def verify_webhook_signature(self, body: str, signature: str) -> bool:
-        """Verify webhook came from Airwallex"""
+    def verify_webhook_signature(self, body: Union[str, bytes, bytearray], signature: str) -> bool:
+        """Verify webhook came from Airwallex.
+
+        Prefer verifying on raw bytes to avoid encoding ambiguity.
+        Supports common signature encodings (hex digest, or base64 of raw digest).
+        """
         if not self.webhook_secret:
             raise ValueError("AIRWALLEX_WEBHOOK_SECRET not configured")
-        
-        computed = hmac.new(
-            self.webhook_secret.encode(),
-            body.encode(),
+
+        if not signature:
+            return False
+
+        normalized_sig = str(signature).strip()
+        if normalized_sig.lower().startswith('sha256='):
+            normalized_sig = normalized_sig.split('=', 1)[1].strip()
+
+        if isinstance(body, (bytes, bytearray)):
+            body_bytes = bytes(body)
+        else:
+            body_bytes = str(body).encode('utf-8')
+
+        computed_digest = hmac.new(
+            self.webhook_secret.encode('utf-8'),
+            body_bytes,
             hashlib.sha256
-        ).hexdigest()
-        
-        return hmac.compare_digest(computed, signature)
+        ).digest()
+
+        # Hex signature (64 hex chars)
+        sig_candidate = normalized_sig.strip().lower()
+        is_hex = len(sig_candidate) == 64
+        if is_hex:
+            try:
+                int(sig_candidate, 16)
+                return hmac.compare_digest(computed_digest.hex(), sig_candidate)
+            except Exception:
+                pass
+
+        # Base64 signature (raw digest)
+        try:
+            decoded = base64.b64decode(normalized_sig, validate=True)
+            return hmac.compare_digest(computed_digest, decoded)
+        except Exception:
+            return False
     
     def handle_webhook_event(self, event_type: str, event_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process webhook events"""

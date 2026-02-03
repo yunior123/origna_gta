@@ -1,8 +1,8 @@
 {
   "$schema": "OrignaGTA Firestore Database Schema",
-  "version": "1.0.1",
-  "lastUpdated": "2026-02-02",
-  "description": "Complete Firestore database schema for OrignaGTA e-commerce platform",
+  "version": "1.1.0",
+  "lastUpdated": "2026-02-03",
+  "description": "Complete Firestore database schema for OrignaGTA e-commerce platform. CANADA-ONLY marketplace.",
 
   "collections": {
     "users": {
@@ -187,7 +187,7 @@
         "price": {
           "type": "number",
           "required": true,
-          "description": "Price in CAD"
+          "description": "SELLING price in CAD (Canadian Dollars only). All prices on the platform are in CAD."
         },
         "description": {
           "type": "string",
@@ -300,7 +300,71 @@
         "deliveryOptions": {
           "type": "array<map>",
           "required": false,
-          "description": "Seller-defined delivery options"
+          "description": "Seller-defined delivery options with quantity-based pricing",
+          "itemSchema": {
+            "type": {
+              "type": "string",
+              "required": true,
+              "description": "Delivery type: pickup, standard, express, same_day, custom"
+            },
+            "description": {
+              "type": "string",
+              "required": true,
+              "description": "Description of delivery option"
+            },
+            "cost": {
+              "type": "number",
+              "required": true,
+              "description": "Base cost in CAD"
+            },
+            "estimatedDays": {
+              "type": "number",
+              "required": true,
+              "description": "Estimated delivery days"
+            },
+            "quantityDiscounts": {
+              "type": "array<map>",
+              "required": false,
+              "description": "Quantity-based shipping discounts",
+              "itemSchema": {
+                "minQuantity": {
+                  "type": "number",
+                  "required": true,
+                  "description": "Minimum quantity to qualify"
+                },
+                "discountType": {
+                  "type": "string",
+                  "default": "percent",
+                  "description": "Discount type: percent, fixed, flat_rate"
+                },
+                "discountValue": {
+                  "type": "number",
+                  "required": true,
+                  "description": "Discount value"
+                },
+                "label": {
+                  "type": "string",
+                  "required": false,
+                  "description": "Optional display label"
+                }
+              }
+            },
+            "maxItemsPerShipment": {
+              "type": "number",
+              "default": 0,
+              "description": "Max items before cost increases (0 = no limit)"
+            },
+            "additionalItemCost": {
+              "type": "number",
+              "default": 0,
+              "description": "Additional cost per item after maxItemsPerShipment"
+            },
+            "availableInternational": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether option is available for international suppliers"
+            }
+          }
         },
         "minimumOrderQuantity": {
           "type": "number",
@@ -318,6 +382,91 @@
           "type": "string",
           "required": false,
           "description": "Stripe tax code override"
+        },
+        "supplier": {
+          "type": "map",
+          "required": false,
+          "description": "Supplier information for dropshipping/marketplace products",
+          "schema": {
+            "type": {
+              "type": "string",
+              "required": true,
+              "description": "Supplier platform: aliexpress, alibaba, 1688, dhgate, temu, cjdropshipping, amazon_usa, custom, etc."
+            },
+            "supplierSku": {
+              "type": "string",
+              "required": false,
+              "description": "Supplier's product SKU"
+            },
+            "supplierUrl": {
+              "type": "string",
+              "required": false,
+              "description": "Direct URL to supplier product"
+            },
+            "cost": {
+              "type": "number",
+              "required": false,
+              "description": "Cost price from supplier"
+            },
+            "currency": {
+              "type": "string",
+              "default": "CAD",
+              "description": "Currency of SUPPLIER cost price (for cost tracking). Selling price is always CAD. Supported: CAD, USD, EUR, CNY, JPY, KRW, etc."
+            },
+            "shippingDays": {
+              "type": "string",
+              "required": false,
+              "description": "Estimated shipping days range (e.g., '7-15')"
+            },
+            "hasTracking": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether supplier provides tracking"
+            },
+            "notes": {
+              "type": "string",
+              "required": false,
+              "description": "Internal notes about supplier"
+            }
+          }
+        },
+        "inventory": {
+          "type": "map",
+          "required": false,
+          "description": "Inventory management configuration",
+          "schema": {
+            "managed": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether inventory is actively managed"
+            },
+            "trackQuantity": {
+              "type": "boolean",
+              "default": true,
+              "description": "Track stock quantity (false = unlimited)"
+            },
+            "allowBackorder": {
+              "type": "boolean",
+              "default": false,
+              "description": "Allow orders when out of stock"
+            },
+            "lowStockThreshold": {
+              "type": "number",
+              "default": 5,
+              "description": "Alert threshold for low stock"
+            },
+            "reservationHoldMinutes": {
+              "type": "number",
+              "default": 30,
+              "description": "How long to hold inventory during checkout"
+            }
+          }
+        },
+        "status": {
+          "type": "string",
+          "default": "active",
+          "description": "Product status",
+          "values": ["draft", "active", "paused", "archived", "out_of_stock"]
         }
       },
       "indexes": [
@@ -923,6 +1072,12 @@
       "symbol": "$",
       "description": "Canadian dollars only"
     },
+    "geographicRestrictions": {
+      "sellersAllowedCountries": ["Canada"],
+      "buyersAllowedCountries": ["Canada"],
+      "billingAllowedCountries": ["Canada"],
+      "description": "CANADA-ONLY marketplace. Sellers must be Canadian. Buyers must have Canadian billing/shipping addresses."
+    },
     "shippingCalculation": {
       "formula": "distance_km * 0.5",
       "description": "Shipping cost based on distance from seller"
@@ -943,6 +1098,34 @@
         "QC": {"GST": 5, "QST": 9.975},
         "SK": {"GST": 5, "PST": 6},
         "YT": {"GST": 5}
+      }
+    },
+    "paymentProviders": {
+      "supported": ["stripe", "airwallex"],
+      "comingSoon": ["paypal", "wise"],
+      "description": "Payment providers for seller payouts"
+    },
+    "supplierPlatforms": {
+      "description": "Supported international supplier platforms for dropshipping",
+      "regions": {
+        "china": ["aliexpress", "alibaba", "1688", "dhgate", "temu", "made_in_china", "global_sources", "banggood"],
+        "korea": ["gmarket", "coupang"],
+        "japan": ["rakuten", "amazon_japan"],
+        "india": ["indiamart", "flipkart_wholesale"],
+        "europe": ["amazon_europe", "faire"],
+        "northAmerica": ["amazon_usa", "walmart", "costco_business", "etsy_wholesale"],
+        "dropshipping": ["cjdropshipping", "spocket", "printful", "printify", "modalyst", "doba"],
+        "custom": ["custom", "other"]
+      },
+      "deliveryEstimates": {
+        "aliexpress": {"minDays": 15, "maxDays": 30},
+        "alibaba": {"minDays": 25, "maxDays": 45},
+        "1688": {"minDays": 25, "maxDays": 45},
+        "dhgate": {"minDays": 20, "maxDays": 40},
+        "temu": {"minDays": 7, "maxDays": 15},
+        "cjdropshipping": {"minDays": 10, "maxDays": 20},
+        "local": {"minDays": 1, "maxDays": 5},
+        "default": {"minDays": 3, "maxDays": 7}
       }
     }
   }

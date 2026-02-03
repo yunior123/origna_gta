@@ -220,7 +220,13 @@ class ProfileScreen extends ConsumerWidget {
         color: isDark ? Colors.grey[800]!.withValues(alpha: 0.5) : Colors.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[200]!, width: 1),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -325,6 +331,32 @@ class ProfileScreen extends ConsumerWidget {
           children: [
             Text('Have questions or need help? Reach out to us!', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
             const SizedBox(height: 16),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () async {
+                  const url = 'mailto:support@orignaventures.ca';
+                  if (await canLaunchUrlString(url)) {
+                    await launchUrlString(url, mode: LaunchMode.externalApplication);
+                  }
+                },
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                splashColor: DesignTokens.primary.withValues(alpha: 0.1),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.email_outlined, color: DesignTokens.primary, size: 20),
+                      const SizedBox(width: 12),
+                      Text(
+                        'support@orignaventures.ca',
+                        style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             Material(
               color: Colors.transparent,
               child: InkWell(

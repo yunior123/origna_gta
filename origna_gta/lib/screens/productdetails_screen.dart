@@ -5,6 +5,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
+import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -178,6 +179,9 @@ class ProductDetailScreen extends ConsumerWidget {
                               ],
                             ),
                           ),
+                          const SizedBox(height: 20),
+                          // Delivery Information Card
+                          _DeliveryInfoCard(product: product),
                           const SizedBox(height: 28),
                           Text(
                             'Description',
@@ -311,6 +315,132 @@ class _AddToCartButton extends ConsumerWidget {
       },
       fullWidth: true,
       icon: Icons.shopping_cart_checkout,
+    );
+  }
+}
+
+// ============================================================================
+// DELIVERY INFO CARD - Shows estimated delivery time to buyers
+// ============================================================================
+
+class _DeliveryInfoCard extends StatelessWidget {
+  final Product product;
+
+  const _DeliveryInfoCard({required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final deliveryInfo = product.deliveryInfo;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[850] : Colors.grey[50],
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+        border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(product.isDigital ? Icons.download_rounded : Icons.local_shipping_outlined, color: DesignTokens.primary, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                'Delivery Information',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.grey[900]),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Estimated delivery time
+          _DeliveryInfoRow(icon: Icons.access_time_rounded, label: 'Estimated Delivery', value: deliveryInfo.estimateText, isDark: isDark),
+          if (deliveryInfo.isInternational) ...[
+            const SizedBox(height: 10),
+            _DeliveryInfoRow(
+              icon: Icons.public_rounded,
+              label: 'Ships From',
+              value: deliveryInfo.supplierRegion ?? 'International',
+              isDark: isDark,
+              isWarning: true,
+            ),
+          ],
+          const SizedBox(height: 10),
+          _DeliveryInfoRow(
+            icon: deliveryInfo.hasTracking ? Icons.track_changes_rounded : Icons.info_outline_rounded,
+            label: 'Tracking',
+            value: deliveryInfo.hasTracking ? 'Available' : 'Limited tracking',
+            isDark: isDark,
+          ),
+          if (product.freeShipping) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.local_offer_rounded, size: 16, color: Colors.green[700]),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Free Shipping',
+                    style: TextStyle(color: Colors.green[700], fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (deliveryInfo.isInternational) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 16, color: Colors.amber[800]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'International shipping times may vary. Customs processing may add delays.',
+                      style: TextStyle(fontSize: 12, color: Colors.amber[800], height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DeliveryInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isDark;
+  final bool isWarning;
+
+  const _DeliveryInfoRow({required this.icon, required this.label, required this.value, required this.isDark, this.isWarning = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: isWarning ? Colors.amber[700] : (isDark ? Colors.grey[400] : Colors.grey[600])),
+        const SizedBox(width: 10),
+        Text('$label: ', style: TextStyle(fontSize: 14, color: isDark ? Colors.grey[400] : Colors.grey[600])),
+        Text(
+          value,
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isWarning ? Colors.amber[700] : (isDark ? Colors.white : Colors.grey[900])),
+        ),
+      ],
     );
   }
 }

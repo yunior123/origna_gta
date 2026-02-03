@@ -235,12 +235,67 @@
       "description": "User role values"
     },
     "SellerDeliveryOption": {
-      "description": "Seller-specific delivery options",
+      "$defs": {
+        "ShippingQuantityDiscount": {
+          "description": "Volume-based shipping discount thresholds",
+          "example": {
+            "discountType": "percent",
+            "discountValue": 10.0,
+            "label": "10% off shipping for 5+ items",
+            "minQuantity": 5
+          },
+          "properties": {
+            "minQuantity": {
+              "description": "Minimum quantity to qualify for this discount",
+              "minimum": 2,
+              "title": "Minquantity",
+              "type": "integer"
+            },
+            "discountType": {
+              "default": "percent",
+              "description": "Discount type: percent, fixed, flat_rate",
+              "title": "Discounttype",
+              "type": "string"
+            },
+            "discountValue": {
+              "description": "Discount value (interpretation depends on discountType)",
+              "minimum": 0,
+              "title": "Discountvalue",
+              "type": "number"
+            },
+            "label": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Optional label for display",
+              "title": "Label"
+            }
+          },
+          "required": [
+            "minQuantity",
+            "discountValue"
+          ],
+          "title": "ShippingQuantityDiscount",
+          "type": "object"
+        }
+      },
+      "description": "Seller-specific delivery options with quantity-based pricing",
       "example": {
-        "cost": 0.0,
-        "description": "Free local pickup",
-        "estimatedDays": 0,
-        "type": "pickup"
+        "additionalItemCost": 1.5,
+        "availableInternational": true,
+        "cost": 5.99,
+        "description": "Standard shipping",
+        "estimatedDays": 5,
+        "maxItemsPerShipment": 10,
+        "quantityDiscounts": [],
+        "type": "standard"
       },
       "properties": {
         "type": {
@@ -256,7 +311,7 @@
           "type": "string"
         },
         "cost": {
-          "description": "Cost in CAD",
+          "description": "Base cost in CAD",
           "minimum": 0,
           "title": "Cost",
           "type": "number"
@@ -267,6 +322,34 @@
           "minimum": 0,
           "title": "Estimateddays",
           "type": "integer"
+        },
+        "quantityDiscounts": {
+          "description": "Quantity-based shipping discounts",
+          "items": {
+            "$ref": "#/$defs/ShippingQuantityDiscount"
+          },
+          "title": "Quantitydiscounts",
+          "type": "array"
+        },
+        "maxItemsPerShipment": {
+          "default": 0,
+          "description": "Max items before cost increases (0 = no limit)",
+          "minimum": 0,
+          "title": "Maxitemspershipment",
+          "type": "integer"
+        },
+        "additionalItemCost": {
+          "default": 0.0,
+          "description": "Additional cost per item after maxItemsPerShipment",
+          "minimum": 0,
+          "title": "Additionalitemcost",
+          "type": "number"
+        },
+        "availableInternational": {
+          "default": true,
+          "description": "Whether option is available for international suppliers",
+          "title": "Availableinternational",
+          "type": "boolean"
         }
       },
       "required": [
@@ -406,13 +489,65 @@
           "title": "Address",
           "type": "object"
         },
-        "SellerDeliveryOption": {
-          "description": "Seller-specific delivery options",
+        "InventoryConfig": {
+          "description": "Inventory management configuration",
           "example": {
-            "cost": 0.0,
-            "description": "Free local pickup",
-            "estimatedDays": 0,
-            "type": "pickup"
+            "allowBackorder": false,
+            "lowStockThreshold": 5,
+            "managed": true,
+            "reservationHoldMinutes": 30,
+            "trackQuantity": true
+          },
+          "properties": {
+            "managed": {
+              "default": true,
+              "description": "Whether inventory is actively managed",
+              "title": "Managed",
+              "type": "boolean"
+            },
+            "trackQuantity": {
+              "default": true,
+              "description": "Track stock quantity (false = unlimited)",
+              "title": "Trackquantity",
+              "type": "boolean"
+            },
+            "allowBackorder": {
+              "default": false,
+              "description": "Allow orders when out of stock",
+              "title": "Allowbackorder",
+              "type": "boolean"
+            },
+            "lowStockThreshold": {
+              "default": 5,
+              "description": "Alert threshold for low stock",
+              "maximum": 1000,
+              "minimum": 0,
+              "title": "Lowstockthreshold",
+              "type": "integer"
+            },
+            "reservationHoldMinutes": {
+              "default": 30,
+              "description": "How long to hold inventory during checkout",
+              "maximum": 120,
+              "minimum": 5,
+              "title": "Reservationholdminutes",
+              "type": "integer"
+            }
+          },
+          "title": "InventoryConfig",
+          "type": "object"
+        },
+        "SellerDeliveryOption": {
+          "description": "Seller-specific delivery options with quantity-based pricing",
+          "example": {
+            "additionalItemCost": 1.5,
+            "availableInternational": true,
+            "cost": 5.99,
+            "description": "Standard shipping",
+            "estimatedDays": 5,
+            "maxItemsPerShipment": 10,
+            "quantityDiscounts": [],
+            "type": "standard"
           },
           "properties": {
             "type": {
@@ -428,7 +563,7 @@
               "type": "string"
             },
             "cost": {
-              "description": "Cost in CAD",
+              "description": "Base cost in CAD",
               "minimum": 0,
               "title": "Cost",
               "type": "number"
@@ -439,6 +574,34 @@
               "minimum": 0,
               "title": "Estimateddays",
               "type": "integer"
+            },
+            "quantityDiscounts": {
+              "description": "Quantity-based shipping discounts",
+              "items": {
+                "$ref": "#/$defs/ShippingQuantityDiscount"
+              },
+              "title": "Quantitydiscounts",
+              "type": "array"
+            },
+            "maxItemsPerShipment": {
+              "default": 0,
+              "description": "Max items before cost increases (0 = no limit)",
+              "minimum": 0,
+              "title": "Maxitemspershipment",
+              "type": "integer"
+            },
+            "additionalItemCost": {
+              "default": 0.0,
+              "description": "Additional cost per item after maxItemsPerShipment",
+              "minimum": 0,
+              "title": "Additionalitemcost",
+              "type": "number"
+            },
+            "availableInternational": {
+              "default": true,
+              "description": "Whether option is available for international suppliers",
+              "title": "Availableinternational",
+              "type": "boolean"
             }
           },
           "required": [
@@ -448,6 +611,163 @@
             "estimatedDays"
           ],
           "title": "SellerDeliveryOption",
+          "type": "object"
+        },
+        "ShippingQuantityDiscount": {
+          "description": "Volume-based shipping discount thresholds",
+          "example": {
+            "discountType": "percent",
+            "discountValue": 10.0,
+            "label": "10% off shipping for 5+ items",
+            "minQuantity": 5
+          },
+          "properties": {
+            "minQuantity": {
+              "description": "Minimum quantity to qualify for this discount",
+              "minimum": 2,
+              "title": "Minquantity",
+              "type": "integer"
+            },
+            "discountType": {
+              "default": "percent",
+              "description": "Discount type: percent, fixed, flat_rate",
+              "title": "Discounttype",
+              "type": "string"
+            },
+            "discountValue": {
+              "description": "Discount value (interpretation depends on discountType)",
+              "minimum": 0,
+              "title": "Discountvalue",
+              "type": "number"
+            },
+            "label": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Optional label for display",
+              "title": "Label"
+            }
+          },
+          "required": [
+            "minQuantity",
+            "discountValue"
+          ],
+          "title": "ShippingQuantityDiscount",
+          "type": "object"
+        },
+        "SupplierInfo": {
+          "description": "Supplier information for dropshipping/international products.\nIMPORTANT: The currency field is for tracking what you PAY the supplier.\nAll selling prices to customers are in CAD only.",
+          "example": {
+            "cost": 15.99,
+            "currency": "USD",
+            "hasTracking": true,
+            "notes": "Good quality supplier",
+            "shippingDays": "15-30",
+            "supplierSku": "ABC123456",
+            "supplierUrl": "https://aliexpress.com/item/123.html",
+            "type": "aliexpress"
+          },
+          "properties": {
+            "type": {
+              "description": "Supplier platform: aliexpress, alibaba, 1688, dhgate, temu, amazon_usa, custom, etc.",
+              "title": "Type",
+              "type": "string"
+            },
+            "supplierSku": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Supplier's product SKU",
+              "title": "Suppliersku"
+            },
+            "supplierUrl": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Direct URL to supplier product",
+              "title": "Supplierurl"
+            },
+            "cost": {
+              "anyOf": [
+                {
+                  "maximum": 100000,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Cost price from supplier (what seller pays)",
+              "title": "Cost"
+            },
+            "currency": {
+              "default": "USD",
+              "description": "Currency of SUPPLIER cost (for tracking). Selling price is always CAD.",
+              "title": "Currency",
+              "type": "string"
+            },
+            "shippingDays": {
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Estimated shipping days range (e.g., '7-15')",
+              "title": "Shippingdays"
+            },
+            "hasTracking": {
+              "default": false,
+              "description": "Whether supplier provides tracking",
+              "title": "Hastracking",
+              "type": "boolean"
+            },
+            "notes": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Internal notes about supplier",
+              "title": "Notes"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "title": "SupplierInfo",
           "type": "object"
         }
       },
@@ -658,6 +978,12 @@
           "title": "Freeshipping",
           "type": "boolean"
         },
+        "isDigital": {
+          "default": false,
+          "description": "Whether this is a digital product (no shipping required)",
+          "title": "Isdigital",
+          "type": "boolean"
+        },
         "taxCode": {
           "anyOf": [
             {
@@ -678,6 +1004,36 @@
           },
           "title": "Keywords",
           "type": "array"
+        },
+        "supplier": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SupplierInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Supplier information for dropshipping/marketplace products"
+        },
+        "inventory": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InventoryConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Inventory management configuration"
+        },
+        "status": {
+          "default": "active",
+          "description": "Product status: draft, active, paused, archived, out_of_stock",
+          "title": "Status",
+          "type": "string"
         }
       },
       "required": [
@@ -822,13 +1178,65 @@
           "title": "Address",
           "type": "object"
         },
-        "SellerDeliveryOption": {
-          "description": "Seller-specific delivery options",
+        "InventoryConfig": {
+          "description": "Inventory management configuration",
           "example": {
-            "cost": 0.0,
-            "description": "Free local pickup",
-            "estimatedDays": 0,
-            "type": "pickup"
+            "allowBackorder": false,
+            "lowStockThreshold": 5,
+            "managed": true,
+            "reservationHoldMinutes": 30,
+            "trackQuantity": true
+          },
+          "properties": {
+            "managed": {
+              "default": true,
+              "description": "Whether inventory is actively managed",
+              "title": "Managed",
+              "type": "boolean"
+            },
+            "trackQuantity": {
+              "default": true,
+              "description": "Track stock quantity (false = unlimited)",
+              "title": "Trackquantity",
+              "type": "boolean"
+            },
+            "allowBackorder": {
+              "default": false,
+              "description": "Allow orders when out of stock",
+              "title": "Allowbackorder",
+              "type": "boolean"
+            },
+            "lowStockThreshold": {
+              "default": 5,
+              "description": "Alert threshold for low stock",
+              "maximum": 1000,
+              "minimum": 0,
+              "title": "Lowstockthreshold",
+              "type": "integer"
+            },
+            "reservationHoldMinutes": {
+              "default": 30,
+              "description": "How long to hold inventory during checkout",
+              "maximum": 120,
+              "minimum": 5,
+              "title": "Reservationholdminutes",
+              "type": "integer"
+            }
+          },
+          "title": "InventoryConfig",
+          "type": "object"
+        },
+        "SellerDeliveryOption": {
+          "description": "Seller-specific delivery options with quantity-based pricing",
+          "example": {
+            "additionalItemCost": 1.5,
+            "availableInternational": true,
+            "cost": 5.99,
+            "description": "Standard shipping",
+            "estimatedDays": 5,
+            "maxItemsPerShipment": 10,
+            "quantityDiscounts": [],
+            "type": "standard"
           },
           "properties": {
             "type": {
@@ -844,7 +1252,7 @@
               "type": "string"
             },
             "cost": {
-              "description": "Cost in CAD",
+              "description": "Base cost in CAD",
               "minimum": 0,
               "title": "Cost",
               "type": "number"
@@ -855,6 +1263,34 @@
               "minimum": 0,
               "title": "Estimateddays",
               "type": "integer"
+            },
+            "quantityDiscounts": {
+              "description": "Quantity-based shipping discounts",
+              "items": {
+                "$ref": "#/$defs/ShippingQuantityDiscount"
+              },
+              "title": "Quantitydiscounts",
+              "type": "array"
+            },
+            "maxItemsPerShipment": {
+              "default": 0,
+              "description": "Max items before cost increases (0 = no limit)",
+              "minimum": 0,
+              "title": "Maxitemspershipment",
+              "type": "integer"
+            },
+            "additionalItemCost": {
+              "default": 0.0,
+              "description": "Additional cost per item after maxItemsPerShipment",
+              "minimum": 0,
+              "title": "Additionalitemcost",
+              "type": "number"
+            },
+            "availableInternational": {
+              "default": true,
+              "description": "Whether option is available for international suppliers",
+              "title": "Availableinternational",
+              "type": "boolean"
             }
           },
           "required": [
@@ -865,9 +1301,166 @@
           ],
           "title": "SellerDeliveryOption",
           "type": "object"
+        },
+        "ShippingQuantityDiscount": {
+          "description": "Volume-based shipping discount thresholds",
+          "example": {
+            "discountType": "percent",
+            "discountValue": 10.0,
+            "label": "10% off shipping for 5+ items",
+            "minQuantity": 5
+          },
+          "properties": {
+            "minQuantity": {
+              "description": "Minimum quantity to qualify for this discount",
+              "minimum": 2,
+              "title": "Minquantity",
+              "type": "integer"
+            },
+            "discountType": {
+              "default": "percent",
+              "description": "Discount type: percent, fixed, flat_rate",
+              "title": "Discounttype",
+              "type": "string"
+            },
+            "discountValue": {
+              "description": "Discount value (interpretation depends on discountType)",
+              "minimum": 0,
+              "title": "Discountvalue",
+              "type": "number"
+            },
+            "label": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Optional label for display",
+              "title": "Label"
+            }
+          },
+          "required": [
+            "minQuantity",
+            "discountValue"
+          ],
+          "title": "ShippingQuantityDiscount",
+          "type": "object"
+        },
+        "SupplierInfo": {
+          "description": "Supplier information for dropshipping/international products.\nIMPORTANT: The currency field is for tracking what you PAY the supplier.\nAll selling prices to customers are in CAD only.",
+          "example": {
+            "cost": 15.99,
+            "currency": "USD",
+            "hasTracking": true,
+            "notes": "Good quality supplier",
+            "shippingDays": "15-30",
+            "supplierSku": "ABC123456",
+            "supplierUrl": "https://aliexpress.com/item/123.html",
+            "type": "aliexpress"
+          },
+          "properties": {
+            "type": {
+              "description": "Supplier platform: aliexpress, alibaba, 1688, dhgate, temu, amazon_usa, custom, etc.",
+              "title": "Type",
+              "type": "string"
+            },
+            "supplierSku": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Supplier's product SKU",
+              "title": "Suppliersku"
+            },
+            "supplierUrl": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Direct URL to supplier product",
+              "title": "Supplierurl"
+            },
+            "cost": {
+              "anyOf": [
+                {
+                  "maximum": 100000,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Cost price from supplier (what seller pays)",
+              "title": "Cost"
+            },
+            "currency": {
+              "default": "USD",
+              "description": "Currency of SUPPLIER cost (for tracking). Selling price is always CAD.",
+              "title": "Currency",
+              "type": "string"
+            },
+            "shippingDays": {
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Estimated shipping days range (e.g., '7-15')",
+              "title": "Shippingdays"
+            },
+            "hasTracking": {
+              "default": false,
+              "description": "Whether supplier provides tracking",
+              "title": "Hastracking",
+              "type": "boolean"
+            },
+            "notes": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Internal notes about supplier",
+              "title": "Notes"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "title": "SupplierInfo",
+          "type": "object"
         }
       },
-      "description": "Model for creating new products\n(excludes productId and dateCreated which are generated)",
+      "description": "Model for creating new products\n(excludes productId and dateCreated which are generated)\nIMPORTANT: sellerAddress.country MUST be 'Canada' - enforced by validation",
       "properties": {
         "name": {
           "maxLength": 120,
@@ -1019,6 +1612,11 @@
           "title": "Freeshipping",
           "type": "boolean"
         },
+        "isDigital": {
+          "default": false,
+          "title": "Isdigital",
+          "type": "boolean"
+        },
         "taxCode": {
           "anyOf": [
             {
@@ -1037,6 +1635,33 @@
           },
           "title": "Keywords",
           "type": "array"
+        },
+        "supplier": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SupplierInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "inventory": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InventoryConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "default": "active",
+          "title": "Status",
+          "type": "string"
         }
       },
       "required": [
@@ -1194,12 +1819,16 @@
           "type": "string"
         },
         "SellerDeliveryOption": {
-          "description": "Seller-specific delivery options",
+          "description": "Seller-specific delivery options with quantity-based pricing",
           "example": {
-            "cost": 0.0,
-            "description": "Free local pickup",
-            "estimatedDays": 0,
-            "type": "pickup"
+            "additionalItemCost": 1.5,
+            "availableInternational": true,
+            "cost": 5.99,
+            "description": "Standard shipping",
+            "estimatedDays": 5,
+            "maxItemsPerShipment": 10,
+            "quantityDiscounts": [],
+            "type": "standard"
           },
           "properties": {
             "type": {
@@ -1215,7 +1844,7 @@
               "type": "string"
             },
             "cost": {
-              "description": "Cost in CAD",
+              "description": "Base cost in CAD",
               "minimum": 0,
               "title": "Cost",
               "type": "number"
@@ -1226,6 +1855,34 @@
               "minimum": 0,
               "title": "Estimateddays",
               "type": "integer"
+            },
+            "quantityDiscounts": {
+              "description": "Quantity-based shipping discounts",
+              "items": {
+                "$ref": "#/$defs/ShippingQuantityDiscount"
+              },
+              "title": "Quantitydiscounts",
+              "type": "array"
+            },
+            "maxItemsPerShipment": {
+              "default": 0,
+              "description": "Max items before cost increases (0 = no limit)",
+              "minimum": 0,
+              "title": "Maxitemspershipment",
+              "type": "integer"
+            },
+            "additionalItemCost": {
+              "default": 0.0,
+              "description": "Additional cost per item after maxItemsPerShipment",
+              "minimum": 0,
+              "title": "Additionalitemcost",
+              "type": "number"
+            },
+            "availableInternational": {
+              "default": true,
+              "description": "Whether option is available for international suppliers",
+              "title": "Availableinternational",
+              "type": "boolean"
             }
           },
           "required": [
@@ -1235,6 +1892,55 @@
             "estimatedDays"
           ],
           "title": "SellerDeliveryOption",
+          "type": "object"
+        },
+        "ShippingQuantityDiscount": {
+          "description": "Volume-based shipping discount thresholds",
+          "example": {
+            "discountType": "percent",
+            "discountValue": 10.0,
+            "label": "10% off shipping for 5+ items",
+            "minQuantity": 5
+          },
+          "properties": {
+            "minQuantity": {
+              "description": "Minimum quantity to qualify for this discount",
+              "minimum": 2,
+              "title": "Minquantity",
+              "type": "integer"
+            },
+            "discountType": {
+              "default": "percent",
+              "description": "Discount type: percent, fixed, flat_rate",
+              "title": "Discounttype",
+              "type": "string"
+            },
+            "discountValue": {
+              "description": "Discount value (interpretation depends on discountType)",
+              "minimum": 0,
+              "title": "Discountvalue",
+              "type": "number"
+            },
+            "label": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Optional label for display",
+              "title": "Label"
+            }
+          },
+          "required": [
+            "minQuantity",
+            "discountValue"
+          ],
+          "title": "ShippingQuantityDiscount",
           "type": "object"
         }
       },
@@ -1408,6 +2114,12 @@
         "freeShipping": {
           "default": false,
           "title": "Freeshipping",
+          "type": "boolean"
+        },
+        "isDigital": {
+          "default": false,
+          "description": "Whether this item is a digital product",
+          "title": "Isdigital",
           "type": "boolean"
         }
       },
@@ -1912,6 +2624,12 @@
               "default": false,
               "title": "Freeshipping",
               "type": "boolean"
+            },
+            "isDigital": {
+              "default": false,
+              "description": "Whether this item is a digital product",
+              "title": "Isdigital",
+              "type": "boolean"
             }
           },
           "required": [
@@ -1993,12 +2711,16 @@
           "type": "object"
         },
         "SellerDeliveryOption": {
-          "description": "Seller-specific delivery options",
+          "description": "Seller-specific delivery options with quantity-based pricing",
           "example": {
-            "cost": 0.0,
-            "description": "Free local pickup",
-            "estimatedDays": 0,
-            "type": "pickup"
+            "additionalItemCost": 1.5,
+            "availableInternational": true,
+            "cost": 5.99,
+            "description": "Standard shipping",
+            "estimatedDays": 5,
+            "maxItemsPerShipment": 10,
+            "quantityDiscounts": [],
+            "type": "standard"
           },
           "properties": {
             "type": {
@@ -2014,7 +2736,7 @@
               "type": "string"
             },
             "cost": {
-              "description": "Cost in CAD",
+              "description": "Base cost in CAD",
               "minimum": 0,
               "title": "Cost",
               "type": "number"
@@ -2025,6 +2747,34 @@
               "minimum": 0,
               "title": "Estimateddays",
               "type": "integer"
+            },
+            "quantityDiscounts": {
+              "description": "Quantity-based shipping discounts",
+              "items": {
+                "$ref": "#/$defs/ShippingQuantityDiscount"
+              },
+              "title": "Quantitydiscounts",
+              "type": "array"
+            },
+            "maxItemsPerShipment": {
+              "default": 0,
+              "description": "Max items before cost increases (0 = no limit)",
+              "minimum": 0,
+              "title": "Maxitemspershipment",
+              "type": "integer"
+            },
+            "additionalItemCost": {
+              "default": 0.0,
+              "description": "Additional cost per item after maxItemsPerShipment",
+              "minimum": 0,
+              "title": "Additionalitemcost",
+              "type": "number"
+            },
+            "availableInternational": {
+              "default": true,
+              "description": "Whether option is available for international suppliers",
+              "title": "Availableinternational",
+              "type": "boolean"
             }
           },
           "required": [
@@ -2146,6 +2896,55 @@
           ],
           "title": "ShippingApprovalStatusEnum",
           "type": "string"
+        },
+        "ShippingQuantityDiscount": {
+          "description": "Volume-based shipping discount thresholds",
+          "example": {
+            "discountType": "percent",
+            "discountValue": 10.0,
+            "label": "10% off shipping for 5+ items",
+            "minQuantity": 5
+          },
+          "properties": {
+            "minQuantity": {
+              "description": "Minimum quantity to qualify for this discount",
+              "minimum": 2,
+              "title": "Minquantity",
+              "type": "integer"
+            },
+            "discountType": {
+              "default": "percent",
+              "description": "Discount type: percent, fixed, flat_rate",
+              "title": "Discounttype",
+              "type": "string"
+            },
+            "discountValue": {
+              "description": "Discount value (interpretation depends on discountType)",
+              "minimum": 0,
+              "title": "Discountvalue",
+              "type": "number"
+            },
+            "label": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Optional label for display",
+              "title": "Label"
+            }
+          },
+          "required": [
+            "minQuantity",
+            "discountValue"
+          ],
+          "title": "ShippingQuantityDiscount",
+          "type": "object"
         },
         "Taxes": {
           "description": "Tax breakdown for an order\nReplaces Map<String, double> with typed object",
@@ -2684,6 +3483,12 @@
               "default": false,
               "title": "Freeshipping",
               "type": "boolean"
+            },
+            "isDigital": {
+              "default": false,
+              "description": "Whether this item is a digital product",
+              "title": "Isdigital",
+              "type": "boolean"
             }
           },
           "required": [
@@ -2700,12 +3505,16 @@
           "type": "object"
         },
         "SellerDeliveryOption": {
-          "description": "Seller-specific delivery options",
+          "description": "Seller-specific delivery options with quantity-based pricing",
           "example": {
-            "cost": 0.0,
-            "description": "Free local pickup",
-            "estimatedDays": 0,
-            "type": "pickup"
+            "additionalItemCost": 1.5,
+            "availableInternational": true,
+            "cost": 5.99,
+            "description": "Standard shipping",
+            "estimatedDays": 5,
+            "maxItemsPerShipment": 10,
+            "quantityDiscounts": [],
+            "type": "standard"
           },
           "properties": {
             "type": {
@@ -2721,7 +3530,7 @@
               "type": "string"
             },
             "cost": {
-              "description": "Cost in CAD",
+              "description": "Base cost in CAD",
               "minimum": 0,
               "title": "Cost",
               "type": "number"
@@ -2732,6 +3541,34 @@
               "minimum": 0,
               "title": "Estimateddays",
               "type": "integer"
+            },
+            "quantityDiscounts": {
+              "description": "Quantity-based shipping discounts",
+              "items": {
+                "$ref": "#/$defs/ShippingQuantityDiscount"
+              },
+              "title": "Quantitydiscounts",
+              "type": "array"
+            },
+            "maxItemsPerShipment": {
+              "default": 0,
+              "description": "Max items before cost increases (0 = no limit)",
+              "minimum": 0,
+              "title": "Maxitemspershipment",
+              "type": "integer"
+            },
+            "additionalItemCost": {
+              "default": 0.0,
+              "description": "Additional cost per item after maxItemsPerShipment",
+              "minimum": 0,
+              "title": "Additionalitemcost",
+              "type": "number"
+            },
+            "availableInternational": {
+              "default": true,
+              "description": "Whether option is available for international suppliers",
+              "title": "Availableinternational",
+              "type": "boolean"
             }
           },
           "required": [
@@ -2741,6 +3578,55 @@
             "estimatedDays"
           ],
           "title": "SellerDeliveryOption",
+          "type": "object"
+        },
+        "ShippingQuantityDiscount": {
+          "description": "Volume-based shipping discount thresholds",
+          "example": {
+            "discountType": "percent",
+            "discountValue": 10.0,
+            "label": "10% off shipping for 5+ items",
+            "minQuantity": 5
+          },
+          "properties": {
+            "minQuantity": {
+              "description": "Minimum quantity to qualify for this discount",
+              "minimum": 2,
+              "title": "Minquantity",
+              "type": "integer"
+            },
+            "discountType": {
+              "default": "percent",
+              "description": "Discount type: percent, fixed, flat_rate",
+              "title": "Discounttype",
+              "type": "string"
+            },
+            "discountValue": {
+              "description": "Discount value (interpretation depends on discountType)",
+              "minimum": 0,
+              "title": "Discountvalue",
+              "type": "number"
+            },
+            "label": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Optional label for display",
+              "title": "Label"
+            }
+          },
+          "required": [
+            "minQuantity",
+            "discountValue"
+          ],
+          "title": "ShippingQuantityDiscount",
           "type": "object"
         }
       },
@@ -3105,6 +3991,107 @@
           "default": null,
           "description": "When account was suspended",
           "title": "Suspendedat"
+        },
+        "paymentProvider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "stripe",
+          "description": "Payment provider for seller payouts (stripe or airwallex)",
+          "title": "Paymentprovider"
+        },
+        "airwallexAccountId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Airwallex connected account ID",
+          "title": "Airwallexaccountid"
+        },
+        "airwallexCustomerId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Airwallex customer ID",
+          "title": "Airwallexcustomerid"
+        },
+        "airwallexStatus": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Airwallex account status",
+          "title": "Airwallexstatus"
+        },
+        "adminMfaEnabled": {
+          "default": false,
+          "description": "Whether admin MFA is enabled",
+          "title": "Adminmfaenabled",
+          "type": "boolean"
+        },
+        "adminMfaSecret": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Admin TOTP secret (server-only)",
+          "title": "Adminmfasecret"
+        },
+        "adminMfaVerifiedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Last successful admin MFA verification",
+          "title": "Adminmfaverifiedat"
+        },
+        "adminMfaBackupCodes": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "One-time admin MFA backup codes",
+          "title": "Adminmfabackupcodes"
         },
         "updatedAt": {
           "anyOf": [

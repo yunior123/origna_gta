@@ -9,15 +9,65 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 from .base import Address
 
 
-class SellerDeliveryOption(BaseModel):
-    """Seller-specific delivery options"""
+# ============================================================================
+# SHIPPING QUANTITY DISCOUNT - Volume-based shipping discounts
+# ============================================================================
+
+class ShippingQuantityDiscount(BaseModel):
+    """Volume-based shipping discount thresholds"""
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "type": "pickup",
-                "description": "Free local pickup",
-                "cost": 0.0,
-                "estimatedDays": 0
+                "minQuantity": 5,
+                "discountType": "percent",
+                "discountValue": 10.0,
+                "label": "10% off shipping for 5+ items"
+            }
+        }
+    )
+    
+    minQuantity: int = Field(
+        ...,
+        ge=2,
+        description="Minimum quantity to qualify for this discount"
+    )
+    discountType: str = Field(
+        default="percent",
+        description="Discount type: percent, fixed, flat_rate"
+    )
+    discountValue: float = Field(
+        ...,
+        ge=0,
+        description="Discount value (interpretation depends on discountType)"
+    )
+    label: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Optional label for display"
+    )
+    
+    @field_validator("discountType")
+    @classmethod
+    def validate_discount_type(cls, v: str) -> str:
+        valid_types = {"percent", "fixed", "flat_rate"}
+        if v not in valid_types:
+            raise ValueError(f"Invalid discount type: {v}. Must be one of: {valid_types}")
+        return v
+
+
+class SellerDeliveryOption(BaseModel):
+    """Seller-specific delivery options with quantity-based pricing"""
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "type": "standard",
+                "description": "Standard shipping",
+                "cost": 5.99,
+                "estimatedDays": 5,
+                "quantityDiscounts": [],
+                "maxItemsPerShipment": 10,
+                "additionalItemCost": 1.50,
+                "availableInternational": True
             }
         }
     )
@@ -35,13 +85,31 @@ class SellerDeliveryOption(BaseModel):
     cost: float = Field(
         ...,
         ge=0,
-        description="Cost in CAD"
+        description="Base cost in CAD"
     )
     estimatedDays: int = Field(
         ...,
         ge=0,
         le=90,
         description="Estimated delivery days"
+    )
+    quantityDiscounts: List[ShippingQuantityDiscount] = Field(
+        default_factory=list,
+        description="Quantity-based shipping discounts"
+    )
+    maxItemsPerShipment: int = Field(
+        default=0,
+        ge=0,
+        description="Max items before cost increases (0 = no limit)"
+    )
+    additionalItemCost: float = Field(
+        default=0.0,
+        ge=0,
+        description="Additional cost per item after maxItemsPerShipment"
+    )
+    availableInternational: bool = Field(
+        default=True,
+        description="Whether option is available for international suppliers"
     )
 
     @field_validator("type")
@@ -52,6 +120,129 @@ class SellerDeliveryOption(BaseModel):
         if v not in valid_types:
             raise ValueError(f"Invalid delivery type: {v}")
         return v
+
+
+# ============================================================================
+# SUPPLIER INFO - For dropshipping/marketplace products
+# NOTE: The 'currency' field is for SUPPLIER COST tracking only.
+#       All SELLING prices on the platform are in CAD (Canadian Dollars).
+# ============================================================================
+
+class SupplierInfo(BaseModel):
+    """
+    Supplier information for dropshipping/international products.
+    IMPORTANT: The currency field is for tracking what you PAY the supplier.
+    All selling prices to customers are in CAD only.
+    """
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "type": "aliexpress",
+                "supplierSku": "ABC123456",
+                "supplierUrl": "https://aliexpress.com/item/123.html",
+                "cost": 15.99,
+                "currency": "USD",  # What you pay supplier (selling price is always CAD)
+                "shippingDays": "15-30",
+                "hasTracking": True,
+                "notes": "Good quality supplier"
+            }
+        }
+    )
+    
+    type: str = Field(
+        ...,
+        description="Supplier platform: aliexpress, alibaba, 1688, dhgate, temu, amazon_usa, custom, etc."
+    )
+    supplierSku: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Supplier's product SKU"
+    )
+    supplierUrl: Optional[str] = Field(
+        default=None,
+        max_length=500,
+        description="Direct URL to supplier product"
+    )
+    cost: Optional[float] = Field(
+        default=None,
+        ge=0,
+        le=100000,
+        description="Cost price from supplier (what seller pays)"
+    )
+    currency: str = Field(
+        default="USD",
+        description="Currency of SUPPLIER cost (for tracking). Selling price is always CAD."
+    )
+    shippingDays: Optional[str] = Field(
+        default=None,
+        max_length=20,
+        description="Estimated shipping days range (e.g., '7-15')"
+    )
+    hasTracking: bool = Field(
+        default=False,
+        description="Whether supplier provides tracking"
+    )
+    notes: Optional[str] = Field(
+        default=None,
+        max_length=500,
+        description="Internal notes about supplier"
+    )
+    
+    @field_validator("currency")
+    @classmethod
+    def validate_supplier_currency(cls, v: str) -> str:
+        """Validate supplier cost currency (these are for cost tracking, not selling)"""
+        valid_currencies = {
+            "CAD", "USD", "EUR", "GBP", "CNY", "JPY", "KRW", 
+            "INR", "AUD", "MXN", "BRL", "HKD", "SGD", "TWD"
+        }
+        if v.upper() not in valid_currencies:
+            raise ValueError(f"Invalid currency: {v}. Must be one of: {valid_currencies}")
+        return v.upper()
+
+
+# ============================================================================
+# INVENTORY CONFIG - For flexible inventory management
+# ============================================================================
+
+class InventoryConfig(BaseModel):
+    """Inventory management configuration"""
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "managed": True,
+                "trackQuantity": True,
+                "allowBackorder": False,
+                "lowStockThreshold": 5,
+                "reservationHoldMinutes": 30
+            }
+        }
+    )
+    
+    managed: bool = Field(
+        default=True,
+        description="Whether inventory is actively managed"
+    )
+    trackQuantity: bool = Field(
+        default=True,
+        description="Track stock quantity (false = unlimited)"
+    )
+    allowBackorder: bool = Field(
+        default=False,
+        description="Allow orders when out of stock"
+    )
+    lowStockThreshold: int = Field(
+        default=5,
+        ge=0,
+        le=1000,
+        description="Alert threshold for low stock"
+    )
+    reservationHoldMinutes: int = Field(
+        default=30,
+        ge=5,
+        le=120,
+        description="How long to hold inventory during checkout"
+    )
 
 
 class Product(BaseModel):
@@ -220,6 +411,28 @@ class Product(BaseModel):
         default_factory=list,
         description="Search keywords for Algolia"
     )
+    
+    # NEW: Structured objects for scalability
+    supplier: Optional[SupplierInfo] = Field(
+        default=None,
+        description="Supplier information for dropshipping/marketplace products"
+    )
+    inventory: Optional[InventoryConfig] = Field(
+        default=None,
+        description="Inventory management configuration"
+    )
+    status: str = Field(
+        default="active",
+        description="Product status: draft, active, paused, archived, out_of_stock"
+    )
+    
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: str) -> str:
+        valid_statuses = {"draft", "active", "paused", "archived", "out_of_stock"}
+        if v not in valid_statuses:
+            raise ValueError(f"Invalid status: {v}. Must be one of: {valid_statuses}")
+        return v
 
     @field_validator("imageUrls")
     @classmethod
@@ -246,6 +459,7 @@ class ProductCreate(BaseModel):
     """
     Model for creating new products
     (excludes productId and dateCreated which are generated)
+    IMPORTANT: sellerAddress.country MUST be 'Canada' - enforced by validation
     """
     name: str = Field(..., min_length=1, max_length=120)
     price: float = Field(..., gt=0, le=100000)
@@ -270,3 +484,15 @@ class ProductCreate(BaseModel):
     isDigital: bool = Field(default=False)
     taxCode: Optional[str] = None
     keywords: List[str] = Field(default_factory=list)
+    # NEW: Structured objects
+    supplier: Optional[SupplierInfo] = Field(default=None)
+    inventory: Optional[InventoryConfig] = Field(default=None)
+    status: str = Field(default="active")
+    
+    @field_validator("sellerAddress")
+    @classmethod
+    def validate_canada_only(cls, v: Address) -> Address:
+        """CRITICAL: Only Canadian sellers can list products"""
+        if v.country.lower() not in ['canada', 'ca']:
+            raise ValueError(f"Only Canadian sellers can list products. Received country: {v.country}")
+        return v

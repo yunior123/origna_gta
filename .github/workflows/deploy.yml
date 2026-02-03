@@ -8,8 +8,28 @@ jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
 
+    env:
+      # Force config.py to load from env vars (not Secret Manager)
+      FUNCTIONS_EMULATOR: 'true'
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+      MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY }}
+      MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY }}
+      GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}
+      ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
+      ALGOLIA_WRITE_API_KEY: ${{ secrets.ALGOLIA_WRITE_API_KEY }}
+      AIRWALLEX_API_KEY: ${{ secrets.AIRWALLEX_API_KEY }}
+      AIRWALLEX_CLIENT_ID: ${{ secrets.AIRWALLEX_CLIENT_ID }}
+      AIRWALLEX_WEBHOOK_SECRET: ${{ secrets.AIRWALLEX_WEBHOOK_SECRET }}
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Java (Firebase emulators)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
       # Flutter setup
       - uses: subosito/flutter-action@v2
@@ -27,7 +47,10 @@ jobs:
       # Node.js setup (for Playwright)
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+
+      - name: Install Firebase CLI
+        run: npm i -g firebase-tools@latest
 
       # Install Python dependencies
       - name: Install Python dependencies
@@ -74,13 +97,17 @@ jobs:
           cd origna_gta
           flutter build web --release
 
-      # Playwright E2E tests
+      - name: Start E2E services
+        run: ./start-e2e-services.sh --no-wait
+
+      # Playwright E2E tests (stable suites only)
       - name: Playwright E2E tests
         run: |
-          cd e2e
-          # Serve the release build and run tests
-          # Note: The playwright.config.ts is configured to launch http-server
-          npx playwright test
+          E2E_WORKERS=2 ./run-e2e-tests.sh flutter
+
+      - name: Stop E2E services
+        if: always()
+        run: ./stop-e2e-services.sh
 
       # Deploy to Firebase (Hosting + Functions + Firestore)
       - name: Deploy Firebase Hosting

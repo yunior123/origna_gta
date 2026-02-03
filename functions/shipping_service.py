@@ -1,5 +1,5 @@
 import requests
-from typing import List, Dict
+from typing import List, Dict, Optional
 from config import GEOAPIFY_API_KEY
 
 # PERFORMANCE FIX: Cache province data in memory to avoid repeated dict construction
@@ -33,9 +33,168 @@ _REGIONS_CACHE = {
     'North': {'YT', 'NT', 'NU'},
 }
 
+# ============================================================================
+# INTERNATIONAL SUPPLIER SHIPPING CONFIGURATION
+# For dropshipping from China, Korea, and other international suppliers
+# ============================================================================
+
+_INTERNATIONAL_SHIPPING_CONFIG = {
+    # Supplier type -> default shipping days and base cost
+    'aliexpress': {
+        'standard': {'days': '15-30', 'base_cost': 0.0},  # ePacket/AliExpress Standard
+        'express': {'days': '7-15', 'base_cost': 15.99},   # DHL/UPS Express
+    },
+    'dhgate': {
+        'standard': {'days': '20-40', 'base_cost': 0.0},
+        'express': {'days': '10-20', 'base_cost': 19.99},
+    },
+    'alibaba': {
+        'standard': {'days': '25-45', 'base_cost': 0.0},   # Sea freight typical
+        'express': {'days': '7-15', 'base_cost': 25.99},   # Air freight
+    },
+    '1688': {
+        'standard': {'days': '30-50', 'base_cost': 0.0},   # Requires agent
+        'express': {'days': '10-20', 'base_cost': 29.99},
+    },
+    'temu': {
+        'standard': {'days': '7-15', 'base_cost': 0.0},    # Temu has fast shipping
+        'express': {'days': '5-10', 'base_cost': 9.99},
+    },
+    'cjdropshipping': {
+        'standard': {'days': '10-20', 'base_cost': 0.0},   # CJ has warehouses
+        'express': {'days': '5-10', 'base_cost': 12.99},
+    },
+    'other': {
+        'standard': {'days': '20-35', 'base_cost': 5.99},
+        'express': {'days': '10-20', 'base_cost': 19.99},
+    },
+}
+
+# Country to region mapping for international shipping estimates
+_COUNTRY_REGIONS = {
+    'CN': 'asia',      # China
+    'KR': 'asia',      # Korea
+    'JP': 'asia',      # Japan
+    'TW': 'asia',      # Taiwan
+    'HK': 'asia',      # Hong Kong
+    'SG': 'asia',      # Singapore
+    'US': 'north_america',
+    'MX': 'north_america',
+    'UK': 'europe',
+    'GB': 'europe',
+    'DE': 'europe',
+    'FR': 'europe',
+    'IT': 'europe',
+    'ES': 'europe',
+    'AU': 'oceania',
+    'NZ': 'oceania',
+}
+
 def get_tax_rate(province: str) -> float:
     """Get tax rate for a Canadian province (cached)"""
     return _TAX_RATES_CACHE.get(province, 0.13)
+
+
+def get_international_shipping_estimate(
+    supplier_type: str, 
+    speed: str = 'standard',
+    weight_kg: float = 0.5
+) -> Dict:
+    """
+    Get estimated shipping info for international suppliers.
+    
+    Args:
+        supplier_type: One of aliexpress, dhgate, alibaba, 1688, temu, cjdropshipping, other
+        speed: 'standard' or 'express'
+        weight_kg: Product weight for cost calculation
+        
+    Returns:
+        Dict with 'days' (str range), 'cost' (float), 'tracking' (bool)
+    """
+    config = _INTERNATIONAL_SHIPPING_CONFIG.get(supplier_type, _INTERNATIONAL_SHIPPING_CONFIG['other'])
+    speed_config = config.get(speed, config['standard'])
+    
+    base_cost = speed_config['base_cost']
+    
+    # Weight surcharge for heavier items
+    weight_surcharge = 0.0
+    if weight_kg > 1.0:
+        weight_surcharge = (weight_kg - 1.0) * 3.0  # $3 per kg over 1kg
+    
+    return {
+        'days': speed_config['days'],
+        'cost': base_cost + weight_surcharge,
+        'tracking': supplier_type in ['temu', 'cjdropshipping'] or speed == 'express',
+        'supplier_type': supplier_type,
+    }
+
+
+def estimate_delivery_date_range(
+    supplier_info: Optional[Dict] = None,
+    seller_estimated_days: int = 3,
+    is_international: bool = False
+) -> Dict:
+    """
+    Calculate estimated delivery date range for buyer display.
+    
+    Args:
+        supplier_info: Product's supplier object (if dropshipping)
+        seller_estimated_days: Seller's stated shipping days
+        is_international: Whether seller ships from outside Canada
+        
+    Returns:
+        Dict with 'min_days', 'max_days', 'display_text'
+    """
+    if supplier_info and supplier_info.get('type'):
+        # Dropshipping product with supplier info
+        supplier_type = supplier_info.get('type', 'other')
+        shipping_days = supplier_info.get('shippingDays', '')
+        
+        if shipping_days and '-' in shipping_days:
+            try:
+                parts = shipping_days.replace(' ', '').split('-')
+                min_days = int(parts[0])
+                max_days = int(parts[1])
+            except (ValueError, IndexError):
+                # Fall back to supplier type defaults
+                estimate = get_international_shipping_estimate(supplier_type)
+                days_str = estimate['days']
+                parts = days_str.split('-')
+                min_days = int(parts[0])
+                max_days = int(parts[1])
+        else:
+            estimate = get_international_shipping_estimate(supplier_type)
+            days_str = estimate['days']
+            parts = days_str.split('-')
+            min_days = int(parts[0])
+            max_days = int(parts[1])
+        
+        return {
+            'min_days': min_days,
+            'max_days': max_days,
+            'display_text': f'{min_days}-{max_days} business days',
+            'source': 'international_supplier',
+            'has_tracking': supplier_info.get('hasTracking', False),
+        }
+    
+    if is_international:
+        # Generic international (non-dropship)
+        return {
+            'min_days': 14,
+            'max_days': 30,
+            'display_text': '14-30 business days',
+            'source': 'international_generic',
+            'has_tracking': True,
+        }
+    
+    # Domestic Canadian shipping
+    return {
+        'min_days': seller_estimated_days,
+        'max_days': seller_estimated_days + 3,
+        'display_text': f'{seller_estimated_days}-{seller_estimated_days + 3} business days',
+        'source': 'domestic',
+        'has_tracking': True,
+    }
 
 def _are_adjacent_provinces(p1: str, p2: str) -> bool:
     """Check if two provinces are adjacent (cached)"""

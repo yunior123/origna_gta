@@ -16,6 +16,7 @@ class AddProductState {
   final bool sameDayEnabled;
   final int minimumOrderQuantity;
   final bool freeShipping;
+  final bool freeShippingAt10Plus; // Free shipping for 10+ item orders
   final String? errorMessage;
   final bool isSuccess;
 
@@ -35,6 +36,7 @@ class AddProductState {
     this.sameDayEnabled = false,
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
+    this.freeShippingAt10Plus = false,
     this.errorMessage,
     this.isSuccess = false,
   });
@@ -55,6 +57,7 @@ class AddProductState {
     bool? sameDayEnabled,
     int? minimumOrderQuantity,
     bool? freeShipping,
+    bool? freeShippingAt10Plus,
     String? errorMessage,
     bool? isSuccess,
   }) {
@@ -74,6 +77,7 @@ class AddProductState {
       sameDayEnabled: sameDayEnabled ?? this.sameDayEnabled,
       minimumOrderQuantity: minimumOrderQuantity ?? this.minimumOrderQuantity,
       freeShipping: freeShipping ?? this.freeShipping,
+      freeShippingAt10Plus: freeShippingAt10Plus ?? this.freeShippingAt10Plus,
       errorMessage: errorMessage,
       isSuccess: isSuccess ?? this.isSuccess,
     );

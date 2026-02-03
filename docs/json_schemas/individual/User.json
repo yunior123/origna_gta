@@ -299,6 +299,107 @@
       "description": "When account was suspended",
       "title": "Suspendedat"
     },
+    "paymentProvider": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "stripe",
+      "description": "Payment provider for seller payouts (stripe or airwallex)",
+      "title": "Paymentprovider"
+    },
+    "airwallexAccountId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Airwallex connected account ID",
+      "title": "Airwallexaccountid"
+    },
+    "airwallexCustomerId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Airwallex customer ID",
+      "title": "Airwallexcustomerid"
+    },
+    "airwallexStatus": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Airwallex account status",
+      "title": "Airwallexstatus"
+    },
+    "adminMfaEnabled": {
+      "default": false,
+      "description": "Whether admin MFA is enabled",
+      "title": "Adminmfaenabled",
+      "type": "boolean"
+    },
+    "adminMfaSecret": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Admin TOTP secret (server-only)",
+      "title": "Adminmfasecret"
+    },
+    "adminMfaVerifiedAt": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Last successful admin MFA verification",
+      "title": "Adminmfaverifiedat"
+    },
+    "adminMfaBackupCodes": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "One-time admin MFA backup codes",
+      "title": "Adminmfabackupcodes"
+    },
     "updatedAt": {
       "anyOf": [
         {

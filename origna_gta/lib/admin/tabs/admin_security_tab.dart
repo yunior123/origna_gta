@@ -269,17 +269,17 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
   Future<void> _disableMfa() async {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Disable MFA?'),
         content: const Text(
           'Are you sure? This will remove multi-factor authentication from your admin account. '
           'You will no longer need to enter a code for sensitive admin actions.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               final viewModel = ref.read(adminActionsViewModelProvider.notifier);
               final success = await viewModel.disableAdminMfa();
               if (success && mounted) {

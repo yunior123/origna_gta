@@ -93,10 +93,9 @@ def test_format_product(capsys):
         assert field in formatted, f"Missing required field: {field}"
     
     if ALGOLIA_APP_ID and ALGOLIA_WRITE_API_KEY:
-        # Test that credentials are valid format
-        client = SearchClient.create(ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY)
-        index = client.init_index('products')
-        assert index is not None
+        # Test that credentials are valid format (new API: direct constructor)
+        client = SearchClient(ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY)
+        assert client is not None
         print("✅ Algolia client created successfully")
 
 

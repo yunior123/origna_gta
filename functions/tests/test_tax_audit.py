@@ -151,6 +151,41 @@ class TestTaxAudit(unittest.TestCase):
         
         self.assertEqual(tax_code, "txcd_20030002", "Should use Children's Clothing tax code for Category 17")
 
+        def test_checkout_session_rejects_non_cad_currency(self):
+            """CRITICAL: CAD-only enforcement at checkout"""
+            req = MagicMock()
+            req.auth.uid = "user_1"
+            req.data = {
+                "userId": "user_1",
+                "customerEmail": "buyer@example.com",
+                "currency": "usd",
+                "amount": 100,
+                "items": [{
+                    "productId": "prod_1",
+                    "quantity": 1,
+                    "price": 1.00,
+                    "sellerId": "seller_1",
+                    "name": "Test Product",
+                    "description": "Test",
+                    "imageUrls": ["http://img.com/a.jpg"],
+                    "sellerAddress": {"street": "1 St", "city": "Toronto", "state": "ON", "postalCode": "M5V 1A1", "country": "Canada"}
+                }],
+                "deliveryInfo": {
+                    "street": "123 Test St",
+                    "city": "Toronto",
+                    "postalCode": "M5V 1A1",
+                    "state": "ON",
+                    "country": "Canada",
+                    "longitude": -79.0,
+                    "latitude": 43.0
+                }
+            }
+
+            with self.assertRaises(MockHttpsError) as ctx:
+                create_checkout_session(req)
+
+            self.assertIn("Only CAD currency is supported", ctx.exception.message)
+
     def test_basic_groceries_tax_code(self):
         """
         Scenario: Buying Groceries (Category 19).

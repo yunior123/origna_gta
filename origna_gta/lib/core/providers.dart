@@ -52,9 +52,11 @@ final firebaseAuthProvider = Provider<FirebaseAuth>((ref) => FirebaseAuth.instan
 
 final firebaseFunctionsProvider = Provider<FirebaseFunctions>((ref) {
   final functions = FirebaseFunctions.instance;
-  if (kDebugMode) {
-    functions.useFunctionsEmulator('127.0.0.1', 8081);
-  }
+  // Note: Emulator is configured in main.dart for web to use port 5001
+  // Only set here for non-web debug builds
+  // if (kDebugMode && !kIsWeb) {
+  //   functions.useFunctionsEmulator('127.0.0.1', 5001);
+  // }
   return functions;
 });
 

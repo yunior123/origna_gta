@@ -334,6 +334,19 @@
       z-index: 4;
       animation: logoFloat 3s ease-in-out infinite;
       filter: drop-shadow(0 20px 60px var(--accent-shadow));
+      transform-origin: center;
+      will-change: transform;
+    }
+
+    /* If Flutter build injects splash-branding, keep it centered too (no bottom-right jump). */
+    #splash-branding {
+      position: absolute !important;
+      top: 50% !important;
+      left: 50% !important;
+      right: auto !important;
+      bottom: auto !important;
+      transform: translate(-50%, -50%) !important;
+      z-index: 4;
     }
 
     .logo-glass {
@@ -568,9 +581,10 @@
     // });
 
     // Fallback: only clear if significantly delayed/stuck (safety net)
+    // Reduced from 15s to 8s for better UX - if app hasn't loaded by then, something is wrong
     window.addEventListener('load', () => {
        if (!splashRemoved) {
-         setTimeout(removeSplashFromWeb, 15000); // 15 seconds backup
+         setTimeout(removeSplashFromWeb, 8000); // 8 seconds backup
        }
     });
   </script>

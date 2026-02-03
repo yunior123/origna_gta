@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -201,7 +204,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         throw Exception('User not logged in');
       }
 
-      final idempotencyKey = _generateIdempotencyKey(userId, items);
+      // Generate a per-attempt key (random). Reuse on retry after a failure.
+      final idempotencyKey = state.idempotencyKey ?? _generateIdempotencyKey(userId);
       state = state.copyWith(idempotencyKey: idempotencyKey);
 
       final taxes = hasPhysicalItems && state.address != null ? calculateDetailedTaxes(state.address, subtotal) : <String, double>{};
@@ -250,7 +254,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
       await _orderRepository.updateLastSession(userId, sessionId, orderId);
 
-      state = state.copyWith(isProcessing: false);
+      state = state.copyWith(isProcessing: false, clearIdempotencyKey: true);
 
       return CheckoutSuccess(checkoutUrl: checkoutUrl, orderId: orderId, sessionId: sessionId);
     } catch (e) {
@@ -262,7 +266,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
   /// Update address and recalculate shipping
   void updateAddress(Address address) {
-    state = state.copyWith(address: address);
+    // New address = new checkout attempt context
+    state = state.copyWith(address: address, clearIdempotencyKey: true);
   }
 
   double _atan2(double y, double x) => _taylorAtan2(y, x);
@@ -304,21 +309,16 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
   double _cos(double x) => _taylorSin(x + 1.5707963267948966);
 
-  /// Generate deterministic idempotency key for payment safety
-  String _generateIdempotencyKey(String userId, List<CartItemDetailModel> items) {
-    final sortedItems = List<CartItemDetailModel>.from(items)..sort((a, b) => a.productId.compareTo(b.productId));
-
-    final itemsString = sortedItems.map((i) => '${i.productId}:${i.quantity}').join('|');
-
-    var hash = 0;
-    for (var i = 0; i < itemsString.length; i++) {
-      hash = (31 * hash + itemsString.codeUnitAt(i)) & 0x7FFFFFFF;
-    }
-
-    final date = DateTime.now();
-    final dateKey = '${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}';
-
-    return 'chk_${userId}_${hash.toRadixString(36)}_$dateKey';
+  /// Generate per-attempt idempotency key for payment safety.
+  ///
+  /// - Random per attempt (prevents blocking legitimate repeat purchases)
+  /// - Stored in state so immediate retries reuse the same key
+  String _generateIdempotencyKey(String userId) {
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    final nonce = base64UrlEncode(bytes).replaceAll('=', '');
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    return 'chk_${userId}_${ts}_$nonce';
   }
 
   double _newtonSqrt(double x) {
@@ -441,6 +441,7 @@ class CheckoutState {
     String? paymentProvider,
     bool clearShippingError = false,
     bool clearCheckoutError = false,
+    bool clearIdempotencyKey = false,
   }) {
     return CheckoutState(
       address: address ?? this.address,
@@ -452,7 +453,7 @@ class CheckoutState {
       isCalculatingShipping: isCalculatingShipping ?? this.isCalculatingShipping,
       shippingError: clearShippingError ? null : (shippingError ?? this.shippingError),
       isProcessing: isProcessing ?? this.isProcessing,
-      idempotencyKey: idempotencyKey ?? this.idempotencyKey,
+      idempotencyKey: clearIdempotencyKey ? null : (idempotencyKey ?? this.idempotencyKey),
       checkoutError: clearCheckoutError ? null : (checkoutError ?? this.checkoutError),
       paymentProvider: paymentProvider ?? this.paymentProvider,
     );

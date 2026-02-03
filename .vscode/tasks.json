@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Integration Tests (API)",
+			"type": "shell",
+			"command": "python3",
+			"args": [
+				"functions/run_api_tests.py"
+			],
+			"isBackground": false,
+			"group": "test"
+		}
+	]
+}

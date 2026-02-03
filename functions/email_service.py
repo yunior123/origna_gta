@@ -1,4 +1,5 @@
 from datetime import datetime
+import html
 from mailjet_rest import Client
 from config import IS_EMULATOR, MAILJET_API_KEY, MAILJET_SECRET_KEY
 
@@ -6,10 +7,11 @@ def get_order_confirmation_email(order_data):
     """Generate HTML email for customer order confirmation"""
     items_html = ""
     for item in order_data.get('items', []):
+        safe_name = html.escape(str(item.get('name', 'Product')))
         items_html += f"""
         <tr>
             <td style="padding: 12px; border-bottom: 1px solid #eee;">
-                {item.get('name', 'Product')}
+                {safe_name}
             </td>
             <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">
                 {item.get('quantity', 1)}
@@ -458,18 +460,18 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
     </html>
     """
     
-    try:
-        result = mailjet.send.create(data={
-            'Messages': [{
-                'From': {'Email': 'noreply@orignagta.com', 'Name': 'OrignaGTA Security'},
-                'To': [{'Email': customer_email, 'Name': customer_name}],
-                'Subject': subject,
-                'HTMLPart': html_body,
-            }]
-        })
-        print(f"✅ 3DS authentication email sent to {customer_email}")
-        return result
-    except Exception as e:
-        print(f"❌ Failed to send 3DS email: {str(e)}")
-        raise
+    # RETRY LOGIC: We do NOT catch exceptions here.
+    # Cloud Functions will retry execution if an exception is raised.
+    # This prevents email loss during temporary Mailjet outages.
+    result = mailjet.send.create(data={
+        'Messages': [{
+            'From': {'Email': 'noreply@orignagta.com', 'Name': 'OrignaGTA Security'},
+            'To': [{'Email': customer_email, 'Name': customer_name}],
+            'Subject': subject,
+            'HTMLPart': html_body,
+        }]
+    })
+    
+    print(f"✅ 3DS authentication email sent to {customer_email}")
+    return result
 

@@ -15,9 +15,29 @@ class AlgoliaProductRepository implements ProductRepository {
   AlgoliaProductRepository(this._algoliaService, this._firestore);
 
   @override
+  @override
   Future<String> addProduct(Product product) async {
-    final docRef = await _firestore.collection(Collections.products).add(product.toJson());
-    return docRef.id;
+    if (kDebugMode) debugPrint('REPO: [AlgoliaProductRepository] Attempting to add product...');
+    try {
+      final docRef = await _firestore.collection(Collections.products).add(product.toJson());
+      if (kDebugMode) debugPrint('REPO: Local write returned ID: ${docRef.id}');
+
+      // Force server synchronization verification
+      if (kDebugMode) debugPrint('REPO: Verifying server persistence...');
+      final serverDoc = await docRef.get(const GetOptions(source: Source.server));
+
+      if (!serverDoc.exists) {
+        if (kDebugMode) debugPrint('REPO: CRITICAL ERROR - Document not found on server immediately after write!');
+        // Throwing ensures the UI/Test treats this as a failure
+        throw FirebaseException(plugin: 'cloud_firestore', code: 'sync-failed', message: 'Write succeeded locally but failed to persist to server.');
+      }
+
+      if (kDebugMode) debugPrint('REPO: Server verification SUCCESS.');
+      return docRef.id;
+    } catch (e) {
+      if (kDebugMode) debugPrint('REPO: addProduct FAILED: $e');
+      rethrow;
+    }
   }
 
   @override
@@ -32,7 +52,7 @@ class AlgoliaProductRepository implements ProductRepository {
       if (!doc.exists) return null;
       return Product.fromFirestore(doc);
     } catch (e) {
-      if (kDebugMode) print('Error fetching product: $e');
+      if (kDebugMode) debugPrint('Error fetching product: $e');
       return null;
     }
   }
@@ -53,7 +73,7 @@ class AlgoliaProductRepository implements ProductRepository {
       // For empty queries, fall back to Firestore
       return await _fetchFromFirestore(searchQuery: searchQuery, categoryId: categoryId, lastDocument: lastDocument, pageSize: pageSize);
     } catch (e) {
-      if (kDebugMode) print('⚠️  Algolia error, falling back to Firestore: $e');
+      if (kDebugMode) debugPrint('⚠️  Algolia error, falling back to Firestore: $e');
 
       // Fallback to Firestore on any error
       return await _fetchFromFirestore(searchQuery: searchQuery, categoryId: categoryId, lastDocument: lastDocument, pageSize: pageSize);
