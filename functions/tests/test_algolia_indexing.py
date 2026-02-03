@@ -1,15 +1,20 @@
 """
 Test Algolia indexing functionality
-
-Run with: python3 test_algolia_indexing.py
 """
 
 import os
 import sys
 from pathlib import Path
+import pytest
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+try:
+    from algoliasearch.search.client import SearchClient
+    from algolia_service import configure_algolia_index
+except ImportError:
+    pass # Will fail in tests if needed
 
 # Load environment variables
 ALGOLIA_APP_ID = os.environ.get('ALGOLIA_APP_ID', '')
@@ -39,28 +44,18 @@ def format_product_for_algolia(product_id: str, product_data: dict) -> dict:
     return algolia_object
 
 
-def test_algolia_credentials():
+def test_algolia_credentials(capsys):
     """Check if Algolia credentials are configured"""
-    print("🔑 Checking Algolia credentials...")
+    if not ALGOLIA_APP_ID or not ALGOLIA_WRITE_API_KEY:
+         pytest.skip("ALGOLIA_APP_ID or ALGOLIA_WRITE_API_KEY not configured")
     
-    if not ALGOLIA_APP_ID:
-        print("❌ ALGOLIA_APP_ID not configured")
-        return False
-    
-    if not ALGOLIA_WRITE_API_KEY:
-        print("❌ ALGOLIA_WRITE_API_KEY not configured")
-        return False
-    
-    print(f"✅ Credentials configured")
-    print(f"   App ID: {ALGOLIA_APP_ID}")
-    print(f"   Write Key: {'*' * 20}...{ALGOLIA_WRITE_API_KEY[-4:]}")
-    return True
+    assert ALGOLIA_APP_ID
+    assert ALGOLIA_WRITE_API_KEY
+    print(f"✅ Credentials configured: {ALGOLIA_APP_ID}")
 
 
-def test_format_product():
+def test_format_product(capsys):
     """Test product formatting for Algolia"""
-    print("\n📦 Testing product formatting...")
-    
     # Sample product data
     sample_product = {
         'name': 'Test Product',
@@ -86,57 +81,39 @@ def test_format_product():
         'isLocalDeliveryOnly': False
     }
     
-    try:
-        formatted = format_product_for_algolia('test_product_123', sample_product)
-        
-        # Verify required fields
-        required_fields = [
-            'objectID', 'name', 'description', 'price', 'categoryId',
-            'sellerId', 'imageUrls', 'stockQuantity'
-        ]
-        
-        for field in required_fields:
-            assert field in formatted, f"Missing required field: {field}"
+    formatted = format_product_for_algolia('test_product_123', sample_product)
+    
+    # Verify required fields
+    required_fields = [
+        'objectID', 'name', 'description', 'price', 'categoryId',
+        'sellerId', 'imageUrls', 'stockQuantity'
+    ]
+    
+    for field in required_fields:
+        assert field in formatted, f"Missing required field: {field}"
+    
+    if ALGOLIA_APP_ID and ALGOLIA_WRITE_API_KEY:
         # Test that credentials are valid format
-        from algoliasearch.search.client import SearchClient
         client = SearchClient.create(ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY)
         index = client.init_index('products')
-        
+        assert index is not None
         print("✅ Algolia client created successfully")
-        print("   Index: products")
-        return True
-    except Exception as e:
-        print(f"⚠️  Client creation warning: {e}")
-        return False
-        
-    except Exception as e:
-        print(f"❌ Product formatting failed: {e}")
-        return False
 
 
-def test_algolia_configuration():
+def test_algolia_configuration(capsys):
     """Test Algolia index configuration"""
-    print("\n⚙️  Testing Algolia index configuration...")
-    
     if not ALGOLIA_APP_ID or not ALGOLIA_WRITE_API_KEY:
-        print("⏭️  Skipping - credentials not configured")
-        return True
+        pytest.skip("Skipping - credentials not configured")
     
     try:
         configure_algolia_index()
         print("✅ Index configuration successful")
-        print("   Settings: searchableAttributes, customRanking, attributesForFaceting")
-        return True
     except Exception as e:
-        print(f"⚠️  Index configuration warning: {e}")
-        # Not critical, index might already be configured
-        return True
+        pytest.fail(f"Index configuration failed: {e}")
 
 
-def test_mock_indexing():
+def test_mock_indexing(capsys):
     """Test indexing logic without actually sending to Algolia"""
-    print("\n🔍 Testing indexing logic (mock mode)...")
-    
     sample_products = [
         {
             'id': 'prod_001',
@@ -180,73 +157,11 @@ def test_mock_indexing():
         }
     ]
     
-    try:
-        # Format all products
-        formatted_products = []
-        for product in sample_products:
-            formatted = format_product_for_algolia(product['id'], product['data'])
-            formatted_products.append(formatted)
-        
-        print(f"✅ Successfully formatted {len(formatted_products)} products")
-        
-        # Show sample
-        print(f"\n   Sample product:")
-        sample = formatted_products[0]
-        print(f"   - ID: {sample['objectID']}")
-        print(f"   - Name: {sample['name']}")
-        print(f"   - Price: ${sample['price']}")
-        print(f"   - Category: {sample['categoryId']}")
-        print(f"   - Active: {sample['isActive']}")
-        
-        return True
-        
-    except Exception as e:
-        print(f"❌ Indexing logic failed: {e}")
-        return False
-
-
-def main():
-    print("=" * 70)
-    print("ALGOLIA INDEXING TESTS")
-    print("=" * 70)
+    formatted_products = []
+    for product in sample_products:
+        formatted = format_product_for_algolia(product['id'], product['data'])
+        formatted_products.append(formatted)
     
-    results = []
-    
-    # Test 1: Credentials
-    results.append(("Credentials Check", test_algolia_credentials()))
-    
-    # Test 2: Product formatting
-    results.append(("Product Formatting", test_format_product()))
-    
-    # Test 3: Index configuration
-    results.append(("Index Configuration", test_algolia_configuration()))
-    
-    # Test 4: Mock indexing
-    results.append(("Indexing Logic", test_mock_indexing()))
-    
-    # Summary
-    print("\n" + "=" * 70)
-    print("TEST SUMMARY")
-    print("=" * 70)
-    
-    passed = sum(1 for _, result in results if result)
-    failed = sum(1 for _, result in results if not result)
-    
-    for test_name, result in results:
-        status = "✅ PASS" if result else "❌ FAIL"
-        print(f"{status} - {test_name}")
-    
-    print("\n" + "=" * 70)
-    print(f"RESULTS: {passed} passed, {failed} failed")
-    print("=" * 70)
-    
-    if not ALGOLIA_APP_ID or not ALGOLIA_WRITE_API_KEY:
-        print("\n⚠️  NOTE: Algolia credentials not configured in environment")
-        print("   Tests ran in mock mode only")
-        print("   To test real indexing, set ALGOLIA_APP_ID and ALGOLIA_WRITE_API_KEY")
-    
-    return 0 if failed == 0 else 1
-
-
-if __name__ == '__main__':
-    exit(main())
+    assert len(formatted_products) == 2
+    assert formatted_products[0]['objectID'] == 'prod_001'
+    print(f"✅ Successfully formatted {len(formatted_products)} products")

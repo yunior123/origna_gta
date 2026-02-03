@@ -48,6 +48,27 @@
       "queryScope": "COLLECTION",
       "fields": [
         {"fieldPath": "sellerIds", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "status", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ],
+      "comment": "MEDIUM PRIORITY #11: Index for querying orders by status and time"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "sellerIds", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "status", "order": "ASCENDING"}
+      ],
+      "comment": "MEDIUM PRIORITY #11: Index for seller-specific order queries with status filter"
+    }
         {"fieldPath": "paymentStatus", "order": "ASCENDING"},
         {"fieldPath": "createdAt", "order": "DESCENDING"}
       ]

@@ -224,10 +224,12 @@ class AirwallexService:
             'payment_intent.succeeded': self._handle_payment_success,
             'payment_intent.failed': self._handle_payment_failure,
             'payment_intent.canceled': self._handle_payment_canceled,
+            'payment_intent.requires_action': self._handle_requires_action,  # P2 FIX #6: 3DS handling
             'payout.succeeded': self._handle_payout_success,
             'payout.failed': self._handle_payout_failure,
             'refund.succeeded': self._handle_refund_success,
             'refund.failed': self._handle_refund_failure,
+            'connected_account.verification_failed': self._handle_verification_failed,  # P2 FIX #6: KYC rejection
         }
         
         handler = handlers.get(event_type)
@@ -362,6 +364,88 @@ class AirwallexService:
         })
         
         return {'status': 'processed', 'refund_id': refund_id, 'error': error_message}
+    
+    def _handle_requires_action(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """P2 FIX #6: Handle payment requiring 3DS authentication"""
+        payment_id = data['id']
+        order_id = data.get('metadata', {}).get('order_id')
+        next_action = data.get('next_action')
+        
+        # CRITICAL FIX: Validate next_action exists to prevent crash on malformed events
+        if not next_action or not isinstance(next_action, dict):
+            print(f"⚠️  Payment {payment_id} requires action but next_action missing")
+            return {'status': 'error', 'message': 'Missing next_action in event data'}
+        
+        action_type = next_action.get('type')  # Usually 'redirect_to_url' for 3DS
+        action_url = next_action.get('url')
+        
+        from google.cloud import firestore
+        db = firestore.Client()
+        
+        print(f"⚠️  Payment {payment_id} requires action: {action_type}")
+        
+        if order_id:
+            db.collection('orders').document(order_id).update({
+                'payment_status': 'requires_action',
+                'airwallex_payment_id': payment_id,
+                'requires_3ds': True,
+                'authentication_url': action_url,
+                'updated_at': firestore.SERVER_TIMESTAMP
+            })
+            
+            # ✅ COMPLETED TODO: Send email to buyer with 3DS authentication link
+            try:
+                order_doc = db.collection('orders').document(order_id).get()
+                if order_doc.exists:
+                    order_data = order_doc.to_dict()
+                    from email_service import send_3ds_authentication_email
+                    send_3ds_authentication_email(
+                        order_id=order_id,
+                        customer_email=order_data.get('customerEmail'),
+                        customer_name=order_data.get('customerName', 'Customer'),
+                        authentication_url=action_url,
+                        amount=order_data.get('total', 0)
+                    )
+                    print(f"  ✅ 3DS authentication email sent")
+            except Exception as email_error:
+                print(f"  ⚠️  Failed to send 3DS email: {str(email_error)}")
+        
+        return {'status': 'processed', 'order_id': order_id, 'action_required': action_type, 'url': action_url}
+    
+    def _handle_verification_failed(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """P2 FIX #6: Handle connected account verification failure (KYC rejection)"""
+        account_id = data['id']
+        seller_id = data.get('metadata', {}).get('seller_id')
+        failure_reason = data.get('failure_reason', 'Verification failed')
+        
+        from google.cloud import firestore
+        db = firestore.Client()
+        
+        print(f"❌ Seller account verification failed: {account_id}")
+        
+        if seller_id:
+            # Update seller status
+            db.collection('users').document(seller_id).update({
+                'airwallex_account_verified': False,
+                'airwallex_verification_status': 'failed',
+                'airwallex_verification_error': failure_reason,
+                'payouts_enabled': False,  # Disable payouts
+                'updated_at': firestore.SERVER_TIMESTAMP
+            })
+            
+            # Log security event
+            db.collection('security_alerts').add({
+                'type': 'seller_kyc_failed',
+                'sellerId': seller_id,
+                'accountId': account_id,
+                'reason': failure_reason,
+                'provider': 'airwallex',
+                'timestamp': firestore.SERVER_TIMESTAMP
+            })
+            
+            print(f"  🔒 Seller {seller_id} payouts disabled due to failed verification")
+        
+        return {'status': 'processed', 'seller_id': seller_id, 'error': failure_reason}
 
 
 # Singleton instance

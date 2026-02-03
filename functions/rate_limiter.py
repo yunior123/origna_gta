@@ -18,10 +18,15 @@ class RateLimiter:
         identifier: str,  # IP, user_id, email
         action: str,  # 'create_checkout', 'webhook', etc
         max_requests: int,
-        window_minutes: int
+        window_minutes: int,
+        fail_closed: bool = False  # If True, block on errors (for auth/payment)
     ) -> Tuple[bool, str]:
         """
         Returns (allowed: bool, message: str)
+        
+        SECURITY FIX: Added fail_closed parameter.
+        - fail_closed=False (default): Fail-open for UX (product views)
+        - fail_closed=True: Fail-closed for security (auth, payments)
         
         EDGE CASE FIX #4: Use Firestore transaction to prevent race conditions.
         Without transaction, concurrent requests could bypass rate limit.
@@ -76,8 +81,13 @@ class RateLimiter:
             return check_and_increment(transaction, ref)
                 
         except Exception as e:
-            # Fail open on errors (don't block legitimate users)
             print(f"⚠️ Rate limiter error: {e}")
+            
+            # SECURITY FIX: Fail-closed for high-stakes actions
+            if fail_closed:
+                return False, "Rate limiter unavailable - request blocked for security"
+            
+            # Fail-open for UX-critical actions (don't block legitimate users)
             return True, "OK"
     
     def get_identifier(self, req) -> str:

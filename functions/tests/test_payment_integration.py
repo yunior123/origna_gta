@@ -113,6 +113,7 @@ class TestPaymentFlow(unittest.TestCase):
         mock_order_doc.to_dict.return_value = {
             "orderId": "order_123",
             "paymentStatus": PaymentStatus.PAID,  # KEY: Already paid
+            "status": "processing",
             "stripePaymentIntentId": "pi_123",
             "amount": 5000,
             "items": [
@@ -169,6 +170,7 @@ class TestPaymentFlow(unittest.TestCase):
         mock_order_doc.to_dict.return_value = {
             "orderId": "order_123",
             "paymentStatus": "authorized",  # KEY: Authorized only
+            "status": "processing",
             "stripePaymentIntentId": "pi_123",
             "amount": 5000,
             "items": [

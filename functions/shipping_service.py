@@ -2,54 +2,48 @@ import requests
 from typing import List, Dict
 from config import GEOAPIFY_API_KEY
 
+# PERFORMANCE FIX: Cache province data in memory to avoid repeated dict construction
+_TAX_RATES_CACHE = {
+    'AB': 0.05, 'BC': 0.12, 'MB': 0.12, 'NB': 0.15, 'NL': 0.15,
+    'NT': 0.05, 'NS': 0.15, 'NU': 0.05, 'ON': 0.13, 'PE': 0.15,
+    'QC': 0.14975, 'SK': 0.11, 'YT': 0.05,
+}
+
+_ADJACENCY_CACHE = {
+    'BC': {'AB', 'YT', 'NT'},
+    'AB': {'BC', 'SK', 'NT'},
+    'SK': {'AB', 'MB', 'NT', 'NU'},
+    'MB': {'SK', 'ON', 'NU'},
+    'ON': {'MB', 'QC'},
+    'QC': {'ON', 'NB', 'NL'},
+    'NB': {'QC', 'NS', 'PE'},
+    'NS': {'NB', 'PE'},
+    'PE': {'NB', 'NS'},
+    'NL': {'QC'},
+    'YT': {'BC', 'NT'},
+    'NT': {'BC', 'AB', 'SK', 'YT', 'NU'},
+    'NU': {'SK', 'MB', 'NT'},
+}
+
+_REGIONS_CACHE = {
+    'West': {'BC', 'AB'},
+    'Prairies': {'SK', 'MB'},
+    'Central': {'ON', 'QC'},
+    'Atlantic': {'NB', 'NS', 'PE', 'NL'},
+    'North': {'YT', 'NT', 'NU'},
+}
+
 def get_tax_rate(province: str) -> float:
-    """Get tax rate for a Canadian province"""
-    tax_rates = {
-        'AB': 0.05,
-        'BC': 0.12,
-        'MB': 0.12,
-        'NB': 0.15,
-        'NL': 0.15,
-        'NT': 0.05,
-        'NS': 0.15,
-        'NU': 0.05,
-        'ON': 0.13,
-        'PE': 0.15,
-        'QC': 0.14975,
-        'SK': 0.11,
-        'YT': 0.05,
-    }
-    return tax_rates.get(province, 0.13)
+    """Get tax rate for a Canadian province (cached)"""
+    return _TAX_RATES_CACHE.get(province, 0.13)
 
 def _are_adjacent_provinces(p1: str, p2: str) -> bool:
-    """Check if two provinces are adjacent"""
-    adjacency = {
-        'BC': ['AB', 'YT', 'NT'],
-        'AB': ['BC', 'SK', 'NT'],
-        'SK': ['AB', 'MB', 'NT', 'NU'],
-        'MB': ['SK', 'ON', 'NU'],
-        'ON': ['MB', 'QC'],
-        'QC': ['ON', 'NB', 'NL'],
-        'NB': ['QC', 'NS', 'PE'],
-        'NS': ['NB', 'PE'],
-        'PE': ['NB', 'NS'],
-        'NL': ['QC'],
-        'YT': ['BC', 'NT'],
-        'NT': ['BC', 'AB', 'SK', 'YT', 'NU'],
-        'NU': ['SK', 'MB', 'NT'],
-    }
-    return p2 in adjacency.get(p1, [])
+    """Check if two provinces are adjacent (cached)"""
+    return p2 in _ADJACENCY_CACHE.get(p1, set())
 
 def _are_same_region(p1: str, p2: str) -> bool:
-    """Check if two provinces are in the same region"""
-    regions = {
-        'West': ['BC', 'AB'],
-        'Prairies': ['SK', 'MB'],
-        'Central': ['ON', 'QC'],
-        'Atlantic': ['NB', 'NS', 'PE', 'NL'],
-        'North': ['YT', 'NT', 'NU'],
-    }
-    for region_provinces in regions.values():
+    """Check if two provinces are in the same region (cached)"""
+    for region_provinces in _REGIONS_CACHE.values():
         if p1 in region_provinces and p2 in region_provinces:
             return True
     return False
@@ -80,7 +74,10 @@ def _calculate_tiered_shipping(distance_km: float, seller_items: List[Dict], spe
         
         # Volumetric: (L * W * H) / 5000
         actual_weight = item.get('weightKg', 0.5)
-        vol_weight = (item.get('lengthCm', 10) * item.get('widthCm', 10) * item.get('heightCm', 10)) / 5000.0
+        length = max(item.get('lengthCm', 10), 1)  # Prevent zero dimensions
+        width = max(item.get('widthCm', 10), 1)
+        height = max(item.get('heightCm', 10), 1)
+        vol_weight = (length * width * height) / 5000.0
         effective_weight = max(actual_weight, vol_weight)
         
         if effective_weight > 2.0:
@@ -142,7 +139,16 @@ def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str =
             items_by_seller.setdefault(seller_id, []).append(item)
     
     for seller_id, seller_items in items_by_seller.items():
-        seller_address = seller_items[0].get('sellerAddress', {})
+        # CRITICAL FIX: Defensive checks to prevent crashes on corrupted data
+        if not seller_items:
+            print(f"⚠️ Skipping seller {seller_id}: Empty items list")
+            continue
+        
+        seller_address = seller_items[0].get('sellerAddress')
+        if not seller_address or not isinstance(seller_address, dict):
+            print(f"⚠️ Skipping seller {seller_id}: Missing or invalid seller address")
+            continue
+        
         seller_lat = seller_address.get('latitude')
         seller_lon = seller_address.get('longitude')
         seller_state = seller_address.get('state', 'ON')

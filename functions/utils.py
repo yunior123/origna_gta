@@ -118,20 +118,12 @@ def validate_address_map(address: Dict[str, Any]) -> Address:
     """
     Validate and sanitize delivery address using Pydantic Address model.
     Returns validated Address object.
-    Raises ValueError with detailed error message on validation failure.
+    Raises ValidationError for consistency with other validation functions.
     """
-    try:
-        # Pydantic will handle all validation automatically
-        validated_address = Address(**address)
-        return validated_address
-    except ValidationError as e:
-        # Extract first error for cleaner message
-        errors = e.errors()
-        if errors:
-            field = errors[0].get('loc', ['unknown'])[0]
-            msg = errors[0].get('msg', 'Invalid value')
-            raise ValueError(f"Address validation failed - {field}: {msg}")
-        raise ValueError("Invalid address data")
+    # CONSISTENCY FIX: Let ValidationError propagate (don't convert to ValueError)
+    # This standardizes error handling - callers use try/except ValidationError
+    validated_address = Address(**address)
+    return validated_address
 
 def validate_item(item: Dict) -> tuple[bool, str]:
     """

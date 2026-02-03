@@ -275,3 +275,201 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
         
     except Exception as e:
         print(f"⚠️ Failed to send authorization expired email: {str(e)}")
+
+
+def send_payment_capture_failed_email(order_id: str, customer_email: str, customer_name: str, amount: float, error_message: str):
+    """
+    Send email notification when payment capture fails.
+    Instructs buyer to update payment method or contact support.
+    """
+    if not customer_email:
+        print("⚠️ Cannot send capture failure email: missing customer_email")
+        return
+    
+    if IS_EMULATOR:
+        print(f"🧪 EMULATOR: Would send capture failure email to {customer_email}")
+        print(f"   Order: {order_id}, Amount: ${amount:.2f}, Error: {error_message}")
+        return
+    
+    # Initialize Mailjet client
+    mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
+    
+    subject = f"Payment Issue - Order #{order_id[:8]}"
+    html_body = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #FF6B35 0%, #FF8C00 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+            .alert {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }}
+            .button {{ display: inline-block; background: #FF6B35; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+            .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Payment Capture Failed</h1>
+            </div>
+            <div class="content">
+                <p>Hi {customer_name},</p>
+                
+                <div class="alert">
+                    <strong>⚠️ Action Required</strong><br>
+                    We couldn't complete the payment for your order.
+                </div>
+                
+                <p><strong>Order Details:</strong></p>
+                <ul>
+                    <li>Order ID: <strong>{order_id}</strong></li>
+                    <li>Amount: <strong>${amount:.2f} CAD</strong></li>
+                    <li>Issue: {error_message}</li>
+                </ul>
+                
+                <p><strong>What happened?</strong></p>
+                <p>Your payment method was authorized but couldn't be charged. This usually happens when:</p>
+                <ul>
+                    <li>Card has insufficient funds</li>
+                    <li>Card was canceled or expired</li>
+                    <li>Bank declined the transaction</li>
+                </ul>
+                
+                <p><strong>Next steps:</strong></p>
+                <ol>
+                    <li>Log in to your account</li>
+                    <li>Update your payment method</li>
+                    <li>Contact your bank if the issue persists</li>
+                </ol>
+                
+                <a href="https://orignagta.web.app/orders/{order_id}" class="button">View Order</a>
+                
+                <p>If you need help, contact support with order ID: <strong>{order_id}</strong></p>
+            </div>
+            <div class="footer">
+                <p>OrignaGTA Marketplace | Canada's Trusted Platform</p>
+                <p>Questions? Email support@orignaventures.ca</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        result = mailjet.send.create(data={
+            'Messages': [{
+                'From': {'Email': 'noreply@orignagta.com', 'Name': 'OrignaGTA'},
+                'To': [{'Email': customer_email, 'Name': customer_name}],
+                'Subject': subject,
+                'HTMLPart': html_body,
+            }]
+        })
+        print(f"✅ Capture failure email sent to {customer_email}")
+        return result
+    except Exception as e:
+        print(f"❌ Failed to send capture failure email: {str(e)}")
+        raise
+
+
+def send_3ds_authentication_email(order_id: str, customer_email: str, customer_name: str, authentication_url: str, amount: float):
+    """
+    Send email with 3DS authentication link for Airwallex payments.
+    Required when card issuer needs additional verification.
+    """
+    if not customer_email or not authentication_url:
+        print("⚠️ Cannot send 3DS email: missing customer_email or authentication_url")
+        return
+    
+    if IS_EMULATOR:
+        print(f"🧪 EMULATOR: Would send 3DS authentication email to {customer_email}")
+        print(f"   Order: {order_id}, Amount: ${amount:.2f}, URL: {authentication_url}")
+        return
+    
+    # Initialize Mailjet client
+    mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
+    
+    subject = f"Action Required: Verify Your Payment - Order #{order_id[:8]}"
+    html_body = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #FF6B35 0%, #FF8C00 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+            .alert {{ background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 20px 0; }}
+            .button {{ display: inline-block; background: #2196f3; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }}
+            .warning {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }}
+            .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🔒 Secure Payment Verification</h1>
+            </div>
+            <div class="content">
+                <p>Hi {customer_name},</p>
+                
+                <div class="alert">
+                    <strong>Action Required: Verify Your Payment</strong><br>
+                    Your bank requires additional authentication (3D Secure) to complete this transaction.
+                </div>
+                
+                <p><strong>Order Details:</strong></p>
+                <ul>
+                    <li>Order ID: <strong>{order_id}</strong></li>
+                    <li>Amount: <strong>${amount:.2f} CAD</strong></li>
+                    <li>Status: <strong>Pending Verification</strong></li>
+                </ul>
+                
+                <p><strong>What is 3D Secure?</strong></p>
+                <p>3D Secure (3DS) is an additional security layer that protects your payment. Your bank requires you to verify your identity before completing this purchase.</p>
+                
+                <div style="text-align: center;">
+                    <a href="{authentication_url}" class="button">Verify Payment Now</a>
+                </div>
+                
+                <div class="warning">
+                    <strong>⏰ Time Sensitive</strong><br>
+                    Please complete verification within 15 minutes. After that, you'll need to place a new order.
+                </div>
+                
+                <p><strong>Security Tips:</strong></p>
+                <ul>
+                    <li>✅ This email is from OrignaGTA's official email</li>
+                    <li>✅ The verification link goes to your bank's secure portal</li>
+                    <li>❌ We will never ask for your card details via email</li>
+                    <li>❌ Never share verification codes with anyone</li>
+                </ul>
+                
+                <p>If you didn't place this order, <a href="https://orignagta.web.app/support">contact support immediately</a>.</p>
+            </div>
+            <div class="footer">
+                <p>OrignaGTA Marketplace | Canada's Trusted Platform</p>
+                <p>Questions? Email support@orignaventures.ca</p>
+                <p>Order ID: {order_id}</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        result = mailjet.send.create(data={
+            'Messages': [{
+                'From': {'Email': 'noreply@orignagta.com', 'Name': 'OrignaGTA Security'},
+                'To': [{'Email': customer_email, 'Name': customer_name}],
+                'Subject': subject,
+                'HTMLPart': html_body,
+            }]
+        })
+        print(f"✅ 3DS authentication email sent to {customer_email}")
+        return result
+    except Exception as e:
+        print(f"❌ Failed to send 3DS email: {str(e)}")
+        raise
+

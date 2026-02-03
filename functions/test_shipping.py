@@ -58,7 +58,7 @@ def _calculate_tiered_shipping(distance_km: float, seller_items: List[Dict], spe
     
     return subtotal * multiplier
 
-def test_scenario(name: str, distance_km: float, items: List[Dict], speed: str = 'standard'):
+def run_test_scenario(name: str, distance_km: float, items: List[Dict], speed: str = 'standard', expected_min: float = None, expected_max: float = None):
     print(f"\n--- Scenario: {name} ---")
     print(f"Distance: {distance_km}km, Speed: {speed}")
     print(f"Items: {len(items)}")
@@ -70,6 +70,19 @@ def test_scenario(name: str, distance_km: float, items: List[Dict], speed: str =
     total_weight = sum(i.get('weightKg', 0.5) * i.get('quantity', 1) for i in items)
     print(f"Total Weight: {total_weight}kg")
     print(f"Calculated Cost: ${cost:.2f}")
+    
+    # CRITICAL FIX: Add assertions for automated validation
+    if expected_min is not None:
+        assert cost >= expected_min, f"Cost ${cost:.2f} below minimum ${expected_min:.2f}"
+        print(f"✅ Cost meets minimum: ${expected_min:.2f}")
+    
+    if expected_max is not None:
+        assert cost <= expected_max, f"Cost ${cost:.2f} exceeds maximum ${expected_max:.2f}"
+        print(f"✅ Cost under maximum: ${expected_max:.2f}")
+    
+    # Sanity checks
+    assert cost > 0, "Shipping cost must be positive"
+    assert cost < 200, "Shipping cost unreasonably high (>${200:.2f})"
 
 # Define some mock items
 def create_item(weight=0.5, l=10, w=10, h=10, qty=1):
@@ -84,32 +97,34 @@ def create_item(weight=0.5, l=10, w=10, h=10, qty=1):
 
 if __name__ == "__main__":
     # Scenario 1: Local Small Item (Toronto to Toronto)
-    test_scenario("Local Small Item", 10, [create_item()])
+    run_test_scenario("Local Small Item", 10, [create_item()], expected_min=1.50, expected_max=3.00)
     
     # Scenario 2: Regional Medium Item (Toronto to Ottawa ~450km)
-    test_scenario("Regional Small Item", 450, [create_item()])
+    run_test_scenario("Regional Small Item", 450, [create_item()], expected_min=13.00, expected_max=16.00)
     
     # Scenario 3: National Medium Item (Toronto to Vancouver ~3400km)
     # Note: Our tiers stop at 2500 currently (38.99 fallback for high distance)
-    test_scenario("National Small Item", 3400, [create_item()])
+    run_test_scenario("National Small Item", 3400, [create_item()], expected_min=25.00, expected_max=30.00)
     
     # Scenario 4: Heavy Local Item (10kg)
-    test_scenario("Heavy Local (10kg)", 10, [create_item(weight=10.0)])
+    run_test_scenario("Heavy Local (10kg)", 10, [create_item(weight=10.0)], expected_min=12.00, expected_max=18.00)
     
     # Scenario 5: Multiple Items Local
-    test_scenario("3 Small Items Local", 10, [create_item(qty=3)])
+    run_test_scenario("3 Small Items Local", 10, [create_item(qty=3)], expected_min=2.00, expected_max=4.00)
     
     # Scenario 6: Express National
-    test_scenario("Express National Small", 3400, [create_item()], speed='express')
+    run_test_scenario("Express National Small", 3400, [create_item()], speed='express', expected_min=40.00, expected_max=50.00)
     
     # Scenario 7: Same Day Local
-    test_scenario("Same Day Local Small", 10, [create_item()], speed='same_day')
+    run_test_scenario("Same Day Local Small", 10, [create_item()], speed='same_day', expected_min=7.00, expected_max=10.00)
     
     # Scenario 9: Bulk Local (5 items)
-    test_scenario("Bulk Local (5 items)", 10, [create_item(qty=5)])
+    run_test_scenario("Bulk Local (5 items)", 10, [create_item(qty=5)], expected_min=2.50, expected_max=5.00)
     
     # Scenario 10: Heavy Cross-Country (20kg, 3400km)
-    test_scenario("Heavy National (20kg)", 3400, [create_item(weight=20.0)])
+    run_test_scenario("Heavy National (20kg)", 3400, [create_item(weight=20.0)], expected_min=50.00, expected_max=80.00)
     
     # Scenario 11: Middle Range Regional (250km)
-    test_scenario("Mid Regional (250km)", 250, [create_item()])
+    run_test_scenario("Mid Regional (250km)", 250, [create_item()], expected_min=13.00, expected_max=16.00)
+    
+    print("\n✅ All shipping cost tests passed!")

@@ -24,12 +24,24 @@ jobs:
           cache: 'pip'
           cache-dependency-path: functions/requirements.txt
 
+      # Node.js setup (for Playwright)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
       # Install Python dependencies
       - name: Install Python dependencies
         run: |
           cd functions
           pip install -r requirements.txt
           pip install pytest
+
+      # Install Playwright dependencies
+      - name: Install Playwright dependencies
+        run: |
+          cd e2e
+          npm ci
+          npx playwright install --with-deps
 
       # Flutter analyze
       - name: Flutter analyze
@@ -56,30 +68,53 @@ jobs:
           cd functions
           python -m pytest tests/ -v --tb=short
 
-      # Build Flutter web
+      # Build Flutter web (Required for E2E)
       - name: Build Flutter web
         run: |
           cd origna_gta
           flutter build web --release
 
-      # Deploy to Firebase
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+      # Playwright E2E tests
+      - name: Playwright E2E tests
+        run: |
+          cd e2e
+          # Serve the release build and run tests
+          # Note: The playwright.config.ts is configured to launch http-server
+          npx playwright test
+
+      # Deploy to Firebase (Hosting + Functions + Firestore)
+      - name: Deploy Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
           projectId: orignagta
 
-      - name: Deploy Functions
+      - name: Deploy Firebase Functions
         uses: w9jds/firebase-action@master
         with:
-          args: deploy --only functions
+          args: deploy --only functions --force
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-      - name: Deploy Firestore rules and indexes
+      - name: Deploy Firestore Rules
         uses: w9jds/firebase-action@master
         with:
-          args: deploy --only firestore:rules,firestore:indexes
+          args: deploy --only firestore:rules
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy Firestore Indexes
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only firestore:indexes
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deployment Summary
+        run: |
+          echo "✅ Firebase Hosting deployed"
+          echo "✅ Cloud Functions deployed"
+          echo "✅ Firestore Rules deployed"
+          echo "✅ Firestore Indexes deployed"

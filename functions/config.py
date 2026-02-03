@@ -68,33 +68,65 @@ SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20%
 # Environment
 IS_EMULATOR = os.environ.get('FUNCTIONS_EMULATOR') == 'true'
 
-# Stripe keys & Secrets
-if IS_EMULATOR:
-    STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "sk_test_...")
-    STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "STRIPE_WEBHOOK_SECRET_REDACTED...")
-    MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_API_KEY", "")
-    MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_SECRET_KEY", "")
-    GEOAPIFY_API_KEY = os.environ.get("GEOAPIFY_API_KEY", "")
-    ALGOLIA_APP_ID = os.environ.get("ALGOLIA_APP_ID", "")
-    ALGOLIA_WRITE_API_KEY = os.environ.get("ALGOLIA_WRITE_API_KEY", "")
-    SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "seller@orignagta.com")
-    AIRWALLEX_API_KEY = os.environ.get("AIRWALLEX_API_KEY", "")
-    AIRWALLEX_CLIENT_ID = os.environ.get("AIRWALLEX_CLIENT_ID", "")
-    AIRWALLEX_WEBHOOK_SECRET = os.environ.get("AIRWALLEX_WEBHOOK_SECRET", "")
-    AIRWALLEX_BASE_URL = os.environ.get("AIRWALLEX_BASE_URL", "https://api.airwallex.com/api/v1")
-else:
-    STRIPE_SECRET_KEY = params.SecretParam("STRIPE_SECRET_KEY").value
-    STRIPE_WEBHOOK_SECRET = params.SecretParam("STRIPE_WEBHOOK_SECRET").value
-    MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_API_KEY").value
-    MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_SECRET_KEY").value
-    GEOAPIFY_API_KEY = params.SecretParam("GEOAPIFY_API_KEY").value
-    ALGOLIA_APP_ID = params.SecretParam("ALGOLIA_APP_ID").value
-    ALGOLIA_WRITE_API_KEY = params.SecretParam("ALGOLIA_WRITE_API_KEY").value
-    SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "seller@orignagta.com")
-    AIRWALLEX_API_KEY = params.SecretParam("AIRWALLEX_API_KEY").value
-    AIRWALLEX_CLIENT_ID = params.SecretParam("AIRWALLEX_CLIENT_ID").value
-    AIRWALLEX_WEBHOOK_SECRET = params.SecretParam("AIRWALLEX_WEBHOOK_SECRET").value
-    AIRWALLEX_BASE_URL = os.environ.get("AIRWALLEX_BASE_URL", "https://api.airwallex.com/api/v1")
+# ============================================================================
+# SECRETS MANAGEMENT - SECURE VERSION (NO FALLBACKS)
+# CRITICAL: All secrets MUST be set explicitly. No fallbacks to prevent leaks.
+# ============================================================================
+
+def _load_secret(key: str, required: bool = True) -> str:
+    """Load secret safely with no fallbacks."""
+    if IS_EMULATOR:
+        value = os.environ.get(key)
+        if not value and required:
+            raise ValueError(f"❌ {key} required even in emulator mode. Set it in .env or export {key}=...")
+        return value or ""
+    else:
+        try:
+            return params.SecretParam(key).value
+        except Exception as e:
+            if required:
+                raise RuntimeError(f"❌ Failed to load {key} from Secret Manager: {e}")
+            return ""
+
+# Stripe keys & Secrets (REQUIRED)
+try:
+    STRIPE_SECRET_KEY = _load_secret("STRIPE_SECRET_KEY", required=True)
+    STRIPE_WEBHOOK_SECRET = _load_secret("STRIPE_WEBHOOK_SECRET", required=True)
+except (ValueError, RuntimeError) as e:
+    print(f"FATAL: {e}")
+    raise
+
+# Mailjet (REQUIRED for order confirmations)
+try:
+    MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_API_KEY", required=True)
+    MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_SECRET_KEY", required=True)
+except (ValueError, RuntimeError) as e:
+    print(f"FATAL: {e}")
+    raise
+
+# Geoapify (REQUIRED for shipping)
+try:
+    GEOAPIFY_API_KEY = _load_secret("GEOAPIFY_API_KEY", required=True)
+except (ValueError, RuntimeError) as e:
+    print(f"FATAL: {e}")
+    raise
+
+# Algolia (REQUIRED for search)
+try:
+    ALGOLIA_APP_ID = _load_secret("ALGOLIA_APP_ID", required=True)
+    ALGOLIA_WRITE_API_KEY = _load_secret("ALGOLIA_WRITE_API_KEY", required=True)
+except (ValueError, RuntimeError) as e:
+    print(f"FATAL: {e}")
+    raise
+
+# Airwallex (OPTIONAL - for alternative payment provider)
+AIRWALLEX_API_KEY = _load_secret("AIRWALLEX_API_KEY", required=False)
+AIRWALLEX_CLIENT_ID = _load_secret("AIRWALLEX_CLIENT_ID", required=False)
+AIRWALLEX_WEBHOOK_SECRET = _load_secret("AIRWALLEX_WEBHOOK_SECRET", required=False)
+AIRWALLEX_BASE_URL = os.environ.get("AIRWALLEX_BASE_URL", "https://api.airwallex.com/api/v1")
+
+# Seller email (not secret, can have default)
+SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "seller@orignagta.com")
 
 # Stripe Tax Code Mapping
 CATEGORY_TAX_CODE_MAP = {

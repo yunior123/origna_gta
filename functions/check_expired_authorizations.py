@@ -89,26 +89,42 @@ def _process_expired_authorizations() -> dict:
             print(f"  Expired at: {order_data.get('authorizationExpiresAt')}")
             
             try:
-                # Update order status
-                order_doc.reference.update({
-                    'status': OrderStatus.CANCELLED,
-                    'paymentStatus': 'authorization_expired',
-                    'cancelledAt': firestore.SERVER_TIMESTAMP,
-                    'cancelReason': 'Payment authorization expired after 7 days',
-                    'updatedAt': firestore.SERVER_TIMESTAMP,
-                })
+                # CRITICAL FIX: Use transaction to prevent race condition
+                # Without this, seller could accept order while cron cancels it
+                @firestore.transactional
+                def cancel_if_still_authorized(transaction, ref):
+                    snapshot = ref.get(transaction=transaction)
+                    current_status = snapshot.get('paymentStatus')
+                    
+                    # Only cancel if STILL authorized (not confirmed/captured)
+                    if current_status == 'authorized':
+                        transaction.update(ref, {
+                            'status': OrderStatus.CANCELLED,
+                            'paymentStatus': 'authorization_expired',
+                            'cancelledAt': firestore.SERVER_TIMESTAMP,
+                            'cancelReason': 'Payment authorization expired after 7 days',
+                            'updatedAt': firestore.SERVER_TIMESTAMP,
+                        })
+                        return True
+                    else:
+                        print(f"  ⏭️ Skipping: Status changed to {current_status}")
+                        return False
                 
-                # Restore stock for all items
-                _restore_stock_for_order(order_data)
+                transaction = db.transaction()
+                was_cancelled = cancel_if_still_authorized(transaction, order_doc.reference)
                 
-                # Send notification emails
-                try:
-                    send_authorization_expired_email(order_id, order_data)
-                except Exception as email_error:
-                    print(f"  ⚠️ Email notification failed: {str(email_error)}")
-                
-                cancelled_count += 1
-                print(f"  ✅ Order cancelled and stock restored")
+                if was_cancelled:
+                    # Restore stock for all items
+                    _restore_stock_for_order(order_data)
+                    
+                    # Send notification emails
+                    try:
+                        send_authorization_expired_email(order_id, order_data)
+                    except Exception as email_error:
+                        print(f"  ⚠️ Email notification failed: {str(email_error)}")
+                    
+                    cancelled_count += 1
+                    print(f"  ✅ Order cancelled and stock restored")
                 
             except Exception as e:
                 error_count += 1
