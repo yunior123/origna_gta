@@ -34,6 +34,18 @@ def decorator_passthrough(**kwargs):
         return func
     return decorator
 
+# Create a real Response class for tests
+class MockResponse:
+    """Mock Firebase Response that behaves like a real response"""
+    def __init__(self, body, status=200, headers=None, mimetype='text/plain'):
+        self.status_code = status
+        if isinstance(body, bytes):
+            self.response = [body]
+        else:
+            self.response = [body.encode('utf-8') if isinstance(body, str) else body]
+        self.headers = headers or {}
+        self.mimetype = mimetype
+
 # Patch the module before it's imported by test files
 sys.modules['firebase_functions'] = MagicMock()
 sys.modules['firebase_functions'].https_fn = MagicMock()
@@ -41,6 +53,7 @@ sys.modules['firebase_functions'].https_fn.on_call = decorator_passthrough
 sys.modules['firebase_functions'].https_fn.on_request = decorator_passthrough
 sys.modules['firebase_functions'].https_fn.CallableRequest = Mock
 sys.modules['firebase_functions'].https_fn.HttpsError = MockHttpsError
+sys.modules['firebase_functions'].https_fn.Response = MockResponse
 sys.modules['firebase_functions.https_fn'] = sys.modules['firebase_functions'].https_fn
 
 # Set TESTING environment variable to prevent Secret Manager calls

@@ -384,6 +384,7 @@ class TestStripeWebhook:
         mock_db.collection.return_value = mock_collection
         
         mock_request = Mock()
+        mock_request.method = 'POST'
         mock_request.data = b'{"type": "checkout.session.completed"}'
         mock_request.headers = {'Stripe-Signature': 'valid_signature'}
         
@@ -408,6 +409,7 @@ class TestStripeWebhook:
         )
         
         mock_request = Mock()
+        mock_request.method = 'POST'
         mock_request.data = b'{"type": "test"}'
         mock_request.headers = {'Stripe-Signature': 'invalid_sig'}
         
@@ -439,13 +441,14 @@ class TestStripeWebhook:
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_webhook_doc
         mock_db.collection.return_value.document.return_value = mock_doc_ref
-        
+
         mock_request = Mock()
+        mock_request.method = 'POST'
         mock_request.data = b'{}'
         mock_request.headers = {'Stripe-Signature': 'sig'}
-        
+
         response = stripe_webhook(mock_request)
-        
+
         # Function should complete without errors for duplicate events
         assert response is not None
     
@@ -490,11 +493,12 @@ class TestStripeWebhook:
         mock_db.collection.return_value.document.return_value = mock_doc_ref
         
         mock_request = Mock()
+        mock_request.method = 'POST'
         mock_request.data = b'{}'
         mock_request.headers = {'Stripe-Signature': 'sig'}
-        
+
         response = stripe_webhook(mock_request)
-        
+
         # Webhook should complete processing without errors
         assert response is not None
 
