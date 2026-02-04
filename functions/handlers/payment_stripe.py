@@ -292,7 +292,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     @get_transactional()
     def reserve_stock_transaction(transaction):
         for item in validated_items:
-            product_ref = get_db().collection(Collections.PRODUCTS.value).document(item['productId'])
+            product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
             product_snapshot = product_ref.get(transaction=transaction)
             
             if not product_snapshot.exists:
@@ -432,7 +432,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         @get_transactional()
         def rollback_stock(transaction):
             for item in validated_items:
-                product_ref = get_db().collection(Collections.PRODUCTS.value).document(item['productId'])
+                product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
                 product_snapshot = product_ref.get(transaction=transaction)
                 if product_snapshot.exists:
                     product_data = product_snapshot.to_dict()
@@ -672,7 +672,7 @@ def process_async_payment_succeeded(session: Dict) -> Optional[str]:
     if not order_id:
         return None
     
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_ref.update({
         'paymentStatus': PaymentStatus.CAPTURED,
         'updatedAt': get_server_timestamp()
@@ -688,7 +688,7 @@ def process_async_payment_failed(session: Dict) -> Optional[str]:
     if not order_id:
         return None
     
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
     
     if order_doc.exists:
@@ -710,7 +710,7 @@ def process_async_payment_failed(session: Dict) -> Optional[str]:
 def _restore_stock_for_order(order_data: Dict) -> None:
     """Restores product stock after order cancellation"""
     for item in order_data.get('items', []):
-        product_ref = get_db().collection(Collections.PRODUCTS.value).document(item['productId'])
+        product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
         product_doc = product_ref.get()
         
         if product_doc.exists:
@@ -728,7 +728,7 @@ def process_session_expired(session: Dict) -> Optional[str]:
     if not order_id:
         return None
     
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
     
     if order_doc.exists:
@@ -750,7 +750,7 @@ def process_payment_intent_succeeded(payment_intent: Dict) -> Optional[str]:
     if not order_id:
         return None
     
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_ref.update({
         'paymentStatus': PaymentStatus.CAPTURED,
         'updatedAt': get_server_timestamp()
@@ -766,7 +766,7 @@ def process_payment_intent_failed(payment_intent: Dict) -> Optional[str]:
     if not order_id:
         return None
     
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_ref.update({
         'paymentStatus': PaymentStatus.FAILED,
         'updatedAt': get_server_timestamp()
@@ -846,7 +846,7 @@ def process_transfer_reversed(transfer: Dict) -> Optional[str]:
     transfer_id = transfer.get('id')
     
     # Find payout by transfer ID
-    payouts = get_db().collection(Collections.PAYOUTS.value)\
+    payouts = get_db().collection(Collections.PAYOUTS)\
         .where('stripeTransferId', '==', transfer_id)\
         .limit(1)\
         .stream()
@@ -955,7 +955,7 @@ def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     user_id = req.auth.uid
     
-    user_ref = get_db().collection(Collections.USERS.value).document(user_id)
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
     
     if not user_doc.exists:
@@ -989,7 +989,7 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     user_id = req.auth.uid
     
-    user_ref = get_db().collection(Collections.USERS.value).document(user_id)
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
     
     if not user_doc.exists:
@@ -1072,7 +1072,7 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
             net_amount = amount - platform_fee
             
             # Get seller's Stripe account
-            seller_ref = get_db().collection(Collections.USERS.value).document(seller_id)
+            seller_ref = get_db().collection(Collections.USERS).document(seller_id)
             seller_doc = seller_ref.get()
             
             if seller_doc.exists:
@@ -1092,7 +1092,7 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                     )
                     
                     # Log payout
-                    get_db().collection(Collections.PAYOUTS.value).add({
+                    get_db().collection(Collections.PAYOUTS).add({
                         'orderId': order_id,
                         'sellerId': seller_id,
                         'amount': amount,

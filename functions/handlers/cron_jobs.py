@@ -62,7 +62,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
     cutoff_date = datetime.now() - timedelta(days=AUTO_CONFIRM_DAYS)
     
     # Limit to 100 orders per run to avoid timeout
-    orders = get_db().collection(Collections.ORDERS.value)\
+    orders = get_db().collection(Collections.ORDERS)\
         .where('orderStatus', '==', OrderStatus.DELIVERED)\
         .where('paymentStatus', '==', PaymentStatus.AUTHORIZED)\
         .where('updatedAt', '<=', cutoff_date)\
@@ -105,7 +105,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                 net_amount = amount - platform_fee
                 
                 # Get seller's Stripe account
-                seller_ref = get_db().collection(Collections.USERS.value).document(seller_id)
+                seller_ref = get_db().collection(Collections.USERS).document(seller_id)
                 seller_doc = seller_ref.get()
                 
                 if seller_doc.exists:
@@ -125,7 +125,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                                 }
                             )
                             
-                            get_db().collection(Collections.PAYOUTS.value).add({
+                            get_db().collection(Collections.PAYOUTS).add({
                                 'orderId': order_id,
                                 'sellerId': seller_id,
                                 'amount': amount,
@@ -141,7 +141,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                         except stripe.error.StripeError as e:
                             print(f'Payout failed for seller {seller_id}: {str(e)}')
                             
-                            get_db().collection(Collections.PAYOUTS.value).add({
+                            get_db().collection(Collections.PAYOUTS).add({
                                 'orderId': order_id,
                                 'sellerId': seller_id,
                                 'amount': amount,
@@ -186,7 +186,7 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     cutoff_date = datetime.now() - timedelta(days=AUTHORIZATION_VALID_DAYS)
     
     # Limit to 100 orders per run to avoid timeout
-    orders = get_db().collection(Collections.ORDERS.value)\
+    orders = get_db().collection(Collections.ORDERS)\
         .where('paymentStatus', '==', PaymentStatus.AUTHORIZED)\
         .where('orderStatus', 'in', [OrderStatus.PENDING, OrderStatus.CONFIRMED])\
         .where('dateCreated', '<=', cutoff_date)\
@@ -201,7 +201,7 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
         
         # Restore stock
         for item in order_data.get('items', []):
-            product_ref = get_db().collection(Collections.PRODUCTS.value).document(item['productId'])
+            product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
             product_doc = product_ref.get()
             
             if product_doc.exists:
@@ -242,7 +242,7 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
     cutoff_date = datetime.now() - timedelta(days=30)
     
     # Limit to 200 orders per run and use batch
-    orders = get_db().collection(Collections.ORDERS.value)\
+    orders = get_db().collection(Collections.ORDERS)\
         .where('orderStatus', 'in', [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REFUNDED])\
         .where('updatedAt', '<=', cutoff_date)\
         .where('archived', '==', False)\
@@ -289,7 +289,7 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
         # Count active products in Firestore using count aggregation
         from google.cloud.firestore_v1.aggregation import CountAggregation
         
-        products_query = get_db().collection(Collections.PRODUCTS.value)\
+        products_query = get_db().collection(Collections.PRODUCTS)\
             .where('isActive', '==', True)
         
         # Use count aggregation (more efficient than streaming)

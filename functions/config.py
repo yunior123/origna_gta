@@ -43,6 +43,7 @@ class Collections:
     ORDERS = 'orders'
     CART = 'cart'
     FAVORITES = 'favorites'
+    PAYOUTS = 'payouts'
 
 class PayoutStatus:
     PENDING = 'pending'

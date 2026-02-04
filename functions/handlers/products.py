@@ -168,7 +168,7 @@ def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not product_id:
         raise https_fn.HttpsError('invalid-argument', 'productId required')
     
-    product_ref = get_db().collection(Collections.PRODUCTS.value).document(product_id)
+    product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
     product_doc = product_ref.get()
     
     if not product_doc.exists:
@@ -177,7 +177,7 @@ def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
     product_data = product_doc.to_dict()
     
     # Check permissions
-    user_ref = get_db().collection(Collections.USERS.value).document(user_id)
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
     
     if not user_doc.exists:
@@ -191,7 +191,7 @@ def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('permission-denied', 'Only product owner or admin can delete')
     
     # Check for pending orders with lazy loading limit
-    pending_orders_query = get_db().collection(Collections.ORDERS.value)\
+    pending_orders_query = get_db().collection(Collections.ORDERS)\
         .where('items.productId', 'array_contains', product_id)\
         .where('orderStatus', 'in', ['pending', 'confirmed', 'processing', 'shipped'])\
         .limit(1)
@@ -264,7 +264,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('invalid-argument', 'Rating must be between 1 and 5')
     
     # Verify user purchased this product
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
     
     if not order_doc.exists:
@@ -306,7 +306,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
     })
     
     # Update product's average rating
-    product_ref = get_db().collection(Collections.PRODUCTS.value).document(product_id)
+    product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
     product_doc = product_ref.get()
     
     if product_doc.exists:
@@ -413,7 +413,7 @@ def configure_algolia(req: https_fn.CallableRequest) -> dict:
     user_id = req.auth.uid
     
     # Check admin role
-    user_ref = get_db().collection(Collections.USERS.value).document(user_id)
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
     
     if not user_doc.exists:
@@ -474,7 +474,7 @@ def get_products_paginated(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     try:
         # Construction de la requête de base
-        query = get_db().collection(Collections.PRODUCTS.value)
+        query = get_db().collection(Collections.PRODUCTS)
         
         # Filtres
         if is_active is not None:
@@ -494,7 +494,7 @@ def get_products_paginated(req: https_fn.CallableRequest) -> Dict[str, Any]:
         
         # Cursor pour pagination
         if start_after_id:
-            start_doc = get_db().collection(Collections.PRODUCTS.value).document(start_after_id).get()
+            start_doc = get_db().collection(Collections.PRODUCTS).document(start_after_id).get()
             if start_doc.exists:
                 query = query.start_after(start_doc)
         
@@ -574,7 +574,7 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> Dict[str, An
         
         # Vérifier que c'est le propriétaire ou un admin
         if user_id != seller_id:
-            user_ref = get_db().collection(Collections.USERS.value).document(user_id)
+            user_ref = get_db().collection(Collections.USERS).document(user_id)
             user_doc = user_ref.get()
             
             if not user_doc.exists:
@@ -586,7 +586,7 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> Dict[str, An
     
     try:
         # Construction de la requête
-        query = get_db().collection(Collections.PRODUCTS.value)\
+        query = get_db().collection(Collections.PRODUCTS)\
             .where('sellerId', '==', seller_id)
         
         # Filtrer par statut si nécessaire
@@ -598,7 +598,7 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> Dict[str, An
         
         # Cursor
         if start_after_id:
-            start_doc = get_db().collection(Collections.PRODUCTS.value).document(start_after_id).get()
+            start_doc = get_db().collection(Collections.PRODUCTS).document(start_after_id).get()
             if start_doc.exists:
                 query = query.start_after(start_doc)
         
@@ -716,7 +716,7 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> Dict[str, An
             # Firestore getAll limite à 10 documents
             for i in range(0, len(user_ids_list), 10):
                 batch_user_ids = user_ids_list[i:i+10]
-                user_refs = [get_db().collection(Collections.USERS.value).document(uid) for uid in batch_user_ids]
+                user_refs = [get_db().collection(Collections.USERS).document(uid) for uid in batch_user_ids]
                 user_docs = get_db().get_all(user_refs)
                 
                 for user_doc in user_docs:

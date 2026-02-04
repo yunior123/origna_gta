@@ -63,6 +63,7 @@ module_mocks = {
 with patch.dict(sys.modules, module_mocks):
     import main
     from main import create_checkout_session, calculate_shipping_cost
+    from handlers import payment_stripe
 
 class TestPaymentSecurity(unittest.TestCase):
     def setUp(self):
@@ -73,33 +74,29 @@ class TestPaymentSecurity(unittest.TestCase):
         mock_firebase_admin.get_app = MagicMock()
         mock_firebase_admin.delete_app = MagicMock()
         
-        # Import payment_stripe handler
-        from handlers import payment_stripe
-        
-        # Mock the db and rate_limiter at module level
-        main.db = MagicMock()
-        payment_stripe._db = MagicMock()
-        payment_stripe._rate_limiter = MagicMock()
-        payment_stripe._firestore = MagicMock()
-        
-        # Make get_db return mocked db
-        payment_stripe.get_db = MagicMock(return_value=payment_stripe._db)
-        
-        # Make get_rate_limiter return mocked rate limiter
-        payment_stripe._rate_limiter.check_rate_limit.return_value = (True, "OK")
-        payment_stripe._rate_limiter.get_identifier.return_value = "test_user"
-        payment_stripe.get_rate_limiter = MagicMock(return_value=payment_stripe._rate_limiter)
-        
         main.stripe = mock_stripe
         mock_stripe.checkout.Session.create.reset_mock()
+        
+        # Create default mock db and rate limiter for all tests
+        self.mock_db = MagicMock()
+        self.mock_rate_limiter = MagicMock()
+        self.mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
+        
+        # Patch get_db and get_rate_limiter for all tests
+        self.patcher_db = patch.object(payment_stripe, 'get_db', return_value=self.mock_db)
+        self.patcher_rate_limiter = patch.object(payment_stripe, 'get_rate_limiter', return_value=self.mock_rate_limiter)
+        self.patcher_db.start()
+        self.patcher_rate_limiter.start()
+
+    def tearDown(self):
+        self.patcher_db.stop()
+        self.patcher_rate_limiter.stop()
 
     def test_price_tampering_protection(self):
         """
         Scenario: Malicious user sends price=1 for a $100 product.
         Expectation: Session rejected due to price mismatch.
         """
-        from handlers import payment_stripe
-        
         req = MagicMock()
         req.auth.uid = "user_1"
         req.data = {
@@ -139,11 +136,6 @@ class TestPaymentSecurity(unittest.TestCase):
             "sellerAddress": {"state": "TX", "longitude": -97.0, "latitude": 30.0}
         }
 
-        # Setup Database mocks
-        mock_doc_ref = MagicMock()
-        mock_doc_ref.get.return_value = mock_product
-        payment_stripe._db.collection.return_value.document.return_value = mock_doc_ref
-        
         # Mock seller
         mock_seller = MagicMock()
         mock_seller.exists = True
@@ -154,12 +146,17 @@ class TestPaymentSecurity(unittest.TestCase):
             "chargesEnabled": True,
             "payoutsEnabled": True
         }
+
+        # Setup Database mocks
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_product
+        self.mock_db.collection.return_value.document.return_value = mock_doc_ref
         
         mock_transaction = MagicMock()
         mock_transaction.get.return_value = mock_seller
-        payment_stripe._db.transaction.return_value = mock_transaction
-        payment_stripe._db.transaction.return_value.__enter__.return_value = mock_transaction
-        payment_stripe._db.transaction.return_value.__exit__.return_value = None
+        self.mock_db.transaction.return_value = mock_transaction
+        self.mock_db.transaction.return_value.__enter__.return_value = mock_transaction
+        self.mock_db.transaction.return_value.__exit__.return_value = None
 
         # Mock Stripe Return
         mock_stripe.checkout.Session.create.return_value = MagicMock(id="sess_1", url="http://pay")
@@ -300,8 +297,6 @@ class TestPaymentSecurity(unittest.TestCase):
         Scenario: Malicious user sends quantity above allowed max (100).
         Expectation: HttpsError thrown.
         """
-        from handlers import payment_stripe
-        
         req = MagicMock()
         req.auth.uid = "user_1"
         req.data = {
@@ -337,7 +332,7 @@ class TestPaymentSecurity(unittest.TestCase):
 
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_product
-        payment_stripe._db.collection.return_value.document.return_value = mock_doc_ref
+        self.mock_db.collection.return_value.document.return_value = mock_doc_ref
 
         with self.assertRaises(MockHttpsError):
             create_checkout_session(req)
@@ -347,8 +342,6 @@ class TestPaymentSecurity(unittest.TestCase):
         Scenario: Malicious user sends incomplete address.
         Expectation: HttpsError thrown.
         """
-        from handlers import payment_stripe
-        
         req = MagicMock()
         req.auth.uid = "user_1"
         req.data = {
@@ -377,8 +370,6 @@ class TestPaymentSecurity(unittest.TestCase):
         Scenario: Malicious user sends invalid postal code.
         Expectation: HttpsError thrown.
         """
-        from handlers import payment_stripe
-        
         req = MagicMock()
         req.auth.uid = "user_1"
         req.data = {
@@ -410,8 +401,6 @@ class TestPaymentSecurity(unittest.TestCase):
         Scenario: Malicious user sends overly long address fields.
         Expectation: HttpsError thrown.
         """
-        from handlers import payment_stripe
-        
         req = MagicMock()
         req.auth.uid = "user_1"
         req.data = {

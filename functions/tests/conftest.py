@@ -790,46 +790,6 @@ def setup_mock_db_for_seller_lookup(mock_db, seller_data=None):
     return mock_db
 
 
-@pytest.fixture(scope="function", autouse=True)
-def patch_collections_enum(monkeypatch):
-    """
-    Patch the Collections class to return mock enum-like objects
-    that have a .value property, since handlers use Collections.X.value
-    """
-    from unittest.mock import Mock, MagicMock
-    from config import Collections
-    
-    # Create mock enum-like objects for each collection
-    mock_products = MagicMock()
-    mock_products.value = 'products'
-    mock_products.__str__.return_value = 'products'
-    
-    mock_orders = MagicMock()
-    mock_orders.value = 'orders'
-    mock_orders.__str__.return_value = 'orders'
-    
-    mock_users = MagicMock()
-    mock_users.value = 'users'
-    mock_users.__str__.return_value = 'users'
-    
-    mock_cart = MagicMock()
-    mock_cart.value = 'cart'
-    mock_cart.__str__.return_value = 'cart'
-    
-    mock_favorites = MagicMock()
-    mock_favorites.value = 'favorites'
-    mock_favorites.__str__.return_value = 'favorites'
-    
-    # Patch Collections class attributes
-    monkeypatch.setattr(Collections, 'PRODUCTS', mock_products)
-    monkeypatch.setattr(Collections, 'ORDERS', mock_orders)
-    monkeypatch.setattr(Collections, 'USERS', mock_users)
-    monkeypatch.setattr(Collections, 'CART', mock_cart)
-    monkeypatch.setattr(Collections, 'FAVORITES', mock_favorites)
-    
-    yield
-
-
 def pytest_runtest_setup(item):
     """
     Vérifie les prérequis avant d'exécuter un test.

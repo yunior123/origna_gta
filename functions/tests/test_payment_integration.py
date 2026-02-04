@@ -197,8 +197,8 @@ class TestPaymentFlow(unittest.TestCase):
                 "street": "123 Main",
                 "city": "Toronto",
                 "province": "ON",
-                "postalCode": "M1A1A1",
-                "country": "CA"
+                "postalCode": "M1A 1A1",
+                "country": "Canada"
             },
             "subtotal": 50.00,
             "total": 56.50,
@@ -236,14 +236,15 @@ class TestPaymentFlow(unittest.TestCase):
         mock_transaction.__exit__ = MagicMock(return_value=None)
         mock_db.transaction.return_value = mock_transaction
         
-        def mock_document_chain(doc_id):
+        def mock_document_chain(doc_id=None):
             mock_ref = MagicMock()
+            mock_ref.id = doc_id or "new_order_id"
             if doc_id == "seller_1":
                 mock_ref.get.return_value = mock_seller_doc
             elif doc_id == "prod_1":
                 mock_ref.get.return_value = mock_product_doc
             else:
-                mock_ref.id = "new_order_id"
+                mock_ref.get.return_value = MagicMock(exists=True, to_dict=lambda: {})
             return mock_ref
         
         mock_db.collection.return_value.document.side_effect = mock_document_chain
@@ -419,9 +420,9 @@ class TestPaymentFlow(unittest.TestCase):
         products_collection.document.return_value = product_ref
 
         def collection_side_effect(name):
-            if name == Collections.ORDERS.value:
+            if name == Collections.ORDERS:
                 return orders_collection
-            elif name == Collections.PRODUCTS.value:
+            elif name == Collections.PRODUCTS:
                 return products_collection
             return MagicMock()
 

@@ -49,43 +49,51 @@ with patch.dict(sys.modules, module_mocks):
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
     import main
     from main import create_checkout_session
+    from handlers import payment_stripe
 
 class TestTaxAudit(unittest.TestCase):
     def setUp(self):
-        # Import payment_stripe handler
-        from handlers import payment_stripe
-        
-        # Mock the db and rate_limiter at module level
-        main.db = MagicMock()
-        payment_stripe._db = MagicMock()
-        payment_stripe._rate_limiter = MagicMock()
-        payment_stripe._firestore = MagicMock()
-        
-        # Make get_db return mocked db
-        payment_stripe.get_db = MagicMock(return_value=payment_stripe._db)
-        
-        # Make get_rate_limiter return mocked rate limiter
-        payment_stripe._rate_limiter.check_rate_limit.return_value = (True, "OK")
-        payment_stripe._rate_limiter.get_identifier.return_value = "test_user"
-        payment_stripe.get_rate_limiter = MagicMock(return_value=payment_stripe._rate_limiter)
+        # CRITICAL: Reset module-level globals before each test
+        payment_stripe._db = None
+        payment_stripe._rate_limiter = None
+        payment_stripe._firestore = None
         
         main.stripe = mock_stripe
         mock_stripe.checkout.Session.create.reset_mock()
+        
+        # Create mock DB
+        self.mock_db = MagicMock()
+        
+        # Create mock rate limiter
+        self.mock_rate_limiter = MagicMock()
+        self.mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
+        
+        # Start patches using patch.object
+        self.patcher_db = patch.object(payment_stripe, 'get_db', return_value=self.mock_db)
+        self.patcher_rate_limiter = patch.object(payment_stripe, 'get_rate_limiter', return_value=self.mock_rate_limiter)
+        self.patcher_shipping = patch.object(main, 'calculate_shipping_cost', return_value=0.0)
+        
+        self.patcher_db.start()
+        self.patcher_rate_limiter.start()
+        self.patcher_shipping.start()
+    
+    def tearDown(self):
+        self.patcher_db.stop()
+        self.patcher_rate_limiter.stop()
+        self.patcher_shipping.stop()
 
     def test_ontario_children_clothing_tax_code(self):
         """
         Scenario: Buying Children's Clothing (Category 17).
         Expectation: Passed 'txcd_20030002' to Stripe.
         """
-        from handlers import payment_stripe
-        
         req = MagicMock()
         req.auth.uid = "user_1"
         req.data = {
             "userId": "user_1",
             "customerEmail": "parent@example.com",
-            "amount": 10000, 
-            "subtotal": 10000,
+            "amount": 100, 
+            "subtotal": 100.00,  # Must match price * quantity: 100.00 * 1 = 100.00
             "items": [{
                 "productId": "prod_kids_shirt",
                 "quantity": 1,
@@ -106,7 +114,7 @@ class TestTaxAudit(unittest.TestCase):
             }
         }
 
-        # Mock Seller Document
+        # Mock Seller Document (returned by collection('users').document(seller_id).get())
         mock_seller_doc = MagicMock()
         mock_seller_doc.exists = True
         mock_seller_doc.to_dict.return_value = {
@@ -129,22 +137,29 @@ class TestTaxAudit(unittest.TestCase):
             "sellerAddress": {"state": "ON"}
         }
 
-        # Setup mocks
-        mock_doc_ref = MagicMock()
-        mock_doc_ref.get.return_value = mock_product
-        payment_stripe._db.collection.return_value.document.return_value = mock_doc_ref
+        # Setup mock db to return different docs based on collection/document
+        def mock_collection(name):
+            mock_coll = MagicMock()
+            def mock_document(doc_id=None):
+                mock_doc_ref = MagicMock()
+                mock_doc_ref.id = doc_id or 'order_123'
+                if name == 'users':
+                    mock_doc_ref.get.return_value = mock_seller_doc
+                elif name == 'products':
+                    mock_doc_ref.get.return_value = mock_product
+                else:  # orders
+                    mock_doc_ref.get.return_value = MagicMock(exists=True, to_dict=lambda: {})
+                return mock_doc_ref
+            mock_coll.document = mock_document
+            return mock_coll
         
-        mock_transaction = MagicMock()
-        mock_transaction.get.return_value = mock_seller_doc
-        payment_stripe._db.transaction.return_value = mock_transaction
-        payment_stripe._db.transaction.return_value.__enter__.return_value = mock_transaction
-        payment_stripe._db.transaction.return_value.__exit__.return_value = None
+        self.mock_db.collection.side_effect = mock_collection
+        self.mock_db.transaction.return_value = MagicMock()
 
         mock_session = MagicMock(id="sess_1", url="http://test")
         mock_stripe.checkout.Session.create.return_value = mock_session
 
-        with patch.object(main, 'calculate_shipping_cost', return_value=0.0):
-            create_checkout_session(req)
+        create_checkout_session(req)
 
         # Inspect Stripe Call
         args, kwargs = mock_stripe.checkout.Session.create.call_args
@@ -166,15 +181,13 @@ class TestTaxAudit(unittest.TestCase):
         Scenario: Buying Groceries (Category 19).
         Expectation: Passed 'txcd_30060005' to Stripe.
         """
-        from handlers import payment_stripe
-        
         req = MagicMock()
         req.auth.uid = "user_1"
         req.data = {
             "userId": "user_1",
             "customerEmail": "shopper@example.com",
-            "amount": 100, 
-            "subtotal": 100,
+            "amount": 1, 
+            "subtotal": 1.00,  # Must match price * quantity: 1.00 * 1 = 1.00
             "items": [{
                 "productId": "prod_apple",
                 "quantity": 1,
@@ -217,21 +230,28 @@ class TestTaxAudit(unittest.TestCase):
             "sellerAddress": {"state": "ON"}
         }
 
-        # Setup mocks
-        mock_doc_ref = MagicMock()
-        mock_doc_ref.get.return_value = mock_product
-        payment_stripe._db.collection.return_value.document.return_value = mock_doc_ref
+        # Setup mock db to return different docs based on collection/document
+        def mock_collection(name):
+            mock_coll = MagicMock()
+            def mock_document(doc_id=None):
+                mock_doc_ref = MagicMock()
+                mock_doc_ref.id = doc_id or 'order_123'
+                if name == 'users':
+                    mock_doc_ref.get.return_value = mock_seller_doc
+                elif name == 'products':
+                    mock_doc_ref.get.return_value = mock_product
+                else:  # orders
+                    mock_doc_ref.get.return_value = MagicMock(exists=True, to_dict=lambda: {})
+                return mock_doc_ref
+            mock_coll.document = mock_document
+            return mock_coll
         
-        mock_transaction = MagicMock()
-        mock_transaction.get.return_value = mock_seller_doc
-        payment_stripe._db.transaction.return_value = mock_transaction
-        payment_stripe._db.transaction.return_value.__enter__.return_value = mock_transaction
-        payment_stripe._db.transaction.return_value.__exit__.return_value = None
+        self.mock_db.collection.side_effect = mock_collection
+        self.mock_db.transaction.return_value = MagicMock()
         
         mock_stripe.checkout.Session.create.return_value = MagicMock(id="sess_2", url="http://test")
 
-        with patch.object(main, 'calculate_shipping_cost', return_value=0.0):
-            create_checkout_session(req)
+        create_checkout_session(req)
 
         args, kwargs = mock_stripe.checkout.Session.create.call_args
         line_items = kwargs['line_items']

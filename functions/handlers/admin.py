@@ -125,7 +125,7 @@ def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
             raise https_fn.HttpsError('invalid-argument', f'Invalid role: {role}')
     
     # Check admin permissions
-    admin_ref = get_db().collection(Collections.USERS.value).document(admin_id)
+    admin_ref = get_db().collection(Collections.USERS).document(admin_id)
     admin_doc = admin_ref.get()
     
     if not admin_doc.exists:
@@ -144,7 +144,7 @@ def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('permission-denied', 'Cannot modify your own roles')
     
     # Get target user
-    target_user_ref = get_db().collection(Collections.USERS.value).document(target_user_id)
+    target_user_ref = get_db().collection(Collections.USERS).document(target_user_id)
     target_user_doc = target_user_ref.get()
     
     if not target_user_doc.exists:
@@ -225,7 +225,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('invalid-argument', 'sellerId required')
     
     # Check admin permissions
-    admin_ref = get_db().collection(Collections.USERS.value).document(admin_id)
+    admin_ref = get_db().collection(Collections.USERS).document(admin_id)
     admin_doc = admin_ref.get()
     
     if not admin_doc.exists:
@@ -244,7 +244,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('permission-denied', 'Cannot suspend yourself')
     
     # Get seller
-    seller_ref = get_db().collection(Collections.USERS.value).document(seller_id)
+    seller_ref = get_db().collection(Collections.USERS).document(seller_id)
     seller_doc = seller_ref.get()
     
     if not seller_doc.exists:
@@ -262,7 +262,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
     })
     
     # Deactivate all seller's products (with safety limit)
-    products = get_db().collection(Collections.PRODUCTS.value)\
+    products = get_db().collection(Collections.PRODUCTS)\
         .where('sellerId', '==', seller_id)\
         .where('isActive', '==', True)\
         .limit(500)\
@@ -291,7 +291,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
         batch.commit()
     
     # Cancel all pending/confirmed orders (with safety limit)
-    orders = get_db().collection(Collections.ORDERS.value)\
+    orders = get_db().collection(Collections.ORDERS)\
         .where('items.sellerId', 'array_contains', seller_id)\
         .where('orderStatus', 'in', ['pending', 'confirmed', 'processing'])\
         .limit(200)\
@@ -339,7 +339,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
         # Use transaction for stock updates to avoid race conditions
         @get_firestore().transactional
         def restore_stock_batch(transaction):
-            product_refs = [get_db().collection(Collections.PRODUCTS.value).document(pid) for pid in product_updates.keys()]
+            product_refs = [get_db().collection(Collections.PRODUCTS).document(pid) for pid in product_updates.keys()]
             product_snapshots = [transaction.get(ref) for ref in product_refs]
             
             for ref, snapshot in zip(product_refs, product_snapshots):
@@ -391,7 +391,7 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> Dict[str, Any]:
     user_id = req.auth.uid
     
     # Check admin role
-    user_ref = get_db().collection(Collections.USERS.value).document(user_id)
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
     
     if not user_doc.exists:
@@ -445,7 +445,7 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not code:
         raise https_fn.HttpsError('invalid-argument', 'code required')
     
-    user_ref = get_db().collection(Collections.USERS.value).document(user_id)
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
     
     if not user_doc.exists:
@@ -500,7 +500,7 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not code:
         raise https_fn.HttpsError('invalid-argument', 'code required')
     
-    user_ref = get_db().collection(Collections.USERS.value).document(user_id)
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
     
     if not user_doc.exists:
@@ -548,7 +548,7 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     user_id = req.auth.uid
     
     # Check if user has pending orders or payouts (with limit)
-    pending_orders = get_db().collection(Collections.ORDERS.value)\
+    pending_orders = get_db().collection(Collections.ORDERS)\
         .where('userId', '==', user_id)\
         .where('orderStatus', 'in', ['pending', 'confirmed', 'processing', 'shipped'])\
         .limit(1)\
@@ -562,7 +562,7 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'Cannot delete account with pending orders. Please wait for orders to complete.'
         )
     
-    pending_payouts = get_db().collection(Collections.PAYOUTS.value)\
+    pending_payouts = get_db().collection(Collections.PAYOUTS)\
         .where('sellerId', '==', user_id)\
         .where('status', '==', 'pending')\
         .limit(1)\
@@ -575,7 +575,7 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
         )
     
     # Anonymize user data
-    user_ref = get_db().collection(Collections.USERS.value).document(user_id)
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_ref.update({
         'email': f'deleted_{user_id}@anonymized.local',
         'name': '[Deleted User]',
@@ -586,7 +586,7 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     })
     
     # Deactivate products (with limit and batch)
-    products = get_db().collection(Collections.PRODUCTS.value)\
+    products = get_db().collection(Collections.PRODUCTS)\
         .where('sellerId', '==', user_id)\
         .limit(500)\
         .stream()
@@ -610,7 +610,7 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
         product_batch.commit()
     
     # Delete cart and favorites (with limits)
-    cart_docs = get_db().collection(Collections.USERS.value).document(user_id).collection('cart').limit(500).stream()
+    cart_docs = get_db().collection(Collections.USERS).document(user_id).collection('cart').limit(500).stream()
     cart_batch = get_db().batch()
     cart_count = 0
     
@@ -625,7 +625,7 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if cart_count > 0:
         cart_batch.commit()
     
-    favorites_docs = get_db().collection(Collections.USERS.value).document(user_id).collection('favorites').limit(500).stream()
+    favorites_docs = get_db().collection(Collections.USERS).document(user_id).collection('favorites').limit(500).stream()
     fav_batch = get_db().batch()
     fav_count = 0
     

@@ -66,7 +66,7 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not order_id:
         raise https_fn.HttpsError('invalid-argument', 'orderId required')
     
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
     
     if not order_doc.exists:
@@ -119,7 +119,7 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
             net_amount = amount - platform_fee
             
             # Get seller's Stripe account
-            seller_ref = get_db().collection(Collections.USERS.value).document(seller_id)
+            seller_ref = get_db().collection(Collections.USERS).document(seller_id)
             seller_doc = seller_ref.get()
             
             if seller_doc.exists:
@@ -140,7 +140,7 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
                         )
                         
                         # Log payout
-                        get_db().collection(Collections.PAYOUTS.value).add({
+                        get_db().collection(Collections.PAYOUTS).add({
                             'orderId': order_id,
                             'sellerId': seller_id,
                             'amount': amount,
@@ -156,7 +156,7 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
                         
                     except stripe.error.StripeError as e:
                         # Log failed payout
-                        get_db().collection(Collections.PAYOUTS.value).add({
+                        get_db().collection(Collections.PAYOUTS).add({
                             'orderId': order_id,
                             'sellerId': seller_id,
                             'amount': amount,
@@ -170,7 +170,7 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
                         print(f'Payout failed for seller {seller_id}: {str(e)}')
                 else:
                     # Seller not ready for payouts
-                    get_db().collection(Collections.PAYOUTS.value).add({
+                    get_db().collection(Collections.PAYOUTS).add({
                         'orderId': order_id,
                         'sellerId': seller_id,
                         'amount': amount,
@@ -223,7 +223,7 @@ def update_order_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not order_id or not new_status:
         raise https_fn.HttpsError('invalid-argument', 'orderId and newStatus required')
     
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
     
     if not order_doc.exists:
@@ -233,7 +233,7 @@ def update_order_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     old_status = order_data['orderStatus']
     
     # Check permissions
-    user_ref = get_db().collection(Collections.USERS.value).document(user_id)
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
     
     if not user_doc.exists:
@@ -305,7 +305,7 @@ def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not order_id:
         raise https_fn.HttpsError('invalid-argument', 'orderId required')
     
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
     
     if not order_doc.exists:
@@ -314,7 +314,7 @@ def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     order_data = order_doc.to_dict()
     
     # Check permissions
-    user_ref = get_db().collection(Collections.USERS.value).document(user_id)
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
     
     if not user_doc.exists:
@@ -334,7 +334,7 @@ def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Restore stock
     for item in order_data['items']:
-        product_ref = get_db().collection(Collections.PRODUCTS.value).document(item['productId'])
+        product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
         product_doc = product_ref.get()
         
         if product_doc.exists:
@@ -397,7 +397,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not order_id:
         raise https_fn.HttpsError('invalid-argument', 'orderId required')
     
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
     
     if not order_doc.exists:
@@ -452,7 +452,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
         
         # Restore stock
         for item in order_data['items']:
-            product_ref = get_db().collection(Collections.PRODUCTS.value).document(item['productId'])
+            product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
             product_doc = product_ref.get()
             
             if product_doc.exists:
