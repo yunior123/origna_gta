@@ -39,21 +39,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     }
 
     return userProfileAsync.when(
-      loading: () => Scaffold(
-        body: Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1F235A), Color(0xFF2F3B8F), Color(0xFF764BA2)],
-              stops: [0.0, 0.45, 1.0],
-            ),
-          ),
-          child: const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white))),
-        ),
-      ),
+      // Show HomeScreen immediately - no loading indicator to avoid flash after splash
+      loading: () => const HomeScreen(userModel: null),
       error: (error, stack) => const HomeScreen(userModel: null),
       data: (userModel) => HomeScreen(userModel: userModel),
     );

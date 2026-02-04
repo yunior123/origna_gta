@@ -27,6 +27,13 @@ void main() {
       // Print environment info (debug only)
       if (!kReleaseMode) {
         envConfig.printInfo();
+        // Also print to browser console (more visible)
+        if (kIsWeb) {
+          // ignore: avoid_print
+          print('🔧 ENV: ${envConfig.displayName}, shouldUseEmulators: ${envConfig.shouldUseEmulators}');
+          // ignore: avoid_print
+          print('🔧 Uri.base.host: ${Uri.base.host}');
+        }
       }
 
       // EMULATOR CONFIGURATION - Uses env_config to determine if emulators should be used
@@ -37,11 +44,17 @@ void main() {
           FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
           await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
           debugPrint('✅ Connected to Firebase Emulators (${envConfig.displayName})');
+          // ignore: avoid_print
+          if (kIsWeb) print('✅ EMULATORS CONNECTED');
         } catch (e) {
           debugPrint('❌ Failed to connect to emulators: $e');
+          // ignore: avoid_print
+          if (kIsWeb) print('❌ EMULATOR CONNECTION FAILED: $e');
         }
       } else {
         debugPrint('🌐 Using Production Firebase (${envConfig.displayName})');
+        // ignore: avoid_print
+        if (kIsWeb) print('⚠️ PRODUCTION MODE - NOT USING EMULATORS');
       }
 
       // Set auth persistence to LOCAL for web (survives page refreshes and browser restarts)

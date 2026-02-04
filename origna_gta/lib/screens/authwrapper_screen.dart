@@ -32,13 +32,9 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
       return const MainScreen();
     }
 
-    return authState.when(
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(DesignTokens.primary))),
-      ),
-      error: (error, stack) => const MainScreen(),
-      data: (_) => const MainScreen(),
-    );
+    // Always show MainScreen - the HTML splash covers loading state
+    // This prevents any flash between splash removal and MainScreen render
+    return const MainScreen();
   }
 
   @override

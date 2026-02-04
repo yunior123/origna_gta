@@ -10,6 +10,7 @@ final _emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
 
 abstract class AuthRepository {
   Future<void> deleteAccount();
+  Future<void> ensureUserDocumentExists(); // ✅ New method to create Firestore document for verified users
   Future<bool> isEmailVerified();
   Future<UserCredential> registerWithEmail(String email, String password, String name);
   Future<void> sendEmailVerification();
@@ -18,6 +19,10 @@ abstract class AuthRepository {
   Future<UserCredential> signInWithGoogle();
   Future<void> signOut();
   Stream<UserModel?> watchProfile(String userId);
+  
+  /// Validates that the current user still exists in Firebase Auth
+  /// Returns true if valid, false if user was deleted (and signs out)
+  Future<bool> validateCurrentUser();
 }
 
 class FirebaseAuthRepository implements AuthRepository {
@@ -34,6 +39,23 @@ class FirebaseAuthRepository implements AuthRepository {
 
     // Call the collective delete function which handles Firestore, Auth, and Stripe
     await _functions.httpsCallable('delete_account').call({'confirmation': 'DELETE_MY_ACCOUNT'});
+  }
+
+  @override
+  Future<void> ensureUserDocumentExists() async {
+    /// ✅ Create Firestore document for verified users
+    /// This is called on app startup to ensure verified users have their profile
+    final user = _auth.currentUser;
+    if (user == null) return;
+    
+    // Only create document if email is verified
+    if (!user.emailVerified) {
+      debugPrint('⚠️ Email not verified for ${user.email}, skipping Firestore document creation');
+      return;
+    }
+    
+    await _createUserDocumentIfNeeded(user);
+    debugPrint('✅ Firestore document ensured for verified user ${user.email}');
   }
 
   @override
@@ -57,14 +79,26 @@ class FirebaseAuthRepository implements AuthRepository {
     }
 
     final userCredential = await _auth.createUserWithEmailAndPassword(email: trimmedEmail, password: password);
-    await _createUserDocumentIfNeeded(userCredential.user, name: name);
-
+    
+    // ⚠️ Store displayName in Firebase Auth profile (NOT in Firestore yet)
+    // Firestore document will only be created after email verification
+    if (userCredential.user != null) {
+      await userCredential.user!.updateDisplayName(name);
+      debugPrint('✅ Display name "$name" saved to Firebase Auth profile');
+    }
+    
     // AUTO-SEND VERIFICATION EMAIL after registration
-    // User must verify email before checkout is allowed
+    // User must verify email before Firestore document is created
     if (userCredential.user != null) {
       try {
         await userCredential.user!.sendEmailVerification();
         debugPrint('✅ Verification email sent to $trimmedEmail during registration');
+        debugPrint('⚠️ Firestore document will be created after email verification');
+        debugPrint('');
+        debugPrint('📧 EMULATOR MODE: No real email sent!');
+        debugPrint('   To verify email, open: http://localhost:4000/auth');
+        debugPrint('   Find user "$trimmedEmail" and toggle "Email Verified" ON');
+        debugPrint('');
       } catch (e) {
         debugPrint('⚠️  Failed to send verification email during registration: $e');
         // Don't fail registration if email send fails - user can request resend later
@@ -104,6 +138,11 @@ class FirebaseAuthRepository implements AuthRepository {
     try {
       await user.sendEmailVerification();
       debugPrint('✅ Verification email sent to ${user.email}');
+      debugPrint('');
+      debugPrint('📧 EMULATOR MODE: Check Emulator UI for verification link');
+      debugPrint('   Open: http://localhost:4000/auth');
+      debugPrint('   Or toggle "Email Verified" manually');
+      debugPrint('');
     } catch (e) {
       debugPrint('❌ Failed to send verification email: $e');
       rethrow;
@@ -143,7 +182,17 @@ class FirebaseAuthRepository implements AuthRepository {
       throw FirebaseAuthException(code: 'invalid-email', message: 'Email format is invalid');
     }
 
-    return await _auth.signInWithEmailAndPassword(email: trimmedEmail, password: password);
+    final userCredential = await _auth.signInWithEmailAndPassword(email: trimmedEmail, password: password);
+    
+    // ✅ Only create Firestore document if email is verified
+    if (userCredential.user != null && userCredential.user!.emailVerified) {
+      await _createUserDocumentIfNeeded(userCredential.user);
+      debugPrint('✅ Email verified - Firestore document created/updated for ${trimmedEmail}');
+    } else {
+      debugPrint('⚠️ Email NOT verified - Firestore document NOT created for ${trimmedEmail}');
+    }
+    
+    return userCredential;
   }
 
   @override
@@ -166,6 +215,41 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<void> signOut() async {
     await _auth.signOut();
+  }
+
+  @override
+  Future<bool> validateCurrentUser() async {
+    final user = _auth.currentUser;
+    if (user == null) return true; // No user, nothing to validate
+    
+    try {
+      // Try to reload the user from Firebase Auth server
+      // This will throw if user was deleted from Auth
+      await user.reload();
+      
+      // Also check if Firestore profile exists
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (!doc.exists) {
+        debugPrint('⚠️ User profile not found in Firestore, signing out stale session');
+        await signOut();
+        return false;
+      }
+      
+      return true;
+    } on FirebaseAuthException catch (e) {
+      // user-not-found or user-disabled means the account was deleted
+      if (e.code == 'user-not-found' || e.code == 'user-disabled' || e.code == 'user-token-expired') {
+        debugPrint('⚠️ User account no longer exists (${e.code}), signing out stale session');
+        await signOut();
+        return false;
+      }
+      // Network error - don't sign out, could be temporary
+      debugPrint('⚠️ Error validating user: ${e.code}');
+      return true;
+    } catch (e) {
+      debugPrint('⚠️ Unexpected error validating user: $e');
+      return true; // Don't sign out on unexpected errors
+    }
   }
 
   @override

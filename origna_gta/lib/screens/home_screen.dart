@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/features/app/seller_account_status_viewmodel.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/home/home_viewmodel.dart';
@@ -28,24 +29,46 @@ class _AddProductButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfile = ref.watch(userProfileProvider).valueOrNull;
+    final sellerStatus = ref.watch(sellerAccountStatusProvider);
 
     // Only show for sellers or admins
     final isSeller = userProfile?.roles.contains(UserRoles.seller) ?? false;
     final isAdmin = userProfile?.roles.contains(UserRoles.admin) ?? false;
-    final canSell = userProfile?.canSell ?? false;
     final isSuspended = userProfile?.suspended ?? false;
 
+    // Don't show button if user is not a seller/admin
     if (!isSeller && !isAdmin) {
       return const SizedBox.shrink();
     }
+
+    // Check if seller account is fully verified (charges AND payouts enabled)
+    final isVerified = sellerStatus.whenOrNull(
+      data: (status) => status.isComplete,
+    ) ?? false;
+
+    // Admins can always add products, sellers only when verified
+    final canAddProducts = isAdmin || isVerified;
 
     return IconButton(
       key: const Key('home_add_product_button'),
       icon: const Icon(Icons.add_box_outlined, color: Colors.white),
       onPressed: () {
-        if (!canSell && !isAdmin) {
-          final message = isSuspended ? 'Seller account suspended. Contact support.' : 'Complete seller onboarding to add products.';
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: DesignTokens.primary));
+        if (isSuspended) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Seller account suspended. Contact support.'), 
+              backgroundColor: DesignTokens.primary,
+            ),
+          );
+          return;
+        }
+        if (!canAddProducts) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Complete Stripe identity verification first to add products.'), 
+              backgroundColor: DesignTokens.primary,
+            ),
+          );
           return;
         }
         Navigator.push(context, MaterialPageRoute(builder: (_) => const AddProductScreen()));

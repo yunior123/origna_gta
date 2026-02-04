@@ -486,6 +486,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     - transfer.reversed: Payout reversed
     - payout.failed: Payout failed
     - refund.failed: Refund failed
+    - account.updated: Connect account status changed (enables sellers after onboarding)
     
     Security:
     - Rate limiting by IP (DDoS protection)
@@ -594,6 +595,9 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             result = None
         elif event_type == 'refund.failed':
             process_refund_failed(event['data']['object'])
+            result = None
+        elif event_type == 'account.updated':
+            process_account_updated(event['data']['object'])
             result = None
         else:
             print(f'ℹ️ Unhandled Stripe event type: {event_type}')
@@ -903,6 +907,58 @@ def process_refund_failed(refund: Dict) -> None:
         'timestamp': get_server_timestamp(),
         'resolved': False
     })
+
+
+def process_account_updated(account: Dict) -> None:
+    """
+    Process account.updated event from Stripe Connect.
+    Updates the user's Firestore document when their Stripe account status changes.
+    This is critical for enabling sellers after they complete onboarding.
+    """
+    print("\n🏪 Processing: account.updated")
+
+    account_id = account.get('id')
+    if not account_id:
+        print("  ⚠️ No account ID in event")
+        return
+
+    print(f"  Account ID: {account_id}")
+    print(f"  Charges Enabled: {account.get('charges_enabled')}")
+    print(f"  Payouts Enabled: {account.get('payouts_enabled')}")
+    print(f"  Details Submitted: {account.get('details_submitted')}")
+
+    # Find user with this Stripe account
+    users = get_db().collection(Collections.USERS).where(
+        'stripeAccountId', '==', account_id
+    ).limit(1).get()
+
+    if not users:
+        print(f"  ⚠️ No user found with Stripe account {account_id}")
+        return
+
+    user_ref = users[0].reference
+    user_id = user_ref.id
+    user_data = users[0].to_dict()
+
+    print(f"  User ID: {user_id}")
+
+    # Update user document with current account status
+    update_data = {
+        'chargesEnabled': account.get('charges_enabled', False),
+        'payoutsEnabled': account.get('payouts_enabled', False),
+        'onboardingCompleted': account.get('details_submitted', False),
+        'updatedAt': get_server_timestamp(),
+    }
+    
+    # If onboarding is completed, ensure seller role is set
+    if account.get('details_submitted', False):
+        current_roles = user_data.get('roles', [])
+        if 'seller' not in current_roles:
+            update_data['roles'] = current_roles + ['seller']
+            print(f"  ✅ Adding seller role to user {user_id}")
+    
+    user_ref.update(update_data)
+    print(f"  ✅ Updated user {user_id} Stripe account status")
 
 
 @https_fn.on_call()

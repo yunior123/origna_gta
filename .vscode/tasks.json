@@ -93,8 +93,7 @@
 		{
 			"label": "Stop Firebase Emulators",
 			"type": "shell",
-			"command": "pkill",
-			"args": ["-f", "firebase-tools"],
+			"command": "pkill -9 -f 'firebase' || pkill -9 -f 'java.*emulator' || true",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
@@ -106,23 +105,19 @@
 		{
 			"label": "Stripe: Forward Webhooks to Emulator",
 			"type": "shell",
-			"command": "stripe",
-			"args": [
-				"listen",
-				"--forward-to", "localhost:5001/orignagta/us-central1/stripe_webhook"
-			],
+			"command": "stripe listen --forward-to localhost:5001/orignagta/us-central1/stripe_webhook",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
 			"isBackground": true,
 			"problemMatcher": {
 				"pattern": {
-					"regexp": "^.*$"
+					"regexp": "^$"
 				},
 				"background": {
 					"activeOnStart": true,
-					"beginsPattern": "^.*Getting ready.*$",
-					"endsPattern": "^.*Ready!.*$"
+					"beginsPattern": ".",
+					"endsPattern": "Ready!"
 				}
 			},
 			"presentation": {
@@ -150,8 +145,8 @@
 				},
 				"background": {
 					"activeOnStart": true,
-					"beginsPattern": "^.*Getting ready.*$",
-					"endsPattern": "^.*Ready!.*$"
+					"beginsPattern": "^.",
+					"endsPattern": "^.*Ready!.*|^.*webhook signing secret.*$"
 				}
 			},
 			"presentation": {
@@ -163,8 +158,7 @@
 		{
 			"label": "Stop Stripe Listener",
 			"type": "shell",
-			"command": "pkill",
-			"args": ["-f", "stripe listen"],
+			"command": "pkill -9 -f 'stripe' || true",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
@@ -297,15 +291,18 @@
 				"Stripe: Forward Webhooks to Emulator"
 			],
 			"dependsOrder": "parallel",
-			"problemMatcher": []
+			"problemMatcher": [],
+			"runOptions": {
+				"runOn": "default"
+			}
 		},
 		{
 			"label": "Stop All Emulator Services",
-			"dependsOn": [
-				"Stop Firebase Emulators",
-				"Stop Stripe Listener"
-			],
-			"dependsOrder": "parallel",
+			"type": "shell",
+			"command": "pkill -9 -f 'firebase' || true; pkill -9 -f 'java.*emulator' || true; pkill -9 -f 'stripe' || true; echo '✅ All services stopped'",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
 			"problemMatcher": []
 		}
 	]
