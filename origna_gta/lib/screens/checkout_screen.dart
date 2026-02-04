@@ -6,6 +6,7 @@ import 'package:origna_gta/screens/editaddress_screen.dart';
 import 'package:origna_gta/screens/terms_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -135,7 +136,7 @@ class _CheckoutButton extends ConsumerWidget {
     final isDisabled = isProcessing || isCalculating || shippingError != null;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(ResponsiveBreakpoints.getSpacing(context, SpacingSize.md)),
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[900] : Colors.white,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -8))],
@@ -259,12 +260,12 @@ class _CheckoutContent extends ConsumerWidget {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(ResponsiveBreakpoints.getSpacing(context, SpacingSize.lg)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _AddressSection(address: address, onRefreshShipping: onRefreshShipping),
-                  const SizedBox(height: 28),
+                  SizedBox(height: ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl)),
                   if (hasPhysicalItems) ...[
                     const _DeliveryOptionsSection(),
                     const SizedBox(height: 28),

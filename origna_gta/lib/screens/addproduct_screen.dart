@@ -4,6 +4,7 @@ import 'package:origna_gta/config/supplier_config.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 
@@ -99,35 +100,53 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       }
     });
 
+    final padding = ResponsiveBreakpoints.getSpacing(context, SpacingSize.md);
+    final maxWidth = ResponsiveBreakpoints.getValue<double>(
+      context: context,
+      mobile: double.infinity, // 320px - full width
+      mobilePlus: 500, // 480px - constrained
+      tablet: 600, // 768px - wider
+      desktop: 700, // 1024px+ - even wider
+    );
+
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'Add Product'),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(padding),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
+            constraints: BoxConstraints(maxWidth: maxWidth),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   TextFormField(
+                    key: const Key('product_name_field'),
                     controller: _nameController,
                     decoration: const InputDecoration(labelText: 'Product Name', prefixIcon: Icon(Icons.shopping_bag_outlined)),
                     validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: ResponsiveBreakpoints.getSpacing(context, SpacingSize.md)),
                   TextFormField(
+                    key: const Key('product_description_field'),
                     controller: _descriptionController,
-                    maxLines: 2,
+                    maxLines: ResponsiveBreakpoints.getValue(
+                      context: context,
+                      mobile: 2, // 320px - compact
+                      mobilePlus: 3, // 480px - more space
+                      tablet: 4, // 768px - comfortable
+                      desktop: 5, // 1024px+ - spacious
+                    ),
                     decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.description_outlined)),
                     validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: ResponsiveBreakpoints.getSpacing(context, SpacingSize.md)),
                   Row(
                     children: [
                       Expanded(
                         child: TextFormField(
+                          key: const Key('product_price_field'),
                           controller: _priceController,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
@@ -142,6 +161,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextFormField(
+                          key: const Key('product_stock_field'),
                           controller: _stockController,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(labelText: 'Stock', prefixIcon: Icon(Icons.inventory_2_outlined)),
@@ -657,6 +677,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   SizedBox(
                     height: 48,
                     child: ElevatedButton(
+                      key: const Key('product_submit_button'),
                       onPressed: state.isLoading
                           ? null
                           : () {

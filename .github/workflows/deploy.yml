@@ -8,16 +8,37 @@ jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
 
+    # ⚠️ REQUIRED SECRETS - Must be configured in GitHub repo settings:
+    # Repository Secrets (Settings → Secrets and variables → Actions):
+    # TESTING SECRETS:
+    # - STRIPE_SECRET_KEY: Stripe production secret key
+    # - STRIPE_WEBHOOK_SECRET: Stripe webhook signing secret
+    # - MAILJET_API_KEY: Mailjet API key for email services
+    # - MAILJET_SECRET_KEY: Mailjet secret key
+    # - GEOAPIFY_API_KEY: Geoapify API key for geolocation
+    # - ALGOLIA_APP_ID: Algolia application ID
+    # - ALGOLIA_WRITE_API_KEY: Algolia write API key
+    # - AIRWALLEX_API_KEY: Airwallex production API key
+    # - AIRWALLEX_CLIENT_ID: Airwallex client ID
+    # - AIRWALLEX_WEBHOOK_SECRET: Airwallex webhook secret
+    # DEPLOYMENT SECRETS:
+    # - FIREBASE_SERVICE_ACCOUNT: Firebase service account JSON (for deployment)
+    # - GITHUB_TOKEN: Automatically provided by GitHub Actions
     env:
       # Force config.py to load from env vars (not Secret Manager)
       FUNCTIONS_EMULATOR: 'true'
+      # Payment provider secrets
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+      # Email service secrets
       MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY }}
       MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY }}
+      # Geolocation service secret
       GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}
+      # Search service secrets
       ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
       ALGOLIA_WRITE_API_KEY: ${{ secrets.ALGOLIA_WRITE_API_KEY }}
+      # Payment provider secrets (Airwallex)
       AIRWALLEX_API_KEY: ${{ secrets.AIRWALLEX_API_KEY }}
       AIRWALLEX_CLIENT_ID: ${{ secrets.AIRWALLEX_CLIENT_ID }}
       AIRWALLEX_WEBHOOK_SECRET: ${{ secrets.AIRWALLEX_WEBHOOK_SECRET }}
@@ -51,6 +72,40 @@ jobs:
 
       - name: Install Firebase CLI
         run: npm i -g firebase-tools@latest
+
+      # Verify all required secrets are configured
+      - name: Guard required secrets
+        run: |
+          python - <<'PY'
+          import os, sys
+          
+          # Critical secrets required for deployment
+          required = [
+            'STRIPE_SECRET_KEY',
+            'STRIPE_WEBHOOK_SECRET',
+            'MAILJET_API_KEY',
+            'MAILJET_SECRET_KEY',
+            'GEOAPIFY_API_KEY',
+            'ALGOLIA_APP_ID',
+            'ALGOLIA_WRITE_API_KEY',
+            'AIRWALLEX_API_KEY',
+            'AIRWALLEX_CLIENT_ID',
+            'AIRWALLEX_WEBHOOK_SECRET',
+            'FIREBASE_SERVICE_ACCOUNT'
+          ]
+          
+          missing = [k for k in required if not os.environ.get(k)]
+          
+          if missing:
+            print('❌ ERROR: Missing required secrets for deployment:', ', '.join(missing))
+            print('\nConfigure these secrets in: Settings → Secrets and variables → Actions')
+            print('\nDeployment cannot proceed without all required secrets.')
+            sys.exit(1)
+          
+          print('✅ All required secrets are configured for deployment')
+          PY
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
       # Install Python dependencies
       - name: Install Python dependencies
@@ -110,34 +165,38 @@ jobs:
         run: ./stop-e2e-services.sh
 
       # Deploy to Firebase (Hosting + Functions + Firestore)
+      # Uses GITHUB_TOKEN (auto-provided) and FIREBASE_SERVICE_ACCOUNT (must be configured)
       - name: Deploy Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          repoToken: ${{ secrets.GITHUB_TOKEN }}  # Auto-provided by GitHub
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}  # Required: Firebase service account JSON
           channelId: live
           projectId: orignagta
 
+      # Deploy Cloud Functions (requires FIREBASE_SERVICE_ACCOUNT)
       - name: Deploy Firebase Functions
         uses: w9jds/firebase-action@master
         with:
           args: deploy --only functions --force
         env:
-          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}  # Required: Firebase service account JSON
 
+      # Deploy Firestore Rules (requires FIREBASE_SERVICE_ACCOUNT)
       - name: Deploy Firestore Rules
         uses: w9jds/firebase-action@master
         with:
           args: deploy --only firestore:rules
         env:
-          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}  # Required: Firebase service account JSON
 
+      # Deploy Firestore Indexes (requires FIREBASE_SERVICE_ACCOUNT)
       - name: Deploy Firestore Indexes
         uses: w9jds/firebase-action@master
         with:
           args: deploy --only firestore:indexes
         env:
-          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}  # Required: Firebase service account JSON
 
       - name: Deployment Summary
         run: |

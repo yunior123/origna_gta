@@ -10,6 +10,7 @@ import 'package:origna_gta/screens/product_card_screen.dart';
 import 'package:origna_gta/screens/profile_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -39,6 +40,7 @@ class _AddProductButton extends ConsumerWidget {
     }
 
     return IconButton(
+      key: const Key('home_add_product_button'),
       icon: const Icon(Icons.add_box_outlined, color: Colors.white),
       onPressed: () {
         if (!canSell && !isAdmin) {
@@ -243,7 +245,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           slivers: [
             // Animated Search Bar
             SliverToBoxAdapter(
-              child: Padding(padding: const EdgeInsets.all(16), child: _buildModernSearchBar(homeNotifier)),
+              child: Padding(
+                padding: EdgeInsets.all(ResponsiveBreakpoints.getSpacing(context, SpacingSize.md)),
+                child: _buildModernSearchBar(homeNotifier),
+              ),
             ),
 
             // Category Chips
@@ -381,10 +386,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   /// Get responsive aspect ratio for product cards
   double _getCardAspectRatio(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (width < 360) return 0.6; // Very small phones
-    if (width < 600) return 0.65; // Mobile phones
-    return 0.75; // Tablets and desktop
+    return ResponsiveBreakpoints.getValue(
+      context: context,
+      mobile: 0.6, // 320px - small phones
+      mobilePlus: 0.65, // 480px - medium phones
+      tablet: 0.7, // 768px - tablets
+      desktop: 0.75, // 1024px+ - desktop
+    );
   }
 
   void _onScroll() {
@@ -485,13 +493,15 @@ class _ProductGrid extends ConsumerWidget {
       );
     }
 
+    final spacing = ResponsiveBreakpoints.getSpacing(context, SpacingSize.md);
+    
     return SliverPadding(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(spacing),
       sliver: SliverGrid(
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: getCrossAxisCount(context),
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+          crossAxisCount: ResponsiveBreakpoints.getGridColumns(context),
+          crossAxisSpacing: spacing,
+          mainAxisSpacing: spacing,
           childAspectRatio: cardAspectRatio,
         ),
         delegate: SliverChildBuilderDelegate((context, index) {

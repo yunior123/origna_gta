@@ -62,7 +62,9 @@ with patch.dict(sys.modules, module_mocks):
         capture_payment,
         stripe_webhook,
         create_checkout_session,
-        submit_product_rating,
+        submit_product_rating
+    )
+    from config import (
         DeliveryStatus,
         PaymentStatus,
         OrderStatus,

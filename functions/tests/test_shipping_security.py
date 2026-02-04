@@ -50,7 +50,8 @@ module_mocks = {
 with patch.dict(sys.modules, module_mocks):
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
     import main
-    from main import create_checkout_session, calculate_shipping_cost
+    from main import create_checkout_session
+    # calculate_shipping_cost removed - not in main.py
 
 class TestPaymentSecurity(unittest.TestCase):
     def setUp(self):

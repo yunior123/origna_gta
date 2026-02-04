@@ -125,6 +125,110 @@
         {"fieldPath": "roles", "arrayConfig": "CONTAINS"},
         {"fieldPath": "createdAt", "order": "DESCENDING"}
       ]
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "orderStatus", "order": "ASCENDING"},
+        {"fieldPath": "paymentStatus", "order": "ASCENDING"},
+        {"fieldPath": "updatedAt", "order": "DESCENDING"}
+      ],
+      "comment": "OPTIMIZATION 2026-02-03: Index for cron job auto_capture_confirmed_receipts"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "paymentStatus", "order": "ASCENDING"},
+        {"fieldPath": "orderStatus", "order": "ASCENDING"},
+        {"fieldPath": "dateCreated", "order": "ASCENDING"}
+      ],
+      "comment": "OPTIMIZATION 2026-02-03: Index for check_expired_authorizations cron job"
+    },
+    {
+      "collectionGroup": "product_ratings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "productId", "order": "ASCENDING"},
+        {"fieldPath": "rating", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ],
+      "comment": "OPTIMIZATION 2026-02-03: Index for filtered product ratings pagination"
+    },
+    {
+      "collectionGroup": "product_ratings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "productId", "order": "ASCENDING"},
+        {"fieldPath": "userId", "order": "ASCENDING"}
+      ],
+      "comment": "OPTIMIZATION 2026-02-03: Index for checking existing ratings (limit 1)"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "userId", "order": "ASCENDING"},
+        {"fieldPath": "orderStatus", "order": "ASCENDING"}
+      ],
+      "comment": "OPTIMIZATION 2026-02-03: Index for checking pending orders on account deletion"
+    },
+    {
+      "collectionGroup": "rate_limits",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "lastRequest", "order": "ASCENDING"}
+      ],
+      "comment": "OPTIMIZATION 2026-02-03: Index for cleanup_stale_rate_limits cron job"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "orderStatus", "order": "ASCENDING"},
+        {"fieldPath": "updatedAt", "order": "ASCENDING"},
+        {"fieldPath": "archived", "order": "ASCENDING"}
+      ],
+      "comment": "OPTIMIZATION 2026-02-03: Index for auto_archive_old_orders cron job"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "sellerId", "order": "ASCENDING"},
+        {"fieldPath": "isActive", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ],
+      "comment": "OPTIMIZATION 2026-02-03: Index for get_seller_products_paginated with filters"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isActive", "order": "ASCENDING"},
+        {"fieldPath": "category", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ],
+      "comment": "OPTIMIZATION 2026-02-03: Index for get_products_paginated with category filter"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isActive", "order": "ASCENDING"},
+        {"fieldPath": "price", "order": "DESCENDING"}
+      ],
+      "comment": "OPTIMIZATION 2026-02-03: Index for products sorted by price"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isActive", "order": "ASCENDING"},
+        {"fieldPath": "rating", "order": "DESCENDING"}
+      ],
+      "comment": "OPTIMIZATION 2026-02-03: Index for products sorted by rating"
     }
   ],
   "fieldOverrides": []

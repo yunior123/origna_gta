@@ -9,6 +9,7 @@ import 'package:origna_gta/screens/seller_registration_screen.dart';
 import 'package:origna_gta/screens/terms_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -75,16 +76,25 @@ class ProfileScreen extends ConsumerWidget {
             final isSeller = userModel.roles.contains(UserRoles.seller) || userModel.roles.contains(UserRoles.admin);
             final isAdmin = userModel.roles.contains(UserRoles.admin);
 
+            final maxWidth = ResponsiveBreakpoints.getValue<double>(
+              context: context,
+              mobile: double.infinity, // 320px - full width
+              mobilePlus: 500, // 480px - constrained
+              tablet: 600, // 768px - comfortable
+              desktop: 700, // 1024px+ - spacious
+            );
+            final padding = ResponsiveBreakpoints.getSpacing(context, SpacingSize.lg);
+
             return Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
+                constraints: BoxConstraints(maxWidth: maxWidth),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(padding),
                   child: Column(
                     children: [
                       // Profile Header
                       FadeSlideIn(child: _buildProfileHeader(userModel, isDark)),
-                      const SizedBox(height: 32),
+                      SizedBox(height: ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl)),
 
                       // Main Navigation Menu
                       FadeSlideIn(
@@ -275,43 +285,63 @@ class ProfileScreen extends ConsumerWidget {
   Widget _buildProfileHeader(UserModel userModel, bool isDark) {
     final initials = userModel.name.isNotEmpty ? userModel.name[0].toUpperCase() : 'U';
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [DesignTokens.primary.withValues(alpha: 0.95), DesignTokens.secondary.withValues(alpha: 0.95)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(DesignTokens.radius20),
-        boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.2),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
+    return Builder(
+      builder: (context) {
+        final headerPadding = ResponsiveBreakpoints.getSpacing(context, SpacingSize.xl);
+        final avatarSize = ResponsiveBreakpoints.getValue<double>(
+          context: context,
+          mobile: 60.0, // 320px - compact
+          mobilePlus: 70.0, // 480px - medium
+          tablet: 80.0, // 768px - comfortable
+          desktop: 90.0, // 1024px+ - spacious
+        );
+        final fontSize = ResponsiveBreakpoints.getValue<double>(
+          context: context,
+          mobile: 28.0, // 320px
+          mobilePlus: 32.0, // 480px
+          tablet: 36.0, // 768px
+          desktop: 40.0, // 1024px+
+        );
+
+        return Container(
+          padding: EdgeInsets.all(headerPadding),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [DesignTokens.primary.withValues(alpha: 0.95), DesignTokens.secondary.withValues(alpha: 0.95)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: Center(
-              child: Text(
-                initials,
-                style: const TextStyle(fontSize: 36, color: Colors.white, fontWeight: FontWeight.w900),
+            borderRadius: BorderRadius.circular(DesignTokens.radius20),
+            boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: avatarSize,
+                height: avatarSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.2),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
+                ),
+                child: Center(
+                  child: Text(
+                    initials,
+                    style: TextStyle(fontSize: fontSize, color: Colors.white, fontWeight: FontWeight.w900),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 16),
+              Text(
+                userModel.name,
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white),
+              ),
+              const SizedBox(height: 6),
+              Text(userModel.email, style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.8))),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            userModel.name,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white),
-          ),
-          const SizedBox(height: 6),
-          Text(userModel.email, style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.8))),
-        ],
-      ),
+        );
+      },
     );
   }
 

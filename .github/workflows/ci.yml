@@ -14,19 +14,33 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
+    # ⚠️ REQUIRED SECRETS - Must be configured in GitHub repo settings:
+    # Repository Secrets (Settings → Secrets and variables → Actions):
+    # - STRIPE_SECRET_KEY: Stripe test/production secret key
+    # - STRIPE_WEBHOOK_SECRET: Stripe webhook signing secret
+    # - ALGOLIA_APP_ID: Algolia application ID
+    # - ALGOLIA_WRITE_API_KEY: Algolia write API key
+    #
+    # Optional secrets (for full integration tests):
+    # - MAILJET_API_KEY, MAILJET_SECRET_KEY: Email service (can be mocked)
+    # - GEOAPIFY_API_KEY: Geolocation (can be mocked)
+    # - AIRWALLEX_*: Alternative payment provider (optional)
     env:
-      # Force config.py to load from env vars (not Secret Manager)
+      # Force local mode for CI (uses env vars, not Secret Manager)
       FUNCTIONS_EMULATOR: 'true'
+      # Payment provider secrets (REQUIRED)
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-      MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY }}
-      MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY }}
-      GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}
+      # Search service secrets (REQUIRED)
       ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
       ALGOLIA_WRITE_API_KEY: ${{ secrets.ALGOLIA_WRITE_API_KEY }}
-      AIRWALLEX_API_KEY: ${{ secrets.AIRWALLEX_API_KEY }}
-      AIRWALLEX_CLIENT_ID: ${{ secrets.AIRWALLEX_CLIENT_ID }}
-      AIRWALLEX_WEBHOOK_SECRET: ${{ secrets.AIRWALLEX_WEBHOOK_SECRET }}
+      # Optional services (can be empty for basic tests)
+      MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY || 'test_key' }}
+      MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY || 'test_secret' }}
+      GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY || 'test_key' }}
+      AIRWALLEX_API_KEY: ${{ secrets.AIRWALLEX_API_KEY || '' }}
+      AIRWALLEX_CLIENT_ID: ${{ secrets.AIRWALLEX_CLIENT_ID || '' }}
+      AIRWALLEX_WEBHOOK_SECRET: ${{ secrets.AIRWALLEX_WEBHOOK_SECRET || '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -58,19 +72,28 @@ jobs:
       - name: Install Firebase CLI
         run: npm i -g firebase-tools@latest
 
+      # Verify only REQUIRED secrets are configured
       - name: Guard required secrets
         run: |
           python - <<'PY'
           import os, sys
+          
+          # Only critical secrets for CI
           required = [
-            'STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET','MAILJET_API_KEY','MAILJET_SECRET_KEY',
-            'GEOAPIFY_API_KEY','ALGOLIA_APP_ID','ALGOLIA_WRITE_API_KEY'
+            'STRIPE_SECRET_KEY',
+            'STRIPE_WEBHOOK_SECRET',
+            'ALGOLIA_APP_ID',
+            'ALGOLIA_WRITE_API_KEY'
           ]
+          
           missing = [k for k in required if not os.environ.get(k)]
+          
           if missing:
-            print('Missing required secrets:', ', '.join(missing))
+            print('❌ ERROR: Missing required secrets:', ', '.join(missing))
+            print('\nConfigure these secrets in: Settings → Secrets and variables → Actions')
             sys.exit(1)
-          print('Secrets OK')
+          
+          print('✅ All required secrets are configured')
           PY
 
       - name: Install Python deps

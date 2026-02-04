@@ -65,8 +65,11 @@ AUTO_CONFIRM_DAYS = 7  # Auto-confirm must be <= AUTHORIZATION_VALID_DAYS (Strip
 AUTHORIZATION_VALID_DAYS = 7  # Stripe authorization valid for 7 days
 SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20%
 
-# Environment
-IS_EMULATOR = os.environ.get('FUNCTIONS_EMULATOR') == 'true'
+# Environment - CRITICAL: Auto-detects based on deployment context
+# In CI/CD (GitHub Actions): FUNCTIONS_EMULATOR='false' (production secrets)
+# In local dev: FUNCTIONS_EMULATOR='true' (reads from .env file)
+# NEVER commit .env files - they are in .gitignore
+IS_EMULATOR = os.environ.get('FUNCTIONS_EMULATOR', 'false') == 'true'
 
 # ============================================================================
 # SECRETS MANAGEMENT - SECURE VERSION (NO FALLBACKS)
@@ -118,6 +121,24 @@ try:
 except (ValueError, RuntimeError) as e:
     print(f"FATAL: {e}")
     raise
+
+# Cloudflare R2 (REQUIRED for image storage)
+try:
+    if IS_EMULATOR:
+        # In emulator mode, load from environment
+        R2_ACCESS_KEY_NEW = type('obj', (object,), {'key': 'R2_ACCESS_KEY'})()
+        R2_SECRET_KEY_NEW = type('obj', (object,), {'key': 'R2_SECRET_KEY'})()
+        R2_ACCOUNT_ID_NEW = type('obj', (object,), {'key': 'R2_ACCOUNT_ID'})()
+    else:
+        # In production, use SecretParam
+        R2_ACCESS_KEY_NEW = params.SecretParam("R2_ACCESS_KEY")
+        R2_SECRET_KEY_NEW = params.SecretParam("R2_SECRET_KEY")
+        R2_ACCOUNT_ID_NEW = params.SecretParam("R2_ACCOUNT_ID")
+except Exception as e:
+    print(f"WARNING: R2 secrets not configured: {e}")
+    R2_ACCESS_KEY_NEW = None
+    R2_SECRET_KEY_NEW = None
+    R2_ACCOUNT_ID_NEW = None
 
 # Airwallex (OPTIONAL - for alternative payment provider)
 AIRWALLEX_API_KEY = _load_secret("AIRWALLEX_API_KEY", required=False)

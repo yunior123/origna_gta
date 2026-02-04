@@ -124,6 +124,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                     const SizedBox(height: DesignTokens.spacing16),
                                   ],
                                   ModernTextField(
+                                    key: const Key('login_email_field'),
                                     label: 'Email Address',
                                     hint: 'you@example.com',
                                     controller: _emailController,
@@ -141,6 +142,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                   ),
                                   const SizedBox(height: DesignTokens.spacing16),
                                   ModernTextField(
+                                    key: const Key('login_password_field'),
                                     label: 'Password',
                                     hint: '••••••••',
                                     controller: _passwordController,
@@ -200,6 +202,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
 
                           // Primary action button
                           ModernButton(
+                            key: const Key('login_submit_button'),
                             label: state.isLogin ? 'Sign In' : 'Create Account',
                             isLoading: state.isLoading,
                             isPrimary: true,

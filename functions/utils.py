@@ -55,6 +55,63 @@ MAX_MESSAGE_LENGTH = 1000
 MIN_MESSAGE_LENGTH = 10
 
 
+def sanitized_text(value: str) -> str:
+    """
+    Sanitize text to prevent XSS attacks.
+    Removes dangerous HTML tags and script injections.
+    """
+    if value is None:
+        return ""
+    
+    text = str(value)
+    
+    # Remove script tags and their content
+    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    
+    # Remove iframe tags
+    text = re.sub(r'<iframe[^>]*>.*?</iframe>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    
+    # Remove javascript: protocol
+    text = re.sub(r'javascript:', '', text, flags=re.IGNORECASE)
+    
+    # Remove onerror and other event handlers
+    text = re.sub(r'\son\w+\s*=', '', text, flags=re.IGNORECASE)
+    
+    # Remove any remaining script tags (self-closing or malformed)
+    text = re.sub(r'</?script[^>]*>', '', text, flags=re.IGNORECASE)
+    
+    # Remove other dangerous tags
+    text = re.sub(r'</?iframe[^>]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'</?object[^>]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'</?embed[^>]*>', '', text, flags=re.IGNORECASE)
+    
+    return text
+
+
+def sanitize_path(path: str) -> str:
+    """
+    Sanitize file paths to prevent path traversal attacks.
+    Removes dangerous path components like '..' and absolute paths.
+    """
+    if path is None:
+        return ""
+    
+    import os
+    
+    path_str = str(path)
+    
+    # Remove all occurrences of '..' (both forward and backslash)
+    path_str = path_str.replace('..', '')
+    
+    # Get only the basename (filename) - removes all directory traversal
+    path_str = os.path.basename(path_str)
+    
+    # Remove any remaining path separators
+    path_str = path_str.replace('/', '').replace('\\', '')
+    
+    return path_str
+
+
 def sanitize_text(value: str, max_length: int, field_name: str = "input", min_length: int = 1) -> str:
     """Sanitize text input and enforce length constraints."""
     if value is None:
