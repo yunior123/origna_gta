@@ -264,7 +264,7 @@ Database query optimization.
 
 ### Priorities
 1. ✅ Fix Firebase lazy loading (all handlers)
-2. ✅ Add widget Keys for tests (3 screens)
+2. ✅ Add widget Keys for tests (screens) and the missing important tests
 3. ✅ Webhook security hardening (PRODUCTION READY)
 4. ✅ Database optimization (-90% reads, $162/month saved)
 5. ⏳ Execute integration tests (needs seller@origna.ca)

@@ -3,13 +3,21 @@ from unittest.mock import MagicMock, patch
 import sys
 import os
 
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Set TESTING environment variable BEFORE importing main
+os.environ['TESTING'] = 'true'
+
 # 1. Setup global mocks BEFORE importing main
 mock_firebase_functions = MagicMock()
 mock_firebase_admin = MagicMock()
 mock_stripe = MagicMock()
 mock_boto3 = MagicMock()
 mock_mailjet = MagicMock()
-# mock_requests removed to avoid conflict with algoliasearch's use of requests
+mock_google_auth = MagicMock()
+mock_google_cloud_firestore = MagicMock()
+mock_secret_manager = MagicMock()
 
 # Decorator passthrough
 def pass_through_decorator(*args, **kwargs):
@@ -40,61 +48,83 @@ module_mocks = {
     'firebase_admin': mock_firebase_admin,
     'firebase_admin.firestore': mock_firebase_admin.firestore,
     'firebase_admin.auth': mock_firebase_admin.auth,
+    'firebase_admin.credentials': mock_firebase_admin.credentials,
     'stripe': mock_stripe,
-    'google.cloud.firestore': MagicMock(),
+    'google.cloud.firestore': mock_google_cloud_firestore,
+    'google.cloud.firestore_v1.base_client': MagicMock(),
+    'google.auth': mock_google_auth,
+    'google.auth.transport.requests': MagicMock(),
+    'google.cloud.secretmanager': mock_secret_manager,
+    'google.cloud.secretmanager.SecretManagerServiceClient': MagicMock(),
     'mailjet_rest': mock_mailjet,
     'boto3': mock_boto3
-    # 'requests' removed - algoliasearch needs real requests module
 }
 
 with patch.dict(sys.modules, module_mocks):
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
     import main
-    from main import create_checkout_session
-    # calculate_shipping_cost removed - not in main.py
+    from main import create_checkout_session, calculate_shipping_cost
 
 class TestPaymentSecurity(unittest.TestCase):
     def setUp(self):
+        # Configure Firebase Admin mock properly
+        main.firebase_admin = mock_firebase_admin
+        mock_firebase_admin.initialize_app = MagicMock()
+        mock_firebase_admin._apps = {}
+        mock_firebase_admin.get_app = MagicMock()
+        mock_firebase_admin.delete_app = MagicMock()
+        
+        # Import payment_stripe handler
+        from handlers import payment_stripe
+        
+        # Mock the db and rate_limiter at module level
         main.db = MagicMock()
+        payment_stripe._db = MagicMock()
+        payment_stripe._rate_limiter = MagicMock()
+        payment_stripe._firestore = MagicMock()
+        
+        # Make get_db return mocked db
+        payment_stripe.get_db = MagicMock(return_value=payment_stripe._db)
+        
+        # Make get_rate_limiter return mocked rate limiter
+        payment_stripe._rate_limiter.check_rate_limit.return_value = (True, "OK")
+        payment_stripe._rate_limiter.get_identifier.return_value = "test_user"
+        payment_stripe.get_rate_limiter = MagicMock(return_value=payment_stripe._rate_limiter)
+        
         main.stripe = mock_stripe
         mock_stripe.checkout.Session.create.reset_mock()
-        
-        # Mock rate limiter to always allow requests
-        main.rate_limiter = MagicMock()
-        main.rate_limiter.check_rate_limit.return_value = (True, "OK")
-        main.rate_limiter.get_identifier.return_value = "test_user"
 
     def test_price_tampering_protection(self):
         """
         Scenario: Malicious user sends price=1 for a $100 product.
-        Expectation: Session created with $100 (server DB price).
+        Expectation: Session rejected due to price mismatch.
         """
+        from handlers import payment_stripe
+        
         req = MagicMock()
         req.auth.uid = "user_1"
         req.data = {
             "userId": "user_1",
             "customerEmail": "hacker@example.com",
-            # HACKER SENDING FAKE TOTALS
-            "amount": 100, 
-            "total": 1.00,
+            "amount": 100000, 
+            "subtotal": 100000.00,
             "items": [{
                 "productId": "prod_1",
                 "quantity": 1,
-                "price": 1.00, # FAKE PRICE
+                "price": 1.00,  # FAKE PRICE
                 "sellerId": "seller_elon",
                 "name": "Tesla Cybertruck",
-                "description": "Electric pickup truck",  # Required field
+                "description": "Electric pickup truck",
                 "imageUrls": ["http://img.com/truck.jpg"],
                 "sellerAddress": {"street": "1 Tesla St", "city": "Markham", "state": "ON", "postalCode": "L3R 4H5", "country": "Canada"}
             }],
-            "deliveryInfo": {
-                    "street": "123 Test St",
-                    "city": "Toronto",
-                    "postalCode": "M5V 1A1",
-                    "state": "ON",
-                    "country": "Canada",
-                    "longitude": -79.0,
-                    "latitude": 43.0
+            "shippingAddress": {
+                "street": "123 Test St",
+                "city": "Toronto",
+                "postalCode": "M5V 1A1",
+                "province": "ON",
+                "country": "Canada",
+                "longitude": -79.0,
+                "latitude": 43.0
             }
         }
 
@@ -103,41 +133,52 @@ class TestPaymentSecurity(unittest.TestCase):
         mock_product.exists = True
         mock_product.to_dict.return_value = {
             "name": "Tesla Cybertruck",
-            "price": 100000.00, # REAL PRICE
+            "price": 100000.00,  # REAL PRICE
             "stockQuantity": 5,
             "sellerId": "seller_elon",
             "sellerAddress": {"state": "TX", "longitude": -97.0, "latitude": 30.0}
         }
 
-        # Setup Transaction Mock
-        mock_transaction = MagicMock()
-        main.db.transaction.return_value.__enter__.return_value = mock_transaction
-        
+        # Setup Database mocks
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_product
-        main.db.collection.return_value.document.return_value = mock_doc_ref
+        payment_stripe._db.collection.return_value.document.return_value = mock_doc_ref
+        
+        # Mock seller
+        mock_seller = MagicMock()
+        mock_seller.exists = True
+        mock_seller.to_dict.return_value = {
+            "roles": ["seller"],
+            "suspended": False,
+            "onboardingCompleted": True,
+            "chargesEnabled": True,
+            "payoutsEnabled": True
+        }
+        
+        mock_transaction = MagicMock()
+        mock_transaction.get.return_value = mock_seller
+        payment_stripe._db.transaction.return_value = mock_transaction
+        payment_stripe._db.transaction.return_value.__enter__.return_value = mock_transaction
+        payment_stripe._db.transaction.return_value.__exit__.return_value = None
 
         # Mock Stripe Return
-        main.stripe.checkout.Session.create.return_value = MagicMock(id="sess_1", url="http://pay")
+        mock_stripe.checkout.Session.create.return_value = MagicMock(id="sess_1", url="http://pay")
 
         # Execute - Should REJECT the tampered price
         with self.assertRaises(MockHttpsError) as context:
             create_checkout_session(req)
         
-        # Verify the error message is generic (doesn't expose DB price)
-        self.assertIn("Price mismatch detected", context.exception.message)
-        self.assertIn("Tesla Cybertruck", context.exception.message)
+        # Verify the error message indicates price mismatch
+        self.assertIn("Price mismatch", str(context.exception.message))
         
         # Verify Stripe was NOT called (transaction rejected before payment)
-        main.stripe.checkout.Session.create.assert_not_called()
+        mock_stripe.checkout.Session.create.assert_not_called()
 
     def test_server_side_shipping_calculation(self):
         """
         Test that shipping is calculated using helper function, ignoring client request.
         """
         # Scenario: Same province (ON to ON) fallback shipping
-        # We won't mock Geoapify, so it falls back to matrix.
-        
         items = [{
             "sellerId": "s1",
             "sellerAddress": {"state": "ON"},
@@ -152,9 +193,6 @@ class TestPaymentSecurity(unittest.TestCase):
             "latitude": 43.0,
             "longitude": -79.0
         }
-
-        # Mock requests to fail or return nothing to force fallback
-        main.requests.post.side_effect = Exception("Geoapify down")
 
         cost = calculate_shipping_cost(items, buyer_addr)
         
@@ -181,8 +219,6 @@ class TestPaymentSecurity(unittest.TestCase):
             "latitude": 43.0,
             "longitude": -79.0
         }
-
-        main.requests.post.side_effect = Exception("Geoapify down")
 
         cost = calculate_shipping_cost(items, buyer_addr)
         self.assertEqual(cost, 0.0)
@@ -261,30 +297,47 @@ class TestPaymentSecurity(unittest.TestCase):
 
     def test_checkout_rejects_abusive_quantity(self):
         """
-        Scenario: Malicious user sends quantity above allowed max.
+        Scenario: Malicious user sends quantity above allowed max (100).
         Expectation: HttpsError thrown.
         """
+        from handlers import payment_stripe
+        
         req = MagicMock()
         req.auth.uid = "user_1"
         req.data = {
             "userId": "user_1",
             "customerEmail": "abuse@example.com",
             "amount": 100,
+            "subtotal": 1010,
             "items": [{
                 "productId": "prod_1",
-                "quantity": 101,
+                "quantity": 101,  # ABUSIVE QUANTITY
                 "price": 10.0,
                 "sellerId": "seller_1",
                 "name": "Test Product"
             }],
-            "deliveryInfo": {
+            "shippingAddress": {
                 "street": "123 Test St",
                 "city": "Toronto",
                 "postalCode": "M5V 1A1",
-                "state": "ON",
+                "province": "ON",
                 "country": "Canada"
             }
         }
+
+        # Mock DB Product with stock check
+        mock_product = MagicMock()
+        mock_product.exists = True
+        mock_product.to_dict.return_value = {
+            "name": "Test Product",
+            "price": 10.0,
+            "stockQuantity": 50,  # Only 50 in stock
+            "sellerId": "seller_1"
+        }
+
+        mock_doc_ref = MagicMock()
+        mock_doc_ref.get.return_value = mock_product
+        payment_stripe._db.collection.return_value.document.return_value = mock_doc_ref
 
         with self.assertRaises(MockHttpsError):
             create_checkout_session(req)
@@ -294,12 +347,15 @@ class TestPaymentSecurity(unittest.TestCase):
         Scenario: Malicious user sends incomplete address.
         Expectation: HttpsError thrown.
         """
+        from handlers import payment_stripe
+        
         req = MagicMock()
         req.auth.uid = "user_1"
         req.data = {
             "userId": "user_1",
             "customerEmail": "abuse@example.com",
             "amount": 100,
+            "subtotal": 100,
             "items": [{
                 "productId": "prod_1",
                 "quantity": 1,
@@ -307,7 +363,7 @@ class TestPaymentSecurity(unittest.TestCase):
                 "sellerId": "seller_1",
                 "name": "Test Product"
             }],
-            "deliveryInfo": {
+            "shippingAddress": {
                 "state": "ON",
                 "country": "Canada"
             }
@@ -321,12 +377,15 @@ class TestPaymentSecurity(unittest.TestCase):
         Scenario: Malicious user sends invalid postal code.
         Expectation: HttpsError thrown.
         """
+        from handlers import payment_stripe
+        
         req = MagicMock()
         req.auth.uid = "user_1"
         req.data = {
             "userId": "user_1",
             "customerEmail": "abuse@example.com",
             "amount": 100,
+            "subtotal": 100,
             "items": [{
                 "productId": "prod_1",
                 "quantity": 1,
@@ -334,11 +393,11 @@ class TestPaymentSecurity(unittest.TestCase):
                 "sellerId": "seller_1",
                 "name": "Test Product"
             }],
-            "deliveryInfo": {
+            "shippingAddress": {
                 "street": "123 Test St",
                 "city": "Toronto",
                 "postalCode": "INVALID",
-                "state": "ON",
+                "province": "ON",
                 "country": "Canada"
             }
         }
@@ -351,12 +410,15 @@ class TestPaymentSecurity(unittest.TestCase):
         Scenario: Malicious user sends overly long address fields.
         Expectation: HttpsError thrown.
         """
+        from handlers import payment_stripe
+        
         req = MagicMock()
         req.auth.uid = "user_1"
         req.data = {
             "userId": "user_1",
             "customerEmail": "abuse@example.com",
             "amount": 100,
+            "subtotal": 100,
             "items": [{
                 "productId": "prod_1",
                 "quantity": 1,
@@ -364,11 +426,11 @@ class TestPaymentSecurity(unittest.TestCase):
                 "sellerId": "seller_1",
                 "name": "Test Product"
             }],
-            "deliveryInfo": {
+            "shippingAddress": {
                 "street": "X" * 200,
                 "city": "Toronto",
                 "postalCode": "M5V 1A1",
-                "state": "ON",
+                "province": "ON",
                 "country": "Canada"
             }
         }

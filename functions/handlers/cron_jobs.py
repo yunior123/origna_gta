@@ -63,8 +63,8 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
     
     # Limit to 100 orders per run to avoid timeout
     orders = get_db().collection(Collections.ORDERS.value)\
-        .where('orderStatus', '==', OrderStatus.DELIVERED.value)\
-        .where('paymentStatus', '==', PaymentStatus.AUTHORIZED.value)\
+        .where('orderStatus', '==', OrderStatus.DELIVERED)\
+        .where('paymentStatus', '==', PaymentStatus.AUTHORIZED)\
         .where('updatedAt', '<=', cutoff_date)\
         .limit(100)\
         .stream()
@@ -87,7 +87,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
             
             # Update order
             order_doc.reference.update({
-                'paymentStatus': PaymentStatus.CAPTURED.value,
+                'paymentStatus': PaymentStatus.CAPTURED,
                 'capturedAt': get_server_timestamp(),
                 'autoCaptured': True,
                 'updatedAt': get_server_timestamp()
@@ -187,8 +187,8 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     
     # Limit to 100 orders per run to avoid timeout
     orders = get_db().collection(Collections.ORDERS.value)\
-        .where('paymentStatus', '==', PaymentStatus.AUTHORIZED.value)\
-        .where('orderStatus', 'in', [OrderStatus.PENDING.value, OrderStatus.CONFIRMED.value])\
+        .where('paymentStatus', '==', PaymentStatus.AUTHORIZED)\
+        .where('orderStatus', 'in', [OrderStatus.PENDING, OrderStatus.CONFIRMED])\
         .where('dateCreated', '<=', cutoff_date)\
         .limit(100)\
         .stream()
@@ -213,8 +213,8 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
         
         # Update order
         order_doc.reference.update({
-            'orderStatus': OrderStatus.EXPIRED.value,
-            'paymentStatus': PaymentStatus.EXPIRED.value,
+            'orderStatus': OrderStatus.EXPIRED,
+            'paymentStatus': PaymentStatus.EXPIRED,
             'expiredAt': get_server_timestamp(),
             'updatedAt': get_server_timestamp()
         })
@@ -243,7 +243,7 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
     
     # Limit to 200 orders per run and use batch
     orders = get_db().collection(Collections.ORDERS.value)\
-        .where('orderStatus', 'in', [OrderStatus.DELIVERED.value, OrderStatus.CANCELLED.value, OrderStatus.REFUNDED.value])\
+        .where('orderStatus', 'in', [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REFUNDED])\
         .where('updatedAt', '<=', cutoff_date)\
         .where('archived', '==', False)\
         .limit(200)\

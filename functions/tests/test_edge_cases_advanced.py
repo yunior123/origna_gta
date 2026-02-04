@@ -66,8 +66,8 @@ class TestRaceConditionsAndConcurrency:
         # Verify transaction used (not just read-then-write)
         assert True  # Firestore transactions prevent this
     
-    @patch('handlers.orders.db')
-    def test_concurrent_order_status_updates(self, mock_db):
+    @patch('handlers.orders.get_db')
+    def test_concurrent_order_status_updates(self, mock_get_db):
         """
         Test race condition: Buyer cancels while seller ships simultaneously
         Expected: Last write wins with conflict detection
@@ -83,7 +83,9 @@ class TestRaceConditionsAndConcurrency:
             'orderStatus': 'confirmed',
             'version': 1  # Optimistic locking
         }
+        mock_db = Mock()
         mock_db.collection.return_value.document.return_value.get.return_value = mock_order_doc
+        mock_get_db.return_value = mock_db
         
         # Buyer cancels (version 1 → 2)
         # Seller ships (version 1 → 2) 
@@ -91,8 +93,8 @@ class TestRaceConditionsAndConcurrency:
         
         assert True  # Optimistic locking prevents inconsistency
     
-    @patch('handlers.products.db')
-    def test_concurrent_rating_submissions(self, mock_db):
+    @patch('handlers.products.get_db')
+    def test_concurrent_rating_submissions(self, mock_get_db):
         """
         Test concurrent rating calculations (2 users rate same product)
         Expected: Average rating calculated correctly with atomic updates
@@ -360,7 +362,7 @@ class TestErrorHandlingAndRecovery:
         # Should retry automatically
         assert mock_stripe.call_count <= 3  # Max 3 retries
     
-    @patch('handlers.products.algolia_service.save_object')
+    @patch('algolia_service.index_product')
     def test_algolia_failure_fallback_to_firestore(self, mock_algolia):
         """Test search falls back to Firestore if Algolia fails"""
         mock_algolia.side_effect = Exception("Algolia service unavailable")
@@ -381,7 +383,7 @@ class TestErrorHandlingAndRecovery:
         available_items = [item for item in items if item['stockAvailable']]
         assert len(available_items) == 2
     
-    @patch('handlers.orders.email_service.send_email')
+    @patch('email_service.send_email')
     def test_email_failure_logs_but_continues(self, mock_email):
         """Test email failures don't break order processing"""
         mock_email.side_effect = Exception("SMTP server down")

@@ -33,9 +33,12 @@ def get_db():
     """Get Firestore client (lazy initialization)."""
     global _db, _firestore
     if _db is None:
-        from firebase_admin import firestore as fs
-        _firestore = fs
-        _db = fs.client()
+        try:
+            from firebase_admin import firestore as fs
+            _firestore = fs
+            _db = fs.client()
+        except Exception as e:
+            raise RuntimeError("Failed to initialize Firestore client") from e
     return _db
 
 def get_rate_limiter():
@@ -81,7 +84,7 @@ def _assert_seller_active(seller_id: str, require_approval: bool = True) -> Dict
     Raises:
         https_fn.HttpsError: If seller is suspended or not properly onboarded
     """
-    seller_ref = get_db().collection(Collections.USERS.value).document(seller_id)
+    seller_ref = get_db().collection(Collections.USERS).document(seller_id)
     seller_doc = seller_ref.get()
     
     if not seller_doc.exists:
@@ -170,6 +173,30 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not shipping_address:
         raise https_fn.HttpsError('invalid-argument', 'Shipping address required')
     
+    # Validate shipping address fields
+    required_address_fields = ['street', 'city', 'postalCode', 'province', 'country']
+    for field in required_address_fields:
+        if field not in shipping_address or not shipping_address[field]:
+            raise https_fn.HttpsError('invalid-argument', f'Missing required address field: {field}')
+    
+    # Validate address field lengths (prevent injection attacks)
+    address_length_limits = {
+        'street': 100,
+        'city': 50,
+        'postalCode': 20,
+        'province': 50,
+        'country': 50
+    }
+    for field, max_length in address_length_limits.items():
+        if len(str(shipping_address.get(field, ''))) > max_length:
+            raise https_fn.HttpsError('invalid-argument', f'Address field {field} exceeds maximum length')
+    
+    # Validate postal code format
+    from main import validate_postal_code
+    postal_code = shipping_address.get('postalCode', '')
+    if not validate_postal_code(postal_code, shipping_address.get('country', 'Canada')):
+        raise https_fn.HttpsError('invalid-argument', f'Invalid postal code format: {postal_code}')
+    
     # Validate subtotal is positive number
     if not isinstance(client_subtotal, (int, float)) or client_subtotal <= 0:
         raise https_fn.HttpsError('invalid-argument', 'Invalid subtotal: must be positive number')
@@ -184,8 +211,15 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     sellers = set()
     
     for item in items:
+        # Check quantity limit
+        if item.get('quantity', 0) > 100:
+            raise https_fn.HttpsError(
+                'invalid-argument',
+                f'Item quantity exceeds maximum allowed (100): {item.get("quantity")}'
+            )
+        
         # Fetch product from Firestore for server-side validation
-        product_ref = get_db().collection(Collections.PRODUCTS.value).document(item['productId'])
+        product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
         product_doc = product_ref.get()
         
         if not product_doc.exists:
@@ -204,7 +238,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         if abs(db_price - client_price) > 0.01:
             raise https_fn.HttpsError(
                 'invalid-argument',
-                f"Price mismatch for {item['productId']}: expected ${db_price}, got ${client_price}"
+                f"Price mismatch for product {item['productId']}: expected ${db_price:.2f}, got ${client_price:.2f}"
             )
         
         # Check stock availability
@@ -212,7 +246,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         if stock_quantity < item['quantity']:
             raise https_fn.HttpsError(
                 'resource-exhausted',
-                f"Insufficient stock for {item['name']}: {stock_quantity} available, {item['quantity']} requested"
+                f"Insufficient stock for product {item['productId']} ({item['name']}): {stock_quantity} available, {item['quantity']} requested"
             )
         
         # Check seller status
@@ -227,7 +261,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'quantity': item['quantity'],
             'sellerId': seller_id,
             'imageUrl': product_data.get('imageUrls', [''])[0],
-            'isDigital': product_data.get('isDigital', False)
+            'isDigital': product_data.get('isDigital', False),
+            'categoryId': product_data.get('categoryId', 0)
         }
         validated_items.append(validated_item)
         actual_subtotal += db_price * item['quantity']
@@ -283,7 +318,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Stock reservation failed: {str(e)}')
     
     # Create order in Firestore
-    order_ref = get_db().collection(Collections.ORDERS.value).document()
+    order_ref = get_db().collection(Collections.ORDERS).document()
     order_data = {
         'userId': user_id,
         'items': validated_items,
@@ -291,8 +326,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         'shippingCost': shipping_cost,
         'taxAmount': tax_amount,
         'totalAmount': total_amount,
-        'orderStatus': OrderStatus.PENDING.value,
-        'paymentStatus': PaymentStatus.PENDING.value,
+        'orderStatus': OrderStatus.PENDING,
+        'paymentStatus': PaymentStatus.AWAITING_PAYMENT,
         'shippingAddress': shipping_address,
         'dateCreated': get_server_timestamp(),
         'captureAttempts': 0,
@@ -304,15 +339,31 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Create Stripe Checkout Session
     try:
+        # Helper function to get tax code based on category
+        def get_tax_code_for_category(category_id):
+            """Map product categories to Stripe tax codes"""
+            tax_code_map = {
+                17: "txcd_20030002",  # Children's Clothing
+                19: "txcd_30060005",  # Basic Groceries
+            }
+            return tax_code_map.get(category_id, None)
+        
         line_items = []
         for item in validated_items:
+            product_data = {
+                'name': item['name'],
+                'images': [item['imageUrl']] if item['imageUrl'] else []
+            }
+            
+            # Add tax code if available
+            tax_code = get_tax_code_for_category(item.get('categoryId', 0))
+            if tax_code:
+                product_data['tax_code'] = tax_code
+            
             line_items.append({
                 'price_data': {
                     'currency': 'cad',
-                    'product_data': {
-                        'name': item['name'],
-                        'images': [item['imageUrl']] if item['imageUrl'] else []
-                    },
+                    'product_data': product_data,
                     'unit_amount': int(item['price'] * 100)  # Convert to cents
                 },
                 'quantity': item['quantity']
@@ -360,7 +411,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 'metadata': {
                     'orderId': order_id
                 }
-            }
+            },
+            automatic_tax={'enabled': True}  # Enable automatic tax calculation
         )
         
         # Update order with session ID
@@ -375,7 +427,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'checkoutUrl': session.url
         })
         
-    except stripe.error.StripeError as e:
+    except Exception as e:
         # Rollback stock reservation
         @get_transactional()
         def rollback_stock(transaction):
@@ -465,9 +517,12 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     except ValueError as e:
         print(f'⚠️ Stripe webhook invalid payload from IP: {client_ip[:10]}...')  # Sanitized
         return https_fn.Response('Invalid payload', status=400)
-    except stripe.error.SignatureVerificationError as e:
-        print(f'⚠️ Stripe webhook invalid signature from IP: {client_ip[:10]}...')  # Sanitized
-        return https_fn.Response('Invalid signature', status=400)
+    except Exception as e:
+        # Handle both SignatureVerificationError and other exceptions
+        if 'SignatureVerificationError' in str(type(e)):
+            print(f'⚠️ Stripe webhook invalid signature from IP: {client_ip[:10]}...')  # Sanitized
+            return https_fn.Response('Invalid signature', status=400)
+        raise
     except Exception as e:
         print(f'⚠️ Stripe webhook verification error: {type(e).__name__}')  # Sanitized (no details)
         return https_fn.Response('Signature verification error', status=500)
@@ -553,7 +608,7 @@ def process_checkout_session_completed(session: Dict) -> Optional[str]:
         print('No orderId in session metadata')
         return None
     
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
     
     if not order_doc.exists:
@@ -564,8 +619,8 @@ def process_checkout_session_completed(session: Dict) -> Optional[str]:
     
     # Update order status
     order_ref.update({
-        'orderStatus': OrderStatus.CONFIRMED.value,
-        'paymentStatus': PaymentStatus.AUTHORIZED.value,
+        'orderStatus': OrderStatus.CONFIRMED,
+        'paymentStatus': PaymentStatus.AUTHORIZED,
         'stripePaymentIntentId': session.get('payment_intent'),
         'updatedAt': get_server_timestamp()
     })
@@ -603,7 +658,7 @@ def process_checkout_session_completed(session: Dict) -> Optional[str]:
 
 def _clear_user_cart(user_id: str) -> None:
     """Deletes all items from user's cart subcollection"""
-    cart_ref = get_db().collection(Collections.USERS.value).document(user_id).collection('cart')
+    cart_ref = get_db().collection(Collections.USERS).document(user_id).collection('cart')
     cart_docs = cart_ref.stream()
     
     for doc in cart_docs:
@@ -619,7 +674,7 @@ def process_async_payment_succeeded(session: Dict) -> Optional[str]:
     
     order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
     order_ref.update({
-        'paymentStatus': PaymentStatus.CAPTURED.value,
+        'paymentStatus': PaymentStatus.CAPTURED,
         'updatedAt': get_server_timestamp()
     })
     
@@ -644,8 +699,8 @@ def process_async_payment_failed(session: Dict) -> Optional[str]:
         
         # Update order
         order_ref.update({
-            'orderStatus': OrderStatus.CANCELLED.value,
-            'paymentStatus': PaymentStatus.FAILED.value,
+            'orderStatus': OrderStatus.CANCELLED,
+            'paymentStatus': PaymentStatus.FAILED,
             'updatedAt': get_server_timestamp()
         })
     
@@ -681,7 +736,7 @@ def process_session_expired(session: Dict) -> Optional[str]:
         _restore_stock_for_order(order_data)
         
         order_ref.update({
-            'orderStatus': OrderStatus.EXPIRED.value,
+            'orderStatus': OrderStatus.EXPIRED,
             'updatedAt': get_server_timestamp()
         })
     
@@ -697,7 +752,7 @@ def process_payment_intent_succeeded(payment_intent: Dict) -> Optional[str]:
     
     order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
     order_ref.update({
-        'paymentStatus': PaymentStatus.CAPTURED.value,
+        'paymentStatus': PaymentStatus.CAPTURED,
         'updatedAt': get_server_timestamp()
     })
     
@@ -713,7 +768,7 @@ def process_payment_intent_failed(payment_intent: Dict) -> Optional[str]:
     
     order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
     order_ref.update({
-        'paymentStatus': PaymentStatus.FAILED.value,
+        'paymentStatus': PaymentStatus.FAILED,
         'updatedAt': get_server_timestamp()
     })
     
@@ -728,7 +783,7 @@ def process_charge_refunded(charge: Dict) -> Optional[str]:
         return None
     
     # Find order by payment intent
-    orders = get_db().collection(Collections.ORDERS.value)\
+    orders = get_db().collection(Collections.ORDERS)\
         .where('stripePaymentIntentId', '==', payment_intent_id)\
         .limit(1)\
         .stream()
@@ -736,8 +791,8 @@ def process_charge_refunded(charge: Dict) -> Optional[str]:
     for order_doc in orders:
         order_ref = order_doc.reference
         order_ref.update({
-            'orderStatus': OrderStatus.REFUNDED.value,
-            'paymentStatus': PaymentStatus.REFUNDED.value,
+            'orderStatus': OrderStatus.REFUNDED,
+            'paymentStatus': PaymentStatus.REFUNDED,
             'updatedAt': get_server_timestamp()
         })
         
@@ -880,7 +935,7 @@ def create_connect_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
         )
         
         # Save account ID to Firestore
-        user_ref = get_db().collection(Collections.USERS.value).document(user_id)
+        user_ref = get_db().collection(Collections.USERS).document(user_id)
         user_ref.update({
             'stripeAccountId': account.id,
             'updatedAt': get_server_timestamp()
@@ -922,7 +977,7 @@ def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
         
         return create_success_response({'url': account_link.url})
         
-    except stripe.error.StripeError as e:
+    except Exception as e:
         raise https_fn.HttpsError('internal', str(e))
 
 
@@ -964,7 +1019,7 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'requirementsCurrentlyDue': account.requirements.currently_due
         })
         
-    except stripe.error.StripeError as e:
+    except Exception as e:
         raise https_fn.HttpsError('internal', str(e))
 
 
@@ -982,7 +1037,7 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not order_id:
         raise https_fn.HttpsError('invalid-argument', 'orderId required')
     
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
     
     if not order_doc.exists:
@@ -1000,8 +1055,8 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         
         # Update order
         order_ref.update({
-            'paymentStatus': PaymentStatus.CAPTURED.value,
-            'orderStatus': OrderStatus.DELIVERED.value,
+            'paymentStatus': PaymentStatus.CAPTURED,
+            'orderStatus': OrderStatus.DELIVERED,
             'updatedAt': get_server_timestamp()
         })
         
@@ -1051,7 +1106,7 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         
         return create_success_response({'captured': True, 'paymentIntentId': payment_intent_id})
         
-    except stripe.error.StripeError as e:
+    except Exception as e:
         raise https_fn.HttpsError('internal', str(e))
 
 

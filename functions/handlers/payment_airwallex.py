@@ -86,7 +86,7 @@ def airwallex_create_seller_account(req: https_fn.CallableRequest) -> Dict[str, 
         
         # Save account ID to Firestore
         Collections = get_collections()
-        user_ref = get_db().collection(Collections.USERS.value).document(user_id)
+        user_ref = get_db().collection(Collections.USERS).document(user_id)
         user_ref.update({
             'airwallexAccountId': account_id,
             'updatedAt': get_server_timestamp()
@@ -130,7 +130,7 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Get order
     Collections = get_collections()
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
     
     if not order_doc.exists:
@@ -184,7 +184,7 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('invalid-argument', 'orderId required')
     
     Collections = get_collections()
-    order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
     
     if not order_doc.exists:
@@ -314,7 +314,7 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
         if event_type == 'payment_intent.succeeded':
             order_id = data.get('merchant_order_id')
             if order_id:
-                order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+                order_ref = get_db().collection(Collections.ORDERS).document(order_id)
                 order_ref.update({
                     'paymentStatus': 'authorized',
                     'orderStatus': 'confirmed',
@@ -324,7 +324,7 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
         elif event_type == 'payment_intent.payment_failed':
             order_id = data.get('merchant_order_id')
             if order_id:
-                order_ref = get_db().collection(Collections.ORDERS.value).document(order_id)
+                order_ref = get_db().collection(Collections.ORDERS).document(order_id)
                 order_ref.update({
                     'paymentStatus': 'failed',
                     'orderStatus': 'cancelled',

@@ -198,6 +198,7 @@ enum PaymentStatus {
   processing('processing'),
   authorized('authorized'),
   paid('paid'),
+  captured('captured'),
   paymentFailed('payment_failed'),
   refunded('refunded'),
   sessionExpired('session_expired'),
@@ -218,6 +219,8 @@ enum PaymentStatus {
         return 'Payment Authorized';
       case PaymentStatus.paid:
         return 'Paid';
+      case PaymentStatus.captured:
+        return 'Payment Captured';
       case PaymentStatus.paymentFailed:
         return 'Payment Failed';
       case PaymentStatus.refunded:

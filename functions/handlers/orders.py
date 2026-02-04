@@ -86,7 +86,7 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
         )
     
     # Check if already captured
-    if order_data.get('paymentStatus') == PaymentStatus.CAPTURED.value:
+    if order_data.get('paymentStatus') == PaymentStatus.CAPTURED:
         return create_success_response({'captured': True, 'message': 'Already captured'})
     
     payment_intent_id = order_data.get('stripePaymentIntentId')
@@ -100,9 +100,9 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
         
         # Update order
         order_ref.update({
-            'paymentStatus': PaymentStatus.CAPTURED.value,
-            'orderStatus': OrderStatus.DELIVERED.value,
-            'deliveryStatus': DeliveryStatus.DELIVERED.value,
+            'paymentStatus': PaymentStatus.CAPTURED,
+            'orderStatus': OrderStatus.DELIVERED,
+            'deliveryStatus': DeliveryStatus.DELIVERED,
             'confirmedAt': get_server_timestamp(),
             'updatedAt': get_server_timestamp()
         })
@@ -264,11 +264,11 @@ def update_order_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if new_status == 'shipped' and tracking_number:
         update_data['trackingNumber'] = tracking_number
         update_data['carrier'] = carrier or ''
-        update_data['deliveryStatus'] = DeliveryStatus.SHIPPED.value
+        update_data['deliveryStatus'] = DeliveryStatus.SHIPPED
         update_data['shippedAt'] = get_server_timestamp()
     
     if new_status == 'processing':
-        update_data['deliveryStatus'] = DeliveryStatus.PREPARING.value
+        update_data['deliveryStatus'] = DeliveryStatus.PREPARING
     
     order_ref.update(update_data)
     
@@ -347,7 +347,7 @@ def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     refunded = False
     
     # Issue refund if payment was captured
-    if order_data.get('paymentStatus') == PaymentStatus.CAPTURED.value:
+    if order_data.get('paymentStatus') == PaymentStatus.CAPTURED:
         payment_intent_id = order_data.get('stripePaymentIntentId')
         
         if payment_intent_id:
@@ -362,8 +362,8 @@ def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Update order
     order_ref.update({
-        'orderStatus': OrderStatus.CANCELLED.value,
-        'paymentStatus': PaymentStatus.REFUNDED.value if refunded else order_data['paymentStatus'],
+        'orderStatus': OrderStatus.CANCELLED,
+        'paymentStatus': PaymentStatus.REFUNDED if refunded else order_data['paymentStatus'],
         'cancellationReason': reason,
         'cancelledBy': user_id,
         'cancelledAt': get_server_timestamp(),
@@ -445,7 +445,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
         order_ref.update({
             'shippingApproval.status': 'rejected',
             'shippingApproval.respondedAt': get_server_timestamp(),
-            'orderStatus': OrderStatus.CANCELLED.value,
+            'orderStatus': OrderStatus.CANCELLED,
             'cancellationReason': 'Buyer rejected shipping cost',
             'updatedAt': get_server_timestamp()
         })

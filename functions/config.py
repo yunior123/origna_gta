@@ -24,6 +24,8 @@ class PaymentStatus:
     PAYMENT_FAILED = 'payment_failed'
     REFUNDED = 'refunded'
     SESSION_EXPIRED = 'session_expired'
+    AUTHORIZED = 'authorized'
+    CAPTURED = 'captured'
 
 class DeliveryStatus:
     PENDING = 'pending'
