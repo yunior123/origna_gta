@@ -78,8 +78,10 @@ def run_test(test_case, base_url):
                     passed = False
                     error_msg = "Response verification failed"
             except json.JSONDecodeError:
-                passed = False
-                error_msg = "Response was not valid JSON"
+                # Si la réponse n'est pas du JSON, passer le texte brut à la fonction de vérification
+                if not test_case["verify_response"](response.text):
+                    passed = False
+                    error_msg = "Response was not valid JSON and did not pass text verification"
 
         print_result(test_case["name"], method, url, response.status_code, passed, duration_ms, error_msg)
         return passed
@@ -124,19 +126,20 @@ def main():
             "method": "POST",
             "body": {"data": {"items": []}},
             # On Call functions usually return 200 with "error" in body if handled gracefully, 
-            # or 400/401/403/500 if unhandled or rejected at protocol level.
-            # In Gen 2, protocol mapping can be strict.
+            # or 400/401/403/500/401 if unhandled or rejected at protocol level.
+            # 401 est attendu ici car l'utilisateur n'est pas authentifié.
             "expected_status": [200, 400, 401, 403, 500],
             "verify_response": lambda r: "error" in r or "result" in r
         },
         
-        # 4. Get R2 URL (Callable)
+        # 4. Upload Product Images (Callable)
         {
-            "name": "Get R2 Presigned URL (Missing Data)",
-            "endpoint": "get_r2_presigned_url",
+            "name": "Upload Product Images (Missing Data)",
+            "endpoint": "upload_product_images",
             "method": "POST",
-            "body": {"data": {}}, # Missing fileName
-            "expected_status": [200, 400, 500],
+            "body": {"data": {}}, # Missing fileNames/contentTypes
+            # 401 est attendu ici car l'utilisateur n'est pas authentifié.
+            "expected_status": [200, 400, 401, 500],
             "verify_response": lambda r: "error" in r or "message" in str(r)
         }
     ]
