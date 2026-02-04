@@ -10,16 +10,29 @@ class FirebaseUserRepository implements UserRepository {
   @override
   Future<SellerAccountStatus> getSellerAccountStatus(String userId) async {
     final doc = await _firestore.collection('users').doc(userId).get();
-    final data = doc.data();
+    return _parseSellerStatus(doc.data());
+  }
+
+  @override
+  Stream<SellerAccountStatus> watchSellerAccountStatus(String userId) {
+    return _firestore.collection('users').doc(userId).snapshots().map((doc) {
+      return _parseSellerStatus(doc.data());
+    });
+  }
+
+  SellerAccountStatus _parseSellerStatus(Map<String, dynamic>? data) {
     final roles = List<String>.from(data?['roles'] ?? const []);
     final isSeller = roles.contains(UserRoles.seller) || roles.contains(UserRoles.admin);
     final chargesEnabled = data?['chargesEnabled'] == true;
     final payoutsEnabled = data?['payoutsEnabled'] == true;
     final onboardingCompleted = data?['onboardingCompleted'] == true;
+    final pendingRequirements = List<String>.from(data?['pendingRequirements'] ?? const []);
     return SellerAccountStatus(
-      isSeller: isSeller, 
+      isSeller: isSeller,
       chargesEnabled: chargesEnabled && payoutsEnabled,
       detailsSubmitted: onboardingCompleted,
+      hasPendingRequirements: pendingRequirements.isNotEmpty,
+      pendingRequirements: pendingRequirements,
     );
   }
 
@@ -94,6 +107,7 @@ class SellerAccountStatus {
 
 abstract class UserRepository {
   Future<SellerAccountStatus> getSellerAccountStatus(String userId);
+  Stream<SellerAccountStatus> watchSellerAccountStatus(String userId);
   Future<UserModel?> getUserProfile(String userId);
   Future<void> updateAddress(String userId, Address address);
 }

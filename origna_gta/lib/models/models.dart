@@ -834,6 +834,7 @@ class UserModel {
   final String? country; // Seller's country (CN, CA, etc.)
   final String? businessName; // Company name for business sellers
   final int payoutHoldDays; // Custom hold period before payout (default 7)
+  final List<String> pendingRequirements; // Stripe requirements still needed
 
   UserModel({
     required this.uid,
@@ -863,6 +864,7 @@ class UserModel {
     this.country,
     this.businessName,
     this.payoutHoldDays = 7,
+    this.pendingRequirements = const [],
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -895,6 +897,7 @@ class UserModel {
       country: map['country'] as String?,
       businessName: map['businessName'] as String?,
       payoutHoldDays: map['payoutHoldDays'] ?? 7,
+      pendingRequirements: List<String>.from(map['pendingRequirements'] ?? const []),
     );
   }
 
@@ -904,6 +907,9 @@ class UserModel {
   /// Check if user can sell products (seller/admin + onboarding + payouts/charges enabled)
   bool get canSell =>
       (roles.contains(UserRoles.seller) || roles.contains(UserRoles.admin)) && onboardingCompleted && chargesEnabled && payoutsEnabled && !suspended;
+
+  /// Check if user has pending Stripe requirements to complete
+  bool get hasPendingRequirements => pendingRequirements.isNotEmpty;
 
   // copyWith method for updating specific fields
   UserModel copyWith({
@@ -934,6 +940,7 @@ class UserModel {
     String? country,
     String? businessName,
     int? payoutHoldDays,
+    List<String>? pendingRequirements,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -963,6 +970,7 @@ class UserModel {
       country: country ?? this.country,
       businessName: businessName ?? this.businessName,
       payoutHoldDays: payoutHoldDays ?? this.payoutHoldDays,
+      pendingRequirements: pendingRequirements ?? this.pendingRequirements,
     );
   }
 
@@ -996,6 +1004,7 @@ class UserModel {
       if (country != null) 'country': country,
       if (businessName != null) 'businessName': businessName,
       'payoutHoldDays': payoutHoldDays,
+      if (pendingRequirements.isNotEmpty) 'pendingRequirements': pendingRequirements,
     };
   }
 

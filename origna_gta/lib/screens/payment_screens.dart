@@ -78,7 +78,7 @@ class PaymentCanceledScreen extends StatelessWidget {
                 height: 54,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.of(context).popUntil((route) => route.isFirst);
+                    Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
                   child: const Text('Back to Shopping', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),

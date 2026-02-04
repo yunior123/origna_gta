@@ -66,6 +66,14 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   if (uri == null) return null;
 
+  // Handle home route - used when navigating back from deep links
+  if (uri.path == '/' || uri.path.isEmpty) {
+    return MaterialPageRoute(
+      settings: const RouteSettings(name: '/'),
+      builder: (_) => const AuthWrapper(),
+    );
+  }
+
   // Handle payment success deep link
   if (uri.path == '/payment-success') {
     final sessionId = uri.queryParameters['session_id'];

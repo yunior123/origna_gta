@@ -1,7 +1,7 @@
 {
   "$schema": "OrignaGTA Firestore Database Schema",
-  "version": "1.1.0",
-  "lastUpdated": "2026-02-03",
+  "version": "1.2.0",
+  "lastUpdated": "2026-02-04",
   "description": "Complete Firestore database schema for OrignaGTA e-commerce platform. CANADA-ONLY marketplace.",
 
   "collections": {
@@ -84,6 +84,11 @@
           "type": "boolean",
           "default": false,
           "description": "Whether Stripe Connect onboarding is complete"
+        },
+        "pendingRequirements": {
+          "type": "array<string>",
+          "default": [],
+          "description": "Stripe Connect requirements still pending (e.g., verification.document, external_account)"
         },
         "paymentProvider": {
           "type": "string",

@@ -3,17 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 
-/// Main provider - reads ONLY from Firestore (cached data), NO backend call
-/// Use [refreshSellerStatusProvider] to manually sync with Stripe
-final sellerAccountStatusProvider = FutureProvider.autoDispose<SellerAccountStatus>((ref) async {
+/// Main provider - watches Firestore in realtime for seller status updates
+/// When webhook updates Firestore, UI automatically reflects the change
+/// Use [refreshSellerStatusProvider] to manually sync with Stripe backend
+final sellerAccountStatusProvider = StreamProvider.autoDispose<SellerAccountStatus>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) {
-    throw Exception('Please log in to continue');
+    return Stream.error(Exception('Please log in to continue'));
   }
 
-  // Read from Firestore only - no backend call to avoid excessive API calls
-  debugPrint('📊 Reading seller status from Firestore cache for ${user.uid}');
-  return ref.read(userRepositoryProvider).getSellerAccountStatus(user.uid);
+  // Watch Firestore in realtime - updates automatically when webhook changes data
+  debugPrint('📊 Watching seller status from Firestore for ${user.uid}');
+  return ref.read(userRepositoryProvider).watchSellerAccountStatus(user.uid);
 });
 
 /// Manual refresh provider - calls backend to sync Stripe status with Firestore

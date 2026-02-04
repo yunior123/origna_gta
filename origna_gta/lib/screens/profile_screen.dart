@@ -187,7 +187,16 @@ class ProfileScreen extends ConsumerWidget {
                         delay: const Duration(milliseconds: 150),
                         child: Column(
                           children: [
-                            ModernButton(label: 'Sign Out', onPressed: viewModel.signOut, icon: Icons.logout),
+                            ModernButton(
+                              label: 'Sign Out',
+                              onPressed: () async {
+                                await viewModel.signOut();
+                                if (context.mounted) {
+                                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                                }
+                              },
+                              icon: Icons.logout,
+                            ),
                             const SizedBox(height: 12),
                             Material(
                               color: Colors.transparent,

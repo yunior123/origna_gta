@@ -500,10 +500,14 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         429 Too Many Requests: Rate limit exceeded
         500 Internal Error: Processing failed
     """
+    # Reject non-POST requests immediately (browser health checks, emulator UI)
+    if req.method != 'POST':
+        return https_fn.Response('Method not allowed', status=405)
+
     # SECURITY FIX #1: Rate limiting by IP FIRST (prevent DDoS)
     # Skip rate limiting in emulator mode to avoid Firestore transaction issues
     client_ip = req.headers.get('X-Forwarded-For', req.headers.get('X-Real-IP', 'unknown')).split(',')[0].strip()
-    
+
     if not IS_EMULATOR:
         allowed, message = get_rate_limiter().check_rate_limit(
             identifier=f"ip_{client_ip}",
@@ -926,6 +930,10 @@ def process_account_updated(account: Dict) -> None:
     print(f"  Charges Enabled: {account.get('charges_enabled')}")
     print(f"  Payouts Enabled: {account.get('payouts_enabled')}")
     print(f"  Details Submitted: {account.get('details_submitted')}")
+    requirements = account.get('requirements', {})
+    currently_due = requirements.get('currently_due', []) or []
+    if currently_due:
+        print(f"  Requirements Due: {currently_due}")
 
     # Find user with this Stripe account
     users = get_db().collection(Collections.USERS).where(
@@ -942,11 +950,16 @@ def process_account_updated(account: Dict) -> None:
 
     print(f"  User ID: {user_id}")
 
+    # Pending requirements already extracted above for logging
+    eventually_due = requirements.get('eventually_due', []) or []
+    pending_requirements = list(set(currently_due + eventually_due))
+
     # Update user document with current account status
     update_data = {
         'chargesEnabled': account.get('charges_enabled', False),
         'payoutsEnabled': account.get('payouts_enabled', False),
         'onboardingCompleted': account.get('details_submitted', False),
+        'pendingRequirements': pending_requirements,
         'updatedAt': get_server_timestamp(),
     }
     
@@ -1074,16 +1087,17 @@ def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
         )
     
     try:
+        # For Express accounts, always use account_onboarding
+        # Stripe automatically shows any pending requirements
         account_link = stripe.AccountLink.create(
             account=account_id,
             refresh_url=refresh_url,
             return_url=return_url,
             type='account_onboarding'
         )
-        
-        # Return dict directly for on_call functions
+
         return {'success': True, 'url': account_link.url}
-        
+
     except Exception as e:
         raise https_fn.HttpsError('internal', f'Could not create onboarding link: {str(e)}')
 

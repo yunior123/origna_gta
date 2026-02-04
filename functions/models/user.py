@@ -141,11 +141,12 @@ class User(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
-        """Validate name contains only letters, spaces, hyphens"""
+        """Validate name (letters, spaces, hyphens, apostrophes, periods)"""
         import re
-        pattern = re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[ -][A-Za-zÀ-ÖØ-öø-ÿ]+)*$")
+        # Allow: O'Brien, Jr., María-José, etc.
+        pattern = re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ' .\-]*[A-Za-zÀ-ÖØ-öø-ÿ.]?$")
         if not pattern.match(v):
-            raise ValueError("Name must contain only letters, spaces, and hyphens")
+            raise ValueError("Name must contain only letters, spaces, hyphens, apostrophes, and periods")
         return v
 
     @field_validator("roles")

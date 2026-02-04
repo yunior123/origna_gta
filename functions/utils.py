@@ -41,7 +41,8 @@ RFC_5322_EMAIL = re.compile(
     r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$"
 )
 
-NAME_REGEX = re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[ -][A-Za-zÀ-ÖØ-öø-ÿ]+)*$")
+# Allow letters, spaces, hyphens, apostrophes, periods (O'Brien, Jr., María-José)
+NAME_REGEX = re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ' .\-]*[A-Za-zÀ-ÖØ-öø-ÿ.]?$")
 POSTAL_CODE_CA_REGEX = re.compile(r"^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$")
 
 DISALLOWED_CHARS = re.compile(r"[<>\"{}\[\]\\|^`]")
@@ -140,7 +141,7 @@ def sanitize_email(email: str) -> str:
 
 
 def validate_name(name: str) -> str:
-    """Validate person name (letters, spaces, hyphens only)."""
+    """Validate person name (letters, spaces, hyphens, apostrophes, periods)."""
     cleaned = sanitize_text(name, MAX_NAME_LENGTH, field_name="name", min_length=2)
     if not NAME_REGEX.match(cleaned):
         raise ValueError("Invalid name format")

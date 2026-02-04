@@ -387,26 +387,19 @@ def test_user_valid():
 
 
 def test_user_name_validation():
-    """Test user name validation (letters, spaces, hyphens only)"""
-    # Valid name
-    user1 = User(
-        uid="user_123",
-        email="user@example.com",
-        name="John Doe",
-        roles=[UserRole.BUYER],
-        createdAt=datetime.now(),
-    )
-    assert user1.name == "John Doe"
-    
-    user2 = User(
-        uid="user_123",
-        email="user@example.com",
-        name="Jean-Pierre",
-        roles=[UserRole.BUYER],
-        createdAt=datetime.now(),
-    )
-    assert user2.name == "Jean-Pierre"
-    
+    """Test user name validation (letters, spaces, hyphens, apostrophes, periods)"""
+    # Valid names
+    valid_names = ["John Doe", "Jean-Pierre", "O'Brien", "Mary Jr.", "María José"]
+    for name in valid_names:
+        user = User(
+            uid="user_123",
+            email="user@example.com",
+            name=name,
+            roles=[UserRole.BUYER],
+            createdAt=datetime.now(),
+        )
+        assert user.name == name
+
     # Invalid: contains numbers
     with pytest.raises(ValidationError):
         User(

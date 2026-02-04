@@ -368,9 +368,12 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       // Already set up - can manage without accepting terms again
       buttonText = 'Manage Stripe Account';
       onPressed = viewModel.openStripeDashboard;
+    } else if (hasAccount && onboardingCompleted && user.hasPendingRequirements && !hasError) {
+      // Has account, submitted details, but still has requirements to complete
+      buttonText = 'Complete Required Documents';
+      onPressed = viewModel.continueOnboarding;
     } else if (hasAccount && onboardingCompleted && !hasError) {
-      // Has account, submitted details, but waiting for Stripe verification
-      // User can still check Stripe dashboard for updates
+      // Has account, submitted all details, waiting for Stripe verification
       buttonText = 'Check Verification Status';
       onPressed = viewModel.openStripeDashboard;
     } else if (hasAccount && !onboardingCompleted && !hasError) {

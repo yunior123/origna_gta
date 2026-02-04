@@ -23,8 +23,9 @@ service cloud.firestore {
     }
 
     function isValidName(name) {
+      // Allow letters, apostrophes, periods, hyphens, spaces (e.g., O'Brien, Jr., Mary-Jane)
       return isStringWithLen(name, 2, 60) &&
-        name.matches('^[a-zA-ZÀ-ÿ]+(?:[ -][a-zA-ZÀ-ÿ]+)*$');
+        name.matches("^[a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ'. \\-]*[a-zA-ZÀ-ÿ.']?$");
     }
 
     function isValidPostalCode(code) {

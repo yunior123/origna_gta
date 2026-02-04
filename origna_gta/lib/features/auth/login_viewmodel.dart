@@ -89,7 +89,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
       final errorStr = e.toString().toLowerCase();
       
       if (errorStr.contains('permission-denied') || errorStr.contains('permission_denied')) {
-        errorMessage = 'Account creation failed. Please check your name format (letters only, 2-60 characters).';
+        errorMessage = 'Account creation failed. Please check your name format (2-60 characters, letters, spaces, hyphens, apostrophes, periods).';
       } else if (errorStr.contains('network')) {
         errorMessage = 'Network error. Please check your connection.';
       } else if (errorStr.contains('email-already-in-use')) {
@@ -203,11 +203,10 @@ class LoginViewModel extends StateNotifier<LoginState> {
       return 'Name must be less than 60 characters';
     }
     
-    // Must be letters only (with optional spaces/hyphens between words)
-    // Matches: John, Mary Jane, Jean-Pierre, José, François
-    final nameRegex = RegExp(r'^[a-zA-ZÀ-ÿ]+(?:[ -][a-zA-ZÀ-ÿ]+)*$');
+    // Allow letters, spaces, hyphens, apostrophes, periods (O'Brien, Jr., María-José)
+    final nameRegex = RegExp(r"^[a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ' .\-]*[a-zA-ZÀ-ÿ.]?$");
     if (!nameRegex.hasMatch(trimmedName)) {
-      return 'Name can only contain letters, spaces, and hyphens';
+      return 'Name can only contain letters, spaces, hyphens, apostrophes, and periods';
     }
     
     return null; // Valid

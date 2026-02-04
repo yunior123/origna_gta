@@ -12,13 +12,11 @@
             "cwd": "${workspaceFolder}/origna_gta",
             "preLaunchTask": "Start All Emulator Services",
             "postDebugTask": "Stop All Emulator Services",
-            "args": [
-                "--dart-define=ENVIRONMENT=emulator",
-                "--dart-define=USE_EMULATORS=true"
-            ],
             "toolArgs": [
                 "-d", "chrome",
-                "--web-port", "3000"
+                "--web-port", "3000",
+                "--dart-define=ENVIRONMENT=emulator",
+                "--dart-define=USE_EMULATORS=true"
             ],
             "env": {
                 "ENVIRONMENT": "emulator"
@@ -33,14 +31,11 @@
             "preLaunchTask": "Start All Emulator Services",
             "postDebugTask": "Stop All Emulator Services",
             "flutterMode": "release",
-            "args": [
-                "--dart-define=ENVIRONMENT=emulator",
-                "--dart-define=USE_EMULATORS=true",
-                "--release"
-            ],
             "toolArgs": [
                 "-d", "chrome",
-                "--web-port", "3000"
+                "--web-port", "3000",
+                "--dart-define=ENVIRONMENT=emulator",
+                "--dart-define=USE_EMULATORS=true"
             ],
             "env": {
                 "ENVIRONMENT": "emulator"
@@ -57,12 +52,10 @@
             "cwd": "${workspaceFolder}/origna_gta",
             "preLaunchTask": "Start Firebase Emulators",
             "postDebugTask": "Stop All Emulator Services",
-            "args": [
+            "toolArgs": [
+                "-d", "chrome",
                 "--dart-define=ENVIRONMENT=emulator",
                 "--dart-define=USE_EMULATORS=true"
-            ],
-            "toolArgs": [
-                "-d", "chrome"
             ],
             "env": {
                 "ENVIRONMENT": "emulator"
@@ -77,13 +70,10 @@
             "preLaunchTask": "Start Firebase Emulators",
             "postDebugTask": "Stop All Emulator Services",
             "flutterMode": "release",
-            "args": [
-                "--dart-define=ENVIRONMENT=emulator",
-                "--dart-define=USE_EMULATORS=true",
-                "--release"
-            ],
             "toolArgs": [
-                "-d", "chrome"
+                "-d", "chrome",
+                "--dart-define=ENVIRONMENT=emulator",
+                "--dart-define=USE_EMULATORS=true"
             ],
             "env": {
                 "ENVIRONMENT": "emulator"
@@ -97,7 +87,7 @@
             "cwd": "${workspaceFolder}/origna_gta",
             "preLaunchTask": "Start Firebase Emulators",
             "postDebugTask": "Stop All Emulator Services",
-            "args": [
+            "toolArgs": [
                 "--dart-define=ENVIRONMENT=emulator",
                 "--dart-define=USE_EMULATORS=true"
             ],
@@ -111,12 +101,10 @@
             "request": "launch",
             "program": "lib/main.dart",
             "cwd": "${workspaceFolder}/origna_gta",
-            "args": [
+            "toolArgs": [
+                "-d", "chrome",
                 "--dart-define=ENVIRONMENT=production",
                 "--dart-define=USE_EMULATORS=false"
-            ],
-            "toolArgs": [
-                "-d", "chrome"
             ],
             "env": {
                 "ENVIRONMENT": "production"
@@ -129,13 +117,10 @@
             "program": "lib/main.dart",
             "cwd": "${workspaceFolder}/origna_gta",
             "flutterMode": "release",
-            "args": [
-                "--dart-define=ENVIRONMENT=production",
-                "--dart-define=USE_EMULATORS=false",
-                "--release"
-            ],
             "toolArgs": [
-                "-d", "chrome"
+                "-d", "chrome",
+                "--dart-define=ENVIRONMENT=production",
+                "--dart-define=USE_EMULATORS=false"
             ],
             "env": {
                 "ENVIRONMENT": "production"

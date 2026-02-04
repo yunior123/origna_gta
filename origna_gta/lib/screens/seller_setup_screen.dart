@@ -136,7 +136,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           ),
         ),
         const SizedBox(height: 12),
-        ElevatedButton(onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst), child: const Text('Go Home')),
+        ElevatedButton(onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false), child: const Text('Go Home')),
       ],
     );
   }
@@ -144,7 +144,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
   Future<void> _goToHome() async {
     // Show loading indicator
     setState(() => _isRefreshing = true);
-    
+
     try {
       // Call backend to sync Stripe status with Firestore
       // This ensures chargesEnabled, payoutsEnabled, onboardingCompleted are updated
@@ -153,12 +153,13 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
       // Ignore errors - we'll still navigate home
       debugPrint('Error syncing status before going home: $e');
     }
-    
+
     // Refresh user profile to get updated seller status from Firestore
     ref.invalidate(userProfileProvider);
-    
+
     if (mounted) {
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      // Use pushNamedAndRemoveUntil to properly update browser URL on web
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
     }
   }
 
@@ -403,7 +404,7 @@ class SellerSetupRefreshScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              TextButton(onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst), child: const Text('Back to Home')),
+              TextButton(onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false), child: const Text('Back to Home')),
             ],
           ),
         ),
