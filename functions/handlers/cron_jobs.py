@@ -53,11 +53,18 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
     Runs: Daily at 01:00 UTC
     
     Logic:
+    - Check if Stripe provider is enabled
     - Find orders with status=delivered, paymentStatus=authorized
     - Delivered 7+ days ago
     - Capture payment and initiate payouts
     """
     print('Running auto_capture_confirmed_receipts cron job')
+    
+    # Check if Stripe is enabled before processing
+    from handlers.payment_providers import is_provider_enabled, PaymentProvider
+    if not is_provider_enabled(PaymentProvider.STRIPE):
+        print('Stripe payments are disabled, skipping auto-capture')
+        return
     
     cutoff_date = datetime.now() - timedelta(days=AUTO_CONFIRM_DAYS)
     

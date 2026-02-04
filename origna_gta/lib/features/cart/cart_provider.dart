@@ -172,10 +172,41 @@ class CartController {
   CartRepository get _repository => _ref.read(cartRepositoryProvider);
   String? get _userId => _ref.read(userIdProvider);
 
+  /// Check if user can add this product (not their own)
+  Future<bool> canAddToCart(String productId) async {
+    final userId = _userId;
+    if (userId == null) return false;
+    
+    try {
+      final firestore = _ref.read(firestoreProvider);
+      final productDoc = await firestore.collection('products').doc(productId).get();
+      
+      if (!productDoc.exists) return false;
+      
+      final sellerId = productDoc.data()?['sellerId'] as String?;
+      return sellerId != userId;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<bool> addToCart(String productId, int quantity) async {
     final userId = _userId;
     if (userId == null) return false;
+    
     try {
+      // Check if user is trying to buy their own product
+      final firestore = _ref.read(firestoreProvider);
+      final productDoc = await firestore.collection('products').doc(productId).get();
+      
+      if (!productDoc.exists) return false;
+      
+      final sellerId = productDoc.data()?['sellerId'] as String?;
+      if (sellerId == userId) {
+        // User is trying to buy their own product
+        return false;
+      }
+      
       await _repository.addToCart(userId, productId, quantity);
       return true;
     } catch (e) {

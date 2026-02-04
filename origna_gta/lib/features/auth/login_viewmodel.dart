@@ -24,11 +24,25 @@ class LoginViewModel extends StateNotifier<LoginState> {
       return;
     }
 
+    // Validate email for both login and registration
+    final emailError = _validateEmail(email);
+    if (emailError != null) {
+      state = state.copyWith(errorMessage: emailError);
+      return;
+    }
+
     // SECURITY FIX M-3: Enforce strong password policy for registration
     if (!state.isLogin) {
       final passwordError = _validatePasswordStrength(password);
       if (passwordError != null) {
         state = state.copyWith(errorMessage: passwordError);
+        return;
+      }
+      
+      // Validate name
+      final nameError = _validateName(name);
+      if (nameError != null) {
+        state = state.copyWith(errorMessage: nameError);
         return;
       }
     }
@@ -70,7 +84,19 @@ class LoginViewModel extends StateNotifier<LoginState> {
       }
       state = state.copyWith(isLoading: false, errorMessage: e.message ?? 'Authentication failed', failedAttempts: attempts, lockoutUntil: newLockout);
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: 'An error occurred. Please try again.');
+      // Better error handling - show actual error message
+      String errorMessage = 'An error occurred. Please try again.';
+      final errorStr = e.toString().toLowerCase();
+      
+      if (errorStr.contains('permission-denied') || errorStr.contains('permission_denied')) {
+        errorMessage = 'Account creation failed. Please check your name format (letters only, 2-60 characters).';
+      } else if (errorStr.contains('network')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else if (errorStr.contains('email-already-in-use')) {
+        errorMessage = 'This email is already registered. Try logging in.';
+      }
+      
+      state = state.copyWith(isLoading: false, errorMessage: errorMessage);
     }
   }
 
@@ -133,6 +159,57 @@ class LoginViewModel extends StateNotifier<LoginState> {
       return 'Password is too common. Choose a stronger password';
     }
 
+    return null; // Valid
+  }
+
+  /// Validate email format
+  String? _validateEmail(String? email) {
+    if (email == null || email.trim().isEmpty) {
+      return 'Email is required';
+    }
+    
+    final trimmedEmail = email.trim().toLowerCase();
+    
+    if (trimmedEmail.length < 6) {
+      return 'Email is too short';
+    }
+    
+    if (trimmedEmail.length > 254) {
+      return 'Email is too long';
+    }
+    
+    // Standard email regex
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    if (!emailRegex.hasMatch(trimmedEmail)) {
+      return 'Please enter a valid email address';
+    }
+    
+    return null; // Valid
+  }
+
+  /// Validate name format (must match Firestore rules)
+  String? _validateName(String? name) {
+    if (name == null || name.trim().isEmpty) {
+      return 'Name is required';
+    }
+    
+    final trimmedName = name.trim();
+    
+    if (trimmedName.length < 2) {
+      return 'Name must be at least 2 characters';
+    }
+    
+    if (trimmedName.length > 60) {
+      return 'Name must be less than 60 characters';
+    }
+    
+    // Must be letters only (with optional spaces/hyphens between words)
+    // Matches: John, Mary Jane, Jean-Pierre, José, François
+    final nameRegex = RegExp(r'^[a-zA-ZÀ-ÿ]+(?:[ -][a-zA-ZÀ-ÿ]+)*$');
+    if (!nameRegex.hasMatch(trimmedName)) {
+      return 'Name can only contain letters, spaces, and hyphens';
+    }
+    
     return null; // Valid
   }
 }

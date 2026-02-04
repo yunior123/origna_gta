@@ -8,7 +8,9 @@ abstract class AdminRepository {
   Future<void> disableAdminMfa();
   Future<Map<String, dynamic>> enableAdminMfa();
   Future<UserModel?> fetchUserById(String userId);
+  Future<Map<String, dynamic>> getPaymentProviders();
   Future<void> setUserSuspended(String userId, bool suspended);
+  Future<void> updatePaymentProvider(String provider, bool enabled, {String? reason});
   Future<void> updateProductStock(String productId, int quantity);
   Future<void> updateUserRoles(String userId, {List<String> add, List<String> remove, String? reason});
   Future<Map<String, dynamic>> verifyAdminMfa(String code);
@@ -53,6 +55,12 @@ class FirebaseAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> getPaymentProviders() async {
+    final result = await _functions.httpsCallable('get_payment_providers').call();
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
+  @override
   Future<void> setUserSuspended(String userId, bool suspended) async {
     if (suspended) {
       // EDGE CASE FIX #1: Call backend to handle active orders
@@ -61,6 +69,15 @@ class FirebaseAdminRepository implements AdminRepository {
       // Unsuspend: just update Firestore
       await _firestore.collection('users').doc(userId).update({'suspended': false, 'unsuspendedAt': FieldValue.serverTimestamp()});
     }
+  }
+
+  @override
+  Future<void> updatePaymentProvider(String provider, bool enabled, {String? reason}) async {
+    await _functions.httpsCallable('update_payment_provider').call({
+      'provider': provider,
+      'enabled': enabled,
+      'reason': reason ?? '',
+    });
   }
 
   @override

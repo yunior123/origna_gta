@@ -60,6 +60,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       state = state.copyWith(errorMessage: 'Price must be greater than 0');
       return;
     }
+    if (price > 100000) {
+      state = state.copyWith(errorMessage: 'Price cannot exceed \$100,000 CAD');
+      return;
+    }
     if (stock < 0) {
       state = state.copyWith(errorMessage: 'Stock cannot be negative');
       return;

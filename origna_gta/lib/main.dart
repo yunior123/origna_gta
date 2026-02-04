@@ -12,6 +12,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:origna_gta/firebase_options.dart';
 import 'package:origna_gta/origna_app.dart';
 import 'package:origna_gta/services/conf_services.dart';
+import 'package:origna_gta/utils/env_config.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 void main() {
@@ -23,16 +24,33 @@ void main() {
       WidgetsFlutterBinding.ensureInitialized();
       await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-      // EMULATOR CONFIGURATION
-      if (kIsWeb && Uri.base.host.contains('localhost')) {
+      // Print environment info (debug only)
+      if (!kReleaseMode) {
+        envConfig.printInfo();
+      }
+
+      // EMULATOR CONFIGURATION - Uses env_config to determine if emulators should be used
+      if (envConfig.shouldUseEmulators) {
         try {
           await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
           FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
           FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
           await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
-          debugPrint('Using Firebase Emulators based on localhost detection');
+          debugPrint('✅ Connected to Firebase Emulators (${envConfig.displayName})');
         } catch (e) {
-          debugPrint('Failed to connect to emulators: $e');
+          debugPrint('❌ Failed to connect to emulators: $e');
+        }
+      } else {
+        debugPrint('🌐 Using Production Firebase (${envConfig.displayName})');
+      }
+
+      // Set auth persistence to LOCAL for web (survives page refreshes and browser restarts)
+      if (kIsWeb) {
+        try {
+          await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+          debugPrint('🔐 Auth persistence set to LOCAL');
+        } catch (e) {
+          debugPrint('⚠️ Could not set auth persistence: $e');
         }
       }
 
@@ -54,7 +72,8 @@ void main() {
 
       await SentryFlutter.init((options) {
         options.dsn = ConfigService().sentryDnsKey;
-        options.environment = kReleaseMode ? 'production' : 'development';
+        // Use env_config for environment naming
+        options.environment = envConfig.isProduction ? 'production' : 'emulator';
         options.tracesSampleRate = 0.1; // 10% of transactions
         options.beforeSend = (event, hint) {
           // Filter sensitive data - strip emails before sending

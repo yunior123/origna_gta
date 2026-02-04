@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/admin/tabs/admin_orders_tab.dart';
+import 'package:origna_gta/admin/tabs/admin_payment_providers_tab.dart';
 import 'package:origna_gta/admin/tabs/admin_products_tab.dart';
 import 'package:origna_gta/admin/tabs/admin_security_tab.dart';
 import 'package:origna_gta/admin/tabs/admin_sellers_tab.dart';
@@ -56,18 +57,20 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
               indicatorWeight: 3,
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white70,
+              isScrollable: true,
               tabs: const [
                 Tab(icon: Icon(Icons.store), text: 'Sellers'),
                 Tab(icon: Icon(Icons.people), text: 'Users'),
                 Tab(icon: Icon(Icons.receipt_long), text: 'Orders'),
                 Tab(icon: Icon(Icons.inventory), text: 'Products'),
+                Tab(icon: Icon(Icons.payment), text: 'Payments'),
                 Tab(icon: Icon(Icons.security), text: 'Security'),
               ],
             ),
           ),
           body: TabBarView(
             controller: _tabController,
-            children: const [AdminSellersTab(), AdminUsersTab(), AdminOrdersTab(), AdminProductsTab(), AdminSecurityTab()],
+            children: const [AdminSellersTab(), AdminUsersTab(), AdminOrdersTab(), AdminProductsTab(), AdminPaymentProvidersTab(), AdminSecurityTab()],
           ),
         );
       },
@@ -83,6 +86,6 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
   }
 }

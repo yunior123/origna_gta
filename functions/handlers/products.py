@@ -14,7 +14,10 @@ from botocore.config import Config
 import os
 import uuid
 
-from config import Collections, R2_ACCESS_KEY_NEW, R2_SECRET_KEY_NEW, R2_ACCOUNT_ID_NEW
+from config import (
+    Collections, R2_ACCESS_KEY_NEW, R2_SECRET_KEY_NEW, R2_ACCOUNT_ID_NEW,
+    R2Config, get_r2_credentials, IS_EMULATOR
+)
 from utils import create_success_response, create_error_response
 from algolia_service import index_product, delete_product
 
@@ -90,10 +93,11 @@ def upload_product_images(req: https_fn.CallableRequest) -> Dict[str, Any]:
     # Sanitize file names to prevent path traversal
     file_names = [sanitize_path(fn) for fn in file_names_raw]
     
-    # Get R2 credentials from secrets
-    r2_access_key = os.environ.get(R2_ACCESS_KEY_NEW.key)
-    r2_secret_key = os.environ.get(R2_SECRET_KEY_NEW.key)
-    r2_account_id = os.environ.get(R2_ACCOUNT_ID_NEW.key)
+    # Get R2 credentials based on environment
+    r2_creds = get_r2_credentials()
+    r2_access_key = r2_creds.get("access_key")
+    r2_secret_key = r2_creds.get("secret_key")
+    r2_account_id = r2_creds.get("account_id")
     
     if not all([r2_access_key, r2_secret_key, r2_account_id]):
         raise https_fn.HttpsError('failed-precondition', 'R2 credentials not configured')
@@ -108,14 +112,14 @@ def upload_product_images(req: https_fn.CallableRequest) -> Dict[str, Any]:
         region_name='auto'
     )
     
-    bucket_name = 'origna-products'
+    bucket_name = R2Config.BUCKET_NAME
     upload_urls = []
     
     try:
         for file_name, content_type in zip(file_names, content_types):
-            # Generate unique key
+            # Generate unique key with environment-aware path
             file_extension = file_name.split('.')[-1]
-            unique_key = f'products/{uuid.uuid4()}.{file_extension}'
+            unique_key = R2Config.get_image_path('products', f'{uuid.uuid4()}.{file_extension}')
             
             # Generate presigned URL for upload
             presigned_url = s3_client.generate_presigned_url(
@@ -305,25 +309,34 @@ def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
         'createdAt': get_server_timestamp()
     })
     
-    # Update product's average rating
+    # Update product's average rating using transaction (atomic, prevents race conditions)
     product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
-    product_doc = product_ref.get()
     
-    if product_doc.exists:
+    @_firestore.transactional
+    def update_rating_transaction(transaction):
+        product_doc = product_ref.get(transaction=transaction)
+        if not product_doc.exists:
+            return None, None
+        
         product_data = product_doc.to_dict()
         current_rating = product_data.get('rating', 0)
         rating_count = product_data.get('ratingCount', 0)
         
-        # Calculate new average
+        # Calculate new average atomically
         total_rating = current_rating * rating_count
         new_rating_count = rating_count + 1
         new_average = (total_rating + rating) / new_rating_count
         
-        product_ref.update({
+        transaction.update(product_ref, {
             'rating': new_average,
             'ratingCount': new_rating_count
         })
-        
+        return new_average, new_rating_count
+    
+    transaction = get_db().transaction()
+    new_average, new_rating_count = update_rating_transaction(transaction)
+    
+    if new_average is not None:
         return create_success_response({
             'newRating': new_average,
             'ratingCount': new_rating_count
@@ -336,6 +349,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
 def on_product_created(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Indexes product to Algolia when created.
+    Also validates perishable products have proper delivery options.
     """
     product_id = event.params['productId']
     product_data = event.data.to_dict()
@@ -348,6 +362,20 @@ def on_product_created(event: firestore_fn.Event) -> None:
     if not product_data.get('isActive', True):
         print(f'Product {product_id} is not active, skipping indexing')
         return
+    
+    # FOOD SAFETY: Perishable products should have local delivery or same-day option
+    is_perishable = product_data.get('isPerishable', False)
+    if is_perishable:
+        delivery_options = product_data.get('deliveryOptions', [])
+        has_local_or_same_day = any(
+            opt.get('type') in ['local_delivery', 'same_day', 'local'] or 
+            opt.get('estimatedDays', 99) <= 1
+            for opt in delivery_options
+        ) if delivery_options else product_data.get('isLocalDeliveryOnly', False)
+        
+        if not has_local_or_same_day:
+            print(f'WARNING: Perishable product {product_id} should have local/same-day delivery')
+            # Log warning but don't block - seller can update later
     
     try:
         # Add document ID to product data

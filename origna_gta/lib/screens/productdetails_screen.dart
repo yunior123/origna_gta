@@ -197,7 +197,7 @@ class ProductDetailScreen extends ConsumerWidget {
                           const SizedBox(height: 28),
                           _QuantitySelector(viewModel: viewModel),
                           const SizedBox(height: 24),
-                          _AddToCartButton(productId: productId),
+                          _AddToCartButton(productId: productId, sellerId: product.sellerId),
                           const SizedBox(height: 40),
                         ],
                       ),
@@ -285,12 +285,38 @@ class ProductDetailScreen extends ConsumerWidget {
 
 class _AddToCartButton extends ConsumerWidget {
   final String productId;
+  final String sellerId;
 
-  const _AddToCartButton({required this.productId});
+  const _AddToCartButton({required this.productId, required this.sellerId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final quantity = ref.watch(productDetailViewModelProvider.select((state) => state.quantity));
+    final currentUser = ref.watch(currentUserProvider);
+    final isOwnProduct = currentUser != null && currentUser.uid == sellerId;
+
+    // If user is the seller, show disabled button with message
+    if (isOwnProduct) {
+      return Column(
+        children: [
+          ModernButton(
+            label: 'This is your product',
+            onPressed: null,
+            fullWidth: true,
+            icon: Icons.storefront,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'You cannot purchase your own products',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[600],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      );
+    }
 
     return ModernButton(
       label: 'Add to Cart',

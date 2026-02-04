@@ -39,6 +39,14 @@ def get_server_timestamp():
         _firestore = fs
     return _firestore.SERVER_TIMESTAMP
 
+def get_firestore():
+    """Get Firestore module (lazy initialization)."""
+    global _firestore
+    if _firestore is None:
+        from firebase_admin import firestore as fs
+        _firestore = fs
+    return _firestore
+
 
 @https_fn.on_call()
 def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
@@ -46,10 +54,11 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
     Buyer confirms order receipt, triggering payment capture and seller payouts.
     
     Flow:
-    1. Capture Stripe Payment Intent
-    2. Update order status to delivered
-    3. Create payout records for each seller
-    4. Transfer funds to sellers (minus 2.5% platform fee)
+    1. Check if payment provider is enabled
+    2. Capture Stripe Payment Intent
+    3. Update order status to delivered
+    4. Create payout records for each seller
+    5. Transfer funds to sellers (minus 2.5% platform fee)
     
     Request data:
         orderId: Order document ID
@@ -57,6 +66,10 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
     Returns:
         {success: True, captured: True}
     """
+    # Check if Stripe is enabled (this function uses Stripe)
+    from handlers.payment_providers import require_provider_enabled, PaymentProvider
+    require_provider_enabled(PaymentProvider.STRIPE)
+    
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
     
@@ -332,17 +345,18 @@ def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if order_data['orderStatus'] in ['delivered', 'refunded']:
         raise https_fn.HttpsError('failed-precondition', 'Cannot cancel delivered or refunded orders')
     
-    # Restore stock
-    for item in order_data['items']:
-        product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
-        product_doc = product_ref.get()
-        
-        if product_doc.exists:
-            product_data = product_doc.to_dict()
-            current_stock = product_data.get('stockQuantity', 0)
+    # Check if stock already restored (idempotency)
+    if order_data.get('stockRestored'):
+        print(f'Stock already restored for order {order_id}')
+    else:
+        # Restore stock using atomic Increment (prevents race conditions)
+        for item in order_data['items']:
+            product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
             product_ref.update({
-                'stockQuantity': current_stock + item['quantity']
+                'stockQuantity': get_firestore().Increment(item['quantity'])
             })
+        # Mark stock as restored (idempotency flag)
+        order_ref.update({'stockRestored': True})
     
     refunded = False
     

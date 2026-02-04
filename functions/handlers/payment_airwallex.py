@@ -96,7 +96,8 @@ def airwallex_create_seller_account(req: https_fn.CallableRequest) -> Dict[str, 
         return utils.create_success_response({'accountId': account_id})
         
     except Exception as e:
-        raise https_fn.HttpsError('internal', str(e))
+        print(f'Airwallex create_seller_account error: {type(e).__name__}: {str(e)}')
+        raise https_fn.HttpsError('internal', 'Failed to create seller account')
 
 
 @https_fn.on_call()
@@ -161,7 +162,8 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         return utils.create_success_response(result)
         
     except Exception as e:
-        raise https_fn.HttpsError('internal', str(e))
+        print(f'Airwallex process_payment error: {type(e).__name__}: {str(e)}')
+        raise https_fn.HttpsError('internal', 'Payment processing failed')
 
 
 @https_fn.on_call()
@@ -175,6 +177,10 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     Returns:
         {success: True, captured: True}
     """
+    # Check if Airwallex is enabled
+    from handlers.payment_providers import require_provider_enabled, PaymentProvider
+    require_provider_enabled(PaymentProvider.AIRWALLEX)
+    
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
     
@@ -209,7 +215,8 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         return utils.create_success_response({'captured': True})
         
     except Exception as e:
-        raise https_fn.HttpsError('internal', str(e))
+        print(f'Airwallex capture_payment error: {type(e).__name__}: {str(e)}')
+        raise https_fn.HttpsError('internal', 'Payment capture failed')
 
 
 @https_fn.on_request(timeout_sec=60)

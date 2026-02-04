@@ -1,6 +1,7 @@
 // seller_registration_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart'; // For UserModel
@@ -9,6 +10,23 @@ import 'package:origna_gta/widgets/modern_button.dart';
 
 import '../features/seller/seller_registration_state.dart';
 import '../features/seller/seller_registration_view_model.dart';
+
+/// Provider to fetch backend payment provider configuration status
+final paymentProviderStatusProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  try {
+    final callable = FirebaseFunctions.instance.httpsCallable('get_provider_status');
+    final result = await callable.call();
+    final data = Map<String, dynamic>.from(result.data as Map);
+    if (data['success'] == true && data['providers'] != null) {
+      return Map<String, dynamic>.from(data['providers'] as Map);
+    }
+    return {};
+  } catch (e) {
+    // On error, return empty map (all providers will show from static config)
+    debugPrint('Error fetching provider status: $e');
+    return {};
+  }
+});
 
 /// Available payment providers - add new providers here
 const List<PaymentProviderConfig> availablePaymentProviders = [
@@ -205,14 +223,23 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                         value: _termsAccepted,
                         onChanged: (value) => setState(() => _termsAccepted = value ?? false),
                         title: const Text('I accept the Terms and Conditions'),
+                        subtitle: !_termsAccepted
+                            ? Text(
+                                'You must accept the terms to create a seller account',
+                                style: TextStyle(color: Colors.orange[700], fontSize: 12),
+                              )
+                            : null,
                         controlAffinity: ListTileControlAffinity.leading,
                         activeColor: DesignTokens.primary,
                         contentPadding: EdgeInsets.zero,
                       ),
                       const SizedBox(height: 12),
 
+                      // --- Verification Status Card ---
+                      _buildVerificationStatusCard(userModel),
+
                       // --- Action Button ---
-                      _buildActionButton(userModel, viewState.isLoading, viewState.paymentProvider, viewModel),
+                      _buildActionButton(userModel, viewState, viewModel),
                       const SizedBox(height: 32),
                     ],
                   ),
@@ -245,17 +272,82 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
     WidgetsBinding.instance.addObserver(this);
   }
 
-  Widget _buildActionButton(UserModel user, bool isLoading, String paymentProvider, SellerRegistrationViewModel viewModel) {
+  /// Build verification status info card
+  Widget _buildVerificationStatusCard(UserModel user) {
+    final hasAccount = user.stripeAccountId != null && user.stripeAccountId!.isNotEmpty;
+    final onboardingCompleted = user.onboardingCompleted;
+    final chargesEnabled = user.chargesEnabled;
+    final payoutsEnabled = user.payoutsEnabled;
+    
+    // Only show if user has account but verification is pending
+    if (!hasAccount || payoutsEnabled) return const SizedBox.shrink();
+    
+    String title;
+    String message;
+    IconData icon;
+    Color color;
+    
+    if (!onboardingCompleted) {
+      title = 'Complete Your Setup';
+      message = 'Click the button below to finish providing your information to Stripe.';
+      icon = Icons.assignment_outlined;
+      color = DesignTokens.primary;
+    } else if (!chargesEnabled || !payoutsEnabled) {
+      title = 'Identity Verification Pending';
+      message = 'Stripe is reviewing your identity documents. This usually takes a few minutes but can take up to 2 business days. You\'ll be able to add products once verified.';
+      icon = Icons.hourglass_empty;
+      color = Colors.orange;
+    } else {
+      return const SizedBox.shrink();
+    }
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 15),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: TextStyle(color: Colors.grey[700], fontSize: 13, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton(UserModel user, SellerRegistrationState viewState, SellerRegistrationViewModel viewModel) {
+    final isLoading = viewState.isLoading;
+    final paymentProvider = viewState.paymentProvider;
+    
     if (paymentProvider == 'airwallex') {
       final hasAirwallex = user.airwallexAccountId != null && user.airwallexAccountId!.isNotEmpty;
+      // Disable button if terms not accepted (unless already connected)
+      final canProceed = _termsAccepted || hasAirwallex;
+      
       return ModernButton(
-        onPressed: isLoading
+        onPressed: isLoading || !canProceed
             ? null
             : () {
-                if (!_termsAccepted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please accept the Terms and Conditions to continue')));
-                  return;
-                }
                 viewModel.startRegistration();
               },
         label: hasAirwallex ? 'Airwallex Connected' : 'Connect Airwallex',
@@ -266,32 +358,37 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
 
     final hasAccount = user.stripeAccountId != null && user.stripeAccountId!.isNotEmpty;
     final canReceivePayouts = user.payoutsEnabled;
+    final onboardingCompleted = user.onboardingCompleted;
+    final hasError = viewState.error != null && viewState.error!.isNotEmpty;
 
     String buttonText;
-    VoidCallback onPressed;
+    VoidCallback? onPressed;
 
     if (canReceivePayouts) {
+      // Already set up - can manage without accepting terms again
       buttonText = 'Manage Stripe Account';
       onPressed = viewModel.openStripeDashboard;
-    } else if (hasAccount) {
+    } else if (hasAccount && onboardingCompleted && !hasError) {
+      // Has account, submitted details, but waiting for Stripe verification
+      // User can still check Stripe dashboard for updates
+      buttonText = 'Check Verification Status';
+      onPressed = viewModel.openStripeDashboard;
+    } else if (hasAccount && !onboardingCompleted && !hasError) {
+      // Has account but hasn't finished providing info to Stripe
       buttonText = 'Complete Stripe Setup';
       onPressed = viewModel.continueOnboarding;
+    } else if (hasAccount && hasError) {
+      // Has account but onboarding link failed - allow retry
+      buttonText = 'Retry Stripe Setup';
+      onPressed = viewModel.continueOnboarding;
     } else {
+      // New registration - MUST accept terms
       buttonText = 'Start Seller Registration';
-      onPressed = viewModel.startRegistration;
-    }
-
-    // Wrap onPressed with usage check
-    Null finalOnPressed() {
-      if (!_termsAccepted && !canReceivePayouts && !hasAccount) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please accept the Terms and Conditions to continue')));
-        return;
-      }
-      onPressed();
+      onPressed = _termsAccepted ? viewModel.startRegistration : null;
     }
 
     return ModernButton(
-      onPressed: isLoading ? null : finalOnPressed,
+      onPressed: isLoading ? null : onPressed,
       label: buttonText,
       isLoading: isLoading,
       icon: canReceivePayouts
@@ -400,6 +497,19 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
   }
 
   Widget _buildProviderInfoCard(PaymentProviderConfig config) {
+    // Check backend configuration status
+    final backendStatus = ref.watch(paymentProviderStatusProvider);
+    final isConfiguredInBackend = backendStatus.when(
+      data: (statusMap) {
+        final providerStatus = statusMap[config.id];
+        if (providerStatus == null) return true;
+        return providerStatus['configured'] == true;
+      },
+      loading: () => true,
+      error: (_, __) => true,
+    );
+    final isDisabled = config.comingSoon || !isConfiguredInBackend;
+    
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -422,7 +532,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
           ),
           const SizedBox(height: 8),
           Text(config.features.map((f) => '• $f').join('\n'), style: TextStyle(color: Colors.grey[700], fontSize: 12, height: 1.5)),
-          if (config.comingSoon) ...[
+          if (isDisabled) ...[
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -452,6 +562,9 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
   Widget _buildProviderSelector(UserModel user, SellerRegistrationState state, SellerRegistrationViewModel viewModel) {
     final provider = user.paymentProvider.isNotEmpty ? user.paymentProvider : state.paymentProvider;
     final selectedConfig = availablePaymentProviders.firstWhere((p) => p.id == provider, orElse: () => availablePaymentProviders.first);
+    
+    // Watch backend provider status
+    final backendStatus = ref.watch(paymentProviderStatusProvider);
 
     return GlassContainer(
       child: Column(
@@ -468,16 +581,31 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
             runSpacing: 8,
             children: availablePaymentProviders.map((config) {
               final isSelected = provider == config.id;
+              
+              // Check if provider is configured in backend (defaults to true if unknown)
+              final isConfiguredInBackend = backendStatus.when(
+                data: (statusMap) {
+                  final providerStatus = statusMap[config.id];
+                  if (providerStatus == null) return true; // Unknown = assume available
+                  return providerStatus['configured'] == true;
+                },
+                loading: () => true, // While loading, show as available
+                error: (_, __) => true, // On error, show as available
+              );
+              
+              // Provider is disabled if it's marked "comingSoon" OR not configured in backend
+              final isDisabled = config.comingSoon || !isConfiguredInBackend;
+              
               return Stack(
                 children: [
                   ChoiceChip(
                     label: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(config.icon, size: 16, color: isSelected ? Colors.white : config.primaryColor),
+                        Icon(config.icon, size: 16, color: isSelected ? Colors.white : (isDisabled ? Colors.grey : config.primaryColor)),
                         const SizedBox(width: 6),
                         Text(config.name),
-                        if (config.comingSoon) ...[
+                        if (isDisabled) ...[
                           const SizedBox(width: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
@@ -490,15 +618,15 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                         ],
                       ],
                     ),
-                    selected: isSelected,
-                    onSelected: config.comingSoon
+                    selected: isSelected && !isDisabled,
+                    onSelected: isDisabled
                         ? null
                         : (selected) {
                             if (selected) viewModel.setPaymentProvider(config.id);
                           },
                     selectedColor: config.primaryColor,
-                    backgroundColor: config.comingSoon ? Colors.grey.shade200 : null,
-                    labelStyle: TextStyle(color: isSelected ? Colors.white : (config.comingSoon ? Colors.grey : null)),
+                    backgroundColor: isDisabled ? Colors.grey.shade200 : null,
+                    labelStyle: TextStyle(color: isSelected && !isDisabled ? Colors.white : (isDisabled ? Colors.grey : null)),
                   ),
                 ],
               );

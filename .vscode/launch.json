@@ -1,0 +1,185 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        // =====================================================================
+        // 🎯 DEFAULT: FULL STACK DEVELOPMENT (Firebase + Stripe + R2)
+        // =====================================================================
+        {
+            "name": "🚀 Full Stack Dev (Default)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "cwd": "${workspaceFolder}/origna_gta",
+            "preLaunchTask": "Start All Emulator Services",
+            "postDebugTask": "Stop All Emulator Services",
+            "args": [
+                "--dart-define=ENVIRONMENT=emulator",
+                "--dart-define=USE_EMULATORS=true"
+            ],
+            "toolArgs": [
+                "-d", "chrome",
+                "--web-port", "3000"
+            ],
+            "env": {
+                "ENVIRONMENT": "emulator"
+            }
+        },
+        {
+            "name": "🚀 Full Stack Dev (Release)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "cwd": "${workspaceFolder}/origna_gta",
+            "preLaunchTask": "Start All Emulator Services",
+            "postDebugTask": "Stop All Emulator Services",
+            "flutterMode": "release",
+            "args": [
+                "--dart-define=ENVIRONMENT=emulator",
+                "--dart-define=USE_EMULATORS=true",
+                "--release"
+            ],
+            "toolArgs": [
+                "-d", "chrome",
+                "--web-port", "3000"
+            ],
+            "env": {
+                "ENVIRONMENT": "emulator"
+            }
+        },
+        // =====================================================================
+        // FLUTTER CONFIGURATIONS
+        // =====================================================================
+        {
+            "name": "🔧 Flutter Emulator (Debug)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "cwd": "${workspaceFolder}/origna_gta",
+            "preLaunchTask": "Start Firebase Emulators",
+            "postDebugTask": "Stop All Emulator Services",
+            "args": [
+                "--dart-define=ENVIRONMENT=emulator",
+                "--dart-define=USE_EMULATORS=true"
+            ],
+            "toolArgs": [
+                "-d", "chrome"
+            ],
+            "env": {
+                "ENVIRONMENT": "emulator"
+            }
+        },
+        {
+            "name": "🔧 Flutter Emulator (Release)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "cwd": "${workspaceFolder}/origna_gta",
+            "preLaunchTask": "Start Firebase Emulators",
+            "postDebugTask": "Stop All Emulator Services",
+            "flutterMode": "release",
+            "args": [
+                "--dart-define=ENVIRONMENT=emulator",
+                "--dart-define=USE_EMULATORS=true",
+                "--release"
+            ],
+            "toolArgs": [
+                "-d", "chrome"
+            ],
+            "env": {
+                "ENVIRONMENT": "emulator"
+            }
+        },
+        {
+            "name": "📱 Flutter Emulator (iOS Simulator)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "cwd": "${workspaceFolder}/origna_gta",
+            "preLaunchTask": "Start Firebase Emulators",
+            "postDebugTask": "Stop All Emulator Services",
+            "args": [
+                "--dart-define=ENVIRONMENT=emulator",
+                "--dart-define=USE_EMULATORS=true"
+            ],
+            "env": {
+                "ENVIRONMENT": "emulator"
+            }
+        },
+        {
+            "name": "🌐 Flutter Production (Debug)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "cwd": "${workspaceFolder}/origna_gta",
+            "args": [
+                "--dart-define=ENVIRONMENT=production",
+                "--dart-define=USE_EMULATORS=false"
+            ],
+            "toolArgs": [
+                "-d", "chrome"
+            ],
+            "env": {
+                "ENVIRONMENT": "production"
+            }
+        },
+        {
+            "name": "🌐 Flutter Production (Release)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "cwd": "${workspaceFolder}/origna_gta",
+            "flutterMode": "release",
+            "args": [
+                "--dart-define=ENVIRONMENT=production",
+                "--dart-define=USE_EMULATORS=false",
+                "--release"
+            ],
+            "toolArgs": [
+                "-d", "chrome"
+            ],
+            "env": {
+                "ENVIRONMENT": "production"
+            }
+        },
+        // =====================================================================
+        // PYTHON FUNCTIONS CONFIGURATIONS
+        // =====================================================================
+        {
+            "name": "🐍 Python: Run Tests (Emulator)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "functions/tests/",
+                "-v",
+                "--tb=short"
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "FUNCTIONS_EMULATOR": "true",
+                "PYTHONPATH": "${workspaceFolder}/functions"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "🐍 Python: Current Test File",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "${file}",
+                "-v",
+                "--tb=short"
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "FUNCTIONS_EMULATOR": "true",
+                "PYTHONPATH": "${workspaceFolder}/functions"
+            },
+            "console": "integratedTerminal"
+        }
+    ],
+    "compounds": [
+        // Les compounds sont gardés pour référence mais la config par défaut est maintenant en premier
+    ]
+}

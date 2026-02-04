@@ -8,6 +8,7 @@ Stripe Payment Handlers
 
 from firebase_functions import https_fn, options
 import stripe
+import os
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 
@@ -28,6 +29,9 @@ stripe.api_key = STRIPE_SECRET_KEY
 _db = None
 _rate_limiter = None
 _firestore = None
+
+# Check if running in emulator mode
+IS_EMULATOR = os.environ.get('FUNCTIONS_EMULATOR', 'false').lower() == 'true'
 
 def get_db():
     """Get Firestore client (lazy initialization)."""
@@ -254,6 +258,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         _assert_seller_active(seller_id, require_approval=True)
         sellers.add(seller_id)
         
+        # Prevent sellers from buying their own products
+        if seller_id == user_id:
+            raise https_fn.HttpsError(
+                'invalid-argument',
+                f"You cannot purchase your own product: {product_data['name']}"
+            )
+        
         validated_item = {
             'productId': item['productId'],
             'name': product_data['name'],
@@ -399,8 +410,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             payment_method_types=['card'],
             line_items=line_items,
             mode='payment',
-            success_url=f'https://origna.ca/order-success?session_id={{CHECKOUT_SESSION_ID}}',
-            cancel_url='https://origna.ca/cart',
+            success_url=f'https://orignagta.ca/order-success?session_id={{CHECKOUT_SESSION_ID}}',
+            cancel_url='https://orignagta.ca/cart',
             client_reference_id=user_id,
             metadata={
                 'orderId': order_id,
@@ -421,11 +432,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'stripePaymentIntentId': session.payment_intent if hasattr(session, 'payment_intent') else None
         })
         
-        return create_success_response({
+        # Return dict directly for on_call functions
+        return {
+            'success': True,
             'sessionId': session.id,
             'orderId': order_id,
             'checkoutUrl': session.url
-        })
+        }
         
     except Exception as e:
         # Rollback stock reservation
@@ -487,19 +500,21 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         500 Internal Error: Processing failed
     """
     # SECURITY FIX #1: Rate limiting by IP FIRST (prevent DDoS)
+    # Skip rate limiting in emulator mode to avoid Firestore transaction issues
     client_ip = req.headers.get('X-Forwarded-For', req.headers.get('X-Real-IP', 'unknown')).split(',')[0].strip()
     
-    allowed, message = get_rate_limiter().check_rate_limit(
-        identifier=f"ip_{client_ip}",
-        action='stripe_webhook',
-        max_requests=100,  # 100 webhooks per minute per IP
-        window_minutes=1,
-        fail_closed=True  # Block on error for security
-    )
-    
-    if not allowed:
-        print(f'⚠️ Stripe webhook rate limit exceeded for IP: {client_ip[:10]}...')  # Sanitized log
-        return https_fn.Response('Rate limit exceeded', status=429)
+    if not IS_EMULATOR:
+        allowed, message = get_rate_limiter().check_rate_limit(
+            identifier=f"ip_{client_ip}",
+            action='stripe_webhook',
+            max_requests=100,  # 100 webhooks per minute per IP
+            window_minutes=1,
+            fail_closed=True  # Block on error for security
+        )
+        
+        if not allowed:
+            print(f'⚠️ Stripe webhook rate limit exceeded for IP: {client_ip[:10]}...')  # Sanitized log
+            return https_fn.Response('Rate limit exceeded', status=429)
     
     # SECURITY FIX #2: Get payload and signature
     payload = req.data
@@ -518,12 +533,10 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         print(f'⚠️ Stripe webhook invalid payload from IP: {client_ip[:10]}...')  # Sanitized
         return https_fn.Response('Invalid payload', status=400)
     except Exception as e:
-        # Handle both SignatureVerificationError and other exceptions
-        if 'SignatureVerificationError' in str(type(e)):
+        # Handle SignatureVerificationError and other exceptions
+        if 'SignatureVerificationError' in str(type(e).__name__):
             print(f'⚠️ Stripe webhook invalid signature from IP: {client_ip[:10]}...')  # Sanitized
             return https_fn.Response('Invalid signature', status=400)
-        raise
-    except Exception as e:
         print(f'⚠️ Stripe webhook verification error: {type(e).__name__}')  # Sanitized (no details)
         return https_fn.Response('Signature verification error', status=500)
     
@@ -899,16 +912,36 @@ def create_connect_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
     
     user_id = req.auth.uid
-    data = req.data
+    data = req.data or {}
     
     # Import validation functions
     from utils import sanitize_email
     
-    email_raw = data.get('email')
+    # Get user data from Firestore to get email if not provided
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
+    user_doc = user_ref.get()
+    
+    if not user_doc.exists:
+        raise https_fn.HttpsError('not-found', 'User profile not found')
+    
+    user_data = user_doc.to_dict()
+    
+    # Check if user already has a Stripe account
+    existing_account_id = user_data.get('stripeAccountId')
+    if existing_account_id:
+        # Return existing account instead of creating new one
+        return {
+            'success': True,
+            'accountId': existing_account_id,
+            'existing': True
+        }
+    
+    # Get email from request or user profile
+    email_raw = data.get('email') or user_data.get('email')
     country = data.get('country', 'CA')
     
     if not email_raw:
-        raise https_fn.HttpsError('invalid-argument', 'Email required')
+        raise https_fn.HttpsError('invalid-argument', 'Email is required. Please update your profile with a valid email.')
     
     # Validate and sanitize email
     try:
@@ -934,17 +967,26 @@ def create_connect_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
             metadata={'userId': user_id}
         )
         
-        # Save account ID to Firestore
-        user_ref = get_db().collection(Collections.USERS).document(user_id)
+        # Save account ID to Firestore and add seller role
+        from firebase_admin import firestore as admin_firestore
         user_ref.update({
             'stripeAccountId': account.id,
+            'roles': admin_firestore.ArrayUnion(['seller']),
             'updatedAt': get_server_timestamp()
         })
         
-        return create_success_response({'accountId': account.id})
+        return {'success': True, 'accountId': account.id}
         
+    except stripe.error.InvalidRequestError as e:
+        raise https_fn.HttpsError('invalid-argument', f'Invalid request: {e.user_message or str(e)}')
+    except stripe.error.AuthenticationError:
+        raise https_fn.HttpsError('internal', 'Payment service configuration error. Please contact support.')
+    except stripe.error.APIConnectionError:
+        raise https_fn.HttpsError('unavailable', 'Could not connect to payment service. Please try again later.')
     except stripe.error.StripeError as e:
-        raise https_fn.HttpsError('internal', str(e))
+        # Log the full error for debugging
+        print(f'Stripe error creating account: {str(e)}')
+        raise https_fn.HttpsError('internal', f'Could not create seller account: {e.user_message or "Please try again later."}')
 
 
 @https_fn.on_call()
@@ -954,6 +996,11 @@ def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
     
     user_id = req.auth.uid
+    
+    # Get URLs from request data (passed from frontend)
+    data = req.data or {}
+    refresh_url = data.get('refreshUrl', 'https://orignagta.ca/seller/refresh')
+    return_url = data.get('returnUrl', 'https://orignagta.ca/seller/return')
     
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
@@ -965,20 +1012,24 @@ def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
     account_id = user_data.get('stripeAccountId')
     
     if not account_id:
-        raise https_fn.HttpsError('failed-precondition', 'No Stripe account found')
+        raise https_fn.HttpsError(
+            'failed-precondition', 
+            'You need to create an account first to become a seller. Please tap "Create Seller Account" to get started.'
+        )
     
     try:
         account_link = stripe.AccountLink.create(
             account=account_id,
-            refresh_url='https://origna.ca/seller/onboarding',
-            return_url='https://origna.ca/seller/dashboard',
+            refresh_url=refresh_url,
+            return_url=return_url,
             type='account_onboarding'
         )
         
-        return create_success_response({'url': account_link.url})
+        # Return dict directly for on_call functions
+        return {'success': True, 'url': account_link.url}
         
     except Exception as e:
-        raise https_fn.HttpsError('internal', str(e))
+        raise https_fn.HttpsError('internal', f'Could not create onboarding link: {str(e)}')
 
 
 @https_fn.on_call()
@@ -999,28 +1050,40 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     account_id = user_data.get('stripeAccountId')
     
     if not account_id:
-        raise https_fn.HttpsError('failed-precondition', 'No Stripe account found')
+        raise https_fn.HttpsError(
+            'failed-precondition', 
+            'You need to create an account first to become a seller. Please complete your seller registration.'
+        )
     
     try:
         account = stripe.Account.retrieve(account_id)
         
         # Update Firestore with latest status
-        user_ref.update({
+        from firebase_admin import firestore as admin_firestore
+        update_data = {
             'chargesEnabled': account.charges_enabled,
             'payoutsEnabled': account.payouts_enabled,
             'onboardingCompleted': account.details_submitted,
             'updatedAt': get_server_timestamp()
-        })
+        }
         
-        return create_success_response({
+        # If onboarding is complete, ensure seller role is added
+        if account.details_submitted:
+            update_data['roles'] = admin_firestore.ArrayUnion(['seller'])
+        
+        user_ref.update(update_data)
+        
+        # Return dict directly for on_call functions
+        return {
+            'success': True,
             'chargesEnabled': account.charges_enabled,
             'payoutsEnabled': account.payouts_enabled,
             'detailsSubmitted': account.details_submitted,
             'requirementsCurrentlyDue': account.requirements.currently_due
-        })
+        }
         
     except Exception as e:
-        raise https_fn.HttpsError('internal', str(e))
+        raise https_fn.HttpsError('internal', f'Could not get account status: {str(e)}')
 
 
 @https_fn.on_call()
@@ -1029,6 +1092,10 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     Manually captures authorized payment and initiates seller payouts.
     Called when buyer confirms order receipt.
     """
+    # Check if Stripe is enabled
+    from handlers.payment_providers import require_provider_enabled, PaymentProvider
+    require_provider_enabled(PaymentProvider.STRIPE)
+    
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
     
@@ -1104,10 +1171,11 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                         'createdAt': get_server_timestamp()
                     })
         
-        return create_success_response({'captured': True, 'paymentIntentId': payment_intent_id})
+        # Return dict directly for on_call functions
+        return {'success': True, 'captured': True, 'paymentIntentId': payment_intent_id}
         
     except Exception as e:
-        raise https_fn.HttpsError('internal', str(e))
+        raise https_fn.HttpsError('internal', f'Could not capture payment: {str(e)}')
 
 
 # Aliases for backward compatibility and naming conventions

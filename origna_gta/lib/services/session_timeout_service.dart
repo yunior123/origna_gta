@@ -4,12 +4,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 
-/// Service to automatically logout users after 1 hour of inactivity.
+/// Service to automatically logout users after 15 minutes of inactivity.
 ///
 /// SECURITY: Phase 3 - Session timeout implementation
-/// Tracks user interactions and signs out after 1 hour of inactivity.
+/// Tracks user interactions and signs out after 15 minutes of inactivity.
 class SessionTimeoutService {
-  static const Duration _inactivityTimeout = Duration(hours: 1);
+  static const Duration _inactivityTimeout = Duration(minutes: 15);
 
   /// Singleton instance
   static final SessionTimeoutService _instance = SessionTimeoutService._internal();
@@ -43,7 +43,7 @@ class SessionTimeoutService {
     if (_auth.currentUser == null) return;
 
     _resetTimer(context);
-    debugPrint('🔒 Session timeout monitoring started (1h inactivity)');
+    debugPrint('🔒 Session timeout monitoring started (15min inactivity)');
   }
 
   /// Stop monitoring (when user logs out manually)

@@ -189,35 +189,37 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                           ),
                         ),
                         const SizedBox(width: 4),
-                        Material(
-                          color: const Color(0xFF667EEA),
-                          borderRadius: BorderRadius.circular(isCompact ? 6 : 8),
-                          child: InkWell(
-                            onTap: () async {
-                              final messanger = ScaffoldMessenger.of(context);
-
-                              final user = ref.read(currentUserProvider);
-                              if (user == null) {
-                                showLoginPrompt(context);
-                                return;
-                              }
-                              final success = await ref.read(cartControllerProvider).addToCart(widget.productId, _quantity);
-                              if (mounted) {
-                                messanger.showSnackBar(
-                                  SnackBar(
-                                    content: Text(success ? 'Added to cart' : 'Failed to add to cart'),
-                                    backgroundColor: success ? Colors.green : Colors.red,
-                                  ),
-                                );
-                              }
-                            },
+                        // Hide add to cart button if user owns this product
+                        if (!isOwner)
+                          Material(
+                            color: const Color(0xFF667EEA),
                             borderRadius: BorderRadius.circular(isCompact ? 6 : 8),
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: isCompact ? 8 : 12, vertical: isCompact ? 4 : 6),
-                              child: Icon(Icons.add_shopping_cart, color: Colors.white, size: iconSize),
+                            child: InkWell(
+                              onTap: () async {
+                                final messanger = ScaffoldMessenger.of(context);
+
+                                final user = ref.read(currentUserProvider);
+                                if (user == null) {
+                                  showLoginPrompt(context);
+                                  return;
+                                }
+                                final success = await ref.read(cartControllerProvider).addToCart(widget.productId, _quantity);
+                                if (mounted) {
+                                  messanger.showSnackBar(
+                                    SnackBar(
+                                      content: Text(success ? 'Added to cart' : 'Failed to add to cart'),
+                                      backgroundColor: success ? Colors.green : Colors.red,
+                                    ),
+                                  );
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(isCompact ? 6 : 8),
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(horizontal: isCompact ? 8 : 12, vertical: isCompact ? 4 : 6),
+                                child: Icon(Icons.add_shopping_cart, color: Colors.white, size: iconSize),
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ],

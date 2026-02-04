@@ -178,6 +178,15 @@ from handlers.admin import (
 )
 
 # ===============================================
+# PAYMENT PROVIDER MANAGEMENT
+# ===============================================
+from handlers.payment_providers import (
+    get_payment_providers,
+    update_payment_provider,
+    get_provider_status
+)
+
+# ===============================================
 # CRON JOB HANDLERS
 # ===============================================
 from handlers.cron_jobs import (
@@ -236,6 +245,11 @@ __all__ = [
     'admin_mfa_verify',
     'admin_mfa_disable',
     'delete_account',
+    
+    # Payment Provider Management
+    'get_payment_providers',
+    'update_payment_provider',
+    'get_provider_status',
     
     # Cron jobs
     'auto_capture_confirmed_receipts',

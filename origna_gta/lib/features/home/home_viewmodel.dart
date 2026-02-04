@@ -30,8 +30,10 @@ class HomeViewModel extends StateNotifier<HomeState> {
     final isInitialLoad = state.products.isEmpty;
 
     if (isInitialLoad) {
+      if (!mounted) return; // Check mounted before state change
       state = state.copyWith(isLoading: true, errorMessage: null);
     } else {
+      if (!mounted) return; // Check mounted before state change
       state = state.copyWith(isLoadingMore: true, errorMessage: null);
     }
 
@@ -58,6 +60,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
 
       if (kDebugMode) print('✅ Loaded ${result.products.length} products');
 
+      if (!mounted) return; // Check mounted after async operation
       state = state.copyWith(
         products: isInitialLoad ? result.products : [...state.products, ...result.products],
         lastDocument: result.lastDocument,
@@ -67,11 +70,13 @@ class HomeViewModel extends StateNotifier<HomeState> {
       );
     } catch (e) {
       if (kDebugMode) print('❌ Error loading products: $e');
+      if (!mounted) return; // Check mounted after async operation
       state = state.copyWith(isLoading: false, isLoadingMore: false, errorMessage: e.toString());
     }
   }
 
   void onCategorySelected(int? categoryId) {
+    if (!mounted) return;
     state = state.copyWith(selectedCategoryId: categoryId, products: [], lastDocument: null, hasMore: true);
     loadProducts();
   }

@@ -1,6 +1,196 @@
 {
 	"version": "2.0.0",
 	"tasks": [
+		// =====================================================================
+		// COMBINED DEV ENVIRONMENT (Recommended)
+		// =====================================================================
+		{
+			"label": "🚀 Start Dev Environment (Emulators + Stripe)",
+			"type": "shell",
+			"command": "./start-dev.sh",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": true,
+			"problemMatcher": {
+				"pattern": {
+					"regexp": "^.*$"
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^.*Origna GTA Development Environment.*$",
+					"endsPattern": "^.*Development Environment Ready.*$"
+				}
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "dev"
+			}
+		},
+		// =====================================================================
+		// FIREBASE EMULATOR TASKS
+		// =====================================================================
+		{
+			"label": "Start Firebase Emulators",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"emulators:start",
+				"--import=./emulator-data",
+				"--export-on-exit=./emulator-data"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": true,
+			"problemMatcher": {
+				"pattern": {
+					"regexp": "^.*$",
+					"file": 1,
+					"location": 2,
+					"message": 3
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^.*Starting emulators.*$",
+					"endsPattern": "^.*All emulators ready.*$"
+				}
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "emulators"
+			}
+		},
+		{
+			"label": "Start Firebase Emulators (No Data)",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"emulators:start"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": true,
+			"problemMatcher": {
+				"pattern": {
+					"regexp": "^.*$"
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^.*Starting emulators.*$",
+					"endsPattern": "^.*All emulators ready.*$"
+				}
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "emulators"
+			}
+		},
+		{
+			"label": "Stop Firebase Emulators",
+			"type": "shell",
+			"command": "pkill",
+			"args": ["-f", "firebase-tools"],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		// =====================================================================
+		// STRIPE WEBHOOK FORWARDING
+		// =====================================================================
+		{
+			"label": "Stripe: Forward Webhooks to Emulator",
+			"type": "shell",
+			"command": "stripe",
+			"args": [
+				"listen",
+				"--forward-to", "localhost:5001/orignagta/us-central1/stripe_webhook"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": true,
+			"problemMatcher": {
+				"pattern": {
+					"regexp": "^.*$"
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^.*Getting ready.*$",
+					"endsPattern": "^.*Ready!.*$"
+				}
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "stripe"
+			}
+		},
+		{
+			"label": "Stripe: Forward Webhooks (with signing secret)",
+			"type": "shell",
+			"command": "stripe",
+			"args": [
+				"listen",
+				"--forward-to", "localhost:5001/orignagta/us-central1/stripe_webhook",
+				"--print-secret"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": true,
+			"problemMatcher": {
+				"pattern": {
+					"regexp": "^.*$"
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^.*Getting ready.*$",
+					"endsPattern": "^.*Ready!.*$"
+				}
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "stripe"
+			}
+		},
+		{
+			"label": "Stop Stripe Listener",
+			"type": "shell",
+			"command": "pkill",
+			"args": ["-f", "stripe listen"],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		// =====================================================================
+		// PYTHON TESTS
+		// =====================================================================
+		{
+			"label": "Run Unit Tests (Python)",
+			"type": "shell",
+			"command": "cd functions && source venv/bin/activate && python -m pytest tests/ -v --tb=short",
+			"options": {
+				"cwd": "${workspaceFolder}",
+				"env": {
+					"FUNCTIONS_EMULATOR": "true"
+				}
+			},
+			"isBackground": false,
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
 		{
 			"label": "Run Integration Tests (API)",
 			"type": "shell",
@@ -8,8 +198,115 @@
 			"args": [
 				"functions/run_api_tests.py"
 			],
+			"options": {
+				"cwd": "${workspaceFolder}",
+				"env": {
+					"FUNCTIONS_EMULATOR": "true"
+				}
+			},
 			"isBackground": false,
 			"group": "test"
+		},
+		// =====================================================================
+		// FLUTTER TASKS
+		// =====================================================================
+		{
+			"label": "Flutter: Run Web (Emulator)",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"run",
+				"-d", "chrome",
+				"--dart-define=ENVIRONMENT=emulator",
+				"--dart-define=USE_EMULATORS=true"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/origna_gta"
+			},
+			"isBackground": true,
+			"dependsOn": "Start Firebase Emulators",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "flutter"
+			}
+		},
+		{
+			"label": "Flutter: Run Web (Production)",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"run",
+				"-d", "chrome",
+				"--dart-define=ENVIRONMENT=production",
+				"--dart-define=USE_EMULATORS=false"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/origna_gta"
+			},
+			"isBackground": true,
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "flutter"
+			}
+		},
+		{
+			"label": "Flutter: Build Web (Release)",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"build",
+				"web",
+				"--release",
+				"--dart-define=ENVIRONMENT=production",
+				"--dart-define=USE_EMULATORS=false"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/origna_gta"
+			},
+			"problemMatcher": [],
+			"group": "build"
+		},
+		// =====================================================================
+		// DEPLOYMENT
+		// =====================================================================
+		{
+			"label": "Deploy Functions (Production)",
+			"type": "shell",
+			"command": "firebase",
+			"args": [
+				"deploy",
+				"--only", "functions"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"group": "build"
+		},
+		// =====================================================================
+		// COMPOUND TASKS - Start multiple services together
+		// =====================================================================
+		{
+			"label": "Start All Emulator Services",
+			"dependsOn": [
+				"Start Firebase Emulators",
+				"Stripe: Forward Webhooks to Emulator"
+			],
+			"dependsOrder": "parallel",
+			"problemMatcher": []
+		},
+		{
+			"label": "Stop All Emulator Services",
+			"dependsOn": [
+				"Stop Firebase Emulators",
+				"Stop Stripe Listener"
+			],
+			"dependsOrder": "parallel",
+			"problemMatcher": []
 		}
 	]
 }
