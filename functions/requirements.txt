@@ -19,13 +19,14 @@ google-api-core==2.29.0
 google-auth==2.47.0
 google-cloud-core==2.5.0
 google-cloud-firestore==2.23.0
+google-cloud-secret-manager==2.20.0
 google-cloud-storage==3.8.0
 google-crc32c==1.8.0
 google-events==0.14.0
 google-resumable-media==2.8.0
-googleapis-common-protos==1.72.0
-grpcio==1.76.0
-grpcio-status==1.76.0
+googleapis-common-protos==1.62.0
+grpcio==1.62.0
+grpcio-status==1.62.0
 gunicorn==24.1.1
 h11==0.16.0
 h2==4.3.0
@@ -42,7 +43,7 @@ MarkupSafe==3.0.3
 msgpack==1.1.2
 packaging==26.0
 proto-plus==1.27.0
-protobuf==6.33.4
+protobuf==4.25.0
 pyasn1==0.6.2
 pyasn1_modules==0.4.2
 pycparser==3.0
