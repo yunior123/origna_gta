@@ -1,10 +1,11 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orignagta.ca/schemas/models.json",
   "title": "OrignaGTA Data Models",
   "description": "JSON Schema for all shared data models between Python backend and Flutter frontend",
-  "version": "2.0.0",
-  "generated": "2026-02-02",
-  "definitions": {
+  "version": "2.1.0",
+  "generated": "2026-02-05",
+  "$defs": {
     "Address": {
       "description": "Complete address model with validation\nUsed for delivery, seller locations, and user addresses",
       "example": {
@@ -185,10 +186,15 @@
       "enum": [
         "pending",
         "confirmed",
+        "processing",
         "shipped",
+        "in_transit",
         "delivered",
         "cancelled",
-        "refunded"
+        "failed",
+        "expired",
+        "refunded",
+        "partially_refunded"
       ],
       "description": "Order status values"
     },
@@ -196,10 +202,13 @@
       "type": "string",
       "enum": [
         "awaiting_payment",
-        "payment_received",
+        "processing",
+        "paid",
+        "authorized",
+        "captured",
         "payment_failed",
         "refunded",
-        "partially_refunded"
+        "session_expired"
       ],
       "description": "Payment status values"
     },
@@ -207,11 +216,8 @@
       "type": "string",
       "enum": [
         "pending",
-        "processing",
         "shipped",
-        "delivered",
-        "cancelled",
-        "returned"
+        "delivered"
       ],
       "description": "Delivery status values"
     },
@@ -1809,11 +1815,8 @@
           "description": "Delivery status for individual items",
           "enum": [
             "pending",
-            "processing",
             "shipped",
-            "delivered",
-            "cancelled",
-            "returned"
+            "delivered"
           ],
           "title": "DeliveryStatusEnum",
           "type": "string"
@@ -1944,7 +1947,7 @@
           "type": "object"
         }
       },
-      "description": "Individual item in an order (replaces CartItemDetailModel)\nImmutable object with all product details at time of purchase",
+      "description": "Individual item in an order \u2014 immutable snapshot at time of purchase.",
       "example": {
         "deliveryStatus": "pending",
         "description": "Fresh organic apples",
@@ -1993,6 +1996,7 @@
           "type": "integer"
         },
         "imageUrls": {
+          "description": "Product image URLs",
           "items": {
             "type": "string"
           },
@@ -2137,7 +2141,7 @@
       "type": "object"
     },
     "Taxes": {
-      "description": "Tax breakdown for an order\nReplaces Map<String, double> with typed object",
+      "description": "Tax breakdown for an order (Canadian taxes).",
       "properties": {
         "GST": {
           "default": 0.0,
@@ -2172,7 +2176,7 @@
       "type": "object"
     },
     "Ratings": {
-      "description": "Product ratings for an order\nReplaces Map<String, dynamic> with typed object",
+      "description": "Product rating within an order.",
       "properties": {
         "productId": {
           "minLength": 1,
@@ -2212,14 +2216,14 @@
       "type": "object"
     },
     "SellerPayout": {
-      "description": "Payout information for a seller in an order",
+      "description": "Payout information for a seller in an order. All money in cents.",
       "example": {
-        "amount": 47.5,
-        "netAmount": 46.31,
-        "platformFee": 1.19,
+        "amountCents": 4750,
+        "netAmountCents": 4631,
+        "platformFeeCents": 119,
         "sellerId": "seller_123",
-        "sellerStripeAccountId": "acct_123",
-        "status": "pending"
+        "status": "pending",
+        "stripeAccountId": "acct_123"
       },
       "properties": {
         "sellerId": {
@@ -2227,7 +2231,7 @@
           "title": "Sellerid",
           "type": "string"
         },
-        "sellerStripeAccountId": {
+        "stripeAccountId": {
           "anyOf": [
             {
               "type": "string"
@@ -2237,25 +2241,25 @@
             }
           ],
           "default": null,
-          "title": "Sellerstripeaccountid"
+          "title": "Stripeaccountid"
         },
-        "amount": {
-          "description": "Seller's portion before platform fee",
+        "amountCents": {
+          "description": "Gross amount in cents",
           "minimum": 0,
-          "title": "Amount",
-          "type": "number"
+          "title": "Amountcents",
+          "type": "integer"
         },
-        "platformFee": {
-          "description": "Platform fee (2.5%)",
+        "platformFeeCents": {
+          "description": "Platform fee in cents",
           "minimum": 0,
-          "title": "Platformfee",
-          "type": "number"
+          "title": "Platformfeecents",
+          "type": "integer"
         },
-        "netAmount": {
-          "description": "Net amount after platform fee",
+        "netAmountCents": {
+          "description": "Net amount in cents",
           "minimum": 0,
-          "title": "Netamount",
-          "type": "number"
+          "title": "Netamountcents",
+          "type": "integer"
         },
         "status": {
           "default": "pending",
@@ -2304,9 +2308,9 @@
       },
       "required": [
         "sellerId",
-        "amount",
-        "platformFee",
-        "netAmount"
+        "amountCents",
+        "platformFeeCents",
+        "netAmountCents"
       ],
       "title": "SellerPayout",
       "type": "object"
@@ -2443,17 +2447,14 @@
           "description": "Delivery status for individual items",
           "enum": [
             "pending",
-            "processing",
             "shipped",
-            "delivered",
-            "cancelled",
-            "returned"
+            "delivered"
           ],
           "title": "DeliveryStatusEnum",
           "type": "string"
         },
         "OrderItem": {
-          "description": "Individual item in an order (replaces CartItemDetailModel)\nImmutable object with all product details at time of purchase",
+          "description": "Individual item in an order \u2014 immutable snapshot at time of purchase.",
           "example": {
             "deliveryStatus": "pending",
             "description": "Fresh organic apples",
@@ -2502,6 +2503,7 @@
               "type": "integer"
             },
             "imageUrls": {
+              "description": "Product image URLs",
               "items": {
                 "type": "string"
               },
@@ -2650,10 +2652,15 @@
           "enum": [
             "pending",
             "confirmed",
+            "processing",
             "shipped",
+            "in_transit",
             "delivered",
             "cancelled",
-            "refunded"
+            "failed",
+            "expired",
+            "refunded",
+            "partially_refunded"
           ],
           "title": "OrderStatusEnum",
           "type": "string"
@@ -2662,16 +2669,19 @@
           "description": "Payment status values",
           "enum": [
             "awaiting_payment",
-            "payment_received",
+            "processing",
+            "paid",
+            "authorized",
+            "captured",
             "payment_failed",
             "refunded",
-            "partially_refunded"
+            "session_expired"
           ],
           "title": "PaymentStatusEnum",
           "type": "string"
         },
         "Ratings": {
-          "description": "Product ratings for an order\nReplaces Map<String, dynamic> with typed object",
+          "description": "Product rating within an order.",
           "properties": {
             "productId": {
               "minLength": 1,
@@ -2787,14 +2797,14 @@
           "type": "object"
         },
         "SellerPayout": {
-          "description": "Payout information for a seller in an order",
+          "description": "Payout information for a seller in an order. All money in cents.",
           "example": {
-            "amount": 47.5,
-            "netAmount": 46.31,
-            "platformFee": 1.19,
+            "amountCents": 4750,
+            "netAmountCents": 4631,
+            "platformFeeCents": 119,
             "sellerId": "seller_123",
-            "sellerStripeAccountId": "acct_123",
-            "status": "pending"
+            "status": "pending",
+            "stripeAccountId": "acct_123"
           },
           "properties": {
             "sellerId": {
@@ -2802,7 +2812,7 @@
               "title": "Sellerid",
               "type": "string"
             },
-            "sellerStripeAccountId": {
+            "stripeAccountId": {
               "anyOf": [
                 {
                   "type": "string"
@@ -2812,25 +2822,25 @@
                 }
               ],
               "default": null,
-              "title": "Sellerstripeaccountid"
+              "title": "Stripeaccountid"
             },
-            "amount": {
-              "description": "Seller's portion before platform fee",
+            "amountCents": {
+              "description": "Gross amount in cents",
               "minimum": 0,
-              "title": "Amount",
-              "type": "number"
+              "title": "Amountcents",
+              "type": "integer"
             },
-            "platformFee": {
-              "description": "Platform fee (2.5%)",
+            "platformFeeCents": {
+              "description": "Platform fee in cents",
               "minimum": 0,
-              "title": "Platformfee",
-              "type": "number"
+              "title": "Platformfeecents",
+              "type": "integer"
             },
-            "netAmount": {
-              "description": "Net amount after platform fee",
+            "netAmountCents": {
+              "description": "Net amount in cents",
               "minimum": 0,
-              "title": "Netamount",
-              "type": "number"
+              "title": "Netamountcents",
+              "type": "integer"
             },
             "status": {
               "default": "pending",
@@ -2879,9 +2889,9 @@
           },
           "required": [
             "sellerId",
-            "amount",
-            "platformFee",
-            "netAmount"
+            "amountCents",
+            "platformFeeCents",
+            "netAmountCents"
           ],
           "title": "SellerPayout",
           "type": "object"
@@ -2947,7 +2957,7 @@
           "type": "object"
         },
         "Taxes": {
-          "description": "Tax breakdown for an order\nReplaces Map<String, double> with typed object",
+          "description": "Tax breakdown for an order (Canadian taxes).",
           "properties": {
             "GST": {
               "default": 0.0,
@@ -2982,23 +2992,24 @@
           "type": "object"
         }
       },
-      "description": "Complete order model\nSingle source of truth for order data",
+      "description": "Complete order model. All money in integer cents.",
       "example": {
         "createdAt": "2026-02-01T10:00:00Z",
         "customerEmail": "buyer@example.com",
         "customerId": "cus_stripe123",
-        "deliveryInfo": {},
         "items": [],
         "orderId": "order_123abc",
+        "orderStatus": "pending",
         "paymentStatus": "awaiting_payment",
-        "shippingCost": 5.0,
-        "status": "pending",
-        "subtotal": 49.99,
+        "shippingAddress": {},
+        "shippingCostCents": 500,
+        "subtotalCents": 4999,
+        "taxAmountCents": 650,
         "taxes": {
           "GST": 2.5,
           "PST": 3.5
         },
-        "total": 54.99,
+        "totalAmountCents": 6149,
         "userId": "user_123"
       },
       "properties": {
@@ -3013,14 +3024,30 @@
           "type": "string"
         },
         "customerId": {
-          "minLength": 1,
-          "title": "Customerid",
-          "type": "string"
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Customerid"
         },
         "customerEmail": {
-          "pattern": "^[^@]+@[^@]+\\.[^@]+$",
-          "title": "Customeremail",
-          "type": "string"
+          "anyOf": [
+            {
+              "pattern": "^[^@]+@[^@]+\\.[^@]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Customeremail"
         },
         "items": {
           "items": {
@@ -3030,53 +3057,6 @@
           "title": "Items",
           "type": "array"
         },
-        "total": {
-          "minimum": 0,
-          "title": "Total",
-          "type": "number"
-        },
-        "subtotal": {
-          "minimum": 0,
-          "title": "Subtotal",
-          "type": "number"
-        },
-        "shippingCost": {
-          "default": 0.0,
-          "minimum": 0,
-          "title": "Shippingcost",
-          "type": "number"
-        },
-        "taxes": {
-          "$ref": "#/$defs/Taxes"
-        },
-        "status": {
-          "$ref": "#/$defs/OrderStatusEnum",
-          "default": "pending"
-        },
-        "paymentStatus": {
-          "$ref": "#/$defs/PaymentStatusEnum",
-          "default": "awaiting_payment"
-        },
-        "deliveryInfo": {
-          "$ref": "#/$defs/Address",
-          "description": "Delivery address"
-        },
-        "createdAt": {
-          "format": "date-time",
-          "title": "Createdat",
-          "type": "string"
-        },
-        "currency": {
-          "default": "cad",
-          "title": "Currency",
-          "type": "string"
-        },
-        "amount": {
-          "description": "Amount in cents for Stripe",
-          "minimum": 0,
-          "title": "Amount",
-          "type": "integer"
-        },
         "sellerIds": {
           "items": {
             "type": "string"
@@ -3084,9 +3064,97 @@
           "title": "Sellerids",
           "type": "array"
         },
+        "subtotalCents": {
+          "minimum": 0,
+          "title": "Subtotalcents",
+          "type": "integer"
+        },
+        "shippingCostCents": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Shippingcostcents",
+          "type": "integer"
+        },
+        "taxAmountCents": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Taxamountcents",
+          "type": "integer"
+        },
+        "totalAmountCents": {
+          "minimum": 0,
+          "title": "Totalamountcents",
+          "type": "integer"
+        },
+        "taxes": {
+          "$ref": "#/$defs/Taxes"
+        },
+        "orderStatus": {
+          "$ref": "#/$defs/OrderStatusEnum",
+          "default": "pending"
+        },
+        "paymentStatus": {
+          "$ref": "#/$defs/PaymentStatusEnum",
+          "default": "awaiting_payment"
+        },
+        "shippingAddress": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Address"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "createdAt": {
+          "format": "date-time",
+          "title": "Createdat",
+          "type": "string"
+        },
+        "updatedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updatedat"
+        },
         "stripeSessionId": {
-          "minLength": 1,
-          "title": "Stripesessionid",
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stripesessionid"
+        },
+        "stripePaymentIntentId": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stripepaymentintentid"
+        },
+        "currency": {
+          "default": "cad",
+          "title": "Currency",
           "type": "string"
         },
         "shippingApprovalStatus": {
@@ -3158,14 +3226,9 @@
       "required": [
         "orderId",
         "userId",
-        "customerId",
-        "customerEmail",
         "items",
-        "total",
-        "subtotal",
-        "deliveryInfo",
-        "amount",
-        "stripeSessionId"
+        "subtotalCents",
+        "totalAmountCents"
       ],
       "title": "Order",
       "type": "object"
@@ -3302,17 +3365,14 @@
           "description": "Delivery status for individual items",
           "enum": [
             "pending",
-            "processing",
             "shipped",
-            "delivered",
-            "cancelled",
-            "returned"
+            "delivered"
           ],
           "title": "DeliveryStatusEnum",
           "type": "string"
         },
         "OrderItem": {
-          "description": "Individual item in an order (replaces CartItemDetailModel)\nImmutable object with all product details at time of purchase",
+          "description": "Individual item in an order \u2014 immutable snapshot at time of purchase.",
           "example": {
             "deliveryStatus": "pending",
             "description": "Fresh organic apples",
@@ -3361,6 +3421,7 @@
               "type": "integer"
             },
             "imageUrls": {
+              "description": "Product image URLs",
               "items": {
                 "type": "string"
               },
@@ -3630,7 +3691,7 @@
           "type": "object"
         }
       },
-      "description": "Model for creating new orders\n(excludes orderId and createdAt which are generated)",
+      "description": "Model for creating new orders (excludes orderId and createdAt which are generated).",
       "properties": {
         "userId": {
           "minLength": 1,
@@ -3655,13 +3716,8 @@
           "title": "Items",
           "type": "array"
         },
-        "deliveryInfo": {
+        "shippingAddress": {
           "$ref": "#/$defs/Address"
-        },
-        "stripeSessionId": {
-          "minLength": 1,
-          "title": "Stripesessionid",
-          "type": "string"
         },
         "shippingCost": {
           "default": 0.0,
@@ -3685,8 +3741,7 @@
         "customerId",
         "customerEmail",
         "items",
-        "deliveryInfo",
-        "stripeSessionId"
+        "shippingAddress"
       ],
       "title": "OrderCreate",
       "type": "object"

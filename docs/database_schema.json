@@ -1,7 +1,6 @@
 {
-  "$schema": "OrignaGTA Firestore Database Schema",
-  "version": "1.2.0",
-  "lastUpdated": "2026-02-04",
+  "version": "2.0.0",
+  "lastUpdated": "2026-02-05",
   "description": "Complete Firestore database schema for OrignaGTA e-commerce platform. CANADA-ONLY marketplace.",
 
   "collections": {
@@ -505,8 +504,8 @@
         },
         "customerEmail": {
           "type": "string",
-          "required": true,
-          "description": "Customer email for notifications"
+          "required": false,
+          "description": "Customer email for notifications (optional, can be fetched from user doc)"
         },
         "customerId": {
           "type": "string",
@@ -521,52 +520,52 @@
         },
         "sellerIds": {
           "type": "array<string>",
-          "required": true,
-          "description": "Unique seller IDs in this order"
+          "required": false,
+          "description": "Unique seller IDs in this order (computed from items)"
         },
-        "subtotal": {
-          "type": "number",
+        "subtotalCents": {
+          "type": "integer",
           "required": true,
-          "description": "Sum of item prices"
+          "description": "Sum of item prices in cents (prevents rounding errors)"
         },
         "taxes": {
           "type": "map<string, number>",
-          "required": true,
-          "description": "Tax breakdown (GST, PST, HST, QST)"
+          "required": false,
+          "description": "Tax breakdown (GST, PST, HST, QST) - for display only"
         },
-        "shippingCost": {
-          "type": "number",
+        "taxAmountCents": {
+          "type": "integer",
           "required": true,
-          "description": "Calculated shipping cost"
+          "description": "Total tax in cents"
         },
-        "total": {
-          "type": "number",
+        "shippingCostCents": {
+          "type": "integer",
           "required": true,
-          "description": "Grand total (subtotal + taxes + shipping)"
+          "description": "Calculated shipping cost in cents"
         },
-        "amount": {
-          "type": "number",
+        "totalAmountCents": {
+          "type": "integer",
           "required": true,
-          "description": "Amount in cents for Stripe"
+          "description": "Grand total in cents (subtotal + taxes + shipping)"
         },
         "currency": {
           "type": "string",
           "default": "cad",
-          "description": "Currency code"
+          "description": "Currency code (always 'cad' for Canada-only marketplace)"
         },
-        "status": {
+        "orderStatus": {
           "type": "string",
           "required": true,
-          "description": "Order status",
-          "values": ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "failed", "expired", "refunded", "partially_refunded"]
+          "description": "Order fulfillment status",
+          "values": ["pending", "confirmed", "processing", "shipped", "in_transit", "delivered", "cancelled", "failed", "expired", "refunded", "partially_refunded"]
         },
         "paymentStatus": {
           "type": "string",
           "required": true,
           "description": "Payment status",
-          "values": ["awaiting_payment", "processing", "paid", "payment_failed", "refunded", "session_expired"]
+          "values": ["awaiting_payment", "processing", "paid", "payment_failed", "refunded", "session_expired", "authorized", "captured"]
         },
-        "deliveryInfo": {
+        "shippingAddress": {
           "type": "map",
           "required": true,
           "description": "Delivery address details",
@@ -585,12 +584,27 @@
         "createdAt": {
           "type": "timestamp",
           "required": true,
-          "description": "Order creation timestamp"
+          "description": "Order creation timestamp (used by Flutter queries)"
         },
         "updatedAt": {
           "type": "timestamp",
           "required": false,
           "description": "Last update timestamp"
+        },
+        "captureAttempts": {
+          "type": "integer",
+          "default": 0,
+          "description": "Number of payment capture attempts (max 3)"
+        },
+        "capturedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When payment was captured"
+        },
+        "expiresAt": {
+          "type": "timestamp",
+          "required": true,
+          "description": "Authorization expiry (7 days from creation)"
         },
         "confirmedByClient": {
           "type": "boolean",
@@ -606,6 +620,11 @@
           "type": "boolean",
           "default": false,
           "description": "Whether confirmation was automatic after 14 days"
+        },
+        "autoCaptured": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether payment was auto-captured by cron job"
         },
         "sellerPayouts": {
           "type": "array<map>",
@@ -638,12 +657,33 @@
           "type": "timestamp",
           "required": false,
           "description": "When refund was processed"
+        },
+        "shippingApprovalStatus": {
+          "type": "string",
+          "default": "not_required",
+          "description": "Shipping approval status",
+          "values": ["not_required", "pending", "approved", "rejected"]
+        },
+        "shippingApprovalRequired": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether shipping cost approval is required from buyer"
+        },
+        "actualShipping": {
+          "type": "number",
+          "default": 0,
+          "description": "Actual shipping cost set by seller (for approval flow)"
+        },
+        "pendingTotal": {
+          "type": "number",
+          "default": 0,
+          "description": "Pending total awaiting shipping approval"
         }
       },
       "indexes": [
         {
           "fields": ["userId", "paymentStatus", "createdAt desc"],
-          "description": "For buyer's order history"
+          "description": "For buyer's order history (Flutter uses createdAt)"
         },
         {
           "fields": ["sellerIds", "paymentStatus", "createdAt desc"],
@@ -921,16 +961,61 @@
           "default": false,
           "description": "Whether this item is a digital product"
         },
-        "dateCreated": {
-          "type": "timestamp",
-          "required": true,
-          "description": "When item was added to order"
+        "weightKg": {
+          "type": "number",
+          "required": false,
+          "description": "Product weight in kilograms"
+        },
+        "lengthCm": {
+          "type": "number",
+          "required": false,
+          "description": "Package length in centimeters"
+        },
+        "widthCm": {
+          "type": "number",
+          "required": false,
+          "description": "Package width in centimeters"
+        },
+        "heightCm": {
+          "type": "number",
+          "required": false,
+          "description": "Package height in centimeters"
+        },
+        "isLocalDeliveryOnly": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only available for local delivery"
+        },
+        "isPerishable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Perishable product"
+        },
+        "estimatedShipDays": {
+          "type": "number",
+          "default": 3,
+          "description": "Estimated shipping days"
+        },
+        "deliveryOptions": {
+          "type": "array<map>",
+          "required": false,
+          "description": "Seller-defined delivery options"
+        },
+        "minimumOrderQuantity": {
+          "type": "number",
+          "default": 1,
+          "description": "Minimum order quantity"
+        },
+        "freeShipping": {
+          "type": "boolean",
+          "default": false,
+          "description": "Free shipping offered by seller"
         }
       }
     },
 
     "SellerPayout": {
-      "description": "Payout breakdown for a single seller",
+      "description": "Payout breakdown for a single seller. All money in integer cents.",
       "fields": {
         "sellerId": {
           "type": "string",
@@ -942,37 +1027,38 @@
           "required": false,
           "description": "Seller's Stripe Connect account"
         },
-        "gross": {
-          "type": "number",
+        "amountCents": {
+          "type": "integer",
           "required": true,
-          "description": "Total amount before platform fee"
+          "description": "Gross amount in cents before platform fee"
         },
-        "platformFee": {
-          "type": "number",
+        "platformFeeCents": {
+          "type": "integer",
           "required": true,
-          "description": "Platform fee (2.5%)"
+          "description": "Platform fee in cents (2.5%)"
         },
-        "net": {
-          "type": "number",
+        "netAmountCents": {
+          "type": "integer",
           "required": true,
-          "description": "Amount seller receives"
+          "description": "Net amount seller receives in cents"
         },
-        "paid": {
-          "type": "boolean",
-          "default": false,
-          "description": "Whether payout has been sent"
+        "status": {
+          "type": "string",
+          "default": "pending",
+          "description": "Payout status",
+          "values": ["pending", "processing", "completed", "failed"]
         },
-        "transferId": {
+        "stripeTransferId": {
           "type": "string",
           "required": false,
           "description": "Stripe Transfer ID"
         },
-        "paidAt": {
+        "payoutDate": {
           "type": "timestamp",
           "required": false,
           "description": "When transfer was completed"
         },
-        "error": {
+        "failureReason": {
           "type": "string",
           "required": false,
           "description": "Error message if transfer failed"
@@ -989,6 +1075,7 @@
         "confirmed": "Payment confirmed, order processing",
         "processing": "Being prepared for shipping",
         "shipped": "All items shipped",
+        "in_transit": "Carrier has the package in transit",
         "delivered": "All items delivered",
         "cancelled": "Order cancelled",
         "failed": "Payment failed",
@@ -1002,7 +1089,9 @@
       "values": {
         "awaiting_payment": "Waiting for customer payment",
         "processing": "Payment being processed",
+        "authorized": "Payment authorized (manual capture)",
         "paid": "Payment successful",
+        "captured": "Payment captured (funds transferred)",
         "payment_failed": "Payment failed",
         "refunded": "Payment refunded",
         "session_expired": "Checkout session expired"
@@ -1031,7 +1120,7 @@
       "values": {
         "admin": "Platform administrator",
         "seller": "Registered seller",
-        "assistant": "Customer support"
+        "buyer": "Marketplace buyer"
       }
     }
   },

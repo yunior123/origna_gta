@@ -309,16 +309,17 @@ class OrderModel {
   final String customerId;
   final String customerEmail;
   final List<CartItemDetailModel> items;
-  final double total;
+  // Money stored as cents, exposed as dollars
+  final int totalAmountCents;
+  final int subtotalCents;
+  final int shippingCostCents;
+  final int taxAmountCents;
   final Map<String, double> taxes;
-  final double shippingCost;
-  final double subtotal;
-  final String status;
+  final String orderStatus;
   final String paymentStatus;
-  final Map<String, dynamic> deliveryInfo;
+  final Map<String, dynamic> shippingAddress;
   final DateTime createdAt;
   final String currency;
-  final int amount;
   final List<String> sellerIds;
   final String stripeSessionId;
   final String shippingApprovalStatus;
@@ -326,27 +327,27 @@ class OrderModel {
   final double actualShipping;
   final double pendingTotal;
   // Payout tracking fields
-  final List<SellerPayout> sellerPayouts; // Per-seller payout breakdown
-  final bool confirmedByClient; // Client confirmed receipt
-  final DateTime? confirmedAt; // When order was confirmed by client
-  final double platformFeeTotal; // Total platform fee for this order
-  final String payoutStatus; // 'pending', 'processing', 'completed', 'partial'
+  final List<SellerPayout> sellerPayouts;
+  final bool confirmedByClient;
+  final DateTime? confirmedAt;
+  final double platformFeeTotal;
+  final String payoutStatus;
   final Map<String, dynamic> ratings;
 
   OrderModel({
     required this.orderId,
     required this.userId,
     required this.items,
-    required this.total,
-    required this.status,
-    required this.deliveryInfo,
+    required this.totalAmountCents,
+    required this.subtotalCents,
+    this.shippingCostCents = 0,
+    this.taxAmountCents = 0,
+    required this.orderStatus,
+    required this.shippingAddress,
     required this.createdAt,
     required this.customerId,
     required this.customerEmail,
     required this.taxes,
-    required this.shippingCost,
-    required this.subtotal,
-    required this.amount,
     required this.currency,
     required this.sellerIds,
     required this.stripeSessionId,
@@ -362,6 +363,12 @@ class OrderModel {
     this.payoutStatus = 'pending',
     this.ratings = const {},
   }) : paymentStatus = paymentStatus ?? PaymentStatus.awaitingPayment.value;
+
+  // Dollar getters derived from cents
+  double get total => totalAmountCents / 100.0;
+  double get subtotal => subtotalCents / 100.0;
+  double get shippingCost => shippingCostCents / 100.0;
+  double get taxAmount => taxAmountCents / 100.0;
 
   factory OrderModel.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -391,9 +398,12 @@ class OrderModel {
     final payoutsData = data['sellerPayouts'] as List<dynamic>? ?? [];
     final sellerPayouts = payoutsData.map((p) => SellerPayout.fromMap(p as Map<String, dynamic>)).toList();
 
-    final subtotal = (data['subtotal'] ?? 0).toDouble();
-    final total = (data['total'] ?? 0).toDouble();
-    final platformFeeTotal = (data['platformFeeTotal'] ?? (subtotal > 0 ? subtotal * 0.025 : total * 0.025)).toDouble();
+    // Money — all cents
+    final totalAmountCents = (data['totalAmountCents'] as num?)?.toInt() ?? 0;
+    final subtotalCents = (data['subtotalCents'] as num?)?.toInt() ?? 0;
+    final shippingCostCents = (data['shippingCostCents'] as num?)?.toInt() ?? 0;
+    final taxAmountCents = (data['taxAmountCents'] as num?)?.toInt() ?? 0;
+    final platformFeeTotal = (data['platformFeeTotal'] ?? (subtotalCents > 0 ? subtotalCents * 0.00025 : 0.0)).toDouble();
 
     final createdAtRaw = data['createdAt'];
     final createdAt = createdAtRaw is Timestamp
@@ -406,20 +416,20 @@ class OrderModel {
       orderId: data['orderId'] ?? doc.id,
       userId: data['userId'] ?? '',
       items: items,
-      total: total,
-      status: data['status'] ?? OrderStatus.pending.value,
-      paymentStatus: data['paymentStatus'] ?? data['status'] ?? PaymentStatus.awaitingPayment.value,
-      deliveryInfo: data['deliveryInfo'] ?? {},
+      totalAmountCents: totalAmountCents,
+      subtotalCents: subtotalCents,
+      shippingCostCents: shippingCostCents,
+      taxAmountCents: taxAmountCents,
+      orderStatus: data['orderStatus'] ?? OrderStatus.pending.value,
+      paymentStatus: data['paymentStatus'] ?? PaymentStatus.awaitingPayment.value,
+      shippingAddress: Map<String, dynamic>.from(data['shippingAddress'] ?? {}),
       createdAt: createdAt,
       customerId: data['customerId'] ?? '',
       customerEmail: data['customerEmail'] ?? '',
       taxes: Map<String, double>.from(data['taxes'] ?? {}),
-      shippingCost: (data['shippingCost'] ?? 0).toDouble(),
-      subtotal: subtotal,
-      amount: (data['amount'] as num?)?.toInt() ?? 0,
-      currency: data["currency"] ?? '',
-      sellerIds: List<String>.from(data["sellerIds"] ?? []),
-      stripeSessionId: data["stripeSessionId"] ?? "",
+      currency: data['currency'] ?? 'cad',
+      sellerIds: List<String>.from(data['sellerIds'] ?? []),
+      stripeSessionId: data['stripeSessionId'] ?? '',
       shippingApprovalStatus: data['shippingApprovalStatus'] ?? ShippingApprovalStatus.notRequired.value,
       shippingApprovalRequired: data['shippingApprovalRequired'] ?? false,
       actualShipping: (data['actualShipping'] ?? 0).toDouble(),
@@ -459,9 +469,12 @@ class OrderModel {
     final payoutsData = data['sellerPayouts'] as List<dynamic>? ?? [];
     final sellerPayouts = payoutsData.map((p) => SellerPayout.fromMap(p as Map<String, dynamic>)).toList();
 
-    final subtotal = (data['subtotal'] ?? 0).toDouble();
-    final total = (data['total'] ?? 0).toDouble();
-    final platformFeeTotal = (data['platformFeeTotal'] ?? (subtotal > 0 ? subtotal * 0.025 : total * 0.025)).toDouble();
+    // Money — all cents
+    final totalAmountCents = (data['totalAmountCents'] as num?)?.toInt() ?? 0;
+    final subtotalCents = (data['subtotalCents'] as num?)?.toInt() ?? 0;
+    final shippingCostCents = (data['shippingCostCents'] as num?)?.toInt() ?? 0;
+    final taxAmountCents = (data['taxAmountCents'] as num?)?.toInt() ?? 0;
+    final platformFeeTotal = (data['platformFeeTotal'] ?? (subtotalCents > 0 ? subtotalCents * 0.00025 : 0.0)).toDouble();
 
     final createdAtRaw = data['createdAt'];
     final createdAt = createdAtRaw is Timestamp
@@ -474,17 +487,17 @@ class OrderModel {
       orderId: data['orderId'] ?? '',
       userId: data['userId'] ?? '',
       items: items,
-      total: total,
-      status: data['status'] ?? OrderStatus.pending.value,
-      paymentStatus: data['paymentStatus'] ?? data['status'] ?? PaymentStatus.awaitingPayment.value,
-      deliveryInfo: Map<String, dynamic>.from(data['deliveryInfo'] ?? {}),
+      totalAmountCents: totalAmountCents,
+      subtotalCents: subtotalCents,
+      shippingCostCents: shippingCostCents,
+      taxAmountCents: taxAmountCents,
+      orderStatus: data['orderStatus'] ?? OrderStatus.pending.value,
+      paymentStatus: data['paymentStatus'] ?? PaymentStatus.awaitingPayment.value,
+      shippingAddress: Map<String, dynamic>.from(data['shippingAddress'] ?? {}),
       createdAt: createdAt,
       customerId: data['customerId'] ?? '',
       customerEmail: data['customerEmail'] ?? '',
       taxes: Map<String, double>.from(data['taxes'] ?? {}),
-      shippingCost: (data['shippingCost'] ?? 0).toDouble(),
-      subtotal: subtotal,
-      amount: (data['amount'] as num?)?.toInt() ?? 0,
       currency: data['currency'] ?? 'cad',
       sellerIds: List<String>.from(data['sellerIds'] ?? []),
       stripeSessionId: data['stripeSessionId'] ?? '',
@@ -515,18 +528,18 @@ class OrderModel {
     return {
       'userId': userId,
       'items': items.map((item) => item.toMap()).toList(),
-      'total': total,
-      'status': status,
-      'deliveryInfo': deliveryInfo,
+      'totalAmountCents': totalAmountCents,
+      'subtotalCents': subtotalCents,
+      'shippingCostCents': shippingCostCents,
+      'taxAmountCents': taxAmountCents,
+      'orderStatus': orderStatus,
+      'shippingAddress': shippingAddress,
       'createdAt': createdAt,
       'customerId': customerId,
       'customerEmail': customerEmail,
       'taxes': taxes,
-      'shippingCost': shippingCost,
-      'subtotal': subtotal,
-      "currency": currency,
-      "amount": amount,
-      "sellerIds": sellerIds,
+      'currency': currency,
+      'sellerIds': sellerIds,
       'sellerPayouts': sellerPayouts.map((p) => p.toMap()).toList(),
       'shippingApprovalStatus': shippingApprovalStatus,
       'shippingApprovalRequired': shippingApprovalRequired,
@@ -733,60 +746,47 @@ class ProductModel {
   }
 }
 
-/// Model for tracking seller payouts per order
+/// Model for tracking seller payouts per order (cents-based)
 class SellerPayout {
   final String sellerId;
   final String? stripeAccountId;
-  final double gross; // Total amount before platform fee
-  final double platformFee; // Platform fee amount
-  final double net; // Amount seller receives
-  final bool paid; // Has the seller been paid
-  final String? transferId; // Stripe transfer ID
-  final DateTime? paidAt; // When the seller was paid
+  final int amountCents;
+  final int platformFeeCents;
+  final int netAmountCents;
+  final String status; // 'pending', 'completed', 'failed'
+  final String? stripeTransferId;
+  final DateTime? payoutDate;
+  final String? failureReason;
 
   SellerPayout({
     required this.sellerId,
     this.stripeAccountId,
-    required this.gross,
-    required this.platformFee,
-    required this.net,
-    this.paid = false,
-    this.transferId,
-    this.paidAt,
+    required this.amountCents,
+    required this.platformFeeCents,
+    required this.netAmountCents,
+    this.status = 'pending',
+    this.stripeTransferId,
+    this.payoutDate,
+    this.failureReason,
   });
+
+  // Dollar getters
+  double get amount => amountCents / 100.0;
+  double get platformFee => platformFeeCents / 100.0;
+  double get netAmount => netAmountCents / 100.0;
+  bool get paid => status == 'completed';
 
   factory SellerPayout.fromMap(Map<String, dynamic> map) {
     return SellerPayout(
       sellerId: map['sellerId'] ?? '',
       stripeAccountId: map['stripeAccountId'],
-      gross: (map['gross'] ?? 0).toDouble(),
-      platformFee: (map['platformFee'] ?? 0).toDouble(),
-      net: (map['net'] ?? 0).toDouble(),
-      paid: map['paid'] ?? false,
-      transferId: map['transferId'],
-      paidAt: (map['paidAt'] as Timestamp?)?.toDate(),
-    );
-  }
-
-  SellerPayout copyWith({
-    String? sellerId,
-    String? stripeAccountId,
-    double? gross,
-    double? platformFee,
-    double? net,
-    bool? paid,
-    String? transferId,
-    DateTime? paidAt,
-  }) {
-    return SellerPayout(
-      sellerId: sellerId ?? this.sellerId,
-      stripeAccountId: stripeAccountId ?? this.stripeAccountId,
-      gross: gross ?? this.gross,
-      platformFee: platformFee ?? this.platformFee,
-      net: net ?? this.net,
-      paid: paid ?? this.paid,
-      transferId: transferId ?? this.transferId,
-      paidAt: paidAt ?? this.paidAt,
+      amountCents: (map['amountCents'] as num?)?.toInt() ?? 0,
+      platformFeeCents: (map['platformFeeCents'] as num?)?.toInt() ?? 0,
+      netAmountCents: (map['netAmountCents'] as num?)?.toInt() ?? 0,
+      status: map['status'] ?? 'pending',
+      stripeTransferId: map['stripeTransferId'],
+      payoutDate: (map['payoutDate'] as Timestamp?)?.toDate(),
+      failureReason: map['failureReason'],
     );
   }
 
@@ -794,12 +794,13 @@ class SellerPayout {
     return {
       'sellerId': sellerId,
       'stripeAccountId': stripeAccountId,
-      'gross': gross,
-      'platformFee': platformFee,
-      'net': net,
-      'paid': paid,
-      'transferId': transferId,
-      if (paidAt != null) 'paidAt': Timestamp.fromDate(paidAt!),
+      'amountCents': amountCents,
+      'platformFeeCents': platformFeeCents,
+      'netAmountCents': netAmountCents,
+      'status': status,
+      'stripeTransferId': stripeTransferId,
+      if (payoutDate != null) 'payoutDate': Timestamp.fromDate(payoutDate!),
+      'failureReason': failureReason,
     };
   }
 }

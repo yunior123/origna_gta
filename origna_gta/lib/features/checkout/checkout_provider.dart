@@ -208,57 +208,54 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       final idempotencyKey = state.idempotencyKey ?? _generateIdempotencyKey(userId);
       state = state.copyWith(idempotencyKey: idempotencyKey);
 
-      final taxes = hasPhysicalItems && state.address != null ? calculateDetailedTaxes(state.address, subtotal) : <String, double>{};
-      final tax = taxes.values.fold(0.0, (acc, v) => acc + v);
-      final totalWithTax = subtotal + tax + state.shippingCost;
-      final sellerIds = items.map((item) => item.sellerId).toSet().toList();
-
+      // Backend expects: items, shippingAddress, subtotal, userId
+      // Backend handles: tax calculation, shipping calculation, total calculation server-side
       final orderData = {
         'userId': userId,
-        'customerId': user.customerId ?? '',
-        'customerEmail': user.email,
         'items': items
             .map(
               (item) => {
-                'sellerId': item.sellerId,
                 'productId': item.productId,
                 'name': item.name,
-                'description': item.description,
                 'price': item.price,
                 'quantity': item.quantity,
+                'sellerId': item.sellerId,
                 'imageUrls': item.imageUrls,
-                'isDigital': item.isDigital,
               },
             )
             .toList(),
-        'total': totalWithTax,
-        'taxes': taxes,
-        'shippingCost': state.shippingCost,
         'subtotal': subtotal,
-        'deliveryInfo': state.address?.toMap(),
-        'currency': 'cad',
-        'amount': (totalWithTax * 100).toInt(),
-        'sellerIds': sellerIds,
-        'idempotencyKey': idempotencyKey,
-        'deliverySpeed': state.deliverySpeed.value,
-        'paymentProvider': state.paymentProvider,
+        'shippingAddress': state.address?.toMap() ?? {},
       };
 
-      debugPrint('Sending checkout request with idempotency key: $idempotencyKey');
+      debugPrint('Sending checkout request for user: $userId');
 
       final result = await _orderRepository.createCheckoutSession(orderData);
 
-      final checkoutUrl = result['url'] as String;
+      // Check if widget is still mounted after async operation
+      if (!mounted) {
+        return CheckoutError(message: 'Operation cancelled');
+      }
+
+      // Backend returns: {success, sessionId, orderId, checkoutUrl}
+      final checkoutUrl = result['checkoutUrl'] as String;
       final orderId = result['orderId'] as String;
       final sessionId = result['sessionId'] as String;
 
       await _orderRepository.updateLastSession(userId, sessionId, orderId);
+
+      if (!mounted) {
+        return CheckoutError(message: 'Operation cancelled');
+      }
 
       state = state.copyWith(isProcessing: false, clearIdempotencyKey: true);
 
       return CheckoutSuccess(checkoutUrl: checkoutUrl, orderId: orderId, sessionId: sessionId);
     } catch (e) {
       debugPrint('Checkout error: $e');
+      if (!mounted) {
+        return CheckoutError(message: 'Operation cancelled');
+      }
       state = state.copyWith(isProcessing: false, checkoutError: AppError.getMessage(e));
       return CheckoutError(message: AppError.getMessage(e));
     }
@@ -270,16 +267,14 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     state = state.copyWith(address: address, clearIdempotencyKey: true);
   }
 
-  double _atan2(double y, double x) => _taylorAtan2(y, x);
-
   /// Calculate distance between two coordinates in km (Haversine formula)
   double _calculateDistanceKm(double lat1, double lon1, double lat2, double lon2) {
     const earthRadiusKm = 6371.0;
     final dLat = _toRadians(lat2 - lat1);
     final dLon = _toRadians(lon2 - lon1);
 
-    final a = _sin(dLat / 2) * _sin(dLat / 2) + _cos(_toRadians(lat1)) * _cos(_toRadians(lat2)) * _sin(dLon / 2) * _sin(dLon / 2);
-    final c = 2 * _atan2(_sqrt(a), _sqrt(1 - a));
+    final a = sin(dLat / 2) * sin(dLat / 2) + cos(_toRadians(lat1)) * cos(_toRadians(lat2)) * sin(dLon / 2) * sin(dLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
     return earthRadiusKm * c;
   }
@@ -307,8 +302,6 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     return true;
   }
 
-  double _cos(double x) => _taylorSin(x + 1.5707963267948966);
-
   /// Generate per-attempt idempotency key for payment safety.
   ///
   /// - Random per attempt (prevents blocking legitimate repeat purchases)
@@ -321,54 +314,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     return 'chk_${userId}_${ts}_$nonce';
   }
 
-  double _newtonSqrt(double x) {
-    double guess = x / 2;
-    for (int i = 0; i < 20; i++) {
-      guess = (guess + x / guess) / 2;
-    }
-    return guess;
-  }
-
-  double _sin(double x) => _taylorSin(x);
-
-  double _sqrt(double x) => x <= 0 ? 0 : _newtonSqrt(x);
-
-  double _taylorAtan(double x) {
-    if (x > 1) return 1.5707963267948966 - _taylorAtan(1 / x);
-    if (x < -1) return -1.5707963267948966 - _taylorAtan(1 / x);
-    double result = x;
-    double term = x;
-    for (int i = 1; i <= 20; i++) {
-      term *= -x * x;
-      result += term / (2 * i + 1);
-    }
-    return result;
-  }
-
-  double _taylorAtan2(double y, double x) {
-    if (x > 0) return _taylorAtan(y / x);
-    if (x < 0 && y >= 0) return _taylorAtan(y / x) + 3.141592653589793;
-    if (x < 0 && y < 0) return _taylorAtan(y / x) - 3.141592653589793;
-    if (x == 0 && y > 0) return 1.5707963267948966;
-    if (x == 0 && y < 0) return -1.5707963267948966;
-    return 0;
-  }
-
-  // Taylor series approximations for math functions
-  double _taylorSin(double x) {
-    x = x % 6.283185307179586;
-    if (x > 3.141592653589793) x -= 6.283185307179586;
-    if (x < -3.141592653589793) x += 6.283185307179586;
-    double result = x;
-    double term = x;
-    for (int i = 1; i <= 10; i++) {
-      term *= -x * x / ((2 * i) * (2 * i + 1));
-      result += term;
-    }
-    return result;
-  }
-
-  double _toRadians(double deg) => deg * 3.141592653589793 / 180;
+  double _toRadians(double deg) => deg * pi / 180;
 }
 
 // ============================================================================

@@ -130,11 +130,8 @@
       "description": "Delivery status for individual items",
       "enum": [
         "pending",
-        "processing",
         "shipped",
-        "delivered",
-        "cancelled",
-        "returned"
+        "delivered"
       ],
       "title": "DeliveryStatusEnum",
       "type": "string"
@@ -265,7 +262,7 @@
       "type": "object"
     }
   },
-  "description": "Individual item in an order (replaces CartItemDetailModel)\nImmutable object with all product details at time of purchase",
+  "description": "Individual item in an order \u2014 immutable snapshot at time of purchase.",
   "example": {
     "deliveryStatus": "pending",
     "description": "Fresh organic apples",
@@ -314,6 +311,7 @@
       "type": "integer"
     },
     "imageUrls": {
+      "description": "Product image URLs",
       "items": {
         "type": "string"
       },

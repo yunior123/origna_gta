@@ -2,11 +2,8 @@
   "type": "string",
   "enum": [
     "pending",
-    "processing",
     "shipped",
-    "delivered",
-    "cancelled",
-    "returned"
+    "delivered"
   ],
   "description": "Delivery status values"
 }

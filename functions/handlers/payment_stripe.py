@@ -278,15 +278,50 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 f"You cannot purchase your own product: {product_data['name']}"
             )
         
+        # Fetch seller profile for shipping calculation
+        seller_ref = get_db().collection(Collections.USERS).document(seller_id)
+        seller_doc = seller_ref.get()
+        seller_data = seller_doc.to_dict() if seller_doc.exists else {}
+        seller_profile = seller_data.get('sellerProfile', {})
+        
+        image_urls = product_data.get('imageUrls', [])
+        if not isinstance(image_urls, list):
+            image_urls = [str(image_urls)]
+
+        primary_image_url = image_urls[0] if image_urls else ''
+
+        # Build sellerAddress - must have required Address fields for Flutter parsing
+        raw_seller_address = seller_profile.get('businessAddress', {})
+        if not raw_seller_address or not raw_seller_address.get('street'):
+            # Fallback: use seller's main address or a minimal valid stub
+            raw_seller_address = seller_data.get('address', {})
+        if not raw_seller_address or not raw_seller_address.get('street'):
+            raw_seller_address = {
+                'street': 'N/A',
+                'city': 'N/A',
+                'state': 'ON',
+                'postalCode': 'M5V 3A8',
+                'country': 'Canada',
+            }
+
         validated_item = {
             'productId': item['productId'],
             'name': product_data['name'],
+            'description': product_data.get('description', ''),
             'price': db_price,
             'quantity': item['quantity'],
             'sellerId': seller_id,
-            'imageUrl': product_data.get('imageUrls', [''])[0],
+            'imageUrls': image_urls if image_urls else [''],
             'isDigital': product_data.get('isDigital', False),
-            'categoryId': product_data.get('categoryId', 0)
+            'categoryId': product_data.get('categoryId', 0),
+            'deliveryStatus': 'pending',
+            'trackingNumber': None,
+            'confirmedByBuyer': False,
+            'freeShipping': product_data.get('freeShipping', False),
+            'isLocalDeliveryOnly': product_data.get('isLocalDeliveryOnly', False),
+            'isPerishable': product_data.get('isPerishable', False),
+            'deliveryOptions': product_data.get('deliveryOptions', []),
+            'sellerAddress': raw_seller_address,
         }
         validated_items.append(validated_item)
         actual_subtotal += db_price * item['quantity']
@@ -300,18 +335,35 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             f'Subtotal mismatch: expected ${actual_subtotal:.2f}, got ${client_subtotal:.2f}'
         )
     
-    # Calculate shipping (server-side)
+    # Calculate shipping (server-side) - returns dollars
     try:
-        shipping_cost = calculate_shipping_cost(validated_items, shipping_address)
+        shipping_cost_dollars = calculate_shipping_cost(validated_items, shipping_address)
+        shipping_cost_cents = round(shipping_cost_dollars * 100)
     except Exception as e:
         raise https_fn.HttpsError('internal', f'Shipping calculation failed: {str(e)}')
     
-    # Calculate taxes (server-side)
+    # Calculate taxes (server-side) - all in cents to avoid rounding errors
     province = shipping_address.get('province', 'ON')
     tax_rate = get_tax_rate(province)
-    tax_amount = int(actual_subtotal * tax_rate)
-    
-    total_amount = int(actual_subtotal + shipping_cost + tax_amount)
+    tax_amount_cents = round(actual_subtotal_cents * tax_rate)
+
+    # Build tax breakdown dict (matches Flutter provinceTaxRates)
+    _PROVINCE_TAX_BREAKDOWN = {
+        'AB': {'GST': 0.05}, 'BC': {'GST': 0.05, 'PST': 0.07},
+        'MB': {'GST': 0.05, 'PST': 0.07}, 'NB': {'HST': 0.15},
+        'NL': {'HST': 0.15}, 'NS': {'HST': 0.15}, 'NT': {'GST': 0.05},
+        'NU': {'GST': 0.05}, 'ON': {'HST': 0.13}, 'PE': {'HST': 0.15},
+        'QC': {'GST': 0.05, 'QST': 0.09975}, 'SK': {'GST': 0.05, 'PST': 0.06},
+        'YT': {'GST': 0.05},
+    }
+    province_rates = _PROVINCE_TAX_BREAKDOWN.get(province, {'GST': 0.05})
+    taxes_breakdown = {
+        name: round(actual_subtotal * rate, 2)
+        for name, rate in province_rates.items()
+    }
+
+    # Total in cents
+    total_amount_cents = actual_subtotal_cents + shipping_cost_cents + tax_amount_cents
     
     # Reserve stock atomically using Firestore transactions
     @get_transactional()
@@ -342,25 +394,32 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     except Exception as e:
         raise https_fn.HttpsError('internal', f'Stock reservation failed: {str(e)}')
     
-    # Create order in Firestore
+    # Create order in Firestore — all amounts in cents
     order_ref = get_db().collection(Collections.ORDERS).document()
+    order_id = order_ref.id
+
     order_data = {
+        'orderId': order_id,
         'userId': user_id,
+        'sellerIds': sorted(list(sellers)),
         'items': validated_items,
-        'subtotal': int(actual_subtotal),
-        'shippingCost': shipping_cost,
-        'taxAmount': tax_amount,
-        'totalAmount': total_amount,
+        'subtotalCents': actual_subtotal_cents,
+        'shippingCostCents': shipping_cost_cents,
+        'taxAmountCents': tax_amount_cents,
+        'totalAmountCents': total_amount_cents,
+        'taxes': taxes_breakdown,
         'orderStatus': OrderStatus.PENDING,
         'paymentStatus': PaymentStatus.AWAITING_PAYMENT,
         'shippingAddress': shipping_address,
-        'dateCreated': get_server_timestamp(),
+        'createdAt': get_server_timestamp(),
+        'updatedAt': get_server_timestamp(),
         'captureAttempts': 0,
-        'expiresAt': datetime.now() + timedelta(days=AUTHORIZATION_VALID_DAYS)
+        'expiresAt': datetime.now() + timedelta(days=AUTHORIZATION_VALID_DAYS),
+        'currency': 'cad',
+        'paymentProvider': 'stripe',
     }
     
     order_ref.set(order_data)
-    order_id = order_ref.id
     
     # Create Stripe Checkout Session
     try:
@@ -377,7 +436,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         for item in validated_items:
             product_data = {
                 'name': item['name'],
-                'images': [item['imageUrl']] if item['imageUrl'] else []
+                'images': item.get('imageUrls', [])[:1]
             }
             
             # Add tax code if available
@@ -394,28 +453,30 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 'quantity': item['quantity']
             })
         
-        # Add shipping as line item
-        if shipping_cost > 0:
+        # Add shipping as line item (already in cents)
+        if shipping_cost_cents > 0:
             line_items.append({
                 'price_data': {
                     'currency': 'cad',
                     'product_data': {
                         'name': 'Shipping'
                     },
-                    'unit_amount': int(shipping_cost * 100)
+                    'unit_amount': shipping_cost_cents
                 },
                 'quantity': 1
             })
         
-        # Add tax as line item
-        if tax_amount > 0:
+        # Add tax as line item (already in cents)
+        # NOTE: We calculate tax manually server-side
+        # Stripe automatic_tax is DISABLED to avoid double taxation
+        if tax_amount_cents > 0:
             line_items.append({
                 'price_data': {
                     'currency': 'cad',
                     'product_data': {
                         'name': f'Tax ({province})'
                     },
-                    'unit_amount': int(tax_amount * 100)
+                    'unit_amount': tax_amount_cents
                 },
                 'quantity': 1
             })
@@ -436,8 +497,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 'metadata': {
                     'orderId': order_id
                 }
-            },
-            automatic_tax={'enabled': True}  # Enable automatic tax calculation
+            }
+            # NOTE: automatic_tax disabled - we calculate tax server-side to avoid double taxation
         )
         
         # Update order with session ID
@@ -678,23 +739,36 @@ def process_checkout_session_completed(session: Dict) -> Optional[str]:
     
     # Send confirmation emails
     try:
-        # Email to buyer
-        buyer_email_html = get_order_confirmation_email(order_id, order_data)
-        send_email(
-            to_email=order_data.get('userId'),  # Will be resolved to email
-            subject='Order Confirmation - Origna',
-            html_content=buyer_email_html
-        )
+        # Get buyer email from order data or user document
+        buyer_email = order_data.get('customerEmail')
+        if not buyer_email:
+            buyer_doc = get_db().collection(Collections.USERS).document(order_data['userId']).get()
+            if buyer_doc.exists:
+                buyer_email = buyer_doc.to_dict().get('email')
+        
+        if buyer_email:
+            buyer_email_html = get_order_confirmation_email(order_data, order_id)
+            send_email(
+                to_email=buyer_email,
+                subject='Order Confirmation - Origna',
+                html_content=buyer_email_html
+            )
         
         # Email to sellers
         sellers = set(item['sellerId'] for item in order_data['items'])
         for seller_id in sellers:
-            seller_email_html = get_seller_notification_email(order_id, order_data, seller_id)
-            send_email(
-                to_email=seller_id,  # Will be resolved to email
-                subject='New Order Received - Origna',
-                html_content=seller_email_html
-            )
+            # Get seller email from user document
+            seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
+            if seller_doc.exists:
+                seller_data = seller_doc.to_dict()
+                seller_email = seller_data.get('email')
+                if seller_email:
+                    seller_email_html = get_seller_notification_email(order_data, order_id, seller_id)
+                    send_email(
+                        to_email=seller_email,
+                        subject='New Order Received - Origna',
+                        html_content=seller_email_html
+                    )
     except Exception as e:
         print(f'Failed to send confirmation emails: {str(e)}')
     
@@ -751,7 +825,7 @@ def process_async_payment_failed(session: Dict) -> Optional[str]:
         # Update order
         order_ref.update({
             'orderStatus': OrderStatus.CANCELLED,
-            'paymentStatus': PaymentStatus.FAILED,
+            'paymentStatus': PaymentStatus.PAYMENT_FAILED,
             'updatedAt': get_server_timestamp()
         })
     
@@ -788,6 +862,7 @@ def process_session_expired(session: Dict) -> Optional[str]:
         
         order_ref.update({
             'orderStatus': OrderStatus.EXPIRED,
+            'paymentStatus': PaymentStatus.SESSION_EXPIRED,
             'updatedAt': get_server_timestamp()
         })
     
@@ -819,7 +894,7 @@ def process_payment_intent_failed(payment_intent: Dict) -> Optional[str]:
     
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_ref.update({
-        'paymentStatus': PaymentStatus.FAILED,
+        'paymentStatus': PaymentStatus.PAYMENT_FAILED,
         'updatedAt': get_server_timestamp()
     })
     
@@ -1191,6 +1266,11 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Manually captures authorized payment and initiates seller payouts.
     Called when buyer confirms order receipt.
+    
+    Security:
+    - Only order owner (buyer) or admin can capture
+    - Order must be in valid state for capture
+    - Idempotency: prevents duplicate captures/transfers
     """
     # Check if Stripe is enabled
     from handlers.payment_providers import require_provider_enabled, PaymentProvider
@@ -1199,6 +1279,7 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
     
+    caller_uid = req.auth.uid
     order_id = req.data.get('orderId')
     
     if not order_id:
@@ -1211,10 +1292,65 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('not-found', 'Order not found')
     
     order_data = order_doc.to_dict()
+    
+    # CRITICAL SECURITY CHECK: Only order owner or admin can capture
+    order_user_id = order_data.get('userId')
+    is_admin = 'admin' in req.auth.token.get('roles', [])
+    
+    if caller_uid != order_user_id and not is_admin:
+        raise https_fn.HttpsError(
+            'permission-denied',
+            'Only the order owner can capture this payment'
+        )
+    
+    # Verify order is in valid state for capture
+    payment_status = order_data.get('paymentStatus')
+    order_status = order_data.get('orderStatus')
+    
+    # Idempotency: if already captured, return success
+    if payment_status == PaymentStatus.CAPTURED:
+        # Ensure buyer receipt confirmation is persisted (best-effort)
+        if not order_data.get('confirmedByClient'):
+            try:
+                order_ref.update({
+                    'confirmedByClient': True,
+                    'confirmedAt': get_server_timestamp(),
+                    'updatedAt': get_server_timestamp(),
+                })
+            except Exception:
+                pass
+        return {
+            'success': True,
+            'captured': True,
+            'message': 'Payment already captured',
+            'paymentIntentId': order_data.get('stripePaymentIntentId')
+        }
+    
+    # Verify order is in correct state (should be authorized/shipped)
+    if payment_status != PaymentStatus.AUTHORIZED:
+        raise https_fn.HttpsError(
+            'failed-precondition',
+            f'Order payment not authorized (status: {payment_status})'
+        )
+    
+    if order_status not in [OrderStatus.SHIPPED, OrderStatus.IN_TRANSIT, OrderStatus.DELIVERED]:
+        raise https_fn.HttpsError(
+            'failed-precondition',
+            f'Order not shipped yet (status: {order_status})'
+        )
+    
     payment_intent_id = order_data.get('stripePaymentIntentId')
     
     if not payment_intent_id:
         raise https_fn.HttpsError('failed-precondition', 'No payment intent found')
+    
+    # Track capture attempts to prevent infinite retries
+    capture_attempts = order_data.get('captureAttempts', 0)
+    if capture_attempts >= 3:
+        raise https_fn.HttpsError(
+            'failed-precondition',
+            'Maximum capture attempts exceeded'
+        )
     
     try:
         # Validate PI is in capturable state
@@ -1226,12 +1362,13 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 f'Payment cannot be captured (status: {payment_intent.status})'
             )
 
-        # Validate capture amount matches order total
-        expected_amount_cents = int(order_data['totalAmount'] * 100)
+        # Validate capture amount matches order total (both in cents)
+        expected_amount_cents = order_data.get('totalAmountCents', 0)
+
         if payment_intent.amount != expected_amount_cents:
             raise https_fn.HttpsError(
                 'failed-precondition',
-                'Payment amount does not match order total'
+                f'Payment amount mismatch: expected {expected_amount_cents} cents, got {payment_intent.amount} cents'
             )
 
         # Capture the payment
@@ -1241,19 +1378,26 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         order_ref.update({
             'paymentStatus': PaymentStatus.CAPTURED,
             'orderStatus': OrderStatus.DELIVERED,
+            'capturedAt': get_server_timestamp(),
+            'confirmedByClient': True,
+            'confirmedAt': get_server_timestamp(),
+            'captureAttempts': capture_attempts + 1,
             'updatedAt': get_server_timestamp()
         })
         
-        # Create payouts for sellers
-        sellers_total = {}
+        # Create payouts for sellers - ALL calculations in cents
+        sellers_total_cents = {}
         for item in order_data['items']:
             seller_id = item['sellerId']
-            item_total = item['price'] * item['quantity']
-            sellers_total[seller_id] = sellers_total.get(seller_id, 0) + item_total
+            # Price is in dollars, convert to cents
+            item_price_cents = round(item['price'] * 100)
+            item_total_cents = item_price_cents * item['quantity']
+            sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
         
-        for seller_id, amount in sellers_total.items():
-            platform_fee = int(amount * PLATFORM_FEE_PERCENT)
-            net_amount = amount - platform_fee
+        for seller_id, amount_cents in sellers_total_cents.items():
+            # Platform fee in cents (rounded)
+            platform_fee_cents = round(amount_cents * PLATFORM_FEE_PERCENT)
+            net_amount_cents = amount_cents - platform_fee_cents
             
             # Get seller's Stripe account
             seller_ref = get_db().collection(Collections.USERS).document(seller_id)
@@ -1264,9 +1408,22 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 stripe_account_id = seller_data.get('stripeAccountId')
                 
                 if stripe_account_id:
-                    # Create transfer to seller
+                    # Check for existing transfer (idempotency)
+                    existing_payout = get_db().collection(Collections.PAYOUTS).where(
+                        'orderId', '==', order_id
+                    ).where(
+                        'sellerId', '==', seller_id
+                    ).where(
+                        'status', '==', 'completed'
+                    ).limit(1).get()
+                    
+                    if len(existing_payout) > 0:
+                        # Transfer already completed for this seller, skip
+                        continue
+                    
+                    # Create transfer to seller (amount already in cents)
                     transfer = stripe.Transfer.create(
-                        amount=int(net_amount * 100),  # Convert to cents
+                        amount=net_amount_cents,
                         currency='cad',
                         destination=stripe_account_id,
                         metadata={
@@ -1275,13 +1432,13 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                         }
                     )
                     
-                    # Log payout
+                    # Log payout (store in cents for consistency)
                     get_db().collection(Collections.PAYOUTS).add({
                         'orderId': order_id,
                         'sellerId': seller_id,
-                        'amount': amount,
-                        'platformFee': platform_fee,
-                        'netAmount': net_amount,
+                        'amountCents': amount_cents,
+                        'platformFeeCents': platform_fee_cents,
+                        'netAmountCents': net_amount_cents,
                         'status': 'completed',
                         'stripeTransferId': transfer.id,
                         'payoutDate': get_server_timestamp(),
@@ -1296,10 +1453,6 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     except Exception as e:
         raise https_fn.HttpsError('internal', f'Could not capture payment: {str(e)}')
 
-
-# Aliases for backward compatibility and naming conventions
-create_stripe_connect_account = create_connect_account
-create_stripe_connect_account_link = create_account_link
 
 
 def sanitize_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:

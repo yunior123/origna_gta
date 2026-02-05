@@ -23,16 +23,17 @@ class Order with _$Order {
     required String customerId,
     required String customerEmail,
     required List<OrderItem> items,
-    required double total,
-    required double subtotal,
-    @Default(0.0) double shippingCost,
+    // All money in integer cents
+    required int totalAmountCents,
+    required int subtotalCents,
+    @Default(0) int shippingCostCents,
+    @Default(0) int taxAmountCents,
     required Taxes taxes,
-    @Default(OrderStatus.pending) OrderStatus status,
+    @Default(OrderStatus.pending) OrderStatus orderStatus,
     @Default(PaymentStatus.awaitingPayment) PaymentStatus paymentStatus,
-    required Address deliveryInfo,
+    required Address shippingAddress,
     required DateTime createdAt,
     @Default('cad') String currency,
-    required int amount,
     @Default([]) List<String> sellerIds,
     required String stripeSessionId,
     // Shipping approval
@@ -53,11 +54,81 @@ class Order with _$Order {
   factory Order.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
+    OrderStatus parseOrderStatus(dynamic raw) {
+      final value = raw?.toString();
+      switch (value) {
+        case 'pending':
+          return OrderStatus.pending;
+        case 'confirmed':
+          return OrderStatus.confirmed;
+        case 'processing':
+          return OrderStatus.processing;
+        case 'shipped':
+          return OrderStatus.shipped;
+        case 'in_transit':
+          return OrderStatus.inTransit;
+        case 'delivered':
+          return OrderStatus.delivered;
+        case 'cancelled':
+          return OrderStatus.cancelled;
+        case 'failed':
+          return OrderStatus.failed;
+        case 'expired':
+          return OrderStatus.expired;
+        case 'refunded':
+          return OrderStatus.refunded;
+        case 'partially_refunded':
+          return OrderStatus.partiallyRefunded;
+        default:
+          return OrderStatus.pending;
+      }
+    }
+
+    PaymentStatus parsePaymentStatus(dynamic raw) {
+      final value = raw?.toString();
+      switch (value) {
+        case 'awaiting_payment':
+          return PaymentStatus.awaitingPayment;
+        case 'processing':
+          return PaymentStatus.processing;
+        case 'paid':
+          return PaymentStatus.paid;
+        case 'authorized':
+          return PaymentStatus.authorized;
+        case 'captured':
+          return PaymentStatus.captured;
+        case 'payment_failed':
+          return PaymentStatus.paymentFailed;
+        case 'refunded':
+          return PaymentStatus.refunded;
+        case 'session_expired':
+          return PaymentStatus.sessionExpired;
+        default:
+          return PaymentStatus.awaitingPayment;
+      }
+    }
+
+    ShippingApprovalStatus parseShippingApprovalStatus(dynamic raw) {
+      final value = raw?.toString();
+      switch (value) {
+        case 'not_required':
+          return ShippingApprovalStatus.notRequired;
+        case 'pending':
+          return ShippingApprovalStatus.pending;
+        case 'approved':
+          return ShippingApprovalStatus.approved;
+        case 'rejected':
+          return ShippingApprovalStatus.rejected;
+        default:
+          return ShippingApprovalStatus.notRequired;
+      }
+    }
+
     // Parse items
     final itemsData = data['items'] as List<dynamic>? ?? [];
     final items = itemsData.map((item) => OrderItem.fromJson(item as Map<String, dynamic>)).toList();
 
-    // Parse taxes (handle legacy Map format)
+    // Parse taxes
     final taxesData = data['taxes'];
     final taxes = taxesData is Map ? Taxes.fromMap(taxesData as Map<String, dynamic>) : const Taxes();
 
@@ -65,9 +136,18 @@ class Order with _$Order {
     final payoutsData = data['sellerPayouts'] as List<dynamic>? ?? [];
     final payouts = payoutsData.map((p) => SellerPayout.fromMap(p as Map<String, dynamic>)).toList();
 
-    // Parse ratings (handle legacy format)
+    // Parse ratings
     final ratingsData = data['ratings'];
     final ratings = ratingsData is List ? (ratingsData).map((r) => Ratings.fromJson(r as Map<String, dynamic>)).toList() : <Ratings>[];
+
+    // Money — all cents
+    final totalAmountCents = (data['totalAmountCents'] as num?)?.toInt() ?? 0;
+    final subtotalCents = (data['subtotalCents'] as num?)?.toInt() ?? 0;
+    final shippingCostCents = (data['shippingCostCents'] as num?)?.toInt() ?? 0;
+    final taxAmountCents = (data['taxAmountCents'] as num?)?.toInt() ?? 0;
+
+    // Address
+    final rawAddress = (data['shippingAddress'] as Map<String, dynamic>?) ?? {};
 
     return Order(
       orderId: data['orderId'] ?? doc.id,
@@ -75,22 +155,19 @@ class Order with _$Order {
       customerId: data['customerId'] ?? '',
       customerEmail: data['customerEmail'] ?? '',
       items: items,
-      total: (data['total'] ?? 0.0).toDouble(),
-      subtotal: (data['subtotal'] ?? 0.0).toDouble(),
-      shippingCost: (data['shippingCost'] ?? 0.0).toDouble(),
+      totalAmountCents: totalAmountCents,
+      subtotalCents: subtotalCents,
+      shippingCostCents: shippingCostCents,
+      taxAmountCents: taxAmountCents,
       taxes: taxes,
-      status: OrderStatus.values.firstWhere((e) => e.name == data['status'], orElse: () => OrderStatus.pending),
-      paymentStatus: PaymentStatus.values.firstWhere((e) => e.name == data['paymentStatus'], orElse: () => PaymentStatus.awaitingPayment),
-      deliveryInfo: Address.fromJson(data['deliveryInfo'] as Map<String, dynamic>? ?? {}),
+      orderStatus: parseOrderStatus(data['orderStatus']),
+      paymentStatus: parsePaymentStatus(data['paymentStatus']),
+      shippingAddress: Address.fromJson(rawAddress),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       currency: data['currency'] ?? 'cad',
-      amount: (data['amount'] as num?)?.toInt() ?? 0,
       sellerIds: List<String>.from(data['sellerIds'] ?? []),
       stripeSessionId: data['stripeSessionId'] ?? '',
-      shippingApprovalStatus: ShippingApprovalStatus.values.firstWhere(
-        (e) => e.name == data['shippingApprovalStatus'],
-        orElse: () => ShippingApprovalStatus.notRequired,
-      ),
+      shippingApprovalStatus: parseShippingApprovalStatus(data['shippingApprovalStatus']),
       shippingApprovalRequired: data['shippingApprovalRequired'] ?? false,
       actualShipping: (data['actualShipping'] ?? 0.0).toDouble(),
       pendingTotal: (data['pendingTotal'] ?? 0.0).toDouble(),
@@ -107,12 +184,17 @@ class Order with _$Order {
 
   const Order._();
 
-  /// Calculate totals from items
-  Order calculateTotals() {
-    final newSubtotal = items.fold(0.0, (acc, item) => acc + item.subtotal);
-    final newTotal = newSubtotal + shippingCost + taxes.total;
-    return copyWith(subtotal: newSubtotal, total: newTotal);
-  }
+  /// Total in dollars (derived from cents)
+  double get total => totalAmountCents / 100.0;
+
+  /// Subtotal in dollars (derived from cents)
+  double get subtotal => subtotalCents / 100.0;
+
+  /// Shipping in dollars (derived from cents)
+  double get shippingCost => shippingCostCents / 100.0;
+
+  /// Tax in dollars (derived from cents)
+  double get taxAmount => taxAmountCents / 100.0;
 }
 
 // ============================================================================
@@ -126,8 +208,7 @@ class OrderCreate with _$OrderCreate {
     required String customerId,
     required String customerEmail,
     required List<OrderItem> items,
-    required Address deliveryInfo,
-    required String stripeSessionId,
+    required Address shippingAddress,
     @Default(0.0) double shippingCost,
     @Default('cad') String currency,
     @Default(false) bool shippingApprovalRequired,
@@ -165,6 +246,7 @@ class OrderItem with _$OrderItem {
     @Default([]) List<SellerDeliveryOption> deliveryOptions,
     @Default(1) int minimumOrderQuantity,
     @Default(false) bool freeShipping,
+    @Default(false) bool isDigital,
   }) = _OrderItem;
 
   factory OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);
@@ -194,10 +276,10 @@ class Ratings with _$Ratings {
 class SellerPayout with _$SellerPayout {
   const factory SellerPayout({
     required String sellerId,
-    String? sellerStripeAccountId,
-    required double amount,
-    required double platformFee,
-    required double netAmount,
+    String? stripeAccountId,
+    required int amountCents,
+    required int platformFeeCents,
+    required int netAmountCents,
     @Default('pending') String status,
     DateTime? payoutDate,
     String? stripeTransferId,
@@ -206,35 +288,34 @@ class SellerPayout with _$SellerPayout {
 
   factory SellerPayout.fromJson(Map<String, dynamic> json) => _$SellerPayoutFromJson(json);
 
-  factory SellerPayout.fromMap(Map<String, dynamic> map) => SellerPayout(
-    sellerId: map['sellerId'] ?? '',
-    sellerStripeAccountId: map['sellerStripeAccountId'],
-    amount: (map['amount'] ?? 0.0).toDouble(),
-    platformFee: (map['platformFee'] ?? 0.0).toDouble(),
-    netAmount: (map['netAmount'] ?? 0.0).toDouble(),
-    status: map['status'] ?? 'pending',
-    payoutDate: map['payoutDate'] is Timestamp
-        ? (map['payoutDate'] as Timestamp).toDate()
-        : map['payoutDate'] is DateTime
-        ? map['payoutDate']
-        : null,
-    stripeTransferId: map['stripeTransferId'],
-    failureReason: map['failureReason'],
-  );
+  factory SellerPayout.fromMap(Map<String, dynamic> map) {
+    return SellerPayout(
+      sellerId: map['sellerId'] ?? '',
+      stripeAccountId: map['stripeAccountId'],
+      amountCents: (map['amountCents'] as num?)?.toInt() ?? 0,
+      platformFeeCents: (map['platformFeeCents'] as num?)?.toInt() ?? 0,
+      netAmountCents: (map['netAmountCents'] as num?)?.toInt() ?? 0,
+      status: map['status'] ?? 'pending',
+      payoutDate: map['payoutDate'] is Timestamp
+          ? (map['payoutDate'] as Timestamp).toDate()
+          : map['payoutDate'] is DateTime
+              ? map['payoutDate']
+              : null,
+      stripeTransferId: map['stripeTransferId'],
+      failureReason: map['failureReason'],
+    );
+  }
 
   const SellerPayout._();
 
-  Map<String, dynamic> toMap() => {
-    'sellerId': sellerId,
-    'sellerStripeAccountId': sellerStripeAccountId,
-    'amount': amount,
-    'platformFee': platformFee,
-    'netAmount': netAmount,
-    'status': status,
-    'payoutDate': payoutDate,
-    'stripeTransferId': stripeTransferId,
-    'failureReason': failureReason,
-  };
+  /// Amount in dollars
+  double get amount => amountCents / 100.0;
+
+  /// Platform fee in dollars
+  double get platformFee => platformFeeCents / 100.0;
+
+  /// Net amount in dollars
+  double get netAmount => netAmountCents / 100.0;
 }
 
 // ============================================================================
@@ -246,7 +327,6 @@ class Taxes with _$Taxes {
   const factory Taxes({@Default(0.0) double gst, @Default(0.0) double pst, @Default(0.0) double hst, @Default(0.0) double qst}) = _Taxes;
 
   factory Taxes.fromJson(Map<String, dynamic> json) {
-    // Support both lowercase (gst) and uppercase (GST) keys
     return Taxes(
       gst: (json['gst'] ?? json['GST'] ?? 0.0).toDouble(),
       pst: (json['pst'] ?? json['PST'] ?? 0.0).toDouble(),
@@ -255,7 +335,6 @@ class Taxes with _$Taxes {
     );
   }
 
-  /// Create from legacy Map format
   factory Taxes.fromMap(Map<String, dynamic> map) =>
       Taxes(gst: (map['GST'] ?? 0.0).toDouble(), pst: (map['PST'] ?? 0.0).toDouble(), hst: (map['HST'] ?? 0.0).toDouble(), qst: (map['QST'] ?? 0.0).toDouble());
 
@@ -264,9 +343,9 @@ class Taxes with _$Taxes {
   /// Calculate total tax amount
   double get total => gst + pst + hst + qst;
 
-  /// Convert to JSON (support both formats)
+  /// Convert to JSON
   Map<String, dynamic> toJson() => {'GST': gst, 'PST': pst, 'HST': hst, 'QST': qst};
 
-  /// Convert to legacy Map format for compatibility
+  /// Convert to Map
   Map<String, double> toMap() => {'GST': gst, 'PST': pst, 'HST': hst, 'QST': qst};
 }

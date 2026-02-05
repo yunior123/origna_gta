@@ -28,7 +28,7 @@ class TestPaymentFlow(unittest.TestCase):
     def test_capture_payment_normal_flow(self, mock_stripe, mock_get_rate_limiter, mock_get_db):
         """
         Scenario: Order is Authorized.
-        Seller 1 calls capture_payment.
+        Buyer calls capture_payment.
         Expectation: Success, AND Stripe capture call.
         """
         from handlers.payment_stripe import capture_payment
@@ -43,7 +43,8 @@ class TestPaymentFlow(unittest.TestCase):
         mock_stripe.PaymentIntent.capture = MagicMock()
 
         req = MagicMock()
-        req.auth.uid = "seller_1"
+        req.auth.uid = "buyer_123"
+        req.auth.token = {"roles": []}
         req.data = {"orderId": "order_123", "trackingNumber": "T1"}
 
         # Mock Seller
@@ -62,11 +63,11 @@ class TestPaymentFlow(unittest.TestCase):
         mock_order_doc.exists = True
         mock_order_doc.to_dict.return_value = {
             "orderId": "order_123",
+            "userId": "buyer_123",
             "paymentStatus": "authorized",
-            "status": "processing",
+            "orderStatus": "shipped",
             "stripePaymentIntentId": "pi_123",
-            "amount": 5000,
-            "totalAmount": 50,
+            "totalAmountCents": 5000,
             "items": [
                 {"sellerId": "seller_1", "deliveryStatus": DeliveryStatus.PENDING, "price": 50.00, "quantity": 1}
             ]
@@ -234,8 +235,8 @@ class TestPaymentFlow(unittest.TestCase):
         mock_order_doc.exists = True
         mock_order_doc.to_dict.return_value = {
             "orderId": "order_123",
-            "status": OrderStatus.PENDING,
-            "amount": 5000
+            "orderStatus": OrderStatus.PENDING,
+            "totalAmountCents": 5000
         }
         
         mock_event_log = MagicMock()
@@ -298,7 +299,7 @@ class TestPaymentFlow(unittest.TestCase):
         mock_order_doc.exists = True
         mock_order_doc.to_dict.return_value = {
             "orderId": "order_456",
-            "status": OrderStatus.PENDING
+            "orderStatus": OrderStatus.PENDING
         }
 
         mock_event_log = MagicMock()

@@ -112,18 +112,22 @@ void main() {
     });
 
     test('seller payout after platform fee', () {
-      const gross = 100.0;
-      const platformFeeRate = 0.025;
-      final platformFee = gross * platformFeeRate;
-      final net = gross - platformFee;
+      const grossCents = 10000; // $100.00
+      const platformFeeCents = 250; // $2.50 (2.5%)
+      const netCents = grossCents - platformFeeCents; // $97.50
 
-      expect(net, closeTo(97.5, 0.01));
+      expect(netCents, 9750);
 
-      final payout = SellerPayout(sellerId: 'seller_123', gross: gross, platformFee: platformFee, net: net);
+      final payout = SellerPayout(
+        sellerId: 'seller_123',
+        amountCents: grossCents,
+        platformFeeCents: platformFeeCents,
+        netAmountCents: netCents,
+      );
 
-      expect(payout.gross, 100.0);
+      expect(payout.amount, 100.0);
       expect(payout.platformFee, closeTo(2.5, 0.01));
-      expect(payout.net, closeTo(97.5, 0.01));
+      expect(payout.netAmount, closeTo(97.5, 0.01));
     });
   });
 

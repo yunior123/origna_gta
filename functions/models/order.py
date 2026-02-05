@@ -4,7 +4,7 @@ Includes OrderItem, Taxes, Ratings, SellerPayout, and Order
 """
 
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 from .base import Address, OrderStatusEnum, PaymentStatusEnum, DeliveryStatusEnum, ShippingApprovalStatusEnum
@@ -12,10 +12,7 @@ from .product import SellerDeliveryOption
 
 
 class OrderItem(BaseModel):
-    """
-    Individual item in an order (replaces CartItemDetailModel)
-    Immutable object with all product details at time of purchase
-    """
+    """Individual item in an order — immutable snapshot at time of purchase."""
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -43,13 +40,13 @@ class OrderItem(BaseModel):
     description: str = Field(..., max_length=4000)
     price: float = Field(..., gt=0)
     quantity: int = Field(..., gt=0, le=1000)
-    imageUrls: List[str] = Field(..., min_length=1)
+    imageUrls: List[str] = Field(..., min_length=1, description="Product image URLs")
     sellerId: str = Field(..., min_length=1)
     sellerAddress: Address
     deliveryStatus: DeliveryStatusEnum = Field(default=DeliveryStatusEnum.PENDING)
     trackingNumber: Optional[str] = Field(default=None, max_length=100)
     confirmedByBuyer: bool = Field(default=False)
-    
+
     # Shipping metadata (captured at purchase time)
     weightKg: Optional[float] = Field(default=None, gt=0)
     lengthCm: Optional[float] = Field(default=None, gt=0)
@@ -69,10 +66,7 @@ class OrderItem(BaseModel):
 
 
 class Taxes(BaseModel):
-    """
-    Tax breakdown for an order
-    Replaces Map<String, double> with typed object
-    """
+    """Tax breakdown for an order (Canadian taxes)."""
     GST: float = Field(default=0.0, ge=0, description="Goods and Services Tax (Federal)")
     PST: float = Field(default=0.0, ge=0, description="Provincial Sales Tax")
     HST: float = Field(default=0.0, ge=0, description="Harmonized Sales Tax")
@@ -84,10 +78,7 @@ class Taxes(BaseModel):
 
 
 class Ratings(BaseModel):
-    """
-    Product ratings for an order
-    Replaces Map<String, dynamic> with typed object
-    """
+    """Product rating within an order."""
     productId: str = Field(..., min_length=1)
     rating: float = Field(..., ge=0, le=5)
     review: Optional[str] = Field(default=None, max_length=1000)
@@ -95,31 +86,26 @@ class Ratings(BaseModel):
 
 
 class SellerPayout(BaseModel):
-    """
-    Payout information for a seller in an order
-    """
+    """Payout information for a seller in an order. All money in cents."""
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "sellerId": "seller_123",
-                "sellerStripeAccountId": "acct_123",
-                "amount": 47.50,
-                "platformFee": 1.19,
-                "netAmount": 46.31,
+                "stripeAccountId": "acct_123",
+                "amountCents": 4750,
+                "platformFeeCents": 119,
+                "netAmountCents": 4631,
                 "status": "pending"
             }
         }
     )
 
     sellerId: str = Field(..., min_length=1)
-    sellerStripeAccountId: Optional[str] = Field(default=None)
-    amount: float = Field(..., ge=0, description="Seller's portion before platform fee")
-    platformFee: float = Field(..., ge=0, description="Platform fee (2.5%)")
-    netAmount: float = Field(..., ge=0, description="Net amount after platform fee")
-    status: str = Field(
-        default="pending",
-        description="Payout status: pending, processing, completed, failed"
-    )
+    stripeAccountId: Optional[str] = Field(default=None)
+    amountCents: int = Field(..., ge=0, description="Gross amount in cents")
+    platformFeeCents: int = Field(..., ge=0, description="Platform fee in cents")
+    netAmountCents: int = Field(..., ge=0, description="Net amount in cents")
+    status: str = Field(default="pending", description="Payout status: pending, processing, completed, failed")
     payoutDate: Optional[datetime] = Field(default=None)
     stripeTransferId: Optional[str] = Field(default=None)
     failureReason: Optional[str] = Field(default=None, max_length=500)
@@ -127,7 +113,6 @@ class SellerPayout(BaseModel):
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str) -> str:
-        """Validate payout status"""
         valid_statuses = {"pending", "processing", "completed", "failed"}
         if v not in valid_statuses:
             raise ValueError(f"Invalid payout status: {v}")
@@ -135,10 +120,7 @@ class SellerPayout(BaseModel):
 
 
 class Order(BaseModel):
-    """
-    Complete order model
-    Single source of truth for order data
-    """
+    """Complete order model. All money in integer cents."""
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -147,13 +129,14 @@ class Order(BaseModel):
                 "customerId": "cus_stripe123",
                 "customerEmail": "buyer@example.com",
                 "items": [],
-                "total": 54.99,
-                "subtotal": 49.99,
-                "shippingCost": 5.00,
+                "subtotalCents": 4999,
+                "shippingCostCents": 500,
+                "taxAmountCents": 650,
+                "totalAmountCents": 6149,
                 "taxes": {"GST": 2.50, "PST": 3.50},
-                "status": "pending",
+                "orderStatus": "pending",
                 "paymentStatus": "awaiting_payment",
-                "deliveryInfo": {},
+                "shippingAddress": {},
                 "createdAt": "2026-02-01T10:00:00Z"
             }
         }
@@ -161,22 +144,39 @@ class Order(BaseModel):
 
     orderId: str = Field(..., min_length=1)
     userId: str = Field(..., min_length=1)
-    customerId: str = Field(..., min_length=1)
-    customerEmail: str = Field(..., pattern=r"^[^@]+@[^@]+\.[^@]+$")
+
+    # Optional identity fields (can be fetched from user doc)
+    customerId: Optional[str] = Field(default=None, min_length=1)
+    customerEmail: Optional[str] = Field(default=None, pattern=r"^[^@]+@[^@]+\.[^@]+$")
+
     items: List[OrderItem] = Field(..., min_length=1)
-    total: float = Field(..., ge=0)
-    subtotal: float = Field(..., ge=0)
-    shippingCost: float = Field(default=0.0, ge=0)
-    taxes: Taxes = Field(default_factory=Taxes)
-    status: OrderStatusEnum = Field(default=OrderStatusEnum.PENDING)
-    paymentStatus: PaymentStatusEnum = Field(default=PaymentStatusEnum.AWAITING_PAYMENT)
-    deliveryInfo: Address = Field(..., description="Delivery address")
-    createdAt: datetime = Field(default_factory=datetime.now)
-    currency: str = Field(default="cad")
-    amount: int = Field(..., ge=0, description="Amount in cents for Stripe")
     sellerIds: List[str] = Field(default_factory=list)
-    stripeSessionId: str = Field(..., min_length=1)
-    
+
+    # Money — all in integer cents
+    subtotalCents: int = Field(..., ge=0)
+    shippingCostCents: int = Field(default=0, ge=0)
+    taxAmountCents: int = Field(default=0, ge=0)
+    totalAmountCents: int = Field(..., ge=0)
+
+    taxes: Taxes = Field(default_factory=Taxes)
+
+    # Status
+    orderStatus: OrderStatusEnum = Field(default=OrderStatusEnum.PENDING)
+    paymentStatus: PaymentStatusEnum = Field(default=PaymentStatusEnum.AWAITING_PAYMENT)
+
+    # Address
+    shippingAddress: Optional[Address] = Field(default=None)
+
+    # Timestamps
+    createdAt: datetime = Field(default_factory=datetime.now)
+    updatedAt: Optional[datetime] = Field(default=None)
+
+    # Payment provider IDs
+    stripeSessionId: Optional[str] = Field(default=None, min_length=1)
+    stripePaymentIntentId: Optional[str] = Field(default=None, min_length=1)
+
+    currency: str = Field(default="cad")
+
     # Shipping approval
     shippingApprovalStatus: ShippingApprovalStatusEnum = Field(
         default=ShippingApprovalStatusEnum.NOT_REQUIRED
@@ -184,7 +184,7 @@ class Order(BaseModel):
     shippingApprovalRequired: bool = Field(default=False)
     actualShipping: float = Field(default=0.0, ge=0)
     pendingTotal: float = Field(default=0.0, ge=0)
-    
+
     # Payout tracking
     sellerPayouts: List[SellerPayout] = Field(default_factory=list)
     confirmedByClient: bool = Field(default=False)
@@ -194,43 +194,25 @@ class Order(BaseModel):
         default="pending",
         description="Overall payout status: pending, processing, completed, partial"
     )
-    
+
     # Ratings
     ratings: List[Ratings] = Field(default_factory=list)
 
     @field_validator("currency")
     @classmethod
     def validate_currency(cls, v: str) -> str:
-        """Validate currency code"""
         if v.lower() not in {"cad", "usd"}:
             raise ValueError("Only CAD and USD currencies supported")
         return v.lower()
 
-    @field_validator("amount")
-    @classmethod
-    def validate_amount(cls, v: int, info) -> int:
-        """Validate amount matches total (in cents)"""
-        # Note: We can't access other fields in Pydantic v2 validators easily
-        # This would need to be a model_validator if we want to compare fields
-        return v
-
-    def calculate_totals(self) -> None:
-        """Recalculate subtotal and total from items"""
-        self.subtotal = sum(item.subtotal() for item in self.items)
-        self.total = self.subtotal + self.shippingCost + self.taxes.total()
-
 
 class OrderCreate(BaseModel):
-    """
-    Model for creating new orders
-    (excludes orderId and createdAt which are generated)
-    """
+    """Model for creating new orders (excludes orderId and createdAt which are generated)."""
     userId: str = Field(..., min_length=1)
     customerId: str = Field(..., min_length=1)
     customerEmail: str = Field(..., pattern=r"^[^@]+@[^@]+\.[^@]+$")
     items: List[OrderItem] = Field(..., min_length=1)
-    deliveryInfo: Address
-    stripeSessionId: str = Field(..., min_length=1)
+    shippingAddress: Address
     shippingCost: float = Field(default=0.0, ge=0)
     currency: str = Field(default="cad")
     shippingApprovalRequired: bool = Field(default=False)

@@ -159,21 +159,28 @@ void main() {
   });
 
   group('SellerPayout Model Tests', () {
-    test('SellerPayout toMap/fromMap compatibility', () {
-      final payout = SellerPayout(sellerId: 'seller_123', amount: 100.0, platformFee: 2.5, netAmount: 97.5, status: 'completed');
+    test('SellerPayout toJson/fromMap compatibility', () {
+      final payout = SellerPayout(
+        sellerId: 'seller_123',
+        amountCents: 10000,
+        platformFeeCents: 250,
+        netAmountCents: 9750,
+        status: 'completed',
+      );
 
-      final map = payout.toMap();
+      final map = payout.toJson();
       expect(map['sellerId'], 'seller_123');
-      expect(map['amount'], 100.0);
+      expect(map['amountCents'], 10000);
 
       final payout2 = SellerPayout.fromMap(map);
       expect(payout2.sellerId, payout.sellerId);
-      expect(payout2.amount, payout.amount);
+      expect(payout2.amountCents, payout.amountCents);
+      expect(payout2.amount, 100.0); // Dollar getter
     });
   });
 
   group('Order Model Tests', () {
-    test('Order calculateTotals', () {
+    test('Order dollar getters derive from cents', () {
       final address = Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
 
       final item1 = OrderItem(
@@ -204,19 +211,20 @@ void main() {
         customerId: 'cus_123',
         customerEmail: 'buyer@example.com',
         items: [item1, item2],
-        total: 0.0,
-        subtotal: 0.0,
-        shippingCost: 5.0,
+        totalAmountCents: 4500, // $45.00
+        subtotalCents: 3500, // $35.00
+        shippingCostCents: 500, // $5.00
+        taxAmountCents: 500, // $5.00
         taxes: Taxes(gst: 2.0, pst: 3.0),
-        deliveryInfo: address,
+        shippingAddress: address,
         createdAt: DateTime.now(),
-        amount: 4000,
         stripeSessionId: 'session_123',
       );
 
-      final updated = order.calculateTotals();
-      expect(updated.subtotal, 35.0); // 20 + 15
-      expect(updated.total, 45.0); // 35 + 5 + 2 + 3
+      expect(order.subtotal, 35.0);
+      expect(order.shippingCost, 5.0);
+      expect(order.taxAmount, 5.0);
+      expect(order.total, 45.0);
     });
 
     test('Order copyWith maintains immutability', () {
@@ -239,20 +247,19 @@ void main() {
         customerId: 'cus_123',
         customerEmail: 'buyer@example.com',
         items: [item],
-        total: 15.0,
-        subtotal: 10.0,
-        shippingCost: 5.0,
+        totalAmountCents: 1500,
+        subtotalCents: 1000,
+        shippingCostCents: 500,
         taxes: Taxes(gst: 0.5),
-        deliveryInfo: address,
+        shippingAddress: address,
         createdAt: DateTime(2026, 2, 1),
-        amount: 1500,
         stripeSessionId: 'session_123',
       );
 
-      final updated = order.copyWith(status: OrderStatus.delivered, confirmedByClient: true);
-      expect(updated.status, OrderStatus.delivered);
+      final updated = order.copyWith(orderStatus: OrderStatus.delivered, confirmedByClient: true);
+      expect(updated.orderStatus, OrderStatus.delivered);
       expect(updated.confirmedByClient, true);
-      expect(order.status, OrderStatus.pending); // Original unchanged
+      expect(order.orderStatus, OrderStatus.pending); // Original unchanged
     });
   });
 
@@ -305,20 +312,20 @@ void main() {
     test('OrderStatus values', () {
       expect(OrderStatus.pending.name, 'pending');
       expect(OrderStatus.delivered.name, 'delivered');
-      expect(OrderStatus.values.length, 6);
+      expect(OrderStatus.values.length, 11);
     });
 
     test('PaymentStatus values', () {
       expect(PaymentStatus.awaitingPayment.name, 'awaitingPayment');
-      expect(PaymentStatus.paymentReceived.name, 'paymentReceived');
-      expect(PaymentStatus.values.length, 5);
+      expect(PaymentStatus.paid.name, 'paid');
+      expect(PaymentStatus.values.length, 8);
     });
 
     test('DeliveryStatus values', () {
       expect(DeliveryStatus.pending.name, 'pending');
       expect(DeliveryStatus.shipped.name, 'shipped');
       expect(DeliveryStatus.delivered.name, 'delivered');
-      expect(DeliveryStatus.values.length, 6);
+      expect(DeliveryStatus.values.length, 3);
     });
 
     test('UserRole values', () {

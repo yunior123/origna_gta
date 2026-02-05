@@ -2,10 +2,13 @@
   "type": "string",
   "enum": [
     "awaiting_payment",
-    "payment_received",
+    "processing",
+    "paid",
+    "authorized",
+    "captured",
     "payment_failed",
     "refunded",
-    "partially_refunded"
+    "session_expired"
   ],
   "description": "Payment status values"
 }

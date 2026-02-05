@@ -14,20 +14,22 @@ _$OrderImpl _$$OrderImplFromJson(Map<String, dynamic> json) => _$OrderImpl(
   items: (json['items'] as List<dynamic>)
       .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
       .toList(),
-  total: (json['total'] as num).toDouble(),
-  subtotal: (json['subtotal'] as num).toDouble(),
-  shippingCost: (json['shippingCost'] as num?)?.toDouble() ?? 0.0,
+  totalAmountCents: (json['totalAmountCents'] as num).toInt(),
+  subtotalCents: (json['subtotalCents'] as num).toInt(),
+  shippingCostCents: (json['shippingCostCents'] as num?)?.toInt() ?? 0,
+  taxAmountCents: (json['taxAmountCents'] as num?)?.toInt() ?? 0,
   taxes: Taxes.fromJson(json['taxes'] as Map<String, dynamic>),
-  status:
-      $enumDecodeNullable(_$OrderStatusEnumMap, json['status']) ??
+  orderStatus:
+      $enumDecodeNullable(_$OrderStatusEnumMap, json['orderStatus']) ??
       OrderStatus.pending,
   paymentStatus:
       $enumDecodeNullable(_$PaymentStatusEnumMap, json['paymentStatus']) ??
       PaymentStatus.awaitingPayment,
-  deliveryInfo: Address.fromJson(json['deliveryInfo'] as Map<String, dynamic>),
+  shippingAddress: Address.fromJson(
+    json['shippingAddress'] as Map<String, dynamic>,
+  ),
   createdAt: DateTime.parse(json['createdAt'] as String),
   currency: json['currency'] as String? ?? 'cad',
-  amount: (json['amount'] as num).toInt(),
   sellerIds:
       (json['sellerIds'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
@@ -66,16 +68,16 @@ Map<String, dynamic> _$$OrderImplToJson(_$OrderImpl instance) =>
       'customerId': instance.customerId,
       'customerEmail': instance.customerEmail,
       'items': instance.items,
-      'total': instance.total,
-      'subtotal': instance.subtotal,
-      'shippingCost': instance.shippingCost,
+      'totalAmountCents': instance.totalAmountCents,
+      'subtotalCents': instance.subtotalCents,
+      'shippingCostCents': instance.shippingCostCents,
+      'taxAmountCents': instance.taxAmountCents,
       'taxes': instance.taxes,
-      'status': _$OrderStatusEnumMap[instance.status]!,
+      'orderStatus': _$OrderStatusEnumMap[instance.orderStatus]!,
       'paymentStatus': _$PaymentStatusEnumMap[instance.paymentStatus]!,
-      'deliveryInfo': instance.deliveryInfo,
+      'shippingAddress': instance.shippingAddress,
       'createdAt': instance.createdAt.toIso8601String(),
       'currency': instance.currency,
-      'amount': instance.amount,
       'sellerIds': instance.sellerIds,
       'stripeSessionId': instance.stripeSessionId,
       'shippingApprovalStatus':
@@ -94,18 +96,26 @@ Map<String, dynamic> _$$OrderImplToJson(_$OrderImpl instance) =>
 const _$OrderStatusEnumMap = {
   OrderStatus.pending: 'pending',
   OrderStatus.confirmed: 'confirmed',
+  OrderStatus.processing: 'processing',
   OrderStatus.shipped: 'shipped',
+  OrderStatus.inTransit: 'in_transit',
   OrderStatus.delivered: 'delivered',
   OrderStatus.cancelled: 'cancelled',
+  OrderStatus.failed: 'failed',
+  OrderStatus.expired: 'expired',
   OrderStatus.refunded: 'refunded',
+  OrderStatus.partiallyRefunded: 'partially_refunded',
 };
 
 const _$PaymentStatusEnumMap = {
   PaymentStatus.awaitingPayment: 'awaiting_payment',
-  PaymentStatus.paymentReceived: 'payment_received',
+  PaymentStatus.processing: 'processing',
+  PaymentStatus.paid: 'paid',
+  PaymentStatus.authorized: 'authorized',
+  PaymentStatus.captured: 'captured',
   PaymentStatus.paymentFailed: 'payment_failed',
   PaymentStatus.refunded: 'refunded',
-  PaymentStatus.partiallyRefunded: 'partially_refunded',
+  PaymentStatus.sessionExpired: 'session_expired',
 };
 
 const _$ShippingApprovalStatusEnumMap = {
@@ -115,21 +125,22 @@ const _$ShippingApprovalStatusEnumMap = {
   ShippingApprovalStatus.rejected: 'rejected',
 };
 
-_$OrderCreateImpl _$$OrderCreateImplFromJson(
-  Map<String, dynamic> json,
-) => _$OrderCreateImpl(
-  userId: json['userId'] as String,
-  customerId: json['customerId'] as String,
-  customerEmail: json['customerEmail'] as String,
-  items: (json['items'] as List<dynamic>)
-      .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
-      .toList(),
-  deliveryInfo: Address.fromJson(json['deliveryInfo'] as Map<String, dynamic>),
-  stripeSessionId: json['stripeSessionId'] as String,
-  shippingCost: (json['shippingCost'] as num?)?.toDouble() ?? 0.0,
-  currency: json['currency'] as String? ?? 'cad',
-  shippingApprovalRequired: json['shippingApprovalRequired'] as bool? ?? false,
-);
+_$OrderCreateImpl _$$OrderCreateImplFromJson(Map<String, dynamic> json) =>
+    _$OrderCreateImpl(
+      userId: json['userId'] as String,
+      customerId: json['customerId'] as String,
+      customerEmail: json['customerEmail'] as String,
+      items: (json['items'] as List<dynamic>)
+          .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      shippingAddress: Address.fromJson(
+        json['shippingAddress'] as Map<String, dynamic>,
+      ),
+      shippingCost: (json['shippingCost'] as num?)?.toDouble() ?? 0.0,
+      currency: json['currency'] as String? ?? 'cad',
+      shippingApprovalRequired:
+          json['shippingApprovalRequired'] as bool? ?? false,
+    );
 
 Map<String, dynamic> _$$OrderCreateImplToJson(_$OrderCreateImpl instance) =>
     <String, dynamic>{
@@ -137,8 +148,7 @@ Map<String, dynamic> _$$OrderCreateImplToJson(_$OrderCreateImpl instance) =>
       'customerId': instance.customerId,
       'customerEmail': instance.customerEmail,
       'items': instance.items,
-      'deliveryInfo': instance.deliveryInfo,
-      'stripeSessionId': instance.stripeSessionId,
+      'shippingAddress': instance.shippingAddress,
       'shippingCost': instance.shippingCost,
       'currency': instance.currency,
       'shippingApprovalRequired': instance.shippingApprovalRequired,
@@ -178,6 +188,7 @@ _$OrderItemImpl _$$OrderItemImplFromJson(
       const [],
   minimumOrderQuantity: (json['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
   freeShipping: json['freeShipping'] as bool? ?? false,
+  isDigital: json['isDigital'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$$OrderItemImplToJson(_$OrderItemImpl instance) =>
@@ -203,15 +214,13 @@ Map<String, dynamic> _$$OrderItemImplToJson(_$OrderItemImpl instance) =>
       'deliveryOptions': instance.deliveryOptions,
       'minimumOrderQuantity': instance.minimumOrderQuantity,
       'freeShipping': instance.freeShipping,
+      'isDigital': instance.isDigital,
     };
 
 const _$DeliveryStatusEnumMap = {
   DeliveryStatus.pending: 'pending',
-  DeliveryStatus.processing: 'processing',
   DeliveryStatus.shipped: 'shipped',
   DeliveryStatus.delivered: 'delivered',
-  DeliveryStatus.cancelled: 'cancelled',
-  DeliveryStatus.returned: 'returned',
 };
 
 _$RatingsImpl _$$RatingsImplFromJson(Map<String, dynamic> json) =>
@@ -233,10 +242,10 @@ Map<String, dynamic> _$$RatingsImplToJson(_$RatingsImpl instance) =>
 _$SellerPayoutImpl _$$SellerPayoutImplFromJson(Map<String, dynamic> json) =>
     _$SellerPayoutImpl(
       sellerId: json['sellerId'] as String,
-      sellerStripeAccountId: json['sellerStripeAccountId'] as String?,
-      amount: (json['amount'] as num).toDouble(),
-      platformFee: (json['platformFee'] as num).toDouble(),
-      netAmount: (json['netAmount'] as num).toDouble(),
+      stripeAccountId: json['stripeAccountId'] as String?,
+      amountCents: (json['amountCents'] as num).toInt(),
+      platformFeeCents: (json['platformFeeCents'] as num).toInt(),
+      netAmountCents: (json['netAmountCents'] as num).toInt(),
       status: json['status'] as String? ?? 'pending',
       payoutDate: json['payoutDate'] == null
           ? null
@@ -248,10 +257,10 @@ _$SellerPayoutImpl _$$SellerPayoutImplFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$$SellerPayoutImplToJson(_$SellerPayoutImpl instance) =>
     <String, dynamic>{
       'sellerId': instance.sellerId,
-      'sellerStripeAccountId': instance.sellerStripeAccountId,
-      'amount': instance.amount,
-      'platformFee': instance.platformFee,
-      'netAmount': instance.netAmount,
+      'stripeAccountId': instance.stripeAccountId,
+      'amountCents': instance.amountCents,
+      'platformFeeCents': instance.platformFeeCents,
+      'netAmountCents': instance.netAmountCents,
       'status': instance.status,
       'payoutDate': instance.payoutDate?.toIso8601String(),
       'stripeTransferId': instance.stripeTransferId,

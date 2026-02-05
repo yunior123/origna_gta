@@ -93,7 +93,8 @@ service cloud.firestore {
         'pending': ['confirmed', 'cancelled', 'failed'],           // Initial state -> completed states
         'confirmed': ['processing', 'cancelled'],                  // After payment confirmed
         'processing': ['shipped', 'cancelled'],                    // Seller processing
-        'shipped': ['delivered', 'cancelled'],                     // In transit
+        'shipped': ['in_transit', 'delivered', 'cancelled'],       // Shipped / in transit
+        'in_transit': ['delivered', 'cancelled'],                  // Carrier in transit
         'delivered': ['refunded', 'partially_refunded'],           // After delivery
         'cancelled': [],                                            // Terminal state - no transitions
         'failed': ['pending'],                                      // Retry -> pending

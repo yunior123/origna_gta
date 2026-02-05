@@ -5,6 +5,7 @@ P2.1-P2.5: Account, Backend, Payment, Payout, Webhooks
 import hmac
 import hashlib
 import base64
+import uuid
 import requests
 from typing import Dict, Any, Optional, Union
 from datetime import datetime, timedelta
@@ -35,15 +36,20 @@ class AirwallexService:
         if self.token and self.token_expiry and datetime.now() < self.token_expiry:
             return self.token
         
+        # Airwallex auth uses API key + client id headers (scoped API key flow).
+        # Token lifetime is typically 30 minutes; cache with a safety buffer.
         resp = requests.post(
             f"{self.base_url}/authentication/login",
-            json={"client_id": self.client_id, "api_key": self.api_key},
-            timeout=30
+            headers={
+                "x-api-key": self.api_key,
+                "x-client-id": self.client_id,
+            },
+            timeout=30,
         )
         resp.raise_for_status()
         data = resp.json()
         self.token = data['token']
-        self.token_expiry = datetime.now() + timedelta(hours=1)
+        self.token_expiry = datetime.now() + timedelta(minutes=25)
         return self.token
     
     def _headers(self) -> Dict[str, str]:
@@ -95,6 +101,49 @@ class AirwallexService:
         return resp.json()
     
     # ===== P2.2 & P2.3: Payment Flow =====
+    def create_payment_intent_for_checkout(
+        self,
+        *,
+        amount_cents: int,
+        currency: str,
+        order_id: str,
+        return_url: str,
+        capture: bool = False,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create Airwallex payment intent for checkout.
+
+        NOTE: Airwallex APIs evolve; keep payload minimal and rely on `merchant_order_id`
+        + metadata to correlate to Firestore orders.
+        """
+        if amount_cents < 0:
+            raise ValueError("amount_cents must be non-negative")
+
+        payload = {
+            # Idempotency-style request id
+            "request_id": f"order_{order_id}_{uuid.uuid4().hex[:10]}",
+            "amount": int(amount_cents),
+            "currency": str(currency).upper(),
+            "merchant_order_id": str(order_id),
+            "return_url": str(return_url),
+            "capture": bool(capture),
+            "metadata": {
+                "order_id": str(order_id),
+                "platform": "origna_gta",
+                **(metadata or {}),
+            },
+        }
+
+        resp = requests.post(
+            f"{self.base_url}/pa/payment_intents/create",
+            json=payload,
+            headers=self._headers(),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
     def create_payment_intent(self, 
                             seller_id: str, 
                             order_id: str, 
@@ -206,16 +255,26 @@ class AirwallexService:
         return resp.json()
     
     # ===== P2.5: Webhooks & Error Handling =====
-    def verify_webhook_signature(self, body: Union[str, bytes, bytearray], signature: str) -> bool:
+    def verify_webhook_signature(
+        self,
+        body: Union[str, bytes, bytearray],
+        signature: str,
+        *,
+        timestamp: Optional[str] = None,
+    ) -> bool:
         """Verify webhook came from Airwallex.
 
-        Prefer verifying on raw bytes to avoid encoding ambiguity.
-        Supports common signature encodings (hex digest, or base64 of raw digest).
+        Per Airwallex docs, the signature is an HMAC-SHA256 digest (hex) of:
+          `<timestamp><raw_body>`
+
+        Notes:
+        - Prefer verifying on raw bytes to avoid encoding ambiguity.
+        - Supports common signature encodings (hex digest, or base64 of raw digest).
         """
         if not self.webhook_secret:
             raise ValueError("AIRWALLEX_WEBHOOK_SECRET not configured")
 
-        if not signature:
+        if not signature or not timestamp:
             return False
 
         normalized_sig = str(signature).strip()
@@ -227,9 +286,12 @@ class AirwallexService:
         else:
             body_bytes = str(body).encode('utf-8')
 
+        ts = str(timestamp).strip().encode('utf-8')
+        signed_payload = ts + body_bytes
+
         computed_digest = hmac.new(
             self.webhook_secret.encode('utf-8'),
-            body_bytes,
+            signed_payload,
             hashlib.sha256
         ).digest()
 

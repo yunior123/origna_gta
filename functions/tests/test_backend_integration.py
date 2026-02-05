@@ -150,7 +150,7 @@ def test_validate_order_data_valid():
     order_dict = {
         "userId": "user123",
         "customerEmail": "test@example.com",
-        "amount": 100.50,
+        "totalAmountCents": 10050,
         "items": [
             {
                 "productId": "prod123",
@@ -170,7 +170,7 @@ def test_validate_order_data_valid():
                 }
             }
         ],
-        "deliveryInfo": {
+        "shippingAddress": {
             "street": "123 Main St",
             "city": "Toronto",
             "state": "ON",
@@ -178,9 +178,9 @@ def test_validate_order_data_valid():
             "country": "Canada"
         }
     }
-    
+
     is_valid, error_msg = validate_order_data(order_dict)
-    
+
     assert is_valid is True
     assert error_msg is None
 
@@ -190,7 +190,7 @@ def test_validate_order_data_invalid_email():
     order_dict = {
         "userId": "user123",
         "customerEmail": "invalid-email",
-        "amount": 100.50,
+        "totalAmountCents": 10050,
         "items": [
             {
                 "productId": "prod123",
@@ -210,7 +210,7 @@ def test_validate_order_data_invalid_email():
                 }
             }
         ],
-        "deliveryInfo": {
+        "shippingAddress": {
             "street": "123 Main St",
             "city": "Toronto",
             "state": "ON",
@@ -218,9 +218,9 @@ def test_validate_order_data_invalid_email():
             "country": "Canada"
         }
     }
-    
+
     is_valid, error_msg = validate_order_data(order_dict)
-    
+
     assert is_valid is False
     assert "email" in error_msg.lower()
 
@@ -230,7 +230,7 @@ def test_validate_order_data_missing_field():
     order_dict = {
         "userId": "user123",
         "customerEmail": "test@example.com",
-        # Missing amount
+        # Missing totalAmountCents
         "items": [
             {
                 "productId": "prod123",
@@ -250,7 +250,7 @@ def test_validate_order_data_missing_field():
                 }
             }
         ],
-        "deliveryInfo": {
+        "shippingAddress": {
             "street": "123 Main St",
             "city": "Toronto",
             "state": "ON",
@@ -258,9 +258,9 @@ def test_validate_order_data_missing_field():
             "country": "Canada"
         }
     }
-    
+
     is_valid, error_msg = validate_order_data(order_dict)
-    
+
     assert is_valid is False
     assert "amount" in error_msg.lower()
 

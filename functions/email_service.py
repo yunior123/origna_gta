@@ -3,8 +3,13 @@ import html
 from mailjet_rest import Client
 from config import IS_EMULATOR, MAILJET_API_KEY, MAILJET_SECRET_KEY
 
-def get_order_confirmation_email(order_data):
-    """Generate HTML email for customer order confirmation"""
+def get_order_confirmation_email(order_data, order_id=None):
+    """Generate HTML email for customer order confirmation
+    
+    Args:
+        order_data: Dict containing order information
+        order_id: Optional order ID (can be in order_data['orderId'] instead)
+    """
     items_html = ""
     for item in order_data.get('items', []):
         safe_name = html.escape(str(item.get('name', 'Product')))
@@ -22,8 +27,15 @@ def get_order_confirmation_email(order_data):
         </tr>
         """
     
-    delivery_info = order_data.get('deliveryInfo', {})
-    
+    delivery_info = order_data.get('shippingAddress', {})
+    address_parts = [
+        delivery_info.get('street', ''),
+        delivery_info.get('apartment', ''),
+        f"{delivery_info.get('city', '')}, {delivery_info.get('state', '')} {delivery_info.get('postalCode', '')}",
+        delivery_info.get('country', 'Canada'),
+    ]
+    formatted_address = '<br>'.join(p for p in address_parts if p and p.strip())
+
     return f"""
     <!DOCTYPE html>
     <html>
@@ -36,14 +48,14 @@ def get_order_confirmation_email(order_data):
             <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Order Confirmed!</h1>
             <p style="color: white; margin: 10px 0 0 0;">Thank you for your purchase</p>
         </div>
-        
+
         <div style="background: #ffffff; padding: 30px; border: 1px solid #eee; border-top: none;">
             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <h2 style="margin: 0 0 10px 0; color: #FF6B35;">Order Details</h2>
                 <p style="margin: 5px 0;"><strong>Order ID:</strong> {order_data.get('orderId', 'N/A')}</p>
                 <p style="margin: 5px 0;"><strong>Order Date:</strong> {datetime.now().strftime('%B %d, %Y')}</p>
             </div>
-            
+
             <h3 style="color: #333; border-bottom: 2px solid #FF6B35; padding-bottom: 10px;">Items Ordered</h3>
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                 <thead>
@@ -57,15 +69,15 @@ def get_order_confirmation_email(order_data):
                     {items_html}
                     <tr style="font-weight: bold; background: #f8f9fa;">
                         <td colspan="2" style="padding: 12px; text-align: right; border-top: 2px solid #ddd;">Total:</td>
-                        <td style="padding: 12px; text-align: right; color: #FF6B35; font-size: 18px; border-top: 2px solid #ddd;">${order_data.get('total', 0):.2f} CAD</td>
+                        <td style="padding: 12px; text-align: right; color: #FF6B35; font-size: 18px; border-top: 2px solid #ddd;">${order_data.get('totalAmountCents', 0) / 100:.2f} CAD</td>
                     </tr>
                 </tbody>
             </table>
-            
+
             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <h3 style="margin: 0 0 10px 0; color: #333;">Delivery Address</h3>
                 <p style="margin: 0; line-height: 1.8;">
-                    {delivery_info.get('formattedAddress', 'N/A')}<br>
+                    {formatted_address}<br>
                     {f"Phone: {delivery_info.get('phoneNumber', 'N/A')}" if delivery_info.get('phoneNumber') else ''}
                 </p>
             </div>
@@ -77,20 +89,29 @@ def get_order_confirmation_email(order_data):
         
         <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
             <p>Questions? Contact us at support@orignagta.com</p>
-            <p>© 2025 Origna GTA. All rights reserved.</p>
+            <p>© 2026 Origna GTA. All rights reserved.</p>
         </div>
     </body>
     </html>
     """
 
-def get_seller_notification_email(order_data):
-    """Generate HTML email for seller notification"""
+def get_seller_notification_email(order_data, order_id=None, seller_id=None):
+    """Generate HTML email for seller notification
+    
+    Args:
+        order_data: Dict containing order information
+        order_id: Optional order ID (can be in order_data['orderId'])
+        seller_id: Optional seller ID to filter items
+    
+    Note: seller_id is currently unused but kept for API compatibility
+    """
     items_html = ""
     for item in order_data.get('items', []):
+        safe_name = html.escape(str(item.get('name', 'Product')))
         items_html += f"""
         <tr>
             <td style="padding: 12px; border-bottom: 1px solid #eee;">
-                {item.get('name', 'Product')}
+                {safe_name}
             </td>
             <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">
                 {item.get('quantity', 1)}
@@ -101,11 +122,16 @@ def get_seller_notification_email(order_data):
         </tr>
         """
     
-    delivery_info = order_data.get('deliveryInfo', {})
-    address_html = f"""
-        {delivery_info.get('formattedAddress', 'N/A')}<br>
-        {f"Phone: {delivery_info.get('phoneNumber', 'N/A')}" if delivery_info.get('phoneNumber') else ''}
-    """
+    delivery_info = order_data.get('shippingAddress', {})
+    addr_parts = [
+        delivery_info.get('street', ''),
+        delivery_info.get('apartment', ''),
+        f"{delivery_info.get('city', '')}, {delivery_info.get('state', '')} {delivery_info.get('postalCode', '')}",
+        delivery_info.get('country', 'Canada'),
+    ]
+    address_html = '<br>'.join(p for p in addr_parts if p and p.strip())
+    if delivery_info.get('phoneNumber'):
+        address_html += f"<br>Phone: {delivery_info['phoneNumber']}"
     
     return f"""
     <!DOCTYPE html>
@@ -151,11 +177,11 @@ def get_seller_notification_email(order_data):
                 <table style="width: 100%;">
                     <tr>
                         <td style="padding: 5px 0;">Subtotal:</td>
-                        <td style="text-align: right; padding: 5px 0;">${order_data.get('subtotal', 0):.2f}</td>
+                        <td style="text-align: right; padding: 5px 0;">${order_data.get('subtotalCents', 0) / 100:.2f}</td>
                     </tr>
                     <tr>
                         <td style="padding: 5px 0;">Shipping:</td>
-                        <td style="text-align: right; padding: 5px 0;">${order_data.get('shippingCost', 0):.2f}</td>
+                        <td style="text-align: right; padding: 5px 0;">${order_data.get('shippingCostCents', 0) / 100:.2f}</td>
                     </tr>
                     <tr>
                         <td style="padding: 5px 0;">Taxes:</td>
@@ -163,7 +189,7 @@ def get_seller_notification_email(order_data):
                     </tr>
                     <tr style="font-size: 18px; font-weight: bold; border-top: 2px solid #856404;">
                         <td style="padding: 10px 0 5px 0;">Total:</td>
-                        <td style="text-align: right; padding: 10px 0 5px 0; color: #FF6B35;">${order_data.get('total', 0):.2f} CAD</td>
+                        <td style="text-align: right; padding: 10px 0 5px 0; color: #FF6B35;">${order_data.get('totalAmountCents', 0) / 100:.2f} CAD</td>
                     </tr>
                 </table>
             </div>
@@ -174,7 +200,7 @@ def get_seller_notification_email(order_data):
         </div>
         
         <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-            <p>© 2025 Origna GTA. All rights reserved.</p>
+            <p>© 2026 Origna GTA. All rights reserved.</p>
         </div>
     </body>
     </html>
@@ -236,7 +262,7 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
         mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
         
         customer_email = order_data.get('customerEmail')
-        total = order_data.get('total', 0)
+        total = order_data.get('totalAmountCents', 0) / 100
         items_summary = ', '.join([f"{item.get('name')} x{item.get('quantity', 1)}" 
                                    for item in order_data.get('items', [])[:3]])
         

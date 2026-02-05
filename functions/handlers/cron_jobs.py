@@ -101,16 +101,17 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                 'updatedAt': get_server_timestamp()
             })
             
-            # Create payouts for sellers
-            sellers_total = {}
+            # Create payouts for sellers - ALL in cents
+            sellers_total_cents = {}
             for item in order_data['items']:
                 seller_id = item['sellerId']
-                item_total = item['price'] * item['quantity']
-                sellers_total[seller_id] = sellers_total.get(seller_id, 0) + item_total
+                item_price_cents = round(item['price'] * 100)
+                item_total_cents = item_price_cents * item['quantity']
+                sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
             
-            for seller_id, amount in sellers_total.items():
-                platform_fee = int(amount * PLATFORM_FEE_PERCENT)
-                net_amount = amount - platform_fee
+            for seller_id, amount_cents in sellers_total_cents.items():
+                platform_fee_cents = round(amount_cents * PLATFORM_FEE_PERCENT)
+                net_amount_cents = amount_cents - platform_fee_cents
                 
                 # Get seller's Stripe account
                 seller_ref = get_db().collection(Collections.USERS).document(seller_id)
@@ -123,7 +124,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                     if stripe_account_id and seller_data.get('payoutsEnabled', False):
                         try:
                             transfer = stripe.Transfer.create(
-                                amount=int(net_amount * 100),
+                                amount=net_amount_cents,
                                 currency='cad',
                                 destination=stripe_account_id,
                                 metadata={
@@ -136,9 +137,9 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                             get_db().collection(Collections.PAYOUTS).add({
                                 'orderId': order_id,
                                 'sellerId': seller_id,
-                                'amount': amount,
-                                'platformFee': platform_fee,
-                                'netAmount': net_amount,
+                                'amountCents': amount_cents,
+                                'platformFeeCents': platform_fee_cents,
+                                'netAmountCents': net_amount_cents,
                                 'status': 'completed',
                                 'stripeTransferId': transfer.id,
                                 'payoutDate': get_server_timestamp(),
@@ -148,13 +149,13 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                             
                         except stripe.error.StripeError as e:
                             print(f'Payout failed for seller {seller_id}: {str(e)}')
-                            
+
                             get_db().collection(Collections.PAYOUTS).add({
                                 'orderId': order_id,
                                 'sellerId': seller_id,
-                                'amount': amount,
-                                'platformFee': platform_fee,
-                                'netAmount': net_amount,
+                                'amountCents': amount_cents,
+                                'platformFeeCents': platform_fee_cents,
+                                'netAmountCents': net_amount_cents,
                                 'status': 'failed',
                                 'failureReason': str(e),
                                 'autoCaptured': True,
@@ -222,7 +223,7 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
         # Update order
         order_doc.reference.update({
             'orderStatus': OrderStatus.EXPIRED,
-            'paymentStatus': PaymentStatus.EXPIRED,
+            'paymentStatus': PaymentStatus.SESSION_EXPIRED,
             'expiredAt': get_server_timestamp(),
             'updatedAt': get_server_timestamp()
         })

@@ -37,12 +37,13 @@ def generate_schemas():
     """Generate JSON Schema for all models"""
     
     schemas = {
-        "$schema": "http://json-schema.org/draft-07/schema#",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://orignagta.ca/schemas/models.json",
         "title": "OrignaGTA Data Models",
         "description": "JSON Schema for all shared data models between Python backend and Flutter frontend",
-        "version": "2.0.0",
-        "generated": "2026-02-02",
-        "definitions": {
+        "version": "2.1.0",
+        "generated": "2026-02-05",
+        "$defs": {
             # Base types
             "Address": Address.model_json_schema(),
             "AddressDetails": AddressDetails.model_json_schema(),
@@ -101,13 +102,13 @@ def generate_schemas():
         json.dump(schemas, f, indent=2)
     
     print(f"✅ JSON Schema generated: {output_file}")
-    print(f"📊 Generated {len(schemas['definitions'])} schema definitions")
+    print(f"📊 Generated {len(schemas['$defs'])} schema definitions")
     
     # Also generate individual schemas for Quicktype
     individual_dir = output_file.parent / "individual"
     individual_dir.mkdir(exist_ok=True)
     
-    for name, schema in schemas["definitions"].items():
+    for name, schema in schemas["$defs"].items():
         if isinstance(schema, dict) and "$ref" not in schema:
             individual_file = individual_dir / f"{name}.json"
             with open(individual_file, "w") as f:

@@ -224,7 +224,7 @@ def sample_order_data():
     return {
         'order_id': 'test_order_123',
         'consumer_id': 'test_user_123',
-        'status': 'pending',
+        'orderStatus': 'pending',
         'total_amount': 29.99,
         'currency': 'USD',
         'items': [
@@ -436,7 +436,7 @@ def create_mock_order_doc(order_id='order_123', payment_status='paid', status='p
     doc.to_dict.return_value = {
         "orderId": order_id,
         "paymentStatus": payment_status,
-        "status": status,
+        "orderStatus": status,
         "items": [{
             "productId": "prod_123",
             "sellerId": "seller_123",
@@ -444,8 +444,7 @@ def create_mock_order_doc(order_id='order_123', payment_status='paid', status='p
             "price": 50.00,
             "deliveryStatus": "pending"
         }],
-        "amount": 100.00,
-        "totalAmount": 100,
+        "totalAmountCents": 10000,
         "stripePaymentIntentId": "pi_test_123"
     }
     return doc
@@ -507,7 +506,7 @@ def mock_order_doc():
     doc.to_dict.return_value = {
         "orderId": "order_123",
         "paymentStatus": "paid",
-        "status": "processing",
+        "orderStatus": "processing",
         "items": [{
             "productId": "prod_123",
             "sellerId": "seller_123",
@@ -515,7 +514,7 @@ def mock_order_doc():
             "price": 50.00,
             "deliveryStatus": "pending"
         }],
-        "amount": 100.00,
+        "totalAmountCents": 10000,
         "stripePaymentIntentId": "pi_test_123"
     }
     return doc
@@ -664,21 +663,27 @@ def create_mock_user_doc(user_id='test_user_123', email='test@example.com',
     return mock_doc
 
 
-def create_mock_order_doc(order_id='order_123', consumer_id='test_user_123', 
-                         status='pending', payment_status='authorized', items=None, 
-                         total_amount=100.00, seller_id='seller_123'):
+def create_mock_order_doc(
+    order_id: str = 'order_123',
+    user_id: str = 'test_user_123',
+    order_status: str = 'shipped',
+    payment_status: str = 'authorized',
+    items=None,
+    total_amount_dollars: float = 100.00,
+    seller_id: str = 'seller_123',
+):
     """
     Creates a complete mock order document.
-    
+
     Args:
         order_id: Order ID
-        consumer_id: Consumer's user ID
-        status: Order status (pending/processing/shipped/delivered/cancelled)
+        user_id: Buyer's user ID
+        order_status: Order status (pending/confirmed/processing/shipped/in_transit/delivered/cancelled/failed/expired/...)
         payment_status: Payment status (authorized/captured/refunded)
         items: List of order items
-        total_amount: Order total
+        total_amount_dollars: Order total in dollars (converted to cents internally)
         seller_id: ID of the seller
-    
+
     Returns:
         MagicMock object representing a Firestore document snapshot
     """
@@ -697,11 +702,11 @@ def create_mock_order_doc(order_id='order_123', consumer_id='test_user_123',
     mock_doc.id = order_id
     mock_doc.to_dict.return_value = {
         'orderId': order_id,
-        'consumerId': consumer_id,
-        'status': status,
+        'userId': user_id,
+        'orderStatus': order_status,
         'paymentStatus': payment_status,
         'items': items,
-        'totalAmount': total_amount,
+        'totalAmountCents': round(float(total_amount_dollars) * 100),
         'sellerId': seller_id,
         'stripePaymentIntentId': 'pi_test_123',
         'createdAt': MagicMock(),
@@ -875,7 +880,6 @@ class FirestoreMockBuilder:
             "orderId": order_id,
             "paymentStatus": payment_status,
             "orderStatus": order_status,
-            "status": order_status,
             "items": [{
                 "productId": "prod_123",
                 "sellerId": "seller_123",
@@ -883,7 +887,7 @@ class FirestoreMockBuilder:
                 "price": 50.00,
                 "deliveryStatus": "pending"
             }],
-            "amount": 100.00,
+            "totalAmountCents": 10000,
             "stripePaymentIntentId": "pi_test_123"
         })
     

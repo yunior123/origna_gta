@@ -120,6 +120,10 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+
+    # Check if Airwallex is enabled
+    from handlers.payment_providers import require_provider_enabled, PaymentProvider
+    require_provider_enabled(PaymentProvider.AIRWALLEX)
     
     user_id = req.auth.uid
     data = req.data
@@ -145,11 +149,18 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     try:
         airwallex_service = get_airwallex_service()
-        result = airwallex_service.create_payment_intent(
-            amount=order_data['totalAmount'],
+
+        amount_cents = order_data.get('totalAmountCents')
+        if amount_cents is None or not isinstance(amount_cents, int) or amount_cents < 0:
+            raise https_fn.HttpsError('failed-precondition', 'Order total not available')
+
+        result = airwallex_service.create_payment_intent_for_checkout(
+            amount_cents=int(amount_cents),
             currency='CAD',
             order_id=order_id,
-            return_url=return_url
+            return_url=return_url,
+            capture=False,
+            metadata={'user_id': user_id},
         )
         
         # Update order with Airwallex payment intent
@@ -257,16 +268,21 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
     
     # SECURITY FIX #2: Get raw payload for signature verification
     payload = req.data
-    sig_header = req.headers.get('X-Signature')
-    
-    if not sig_header:
-        print(f'⚠️ Airwallex webhook missing signature from IP: {client_ip[:10]}...')
+    sig_header = req.headers.get('x-signature') or req.headers.get('X-Signature')
+    ts_header = req.headers.get('x-timestamp') or req.headers.get('X-Timestamp')
+
+    if not sig_header or not ts_header:
+        print(f'⚠️ Airwallex webhook missing signature/timestamp from IP: {client_ip[:10]}...')
         return https_fn.Response('Missing signature', status=400)
-    
-    # SECURITY FIX #3: Verify signature BEFORE parsing JSON
+
+    # SECURITY: Verify signature BEFORE parsing JSON. Never accept signing secrets from request headers.
     try:
         airwallex_service = get_airwallex_service()
-        is_valid = airwallex_service.verify_webhook_signature(payload, sig_header)
+        is_valid = airwallex_service.verify_webhook_signature(
+            payload,
+            sig_header,
+            timestamp=ts_header,
+        )
         if not is_valid:
             print(f'⚠️ Airwallex webhook invalid signature from IP: {client_ip[:10]}...')
             return https_fn.Response('Invalid signature', status=400)
@@ -315,12 +331,24 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
     
     # Process event
     try:
-        data = event.get('data', {}).get('object', {})
+        data = event.get('data', {}) if isinstance(event.get('data'), dict) else {}
         
         Collections = get_collections()
         
-        if event_type == 'payment_intent.succeeded':
-            order_id = data.get('merchant_order_id')
+        def _extract_order_id(payload: Dict[str, Any]) -> str:
+            val = payload.get('orderId') or payload.get('merchant_order_id', '')
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+            metadata = payload.get('metadata', {})
+            if isinstance(metadata, dict):
+                val = metadata.get('orderId') or metadata.get('merchant_order_id', '')
+                if isinstance(val, str) and val.strip():
+                    return val.strip()
+            return ""
+
+        if event_type == 'payment_intent.requires_capture':
+            # Manual capture: payment authorized, awaiting capture
+            order_id = _extract_order_id(data)
             if order_id:
                 order_ref = get_db().collection(Collections.ORDERS).document(order_id)
                 order_ref.update({
@@ -328,14 +356,24 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
                     'orderStatus': 'confirmed',
                     'updatedAt': get_server_timestamp()
                 })
-        
-        elif event_type == 'payment_intent.payment_failed':
-            order_id = data.get('merchant_order_id')
+
+        elif event_type == 'payment_intent.succeeded':
+            # Payment fully captured/completed
+            order_id = _extract_order_id(data)
             if order_id:
                 order_ref = get_db().collection(Collections.ORDERS).document(order_id)
                 order_ref.update({
-                    'paymentStatus': 'failed',
-                    'orderStatus': 'cancelled',
+                    'paymentStatus': 'captured',
+                    'updatedAt': get_server_timestamp()
+                })
+
+        elif event_type in ('payment_attempt.authorization_failed', 'payment_intent.cancelled'):
+            order_id = _extract_order_id(data)
+            if order_id:
+                order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+                order_ref.update({
+                    'paymentStatus': 'payment_failed',
+                    'orderStatus': 'failed',
                     'updatedAt': get_server_timestamp()
                 })
         

@@ -130,17 +130,14 @@
       "description": "Delivery status for individual items",
       "enum": [
         "pending",
-        "processing",
         "shipped",
-        "delivered",
-        "cancelled",
-        "returned"
+        "delivered"
       ],
       "title": "DeliveryStatusEnum",
       "type": "string"
     },
     "OrderItem": {
-      "description": "Individual item in an order (replaces CartItemDetailModel)\nImmutable object with all product details at time of purchase",
+      "description": "Individual item in an order \u2014 immutable snapshot at time of purchase.",
       "example": {
         "deliveryStatus": "pending",
         "description": "Fresh organic apples",
@@ -189,6 +186,7 @@
           "type": "integer"
         },
         "imageUrls": {
+          "description": "Product image URLs",
           "items": {
             "type": "string"
           },
@@ -458,7 +456,7 @@
       "type": "object"
     }
   },
-  "description": "Model for creating new orders\n(excludes orderId and createdAt which are generated)",
+  "description": "Model for creating new orders (excludes orderId and createdAt which are generated).",
   "properties": {
     "userId": {
       "minLength": 1,
@@ -483,13 +481,8 @@
       "title": "Items",
       "type": "array"
     },
-    "deliveryInfo": {
+    "shippingAddress": {
       "$ref": "#/$defs/Address"
-    },
-    "stripeSessionId": {
-      "minLength": 1,
-      "title": "Stripesessionid",
-      "type": "string"
     },
     "shippingCost": {
       "default": 0.0,
@@ -513,8 +506,7 @@
     "customerId",
     "customerEmail",
     "items",
-    "deliveryInfo",
-    "stripeSessionId"
+    "shippingAddress"
   ],
   "title": "OrderCreate",
   "type": "object"

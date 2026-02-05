@@ -67,157 +67,10 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
     Returns:
         {success: True, captured: True}
     """
-    # Check if Stripe is enabled (this function uses Stripe)
-    from handlers.payment_providers import require_provider_enabled, PaymentProvider
-    require_provider_enabled(PaymentProvider.STRIPE)
-    
-    if not req.auth:
-        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
-    
-    user_id = req.auth.uid
-    order_id = req.data.get('orderId')
-    
-    if not order_id:
-        raise https_fn.HttpsError('invalid-argument', 'orderId required')
-    
-    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
-    order_doc = order_ref.get()
-    
-    if not order_doc.exists:
-        raise https_fn.HttpsError('not-found', 'Order not found')
-    
-    order_data = order_doc.to_dict()
-    
-    # Verify user owns this order
-    if order_data['userId'] != user_id:
-        raise https_fn.HttpsError('permission-denied', 'This is not your order')
-    
-    # Verify order status
-    if order_data['orderStatus'] not in ['shipped', 'delivered']:
-        raise https_fn.HttpsError(
-            'failed-precondition',
-            f"Cannot confirm receipt for order with status: {order_data['orderStatus']}"
-        )
-    
-    # Check if already captured
-    if order_data.get('paymentStatus') == PaymentStatus.CAPTURED:
-        return create_success_response({'captured': True, 'message': 'Already captured'})
-    
-    payment_intent_id = order_data.get('stripePaymentIntentId')
-    
-    if not payment_intent_id:
-        raise https_fn.HttpsError('failed-precondition', 'No payment intent found')
-    
-    try:
-        # Validate PI is in capturable state before capturing
-        payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
-
-        if payment_intent.status != 'requires_capture':
-            raise https_fn.HttpsError(
-                'failed-precondition',
-                f'Payment cannot be captured (status: {payment_intent.status})'
-            )
-
-        # Validate capture amount matches order total (prevent tampering)
-        expected_amount_cents = int(order_data['totalAmount'] * 100)
-        if payment_intent.amount != expected_amount_cents:
-            raise https_fn.HttpsError(
-                'failed-precondition',
-                'Payment amount does not match order total'
-            )
-
-        # Capture the payment
-        payment_intent = stripe.PaymentIntent.capture(payment_intent_id)
-
-        # Update order
-        order_ref.update({
-            'paymentStatus': PaymentStatus.CAPTURED,
-            'orderStatus': OrderStatus.DELIVERED,
-            'deliveryStatus': DeliveryStatus.DELIVERED,
-            'confirmedAt': get_server_timestamp(),
-            'updatedAt': get_server_timestamp()
-        })
-        
-        # Calculate and transfer payouts to sellers
-        sellers_total = {}
-        for item in order_data['items']:
-            seller_id = item['sellerId']
-            item_total = item['price'] * item['quantity']
-            sellers_total[seller_id] = sellers_total.get(seller_id, 0) + item_total
-        
-        for seller_id, amount in sellers_total.items():
-            platform_fee = int(amount * PLATFORM_FEE_PERCENT)
-            net_amount = amount - platform_fee
-            
-            # Get seller's Stripe account
-            seller_ref = get_db().collection(Collections.USERS).document(seller_id)
-            seller_doc = seller_ref.get()
-            
-            if seller_doc.exists:
-                seller_data = seller_doc.to_dict()
-                stripe_account_id = seller_data.get('stripeAccountId')
-                
-                if stripe_account_id and seller_data.get('payoutsEnabled', False):
-                    try:
-                        # Create transfer to seller
-                        transfer = stripe.Transfer.create(
-                            amount=int(net_amount * 100),  # Convert to cents
-                            currency='cad',
-                            destination=stripe_account_id,
-                            metadata={
-                                'orderId': order_id,
-                                'sellerId': seller_id
-                            }
-                        )
-                        
-                        # Log payout
-                        get_db().collection(Collections.PAYOUTS).add({
-                            'orderId': order_id,
-                            'sellerId': seller_id,
-                            'amount': amount,
-                            'platformFee': platform_fee,
-                            'netAmount': net_amount,
-                            'status': 'completed',
-                            'stripeTransferId': transfer.id,
-                            'payoutDate': get_server_timestamp(),
-                            'createdAt': get_server_timestamp()
-                        })
-                        
-                        print(f'Payout created for seller {seller_id}: ${net_amount}')
-                        
-                    except stripe.error.StripeError as e:
-                        # Log failed payout
-                        get_db().collection(Collections.PAYOUTS).add({
-                            'orderId': order_id,
-                            'sellerId': seller_id,
-                            'amount': amount,
-                            'platformFee': platform_fee,
-                            'netAmount': net_amount,
-                            'status': 'failed',
-                            'failureReason': str(e),
-                            'createdAt': get_server_timestamp()
-                        })
-                        
-                        print(f'Payout failed for seller {seller_id}: {str(e)}')
-                else:
-                    # Seller not ready for payouts
-                    get_db().collection(Collections.PAYOUTS).add({
-                        'orderId': order_id,
-                        'sellerId': seller_id,
-                        'amount': amount,
-                        'platformFee': platform_fee,
-                        'netAmount': net_amount,
-                        'status': 'pending',
-                        'note': 'Seller account not configured for payouts',
-                        'createdAt': get_server_timestamp()
-                    })
-        
-        return create_success_response({'captured': True})
-
-    except https_fn.HttpsError:
-        raise
-    except stripe.error.StripeError as e:
-        raise https_fn.HttpsError('internal', f'Stripe error: {str(e)}')
+    # Backward-compatible wrapper around the canonical capture flow.
+    # Flutter calls `confirm_order_receipt`; newer code calls `capture_payment` directly.
+    from handlers.payment_stripe import capture_payment
+    return capture_payment(req)
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -299,9 +152,6 @@ def update_order_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
         update_data['carrier'] = carrier or ''
         update_data['deliveryStatus'] = DeliveryStatus.SHIPPED
         update_data['shippedAt'] = get_server_timestamp()
-    
-    if new_status == 'processing':
-        update_data['deliveryStatus'] = DeliveryStatus.PREPARING
     
     order_ref.update(update_data)
     

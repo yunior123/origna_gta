@@ -61,16 +61,10 @@ class AddressDetails with _$AddressDetails {
 enum DeliveryStatus {
   @JsonValue('pending')
   pending,
-  @JsonValue('processing')
-  processing,
   @JsonValue('shipped')
   shipped,
   @JsonValue('delivered')
   delivered,
-  @JsonValue('cancelled')
-  cancelled,
-  @JsonValue('returned')
-  returned,
 }
 
 // ============================================================================
@@ -82,27 +76,43 @@ enum OrderStatus {
   pending,
   @JsonValue('confirmed')
   confirmed,
+  @JsonValue('processing')
+  processing,
   @JsonValue('shipped')
   shipped,
+  @JsonValue('in_transit')
+  inTransit,
   @JsonValue('delivered')
   delivered,
   @JsonValue('cancelled')
   cancelled,
+  @JsonValue('failed')
+  failed,
+  @JsonValue('expired')
+  expired,
   @JsonValue('refunded')
   refunded,
+  @JsonValue('partially_refunded')
+  partiallyRefunded,
 }
 
 enum PaymentStatus {
   @JsonValue('awaiting_payment')
   awaitingPayment,
-  @JsonValue('payment_received')
-  paymentReceived,
+  @JsonValue('processing')
+  processing,
+  @JsonValue('paid')
+  paid,
+  @JsonValue('authorized')
+  authorized,
+  @JsonValue('captured')
+  captured,
   @JsonValue('payment_failed')
   paymentFailed,
   @JsonValue('refunded')
   refunded,
-  @JsonValue('partially_refunded')
-  partiallyRefunded,
+  @JsonValue('session_expired')
+  sessionExpired,
 }
 
 enum ShippingApprovalStatus {

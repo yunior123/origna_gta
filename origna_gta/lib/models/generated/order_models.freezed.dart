@@ -25,17 +25,18 @@ mixin _$Order {
   String get userId => throw _privateConstructorUsedError;
   String get customerId => throw _privateConstructorUsedError;
   String get customerEmail => throw _privateConstructorUsedError;
-  List<OrderItem> get items => throw _privateConstructorUsedError;
-  double get total => throw _privateConstructorUsedError;
-  double get subtotal => throw _privateConstructorUsedError;
-  double get shippingCost => throw _privateConstructorUsedError;
+  List<OrderItem> get items =>
+      throw _privateConstructorUsedError; // All money in integer cents
+  int get totalAmountCents => throw _privateConstructorUsedError;
+  int get subtotalCents => throw _privateConstructorUsedError;
+  int get shippingCostCents => throw _privateConstructorUsedError;
+  int get taxAmountCents => throw _privateConstructorUsedError;
   Taxes get taxes => throw _privateConstructorUsedError;
-  OrderStatus get status => throw _privateConstructorUsedError;
+  OrderStatus get orderStatus => throw _privateConstructorUsedError;
   PaymentStatus get paymentStatus => throw _privateConstructorUsedError;
-  Address get deliveryInfo => throw _privateConstructorUsedError;
+  Address get shippingAddress => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   String get currency => throw _privateConstructorUsedError;
-  int get amount => throw _privateConstructorUsedError;
   List<String> get sellerIds => throw _privateConstructorUsedError;
   String get stripeSessionId =>
       throw _privateConstructorUsedError; // Shipping approval
@@ -72,16 +73,16 @@ abstract class $OrderCopyWith<$Res> {
     String customerId,
     String customerEmail,
     List<OrderItem> items,
-    double total,
-    double subtotal,
-    double shippingCost,
+    int totalAmountCents,
+    int subtotalCents,
+    int shippingCostCents,
+    int taxAmountCents,
     Taxes taxes,
-    OrderStatus status,
+    OrderStatus orderStatus,
     PaymentStatus paymentStatus,
-    Address deliveryInfo,
+    Address shippingAddress,
     DateTime createdAt,
     String currency,
-    int amount,
     List<String> sellerIds,
     String stripeSessionId,
     ShippingApprovalStatus shippingApprovalStatus,
@@ -97,7 +98,7 @@ abstract class $OrderCopyWith<$Res> {
   });
 
   $TaxesCopyWith<$Res> get taxes;
-  $AddressCopyWith<$Res> get deliveryInfo;
+  $AddressCopyWith<$Res> get shippingAddress;
 }
 
 /// @nodoc
@@ -120,16 +121,16 @@ class _$OrderCopyWithImpl<$Res, $Val extends Order>
     Object? customerId = null,
     Object? customerEmail = null,
     Object? items = null,
-    Object? total = null,
-    Object? subtotal = null,
-    Object? shippingCost = null,
+    Object? totalAmountCents = null,
+    Object? subtotalCents = null,
+    Object? shippingCostCents = null,
+    Object? taxAmountCents = null,
     Object? taxes = null,
-    Object? status = null,
+    Object? orderStatus = null,
     Object? paymentStatus = null,
-    Object? deliveryInfo = null,
+    Object? shippingAddress = null,
     Object? createdAt = null,
     Object? currency = null,
-    Object? amount = null,
     Object? sellerIds = null,
     Object? stripeSessionId = null,
     Object? shippingApprovalStatus = null,
@@ -165,33 +166,37 @@ class _$OrderCopyWithImpl<$Res, $Val extends Order>
                 ? _value.items
                 : items // ignore: cast_nullable_to_non_nullable
                       as List<OrderItem>,
-            total: null == total
-                ? _value.total
-                : total // ignore: cast_nullable_to_non_nullable
-                      as double,
-            subtotal: null == subtotal
-                ? _value.subtotal
-                : subtotal // ignore: cast_nullable_to_non_nullable
-                      as double,
-            shippingCost: null == shippingCost
-                ? _value.shippingCost
-                : shippingCost // ignore: cast_nullable_to_non_nullable
-                      as double,
+            totalAmountCents: null == totalAmountCents
+                ? _value.totalAmountCents
+                : totalAmountCents // ignore: cast_nullable_to_non_nullable
+                      as int,
+            subtotalCents: null == subtotalCents
+                ? _value.subtotalCents
+                : subtotalCents // ignore: cast_nullable_to_non_nullable
+                      as int,
+            shippingCostCents: null == shippingCostCents
+                ? _value.shippingCostCents
+                : shippingCostCents // ignore: cast_nullable_to_non_nullable
+                      as int,
+            taxAmountCents: null == taxAmountCents
+                ? _value.taxAmountCents
+                : taxAmountCents // ignore: cast_nullable_to_non_nullable
+                      as int,
             taxes: null == taxes
                 ? _value.taxes
                 : taxes // ignore: cast_nullable_to_non_nullable
                       as Taxes,
-            status: null == status
-                ? _value.status
-                : status // ignore: cast_nullable_to_non_nullable
+            orderStatus: null == orderStatus
+                ? _value.orderStatus
+                : orderStatus // ignore: cast_nullable_to_non_nullable
                       as OrderStatus,
             paymentStatus: null == paymentStatus
                 ? _value.paymentStatus
                 : paymentStatus // ignore: cast_nullable_to_non_nullable
                       as PaymentStatus,
-            deliveryInfo: null == deliveryInfo
-                ? _value.deliveryInfo
-                : deliveryInfo // ignore: cast_nullable_to_non_nullable
+            shippingAddress: null == shippingAddress
+                ? _value.shippingAddress
+                : shippingAddress // ignore: cast_nullable_to_non_nullable
                       as Address,
             createdAt: null == createdAt
                 ? _value.createdAt
@@ -201,10 +206,6 @@ class _$OrderCopyWithImpl<$Res, $Val extends Order>
                 ? _value.currency
                 : currency // ignore: cast_nullable_to_non_nullable
                       as String,
-            amount: null == amount
-                ? _value.amount
-                : amount // ignore: cast_nullable_to_non_nullable
-                      as int,
             sellerIds: null == sellerIds
                 ? _value.sellerIds
                 : sellerIds // ignore: cast_nullable_to_non_nullable
@@ -272,9 +273,9 @@ class _$OrderCopyWithImpl<$Res, $Val extends Order>
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  $AddressCopyWith<$Res> get deliveryInfo {
-    return $AddressCopyWith<$Res>(_value.deliveryInfo, (value) {
-      return _then(_value.copyWith(deliveryInfo: value) as $Val);
+  $AddressCopyWith<$Res> get shippingAddress {
+    return $AddressCopyWith<$Res>(_value.shippingAddress, (value) {
+      return _then(_value.copyWith(shippingAddress: value) as $Val);
     });
   }
 }
@@ -293,16 +294,16 @@ abstract class _$$OrderImplCopyWith<$Res> implements $OrderCopyWith<$Res> {
     String customerId,
     String customerEmail,
     List<OrderItem> items,
-    double total,
-    double subtotal,
-    double shippingCost,
+    int totalAmountCents,
+    int subtotalCents,
+    int shippingCostCents,
+    int taxAmountCents,
     Taxes taxes,
-    OrderStatus status,
+    OrderStatus orderStatus,
     PaymentStatus paymentStatus,
-    Address deliveryInfo,
+    Address shippingAddress,
     DateTime createdAt,
     String currency,
-    int amount,
     List<String> sellerIds,
     String stripeSessionId,
     ShippingApprovalStatus shippingApprovalStatus,
@@ -320,7 +321,7 @@ abstract class _$$OrderImplCopyWith<$Res> implements $OrderCopyWith<$Res> {
   @override
   $TaxesCopyWith<$Res> get taxes;
   @override
-  $AddressCopyWith<$Res> get deliveryInfo;
+  $AddressCopyWith<$Res> get shippingAddress;
 }
 
 /// @nodoc
@@ -342,16 +343,16 @@ class __$$OrderImplCopyWithImpl<$Res>
     Object? customerId = null,
     Object? customerEmail = null,
     Object? items = null,
-    Object? total = null,
-    Object? subtotal = null,
-    Object? shippingCost = null,
+    Object? totalAmountCents = null,
+    Object? subtotalCents = null,
+    Object? shippingCostCents = null,
+    Object? taxAmountCents = null,
     Object? taxes = null,
-    Object? status = null,
+    Object? orderStatus = null,
     Object? paymentStatus = null,
-    Object? deliveryInfo = null,
+    Object? shippingAddress = null,
     Object? createdAt = null,
     Object? currency = null,
-    Object? amount = null,
     Object? sellerIds = null,
     Object? stripeSessionId = null,
     Object? shippingApprovalStatus = null,
@@ -387,33 +388,37 @@ class __$$OrderImplCopyWithImpl<$Res>
             ? _value._items
             : items // ignore: cast_nullable_to_non_nullable
                   as List<OrderItem>,
-        total: null == total
-            ? _value.total
-            : total // ignore: cast_nullable_to_non_nullable
-                  as double,
-        subtotal: null == subtotal
-            ? _value.subtotal
-            : subtotal // ignore: cast_nullable_to_non_nullable
-                  as double,
-        shippingCost: null == shippingCost
-            ? _value.shippingCost
-            : shippingCost // ignore: cast_nullable_to_non_nullable
-                  as double,
+        totalAmountCents: null == totalAmountCents
+            ? _value.totalAmountCents
+            : totalAmountCents // ignore: cast_nullable_to_non_nullable
+                  as int,
+        subtotalCents: null == subtotalCents
+            ? _value.subtotalCents
+            : subtotalCents // ignore: cast_nullable_to_non_nullable
+                  as int,
+        shippingCostCents: null == shippingCostCents
+            ? _value.shippingCostCents
+            : shippingCostCents // ignore: cast_nullable_to_non_nullable
+                  as int,
+        taxAmountCents: null == taxAmountCents
+            ? _value.taxAmountCents
+            : taxAmountCents // ignore: cast_nullable_to_non_nullable
+                  as int,
         taxes: null == taxes
             ? _value.taxes
             : taxes // ignore: cast_nullable_to_non_nullable
                   as Taxes,
-        status: null == status
-            ? _value.status
-            : status // ignore: cast_nullable_to_non_nullable
+        orderStatus: null == orderStatus
+            ? _value.orderStatus
+            : orderStatus // ignore: cast_nullable_to_non_nullable
                   as OrderStatus,
         paymentStatus: null == paymentStatus
             ? _value.paymentStatus
             : paymentStatus // ignore: cast_nullable_to_non_nullable
                   as PaymentStatus,
-        deliveryInfo: null == deliveryInfo
-            ? _value.deliveryInfo
-            : deliveryInfo // ignore: cast_nullable_to_non_nullable
+        shippingAddress: null == shippingAddress
+            ? _value.shippingAddress
+            : shippingAddress // ignore: cast_nullable_to_non_nullable
                   as Address,
         createdAt: null == createdAt
             ? _value.createdAt
@@ -423,10 +428,6 @@ class __$$OrderImplCopyWithImpl<$Res>
             ? _value.currency
             : currency // ignore: cast_nullable_to_non_nullable
                   as String,
-        amount: null == amount
-            ? _value.amount
-            : amount // ignore: cast_nullable_to_non_nullable
-                  as int,
         sellerIds: null == sellerIds
             ? _value._sellerIds
             : sellerIds // ignore: cast_nullable_to_non_nullable
@@ -489,16 +490,16 @@ class _$OrderImpl extends _Order {
     required this.customerId,
     required this.customerEmail,
     required final List<OrderItem> items,
-    required this.total,
-    required this.subtotal,
-    this.shippingCost = 0.0,
+    required this.totalAmountCents,
+    required this.subtotalCents,
+    this.shippingCostCents = 0,
+    this.taxAmountCents = 0,
     required this.taxes,
-    this.status = OrderStatus.pending,
+    this.orderStatus = OrderStatus.pending,
     this.paymentStatus = PaymentStatus.awaitingPayment,
-    required this.deliveryInfo,
+    required this.shippingAddress,
     required this.createdAt,
     this.currency = 'cad',
-    required this.amount,
     final List<String> sellerIds = const [],
     required this.stripeSessionId,
     this.shippingApprovalStatus = ShippingApprovalStatus.notRequired,
@@ -536,30 +537,32 @@ class _$OrderImpl extends _Order {
     return EqualUnmodifiableListView(_items);
   }
 
+  // All money in integer cents
   @override
-  final double total;
+  final int totalAmountCents;
   @override
-  final double subtotal;
+  final int subtotalCents;
   @override
   @JsonKey()
-  final double shippingCost;
+  final int shippingCostCents;
+  @override
+  @JsonKey()
+  final int taxAmountCents;
   @override
   final Taxes taxes;
   @override
   @JsonKey()
-  final OrderStatus status;
+  final OrderStatus orderStatus;
   @override
   @JsonKey()
   final PaymentStatus paymentStatus;
   @override
-  final Address deliveryInfo;
+  final Address shippingAddress;
   @override
   final DateTime createdAt;
   @override
   @JsonKey()
   final String currency;
-  @override
-  final int amount;
   final List<String> _sellerIds;
   @override
   @JsonKey()
@@ -619,7 +622,7 @@ class _$OrderImpl extends _Order {
 
   @override
   String toString() {
-    return 'Order(orderId: $orderId, userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, total: $total, subtotal: $subtotal, shippingCost: $shippingCost, taxes: $taxes, status: $status, paymentStatus: $paymentStatus, deliveryInfo: $deliveryInfo, createdAt: $createdAt, currency: $currency, amount: $amount, sellerIds: $sellerIds, stripeSessionId: $stripeSessionId, shippingApprovalStatus: $shippingApprovalStatus, shippingApprovalRequired: $shippingApprovalRequired, actualShipping: $actualShipping, pendingTotal: $pendingTotal, sellerPayouts: $sellerPayouts, confirmedByClient: $confirmedByClient, confirmedAt: $confirmedAt, platformFeeTotal: $platformFeeTotal, payoutStatus: $payoutStatus, ratings: $ratings)';
+    return 'Order(orderId: $orderId, userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, totalAmountCents: $totalAmountCents, subtotalCents: $subtotalCents, shippingCostCents: $shippingCostCents, taxAmountCents: $taxAmountCents, taxes: $taxes, orderStatus: $orderStatus, paymentStatus: $paymentStatus, shippingAddress: $shippingAddress, createdAt: $createdAt, currency: $currency, sellerIds: $sellerIds, stripeSessionId: $stripeSessionId, shippingApprovalStatus: $shippingApprovalStatus, shippingApprovalRequired: $shippingApprovalRequired, actualShipping: $actualShipping, pendingTotal: $pendingTotal, sellerPayouts: $sellerPayouts, confirmedByClient: $confirmedByClient, confirmedAt: $confirmedAt, platformFeeTotal: $platformFeeTotal, payoutStatus: $payoutStatus, ratings: $ratings)';
   }
 
   @override
@@ -634,22 +637,25 @@ class _$OrderImpl extends _Order {
             (identical(other.customerEmail, customerEmail) ||
                 other.customerEmail == customerEmail) &&
             const DeepCollectionEquality().equals(other._items, _items) &&
-            (identical(other.total, total) || other.total == total) &&
-            (identical(other.subtotal, subtotal) ||
-                other.subtotal == subtotal) &&
-            (identical(other.shippingCost, shippingCost) ||
-                other.shippingCost == shippingCost) &&
+            (identical(other.totalAmountCents, totalAmountCents) ||
+                other.totalAmountCents == totalAmountCents) &&
+            (identical(other.subtotalCents, subtotalCents) ||
+                other.subtotalCents == subtotalCents) &&
+            (identical(other.shippingCostCents, shippingCostCents) ||
+                other.shippingCostCents == shippingCostCents) &&
+            (identical(other.taxAmountCents, taxAmountCents) ||
+                other.taxAmountCents == taxAmountCents) &&
             (identical(other.taxes, taxes) || other.taxes == taxes) &&
-            (identical(other.status, status) || other.status == status) &&
+            (identical(other.orderStatus, orderStatus) ||
+                other.orderStatus == orderStatus) &&
             (identical(other.paymentStatus, paymentStatus) ||
                 other.paymentStatus == paymentStatus) &&
-            (identical(other.deliveryInfo, deliveryInfo) ||
-                other.deliveryInfo == deliveryInfo) &&
+            (identical(other.shippingAddress, shippingAddress) ||
+                other.shippingAddress == shippingAddress) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.currency, currency) ||
                 other.currency == currency) &&
-            (identical(other.amount, amount) || other.amount == amount) &&
             const DeepCollectionEquality().equals(
               other._sellerIds,
               _sellerIds,
@@ -691,16 +697,16 @@ class _$OrderImpl extends _Order {
     customerId,
     customerEmail,
     const DeepCollectionEquality().hash(_items),
-    total,
-    subtotal,
-    shippingCost,
+    totalAmountCents,
+    subtotalCents,
+    shippingCostCents,
+    taxAmountCents,
     taxes,
-    status,
+    orderStatus,
     paymentStatus,
-    deliveryInfo,
+    shippingAddress,
     createdAt,
     currency,
-    amount,
     const DeepCollectionEquality().hash(_sellerIds),
     stripeSessionId,
     shippingApprovalStatus,
@@ -736,16 +742,16 @@ abstract class _Order extends Order {
     required final String customerId,
     required final String customerEmail,
     required final List<OrderItem> items,
-    required final double total,
-    required final double subtotal,
-    final double shippingCost,
+    required final int totalAmountCents,
+    required final int subtotalCents,
+    final int shippingCostCents,
+    final int taxAmountCents,
     required final Taxes taxes,
-    final OrderStatus status,
+    final OrderStatus orderStatus,
     final PaymentStatus paymentStatus,
-    required final Address deliveryInfo,
+    required final Address shippingAddress,
     required final DateTime createdAt,
     final String currency,
-    required final int amount,
     final List<String> sellerIds,
     required final String stripeSessionId,
     final ShippingApprovalStatus shippingApprovalStatus,
@@ -772,27 +778,27 @@ abstract class _Order extends Order {
   @override
   String get customerEmail;
   @override
-  List<OrderItem> get items;
+  List<OrderItem> get items; // All money in integer cents
   @override
-  double get total;
+  int get totalAmountCents;
   @override
-  double get subtotal;
+  int get subtotalCents;
   @override
-  double get shippingCost;
+  int get shippingCostCents;
+  @override
+  int get taxAmountCents;
   @override
   Taxes get taxes;
   @override
-  OrderStatus get status;
+  OrderStatus get orderStatus;
   @override
   PaymentStatus get paymentStatus;
   @override
-  Address get deliveryInfo;
+  Address get shippingAddress;
   @override
   DateTime get createdAt;
   @override
   String get currency;
-  @override
-  int get amount;
   @override
   List<String> get sellerIds;
   @override
@@ -836,8 +842,7 @@ mixin _$OrderCreate {
   String get customerId => throw _privateConstructorUsedError;
   String get customerEmail => throw _privateConstructorUsedError;
   List<OrderItem> get items => throw _privateConstructorUsedError;
-  Address get deliveryInfo => throw _privateConstructorUsedError;
-  String get stripeSessionId => throw _privateConstructorUsedError;
+  Address get shippingAddress => throw _privateConstructorUsedError;
   double get shippingCost => throw _privateConstructorUsedError;
   String get currency => throw _privateConstructorUsedError;
   bool get shippingApprovalRequired => throw _privateConstructorUsedError;
@@ -864,14 +869,13 @@ abstract class $OrderCreateCopyWith<$Res> {
     String customerId,
     String customerEmail,
     List<OrderItem> items,
-    Address deliveryInfo,
-    String stripeSessionId,
+    Address shippingAddress,
     double shippingCost,
     String currency,
     bool shippingApprovalRequired,
   });
 
-  $AddressCopyWith<$Res> get deliveryInfo;
+  $AddressCopyWith<$Res> get shippingAddress;
 }
 
 /// @nodoc
@@ -893,8 +897,7 @@ class _$OrderCreateCopyWithImpl<$Res, $Val extends OrderCreate>
     Object? customerId = null,
     Object? customerEmail = null,
     Object? items = null,
-    Object? deliveryInfo = null,
-    Object? stripeSessionId = null,
+    Object? shippingAddress = null,
     Object? shippingCost = null,
     Object? currency = null,
     Object? shippingApprovalRequired = null,
@@ -917,14 +920,10 @@ class _$OrderCreateCopyWithImpl<$Res, $Val extends OrderCreate>
                 ? _value.items
                 : items // ignore: cast_nullable_to_non_nullable
                       as List<OrderItem>,
-            deliveryInfo: null == deliveryInfo
-                ? _value.deliveryInfo
-                : deliveryInfo // ignore: cast_nullable_to_non_nullable
+            shippingAddress: null == shippingAddress
+                ? _value.shippingAddress
+                : shippingAddress // ignore: cast_nullable_to_non_nullable
                       as Address,
-            stripeSessionId: null == stripeSessionId
-                ? _value.stripeSessionId
-                : stripeSessionId // ignore: cast_nullable_to_non_nullable
-                      as String,
             shippingCost: null == shippingCost
                 ? _value.shippingCost
                 : shippingCost // ignore: cast_nullable_to_non_nullable
@@ -946,9 +945,9 @@ class _$OrderCreateCopyWithImpl<$Res, $Val extends OrderCreate>
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  $AddressCopyWith<$Res> get deliveryInfo {
-    return $AddressCopyWith<$Res>(_value.deliveryInfo, (value) {
-      return _then(_value.copyWith(deliveryInfo: value) as $Val);
+  $AddressCopyWith<$Res> get shippingAddress {
+    return $AddressCopyWith<$Res>(_value.shippingAddress, (value) {
+      return _then(_value.copyWith(shippingAddress: value) as $Val);
     });
   }
 }
@@ -967,15 +966,14 @@ abstract class _$$OrderCreateImplCopyWith<$Res>
     String customerId,
     String customerEmail,
     List<OrderItem> items,
-    Address deliveryInfo,
-    String stripeSessionId,
+    Address shippingAddress,
     double shippingCost,
     String currency,
     bool shippingApprovalRequired,
   });
 
   @override
-  $AddressCopyWith<$Res> get deliveryInfo;
+  $AddressCopyWith<$Res> get shippingAddress;
 }
 
 /// @nodoc
@@ -996,8 +994,7 @@ class __$$OrderCreateImplCopyWithImpl<$Res>
     Object? customerId = null,
     Object? customerEmail = null,
     Object? items = null,
-    Object? deliveryInfo = null,
-    Object? stripeSessionId = null,
+    Object? shippingAddress = null,
     Object? shippingCost = null,
     Object? currency = null,
     Object? shippingApprovalRequired = null,
@@ -1020,14 +1017,10 @@ class __$$OrderCreateImplCopyWithImpl<$Res>
             ? _value._items
             : items // ignore: cast_nullable_to_non_nullable
                   as List<OrderItem>,
-        deliveryInfo: null == deliveryInfo
-            ? _value.deliveryInfo
-            : deliveryInfo // ignore: cast_nullable_to_non_nullable
+        shippingAddress: null == shippingAddress
+            ? _value.shippingAddress
+            : shippingAddress // ignore: cast_nullable_to_non_nullable
                   as Address,
-        stripeSessionId: null == stripeSessionId
-            ? _value.stripeSessionId
-            : stripeSessionId // ignore: cast_nullable_to_non_nullable
-                  as String,
         shippingCost: null == shippingCost
             ? _value.shippingCost
             : shippingCost // ignore: cast_nullable_to_non_nullable
@@ -1053,8 +1046,7 @@ class _$OrderCreateImpl implements _OrderCreate {
     required this.customerId,
     required this.customerEmail,
     required final List<OrderItem> items,
-    required this.deliveryInfo,
-    required this.stripeSessionId,
+    required this.shippingAddress,
     this.shippingCost = 0.0,
     this.currency = 'cad',
     this.shippingApprovalRequired = false,
@@ -1078,9 +1070,7 @@ class _$OrderCreateImpl implements _OrderCreate {
   }
 
   @override
-  final Address deliveryInfo;
-  @override
-  final String stripeSessionId;
+  final Address shippingAddress;
   @override
   @JsonKey()
   final double shippingCost;
@@ -1093,7 +1083,7 @@ class _$OrderCreateImpl implements _OrderCreate {
 
   @override
   String toString() {
-    return 'OrderCreate(userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, deliveryInfo: $deliveryInfo, stripeSessionId: $stripeSessionId, shippingCost: $shippingCost, currency: $currency, shippingApprovalRequired: $shippingApprovalRequired)';
+    return 'OrderCreate(userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, shippingAddress: $shippingAddress, shippingCost: $shippingCost, currency: $currency, shippingApprovalRequired: $shippingApprovalRequired)';
   }
 
   @override
@@ -1107,10 +1097,8 @@ class _$OrderCreateImpl implements _OrderCreate {
             (identical(other.customerEmail, customerEmail) ||
                 other.customerEmail == customerEmail) &&
             const DeepCollectionEquality().equals(other._items, _items) &&
-            (identical(other.deliveryInfo, deliveryInfo) ||
-                other.deliveryInfo == deliveryInfo) &&
-            (identical(other.stripeSessionId, stripeSessionId) ||
-                other.stripeSessionId == stripeSessionId) &&
+            (identical(other.shippingAddress, shippingAddress) ||
+                other.shippingAddress == shippingAddress) &&
             (identical(other.shippingCost, shippingCost) ||
                 other.shippingCost == shippingCost) &&
             (identical(other.currency, currency) ||
@@ -1130,8 +1118,7 @@ class _$OrderCreateImpl implements _OrderCreate {
     customerId,
     customerEmail,
     const DeepCollectionEquality().hash(_items),
-    deliveryInfo,
-    stripeSessionId,
+    shippingAddress,
     shippingCost,
     currency,
     shippingApprovalRequired,
@@ -1157,8 +1144,7 @@ abstract class _OrderCreate implements OrderCreate {
     required final String customerId,
     required final String customerEmail,
     required final List<OrderItem> items,
-    required final Address deliveryInfo,
-    required final String stripeSessionId,
+    required final Address shippingAddress,
     final double shippingCost,
     final String currency,
     final bool shippingApprovalRequired,
@@ -1176,9 +1162,7 @@ abstract class _OrderCreate implements OrderCreate {
   @override
   List<OrderItem> get items;
   @override
-  Address get deliveryInfo;
-  @override
-  String get stripeSessionId;
+  Address get shippingAddress;
   @override
   double get shippingCost;
   @override
@@ -1223,6 +1207,7 @@ mixin _$OrderItem {
       throw _privateConstructorUsedError;
   int get minimumOrderQuantity => throw _privateConstructorUsedError;
   bool get freeShipping => throw _privateConstructorUsedError;
+  bool get isDigital => throw _privateConstructorUsedError;
 
   /// Serializes this OrderItem to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -1261,6 +1246,7 @@ abstract class $OrderItemCopyWith<$Res> {
     List<SellerDeliveryOption> deliveryOptions,
     int minimumOrderQuantity,
     bool freeShipping,
+    bool isDigital,
   });
 
   $AddressCopyWith<$Res> get sellerAddress;
@@ -1302,6 +1288,7 @@ class _$OrderItemCopyWithImpl<$Res, $Val extends OrderItem>
     Object? deliveryOptions = null,
     Object? minimumOrderQuantity = null,
     Object? freeShipping = null,
+    Object? isDigital = null,
   }) {
     return _then(
       _value.copyWith(
@@ -1389,6 +1376,10 @@ class _$OrderItemCopyWithImpl<$Res, $Val extends OrderItem>
                 ? _value.freeShipping
                 : freeShipping // ignore: cast_nullable_to_non_nullable
                       as bool,
+            isDigital: null == isDigital
+                ? _value.isDigital
+                : isDigital // ignore: cast_nullable_to_non_nullable
+                      as bool,
           )
           as $Val,
     );
@@ -1436,6 +1427,7 @@ abstract class _$$OrderItemImplCopyWith<$Res>
     List<SellerDeliveryOption> deliveryOptions,
     int minimumOrderQuantity,
     bool freeShipping,
+    bool isDigital,
   });
 
   @override
@@ -1477,6 +1469,7 @@ class __$$OrderItemImplCopyWithImpl<$Res>
     Object? deliveryOptions = null,
     Object? minimumOrderQuantity = null,
     Object? freeShipping = null,
+    Object? isDigital = null,
   }) {
     return _then(
       _$OrderItemImpl(
@@ -1564,6 +1557,10 @@ class __$$OrderItemImplCopyWithImpl<$Res>
             ? _value.freeShipping
             : freeShipping // ignore: cast_nullable_to_non_nullable
                   as bool,
+        isDigital: null == isDigital
+            ? _value.isDigital
+            : isDigital // ignore: cast_nullable_to_non_nullable
+                  as bool,
       ),
     );
   }
@@ -1594,6 +1591,7 @@ class _$OrderItemImpl extends _OrderItem {
     final List<SellerDeliveryOption> deliveryOptions = const [],
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
+    this.isDigital = false,
   }) : _imageUrls = imageUrls,
        _deliveryOptions = deliveryOptions,
        super._();
@@ -1664,10 +1662,13 @@ class _$OrderItemImpl extends _OrderItem {
   @override
   @JsonKey()
   final bool freeShipping;
+  @override
+  @JsonKey()
+  final bool isDigital;
 
   @override
   String toString() {
-    return 'OrderItem(productId: $productId, name: $name, description: $description, price: $price, quantity: $quantity, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, deliveryStatus: $deliveryStatus, trackingNumber: $trackingNumber, confirmedByBuyer: $confirmedByBuyer, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping)';
+    return 'OrderItem(productId: $productId, name: $name, description: $description, price: $price, quantity: $quantity, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, deliveryStatus: $deliveryStatus, trackingNumber: $trackingNumber, confirmedByBuyer: $confirmedByBuyer, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital)';
   }
 
   @override
@@ -1717,7 +1718,9 @@ class _$OrderItemImpl extends _OrderItem {
             (identical(other.minimumOrderQuantity, minimumOrderQuantity) ||
                 other.minimumOrderQuantity == minimumOrderQuantity) &&
             (identical(other.freeShipping, freeShipping) ||
-                other.freeShipping == freeShipping));
+                other.freeShipping == freeShipping) &&
+            (identical(other.isDigital, isDigital) ||
+                other.isDigital == isDigital));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1745,6 +1748,7 @@ class _$OrderItemImpl extends _OrderItem {
     const DeepCollectionEquality().hash(_deliveryOptions),
     minimumOrderQuantity,
     freeShipping,
+    isDigital,
   ]);
 
   /// Create a copy of OrderItem
@@ -1784,6 +1788,7 @@ abstract class _OrderItem extends OrderItem {
     final List<SellerDeliveryOption> deliveryOptions,
     final int minimumOrderQuantity,
     final bool freeShipping,
+    final bool isDigital,
   }) = _$OrderItemImpl;
   const _OrderItem._() : super._();
 
@@ -1832,6 +1837,8 @@ abstract class _OrderItem extends OrderItem {
   int get minimumOrderQuantity;
   @override
   bool get freeShipping;
+  @override
+  bool get isDigital;
 
   /// Create a copy of OrderItem
   /// with the given fields replaced by the non-null parameter values.
@@ -2069,10 +2076,10 @@ SellerPayout _$SellerPayoutFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$SellerPayout {
   String get sellerId => throw _privateConstructorUsedError;
-  String? get sellerStripeAccountId => throw _privateConstructorUsedError;
-  double get amount => throw _privateConstructorUsedError;
-  double get platformFee => throw _privateConstructorUsedError;
-  double get netAmount => throw _privateConstructorUsedError;
+  String? get stripeAccountId => throw _privateConstructorUsedError;
+  int get amountCents => throw _privateConstructorUsedError;
+  int get platformFeeCents => throw _privateConstructorUsedError;
+  int get netAmountCents => throw _privateConstructorUsedError;
   String get status => throw _privateConstructorUsedError;
   DateTime? get payoutDate => throw _privateConstructorUsedError;
   String? get stripeTransferId => throw _privateConstructorUsedError;
@@ -2097,10 +2104,10 @@ abstract class $SellerPayoutCopyWith<$Res> {
   @useResult
   $Res call({
     String sellerId,
-    String? sellerStripeAccountId,
-    double amount,
-    double platformFee,
-    double netAmount,
+    String? stripeAccountId,
+    int amountCents,
+    int platformFeeCents,
+    int netAmountCents,
     String status,
     DateTime? payoutDate,
     String? stripeTransferId,
@@ -2124,10 +2131,10 @@ class _$SellerPayoutCopyWithImpl<$Res, $Val extends SellerPayout>
   @override
   $Res call({
     Object? sellerId = null,
-    Object? sellerStripeAccountId = freezed,
-    Object? amount = null,
-    Object? platformFee = null,
-    Object? netAmount = null,
+    Object? stripeAccountId = freezed,
+    Object? amountCents = null,
+    Object? platformFeeCents = null,
+    Object? netAmountCents = null,
     Object? status = null,
     Object? payoutDate = freezed,
     Object? stripeTransferId = freezed,
@@ -2139,22 +2146,22 @@ class _$SellerPayoutCopyWithImpl<$Res, $Val extends SellerPayout>
                 ? _value.sellerId
                 : sellerId // ignore: cast_nullable_to_non_nullable
                       as String,
-            sellerStripeAccountId: freezed == sellerStripeAccountId
-                ? _value.sellerStripeAccountId
-                : sellerStripeAccountId // ignore: cast_nullable_to_non_nullable
+            stripeAccountId: freezed == stripeAccountId
+                ? _value.stripeAccountId
+                : stripeAccountId // ignore: cast_nullable_to_non_nullable
                       as String?,
-            amount: null == amount
-                ? _value.amount
-                : amount // ignore: cast_nullable_to_non_nullable
-                      as double,
-            platformFee: null == platformFee
-                ? _value.platformFee
-                : platformFee // ignore: cast_nullable_to_non_nullable
-                      as double,
-            netAmount: null == netAmount
-                ? _value.netAmount
-                : netAmount // ignore: cast_nullable_to_non_nullable
-                      as double,
+            amountCents: null == amountCents
+                ? _value.amountCents
+                : amountCents // ignore: cast_nullable_to_non_nullable
+                      as int,
+            platformFeeCents: null == platformFeeCents
+                ? _value.platformFeeCents
+                : platformFeeCents // ignore: cast_nullable_to_non_nullable
+                      as int,
+            netAmountCents: null == netAmountCents
+                ? _value.netAmountCents
+                : netAmountCents // ignore: cast_nullable_to_non_nullable
+                      as int,
             status: null == status
                 ? _value.status
                 : status // ignore: cast_nullable_to_non_nullable
@@ -2188,10 +2195,10 @@ abstract class _$$SellerPayoutImplCopyWith<$Res>
   @useResult
   $Res call({
     String sellerId,
-    String? sellerStripeAccountId,
-    double amount,
-    double platformFee,
-    double netAmount,
+    String? stripeAccountId,
+    int amountCents,
+    int platformFeeCents,
+    int netAmountCents,
     String status,
     DateTime? payoutDate,
     String? stripeTransferId,
@@ -2214,10 +2221,10 @@ class __$$SellerPayoutImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? sellerId = null,
-    Object? sellerStripeAccountId = freezed,
-    Object? amount = null,
-    Object? platformFee = null,
-    Object? netAmount = null,
+    Object? stripeAccountId = freezed,
+    Object? amountCents = null,
+    Object? platformFeeCents = null,
+    Object? netAmountCents = null,
     Object? status = null,
     Object? payoutDate = freezed,
     Object? stripeTransferId = freezed,
@@ -2229,22 +2236,22 @@ class __$$SellerPayoutImplCopyWithImpl<$Res>
             ? _value.sellerId
             : sellerId // ignore: cast_nullable_to_non_nullable
                   as String,
-        sellerStripeAccountId: freezed == sellerStripeAccountId
-            ? _value.sellerStripeAccountId
-            : sellerStripeAccountId // ignore: cast_nullable_to_non_nullable
+        stripeAccountId: freezed == stripeAccountId
+            ? _value.stripeAccountId
+            : stripeAccountId // ignore: cast_nullable_to_non_nullable
                   as String?,
-        amount: null == amount
-            ? _value.amount
-            : amount // ignore: cast_nullable_to_non_nullable
-                  as double,
-        platformFee: null == platformFee
-            ? _value.platformFee
-            : platformFee // ignore: cast_nullable_to_non_nullable
-                  as double,
-        netAmount: null == netAmount
-            ? _value.netAmount
-            : netAmount // ignore: cast_nullable_to_non_nullable
-                  as double,
+        amountCents: null == amountCents
+            ? _value.amountCents
+            : amountCents // ignore: cast_nullable_to_non_nullable
+                  as int,
+        platformFeeCents: null == platformFeeCents
+            ? _value.platformFeeCents
+            : platformFeeCents // ignore: cast_nullable_to_non_nullable
+                  as int,
+        netAmountCents: null == netAmountCents
+            ? _value.netAmountCents
+            : netAmountCents // ignore: cast_nullable_to_non_nullable
+                  as int,
         status: null == status
             ? _value.status
             : status // ignore: cast_nullable_to_non_nullable
@@ -2271,10 +2278,10 @@ class __$$SellerPayoutImplCopyWithImpl<$Res>
 class _$SellerPayoutImpl extends _SellerPayout {
   const _$SellerPayoutImpl({
     required this.sellerId,
-    this.sellerStripeAccountId,
-    required this.amount,
-    required this.platformFee,
-    required this.netAmount,
+    this.stripeAccountId,
+    required this.amountCents,
+    required this.platformFeeCents,
+    required this.netAmountCents,
     this.status = 'pending',
     this.payoutDate,
     this.stripeTransferId,
@@ -2287,13 +2294,13 @@ class _$SellerPayoutImpl extends _SellerPayout {
   @override
   final String sellerId;
   @override
-  final String? sellerStripeAccountId;
+  final String? stripeAccountId;
   @override
-  final double amount;
+  final int amountCents;
   @override
-  final double platformFee;
+  final int platformFeeCents;
   @override
-  final double netAmount;
+  final int netAmountCents;
   @override
   @JsonKey()
   final String status;
@@ -2306,7 +2313,7 @@ class _$SellerPayoutImpl extends _SellerPayout {
 
   @override
   String toString() {
-    return 'SellerPayout(sellerId: $sellerId, sellerStripeAccountId: $sellerStripeAccountId, amount: $amount, platformFee: $platformFee, netAmount: $netAmount, status: $status, payoutDate: $payoutDate, stripeTransferId: $stripeTransferId, failureReason: $failureReason)';
+    return 'SellerPayout(sellerId: $sellerId, stripeAccountId: $stripeAccountId, amountCents: $amountCents, platformFeeCents: $platformFeeCents, netAmountCents: $netAmountCents, status: $status, payoutDate: $payoutDate, stripeTransferId: $stripeTransferId, failureReason: $failureReason)';
   }
 
   @override
@@ -2316,13 +2323,14 @@ class _$SellerPayoutImpl extends _SellerPayout {
             other is _$SellerPayoutImpl &&
             (identical(other.sellerId, sellerId) ||
                 other.sellerId == sellerId) &&
-            (identical(other.sellerStripeAccountId, sellerStripeAccountId) ||
-                other.sellerStripeAccountId == sellerStripeAccountId) &&
-            (identical(other.amount, amount) || other.amount == amount) &&
-            (identical(other.platformFee, platformFee) ||
-                other.platformFee == platformFee) &&
-            (identical(other.netAmount, netAmount) ||
-                other.netAmount == netAmount) &&
+            (identical(other.stripeAccountId, stripeAccountId) ||
+                other.stripeAccountId == stripeAccountId) &&
+            (identical(other.amountCents, amountCents) ||
+                other.amountCents == amountCents) &&
+            (identical(other.platformFeeCents, platformFeeCents) ||
+                other.platformFeeCents == platformFeeCents) &&
+            (identical(other.netAmountCents, netAmountCents) ||
+                other.netAmountCents == netAmountCents) &&
             (identical(other.status, status) || other.status == status) &&
             (identical(other.payoutDate, payoutDate) ||
                 other.payoutDate == payoutDate) &&
@@ -2337,10 +2345,10 @@ class _$SellerPayoutImpl extends _SellerPayout {
   int get hashCode => Object.hash(
     runtimeType,
     sellerId,
-    sellerStripeAccountId,
-    amount,
-    platformFee,
-    netAmount,
+    stripeAccountId,
+    amountCents,
+    platformFeeCents,
+    netAmountCents,
     status,
     payoutDate,
     stripeTransferId,
@@ -2364,10 +2372,10 @@ class _$SellerPayoutImpl extends _SellerPayout {
 abstract class _SellerPayout extends SellerPayout {
   const factory _SellerPayout({
     required final String sellerId,
-    final String? sellerStripeAccountId,
-    required final double amount,
-    required final double platformFee,
-    required final double netAmount,
+    final String? stripeAccountId,
+    required final int amountCents,
+    required final int platformFeeCents,
+    required final int netAmountCents,
     final String status,
     final DateTime? payoutDate,
     final String? stripeTransferId,
@@ -2381,13 +2389,13 @@ abstract class _SellerPayout extends SellerPayout {
   @override
   String get sellerId;
   @override
-  String? get sellerStripeAccountId;
+  String? get stripeAccountId;
   @override
-  double get amount;
+  int get amountCents;
   @override
-  double get platformFee;
+  int get platformFeeCents;
   @override
-  double get netAmount;
+  int get netAmountCents;
   @override
   String get status;
   @override

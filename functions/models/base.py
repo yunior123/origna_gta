@@ -18,29 +18,34 @@ class OrderStatusEnum(str, Enum):
     """Order status values"""
     PENDING = "pending"
     CONFIRMED = "confirmed"
+    PROCESSING = "processing"
     SHIPPED = "shipped"
+    IN_TRANSIT = "in_transit"
     DELIVERED = "delivered"
     CANCELLED = "cancelled"
+    FAILED = "failed"
+    EXPIRED = "expired"
     REFUNDED = "refunded"
+    PARTIALLY_REFUNDED = "partially_refunded"
 
 
 class PaymentStatusEnum(str, Enum):
     """Payment status values"""
     AWAITING_PAYMENT = "awaiting_payment"
-    PAYMENT_RECEIVED = "payment_received"
+    PROCESSING = "processing"
+    PAID = "paid"
+    AUTHORIZED = "authorized"
+    CAPTURED = "captured"
     PAYMENT_FAILED = "payment_failed"
     REFUNDED = "refunded"
-    PARTIALLY_REFUNDED = "partially_refunded"
+    SESSION_EXPIRED = "session_expired"
 
 
 class DeliveryStatusEnum(str, Enum):
     """Delivery status for individual items"""
     PENDING = "pending"
-    PROCESSING = "processing"
     SHIPPED = "shipped"
     DELIVERED = "delivered"
-    CANCELLED = "cancelled"
-    RETURNED = "returned"
 
 
 class ShippingApprovalStatusEnum(str, Enum):

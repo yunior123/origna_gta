@@ -523,10 +523,11 @@ class TestCapturePayment:
         # Mock order with authorized payment and complete items
         mock_order_data = {
             'orderId': 'order_123',
+            'userId': 'user_123',
             'paymentStatus': 'authorized',
-            'status': 'confirmed',
+            'orderStatus': 'shipped',
             'stripePaymentIntentId': 'pi_test_123',
-            'totalAmount': 100,
+            'totalAmountCents': 10000,
             'items': [{
                 'productId': 'prod_1',
                 'quantity': 2,
@@ -549,6 +550,7 @@ class TestCapturePayment:
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")
+        mock_request.auth.token = {'roles': ['admin']}
         mock_request.data = {'orderId': 'order_123'}
 
         result = capture_payment(mock_request)
@@ -592,10 +594,11 @@ class TestCapturePayment:
 
         mock_order_data = {
             'orderId': 'order_123',
+            'userId': 'user_123',
             'paymentStatus': 'authorized',
-            'status': 'confirmed',
+            'orderStatus': 'shipped',
             'stripePaymentIntentId': 'pi_test_123',
-            'totalAmount': 100,
+            'totalAmountCents': 10000,
             'items': [{
                 'productId': 'prod_1',
                 'quantity': 2,
@@ -617,6 +620,7 @@ class TestCapturePayment:
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")
+        mock_request.auth.token = {'roles': ['admin']}
         mock_request.data = {'orderId': 'order_123'}
 
         with pytest.raises(https_fn.HttpsError) as exc:
@@ -647,6 +651,7 @@ class TestCapturePayment:
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")
+        mock_request.auth.token = {'roles': ['admin']}
         mock_request.data = {'orderId': 'order_123'}
 
         with pytest.raises(https_fn.HttpsError) as exc:
@@ -663,7 +668,7 @@ class TestStripeConnectAccount:
     @patch('handlers.payment_stripe.stripe.Account.create')
     def test_create_connect_account_success(self, mock_create, mock_get_db, mock_success_response):
         """Test successful Stripe Connect account creation for seller"""
-        from handlers.payment_stripe import create_stripe_connect_account
+        from handlers.payment_stripe import create_connect_account
         
         # Mock create_success_response to return the dict directly
         mock_success_response.side_effect = lambda data: {'success': True, **data}
@@ -690,7 +695,7 @@ class TestStripeConnectAccount:
             }
         }
         
-        result = create_stripe_connect_account(mock_request)
+        result = create_connect_account(mock_request)
         
         assert result['success'] is True
         assert result['accountId'] == 'acct_test_123'
@@ -700,7 +705,7 @@ class TestStripeConnectAccount:
     @patch('handlers.payment_stripe.get_db')
     def test_create_duplicate_connect_account_rejected(self, mock_get_db, mock_account_create):
         """Test user cannot create multiple Connect accounts"""
-        from handlers.payment_stripe import create_stripe_connect_account
+        from handlers.payment_stripe import create_connect_account
         
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
@@ -733,7 +738,7 @@ class TestStripeConnectAccount:
         # First call should succeed - account is created
         # This tests the happy path since mocking stripe.error causes issues
         # The duplicate protection is handled by Stripe's API in production
-        result = create_stripe_connect_account(mock_request)
+        result = create_connect_account(mock_request)
         
         # Verify Stripe.Account.create was called
         mock_account_create.assert_called_once()
@@ -805,4 +810,3 @@ def validate_price(price):
     if price < 0:
         raise ValueError("Price cannot be negative")
     return round(price, 2)
-

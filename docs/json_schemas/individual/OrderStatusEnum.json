@@ -3,10 +3,15 @@
   "enum": [
     "pending",
     "confirmed",
+    "processing",
     "shipped",
+    "in_transit",
     "delivered",
     "cancelled",
-    "refunded"
+    "failed",
+    "expired",
+    "refunded",
+    "partially_refunded"
   ],
   "description": "Order status values"
 }

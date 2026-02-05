@@ -1,5 +1,5 @@
 {
-  "description": "Tax breakdown for an order\nReplaces Map<String, double> with typed object",
+  "description": "Tax breakdown for an order (Canadian taxes).",
   "properties": {
     "GST": {
       "default": 0.0,

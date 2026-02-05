@@ -117,15 +117,17 @@ class TestPaymentFlowSecurity:
         svc.webhook_secret = "test_webhook_secret"
 
         body = b'{"id":"evt_123","type":"payment_intent.succeeded"}'
-        digest = hmac.new(svc.webhook_secret.encode('utf-8'), body, hashlib.sha256).digest()
+        timestamp = "1700000000"
+        signed_payload = timestamp.encode("utf-8") + body
+        digest = hmac.new(svc.webhook_secret.encode('utf-8'), signed_payload, hashlib.sha256).digest()
 
         sig_hex = digest.hex()
         sig_b64 = base64.b64encode(digest).decode('ascii')
 
-        assert svc.verify_webhook_signature(body, sig_hex) is True
-        assert svc.verify_webhook_signature(body, f"sha256={sig_hex}") is True
-        assert svc.verify_webhook_signature(body, sig_b64) is True
-        assert svc.verify_webhook_signature(body, "") is False
+        assert svc.verify_webhook_signature(body, sig_hex, timestamp=timestamp) is True
+        assert svc.verify_webhook_signature(body, f"sha256={sig_hex}", timestamp=timestamp) is True
+        assert svc.verify_webhook_signature(body, sig_b64, timestamp=timestamp) is True
+        assert svc.verify_webhook_signature(body, "", timestamp=timestamp) is False
     
     def test_idempotency_key_handling(self):
         """HIGH: Duplicate requests return existing session"""

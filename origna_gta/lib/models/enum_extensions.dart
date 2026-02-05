@@ -1,4 +1,4 @@
-// Extensions pour les enums Freezed - fournit compatibilité avec ancien code
+// Extensions for Freezed enums — provides displayText, value, fromValue
 import 'package:origna_gta/models/generated/models.dart';
 
 // ============================================================================
@@ -6,57 +6,36 @@ import 'package:origna_gta/models/generated/models.dart';
 // ============================================================================
 
 extension DeliveryStatusExtension on DeliveryStatus {
-  /// Get display text for UI
   String get displayText {
     switch (this) {
       case DeliveryStatus.pending:
         return 'Pending';
-      case DeliveryStatus.processing:
-        return 'Processing';
       case DeliveryStatus.shipped:
         return 'Shipped';
       case DeliveryStatus.delivered:
         return 'Delivered';
-      case DeliveryStatus.cancelled:
-        return 'Cancelled';
-      case DeliveryStatus.returned:
-        return 'Returned';
     }
   }
 
-  /// Get string value for API/database
   String get value {
     switch (this) {
       case DeliveryStatus.pending:
         return 'pending';
-      case DeliveryStatus.processing:
-        return 'processing';
       case DeliveryStatus.shipped:
         return 'shipped';
       case DeliveryStatus.delivered:
         return 'delivered';
-      case DeliveryStatus.cancelled:
-        return 'cancelled';
-      case DeliveryStatus.returned:
-        return 'returned';
     }
   }
 
-  /// Parse from string value
   static DeliveryStatus fromValue(String? value) {
     switch (value?.toLowerCase()) {
       case 'pending':
         return DeliveryStatus.pending;
-      case 'processing':
-        return DeliveryStatus.processing;
       case 'shipped':
         return DeliveryStatus.shipped;
       case 'delivered':
         return DeliveryStatus.delivered;
-      case 'cancelled':
-        return DeliveryStatus.cancelled;
-      case 'returned':
-        return DeliveryStatus.returned;
       default:
         return DeliveryStatus.pending;
     }
@@ -74,14 +53,24 @@ extension OrderStatusExtension on OrderStatus {
         return 'Pending';
       case OrderStatus.confirmed:
         return 'Confirmed';
+      case OrderStatus.processing:
+        return 'Processing';
       case OrderStatus.shipped:
         return 'Shipped';
+      case OrderStatus.inTransit:
+        return 'In Transit';
       case OrderStatus.delivered:
         return 'Delivered';
       case OrderStatus.cancelled:
         return 'Cancelled';
+      case OrderStatus.failed:
+        return 'Failed';
+      case OrderStatus.expired:
+        return 'Expired';
       case OrderStatus.refunded:
         return 'Refunded';
+      case OrderStatus.partiallyRefunded:
+        return 'Partially Refunded';
     }
   }
 
@@ -91,14 +80,24 @@ extension OrderStatusExtension on OrderStatus {
         return 'pending';
       case OrderStatus.confirmed:
         return 'confirmed';
+      case OrderStatus.processing:
+        return 'processing';
       case OrderStatus.shipped:
         return 'shipped';
+      case OrderStatus.inTransit:
+        return 'in_transit';
       case OrderStatus.delivered:
         return 'delivered';
       case OrderStatus.cancelled:
         return 'cancelled';
+      case OrderStatus.failed:
+        return 'failed';
+      case OrderStatus.expired:
+        return 'expired';
       case OrderStatus.refunded:
         return 'refunded';
+      case OrderStatus.partiallyRefunded:
+        return 'partially_refunded';
     }
   }
 
@@ -108,14 +107,24 @@ extension OrderStatusExtension on OrderStatus {
         return OrderStatus.pending;
       case 'confirmed':
         return OrderStatus.confirmed;
+      case 'processing':
+        return OrderStatus.processing;
       case 'shipped':
         return OrderStatus.shipped;
+      case 'in_transit':
+        return OrderStatus.inTransit;
       case 'delivered':
         return OrderStatus.delivered;
       case 'cancelled':
         return OrderStatus.cancelled;
+      case 'failed':
+        return OrderStatus.failed;
+      case 'expired':
+        return OrderStatus.expired;
       case 'refunded':
         return OrderStatus.refunded;
+      case 'partially_refunded':
+        return OrderStatus.partiallyRefunded;
       default:
         return OrderStatus.pending;
     }
@@ -131,14 +140,20 @@ extension PaymentStatusExtension on PaymentStatus {
     switch (this) {
       case PaymentStatus.awaitingPayment:
         return 'Awaiting Payment';
-      case PaymentStatus.paymentReceived:
-        return 'Payment Received';
+      case PaymentStatus.processing:
+        return 'Processing';
+      case PaymentStatus.paid:
+        return 'Paid';
+      case PaymentStatus.authorized:
+        return 'Authorized';
+      case PaymentStatus.captured:
+        return 'Captured';
       case PaymentStatus.paymentFailed:
         return 'Payment Failed';
       case PaymentStatus.refunded:
         return 'Refunded';
-      case PaymentStatus.partiallyRefunded:
-        return 'Partially Refunded';
+      case PaymentStatus.sessionExpired:
+        return 'Session Expired';
     }
   }
 
@@ -146,14 +161,20 @@ extension PaymentStatusExtension on PaymentStatus {
     switch (this) {
       case PaymentStatus.awaitingPayment:
         return 'awaiting_payment';
-      case PaymentStatus.paymentReceived:
-        return 'payment_received';
+      case PaymentStatus.processing:
+        return 'processing';
+      case PaymentStatus.paid:
+        return 'paid';
+      case PaymentStatus.authorized:
+        return 'authorized';
+      case PaymentStatus.captured:
+        return 'captured';
       case PaymentStatus.paymentFailed:
         return 'payment_failed';
       case PaymentStatus.refunded:
         return 'refunded';
-      case PaymentStatus.partiallyRefunded:
-        return 'partially_refunded';
+      case PaymentStatus.sessionExpired:
+        return 'session_expired';
     }
   }
 
@@ -161,15 +182,20 @@ extension PaymentStatusExtension on PaymentStatus {
     switch (value?.toLowerCase()) {
       case 'awaiting_payment':
         return PaymentStatus.awaitingPayment;
-      case 'payment_received':
-      case 'authorized': // Legacy compatibility
-        return PaymentStatus.paymentReceived;
+      case 'processing':
+        return PaymentStatus.processing;
+      case 'paid':
+        return PaymentStatus.paid;
+      case 'authorized':
+        return PaymentStatus.authorized;
+      case 'captured':
+        return PaymentStatus.captured;
       case 'payment_failed':
         return PaymentStatus.paymentFailed;
       case 'refunded':
         return PaymentStatus.refunded;
-      case 'partially_refunded':
-        return PaymentStatus.partiallyRefunded;
+      case 'session_expired':
+        return PaymentStatus.sessionExpired;
       default:
         return PaymentStatus.awaitingPayment;
     }

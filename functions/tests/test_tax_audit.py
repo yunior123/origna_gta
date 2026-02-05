@@ -164,8 +164,9 @@ class TestTaxAudit(unittest.TestCase):
         # Inspect Stripe Call
         args, kwargs = mock_stripe.checkout.Session.create.call_args
         
-        # Verify automatic_tax enabled
-        self.assertTrue(kwargs.get('automatic_tax', {}).get('enabled'))
+        # OrignaGTA calculates tax server-side and adds it as a line item.
+        # Stripe automatic_tax is intentionally disabled to avoid double taxation.
+        self.assertFalse(kwargs.get('automatic_tax', {}).get('enabled', False))
         
         # Verify Line Item Tax Code
         line_items = kwargs['line_items']

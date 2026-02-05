@@ -1,5 +1,5 @@
 {
-  "description": "Product ratings for an order\nReplaces Map<String, dynamic> with typed object",
+  "description": "Product rating within an order.",
   "properties": {
     "productId": {
       "minLength": 1,

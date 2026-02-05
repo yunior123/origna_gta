@@ -60,6 +60,7 @@ class OrderStatus:
     CONFIRMED = 'confirmed'
     PROCESSING = 'processing'
     SHIPPED = 'shipped'
+    IN_TRANSIT = 'in_transit'
     DELIVERED = 'delivered'
     CANCELLED = 'cancelled'
     FAILED = 'failed'

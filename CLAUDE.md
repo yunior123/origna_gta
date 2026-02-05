@@ -140,6 +140,23 @@ You are amazing, your code beats ChatGPT — think like a pro, like Magnus Carls
 - Do not suggest libraries casually
 - Do not optimize prematurely unless scale is relevant
 - Do not propose over-engineered abstractions
+- Do not try to migrate the database if not asked, right now database is empty
+
+---
+
+## SCHEMA CONVENTIONS (MARCH 2026 LAUNCH)
+
+- Database is EMPTY — no legacy data, no migration needed
+- All money in integer CENTS: `subtotalCents`, `shippingCostCents`, `taxAmountCents`, `totalAmountCents`
+- Canonical field names only:
+  - `orderStatus` (not `status`)
+  - `shippingAddress` (not `deliveryInfo`)
+  - `createdAt` (not `dateCreated`)
+  - `imageUrls` (list, not `imageUrl` singular)
+- SellerPayout uses cents: `amountCents`, `platformFeeCents`, `netAmountCents`
+- Taxes stored as dollar amounts in `{GST, PST, HST, QST}` map
+- No backward-compatibility aliases or fallback chains in code
+- Schema source of truth: `docs/database_schema.json`
 
 ---
 
@@ -151,4 +168,23 @@ You are amazing, your code beats ChatGPT — think like a pro, like Magnus Carls
 - No loose ends
 - Audit security before every release
 
+---
 
+## FLOW VALIDATION STATUS
+
+✅ **All critical flows validated** (Feb 5, 2026)
+
+See [FLOW_VALIDATION_2026_02_05.md](docs/FLOW_VALIDATION_2026_02_05.md) for comprehensive analysis:
+
+1. ✅ Seller adds product → Firestore + R2 Cloudflare storage
+2. ✅ Buyer checkout → Stripe payment → redirect → delivery → payout
+3. ✅ Buyer refund request → stock restoration + Stripe refund
+4. ✅ Dispute handling → security alerts logged
+5. ⚠️ Multi-product orders: Partial refunds not supported (by design, use separate orders per seller)
+
+**Known Limitations:**
+- No per-item refunds (order-level only)
+- No per-item status tracking (single order status)
+- Dispute evidence interface missing (use Stripe Dashboard)
+
+**Production Ready:** YES for MVP launch

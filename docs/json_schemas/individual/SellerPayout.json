@@ -1,12 +1,12 @@
 {
-  "description": "Payout information for a seller in an order",
+  "description": "Payout information for a seller in an order. All money in cents.",
   "example": {
-    "amount": 47.5,
-    "netAmount": 46.31,
-    "platformFee": 1.19,
+    "amountCents": 4750,
+    "netAmountCents": 4631,
+    "platformFeeCents": 119,
     "sellerId": "seller_123",
-    "sellerStripeAccountId": "acct_123",
-    "status": "pending"
+    "status": "pending",
+    "stripeAccountId": "acct_123"
   },
   "properties": {
     "sellerId": {
@@ -14,7 +14,7 @@
       "title": "Sellerid",
       "type": "string"
     },
-    "sellerStripeAccountId": {
+    "stripeAccountId": {
       "anyOf": [
         {
           "type": "string"
@@ -24,25 +24,25 @@
         }
       ],
       "default": null,
-      "title": "Sellerstripeaccountid"
+      "title": "Stripeaccountid"
     },
-    "amount": {
-      "description": "Seller's portion before platform fee",
+    "amountCents": {
+      "description": "Gross amount in cents",
       "minimum": 0,
-      "title": "Amount",
-      "type": "number"
+      "title": "Amountcents",
+      "type": "integer"
     },
-    "platformFee": {
-      "description": "Platform fee (2.5%)",
+    "platformFeeCents": {
+      "description": "Platform fee in cents",
       "minimum": 0,
-      "title": "Platformfee",
-      "type": "number"
+      "title": "Platformfeecents",
+      "type": "integer"
     },
-    "netAmount": {
-      "description": "Net amount after platform fee",
+    "netAmountCents": {
+      "description": "Net amount in cents",
       "minimum": 0,
-      "title": "Netamount",
-      "type": "number"
+      "title": "Netamountcents",
+      "type": "integer"
     },
     "status": {
       "default": "pending",
@@ -91,9 +91,9 @@
   },
   "required": [
     "sellerId",
-    "amount",
-    "platformFee",
-    "netAmount"
+    "amountCents",
+    "platformFeeCents",
+    "netAmountCents"
   ],
   "title": "SellerPayout",
   "type": "object"

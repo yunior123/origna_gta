@@ -116,7 +116,7 @@ class _SellerOrderCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Text(order.deliveryInfo.formattedAddress, style: const TextStyle(fontSize: 12)),
+            Text(order.shippingAddress.formattedAddress, style: const TextStyle(fontSize: 12)),
             const Divider(height: 24),
             if (order.paymentStatus == PaymentStatus.awaitingPayment) _buildAuthorizationBanner(context, ref),
             const Text('Your Items', style: TextStyle(fontWeight: FontWeight.bold)),

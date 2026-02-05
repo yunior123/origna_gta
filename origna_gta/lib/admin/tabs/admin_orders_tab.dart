@@ -222,7 +222,7 @@ class _AdminOrderCard extends StatelessWidget {
               _buildDetailRow('User ID', order.userId.isNotEmpty ? order.userId : 'Unknown'),
               _buildDetailRow('Payment Status', PaymentStatus.fromValue(order.paymentStatus).displayText),
               _buildDetailRow('Total', '\$${order.total.toStringAsFixed(2)}'),
-              if (order.deliveryInfo.isNotEmpty) _buildDetailRow('Address', _formatDeliveryAddress(order.deliveryInfo)),
+              if (order.shippingAddress.isNotEmpty) _buildDetailRow('Address', _formatDeliveryAddress(order.shippingAddress)),
             ],
           ),
         ),

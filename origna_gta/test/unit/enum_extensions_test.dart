@@ -11,9 +11,9 @@ void main() {
       expect(DeliveryStatusExtension.fromValue('UNKNOWN'), DeliveryStatus.pending);
     });
 
-    test('PaymentStatus extension handles legacy authorized', () {
-      expect(PaymentStatusExtension.fromValue('authorized'), PaymentStatus.paymentReceived);
-      expect(PaymentStatus.paymentReceived.value, 'payment_received');
+    test('PaymentStatus extension maps authorized value', () {
+      expect(PaymentStatusExtension.fromValue('authorized'), PaymentStatus.authorized);
+      expect(PaymentStatus.authorized.value, 'authorized');
       expect(PaymentStatus.refunded.displayText, 'Refunded');
     });
 

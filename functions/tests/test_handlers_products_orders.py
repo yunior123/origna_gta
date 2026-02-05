@@ -245,62 +245,12 @@ class TestProductHandlers:
 class TestOrderHandlers:
     """Test order lifecycle management"""
     
-    @patch('handlers.orders.create_success_response')
-    @patch('handlers.orders.stripe')
-    @patch('handlers.orders.get_db')
-    def test_confirm_order_receipt_captures_and_pays_seller(self, mock_get_db, mock_stripe, mock_create_response):
-        """Test buyer confirms receipt → capture payment → pay seller"""
+    @patch('handlers.payment_stripe.capture_payment')
+    def test_confirm_order_receipt_captures_and_pays_seller(self, mock_capture_payment):
+        """Test confirm_order_receipt delegates to capture_payment"""
         from handlers.orders import confirm_order_receipt
         
-        # Mock create_success_response to return proper dict
-        mock_create_response.return_value = {'success': True, 'captured': True}
-        
-        mock_db = Mock()
-        mock_get_db.return_value = mock_db
-        
-        # Mock order with shipped status and items with price
-        mock_order_doc = Mock()
-        mock_order_doc.exists = True
-        mock_order_doc.to_dict.return_value = {
-            'orderId': 'order_123',
-            'userId': 'buyer_123',
-            'orderStatus': 'shipped',  # Must be shipped or delivered
-            'paymentStatus': 'authorized',
-            'stripePaymentIntentId': 'pi_test_123',
-            'totalAmount': 100,
-            'items': [
-                {'sellerId': 'seller_456', 'price': 100.00, 'quantity': 1}
-            ]
-        }
-        
-        mock_order_ref = Mock()
-        mock_order_ref.get.return_value = mock_order_doc
-        
-        # Mock seller Connect account
-        mock_seller_doc = Mock()
-        mock_seller_doc.exists = True
-        mock_seller_doc.to_dict.return_value = {
-            'stripeAccountId': 'acct_seller_123',
-            'payoutsEnabled': True
-        }
-        mock_seller_ref = Mock()
-        mock_seller_ref.get.return_value = mock_seller_doc
-        
-        # Setup database mock
-        def document_side_effect(doc_id):
-            if doc_id == 'order_123':
-                return mock_order_ref
-            elif doc_id == 'seller_456':
-                return mock_seller_ref
-            return Mock()
-        
-        mock_db.collection.return_value.document.side_effect = document_side_effect
-        mock_db.collection.return_value.add.return_value = None
-        
-        # Mock Stripe — retrieve must return requires_capture with matching amount
-        mock_stripe.PaymentIntent.retrieve.return_value = Mock(status='requires_capture', amount=10000)
-        mock_stripe.PaymentIntent.capture.return_value = Mock(status='succeeded')
-        mock_stripe.Transfer.create.return_value = Mock(id='tr_test_123')
+        mock_capture_payment.return_value = {'success': True, 'captured': True}
         
         mock_request = Mock()
         mock_request.auth = Mock(uid="buyer_123")
@@ -309,30 +259,14 @@ class TestOrderHandlers:
         result = confirm_order_receipt(mock_request)
         
         assert result['success'] is True
+        mock_capture_payment.assert_called_once_with(mock_request)
     
-    @patch('handlers.orders.get_db')
-    def test_confirm_receipt_non_buyer_rejected(self, mock_get_db):
-        """SECURITY: Test only buyer can confirm receipt"""
+    @patch('handlers.payment_stripe.capture_payment')
+    def test_confirm_receipt_non_buyer_rejected(self, mock_capture_payment):
+        """SECURITY: confirm_order_receipt propagates capture_payment auth checks"""
         from handlers.orders import confirm_order_receipt
         
-        mock_db = Mock()
-        mock_get_db.return_value = mock_db
-        
-        mock_order_doc = Mock()
-        mock_order_doc.exists = True
-        mock_order_doc.to_dict.return_value = {
-            'orderId': 'order_123',
-            'userId': 'buyer_123',  # Real buyer
-            'orderStatus': 'delivered'
-        }
-        
-        mock_order_ref = Mock()
-        mock_order_ref.get.return_value = mock_order_doc
-        
-        # Mock collection
-        mock_collection = Mock()
-        mock_collection.document.return_value = mock_order_ref
-        mock_db.collection.return_value = mock_collection
+        mock_capture_payment.side_effect = https_fn.HttpsError('permission-denied', 'This is not your order')
         
         mock_request = Mock()
         mock_request.auth = Mock(uid="attacker_999")  # Different user

@@ -362,48 +362,61 @@ void main() {
       final map = {
         'sellerId': 'seller123',
         'stripeAccountId': 'acct_456',
-        'gross': 100.0,
-        'platformFee': 2.5,
-        'net': 97.5,
-        'paid': true,
-        'transferId': 'tr_789',
-        'paidAt': Timestamp.fromDate(DateTime(2024, 1, 20)),
+        'amountCents': 10000,
+        'platformFeeCents': 250,
+        'netAmountCents': 9750,
+        'status': 'completed',
+        'stripeTransferId': 'tr_789',
+        'payoutDate': Timestamp.fromDate(DateTime(2024, 1, 20)),
       };
 
       final payout = SellerPayout.fromMap(map);
 
       expect(payout.sellerId, 'seller123');
       expect(payout.stripeAccountId, 'acct_456');
-      expect(payout.gross, 100.0);
+      expect(payout.amountCents, 10000);
+      expect(payout.platformFeeCents, 250);
+      expect(payout.netAmountCents, 9750);
+      expect(payout.amount, 100.0);
       expect(payout.platformFee, 2.5);
-      expect(payout.net, 97.5);
+      expect(payout.netAmount, 97.5);
       expect(payout.paid, true);
-      expect(payout.transferId, 'tr_789');
-      expect(payout.paidAt, DateTime(2024, 1, 20));
+      expect(payout.stripeTransferId, 'tr_789');
+      expect(payout.payoutDate, DateTime(2024, 1, 20));
     });
 
     test('toMap returns correct map', () {
-      final payout = SellerPayout(sellerId: 'seller123', stripeAccountId: 'acct_456', gross: 100.0, platformFee: 2.5, net: 97.5, paid: false);
+      final payout = SellerPayout(
+        sellerId: 'seller123',
+        stripeAccountId: 'acct_456',
+        amountCents: 10000,
+        platformFeeCents: 250,
+        netAmountCents: 9750,
+        status: 'pending',
+      );
 
       final map = payout.toMap();
 
       expect(map['sellerId'], 'seller123');
       expect(map['stripeAccountId'], 'acct_456');
-      expect(map['gross'], 100.0);
-      expect(map['platformFee'], 2.5);
-      expect(map['net'], 97.5);
-      expect(map['paid'], false);
+      expect(map['amountCents'], 10000);
+      expect(map['platformFeeCents'], 250);
+      expect(map['netAmountCents'], 9750);
+      expect(map['status'], 'pending');
     });
 
-    test('copyWith creates new instance with updated fields', () {
-      final original = SellerPayout(sellerId: 'seller123', gross: 100.0, platformFee: 2.5, net: 97.5);
+    test('dollar getters compute correctly from cents', () {
+      final payout = SellerPayout(
+        sellerId: 'seller123',
+        amountCents: 10000,
+        platformFeeCents: 250,
+        netAmountCents: 9750,
+      );
 
-      final updated = original.copyWith(paid: true, transferId: 'tr_123');
-
-      expect(updated.paid, true);
-      expect(updated.transferId, 'tr_123');
-      expect(updated.sellerId, 'seller123'); // Unchanged
-      expect(original.paid, false); // Original unchanged
+      expect(payout.amount, 100.0);
+      expect(payout.platformFee, 2.5);
+      expect(payout.netAmount, 97.5);
+      expect(payout.paid, false); // status defaults to 'pending'
     });
   });
 }

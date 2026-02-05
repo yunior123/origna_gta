@@ -146,6 +146,7 @@ enum OrderStatus {
   confirmed('confirmed'),
   processing('processing'),
   shipped('shipped'),
+  inTransit('in_transit'),
   delivered('delivered'),
   cancelled('cancelled'),
   failed('failed'),
@@ -167,6 +168,8 @@ enum OrderStatus {
         return 'Processing';
       case OrderStatus.shipped:
         return 'Shipped';
+      case OrderStatus.inTransit:
+        return 'In Transit';
       case OrderStatus.delivered:
         return 'Delivered';
       case OrderStatus.cancelled:

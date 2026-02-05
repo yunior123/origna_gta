@@ -213,31 +213,37 @@ def validate_order_data(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
     This is a lightweight check before creating full Order object.
     Returns (True, None) on success or (False, error_message) on failure.
     """
-    required_fields = ['userId', 'customerEmail', 'amount', 'items']
-    for field in required_fields:
+    for field in ['userId', 'items']:
         if field not in data:
             return False, f"Missing required field: {field}"
-    
-    if not isinstance(data['amount'], (int, float)) or data['amount'] <= 0:
-        return False, "Invalid amount: must be positive number"
+
     if not isinstance(data['items'], list) or len(data['items']) == 0:
         return False, "Invalid items: must be non-empty array"
-    
-    # Validate email using Pydantic (faster than regex)
-    try:
-        from pydantic import EmailStr
-        EmailStr._validate(data['customerEmail'])
-    except Exception:
-        return False, "Invalid email address format"
 
-    # Validate address using Pydantic Address model (only for physical items)
+    # totalAmountCents is required (integer cents)
+    amount_cents = data.get('totalAmountCents')
+    if amount_cents is None or not isinstance(amount_cents, (int, float)) or isinstance(amount_cents, bool) or amount_cents < 0:
+        return False, "Invalid totalAmountCents: must be non-negative integer"
+
+    # customerEmail is optional (can be fetched from user doc)
+    customer_email = data.get('customerEmail')
+    if customer_email:
+        try:
+            from pydantic import EmailStr
+            EmailStr._validate(customer_email)
+        except Exception:
+            return False, "Invalid email address format"
+
+    # Validate address (only for physical items)
     has_physical_items = any(not item.get('isDigital', False) for item in data['items'])
     if has_physical_items:
-        if 'deliveryInfo' not in data or not data['deliveryInfo']:
-            return False, "Missing required field: deliveryInfo"
+        shipping_address = data.get('shippingAddress')
+        if not shipping_address:
+            return False, "Missing required field: shippingAddress"
+
         try:
-            validate_address_map(data['deliveryInfo'])
-        except ValueError as e:
+            validate_address_map(shipping_address)
+        except Exception as e:
             return False, str(e)
     
     # Validate each item
@@ -304,7 +310,8 @@ def is_valid_order_status_transition(current_status: str, new_status: str) -> bo
         'pending': ['confirmed', 'cancelled', 'failed'],
         'confirmed': ['processing', 'cancelled'],
         'processing': ['shipped', 'cancelled'],
-        'shipped': ['delivered', 'cancelled'],
+        'shipped': ['in_transit', 'delivered', 'cancelled'],
+        'in_transit': ['delivered', 'cancelled'],
         'delivered': ['refunded', 'partially_refunded'],
         'cancelled': [],
         'failed': ['pending'],

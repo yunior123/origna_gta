@@ -187,7 +187,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final order = widget.order;
-    final isAuthorized = order.paymentStatus == PaymentStatus.paymentReceived;
+    final isAuthorized = order.paymentStatus == PaymentStatus.authorized;
     final isPendingApproval = order.shippingApprovalStatus == ShippingApprovalStatus.pending;
 
     return Container(
@@ -266,7 +266,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                   Icon(Icons.location_on_outlined, size: 18, color: DesignTokens.primary),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(order.deliveryInfo.formattedAddress, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                    child: Text(order.shippingAddress.formattedAddress, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
                   ),
                 ],
               ),

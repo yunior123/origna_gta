@@ -340,29 +340,29 @@ def test_seller_payout_status_validation():
     # Valid statuses
     payout1 = SellerPayout(
         sellerId="seller_123",
-        amount=100.0,
-        platformFee=2.5,
-        netAmount=97.5,
+        amountCents=10000,
+        platformFeeCents=250,
+        netAmountCents=9750,
         status="pending",
     )
     assert payout1.status == "pending"
-    
+
     payout2 = SellerPayout(
         sellerId="seller_123",
-        amount=100.0,
-        platformFee=2.5,
-        netAmount=97.5,
+        amountCents=10000,
+        platformFeeCents=250,
+        netAmountCents=9750,
         status="completed",
     )
     assert payout2.status == "completed"
-    
+
     # Invalid status
     with pytest.raises(ValidationError):
         SellerPayout(
             sellerId="seller_123",
-            amount=100.0,
-            platformFee=2.5,
-            netAmount=97.5,
+            amountCents=10000,
+            platformFeeCents=250,
+            netAmountCents=9750,
             status="invalid_status",  # Invalid
         )
 

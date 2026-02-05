@@ -217,7 +217,10 @@ class TestAirwallexWebhookSecurity:
         # Arrange
         mock_request = Mock()
         mock_request.headers.get = Mock(side_effect=lambda h, default=None: {
+            'x-signature': 'test_signature',
             'X-Signature': 'test_signature',
+            'x-timestamp': '1700000000',
+            'X-Timestamp': '1700000000',
             'X-Forwarded-For': '192.168.1.1'
         }.get(h, default))
 
@@ -249,7 +252,9 @@ class TestAirwallexWebhookSecurity:
 
             # CRITIQUE: Vérifier que verify_webhook_signature a été appelé
             mock_service.return_value.verify_webhook_signature.assert_called_once_with(
-                payload, 'test_signature'
+                payload,
+                'test_signature',
+                timestamp='1700000000',
             )
     
     def test_json_parsing_after_signature_verification(self):
@@ -262,7 +267,10 @@ class TestAirwallexWebhookSecurity:
         # Arrange
         mock_request = Mock()
         mock_request.headers.get = Mock(side_effect=lambda h, default=None: {
+            'x-signature': 'invalid_sig',
             'X-Signature': 'invalid_sig',
+            'x-timestamp': '1700000000',
+            'X-Timestamp': '1700000000',
             'X-Forwarded-For': '192.168.1.1'
         }.get(h, default))
         mock_request.data = b'{"id": "evt_test", "name": "test"}'
