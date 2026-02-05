@@ -59,7 +59,7 @@ def get_utils():
     return _utils
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def airwallex_create_seller_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Creates Airwallex connected account for seller.
@@ -101,7 +101,7 @@ def airwallex_create_seller_account(req: https_fn.CallableRequest) -> Dict[str, 
         raise https_fn.HttpsError('internal', 'Failed to create seller account')
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def airwallex_process_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Creates Airwallex payment intent.
@@ -167,7 +167,7 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', 'Payment processing failed')
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def airwallex_capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Captures Airwallex payment after authorization.

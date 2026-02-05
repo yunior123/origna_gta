@@ -117,7 +117,7 @@ def _assert_seller_active(seller_id: str, require_approval: bool = True) -> Dict
     return seller_data
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS._asdict(), cors=CORS_CONFIG)
+@https_fn.on_call(**DEFAULT_OPTIONS, cors=CORS_CONFIG)
 def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Creates a Stripe Checkout session with server-side validation.
@@ -466,7 +466,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Stripe error: {str(e)}')
 
 
-@https_fn.on_request(**WEBHOOK_OPTIONS._asdict())
+@https_fn.on_request(**WEBHOOK_OPTIONS)
 def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     """
     Handles Stripe webhook events with strict security:
@@ -993,7 +993,7 @@ def process_account_updated(account: Dict) -> None:
     print(f"  ✅ Updated user {user_id} Stripe account status")
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def create_connect_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """Creates Stripe Connect account for seller onboarding"""
     if not req.auth:
@@ -1077,7 +1077,7 @@ def create_connect_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Could not create seller account: {e.user_message or "Please try again later."}')
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """Creates Stripe Connect onboarding link"""
     if not req.auth:
@@ -1121,7 +1121,7 @@ def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Could not create onboarding link: {str(e)}')
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def get_connect_account_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """Gets Stripe Connect account status"""
     if not req.auth:
@@ -1175,7 +1175,7 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Could not get account status: {str(e)}')
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Manually captures authorized payment and initiates seller payouts.

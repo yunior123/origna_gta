@@ -46,7 +46,7 @@ def get_server_timestamp():
     return get_firestore().SERVER_TIMESTAMP
 
 
-@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS._asdict())
+@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
 def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Auto-captures payments for orders delivered 7+ days ago.
@@ -177,7 +177,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
     print(f'Auto-capture completed: {captured_count} captured, {failed_count} failed')
 
 
-@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS._asdict())
+@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
 def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Expires orders with authorizations older than 7 days.
@@ -233,7 +233,7 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     print(f'Authorization check completed: {expired_count} orders expired')
 
 
-@scheduler_fn.on_schedule(schedule="every 12 hours", **CRON_OPTIONS._asdict())
+@scheduler_fn.on_schedule(schedule="every 12 hours", **CRON_OPTIONS)
 def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Archives orders delivered/cancelled 30+ days ago.
@@ -279,7 +279,7 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
     print(f'Archive completed: {archived_count} orders archived')
 
 
-@scheduler_fn.on_schedule(schedule="every 15 minutes", **CRON_OPTIONS._asdict())
+@scheduler_fn.on_schedule(schedule="every 15 minutes", **CRON_OPTIONS)
 def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Monitors Firestore-Algolia sync health.
@@ -334,7 +334,7 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
         print(f'Failed to monitor Algolia sync: {str(e)}')
 
 
-@scheduler_fn.on_schedule(schedule="every 30 minutes", **CRON_OPTIONS._asdict())
+@scheduler_fn.on_schedule(schedule="every 30 minutes", **CRON_OPTIONS)
 def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Removes rate limit documents older than 1 hour.
@@ -374,7 +374,7 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
     print(f'Rate limit cleanup completed: {deleted_count} documents deleted')
 
 
-@scheduler_fn.on_schedule(schedule="0 2 * * *", **CRON_OPTIONS._asdict())  # Daily at 02:00 UTC
+@scheduler_fn.on_schedule(schedule="0 2 * * *", **CRON_OPTIONS)  # Daily at 02:00 UTC
 def check_expired_authorizations_scheduled(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Wrapper for check_expired_authorizations to run at specific time.
