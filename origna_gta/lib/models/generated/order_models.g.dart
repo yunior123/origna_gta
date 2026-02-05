@@ -169,10 +169,24 @@ _$OrderItemImpl _$$OrderItemImplFromJson(
   sellerAddress: Address.fromJson(
     json['sellerAddress'] as Map<String, dynamic>,
   ),
+  status: json['status'] as String? ?? 'pending',
   deliveryStatus:
       $enumDecodeNullable(_$DeliveryStatusEnumMap, json['deliveryStatus']) ??
       DeliveryStatus.pending,
   trackingNumber: json['trackingNumber'] as String?,
+  carrier: json['carrier'] as String?,
+  shippedAt: json['shippedAt'] == null
+      ? null
+      : DateTime.parse(json['shippedAt'] as String),
+  deliveredAt: json['deliveredAt'] == null
+      ? null
+      : DateTime.parse(json['deliveredAt'] as String),
+  refundedAt: json['refundedAt'] == null
+      ? null
+      : DateTime.parse(json['refundedAt'] as String),
+  refundReason: json['refundReason'] as String?,
+  refundAmountCents: (json['refundAmountCents'] as num?)?.toInt(),
+  refundId: json['refundId'] as String?,
   confirmedByBuyer: json['confirmedByBuyer'] as bool? ?? false,
   weightKg: (json['weightKg'] as num?)?.toDouble(),
   lengthCm: (json['lengthCm'] as num?)?.toDouble(),
@@ -201,8 +215,16 @@ Map<String, dynamic> _$$OrderItemImplToJson(_$OrderItemImpl instance) =>
       'imageUrls': instance.imageUrls,
       'sellerId': instance.sellerId,
       'sellerAddress': instance.sellerAddress,
+      'status': instance.status,
       'deliveryStatus': _$DeliveryStatusEnumMap[instance.deliveryStatus]!,
       'trackingNumber': instance.trackingNumber,
+      'carrier': instance.carrier,
+      'shippedAt': instance.shippedAt?.toIso8601String(),
+      'deliveredAt': instance.deliveredAt?.toIso8601String(),
+      'refundedAt': instance.refundedAt?.toIso8601String(),
+      'refundReason': instance.refundReason,
+      'refundAmountCents': instance.refundAmountCents,
+      'refundId': instance.refundId,
       'confirmedByBuyer': instance.confirmedByBuyer,
       'weightKg': instance.weightKg,
       'lengthCm': instance.lengthCm,

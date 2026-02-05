@@ -232,8 +232,17 @@ class OrderItem with _$OrderItem {
     required List<String> imageUrls,
     required String sellerId,
     required Address sellerAddress,
-    @Default(DeliveryStatus.pending) DeliveryStatus deliveryStatus,
+    // Per-item status tracking (NEW)
+    @Default('pending') String status, // 'pending' | 'shipped' | 'delivered' | 'refunded'
+    @Default(DeliveryStatus.pending) DeliveryStatus deliveryStatus, // DEPRECATED: backwards compatibility
     String? trackingNumber,
+    String? carrier,
+    DateTime? shippedAt,
+    DateTime? deliveredAt,
+    DateTime? refundedAt,
+    String? refundReason,
+    int? refundAmountCents,
+    String? refundId,
     @Default(false) bool confirmedByBuyer,
     // Shipping metadata
     double? weightKg,

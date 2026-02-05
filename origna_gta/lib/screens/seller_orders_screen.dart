@@ -171,26 +171,45 @@ class _SellerOrderCard extends ConsumerWidget {
   }
 
   Widget _buildSellerItem(BuildContext context, WidgetRef ref, OrderItem item) {
-    final status = item.deliveryStatus;
+    // Use new status field, fallback to deliveryStatus for backwards compatibility
+    final statusStr = item.status;
     final isAuthorized = order.paymentStatus == PaymentStatus.awaitingPayment;
+    final isRefunded = statusStr == 'refunded';
 
     return ListTile(
       leading: Image.network(item.imageUrls.first, width: 40, height: 40, fit: BoxFit.cover, errorBuilder: (_, _, _) => const Icon(Icons.image)),
       title: Text(item.name, style: const TextStyle(fontSize: 14)),
-      subtitle: Text('Qty: ${item.quantity} • ${status.displayText}', style: const TextStyle(fontSize: 12)),
-      trailing: !isAuthorized && status != DeliveryStatus.delivered
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Qty: ${item.quantity} • ${_getStatusDisplayText(statusStr)}', style: const TextStyle(fontSize: 12)),
+          if (item.carrier != null) Text('Carrier: ${item.carrier}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          if (item.refundedAt != null) Text('Refunded: ${DateFormat.yMd().format(item.refundedAt!)}', style: const TextStyle(fontSize: 11, color: Colors.orange)),
+        ],
+      ),
+      trailing: !isAuthorized && statusStr != 'delivered' && !isRefunded
           ? IconButton(
-              icon: Icon(status == DeliveryStatus.shipped ? Icons.check_circle : Icons.local_shipping),
+              icon: Icon(statusStr == 'shipped' ? Icons.check_circle : Icons.local_shipping),
               onPressed: () {
-                if (status == DeliveryStatus.pending) {
+                if (statusStr == 'pending') {
                   _showMarkAsShippedDialog(context, ref, item);
                 } else {
-                  ref.read(sellerOrdersViewModelProvider.notifier).updateItemStatus(order.orderId, item.productId, DeliveryStatus.delivered.value);
+                  ref.read(sellerOrdersViewModelProvider.notifier).updateItemStatus(order.orderId, item.productId, 'delivered');
                 }
               },
             )
           : null,
     );
+  }
+
+  String _getStatusDisplayText(String status) {
+    switch (status) {
+      case 'pending': return 'Pending';
+      case 'shipped': return 'Shipped';
+      case 'delivered': return 'Delivered';
+      case 'refunded': return 'Refunded';
+      default: return status;
+    }
   }
 
   void _showMarkAsShippedDialog(BuildContext context, WidgetRef ref, OrderItem item) {

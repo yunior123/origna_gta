@@ -1191,9 +1191,20 @@ mixin _$OrderItem {
   int get quantity => throw _privateConstructorUsedError;
   List<String> get imageUrls => throw _privateConstructorUsedError;
   String get sellerId => throw _privateConstructorUsedError;
-  Address get sellerAddress => throw _privateConstructorUsedError;
-  DeliveryStatus get deliveryStatus => throw _privateConstructorUsedError;
+  Address get sellerAddress =>
+      throw _privateConstructorUsedError; // Per-item status tracking (NEW)
+  String get status =>
+      throw _privateConstructorUsedError; // 'pending' | 'shipped' | 'delivered' | 'refunded'
+  DeliveryStatus get deliveryStatus =>
+      throw _privateConstructorUsedError; // DEPRECATED: backwards compatibility
   String? get trackingNumber => throw _privateConstructorUsedError;
+  String? get carrier => throw _privateConstructorUsedError;
+  DateTime? get shippedAt => throw _privateConstructorUsedError;
+  DateTime? get deliveredAt => throw _privateConstructorUsedError;
+  DateTime? get refundedAt => throw _privateConstructorUsedError;
+  String? get refundReason => throw _privateConstructorUsedError;
+  int? get refundAmountCents => throw _privateConstructorUsedError;
+  String? get refundId => throw _privateConstructorUsedError;
   bool get confirmedByBuyer =>
       throw _privateConstructorUsedError; // Shipping metadata
   double? get weightKg => throw _privateConstructorUsedError;
@@ -1233,8 +1244,16 @@ abstract class $OrderItemCopyWith<$Res> {
     List<String> imageUrls,
     String sellerId,
     Address sellerAddress,
+    String status,
     DeliveryStatus deliveryStatus,
     String? trackingNumber,
+    String? carrier,
+    DateTime? shippedAt,
+    DateTime? deliveredAt,
+    DateTime? refundedAt,
+    String? refundReason,
+    int? refundAmountCents,
+    String? refundId,
     bool confirmedByBuyer,
     double? weightKg,
     double? lengthCm,
@@ -1275,8 +1294,16 @@ class _$OrderItemCopyWithImpl<$Res, $Val extends OrderItem>
     Object? imageUrls = null,
     Object? sellerId = null,
     Object? sellerAddress = null,
+    Object? status = null,
     Object? deliveryStatus = null,
     Object? trackingNumber = freezed,
+    Object? carrier = freezed,
+    Object? shippedAt = freezed,
+    Object? deliveredAt = freezed,
+    Object? refundedAt = freezed,
+    Object? refundReason = freezed,
+    Object? refundAmountCents = freezed,
+    Object? refundId = freezed,
     Object? confirmedByBuyer = null,
     Object? weightKg = freezed,
     Object? lengthCm = freezed,
@@ -1324,6 +1351,10 @@ class _$OrderItemCopyWithImpl<$Res, $Val extends OrderItem>
                 ? _value.sellerAddress
                 : sellerAddress // ignore: cast_nullable_to_non_nullable
                       as Address,
+            status: null == status
+                ? _value.status
+                : status // ignore: cast_nullable_to_non_nullable
+                      as String,
             deliveryStatus: null == deliveryStatus
                 ? _value.deliveryStatus
                 : deliveryStatus // ignore: cast_nullable_to_non_nullable
@@ -1331,6 +1362,34 @@ class _$OrderItemCopyWithImpl<$Res, $Val extends OrderItem>
             trackingNumber: freezed == trackingNumber
                 ? _value.trackingNumber
                 : trackingNumber // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            carrier: freezed == carrier
+                ? _value.carrier
+                : carrier // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            shippedAt: freezed == shippedAt
+                ? _value.shippedAt
+                : shippedAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            deliveredAt: freezed == deliveredAt
+                ? _value.deliveredAt
+                : deliveredAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            refundedAt: freezed == refundedAt
+                ? _value.refundedAt
+                : refundedAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            refundReason: freezed == refundReason
+                ? _value.refundReason
+                : refundReason // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            refundAmountCents: freezed == refundAmountCents
+                ? _value.refundAmountCents
+                : refundAmountCents // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            refundId: freezed == refundId
+                ? _value.refundId
+                : refundId // ignore: cast_nullable_to_non_nullable
                       as String?,
             confirmedByBuyer: null == confirmedByBuyer
                 ? _value.confirmedByBuyer
@@ -1414,8 +1473,16 @@ abstract class _$$OrderItemImplCopyWith<$Res>
     List<String> imageUrls,
     String sellerId,
     Address sellerAddress,
+    String status,
     DeliveryStatus deliveryStatus,
     String? trackingNumber,
+    String? carrier,
+    DateTime? shippedAt,
+    DateTime? deliveredAt,
+    DateTime? refundedAt,
+    String? refundReason,
+    int? refundAmountCents,
+    String? refundId,
     bool confirmedByBuyer,
     double? weightKg,
     double? lengthCm,
@@ -1456,8 +1523,16 @@ class __$$OrderItemImplCopyWithImpl<$Res>
     Object? imageUrls = null,
     Object? sellerId = null,
     Object? sellerAddress = null,
+    Object? status = null,
     Object? deliveryStatus = null,
     Object? trackingNumber = freezed,
+    Object? carrier = freezed,
+    Object? shippedAt = freezed,
+    Object? deliveredAt = freezed,
+    Object? refundedAt = freezed,
+    Object? refundReason = freezed,
+    Object? refundAmountCents = freezed,
+    Object? refundId = freezed,
     Object? confirmedByBuyer = null,
     Object? weightKg = freezed,
     Object? lengthCm = freezed,
@@ -1505,6 +1580,10 @@ class __$$OrderItemImplCopyWithImpl<$Res>
             ? _value.sellerAddress
             : sellerAddress // ignore: cast_nullable_to_non_nullable
                   as Address,
+        status: null == status
+            ? _value.status
+            : status // ignore: cast_nullable_to_non_nullable
+                  as String,
         deliveryStatus: null == deliveryStatus
             ? _value.deliveryStatus
             : deliveryStatus // ignore: cast_nullable_to_non_nullable
@@ -1512,6 +1591,34 @@ class __$$OrderItemImplCopyWithImpl<$Res>
         trackingNumber: freezed == trackingNumber
             ? _value.trackingNumber
             : trackingNumber // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        carrier: freezed == carrier
+            ? _value.carrier
+            : carrier // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        shippedAt: freezed == shippedAt
+            ? _value.shippedAt
+            : shippedAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        deliveredAt: freezed == deliveredAt
+            ? _value.deliveredAt
+            : deliveredAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        refundedAt: freezed == refundedAt
+            ? _value.refundedAt
+            : refundedAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        refundReason: freezed == refundReason
+            ? _value.refundReason
+            : refundReason // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        refundAmountCents: freezed == refundAmountCents
+            ? _value.refundAmountCents
+            : refundAmountCents // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        refundId: freezed == refundId
+            ? _value.refundId
+            : refundId // ignore: cast_nullable_to_non_nullable
                   as String?,
         confirmedByBuyer: null == confirmedByBuyer
             ? _value.confirmedByBuyer
@@ -1578,8 +1685,16 @@ class _$OrderItemImpl extends _OrderItem {
     required final List<String> imageUrls,
     required this.sellerId,
     required this.sellerAddress,
+    this.status = 'pending',
     this.deliveryStatus = DeliveryStatus.pending,
     this.trackingNumber,
+    this.carrier,
+    this.shippedAt,
+    this.deliveredAt,
+    this.refundedAt,
+    this.refundReason,
+    this.refundAmountCents,
+    this.refundId,
     this.confirmedByBuyer = false,
     this.weightKg,
     this.lengthCm,
@@ -1621,11 +1736,31 @@ class _$OrderItemImpl extends _OrderItem {
   final String sellerId;
   @override
   final Address sellerAddress;
+  // Per-item status tracking (NEW)
+  @override
+  @JsonKey()
+  final String status;
+  // 'pending' | 'shipped' | 'delivered' | 'refunded'
   @override
   @JsonKey()
   final DeliveryStatus deliveryStatus;
+  // DEPRECATED: backwards compatibility
   @override
   final String? trackingNumber;
+  @override
+  final String? carrier;
+  @override
+  final DateTime? shippedAt;
+  @override
+  final DateTime? deliveredAt;
+  @override
+  final DateTime? refundedAt;
+  @override
+  final String? refundReason;
+  @override
+  final int? refundAmountCents;
+  @override
+  final String? refundId;
   @override
   @JsonKey()
   final bool confirmedByBuyer;
@@ -1668,7 +1803,7 @@ class _$OrderItemImpl extends _OrderItem {
 
   @override
   String toString() {
-    return 'OrderItem(productId: $productId, name: $name, description: $description, price: $price, quantity: $quantity, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, deliveryStatus: $deliveryStatus, trackingNumber: $trackingNumber, confirmedByBuyer: $confirmedByBuyer, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital)';
+    return 'OrderItem(productId: $productId, name: $name, description: $description, price: $price, quantity: $quantity, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, status: $status, deliveryStatus: $deliveryStatus, trackingNumber: $trackingNumber, carrier: $carrier, shippedAt: $shippedAt, deliveredAt: $deliveredAt, refundedAt: $refundedAt, refundReason: $refundReason, refundAmountCents: $refundAmountCents, refundId: $refundId, confirmedByBuyer: $confirmedByBuyer, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital)';
   }
 
   @override
@@ -1692,10 +1827,24 @@ class _$OrderItemImpl extends _OrderItem {
                 other.sellerId == sellerId) &&
             (identical(other.sellerAddress, sellerAddress) ||
                 other.sellerAddress == sellerAddress) &&
+            (identical(other.status, status) || other.status == status) &&
             (identical(other.deliveryStatus, deliveryStatus) ||
                 other.deliveryStatus == deliveryStatus) &&
             (identical(other.trackingNumber, trackingNumber) ||
                 other.trackingNumber == trackingNumber) &&
+            (identical(other.carrier, carrier) || other.carrier == carrier) &&
+            (identical(other.shippedAt, shippedAt) ||
+                other.shippedAt == shippedAt) &&
+            (identical(other.deliveredAt, deliveredAt) ||
+                other.deliveredAt == deliveredAt) &&
+            (identical(other.refundedAt, refundedAt) ||
+                other.refundedAt == refundedAt) &&
+            (identical(other.refundReason, refundReason) ||
+                other.refundReason == refundReason) &&
+            (identical(other.refundAmountCents, refundAmountCents) ||
+                other.refundAmountCents == refundAmountCents) &&
+            (identical(other.refundId, refundId) ||
+                other.refundId == refundId) &&
             (identical(other.confirmedByBuyer, confirmedByBuyer) ||
                 other.confirmedByBuyer == confirmedByBuyer) &&
             (identical(other.weightKg, weightKg) ||
@@ -1735,8 +1884,16 @@ class _$OrderItemImpl extends _OrderItem {
     const DeepCollectionEquality().hash(_imageUrls),
     sellerId,
     sellerAddress,
+    status,
     deliveryStatus,
     trackingNumber,
+    carrier,
+    shippedAt,
+    deliveredAt,
+    refundedAt,
+    refundReason,
+    refundAmountCents,
+    refundId,
     confirmedByBuyer,
     weightKg,
     lengthCm,
@@ -1775,8 +1932,16 @@ abstract class _OrderItem extends OrderItem {
     required final List<String> imageUrls,
     required final String sellerId,
     required final Address sellerAddress,
+    final String status,
     final DeliveryStatus deliveryStatus,
     final String? trackingNumber,
+    final String? carrier,
+    final DateTime? shippedAt,
+    final DateTime? deliveredAt,
+    final DateTime? refundedAt,
+    final String? refundReason,
+    final int? refundAmountCents,
+    final String? refundId,
     final bool confirmedByBuyer,
     final double? weightKg,
     final double? lengthCm,
@@ -1810,11 +1975,27 @@ abstract class _OrderItem extends OrderItem {
   @override
   String get sellerId;
   @override
-  Address get sellerAddress;
+  Address get sellerAddress; // Per-item status tracking (NEW)
   @override
-  DeliveryStatus get deliveryStatus;
+  String get status; // 'pending' | 'shipped' | 'delivered' | 'refunded'
+  @override
+  DeliveryStatus get deliveryStatus; // DEPRECATED: backwards compatibility
   @override
   String? get trackingNumber;
+  @override
+  String? get carrier;
+  @override
+  DateTime? get shippedAt;
+  @override
+  DateTime? get deliveredAt;
+  @override
+  DateTime? get refundedAt;
+  @override
+  String? get refundReason;
+  @override
+  int? get refundAmountCents;
+  @override
+  String? get refundId;
   @override
   bool get confirmedByBuyer; // Shipping metadata
   @override

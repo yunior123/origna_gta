@@ -287,9 +287,11 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
   }
 
   Widget _buildOrderItem(BuildContext context, OrderItem item, bool isOrderConfirmed) {
-    final deliveryStatus = item.deliveryStatus;
-    final isShipped = deliveryStatus == DeliveryStatus.shipped;
-    final isDelivered = deliveryStatus == DeliveryStatus.delivered;
+    // Use new status field, fallback to deliveryStatus for backwards compatibility
+    final status = item.status;
+    final isShipped = status == 'shipped';
+    final isDelivered = status == 'delivered';
+    final isRefunded = status == 'refunded';
     final isRated = _isProductRated(item.productId);
     final isConfirmed = _isItemConfirmed(item);
     final isConfirmingThis = _isConfirming && _confirmingItemId == item.productId;
@@ -298,17 +300,21 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     String statusText;
     IconData statusIcon;
 
-    if (isDelivered) {
+    if (isRefunded) {
+      statusColor = Colors.orange;
+      statusText = 'Refunded';
+      statusIcon = Icons.money_off;
+    } else if (isDelivered) {
       statusColor = Colors.green;
-      statusText = DeliveryStatus.delivered.displayText;
+      statusText = 'Delivered';
       statusIcon = Icons.check_circle;
     } else if (isShipped) {
       statusColor = Colors.blue;
-      statusText = DeliveryStatus.shipped.displayText;
+      statusText = 'Shipped';
       statusIcon = Icons.local_shipping;
     } else {
       statusColor = const Color(0xFF764BA2);
-      statusText = DeliveryStatus.pending.displayText;
+      statusText = 'Pending';
       statusIcon = Icons.hourglass_empty;
     }
 
