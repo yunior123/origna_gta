@@ -16,7 +16,7 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   }
   final uri = Uri.tryParse(initialRoute);
   if (kDebugMode && uri != null) {
-    print('🔗 Parsed path: ${uri.path}');
+    debugPrint('🔗 Parsed path: ${uri.path}');
   }
 
   // Handle payment success redirect from Stripe

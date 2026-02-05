@@ -6,6 +6,7 @@ Admin & User Management Handlers
 - Account deletion
 """
 
+from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CORS_CONFIG, CRON_OPTIONS
 from firebase_functions import https_fn
 from firebase_admin import auth
 import pyotp
@@ -79,7 +80,7 @@ def _require_recent_admin_mfa(admin_data: Dict[str, Any]) -> None:
         )
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Updates user roles (admin only with MFA).
@@ -187,7 +188,7 @@ def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
     return create_success_response({'newRoles': new_roles})
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Suspends a seller account (admin only with MFA).
@@ -373,7 +374,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
     })
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def admin_mfa_enroll(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Enrolls admin in MFA (TOTP).
@@ -425,7 +426,7 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> Dict[str, Any]:
     })
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def admin_mfa_verify(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Verifies MFA code and enables MFA.
@@ -480,7 +481,7 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> Dict[str, Any]:
     return create_success_response({'mfaEnabled': True})
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def admin_mfa_disable(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Disables MFA (requires current MFA verification).
@@ -529,7 +530,7 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> Dict[str, Any]:
     return create_success_response({'mfaEnabled': False})
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Deletes user account (GDPR compliance).

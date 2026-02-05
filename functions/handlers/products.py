@@ -7,6 +7,7 @@ Product Management Handlers
 - Rating submission
 """
 
+from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CORS_CONFIG, CRON_OPTIONS
 from firebase_functions import https_fn, firestore_fn, options
 from typing import Dict, Any, Optional
 import boto3
@@ -147,7 +148,7 @@ def upload_product_images(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Failed to generate upload URLs: {str(e)}')
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Soft deletes a product (sets isActive = False).
@@ -224,7 +225,7 @@ def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
     return create_success_response({'message': 'Product deleted successfully'})
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Submits a product rating after order delivery.
@@ -345,7 +346,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
     raise https_fn.HttpsError('not-found', 'Product not found')
 
 
-@firestore_fn.on_document_created(document="products/{productId}")
+@firestore_fn.on_document_created(document="products/{productId}", **DEFAULT_OPTIONS._asdict())
 def on_product_created(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Indexes product to Algolia when created.
@@ -386,7 +387,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         print(f'Failed to index product {product_id}: {str(e)}')
 
 
-@firestore_fn.on_document_updated(document="products/{productId}")
+@firestore_fn.on_document_updated(document="products/{productId}", **DEFAULT_OPTIONS._asdict())
 def on_product_updated(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Updates product in Algolia when modified.
@@ -415,7 +416,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         print(f'Failed to update product {product_id} in Algolia: {str(e)}')
 
 
-@firestore_fn.on_document_deleted(document="products/{productId}")
+@firestore_fn.on_document_deleted(document="products/{productId}", **DEFAULT_OPTIONS._asdict())
 def on_product_deleted(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Removes product from Algolia when deleted.
@@ -429,7 +430,7 @@ def on_product_deleted(event: firestore_fn.Event) -> None:
         print(f'Failed to delete product {product_id} from Algolia: {str(e)}')
 
 
-@https_fn.on_call(cors=cors_config)
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict(), cors=CORS_CONFIG)
 def configure_algolia(req: https_fn.CallableRequest) -> dict:
     """
     One-time setup: Configures Algolia index settings.
@@ -460,7 +461,7 @@ def configure_algolia(req: https_fn.CallableRequest) -> dict:
         raise https_fn.HttpsError('internal', str(e))
 
 
-@https_fn.on_call(cors=cors_config)
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict(), cors=CORS_CONFIG)
 def get_products_paginated(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Récupère les produits avec pagination (lazy loading).
@@ -560,7 +561,7 @@ def get_products_paginated(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Failed to fetch products: {str(e)}')
 
 
-@https_fn.on_call(cors=cors_config)
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict(), cors=CORS_CONFIG)
 def get_seller_products_paginated(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Récupère les produits d'un vendeur avec pagination.
@@ -660,7 +661,7 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> Dict[str, An
         raise https_fn.HttpsError('internal', f'Failed to fetch seller products: {str(e)}')
 
 
-@https_fn.on_call(cors=cors_config)
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict(), cors=CORS_CONFIG)
 def get_product_ratings_paginated(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Récupère les ratings d'un produit avec pagination (lazy loading).

@@ -187,9 +187,9 @@ class FirebaseAuthRepository implements AuthRepository {
     // ✅ Only create Firestore document if email is verified
     if (userCredential.user != null && userCredential.user!.emailVerified) {
       await _createUserDocumentIfNeeded(userCredential.user);
-      debugPrint('✅ Email verified - Firestore document created/updated for ${trimmedEmail}');
+      debugPrint('✅ Email verified - Firestore document created/updated for $trimmedEmail');
     } else {
-      debugPrint('⚠️ Email NOT verified - Firestore document NOT created for ${trimmedEmail}');
+      debugPrint('⚠️ Email NOT verified - Firestore document NOT created for $trimmedEmail');
     }
     
     return userCredential;

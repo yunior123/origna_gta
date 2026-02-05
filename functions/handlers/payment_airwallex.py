@@ -6,6 +6,7 @@ Airwallex Payment Handlers
 - Webhook handling
 """
 
+from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CORS_CONFIG, CRON_OPTIONS
 from firebase_functions import https_fn
 from typing import Dict, Any
 
@@ -58,7 +59,7 @@ def get_utils():
     return _utils
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def airwallex_create_seller_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Creates Airwallex connected account for seller.
@@ -100,7 +101,7 @@ def airwallex_create_seller_account(req: https_fn.CallableRequest) -> Dict[str, 
         raise https_fn.HttpsError('internal', 'Failed to create seller account')
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def airwallex_process_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Creates Airwallex payment intent.
@@ -166,7 +167,7 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', 'Payment processing failed')
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def airwallex_capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Captures Airwallex payment after authorization.

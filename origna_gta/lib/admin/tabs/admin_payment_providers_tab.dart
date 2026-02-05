@@ -209,7 +209,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isEnabled ? const Color(0xFF667EEA).withOpacity(0.1) : Colors.grey[200],
+                    color: isEnabled ? const Color(0xFF667EEA).withValues(alpha: 0.1) : Colors.grey[200],
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -263,7 +263,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                   onChanged: isConfigured || isEnabled
                       ? (value) => _toggleProvider(provider, name, value, isConfigured)
                       : null, // Disable switch if not configured and not enabled
-                  activeColor: const Color(0xFF667EEA),
+                  activeTrackColor: const Color(0xFF667EEA),
                 ),
               ],
             ),
@@ -311,7 +311,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                           color: isEnabled ? const Color(0xFF667EEA) : Colors.grey,
                         ),
                       ),
-                      backgroundColor: isEnabled ? const Color(0xFF667EEA).withOpacity(0.1) : Colors.grey[100],
+                      backgroundColor: isEnabled ? const Color(0xFF667EEA).withValues(alpha: 0.1) : Colors.grey[100],
                       side: BorderSide.none,
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                     ),

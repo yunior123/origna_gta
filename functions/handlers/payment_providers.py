@@ -12,6 +12,7 @@ Providers Supported:
 - airwallex: Airwallex payment processing (international)
 """
 
+from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CORS_CONFIG, CRON_OPTIONS
 from firebase_functions import https_fn
 from typing import Dict, Any, Optional
 from datetime import datetime
@@ -236,7 +237,7 @@ def _require_admin(req: https_fn.CallableRequest) -> tuple:
 # ADMIN FUNCTIONS
 # ============================================================================
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def get_payment_providers(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Get all payment provider configurations (admin only).
@@ -287,7 +288,7 @@ def get_payment_providers(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', 'Failed to get provider config')
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def update_payment_provider(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Enable or disable a payment provider (admin only).
@@ -400,7 +401,7 @@ def update_payment_provider(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', 'Failed to update provider')
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def get_provider_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Get status of enabled payment providers (public - for payment UI).

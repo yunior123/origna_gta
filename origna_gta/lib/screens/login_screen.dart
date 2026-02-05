@@ -167,7 +167,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                         Checkbox(
                                           value: state.acceptedTerms,
                                           onChanged: (v) => viewModel.setAcceptedTerms(v ?? false),
-                                          activeColor: DesignTokens.primary,
+                                          fillColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                                            if (states.contains(WidgetState.selected)) {
+                                              return DesignTokens.primary;
+                                            }
+                                            return null;
+                                          }),
                                         ),
                                         Expanded(
                                           child: RichText(

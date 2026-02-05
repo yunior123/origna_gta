@@ -6,6 +6,7 @@ Order Lifecycle Management Handlers
 - Order cancellation
 """
 
+from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CORS_CONFIG, CRON_OPTIONS
 from firebase_functions import https_fn, firestore_fn
 import stripe
 from typing import Dict, Any
@@ -48,7 +49,7 @@ def get_firestore():
     return _firestore
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Buyer confirms order receipt, triggering payment capture and seller payouts.
@@ -219,7 +220,7 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Stripe error: {str(e)}')
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def update_order_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Updates order status (seller or admin only).
@@ -307,7 +308,7 @@ def update_order_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     return create_success_response({'newStatus': new_status})
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Cancels an order and issues refund if payment was captured.
@@ -407,7 +408,7 @@ def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     return create_success_response({'refunded': refunded})
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def approve_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Buyer approves updated shipping cost.
@@ -494,7 +495,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
     return create_success_response({'approved': approved})
 
 
-@firestore_fn.on_document_updated(document="orders/{orderId}")
+@firestore_fn.on_document_updated(document="orders/{orderId}", **DEFAULT_OPTIONS._asdict())
 def on_order_status_changed(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Sends email notifications when order status changes.

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/screens/main_screen.dart';
 import 'package:origna_gta/services/splash_service.dart';
-import 'package:origna_gta/utils/design_tokens.dart';
 
 class AuthWrapper extends ConsumerStatefulWidget {
   const AuthWrapper({super.key});

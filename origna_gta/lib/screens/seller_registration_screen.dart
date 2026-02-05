@@ -230,7 +230,12 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                               )
                             : null,
                         controlAffinity: ListTileControlAffinity.leading,
-                        activeColor: DesignTokens.primary,
+                        fillColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return DesignTokens.primary;
+                          }
+                          return null;
+                        }),
                         contentPadding: EdgeInsets.zero,
                       ),
                       const SizedBox(height: 12),
@@ -509,7 +514,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
         return providerStatus['configured'] == true;
       },
       loading: () => true,
-      error: (_, __) => true,
+      error: (_, _) => true,
     );
     final isDisabled = config.comingSoon || !isConfiguredInBackend;
     
@@ -593,7 +598,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                   return providerStatus['configured'] == true;
                 },
                 loading: () => true, // While loading, show as available
-                error: (_, __) => true, // On error, show as available
+                error: (_, _) => true, // On error, show as available
               );
               
               // Provider is disabled if it's marked "comingSoon" OR not configured in backend

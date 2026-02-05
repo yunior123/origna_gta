@@ -24,6 +24,7 @@ from utils import (
 )
 from rate_limiter import RateLimiter
 from shipping_service import calculate_shipping_cost, get_tax_rate
+from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CORS_CONFIG
 
 stripe.api_key = STRIPE_SECRET_KEY
 _db = None
@@ -67,11 +68,6 @@ def get_transactional():
         from firebase_admin import firestore as fs
         _firestore = fs
     return _firestore.transactional
-
-cors_config = options.CorsOptions(
-    cors_origins="*",
-    cors_methods=["get", "post", "options"],
-)
 
 
 def _assert_seller_active(seller_id: str, require_approval: bool = True) -> Dict[str, Any]:
@@ -121,7 +117,7 @@ def _assert_seller_active(seller_id: str, require_approval: bool = True) -> Dict
     return seller_data
 
 
-@https_fn.on_call(cors=cors_config)
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict(), cors=CORS_CONFIG)
 def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Creates a Stripe Checkout session with server-side validation.
@@ -470,7 +466,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Stripe error: {str(e)}')
 
 
-@https_fn.on_request(timeout_sec=60)
+@https_fn.on_request(**WEBHOOK_OPTIONS._asdict())
 def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     """
     Handles Stripe webhook events with strict security:
@@ -997,7 +993,7 @@ def process_account_updated(account: Dict) -> None:
     print(f"  ✅ Updated user {user_id} Stripe account status")
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def create_connect_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """Creates Stripe Connect account for seller onboarding"""
     if not req.auth:
@@ -1081,7 +1077,7 @@ def create_connect_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Could not create seller account: {e.user_message or "Please try again later."}')
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """Creates Stripe Connect onboarding link"""
     if not req.auth:
@@ -1125,7 +1121,7 @@ def create_account_link(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Could not create onboarding link: {str(e)}')
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def get_connect_account_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """Gets Stripe Connect account status"""
     if not req.auth:
@@ -1179,7 +1175,7 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Could not get account status: {str(e)}')
 
 
-@https_fn.on_call()
+@https_fn.on_call(**DEFAULT_OPTIONS._asdict())
 def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Manually captures authorized payment and initiates seller payouts.
