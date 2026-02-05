@@ -159,6 +159,119 @@ def update_order_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
+def update_item_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Updates per-item status for multi-product orders (seller or admin only).
+    Enables tracking individual items in multi-seller orders.
+    
+    Request data:
+        orderId: Order ID
+        productId: Product ID to update
+        newStatus: Target status ('pending' | 'shipped' | 'delivered' | 'refunded')
+        trackingNumber: Optional (for shipped status)
+        carrier: Optional (for shipped status)
+    
+    Returns:
+        {success: True, itemStatus: "shipped", allItemsDelivered: bool}
+    """
+    if not req.auth:
+        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+    
+    user_id = req.auth.uid
+    data = req.data
+    
+    # Import validation functions
+    from utils import sanitized_text
+    
+    order_id = data.get('orderId')
+    product_id = data.get('productId')
+    new_status = data.get('newStatus')
+    tracking_number_raw = data.get('trackingNumber')
+    carrier_raw = data.get('carrier')
+    
+    # Sanitize inputs
+    tracking_number = sanitized_text(tracking_number_raw)[:100] if tracking_number_raw else None
+    carrier = sanitized_text(carrier_raw)[:50] if carrier_raw else None
+    
+    if not order_id or not product_id or not new_status:
+        raise https_fn.HttpsError('invalid-argument', 'orderId, productId, and newStatus required')
+    
+    # Validate status value
+    valid_statuses = ['pending', 'shipped', 'delivered', 'refunded']
+    if new_status not in valid_statuses:
+        raise https_fn.HttpsError('invalid-argument', f'Status must be one of: {valid_statuses}')
+    
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    order_doc = order_ref.get()
+    
+    if not order_doc.exists:
+        raise https_fn.HttpsError('not-found', 'Order not found')
+    
+    order_data = order_doc.to_dict()
+    items = order_data.get('items', [])
+    
+    # Find the item to update
+    item_index = None
+    item_seller_id = None
+    for idx, item in enumerate(items):
+        if item['productId'] == product_id:
+            item_index = idx
+            item_seller_id = item['sellerId']
+            break
+    
+    if item_index is None:
+        raise https_fn.HttpsError('not-found', f'Product {product_id} not found in order')
+    
+    # Check permissions
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
+    user_doc = user_ref.get()
+    
+    if not user_doc.exists:
+        raise https_fn.HttpsError('not-found', 'User not found')
+    
+    user_data = user_doc.to_dict()
+    is_admin = 'admin' in user_data.get('roles', [])
+    is_item_seller = (item_seller_id == user_id)
+    
+    if not (is_admin or is_item_seller):
+        raise https_fn.HttpsError('permission-denied', 'Only the item seller or admin can update item status')
+    
+    # Update the item
+    items[item_index]['status'] = new_status
+    
+    if new_status == 'shipped':
+        items[item_index]['shippedAt'] = get_server_timestamp()
+        if tracking_number:
+            items[item_index]['trackingNumber'] = tracking_number
+            items[item_index]['carrier'] = carrier or ''
+    
+    elif new_status == 'delivered':
+        items[item_index]['deliveredAt'] = get_server_timestamp()
+        items[item_index]['confirmedByBuyer'] = True
+    
+    # Check if all items are delivered
+    all_items_delivered = all(item.get('status') == 'delivered' for item in items)
+    
+    # Update order
+    update_data = {
+        'items': items,
+        'updatedAt': get_server_timestamp()
+    }
+    
+    # If all items delivered, update order status
+    if all_items_delivered and order_data.get('orderStatus') != OrderStatus.DELIVERED:
+        update_data['orderStatus'] = OrderStatus.DELIVERED
+        update_data['deliveryStatus'] = DeliveryStatus.DELIVERED
+    
+    order_ref.update(update_data)
+    
+    return create_success_response({
+        'itemStatus': new_status,
+        'allItemsDelivered': all_items_delivered
+    })
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     Cancels an order and issues refund if payment was captured.
@@ -185,6 +298,278 @@ def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     # Sanitize reason input to prevent XSS
     reason = sanitized_text(reason_raw)[:500]  # Max 500 chars
     
+    if not order_id:
+        raise https_fn.HttpsError('invalid-argument', 'orderId required')
+    
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    order_doc = order_ref.get()
+    
+    if not order_doc.exists:
+        raise https_fn.HttpsError('not-found', 'Order not found')
+    
+    order_data = order_doc.to_dict()
+    
+    # Check permissions
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
+    user_doc = user_ref.get()
+    
+    if not user_doc.exists:
+        raise https_fn.HttpsError('not-found', 'User not found')
+    
+    user_data = user_doc.to_dict()
+    is_admin = 'admin' in user_data.get('roles', [])
+    is_buyer = (order_data.get('userId') == user_id)
+    
+    # Check if user is seller for any item
+    is_seller = any(item['sellerId'] == user_id for item in order_data['items'])
+    
+    if not (is_admin or is_buyer or is_seller):
+        raise https_fn.HttpsError('permission-denied', 'Only buyer, seller, or admin can cancel order')
+    
+    # Check if order can be cancelled
+    current_status = order_data['orderStatus']
+    payment_status = order_data.get('paymentStatus')
+    
+    if current_status in [OrderStatus.DELIVERED, OrderStatus.REFUNDED]:
+        raise https_fn.HttpsError('failed-precondition', 'Cannot cancel delivered or refunded orders')
+    
+    # Restore stock atomically (idempotency handled by stockRestored flag)
+    if not order_data.get('stockRestored', False):
+        for item in order_data['items']:
+            product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
+            product_ref.update({
+                'stockQuantity': get_firestore().Increment(item['quantity']),
+                'updatedAt': get_server_timestamp()
+            })
+    
+    # Issue refund if payment was captured
+    refunded = False
+    if payment_status == PaymentStatus.CAPTURED:
+        payment_intent_id = order_data.get('stripePaymentIntentId')
+        if payment_intent_id:
+            try:
+                stripe.Refund.create(
+                    payment_intent=payment_intent_id,
+                    reason='requested_by_customer',
+                    metadata={'orderId': order_id},
+                    idempotency_key=f'refund_{order_id}'
+                )
+                refunded = True
+            except stripe.error.StripeError as e:
+                print(f'Refund failed: {str(e)}')
+    
+    # Update order
+    order_ref.update({
+        'orderStatus': OrderStatus.CANCELLED,
+        'paymentStatus': PaymentStatus.REFUNDED if refunded else payment_status,
+        'cancelledBy': user_id,
+        'cancelledAt': get_server_timestamp(),
+        'cancellationReason': reason,
+        'stockRestored': True,
+        'updatedAt': get_server_timestamp()
+    })
+    
+    return create_success_response({'refunded': refunded})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def refund_order_item(req: https_fn.CallableRequest) -> Dict[str, Any]:
+    """
+    Refunds a specific item from a multi-item order (partial refund).
+    
+    Features:
+    - Calculates proportional refund amount (item + proportional tax/shipping)
+    - Restores stock for refunded item
+    - Updates item status to 'refunded'
+    - Reverses seller transfer if payout already completed
+    
+    Request data:
+        orderId: Order ID
+        productId: Product ID to refund
+        reason: Refund reason (optional)
+    
+    Returns:
+        {success: True, refundAmount: float, refundId: str}
+    """
+    if not req.auth:
+        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+    
+    user_id = req.auth.uid
+    data = req.data
+    
+    order_id = data.get('orderId')
+    product_id = data.get('productId')
+    reason_raw = data.get('reason', 'Item refund requested')
+    
+    # Import validation functions
+    from utils import sanitized_text
+    
+    # Sanitize reason input
+    reason = sanitized_text(reason_raw)[:500]
+    
+    if not order_id or not product_id:
+        raise https_fn.HttpsError('invalid-argument', 'orderId and productId required')
+    
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    order_doc = order_ref.get()
+    
+    if not order_doc.exists:
+        raise https_fn.HttpsError('not-found', 'Order not found')
+    
+    order_data = order_doc.to_dict()
+    
+    # Check permissions
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
+    user_doc = user_ref.get()
+    
+    if not user_doc.exists:
+        raise https_fn.HttpsError('not-found', 'User not found')
+    
+    user_data = user_doc.to_dict()
+    is_admin = 'admin' in user_data.get('roles', [])
+    is_buyer = (order_data.get('userId') == user_id)
+    
+    if not (is_admin or is_buyer):
+        raise https_fn.HttpsError('permission-denied', 'Only buyer or admin can refund items')
+    
+    # Check if payment was captured
+    payment_status = order_data.get('paymentStatus')
+    if payment_status != PaymentStatus.CAPTURED:
+        raise https_fn.HttpsError('failed-precondition', 'Cannot refund uncaptured payment')
+    
+    # Find the item
+    items = order_data.get('items', [])
+    item_index = None
+    item_data = None
+    
+    for idx, item in enumerate(items):
+        if item['productId'] == product_id:
+            item_index = idx
+            item_data = item
+            break
+    
+    if item_index is None:
+        raise https_fn.HttpsError('not-found', f'Product {product_id} not found in order')
+    
+    # Check if item already refunded
+    if item_data.get('status') == 'refunded':
+        raise https_fn.HttpsError('failed-precondition', 'Item already refunded')
+    
+    # Calculate refund amount (all in cents to avoid float errors)
+    item_price_cents = round(item_data['price'] * 100)
+    item_quantity = item_data['quantity']
+    item_subtotal_cents = item_price_cents * item_quantity
+    
+    # Calculate proportional tax and shipping
+    order_subtotal_cents = order_data.get('subtotalAmountCents', 0)
+    order_tax_cents = order_data.get('taxAmountCents', 0)
+    order_shipping_cents = order_data.get('shippingCostCents', 0)
+    
+    if order_subtotal_cents > 0:
+        proportion = item_subtotal_cents / order_subtotal_cents
+        proportional_tax_cents = round(order_tax_cents * proportion)
+        proportional_shipping_cents = round(order_shipping_cents * proportion)
+    else:
+        proportional_tax_cents = 0
+        proportional_shipping_cents = 0
+    
+    refund_amount_cents = item_subtotal_cents + proportional_tax_cents + proportional_shipping_cents
+    
+    # Create Stripe refund
+    payment_intent_id = order_data.get('stripePaymentIntentId')
+    if not payment_intent_id:
+        raise https_fn.HttpsError('failed-precondition', 'No payment intent found')
+    
+    try:
+        refund = stripe.Refund.create(
+            payment_intent=payment_intent_id,
+            amount=refund_amount_cents,
+            reason='requested_by_customer',
+            metadata={
+                'orderId': order_id,
+                'productId': product_id,
+                'itemSubtotal': item_subtotal_cents,
+                'proportionalTax': proportional_tax_cents,
+                'proportionalShipping': proportional_shipping_cents
+            },
+            idempotency_key=f'refund_{order_id}_{product_id}'
+        )
+    except stripe.error.StripeError as e:
+        raise https_fn.HttpsError('internal', f'Refund failed: {str(e)}')
+    
+    # Restore stock for this item
+    product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+    product_ref.update({
+        'stockQuantity': get_firestore().Increment(item_quantity),
+        'updatedAt': get_server_timestamp()
+    })
+    
+    # Update item status
+    items[item_index]['status'] = 'refunded'
+    items[item_index]['refundedAt'] = get_server_timestamp()
+    items[item_index]['refundReason'] = reason
+    items[item_index]['refundAmountCents'] = refund_amount_cents
+    items[item_index]['refundId'] = refund.id
+    
+    # Reverse seller transfer if payout exists
+    seller_id = item_data['sellerId']
+    payout_query = get_db().collection(Collections.PAYOUTS).where(
+        'orderId', '==', order_id
+    ).where(
+        'sellerId', '==', seller_id
+    ).where(
+        'status', '==', 'completed'
+    ).limit(1).get()
+    
+    if len(payout_query) > 0:
+        payout_doc = payout_query[0]
+        payout_data = payout_doc.to_dict()
+        
+        # Calculate proportional reversal amount
+        seller_total_cents = payout_data.get('amountCents', 0)
+        platform_fee_cents = payout_data.get('platformFeeCents', 0)
+        
+        if seller_total_cents > 0:
+            seller_proportion = item_subtotal_cents / seller_total_cents
+            reversal_amount_cents = round(payout_data.get('netAmountCents', 0) * seller_proportion)
+            
+            try:
+                stripe_transfer_id = payout_data.get('stripeTransferId')
+                if stripe_transfer_id:
+                    reversal = stripe.Transfer.create_reversal(
+                        stripe_transfer_id,
+                        amount=reversal_amount_cents,
+                        metadata={
+                            'orderId': order_id,
+                            'productId': product_id,
+                            'reason': 'item_refund'
+                        }
+                    )
+                    
+                    # Log partial reversal
+                    payout_doc.reference.update({
+                        'partialReversals': get_firestore().ArrayUnion([{
+                            'reversalId': reversal.id,
+                            'amountCents': reversal_amount_cents,
+                            'productId': product_id,
+                            'createdAt': get_server_timestamp()
+                        }]),
+                        'updatedAt': get_server_timestamp()
+                    })
+            except stripe.error.StripeError as e:
+                # Log failed reversal but don't fail the refund
+                print(f'Transfer reversal failed for {seller_id}: {str(e)}')
+    
+    # Update order
+    order_ref.update({
+        'items': items,
+        'updatedAt': get_server_timestamp()
+    })
+    
+    return create_success_response({
+        'refundAmount': refund_amount_cents / 100,  # Return in dollars
+        'refundId': refund.id
+    })
     if not order_id:
         raise https_fn.HttpsError('invalid-argument', 'orderId required')
     

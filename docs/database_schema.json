@@ -724,6 +724,114 @@
       ]
     },
 
+    "payouts": {
+      "description": "Seller payout records (Stripe Transfers)",
+      "documentId": "{auto-generated}",
+      "fields": {
+        "orderId": {
+          "type": "string",
+          "required": true,
+          "description": "Associated order ID"
+        },
+        "sellerId": {
+          "type": "string",
+          "required": true,
+          "description": "Seller user ID"
+        },
+        "amountCents": {
+          "type": "integer",
+          "required": true,
+          "description": "Total seller revenue before platform fee (in cents)"
+        },
+        "platformFeeCents": {
+          "type": "integer",
+          "required": true,
+          "description": "Platform fee deducted (2.5% in cents)"
+        },
+        "netAmountCents": {
+          "type": "integer",
+          "required": true,
+          "description": "Net payout to seller after fee (in cents)"
+        },
+        "status": {
+          "type": "string",
+          "required": true,
+          "description": "Payout status",
+          "values": ["completed", "failed", "reversed", "reversed_dispute"]
+        },
+        "stripeTransferId": {
+          "type": "string",
+          "required": false,
+          "description": "Stripe Transfer ID"
+        },
+        "reversalId": {
+          "type": "string",
+          "required": false,
+          "description": "Stripe Transfer Reversal ID (if reversed)"
+        },
+        "partialReversals": {
+          "type": "array<map>",
+          "required": false,
+          "description": "List of partial reversals for per-item refunds",
+          "schema": {
+            "reversalId": "string - Stripe Reversal ID",
+            "amountCents": "integer - Amount reversed in cents",
+            "productId": "string - Product ID refunded",
+            "createdAt": "timestamp"
+          }
+        },
+        "disputeId": {
+          "type": "string",
+          "required": false,
+          "description": "Stripe Dispute ID (if reversed due to dispute)"
+        },
+        "failureReason": {
+          "type": "string",
+          "required": false,
+          "description": "Failure reason (if status=failed)"
+        },
+        "payoutDate": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When payout was completed"
+        },
+        "reversedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When payout was reversed"
+        },
+        "autoCaptured": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether payout was created by auto-capture cron"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "required": true,
+          "description": "Payout record creation time"
+        },
+        "updatedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "Last update timestamp"
+        }
+      },
+      "indexes": [
+        {
+          "fields": ["orderId"],
+          "description": "Query payouts by order"
+        },
+        {
+          "fields": ["sellerId", "status"],
+          "description": "Query seller payouts"
+        },
+        {
+          "fields": ["stripeTransferId"],
+          "description": "Webhook lookup by transfer ID"
+        }
+      ]
+    },
+
     "webhook_logs": {
       "description": "Audit trail for Stripe webhook events",
       "documentId": "{auto-generated}",
@@ -940,16 +1048,58 @@
           "description": "Seller's address for shipping",
           "schema": "$ref:Address"
         },
+        "status": {
+          "type": "string",
+          "default": "pending",
+          "description": "Per-item status for granular tracking",
+          "values": ["pending", "shipped", "delivered", "refunded"]
+        },
         "deliveryStatus": {
           "type": "string",
           "default": "pending",
-          "description": "Item delivery status",
+          "description": "DEPRECATED: Use 'status' field instead. Legacy field for backwards compatibility",
           "values": ["pending", "shipped", "delivered"]
         },
         "trackingNumber": {
           "type": "string",
           "required": false,
-          "description": "Shipping tracking number"
+          "description": "Shipping tracking number for this item"
+        },
+        "carrier": {
+          "type": "string",
+          "required": false,
+          "description": "Shipping carrier (e.g., Canada Post, Purolator)"
+        },
+        "shippedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When this item was shipped"
+        },
+        "deliveredAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When this item was delivered"
+        },
+        "refundedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When this item was refunded"
+        },
+        "refundReason": {
+          "type": "string",
+          "required": false,
+          "description": "Reason for refund (if status=refunded)",
+          "maxLength": 500
+        },
+        "refundAmountCents": {
+          "type": "integer",
+          "required": false,
+          "description": "Partial refund amount in cents (item + proportional tax/shipping)"
+        },
+        "refundId": {
+          "type": "string",
+          "required": false,
+          "description": "Stripe Refund ID (if refunded)"
         },
         "confirmedByBuyer": {
           "type": "boolean",

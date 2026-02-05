@@ -101,13 +101,17 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                 'updatedAt': get_server_timestamp()
             })
             
-            # Create payouts for sellers - ALL in cents
+            # Create payouts ONLY for sellers whose items are delivered
+            items = order_data.get('items', [])
             sellers_total_cents = {}
-            for item in order_data['items']:
-                seller_id = item['sellerId']
-                item_price_cents = round(item['price'] * 100)
-                item_total_cents = item_price_cents * item['quantity']
-                sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
+            for item in items:
+                # Only include delivered items (or all items if no per-item status tracking)
+                item_status = item.get('status', 'pending')
+                if item_status in ['delivered', 'pending']:  # 'pending' for backwards compatibility
+                    seller_id = item['sellerId']
+                    item_price_cents = round(item['price'] * 100)
+                    item_total_cents = item_price_cents * item['quantity']
+                    sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
             
             for seller_id, amount_cents in sellers_total_cents.items():
                 platform_fee_cents = round(amount_cents * PLATFORM_FEE_PERCENT)
@@ -127,6 +131,8 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                                 amount=net_amount_cents,
                                 currency='cad',
                                 destination=stripe_account_id,
+                                source_transaction=payment_intent_id,
+                                transfer_group=order_id,
                                 metadata={
                                     'orderId': order_id,
                                     'sellerId': seller_id,

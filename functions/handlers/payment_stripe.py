@@ -314,8 +314,12 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'imageUrls': image_urls if image_urls else [''],
             'isDigital': product_data.get('isDigital', False),
             'categoryId': product_data.get('categoryId', 0),
-            'deliveryStatus': 'pending',
+            'status': 'pending',  # Per-item status: pending | shipped | delivered | refunded
+            'deliveryStatus': 'pending',  # Legacy field (kept for backwards compatibility)
             'trackingNumber': None,
+            'carrier': None,
+            'shippedAt': None,
+            'deliveredAt': None,
             'confirmedByBuyer': False,
             'freeShipping': product_data.get('freeShipping', False),
             'isLocalDeliveryOnly': product_data.get('isLocalDeliveryOnly', False),
@@ -1374,10 +1378,14 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         # Capture the payment
         payment_intent = stripe.PaymentIntent.capture(payment_intent_id)
 
+        # Check if all items are delivered before capturing
+        items = order_data.get('items', [])
+        all_items_delivered = all(item.get('status') == 'delivered' for item in items)
+        
         # Update order
         order_ref.update({
             'paymentStatus': PaymentStatus.CAPTURED,
-            'orderStatus': OrderStatus.DELIVERED,
+            'orderStatus': OrderStatus.DELIVERED if all_items_delivered else order_status,
             'capturedAt': get_server_timestamp(),
             'confirmedByClient': True,
             'confirmedAt': get_server_timestamp(),
@@ -1385,14 +1393,17 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'updatedAt': get_server_timestamp()
         })
         
-        # Create payouts for sellers - ALL calculations in cents
+        # Create payouts ONLY for sellers whose items are delivered
         sellers_total_cents = {}
-        for item in order_data['items']:
-            seller_id = item['sellerId']
-            # Price is in dollars, convert to cents
-            item_price_cents = round(item['price'] * 100)
-            item_total_cents = item_price_cents * item['quantity']
-            sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
+        for item in items:
+            # Only include delivered items (or all items if no per-item status tracking)
+            item_status = item.get('status', 'pending')
+            if item_status in ['delivered', 'pending']:  # 'pending' for backwards compatibility
+                seller_id = item['sellerId']
+                # Price is in dollars, convert to cents
+                item_price_cents = round(item['price'] * 100)
+                item_total_cents = item_price_cents * item['quantity']
+                sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
         
         for seller_id, amount_cents in sellers_total_cents.items():
             # Platform fee in cents (rounded)
@@ -1426,6 +1437,8 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                         amount=net_amount_cents,
                         currency='cad',
                         destination=stripe_account_id,
+                        source_transaction=payment_intent_id,
+                        transfer_group=order_id,
                         metadata={
                             'orderId': order_id,
                             'sellerId': seller_id
