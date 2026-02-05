@@ -288,16 +288,30 @@ service cloud.firestore {
       // This prevents client-side order manipulation
       allow create: if false;
       
-      // Backend/admin only with state machine validation
+      // Backend/admin only with state machine validation and field whitelisting
       // Phase 3.5 fields: sellerCaptures, captureAttempts, requiresManualReview, fraudScore
       allow update: if isAdmin() &&
         // CRITICAL: Validate order status transitions
         isValidOrderStateTransition(resource.data.status, request.resource.data.status) &&
+        // CRITICAL: Whitelist updatable fields — prevent overwriting totalAmount, userId, paymentIntentId
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'orderStatus', 'paymentStatus', 'deliveryStatus',
+          'adminNote', 'updatedAt', 'cancelledAt', 'cancelledBy',
+          'cancellationReason', 'confirmedAt', 'shippedAt',
+          'trackingNumber', 'carrier', 'stockRestored',
+          // Phase 3.5 fields
+          'sellerCaptures', 'captureAttempts', 'requiresManualReview', 'fraudScore'
+        ]) &&
         // Phase 3.5: Validate new fields if present
         (!request.resource.data.keys().hasAny(['sellerCaptures']) || request.resource.data.sellerCaptures is map) &&
         (!request.resource.data.keys().hasAny(['captureAttempts']) || request.resource.data.captureAttempts is int) &&
         (!request.resource.data.keys().hasAny(['requiresManualReview']) || request.resource.data.requiresManualReview is bool) &&
-        (!request.resource.data.keys().hasAny(['fraudScore']) || (request.resource.data.fraudScore is int && request.resource.data.fraudScore >= 0 && request.resource.data.fraudScore <= 100));
+        (!request.resource.data.keys().hasAny(['fraudScore']) || (request.resource.data.fraudScore is int && request.resource.data.fraudScore >= 0 && request.resource.data.fraudScore <= 100)) &&
+        // CRITICAL: Immutable fields — admin cannot change financial data or ownership
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.totalAmount == resource.data.totalAmount &&
+        request.resource.data.subtotal == resource.data.subtotal &&
+        request.resource.data.items == resource.data.items;
       
       // No one can delete orders (only backend)
       allow delete: if false;

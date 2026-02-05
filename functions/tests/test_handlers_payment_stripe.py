@@ -509,22 +509,24 @@ class TestCapturePayment:
     @patch('handlers.payment_stripe.create_success_response')
     @patch('handlers.payment_stripe.get_db')
     @patch('handlers.payment_stripe.stripe.PaymentIntent.capture')
-    def test_successful_payment_capture(self, mock_capture, mock_get_db, mock_success_response):
+    @patch('handlers.payment_stripe.stripe.PaymentIntent.retrieve')
+    def test_successful_payment_capture(self, mock_retrieve, mock_capture, mock_get_db, mock_success_response):
         """Test successful payment capture after receipt confirmation"""
         from handlers.payment_stripe import capture_payment
-        
+
         # Mock create_success_response to return the dict directly
         mock_success_response.side_effect = lambda data: {'success': True, **data}
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
-        
+
         # Mock order with authorized payment and complete items
         mock_order_data = {
             'orderId': 'order_123',
             'paymentStatus': 'authorized',
             'status': 'confirmed',
             'stripePaymentIntentId': 'pi_test_123',
+            'totalAmount': 100,
             'items': [{
                 'productId': 'prod_1',
                 'quantity': 2,
@@ -540,17 +542,20 @@ class TestCapturePayment:
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_order_doc
         mock_db.collection.return_value.document.return_value = mock_doc_ref
-        
+
+        # Mock PI retrieve to return requires_capture status with matching amount
+        mock_retrieve.return_value = Mock(status='requires_capture', amount=10000)
         mock_capture.return_value = Mock(status='succeeded')
-        
+
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")
         mock_request.data = {'orderId': 'order_123'}
-        
+
         result = capture_payment(mock_request)
-        
+
         assert result['success'] is True
         assert result['captured'] is True
+        mock_retrieve.assert_called_once_with('pi_test_123')
         mock_capture.assert_called_once_with('pi_test_123')
     
     @patch('handlers.payment_stripe.get_db')
@@ -576,25 +581,21 @@ class TestCapturePayment:
         
         assert exc.value.code == 'not-found'
     
-    @patch('handlers.payment_stripe.create_success_response')
     @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe.PaymentIntent.capture')
-    def test_capture_already_captured_payment_fails(self, mock_capture, mock_get_db, mock_success_response):
-        """Test double capture is prevented"""
+    @patch('handlers.payment_stripe.stripe.PaymentIntent.retrieve')
+    def test_capture_already_captured_payment_fails(self, mock_retrieve, mock_get_db):
+        """Test double capture is prevented — retrieve returns non-capturable status"""
         from handlers.payment_stripe import capture_payment
-        
-        # Mock create_success_response to return the dict directly
-        mock_success_response.side_effect = lambda data: {'success': True, **data}
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
-        
-        # Mock order with payment ready to be captured (status is 'authorized', not 'captured')
+
         mock_order_data = {
             'orderId': 'order_123',
-            'paymentStatus': 'authorized',  # Not yet captured, so it tries to capture
+            'paymentStatus': 'authorized',
             'status': 'confirmed',
             'stripePaymentIntentId': 'pi_test_123',
+            'totalAmount': 100,
             'items': [{
                 'productId': 'prod_1',
                 'quantity': 2,
@@ -610,49 +611,47 @@ class TestCapturePayment:
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_order_doc
         mock_db.collection.return_value.document.return_value = mock_doc_ref
-        
-        # Stripe will throw error if payment already captured
-        mock_capture.side_effect = Exception("This PaymentIntent has already been captured")
-        
+
+        # PI already captured — retrieve returns 'succeeded' status
+        mock_retrieve.return_value = Mock(status='succeeded', amount=10000)
+
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")
         mock_request.data = {'orderId': 'order_123'}
-        
-        # The function should raise HttpsError when Stripe capture fails
+
         with pytest.raises(https_fn.HttpsError) as exc:
             capture_payment(mock_request)
-        
-        assert exc.value.code == 'internal'
-        assert 'already been captured' in str(exc.value)
+
+        assert exc.value.code == 'failed-precondition'
     
     @patch('handlers.payment_stripe.get_db')
     @patch('handlers.payment_stripe.stripe.PaymentIntent.capture')
-    def test_capture_expired_authorization_fails(self, mock_capture, mock_get_db):
+    @patch('handlers.payment_stripe.stripe.PaymentIntent.retrieve')
+    def test_capture_expired_authorization_fails(self, mock_retrieve, mock_capture, mock_get_db):
         """Test capture fails for expired authorization (>7 days)"""
         from handlers.payment_stripe import capture_payment
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
-        
-        # Order created 8 days ago
-        created_8_days_ago = datetime.now() - timedelta(days=8)
-        
+
         mock_order_doc = create_mock_order_doc(payment_status='authorized')
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_order_doc
         mock_db.collection.return_value.document.return_value = mock_doc_ref
-        
+
+        # Retrieve succeeds but capture fails with expired
+        mock_retrieve.return_value = Mock(status='requires_capture', amount=10000)
         mock_capture.side_effect = stripe.error.InvalidRequestError(
             "This PaymentIntent's charge has expired", None
         )
-        
+
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")
         mock_request.data = {'orderId': 'order_123'}
-        
+
         with pytest.raises(https_fn.HttpsError) as exc:
             capture_payment(mock_request)
-        
+
         assert 'expired' in str(exc.value).lower()
 
 

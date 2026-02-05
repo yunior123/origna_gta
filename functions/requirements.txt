@@ -10,7 +10,6 @@ click==8.1.8
 cloudevents==1.9.0
 cryptography==46.0.3
 deprecation==2.1.0
-firebase-functions==0.1.2
 firebase_admin==7.1.0
 Flask==3.1.2
 flask-cors==6.0.2

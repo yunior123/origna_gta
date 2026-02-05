@@ -81,3 +81,6 @@ origna_gta/test-results/
 
 # Never commit debug dumps that may contain secrets
 functions/stripe.txt
+
+# Audit output
+audit/output/

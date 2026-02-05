@@ -108,9 +108,26 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('failed-precondition', 'No payment intent found')
     
     try:
+        # Validate PI is in capturable state before capturing
+        payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+
+        if payment_intent.status != 'requires_capture':
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                f'Payment cannot be captured (status: {payment_intent.status})'
+            )
+
+        # Validate capture amount matches order total (prevent tampering)
+        expected_amount_cents = int(order_data['totalAmount'] * 100)
+        if payment_intent.amount != expected_amount_cents:
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                'Payment amount does not match order total'
+            )
+
         # Capture the payment
         payment_intent = stripe.PaymentIntent.capture(payment_intent_id)
-        
+
         # Update order
         order_ref.update({
             'paymentStatus': PaymentStatus.CAPTURED,
@@ -195,7 +212,9 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> Dict[str, Any]:
                     })
         
         return create_success_response({'captured': True})
-        
+
+    except https_fn.HttpsError:
+        raise
     except stripe.error.StripeError as e:
         raise https_fn.HttpsError('internal', f'Stripe error: {str(e)}')
 
@@ -368,7 +387,8 @@ def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
             try:
                 refund = stripe.Refund.create(
                     payment_intent=payment_intent_id,
-                    reason='requested_by_customer'
+                    reason='requested_by_customer',
+                    idempotency_key=f"refund_{order_id}"
                 )
                 refunded = True
             except stripe.error.StripeError as e:
@@ -464,17 +484,12 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'updatedAt': get_server_timestamp()
         })
         
-        # Restore stock
+        # Restore stock using atomic Increment (prevents race conditions)
         for item in order_data['items']:
             product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
-            product_doc = product_ref.get()
-            
-            if product_doc.exists:
-                product_data = product_doc.to_dict()
-                current_stock = product_data.get('stockQuantity', 0)
-                product_ref.update({
-                    'stockQuantity': current_stock + item['quantity']
-                })
+            product_ref.update({
+                'stockQuantity': get_firestore().Increment(item['quantity'])
+            })
     
     return create_success_response({'approved': approved})
 

@@ -267,6 +267,7 @@ class TestOrderHandlers:
             'orderStatus': 'shipped',  # Must be shipped or delivered
             'paymentStatus': 'authorized',
             'stripePaymentIntentId': 'pi_test_123',
+            'totalAmount': 100,
             'items': [
                 {'sellerId': 'seller_456', 'price': 100.00, 'quantity': 1}
             ]
@@ -296,7 +297,8 @@ class TestOrderHandlers:
         mock_db.collection.return_value.document.side_effect = document_side_effect
         mock_db.collection.return_value.add.return_value = None
         
-        # Mock Stripe
+        # Mock Stripe — retrieve must return requires_capture with matching amount
+        mock_stripe.PaymentIntent.retrieve.return_value = Mock(status='requires_capture', amount=10000)
         mock_stripe.PaymentIntent.capture.return_value = Mock(status='succeeded')
         mock_stripe.Transfer.create.return_value = Mock(id='tr_test_123')
         

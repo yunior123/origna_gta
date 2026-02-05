@@ -445,6 +445,7 @@ def create_mock_order_doc(order_id='order_123', payment_status='paid', status='p
             "deliveryStatus": "pending"
         }],
         "amount": 100.00,
+        "totalAmount": 100,
         "stripePaymentIntentId": "pi_test_123"
     }
     return doc

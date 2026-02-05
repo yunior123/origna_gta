@@ -229,6 +229,25 @@
         {"fieldPath": "rating", "order": "DESCENDING"}
       ],
       "comment": "OPTIMIZATION 2026-02-03: Index for products sorted by rating"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "sellerIds", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "orderStatus", "order": "ASCENDING"},
+        {"fieldPath": "dateCreated", "order": "DESCENDING"}
+      ],
+      "comment": "AUDIT 2026-02-04: Index for seller order queries with status + date"
+    },
+    {
+      "collectionGroup": "webhook_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "timestamp", "order": "ASCENDING"}
+      ],
+      "comment": "AUDIT 2026-02-04: Index for failed webhook retry queries"
     }
   ],
   "fieldOverrides": []

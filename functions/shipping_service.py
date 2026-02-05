@@ -353,8 +353,8 @@ def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str =
                 response = requests.post(url, json=payload, timeout=5)
                 if response.status_code == 200:
                     data = response.json()
-                    distance_km = data['sources_to_targets'][0][0]['distance'] / 1000.0
-                    
+                    distance_km = max(0, data['sources_to_targets'][0][0]['distance'] / 1000.0)
+
                     if has_local_restriction and distance_km > 100:
                         total_shipping += 75.0
                         continue

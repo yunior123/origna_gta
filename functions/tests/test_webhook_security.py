@@ -145,6 +145,7 @@ class TestStripeWebhookSecurity:
 
             mock_doc = Mock()
             mock_doc.exists = True  # Event déjà traité
+            mock_doc.to_dict.return_value = {'status': 'completed'}
 
             mock_webhook_ref = Mock()
             mock_webhook_ref.get = Mock(return_value=mock_doc)

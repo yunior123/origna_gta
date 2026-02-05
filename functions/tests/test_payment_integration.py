@@ -39,8 +39,9 @@ class TestPaymentFlow(unittest.TestCase):
         mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
         mock_get_rate_limiter.return_value = mock_rate_limiter
         
+        mock_stripe.PaymentIntent.retrieve.return_value = Mock(status='requires_capture', amount=5000)
         mock_stripe.PaymentIntent.capture = MagicMock()
-        
+
         req = MagicMock()
         req.auth.uid = "seller_1"
         req.data = {"orderId": "order_123", "trackingNumber": "T1"}
@@ -65,6 +66,7 @@ class TestPaymentFlow(unittest.TestCase):
             "status": "processing",
             "stripePaymentIntentId": "pi_123",
             "amount": 5000,
+            "totalAmount": 50,
             "items": [
                 {"sellerId": "seller_1", "deliveryStatus": DeliveryStatus.PENDING, "price": 50.00, "quantity": 1}
             ]

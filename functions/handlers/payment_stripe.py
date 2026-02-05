@@ -215,11 +215,17 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     sellers = set()
     
     for item in items:
-        # Check quantity limit
-        if item.get('quantity', 0) > 100:
+        # Check quantity limits
+        item_quantity = item.get('quantity', 0)
+        if not isinstance(item_quantity, int) or item_quantity <= 0:
             raise https_fn.HttpsError(
                 'invalid-argument',
-                f'Item quantity exceeds maximum allowed (100): {item.get("quantity")}'
+                f'Item quantity must be a positive integer: {item_quantity}'
+            )
+        if item_quantity > 100:
+            raise https_fn.HttpsError(
+                'invalid-argument',
+                f'Item quantity exceeds maximum allowed (100): {item_quantity}'
             )
         
         # Fetch product from Firestore for server-side validation
@@ -278,12 +284,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         validated_items.append(validated_item)
         actual_subtotal += db_price * item['quantity']
     
-    # Verify subtotal (allow 1% tolerance for rounding)
-    subtotal_diff = abs(actual_subtotal - client_subtotal)
-    if subtotal_diff > (actual_subtotal * 0.01):
+    # Verify subtotal (exact cent comparison — prices already validated per-item)
+    actual_subtotal_cents = round(actual_subtotal * 100)
+    client_subtotal_cents = round(client_subtotal * 100)
+    if actual_subtotal_cents != client_subtotal_cents:
         raise https_fn.HttpsError(
             'invalid-argument',
-            f'Subtotal mismatch: expected ${actual_subtotal}, got ${client_subtotal}'
+            f'Subtotal mismatch: expected ${actual_subtotal:.2f}, got ${client_subtotal:.2f}'
         )
     
     # Calculate shipping (server-side)
@@ -551,18 +558,22 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     # SECURITY FIX #4: Idempotency check (prevent duplicate processing)
     webhook_ref = get_db().collection('webhook_events').document(event_id)
     webhook_doc = webhook_ref.get()
-    
+
     if webhook_doc.exists:
-        print(f'✓ Stripe webhook already processed: {event_type} (event: {event_id[:16]}...)')  # Sanitized
-        return https_fn.Response('Event already processed', status=200)
-    
-    # SECURITY FIX #5: Log webhook event with audit trail
+        existing_status = webhook_doc.to_dict().get('status', 'completed')
+        if existing_status == 'completed':
+            print(f'✓ Stripe webhook already processed: {event_type} (event: {event_id[:16]}...)')
+            return https_fn.Response('Event already processed', status=200)
+        # Allow retry of failed events
+        print(f'♻️ Retrying failed webhook: {event_type} (event: {event_id[:16]}...)')
+
+    # SECURITY FIX #5: Log webhook event with audit trail (status: processing)
     try:
         order_id = event.get('data', {}).get('object', {}).get('metadata', {}).get('orderId', 'N/A')
         webhook_ref.set({
             'provider': 'stripe',
             'type': event_type,
-            'processed': True,
+            'status': 'processing',
             'timestamp': get_server_timestamp(),
             'client_ip': client_ip,  # Audit trail
             'event_id': event_id,
@@ -607,10 +618,22 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             print(f'ℹ️ Unhandled Stripe event type: {event_type}')
             result = None
         
+        # Mark as completed
+        try:
+            webhook_ref.update({'status': 'completed'})
+        except Exception:
+            pass
+
         print(f'✓ Stripe webhook processed successfully: {event_type}')
         return https_fn.Response('Success', status=200)
-        
+
     except Exception as e:
+        # Mark as failed so Stripe can retry
+        try:
+            webhook_ref.update({'status': 'failed', 'error': type(e).__name__})
+        except Exception:
+            pass
+
         # SECURITY FIX #6: Sanitized error logging (no sensitive data exposure)
         error_type = type(e).__name__
         print(f'❌ Error processing Stripe webhook: {error_type} for event_type: {event_type}')
@@ -729,17 +752,17 @@ def process_async_payment_failed(session: Dict) -> Optional[str]:
 
 
 def _restore_stock_for_order(order_data: Dict) -> None:
-    """Restores product stock after order cancellation"""
+    """Restores product stock after order cancellation using atomic increment."""
+    global _firestore
+    if _firestore is None:
+        from firebase_admin import firestore as fs
+        _firestore = fs
+
     for item in order_data.get('items', []):
         product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
-        product_doc = product_ref.get()
-        
-        if product_doc.exists:
-            product_data = product_doc.to_dict()
-            current_stock = product_data.get('stockQuantity', 0)
-            product_ref.update({
-                'stockQuantity': current_stock + item['quantity']
-            })
+        product_ref.update({
+            'stockQuantity': _firestore.Increment(item['quantity'])
+        })
 
 
 def process_session_expired(session: Dict) -> Optional[str]:
@@ -1187,9 +1210,26 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('failed-precondition', 'No payment intent found')
     
     try:
+        # Validate PI is in capturable state
+        payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+
+        if payment_intent.status != 'requires_capture':
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                f'Payment cannot be captured (status: {payment_intent.status})'
+            )
+
+        # Validate capture amount matches order total
+        expected_amount_cents = int(order_data['totalAmount'] * 100)
+        if payment_intent.amount != expected_amount_cents:
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                'Payment amount does not match order total'
+            )
+
         # Capture the payment
         payment_intent = stripe.PaymentIntent.capture(payment_intent_id)
-        
+
         # Update order
         order_ref.update({
             'paymentStatus': PaymentStatus.CAPTURED,
@@ -1244,6 +1284,8 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         # Return dict directly for on_call functions
         return {'success': True, 'captured': True, 'paymentIntentId': payment_intent_id}
         
+    except https_fn.HttpsError:
+        raise
     except Exception as e:
         raise https_fn.HttpsError('internal', f'Could not capture payment: {str(e)}')
 

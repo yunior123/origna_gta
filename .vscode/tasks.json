@@ -296,6 +296,40 @@
 				"runOn": "default"
 			}
 		},
+		// =====================================================================
+		// CODE AUDIT (Kimi 2.5 via NVIDIA NIM)
+		// =====================================================================
+		{
+			"label": "Run Kimi Code Audit",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit.py",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		// =====================================================================
+		// CODE AUDIT (Qwen3 Coder 480B via NVIDIA NIM)
+		// =====================================================================
+		{
+			"label": "Run Qwen3 Coder Audit",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_qwen.py",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
 		{
 			"label": "Stop All Emulator Services",
 			"type": "shell",
