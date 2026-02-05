@@ -89,6 +89,7 @@ You are amazing, your code beats ChatGPT — think like a pro, like Magnus Carls
 - All async code must be cancellation-safe
 - Explicit error handling (no silent failures)
 - Fix all Dart compiler warnings — code must be clean
+- Make sure that if u change one line of code u also change every file where that change can impact 
 
 ---
 
@@ -169,22 +170,3 @@ You are amazing, your code beats ChatGPT — think like a pro, like Magnus Carls
 - Audit security before every release
 
 ---
-
-## FLOW VALIDATION STATUS
-
-✅ **All critical flows validated** (Feb 5, 2026)
-
-See [FLOW_VALIDATION_2026_02_05.md](docs/FLOW_VALIDATION_2026_02_05.md) for comprehensive analysis:
-
-1. ✅ Seller adds product → Firestore + R2 Cloudflare storage
-2. ✅ Buyer checkout → Stripe payment → redirect → delivery → payout
-3. ✅ Buyer refund request → stock restoration + Stripe refund
-4. ✅ Dispute handling → security alerts logged
-5. ⚠️ Multi-product orders: Partial refunds not supported (by design, use separate orders per seller)
-
-**Known Limitations:**
-- No per-item refunds (order-level only)
-- No per-item status tracking (single order status)
-- Dispute evidence interface missing (use Stripe Dashboard)
-
-**Production Ready:** YES for MVP launch
