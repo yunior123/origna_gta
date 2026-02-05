@@ -27,6 +27,11 @@ from shipping_service import calculate_shipping_cost, get_tax_rate
 from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS
 
 stripe.api_key = STRIPE_SECRET_KEY
+# CRITICAL: Set timeout to 30s to prevent Cloud Function timeout (default is 80s)
+# Cloud Functions timeout at 60s, so we need Stripe to timeout before that
+stripe.max_network_retries = 2
+# Note: stripe.default_http_client requires stripe-python v3+
+# For v2, timeout is set per-request via stripe.api_requestor.APIRequestor
 _db = None
 _rate_limiter = None
 _firestore = None
@@ -246,6 +251,18 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             )
         
         product_data = product_doc.to_dict()
+        
+        # SECURITY: Validate seller ID matches product owner
+        # Prevents attack where buyer sends item.sellerId != product.sellerId
+        # to redirect payments to wrong seller
+        db_seller_id = product_data.get('sellerId')
+        client_seller_id = item.get('sellerId')
+        
+        if db_seller_id != client_seller_id:
+            raise https_fn.HttpsError(
+                'invalid-argument',
+                f"Seller ID mismatch for product {item['productId']}: expected {db_seller_id}, got {client_seller_id}"
+            )
         
         # Server-side price validation (prevent client tampering)
         db_price = product_data['price']
@@ -932,21 +949,83 @@ def process_charge_refunded(charge: Dict) -> Optional[str]:
 
 
 def process_dispute_created(dispute: Dict) -> Optional[str]:
-    """Handles dispute creation"""
+    """
+    Handles dispute creation - CRITICAL PAYMENT INTEGRITY
+    When a buyer disputes a charge, we must immediately reverse transfers to sellers
+    to prevent double-loss (platform refunds buyer + already paid seller).
+    """
     charge_id = dispute.get('charge')
+    dispute_amount = dispute.get('amount', 0)
     
     # Log security alert
-    get_db().collection('security_alerts').add({
+    alert_ref = get_db().collection('security_alerts').add({
         'type': 'dispute_created',
         'severity': 'high',
         'chargeId': charge_id,
-        'amount': dispute.get('amount'),
+        'amount': dispute_amount,
         'reason': dispute.get('reason'),
         'timestamp': get_server_timestamp(),
         'resolved': False
     })
     
-    return f'Dispute logged for charge {charge_id}'
+    # CRITICAL: Auto-reverse all transfers linked to this charge
+    # Find all payouts for orders with this payment intent
+    orders = get_db().collection(Collections.ORDERS)\
+        .where('stripePaymentIntentId', '==', charge_id)\
+        .limit(1)\
+        .stream()
+    
+    reversed_count = 0
+    for order_doc in orders:
+        order_id = order_doc.id
+        
+        # Find all completed payouts for this order
+        payouts = get_db().collection(Collections.PAYOUTS)\
+            .where('orderId', '==', order_id)\
+            .where('status', '==', 'completed')\
+            .stream()
+        
+        for payout_doc in payouts:
+            payout_data = payout_doc.to_dict()
+            transfer_id = payout_data.get('stripeTransferId')
+            
+            if not transfer_id:
+                continue
+            
+            try:
+                # Create reversal (Stripe automatically handles this)
+                reversal = stripe.Transfer.create_reversal(
+                    transfer_id,
+                    metadata={
+                        'reason': 'dispute',
+                        'disputeId': dispute.get('id'),
+                        'orderId': order_id
+                    }
+                )
+                
+                # Mark payout as reversed
+                payout_doc.reference.update({
+                    'status': 'reversed',
+                    'reversalId': reversal.id,
+                    'reversedAt': get_server_timestamp(),
+                    'reversalReason': 'dispute'
+                })
+                
+                reversed_count += 1
+                print(f'✓ Reversed transfer {transfer_id} due to dispute')
+                
+            except Exception as e:
+                # Log failure but continue processing other transfers
+                print(f'⚠️ Failed to reverse transfer {transfer_id}: {str(e)}')
+                alert_ref[1].reference.update({
+                    'reversalErrors': firestore.ArrayUnion([{
+                        'transferId': transfer_id,
+                        'error': str(e),
+                        'timestamp': get_server_timestamp()
+                    }])
+                })
+    
+    return f'Dispute logged for charge {charge_id}, reversed {reversed_count} transfers'
 
 
 def process_dispute_closed(dispute: Dict) -> Optional[str]:
@@ -1417,6 +1496,31 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
             if seller_doc.exists:
                 seller_data = seller_doc.to_dict()
                 stripe_account_id = seller_data.get('stripeAccountId')
+                
+                # CRITICAL SECURITY: Re-verify seller is not suspended at capture time
+                # Prevents race condition where seller suspended after checkout but before capture
+                if seller_data.get('suspended', False):
+                    print(f'⚠️ Skipping payout to suspended seller {seller_id} for order {order_id}')
+                    # Mark for manual review
+                    order_ref.update({
+                        'requiresManualReview': True,
+                        'manualReviewReason': f'Seller {seller_id} suspended at capture time'
+                    })
+                    continue
+                
+                # Verify seller has valid Stripe account
+                if not stripe_account_id:
+                    print(f'⚠️ Seller {seller_id} has no Stripe account for order {order_id}')
+                    continue
+                
+                # Verify seller account is enabled for charges
+                if not seller_data.get('chargesEnabled', False):
+                    print(f'⚠️ Seller {seller_id} account not enabled for charges for order {order_id}')
+                    order_ref.update({
+                        'requiresManualReview': True,
+                        'manualReviewReason': f'Seller {seller_id} account not charges_enabled'
+                    })
+                    continue
                 
                 if stripe_account_id:
                     # Check for existing transfer (idempotency)
