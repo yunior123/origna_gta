@@ -12,7 +12,7 @@ Providers Supported:
 - airwallex: Airwallex payment processing (international)
 """
 
-from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CORS_CONFIG, CRON_OPTIONS
+from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CRON_OPTIONS
 from firebase_functions import https_fn
 from typing import Dict, Any, Optional
 from datetime import datetime

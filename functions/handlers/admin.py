@@ -6,7 +6,7 @@ Admin & User Management Handlers
 - Account deletion
 """
 
-from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CORS_CONFIG, CRON_OPTIONS
+from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CRON_OPTIONS
 from firebase_functions import https_fn
 from firebase_admin import auth
 import pyotp

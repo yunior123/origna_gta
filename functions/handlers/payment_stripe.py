@@ -24,7 +24,7 @@ from utils import (
 )
 from rate_limiter import RateLimiter
 from shipping_service import calculate_shipping_cost, get_tax_rate
-from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CORS_CONFIG
+from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS
 
 stripe.api_key = STRIPE_SECRET_KEY
 _db = None
@@ -33,6 +33,17 @@ _firestore = None
 
 # Check if running in emulator mode
 IS_EMULATOR = os.environ.get('FUNCTIONS_EMULATOR', 'false').lower() == 'true'
+
+# CORS configuration for production
+CORS_CONFIG = options.CorsOptions(
+    cors_origins=[
+        "https://orignagta.ca",
+        "https://www.orignagta.ca",
+        "https://orignagta.web.app",
+        "https://orignagta.firebaseapp.com",
+    ],
+    cors_methods=["POST", "OPTIONS"],
+)
 
 def get_db():
     """Get Firestore client (lazy initialization)."""

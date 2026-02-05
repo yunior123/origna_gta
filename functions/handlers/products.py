@@ -7,7 +7,7 @@ Product Management Handlers
 - Rating submission
 """
 
-from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CORS_CONFIG, CRON_OPTIONS
+from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CRON_OPTIONS
 from firebase_functions import https_fn, firestore_fn, options
 from typing import Dict, Any, Optional
 import boto3
@@ -45,9 +45,16 @@ def get_server_timestamp():
         from firebase_admin import firestore as fs
         _firestore = fs
     return _firestore.SERVER_TIMESTAMP
-cors_config = options.CorsOptions(
-    cors_origins="*",
-    cors_methods=["get", "post", "options"],
+
+# CORS configuration for production
+CORS_CONFIG = options.CorsOptions(
+    cors_origins=[
+        "https://orignagta.ca",
+        "https://www.orignagta.ca",
+        "https://orignagta.web.app",
+        "https://orignagta.firebaseapp.com",
+    ],
+    cors_methods=["POST", "OPTIONS"],
 )
 
 

@@ -6,7 +6,7 @@ Order Lifecycle Management Handlers
 - Order cancellation
 """
 
-from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CORS_CONFIG, CRON_OPTIONS
+from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CRON_OPTIONS
 from firebase_functions import https_fn, firestore_fn
 import stripe
 from typing import Dict, Any

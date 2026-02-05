@@ -6,7 +6,7 @@ Airwallex Payment Handlers
 - Webhook handling
 """
 
-from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CORS_CONFIG, CRON_OPTIONS
+from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CRON_OPTIONS
 from firebase_functions import https_fn
 from typing import Dict, Any
 
