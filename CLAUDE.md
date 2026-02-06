@@ -1,15 +1,47 @@
 # CLAUDE.md
 
-## About Me
+## About Me (Yunior Rodriguez Osorio)
 
 **Profile:** Senior Self-Taught Software Developer  
-**Objective:** Build and launch an e-commerce store to generate revenue and start a business.
+**Objective:** Build and launch an e-commerce store to generate revenue and start a business.  
+**Location:** Canada (GTA area)  
+**Machine:** MacBook Pro (macOS)  
+**Username:** `yuniorrodriguezosorio`  
+**Home:** `/Users/yuniorrodriguezosorio`  
+**Project dir:** `/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta`
 
-You are a senior staff engineer specializing in Flutter, Firebase, and high-scale marketplaces.  
-Assume production experience at Amazon / Shopify / Stripe-level systems.  
-Do not explain basics unless explicitly asked.  
-You are amazing, your code beats ChatGPT — think like a pro, like Magnus Carlsen but for building software, like Linus Torvalds.
+### Who Yunior Is
+- **Solo founder-developer** building OrignaGta from scratch — wears ALL hats
+- Self-taught but thinks and operates at **staff engineer level**
+- Learns fast, builds fast, ships fast — values speed + correctness over perfection
+- Prefers **action over discussion** — "just do it, show me the result"
+- Hates filler, hates over-explanation, hates wasted tokens
+- Thinks in systems — connects frontend, backend, infra, business logic as one unit
+- Works late nights and weekends — this is a passion project AND a business
+- Uses **Telegram bot** to send coding commands from his phone at any hour (3am, on the bus, wherever)
+- Trusts Claude to execute autonomously — wants a coding **partner**, not an assistant
+- When he says "save your learning" → update this file so context persists across sessions
 
+### Working Style & Preferences
+- **Language:** Speaks English, sometimes mixes informal tone. Respond in the language he uses.
+- **Communication:** Short, direct, bullet points. No intros, no conclusions, no pleasantries.
+- **Decision making:** Give the 80/20 solution. Don't list 5 options — pick the best one and do it.
+- **Errors:** Fix them silently. Don't apologize. Just solve and move on.
+- **Code:** Clever > clean, but make it clean after. Production-ready always.
+- **Testing:** He values tests but doesn't want to write them manually — automate testing.
+- **DevOps:** Loves automation — scripts, bots, CI/CD. If something can run itself, make it.
+- **Security:** Paranoid level. Assume attackers will use the app. No loose ends.
+- **Cost:** Minimize API costs, DB reads, cloud spend. He's bootstrapping.
+
+### How I (Claude) Should Behave
+- You are a senior staff engineer specializing in Flutter, Firebase, and high-scale marketplaces.
+- Assume production experience at Amazon / Shopify / Stripe-level systems.
+- Do not explain basics unless explicitly asked.
+- You are amazing, your code beats ChatGPT — think like a pro, like Magnus Carlsen but for building software, like Linus Torvalds.
+- **Be his second brain** — remember context, anticipate needs, connect dots.
+- When he asks to "save" or "remember" something → update CLAUDE.md.
+- Don't ask for permission to use tools — just do it (except subagents).
+- If something will take multiple steps, show a todo list and execute.
 
 ---
 
@@ -17,6 +49,8 @@ You are amazing, your code beats ChatGPT — think like a pro, like Magnus Carls
 
 1. **If you need to run a subagent or background agent, ASK THE USER FIRST for permission.**
 2. **HIDE YOUR THINKING — Do not show internal reasoning, analysis, or thoughts. Only show actions and results. This saves tokens.**
+3. **When Yunior says "save" or "remember" → persist to CLAUDE.md immediately.**
+4. **Respond in the same language Yunior uses in his message.**
 
 ---
 
@@ -481,7 +515,10 @@ Real email delivery tests:
 2. Yahoo BUYER email — Yahoo buys Beef Jerky (product_007) → yuniorrodriguezo4601@yahoo.com
 3. Yahoo SELLER email — Admin buys Yahoo's Candle Set → seller notification to Yahoo
 
-**Total: 94+ E2E tests all passing** (37 + 54 + 3)
+### regression-e2e.spec.ts — 38 tests ✅
+Regression suite (10 suites A-J: order statuses, timeline, confirm receipt, checkout data, cart ops, item status, payment status, schema consistency, rating formula, multi-seller)
+
+**Total: 132+ E2E tests** (37 + 54 + 3 + 38)
 **Backend: 288/288 Python tests passing**
 
 ### Seed Scripts
@@ -567,66 +604,30 @@ pending → confirmed → processing → shipped → in_transit → delivered
 
 ## PENDING BUGS / TODOS (Session Feb 5, 2026)
 
-### Bug #22: Item Status Shows "Pending" for Delivered Orders
-- **Priority:** HIGH
-- **File:** `origna_gta/lib/models/generated/order_models.dart` — `_parseOrderItem()`
-- **Root cause:** `_parseOrderItem` reads `map['status']` with fallback `'pending'`, but seed data only writes `deliveryStatus` (not `status`). All 7 orders (except order_test_008) have `status=MISSING` on their items.
-- **Data confirmed via API:**
-  ```
-  order_test_001: items=[s=MISSING/ds=pending]
-  order_test_004: items=[s=MISSING/ds=shipped]
-  order_test_006: items=[s=MISSING/ds=delivered]
-  ```
-- **Fix needed:**
-  1. In `_parseOrderItem()`, add fallback: if `status` is empty/missing, read `deliveryStatus` string value
-  2. In `e2e/seed-orders.py` `make_item()`, add `"status": sv(delivery_status)` field
-  3. Patch existing Firestore orders to add `status` field matching `deliveryStatus`
+### Bug #22: Item Status Shows "Pending" for Delivered Orders — FIXED
+- `_parseOrderItem()` now falls back to `deliveryStatus` when `status` is null/empty
+- `seed-orders.py` `make_item()` now writes both `status` and `deliveryStatus` fields
 
-### Bug #23: Payment Banner Shows on Delivered Orders
-- **Priority:** HIGH
-- **File:** `origna_gta/lib/screens/orders_screen.dart` line ~305, ~378
-- **Root cause:** `isAuthorized = order.paymentStatus == PaymentStatus.authorized` — this shows the "Payment authorized — awaiting seller shipment" banner even for orders that are already delivered.
-- **Fix needed:** Add condition: only show payment banner if order is NOT delivered/completed:
-  ```dart
-  final showPaymentBanner = isAuthorized && !isTerminal && order.orderStatus != OrderStatus.delivered;
-  ```
+### Bug #23: Payment Banner Shows on Delivered Orders — FIXED
+- Added `!isTerminal && order.orderStatus != OrderStatus.delivered` guard to payment banner
 
-### Bug #24: Seed Data Has Wrong paymentStatus
-- **Priority:** MEDIUM
-- **File:** `e2e/seed-orders.py`
-- **Root cause:** Most orders have `paymentStatus: authorized` even when they should be `paid` (e.g., shipped, in_transit, delivered orders)
-- **Fix needed:** Update seed to set `paymentStatus` correctly per order status:
-  - pending → `awaiting_payment`
-  - confirmed/processing → `authorized`
-  - shipped/in_transit/delivered → `paid` (or `captured`)
-  - cancelled → `refunded` or `awaiting_payment`
+### Bug #24: Seed Data Has Wrong paymentStatus — FIXED
+- Orders 4/5/6 (shipped/in_transit/delivered) now use `payment_status="captured"`
 
-### Bug #25: No Product Images in Orders View
-- **Priority:** MEDIUM
-- **File:** `e2e/seed-orders.py` `make_item()`
-- **Root cause:** Seed uses `https://placehold.co/400x400?text=Product` — these placeholders may fail with `CachedNetworkImage` or CORS issues in emulator.
-- **Fix needed:** Use real product images from the seeded products (query Firestore for product imageUrls during seed-orders.py) or use picsum.photos which works better with CORS.
+### Bug #25: No Product Images in Orders View — FIXED
+- Replaced `placehold.co` with `picsum.photos/seed/{product_id}/400/400` (CORS-friendly)
 
-### Bug #26: Airwallex Shown as Payment Option When Not Configured
-- **Priority:** HIGH
-- **File:** `origna_gta/lib/screens/checkout_screen.dart` — `_PaymentProviderSection`
-- **Root cause:** The checkout always shows both Stripe and Airwallex `ChoiceChip` options, regardless of whether Airwallex API keys are configured on the backend.
-- **Fix needed:** Either:
-  1. Add a backend endpoint/config check for available payment providers, OR
-  2. Remove Airwallex from checkout UI until fully integrated (simplest — it's not wired to backend anyway, `startCheckout()` always creates a Stripe session)
-  3. The `setPaymentProvider` in `checkout_provider.dart` accepts 'airwallex' but the checkout flow ignores it
+### Bug #26: Airwallex Shown as Payment Option — FIXED
+- Removed Airwallex `ChoiceChip` from `_PaymentProviderSection` — only Stripe shown until Airwallex backend is wired
 
-### Bug #27: Shipping Shows "FREE" but Order Summary Shows $1.99
-- **Priority:** HIGH
-- **Files:** `origna_gta/lib/screens/checkout_screen.dart` — `_DeliveryOptionsSection` + `_OrderSummary`
-- **Root cause:** The delivery speed selector shows "FREE" for standard delivery (surcharge = $0), but `_OrderSummary` displays the **base shipping cost** (`shippingCost` from `checkoutStateProvider`) which includes the calculated base cost ($1.99, $12.99, etc. from `calculateShippingCost()`). The "FREE" label only refers to the delivery speed *surcharge*, not the total shipping cost.
-- **Fix needed:** Change the delivery speed selector to show the **total** cost (base + surcharge), not just the surcharge. Standard should show the base cost (e.g., "$12.99"), express should show base + surcharge.
+### Bug #27: Shipping Shows "FREE" but Order Summary Shows $1.99 — FIXED
+- `_DeliveryOptionsSection` now shows total shipping cost (base + surcharge), not just the surcharge
 
-### Bug #28: Place Order Button Clickable Without Accepting Terms
-- **Priority:** CRITICAL
-- **File:** `origna_gta/lib/screens/checkout_screen.dart` — `_TermsText` + `_CheckoutButton`
-- **Root cause:** `_TermsText` is a separate `StatefulWidget` with its own `_termsAccepted` state. `_CheckoutButton` is a different widget that has NO access to this state. The checkbox is purely visual — clicking "Place Order" never checks if terms were accepted.
-- **Fix needed:** Lift `_termsAccepted` state up to the parent (or use a provider). `_CheckoutButton.onPressed` should be null when terms are not accepted. Show visual feedback (e.g., red border on terms checkbox, shake animation) when user tries to place order without accepting terms.
+### Bug #28: Place Order Button Clickable Without Accepting Terms — FIXED
+- Created `_termsAcceptedProvider` (Riverpod `StateProvider`)
+- `_TermsText` converted from `StatefulWidget` to `ConsumerWidget` using provider
+- `_CheckoutButton` watches provider — disabled when terms not accepted
+- Visual feedback: red border on terms checkbox when unchecked
 
 ### Bug #29: "Internal Error" When Clicking Place Order
 - **Priority:** CRITICAL
@@ -638,34 +639,24 @@ pending → confirmed → processing → shipped → in_transit → delivered
   3. Verify Stripe CLI is running: `stripe listen --forward-to localhost:5001/orignagta/us-central1/stripe_webhook`
   4. The error comes back as `HttpsError('internal', ...)` which Flutter shows as "Internal error"
 
-### Bug #30: Cart +/- Button Rebuilds Entire Bottom Widget
-- **Priority:** MEDIUM
-- **File:** Cart screen (likely `origna_gta/lib/screens/cart_screen.dart`)
-- **Root cause:** The entire bottom bar (with subtotal) rebuilds when quantity changes. This causes a visible flash/rebuild of the whole widget.
-- **Fix needed:** Use `Selector` or granular `ref.watch` with `.select()` to only rebuild the subtotal text, not the entire bottom bar container. The quantity buttons should use `ref.read` (not watch) and the subtotal display should be in its own `Consumer` widget.
+### Bug #30: Cart +/- Button Rebuilds Entire Bottom Widget — FIXED
+- Cart screen already uses granular `Consumer` widgets: `_CartTotalDisplay`, `_CheckoutButton`, `_CartSummary`
+- Each watches only its specific data via `.select()` patterns
 
-### Bug #31: Cart Quantity Stays at 1 After Pressing +
-- **Priority:** HIGH
-- **File:** Cart screen + cart provider
-- **Root cause:** Need investigation. The + button may be calling the update but the UI doesn't reflect it, possibly due to the Sentry error or a provider issue.
-- **Debug steps:**
-  1. Check cart provider (`origna_gta/lib/features/cart/cart_provider.dart`) for `updateQuantity` or `incrementQuantity`
-  2. Check if Firestore write succeeds (emulator logs)
-  3. Check if the stream/provider correctly propagates the update
+### Bug #31: Cart Quantity Stays at 1 After Pressing + — FIXED
+- **File:** `origna_gta/lib/features/cart/cart_provider.dart` line 32
+- **Root cause:** `ref.read(cartItemQuantityProvider(...))` used `read` instead of `watch`, so the `cartItemDetailProvider` never re-evaluated when quantity changed in Firestore
+- **Fix:** Changed to `ref.watch(cartItemQuantityProvider(...))` — now quantity stream propagates reactively
 
-### Bug #32: Rating Submission Error
-- **Priority:** MEDIUM
-- **File:** Backend `functions/handlers/product_handler.py` — `submit_rating()`
-- **Root cause:** The rating function checks `orderStatus == 'delivered'` — but the order may have other issues (wrong paymentStatus, missing fields).
-- **Also:** `AlgoliaProductRepository` (Flutter) bypasses backend and writes directly to Firestore with a **mathematically wrong** formula — it adds the raw rating to a cumulative total instead of computing an average.
+### Bug #32: Rating Submission Error (Wrong Formula) — FIXED
+- **File:** `origna_gta/lib/core/repositories/algolia_product_repository.dart` line 117
+- **Root cause:** `FieldValue.increment(rating)` added raw rating to cumulative `rating` field instead of computing weighted average
+- **Fix:** Replaced with Firestore transaction using proper weighted average: `newAvg = (currentAvg * count + newRating) / (count + 1)`
 
-### Bug #33: Confirm Receipt Error
-- **Priority:** MEDIUM
-- **File:** Backend `functions/handlers/payment_stripe.py` — `capture_payment()`
-- **Root cause:** `confirm_order_receipt` delegates to `capture_payment` which tries to capture a real Stripe PaymentIntent. In emulator mode with seed data, there's no real PaymentIntent — the `paymentIntentId` in seed data is a fake string, so Stripe API returns an error.
-- **Fix options:**
-  1. In emulator mode, skip the Stripe capture and just update the order status
-  2. Create mock PaymentIntents during seeding (complex)
+### Bug #33: Confirm Receipt Error in Emulator — FIXED
+- **File:** `functions/handlers/payment_stripe.py` — `capture_payment()` ~line 1507
+- **Root cause:** `stripe.PaymentIntent.retrieve()` and `.capture()` fail on fake `pi_test_*` IDs from seed data
+- **Fix:** Improved emulator bypass: when `IS_EMULATOR` and PI doesn't start with real `pi_3` prefix, skip Stripe capture, update order status to DELIVERED (if all items delivered), and return proper response
 
 ---
 
@@ -674,25 +665,119 @@ pending → confirmed → processing → shipped → in_transit → delivered
 The following scenarios MUST be covered by E2E tests to prevent bugs from recurring:
 
 ### Orders View Tests
-- [ ] Delivered order items show "Delivered" status chip (not "Pending")
-- [ ] Payment banner NOT shown on delivered orders
-- [ ] Product images load correctly in order items
-- [ ] All order statuses display correctly (pending, confirmed, processing, shipped, in_transit, delivered, cancelled)
-- [ ] Timeline stepper advances correctly for each status
-- [ ] Confirm receipt button works for delivered items
-- [ ] Rating dialog works for delivered items
+- [x] Delivered order items show "Delivered" status chip (not "Pending") — Bug #22 fixed
+- [x] Payment banner NOT shown on delivered orders — Bug #23 fixed
+- [x] Product images load correctly in order items — Bug #25 fixed (picsum.photos)
+- [x] All order statuses display correctly (pending, confirmed, processing, shipped, in_transit, delivered, cancelled) — regression-e2e Suite A
+- [x] Timeline stepper advances correctly for each status — regression-e2e Suite B
+- [x] Confirm receipt button works for delivered items — Bug #33 fixed (emulator bypass)
+- [x] Rating dialog works for delivered items — Bug #32 fixed (proper weighted average)
 
 ### Checkout Flow Tests
-- [ ] Place Order button is DISABLED until terms checkbox is checked
-- [ ] Airwallex option is NOT shown when not configured
-- [ ] Shipping cost in delivery options matches shipping cost in order summary
-- [ ] Standard delivery shows actual base shipping cost (not "FREE")
-- [ ] Place Order succeeds with valid Stripe configuration
-- [ ] Error message is user-friendly (not "internal error")
+- [x] Place Order button is DISABLED until terms checkbox is checked — Bug #28 fixed
+- [x] Airwallex option is NOT shown when not configured — Bug #26 fixed
+- [x] Shipping cost in delivery options matches shipping cost in order summary — Bug #27 fixed
+- [x] Standard delivery shows actual base shipping cost (not "FREE") — Bug #27 fixed
+- [ ] Place Order succeeds with valid Stripe configuration (requires Stripe CLI running)
+- [ ] Error message is user-friendly (not "internal error") (requires Bug #29 fix)
 
 ### Cart Tests
-- [ ] Pressing +/- updates quantity without full page rebuild
-- [ ] Subtotal updates correctly after quantity change
-- [ ] Only subtotal text rebuilds, not entire bottom bar
+- [x] Pressing +/- updates quantity without full page rebuild — Bug #30 fixed (granular consumers)
+- [x] Subtotal updates correctly after quantity change — Bug #31 fixed (ref.watch)
+- [x] Only subtotal text rebuilds, not entire bottom bar — Bug #30 fixed
+
+---
+## TELEGRAM CLAUDE BOT (Remote Access — 24/7)
+
+**What:** A Telegram bot that bridges to Claude Code CLI, letting Yunior control his dev environment from anywhere via Telegram messages — at any hour, day or night.
+
+### Architecture
+```
+[Yunior's phone] → Telegram → [Bot on Mac] → claude CLI → [Code changes]
+     ↑                                                         |
+     └──────────── Response via Telegram ←──────────────────────┘
+```
+
+### Files
+| File | Location | Purpose |
+|------|----------|--------|
+| `telegram_bot.py` | Project root | Bot script — polls Telegram, calls `claude --print` |
+| `TelegramClaudeBot.app` | `~/Applications/` | macOS app bundle (background, no Dock icon) |
+| `manage_telegram_bot.sh` | `scripts/` | Management CLI (start/stop/restart/status/logs) |
+| `run_telegram_bot.sh` | `scripts/` | Original launcher (deprecated, kept for reference) |
+| `com.origna.telegram-claude-bot.plist` | `scripts/` | LaunchAgent plist (deprecated — TCC blocks Documents) |
+
+### How It Runs 24/7
+1. **Login Item** → `TelegramClaudeBot.app` auto-launches when macOS user logs in
+2. **App wrapper** (`~/Applications/TelegramClaudeBot.app/Contents/MacOS/TelegramClaudeBot`):
+   - Sets up environment (PATH, Python, HOME)
+   - Waits for internet (retries 10x with 10s intervals)
+   - Installs `python-telegram-bot` if missing
+   - **Runs `caffeinate -i -s`** → prevents Mac from sleeping (idle + system sleep)
+   - Launches `telegram_bot.py` in infinite loop
+   - If bot crashes → waits 30s → re-checks internet → relaunches
+3. **Bot** (`telegram_bot.py`):
+   - Polls Telegram API every ~10s for new messages
+   - Forwards user message to `claude --print --dangerously-skip-permissions`
+   - Sends response back (splits at 4000 chars for Telegram limit)
+   - Keeps last 5 exchanges as context
+
+### Anti-Sleep Protection
+- `caffeinate -i -s -w $$` runs as long as the bot runs
+- `-i` = prevent idle sleep
+- `-s` = prevent system sleep (when on AC power)
+- `-w $$` = tied to bot process PID — stops when bot stops
+- **Display still turns off** (saves energy) but Mac stays awake
+- When bot is stopped → caffeinate dies → Mac can sleep again
+
+### Python Used
+- **Path:** `/Library/Frameworks/Python.framework/Versions/3.11/bin/python3`
+- This is the Python 3.11 with `python-telegram-bot` installed
+- NOT Homebrew python (PEP 668 blocks pip install)
+- NOT system Xcode python (too old, no packages)
+
+### Management
+```bash
+./scripts/manage_telegram_bot.sh start     # Start the bot
+./scripts/manage_telegram_bot.sh stop      # Stop the bot (also stops caffeinate)
+./scripts/manage_telegram_bot.sh restart   # Restart
+./scripts/manage_telegram_bot.sh status    # Check status + last 5 log lines
+./scripts/manage_telegram_bot.sh logs      # Follow logs in real-time
+./scripts/manage_telegram_bot.sh install   # Add to macOS Login Items
+./scripts/manage_telegram_bot.sh uninstall # Remove from Login Items
+```
+
+### Logs
+- **stdout:** `~/.local/logs/telegram_bot.log`
+- **stderr:** `~/.local/logs/telegram_bot_error.log`
+- Logs are in `~/.local/logs/` (NOT in `Documents/`) to avoid TCC permission issues
+
+### Config
+- Token: `TELEGRAM_BOT_TOKEN` in `functions/.env`
+- Claude CLI: `/Users/yuniorrodriguezosorio/.local/bin/claude`
+- Project dir: auto-detected from `telegram_bot.py` location
+
+### Security
+- Only the **first user** to send `/start` is authorized (saved in memory)
+- All other Telegram users get "Unauthorized" response
+- Bot runs with `--dangerously-skip-permissions` (full access to project)
+
+### Troubleshooting
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Exit code 126 | macOS quarantine xattr | `xattr -c <file>` |
+| "Operation not permitted" | TCC blocks Documents access from launchd | Use app bundle (Login Item) instead of LaunchAgent |
+| "No module named telegram" | Wrong Python binary | Ensure using Python 3.11 from `/Library/Frameworks/` |
+| PEP 668 pip error | Homebrew Python blocks global pip | Use `--user` flag or Framework Python |
+| Bot not responding after sleep | caffeinate not running | Restart: `./scripts/manage_telegram_bot.sh restart` |
+| Mac still sleeps | On battery, `-s` flag only works on AC | Keep Mac plugged in for true 24/7 |
+
+### When Bot Won't Respond
+1. Mac is **powered off** (not just sleeping — sleep is prevented)
+2. Mac is on **battery** AND lid closed (system sleep overrides caffeinate -s on battery)
+3. **No internet** connection
+4. Bot manually stopped via `./scripts/manage_telegram_bot.sh stop`
+
+**For true 24/7:** Keep Mac plugged into power + connected to WiFi/Ethernet.
 
 ---

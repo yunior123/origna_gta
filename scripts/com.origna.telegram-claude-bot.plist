@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Label (unique identifier) -->
+    <key>Label</key>
+    <string>com.origna.telegram-claude-bot</string>
+
+    <!-- What to run (launcher lives outside protected Documents folder) -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/yuniorrodriguezosorio/.local/bin/run_telegram_bot.sh</string>
+    </array>
+
+    <!-- Working directory (use home dir, script will cd into project) -->
+    <key>WorkingDirectory</key>
+    <string>/Users/yuniorrodriguezosorio</string>
+
+    <!-- Start at login (when user logs in) -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart if it crashes (wait 30 seconds before restart) -->
+    <key>KeepAlive</key>
+    <dict>
+        <!-- Only run when network is available -->
+        <key>NetworkState</key>
+        <true/>
+    </dict>
+
+    <!-- Throttle restarts: wait 30s between restart attempts -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <!-- Logs (in home dir to avoid TCC issues at startup) -->
+    <key>StandardOutPath</key>
+    <string>/Users/yuniorrodriguezosorio/.local/logs/telegram_bot.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/yuniorrodriguezosorio/.local/logs/telegram_bot_error.log</string>
+
+    <!-- Environment variables -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:/Users/yuniorrodriguezosorio/.local/bin</string>
+        <key>HOME</key>
+        <string>/Users/yuniorrodriguezosorio</string>
+        <key>LANG</key>
+        <string>en_US.UTF-8</string>
+    </dict>
+
+    <!-- Nice level (lower priority so it doesn't hog resources) -->
+    <key>Nice</key>
+    <integer>5</integer>
+
+    <!-- Soft memory limit 256MB -->
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>ResidentSetSize</key>
+        <integer>268435456</integer>
+    </dict>
+</dict>
+</plist>
