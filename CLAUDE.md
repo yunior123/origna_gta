@@ -10,12 +10,37 @@ Assume production experience at Amazon / Shopify / Stripe-level systems.
 Do not explain basics unless explicitly asked.  
 You are amazing, your code beats ChatGPT — think like a pro, like Magnus Carlsen but for building software, like Linus Torvalds.
 
+
 ---
 
 ## IMPORTANT RULES
 
 1. **If you need to run a subagent or background agent, ASK THE USER FIRST for permission.**
 2. **HIDE YOUR THINKING — Do not show internal reasoning, analysis, or thoughts. Only show actions and results. This saves tokens.**
+
+---
+
+## QUICK START
+
+```bash
+# Start development environment (emulators + Stripe webhooks)
+./start-dev.sh
+
+# Run backend tests
+cd functions && source venv/bin/activate && pytest
+
+# Run Flutter app (web)
+cd origna_gta && flutter run -d chrome
+
+# Run E2E tests
+cd e2e && npm test
+
+# Deploy Firestore rules
+./scripts/deploy_rules.sh
+
+# Full deploy with validation
+./scripts/deploy_with_validation.sh
+```
 
 ---
 
@@ -49,7 +74,22 @@ You are amazing, your code beats ChatGPT — think like a pro, like Magnus Carls
 **Backend:** Firebase (Auth, Functions, Firestore), Stripe Connect Express, R2 Cloudflare, Geoapify, Algolia  
 **Monitoring:** Sentry  
 **Hosting:** Firebase Hosting + Cloudflare  
-**Future:** OCI (Appwrite + Typesense), Cloudflare R2
+**Testing:** Playwright (E2E), pytest (backend)
+**Future:** OCI (Appwrite + Typesense)
+
+---
+
+## ENVIRONMENT SETUP
+
+**Required:**
+- Firebase CLI: `npm install -g firebase-tools && firebase login`
+- Stripe CLI: `brew install stripe/stripe-cli/stripe && stripe login`
+- Flutter: Latest stable
+- Python 3.11+ with venv: `cd functions && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt`
+
+**Env files:**
+- `functions/.env` — Stripe keys, Algolia, R2 credentials
+- `origna_gta/.env` — Flutter environment config
 
 ---
 
@@ -64,6 +104,42 @@ You are amazing, your code beats ChatGPT — think like a pro, like Magnus Carls
 7. Assume eventual consistency
 8. Idempotency required for all payments and transfers
 9. Canada-only logic enforced backend-first
+
+---
+
+## KEY FILES
+
+| Path | Purpose |
+|------|---------|
+| `functions/main.py` | All Cloud Functions entry points |
+| `functions/handlers/` | Business logic by domain (orders, payments, admin) |
+| `origna_gta/lib/main.dart` | Flutter app entry |
+| `origna_gta/lib/services/` | API service layer (replaceable) |
+| `origna_gta/lib/viewmodels/` | MVVM ViewModels |
+| `docs/database_schema.json` | Schema source of truth |
+| `firestore.rules` | Security rules |
+| `firestore.indexes.json` | Composite indexes |
+
+---
+
+## DIRECTORY STRUCTURE
+
+```
+origna_gta/
+├── functions/          # Python Cloud Functions backend
+│   ├── handlers/       # Domain handlers (orders, payments, admin, cron)
+│   ├── tests/          # pytest tests
+│   └── main.py         # Function exports
+├── origna_gta/         # Flutter frontend
+│   └── lib/
+│       ├── screens/    # UI screens
+│       ├── viewmodels/ # MVVM ViewModels
+│       ├── services/   # API services
+│       └── models/     # Data models
+├── e2e/                # Playwright E2E tests
+├── scripts/            # Build/deploy/test scripts
+└── docs/               # Schema, diagrams, setup guides
+```
 
 ---
 
@@ -110,6 +186,27 @@ You are amazing, your code beats ChatGPT — think like a pro, like Magnus Carls
 - Reads are more expensive than writes
 - Index cost matters
 - Cache aggressively when safe
+
+---
+
+## TESTING
+
+```bash
+# Backend unit tests
+cd functions && source venv/bin/activate && pytest -v
+
+# Backend with coverage
+pytest --cov=. --cov-report=html
+
+# E2E tests (requires emulators running)
+cd e2e && npm test
+
+# E2E with UI
+cd e2e && npm run test:ui
+
+# All tests
+./scripts/run_all_tests.sh
+```
 
 ---
 
@@ -168,5 +265,228 @@ You are amazing, your code beats ChatGPT — think like a pro, like Magnus Carls
 - Handle all edge cases
 - No loose ends
 - Audit security before every release
+
+---
+
+## EMULATOR ENVIRONMENT (DEVELOPMENT)
+
+### Services & Ports
+| Service | Port | URL |
+|---------|------|-----|
+| Firebase Auth | 9099 | http://localhost:9099 |
+| Firestore | 8080 | http://localhost:8080 |
+| Cloud Functions | 5001 | http://localhost:5001 |
+| Storage | 9199 | http://localhost:9199 |
+| Firebase UI | 4000 | http://localhost:4000 |
+| Flutter Web (SPA) | 5005 | http://localhost:5005 |
+| Stripe Webhooks | → | localhost:5001/orignagta/us-central1/stripe_webhook |
+
+### Firebase Project ID: `orignagta`
+
+### Starting Everything
+```bash
+# Option 1: All-in-one script
+./start-dev.sh
+
+# Option 2: Manual
+firebase emulators:start --import=./emulator-data --export-on-exit=./emulator-data
+stripe listen --forward-to localhost:5001/orignagta/us-central1/stripe_webhook
+
+# SPA Server for Flutter web
+cd e2e && python3 spa-server.py 5005 &
+```
+
+### Flutter Build for Emulator Mode
+```bash
+cd origna_gta && flutter build web --dart-define=ENVIRONMENT=emulator --dart-define=USE_EMULATORS=true
+```
+**CRITICAL:** Without these dart-defines, the app connects to Firebase PRODUCTION, not emulators. Always rebuild after switching modes.
+
+### SPA Server
+- Located at: `e2e/spa-server.py`
+- Serves `origna_gta/build/web` on port 5005
+- Handles SPA routing (returns index.html for all non-file routes)
+
+### VS Code Dev Settings
+- `.vscode/settings.json` should have proper emulator configuration
+- Use the task `🚀 Start Dev Environment (Emulators + Stripe)` to start everything
+
+---
+
+## ENVCONFIG (FLUTTER SINGLETON)
+
+- File: `origna_gta/lib/utils/env_config.dart`
+- **Pattern:** Factory constructor singleton — access via `EnvConfig()`, NOT `EnvConfig.instance`
+- `factory EnvConfig() => _instance;` (no static `instance` getter exists)
+- Key properties: `isEmulator`, `useEmulators`, `environment`
+- Configured via `--dart-define` at build time
+
+---
+
+## TEST ACCOUNTS (EMULATOR ONLY)
+
+| Account | Email | Password | UID | Roles |
+|---------|-------|----------|-----|-------|
+| Admin | yr62813@gmail.com | 960227Y#y | gcM3C09wyisNRkp2gJS0y2RVAReT | admin, seller, buyer |
+| Yahoo | yuniorrodriguezo4601@yahoo.com | TestYahoo123! | nb80ZX32Rx7PFtCiMiyWg4wmS8dM | buyer, seller |
+
+**NOTE:** Emulator Auth does NOT persist `emailVerified` reliably across restarts. A bypass exists in `auth_repository.dart` for emulator mode.
+
+### Seeding Emulator Data
+```bash
+cd e2e && npx ts-node mega-seed.ts
+```
+- Creates 75 users, 30 products, ~20 carts
+- Admin user (yr62813@gmail.com) is always created
+- Seed data includes seller profiles with Stripe connected accounts
+
+---
+
+## BUGS FOUND & FIXED (AUDIT LOG)
+
+### Backend Bugs (13 critical — all fixed, 86/86 tests passing)
+Full backend audit completed across ALL Python files in `functions/`.
+
+### Bug #14: State/Province Mismatch (Flutter)
+- Frontend sent `state` but backend expected `province` for Canadian addresses
+- Fixed in Flutter frontend
+
+### Bug #15: `create_success_response` returned Response instead of dict
+- File: `functions/utils.py`
+- Payment handlers called `create_success_response()` expecting a dict, but it returned a Flask `Response`
+- Fixed to return dict when called internally
+
+### Bug #16: Firestore Transaction Read-After-Write
+- File: `functions/handlers/payment_stripe.py` — `reserve_stock_transaction()`
+- Firestore transactions interleaved reads and writes (violates Firestore rules)
+- Fixed with 3-phase approach: (1) reads → (2) validate → (3) writes
+
+### Email Verification Bypass (Emulator)
+- File: `origna_gta/lib/core/repositories/auth_repository.dart` line ~71
+- Emulator Auth doesn't persist `emailVerified`
+- Added: `if (EnvConfig().isEmulator) return true;`
+
+### EnvConfig Access Pattern
+- `EnvConfig.instance.isEmulator` caused compilation error ("Member not found: 'instance'")
+- Fixed to `EnvConfig().isEmulator` (factory constructor pattern)
+
+### Seller Onboarding Fields Location
+- `onboardingCompleted` and `chargesEnabled` must be at **top-level** of user doc, not just inside `sellerProfile` nested object
+- Both locations needed for different parts of the system
+
+---
+
+## EMAIL SYSTEM
+
+### Configuration
+- **Sender:** support@orignaventures.ca
+- **Provider:** Mailjet (real API, real sends)
+- **Env var:** `FORCE_REAL_EMAIL=true` in `functions/.env` to send real emails even in emulator
+- **File:** `functions/email_service.py` (~733 lines)
+
+### APP_BASE_URL (Dynamic Links)
+```python
+APP_BASE_URL = 'http://localhost:5005' if IS_EMULATOR else 'https://orignagta.ca'
+```
+- All email CTA links (Track Order, Manage Orders, View Order, Contact Support) use `{APP_BASE_URL}`
+- In emulator → links point to localhost:5005
+- In production → links point to orignagta.ca
+
+### Email Templates (Redesigned)
+Both buyer and seller email templates have been **completely redesigned** with the app's design system:
+- Gradient hero header (#1F235A → #2F3B8F → #764BA2)
+- ORIGNA brand identity
+- Order status tracker with progress bar
+- Gradient table headers
+- Glassmorphism price summary
+- Pill-shaped CTA buttons
+- Responsive design
+
+### Key Email Functions
+| Function | Purpose |
+|----------|---------|
+| `send_email()` | Core Mailjet send |
+| `get_order_confirmation_email()` | Buyer order confirmation |
+| `get_seller_notification_email()` | Seller new order notification |
+| `send_payment_capture_failed_email()` | Capture failure alert |
+| `send_3ds_authentication_email()` | 3DS authentication required |
+| `send_authorization_expired_email()` | Authorization expired alert |
+
+---
+
+## APP DESIGN SYSTEM
+
+From `origna_gta/lib/core/theme/design_tokens.dart`:
+
+| Token | Value |
+|-------|-------|
+| Primary | #667EEA |
+| Secondary | #764BA2 |
+| Tertiary | #FF6B6B |
+| Accent | #5CE1E6 |
+| Background Gradient | #1F235A → #2F3B8F → #764BA2 |
+| Dark Surface | #1A1A2E |
+| Success | #10B981 |
+| Warning | #F59E0B |
+| Error | #EF4444 |
+
+---
+
+## E2E TEST SUITES
+
+### fullstack-e2e.spec.ts — 37 tests ✅
+Core marketplace flow tests (auth, products, cart, checkout, orders)
+
+### payment-workflow-e2e.spec.ts — 54 tests ✅
+Mega payment workflow (10 suites A-J covering edge cases, multi-seller, stock, auth, refunds)
+
+### admin-email-test.spec.ts — 3 tests ✅
+Real email delivery tests:
+1. Gmail BUYER email — Admin buys Quebec Scarf (product_001) → yr62813@gmail.com
+2. Yahoo BUYER email — Yahoo buys Beef Jerky (product_007) → yuniorrodriguezo4601@yahoo.com
+3. Yahoo SELLER email — Admin buys Yahoo's Candle Set → seller notification to Yahoo
+
+**Total: 94 tests all passing** (37 + 54 + 3)
+
+### Seed Scripts
+| Script | Purpose |
+|--------|---------|
+| `e2e/mega-seed.ts` | 75 users, 30 products, ~20 carts |
+| `e2e/seed-emulator.ts` | 25 users, 16 products, 3 carts (original) |
+
+### Stock Warning
+- `product_002` (Leather Bag) can run out of stock from repeated test runs
+- Prefer `product_001` (Scarf, 25 stock) and `product_007` (Jerky, 60 stock) for tests
+
+---
+
+## KNOWN NON-BLOCKING ISSUES
+
+- `KeyError: 'authtype'` in Firestore triggers — firebase_functions SDK emulator bug, harmless
+- Emulator Auth `emailVerified` does not persist across restarts — bypassed in Flutter code
+- Emulator data (`emulator-data/`) can become stale — re-seed with `mega-seed.ts` if needed
+
+---
+
+## STRIPE CONFIGURATION
+
+- **Model:** Direct Charges with Stripe Connect Express
+- **Platform Fee:** 2.5%
+- **Payment Flow:** Authorize (manual capture) → Ship → Capture
+- **Webhook endpoint:** `stripe_webhook` function
+- **Stripe CLI webhook secret:** Changes on each `stripe listen` restart — check terminal output
+- **Test cards:** `pm_card_visa` (success), `pm_card_authenticationRequired` (3DS)
+
+---
+
+## DEPLOYMENT CHECKLIST
+
+1. Run all backend tests: `cd functions && pytest -v`
+2. Run E2E tests: `cd e2e && npx playwright test`
+3. Build Flutter: `cd origna_gta && flutter build web --release --dart-define=ENVIRONMENT=production --dart-define=USE_EMULATORS=false`
+4. Deploy functions: `firebase deploy --only functions`
+5. Deploy rules: `./scripts/deploy_rules.sh`
+6. Deploy hosting: `firebase deploy --only hosting`
+7. Verify Stripe webhooks pointing to production URL
 
 ---
