@@ -38,10 +38,10 @@ jobs:
       # Search service secrets
       ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
       ALGOLIA_WRITE_API_KEY: ${{ secrets.ALGOLIA_WRITE_API_KEY }}
-      # Payment provider secrets (Airwallex)
-      AIRWALLEX_API_KEY: ${{ secrets.AIRWALLEX_API_KEY }}
-      AIRWALLEX_CLIENT_ID: ${{ secrets.AIRWALLEX_CLIENT_ID }}
-      AIRWALLEX_WEBHOOK_SECRET: ${{ secrets.AIRWALLEX_WEBHOOK_SECRET }}
+      # Payment provider secrets (Airwallex) - Optional: not yet in production
+      AIRWALLEX_API_KEY: ${{ secrets.AIRWALLEX_API_KEY || 'not_configured' }}
+      AIRWALLEX_CLIENT_ID: ${{ secrets.AIRWALLEX_CLIENT_ID || 'not_configured' }}
+      AIRWALLEX_WEBHOOK_SECRET: ${{ secrets.AIRWALLEX_WEBHOOK_SECRET || 'not_configured' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -88,10 +88,14 @@ jobs:
             'GEOAPIFY_API_KEY',
             'ALGOLIA_APP_ID',
             'ALGOLIA_WRITE_API_KEY',
+            'FIREBASE_SERVICE_ACCOUNT'
+          ]
+          
+          # Optional secrets (Airwallex not yet in production)
+          optional = [
             'AIRWALLEX_API_KEY',
             'AIRWALLEX_CLIENT_ID',
             'AIRWALLEX_WEBHOOK_SECRET',
-            'FIREBASE_SERVICE_ACCOUNT'
           ]
           
           missing = [k for k in required if not os.environ.get(k)]
@@ -101,6 +105,11 @@ jobs:
             print('\nConfigure these secrets in: Settings → Secrets and variables → Actions')
             print('\nDeployment cannot proceed without all required secrets.')
             sys.exit(1)
+          
+          # Warn about optional secrets
+          missing_opt = [k for k in optional if not os.environ.get(k) or os.environ.get(k) == 'not_configured']
+          if missing_opt:
+            print('⚠️  Optional secrets not configured (non-blocking):', ', '.join(missing_opt))
           
           print('✅ All required secrets are configured for deployment')
           PY
