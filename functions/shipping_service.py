@@ -1,6 +1,7 @@
 import requests
 from typing import List, Dict, Optional
 from config import GEOAPIFY_API_KEY
+from schema_constants import Fields
 
 # PERFORMANCE FIX: Cache province data in memory to avoid repeated dict construction
 _TAX_RATES_CACHE = {
@@ -282,18 +283,105 @@ def _calculate_fallback_shipping(item_count: int, seller_province: str, buyer_pr
     
     return base_cost + additional_cost
 
+def _best_quantity_discount(discounts: List[Dict], quantity: int) -> Optional[Dict]:
+    """Return the best (highest minQuantity) discount applicable to quantity."""
+    best = None
+    for d in discounts or []:
+        try:
+            min_qty = int(d.get('minQuantity', 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if quantity >= min_qty and (best is None or min_qty > int(best.get('minQuantity', 0) or 0)):
+            best = d
+    return best
+
+def _calculate_delivery_option_cost(option: Dict, quantity: int) -> float:
+    """
+    Calculate shipping cost for a delivery option.
+
+    Supports:
+    - Canonical schema: {type, cost, quantityDiscounts, maxItemsPerShipment, additionalItemCost}
+    - Legacy schema: {speed, isEnabled, price}
+    """
+    qty = max(1, int(quantity or 1))
+
+    # Canonical schema
+    if 'cost' in option or 'type' in option:
+        try:
+            base_cost = float(option.get('cost', 0) or 0)
+        except (TypeError, ValueError):
+            base_cost = 0.0
+
+        try:
+            max_items = int(option.get('maxItemsPerShipment', 0) or 0)
+        except (TypeError, ValueError):
+            max_items = 0
+
+        try:
+            additional_item_cost = float(option.get('additionalItemCost', 0) or 0)
+        except (TypeError, ValueError):
+            additional_item_cost = 0.0
+
+        if max_items > 0 and qty > max_items:
+            base_cost += (qty - max_items) * additional_item_cost
+
+        discounts = option.get('quantityDiscounts', []) or []
+        best = _best_quantity_discount(discounts, qty)
+        if not best:
+            return base_cost
+
+        discount_type = best.get('discountType', 'percent')
+        try:
+            discount_value = float(best.get('discountValue', 0) or 0)
+        except (TypeError, ValueError):
+            discount_value = 0.0
+
+        if discount_type == 'percent':
+            return base_cost * (1 - discount_value / 100.0)
+        if discount_type == 'fixed':
+            return max(0.0, base_cost - discount_value)
+        if discount_type == 'flat_rate':
+            return max(0.0, discount_value)
+        return base_cost
+
+    # Legacy schema
+    try:
+        price = float(option.get('price', 0) or 0)
+    except (TypeError, ValueError):
+        price = 0.0
+    return price * qty
+
+def _find_matching_delivery_option(options: List[Dict], speed: str) -> Optional[Dict]:
+    """
+    Find delivery option matching requested speed.
+
+    - Canonical schema matches on `type`
+    - Legacy schema matches on `speed` and requires `isEnabled`
+    """
+    for o in options or []:
+        if not isinstance(o, dict):
+            continue
+
+        if o.get('type') == speed:
+            return o
+
+        if o.get('speed') == speed and o.get('isEnabled'):
+            return o
+
+    return None
+
 def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str = 'standard') -> float:
     """
     Server-side shipping calculation matching frontend logic.
     """
-    if not buyer_address or not buyer_address.get('latitude') or not buyer_address.get('longitude'):
+    if not buyer_address or buyer_address.get(Fields.LATITUDE) is None or buyer_address.get(Fields.LONGITUDE) is None:
         print("⚠️ Buyer address missing coordinates")
         return 0.0
 
     total_shipping = 0.0
     items_by_seller = {}
     for item in items:
-        seller_id = item.get('sellerId')
+        seller_id = item.get(Fields.SELLER_ID)
         if seller_id:
             items_by_seller.setdefault(seller_id, []).append(item)
     
@@ -303,22 +391,22 @@ def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str =
             print(f"⚠️ Skipping seller {seller_id}: Empty items list")
             continue
         
-        seller_address = seller_items[0].get('sellerAddress')
+        seller_address = seller_items[0].get(Fields.SELLER_ADDRESS)
         if not seller_address or not isinstance(seller_address, dict):
             print(f"⚠️ Skipping seller {seller_id}: Missing or invalid seller address")
             continue
         
-        seller_lat = seller_address.get('latitude')
-        seller_lon = seller_address.get('longitude')
-        seller_state = seller_address.get('state', 'ON')
-        buyer_state = buyer_address.get('state', 'ON')
+        seller_lat = seller_address.get(Fields.LATITUDE)
+        seller_lon = seller_address.get(Fields.LONGITUDE)
+        seller_state = seller_address.get(Fields.STATE, 'ON')
+        buyer_state = buyer_address.get(Fields.STATE, 'ON')
 
-        chargeable_items = [i for i in seller_items if not i.get('freeShipping')]
+        chargeable_items = [i for i in seller_items if not i.get(Fields.FREE_SHIPPING)]
         if not chargeable_items:
             continue
         
         # Check Local/Perishable restrictions early
-        has_local_restriction = any(i.get('isLocalDeliveryOnly') or i.get('isPerishable') for i in seller_items)
+        has_local_restriction = any(i.get(Fields.IS_LOCAL_DELIVERY_ONLY) or i.get(Fields.IS_PERISHABLE) for i in seller_items)
         if has_local_restriction and seller_state != buyer_state:
             print(f"⚠️ Local-only item across province: {seller_state} -> {buyer_state}")
             total_shipping += 50.0 # High penalty
@@ -327,13 +415,18 @@ def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str =
         has_seller_fixed_price = False
         seller_fixed_total = 0
         for item in chargeable_items:
-            options = item.get('deliveryOptions', [])
-            matching_opt = next((o for o in options if o.get('speed') == speed and o.get('isEnabled')), None)
-            if matching_opt and matching_opt.get('price', 0) > 0:
-                seller_fixed_total += matching_opt['price'] * item.get('quantity', 1)
+            options = item.get(Fields.DELIVERY_OPTIONS, [])
+            matching_opt = _find_matching_delivery_option(options, speed)
+            if not matching_opt:
+                has_seller_fixed_price = False  # All items must have fixed price to use this mode
+                break
+
+            option_cost = _calculate_delivery_option_cost(matching_opt, item.get(Fields.QUANTITY, 1))
+            if option_cost > 0:
+                seller_fixed_total += option_cost
                 has_seller_fixed_price = True
             else:
-                has_seller_fixed_price = False # All items must have fixed price to use this mode
+                has_seller_fixed_price = False  # Cost must be positive to qualify as fixed price
                 break
         
         if has_seller_fixed_price:
@@ -348,7 +441,7 @@ def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str =
                 payload = {
                     "mode": "drive",
                     "sources": [{"location": [seller_lon, seller_lat]}],
-                    "targets": [{"location": [buyer_address['longitude'], buyer_address['latitude']]}]
+                    "targets": [{"location": [buyer_address[Fields.LONGITUDE], buyer_address[Fields.LATITUDE]]}]
                 }
                 response = requests.post(url, json=payload, timeout=5)
                 if response.status_code == 200:
@@ -365,7 +458,7 @@ def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str =
                 print(f"⚠️ Geoapify error: {str(e)}")
         
         # Fallback
-        item_count = sum(item.get('quantity', 1) for item in chargeable_items)
+        item_count = sum(item.get(Fields.QUANTITY, 1) for item in chargeable_items)
         total_shipping += _calculate_fallback_shipping(item_count, seller_state, buyer_state)
         
     return total_shipping

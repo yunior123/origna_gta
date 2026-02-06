@@ -22,6 +22,59 @@ class TestSchemaConsistency:
         # Go up from functions/tests/ to project root
         return current.parent.parent.parent
 
+    @staticmethod
+    def _extract_python_string_constants(class_name: str, content: str) -> set[str]:
+        """Extract quoted string constants from a Python class block."""
+        in_class = False
+        class_indent = 0
+        values: set[str] = set()
+
+        for line in content.splitlines():
+            if not in_class:
+                m = re.match(rf"^(\s*)class\s+{re.escape(class_name)}\s*:", line)
+                if m:
+                    in_class = True
+                    class_indent = len(m.group(1))
+                continue
+
+            # End when we hit another top-level class
+            if re.match(r"^\s*class\s+\w+\s*:", line) and (len(line) - len(line.lstrip(' '))) <= class_indent:
+                break
+
+            m = re.match(r"^\s+(\w+)\s*=\s*['\"]([^'\"]+)['\"]", line)
+            if m:
+                values.add(m.group(2))
+
+        return values
+
+    @staticmethod
+    def _extract_dart_string_constants(class_name: str, content: str) -> set[str]:
+        """Extract quoted string constants from a Dart `abstract final class` block."""
+        in_class = False
+        depth = 0
+        values: set[str] = set()
+
+        decl_pattern = re.compile(rf"^\s*abstract\s+final\s+class\s+{re.escape(class_name)}\b")
+        const_pattern = re.compile(r"static\s+const\s+(?:[\w<>]+\s+)?\w+\s*=\s*['\"]([^'\"]+)['\"]\s*;")
+
+        for line in content.splitlines():
+            if not in_class:
+                if decl_pattern.search(line):
+                    in_class = True
+                    depth += line.count('{') - line.count('}')
+                continue
+
+            depth += line.count('{') - line.count('}')
+
+            m = const_pattern.search(line)
+            if m:
+                values.add(m.group(1))
+
+            if depth <= 0:
+                break
+
+        return values
+
     def test_product_fields_consistency(self):
         """Verify product fields match between Python algolia_service.py and Dart constants"""
         root = self.get_project_root()
@@ -34,8 +87,29 @@ class TestSchemaConsistency:
         # Extract fields from format_product_for_algolia function
         python_fields = set()
         # Find all data.get() calls (updated from product_data.get())
-        field_pattern = r"data\.get\('(\w+)'[,)]"
-        python_fields = set(re.findall(field_pattern, algolia_content))
+        # Find all data.get() calls with string literals OR Fields constants
+        # 1. String literals: data.get('field')
+        literal_pattern = r"data\.get\(['\"](\w+)['\"]"
+        python_fields.update(re.findall(literal_pattern, algolia_content))
+        
+        # 2. Fields constants: data.get(Fields.FIELD_NAME)
+        # We need to map Fields.NAME back to 'name'
+        # First, load schema_constants.py to build a map
+        constants_path = root / 'functions' / 'schema_constants.py'
+        with open(constants_path, 'r') as f:
+            constants_content = f.read()
+            
+        # Map CONSTANT_NAME to 'fieldValue'
+        const_map = {}
+        const_pattern = r'^\s+(\w+)\s*=\s*["\'](\w+)["\']'
+        for match in re.finditer(const_pattern, constants_content, re.MULTILINE):
+            const_map[match.group(1)] = match.group(2)
+            
+        # Find usage of Fields.CONSTANT
+        fields_usage_pattern = r"Fields\.(\w+)"
+        for match in re.findall(fields_usage_pattern, algolia_content):
+            if match in const_map:
+                python_fields.add(const_map[match])
         
         # Required product fields that must be in Algolia index
         required_fields = {
@@ -57,114 +131,79 @@ class TestSchemaConsistency:
         print(f"   Optional fields: {len(optional_fields)} (weightKg, dimensions, etc.)")
 
     def test_order_status_consistency(self):
-        """Verify order status values match between Python and Dart"""
+        """Verify OrderStatus values match between Python and Dart schema constants"""
         root = self.get_project_root()
         
-        # Read Python config.py
-        config_path = root / 'functions' / 'config.py'
-        with open(config_path, 'r') as f:
-            config_content = f.read()
+        python_constants_path = root / 'functions' / 'schema_constants.py'
+        with open(python_constants_path, 'r') as f:
+            python_content = f.read()
+        python_statuses = self._extract_python_string_constants('OrderStatusValues', python_content)
+
+        dart_constants_path = root / 'origna_gta' / 'lib' / 'core' / 'schema' / 'schema_constants.dart'
+        with open(dart_constants_path, 'r') as f:
+            dart_content = f.read()
+        dart_statuses = self._extract_dart_string_constants('OrderStatusValues', dart_content)
+
+        assert python_statuses == dart_statuses, (
+            "OrderStatusValues mismatch.\n"
+            f"  Python: {sorted(python_statuses)}\n"
+            f"  Dart: {sorted(dart_statuses)}\n"
+            f"  Missing in Python: {sorted(dart_statuses - python_statuses)}\n"
+            f"  Missing in Dart: {sorted(python_statuses - dart_statuses)}"
+        )
         
-        # Extract OrderStatus enum values from Python
-        python_statuses = set()
-        order_status_match = re.search(r'class OrderStatus:.*?(?=\n\nclass|\nclass [A-Z]|\Z)', config_content, re.DOTALL)
-        if order_status_match:
-            order_status_block = order_status_match.group(0)
-            # Find all STATUS = "status" patterns
-            status_pattern = r'^\s+(\w+)\s*=\s*["\'](\w+)["\']'
-            for match in re.finditer(status_pattern, order_status_block, re.MULTILINE):
-                python_statuses.add(match.group(2))
-        
-        # Read Dart constants.dart
-        constants_path = root / 'origna_gta' / 'lib' / 'utils' / 'constants.dart'
-        with open(constants_path, 'r') as f:
-            constants_content = f.read()
-        
-        # Extract OrderStatus enum values from Dart
-        dart_statuses = set()
-        order_status_match = re.search(r'enum OrderStatus \{(.*?)\}', constants_content, re.DOTALL)
-        if order_status_match:
-            enum_body = order_status_match.group(1)
-            # Find all status('value') patterns
-            status_pattern = r"\w+\('(\w+)'\)"
-            dart_statuses = set(re.findall(status_pattern, enum_body))
-        
-        # Verify they match exactly
-        if python_statuses and dart_statuses:
-            assert python_statuses == dart_statuses, f"OrderStatus mismatch.\n  Python: {python_statuses}\n  Dart: {dart_statuses}\n  Missing in Python: {dart_statuses - python_statuses}\n  Missing in Dart: {python_statuses - dart_statuses}"
-        
-        print(f"✅ OrderStatus consistent: {len(python_statuses)} statuses")
-        print(f"   Statuses: {sorted(python_statuses)}")
+        print(f"✅ OrderStatusValues consistent: {len(python_statuses)} values")
+        print(f"   Values: {sorted(python_statuses)}")
 
     def test_payment_status_consistency(self):
-        """Verify payment status values match between Python and Dart"""
+        """Verify PaymentStatus values match between Python and Dart schema constants"""
         root = self.get_project_root()
         
-        # Read Python config.py
-        config_path = root / 'functions' / 'config.py'
-        with open(config_path, 'r') as f:
-            config_content = f.read()
-        
-        # Extract PaymentStatus enum values from Python
-        python_statuses = set()
-        payment_status_match = re.search(r'class PaymentStatus:.*?(?=\n\nclass|\nclass [A-Z]|\Z)', config_content, re.DOTALL)
-        if payment_status_match:
-            payment_status_block = payment_status_match.group(0)
-            status_pattern = r'^\s+(\w+)\s*=\s*["\'](\w+)["\']'
-            for match in re.finditer(status_pattern, payment_status_block, re.MULTILINE):
-                python_statuses.add(match.group(2))
-        
-        # Read Dart constants.dart
-        constants_path = root / 'origna_gta' / 'lib' / 'utils' / 'constants.dart'
-        with open(constants_path, 'r') as f:
-            constants_content = f.read()
-        
-        # Extract PaymentStatus enum values from Dart
-        dart_statuses = set()
-        payment_status_match = re.search(r'enum PaymentStatus \{(.*?)\}', constants_content, re.DOTALL)
-        if payment_status_match:
-            enum_body = payment_status_match.group(1)
-            status_pattern = r"\w+\('(\w+)'\)"
-            dart_statuses = set(re.findall(status_pattern, enum_body))
-        
-        # Check that Dart has all Python statuses + additional ones for UI
-        if python_statuses and dart_statuses:
-            # Dart should have AT LEAST all Python statuses
-            missing_in_dart = python_statuses - dart_statuses
-            assert not missing_in_dart, f"Missing payment statuses in Dart: {missing_in_dart}"
-            
-            # Note: Dart can have additional statuses for UI purposes
-            extra_in_dart = dart_statuses - python_statuses
-            if extra_in_dart:
-                print(f"   ℹ️  Additional statuses in Dart (UI-specific): {extra_in_dart}")
+        python_constants_path = root / 'functions' / 'schema_constants.py'
+        with open(python_constants_path, 'r') as f:
+            python_content = f.read()
+        python_statuses = self._extract_python_string_constants('PaymentStatusValues', python_content)
+
+        dart_constants_path = root / 'origna_gta' / 'lib' / 'core' / 'schema' / 'schema_constants.dart'
+        with open(dart_constants_path, 'r') as f:
+            dart_content = f.read()
+        dart_statuses = self._extract_dart_string_constants('PaymentStatusValues', dart_content)
+
+        assert python_statuses == dart_statuses, (
+            "PaymentStatusValues mismatch.\n"
+            f"  Python: {sorted(python_statuses)}\n"
+            f"  Dart: {sorted(dart_statuses)}\n"
+            f"  Missing in Python: {sorted(dart_statuses - python_statuses)}\n"
+            f"  Missing in Dart: {sorted(python_statuses - dart_statuses)}"
+        )
         
         print(f"✅ PaymentStatus consistent")
         print(f"   Python: {sorted(python_statuses)}")
         print(f"   Dart: {sorted(dart_statuses)}")
 
     def test_delivery_status_consistency(self):
-        """Verify delivery status values match between Python and Dart"""
+        """Verify DeliveryStatus values match between Python and Dart schema constants"""
         root = self.get_project_root()
         
-        # Read Dart constants.dart
-        constants_path = root / 'origna_gta' / 'lib' / 'utils' / 'constants.dart'
-        with open(constants_path, 'r') as f:
-            constants_content = f.read()
-        
-        # Extract DeliveryStatus enum values from Dart
-        dart_statuses = set()
-        delivery_status_match = re.search(r'enum DeliveryStatus \{(.*?)\}', constants_content, re.DOTALL)
-        if delivery_status_match:
-            enum_body = delivery_status_match.group(1)
-            status_pattern = r"\w+\('(\w+)'\)"
-            dart_statuses = set(re.findall(status_pattern, enum_body))
-        
-        # Expected delivery statuses
-        expected_statuses = {'pending', 'shipped', 'delivered'}
-        
-        assert dart_statuses == expected_statuses, f"Dart DeliveryStatus mismatch. Expected: {expected_statuses}, Got: {dart_statuses}"
-        
-        print(f"✅ DeliveryStatus consistent: {expected_statuses}")
+        python_constants_path = root / 'functions' / 'schema_constants.py'
+        with open(python_constants_path, 'r') as f:
+            python_content = f.read()
+        python_statuses = self._extract_python_string_constants('DeliveryStatusValues', python_content)
+
+        dart_constants_path = root / 'origna_gta' / 'lib' / 'core' / 'schema' / 'schema_constants.dart'
+        with open(dart_constants_path, 'r') as f:
+            dart_content = f.read()
+        dart_statuses = self._extract_dart_string_constants('DeliveryStatusValues', dart_content)
+
+        assert python_statuses == dart_statuses, (
+            "DeliveryStatusValues mismatch.\n"
+            f"  Python: {sorted(python_statuses)}\n"
+            f"  Dart: {sorted(dart_statuses)}\n"
+            f"  Missing in Python: {sorted(dart_statuses - python_statuses)}\n"
+            f"  Missing in Dart: {sorted(python_statuses - dart_statuses)}"
+        )
+
+        print(f"✅ DeliveryStatusValues consistent: {sorted(python_statuses)}")
 
     def test_address_fields_consistency(self):
         """Verify address fields match between Python Pydantic model and Dart model"""
@@ -195,33 +234,17 @@ class TestSchemaConsistency:
         """Verify Firestore collection names match between Python and Dart"""
         root = self.get_project_root()
         
-        # Read Python config.py
-        config_path = root / 'functions' / 'config.py'
-        with open(config_path, 'r') as f:
-            config_content = f.read()
-        
-        # Extract Collections class from Python
-        python_collections = {}
-        collections_match = re.search(r'class Collections:.*?(?=\n\nclass|\nclass [A-Z]|\Z)', config_content, re.DOTALL)
-        if collections_match:
-            collections_block = collections_match.group(0)
-            pattern = r'^\s+(\w+)\s*=\s*["\'](\w+)["\']'
-            for match in re.finditer(pattern, collections_block, re.MULTILINE):
-                python_collections[match.group(1).lower()] = match.group(2)
-        
-        # Read Dart constants.dart
-        constants_path = root / 'origna_gta' / 'lib' / 'utils' / 'constants.dart'
-        with open(constants_path, 'r') as f:
-            constants_content = f.read()
-        
-        # Extract Collections class from Dart
-        dart_collections = {}
-        collections_match = re.search(r'class Collections \{(.*?)\}', constants_content, re.DOTALL)
-        if collections_match:
-            collections_block = collections_match.group(1)
-            pattern = r'static const String (\w+) = ["\'](\w+)["\']'
-            for match in re.finditer(pattern, collections_block):
-                dart_collections[match.group(1)] = match.group(2)
+        python_constants_path = root / 'functions' / 'schema_constants.py'
+        with open(python_constants_path, 'r') as f:
+            python_content = f.read()
+        python_values = self._extract_python_string_constants('Collections', python_content)
+        python_collections = {v: v for v in python_values}
+
+        dart_constants_path = root / 'origna_gta' / 'lib' / 'core' / 'schema' / 'schema_constants.dart'
+        with open(dart_constants_path, 'r') as f:
+            dart_content = f.read()
+        dart_values = self._extract_dart_string_constants('Collections', dart_content)
+        dart_collections = {v: v for v in dart_values}
         
         # Compare collection values (case-insensitive keys)
         expected_collections = ['users', 'products', 'orders', 'cart', 'favorites']

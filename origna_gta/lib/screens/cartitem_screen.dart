@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -12,6 +13,11 @@ class CartItemScreen extends StatelessWidget {
   const CartItemScreen({super.key, required this.productId, required this.item, required this.onRemove});
   @override
   Widget build(BuildContext context) {
+    // Extract item fields using schema constants (static - won't rebuild on quantity change)
+    final imageUrlsList = (item[Fields.imageUrls] as List<dynamic>?)?.cast<String>() ?? [];
+    final name = item[Fields.name] as String? ?? 'Product';
+    final unitPrice = (item[Fields.price] ?? 0.0).toDouble();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -29,8 +35,6 @@ class CartItemScreen extends StatelessWidget {
               height: 80,
               child: Builder(
                 builder: (context) {
-                  final List<String> imageUrlsList = (item['imageUrls'] as List<dynamic>?)?.cast<String>() ?? [];
-
                   if (imageUrlsList.isEmpty) {
                     return Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported));
                   }
@@ -99,15 +103,23 @@ class CartItemScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item['name'] ?? 'Product',
+                  name,
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '\$${(item['price'] ?? 0.0).toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF667EEA)),
+                // Price display wrapped in Consumer - only this rebuilds when quantity changes
+                Consumer(
+                  builder: (context, ref, _) {
+                    final quantityAsync = ref.watch(cartItemQuantityProvider(productId));
+                    final quantity = quantityAsync.valueOrNull ?? 1;
+                    final totalPrice = unitPrice * quantity;
+                    return Text(
+                      '\$${totalPrice.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF667EEA)),
+                    );
+                  },
                 ),
               ],
             ),

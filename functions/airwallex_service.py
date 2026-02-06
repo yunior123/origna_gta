@@ -16,6 +16,7 @@ from config import (
     AIRWALLEX_WEBHOOK_SECRET,
     AIRWALLEX_BASE_URL,
 )
+from schema_constants import Collections, Fields
 
 
 class AirwallexService:
@@ -342,10 +343,10 @@ class AirwallexService:
         db = firestore.Client()
         
         if order_id:
-            db.collection('orders').document(order_id).update({
-                'payment_status': 'succeeded',
-                'airwallex_payment_id': payment_id,
-                'payment_completed_at': firestore.SERVER_TIMESTAMP
+            db.collection(Collections.ORDERS).document(order_id).update({
+                Fields.PAYMENT_STATUS: 'succeeded',
+                'airwallexPaymentId': payment_id,
+                'paymentCompletedAt': firestore.SERVER_TIMESTAMP
             })
         
         return {'status': 'processed', 'order_id': order_id}
@@ -360,10 +361,10 @@ class AirwallexService:
         db = firestore.Client()
         
         if order_id:
-            db.collection('orders').document(order_id).update({
-                'payment_status': 'failed',
-                'payment_error': error_message,
-                'airwallex_payment_id': payment_id
+            db.collection(Collections.ORDERS).document(order_id).update({
+                Fields.PAYMENT_STATUS: 'failed',
+                'paymentError': error_message,
+                'airwallexPaymentId': payment_id
             })
         
         return {'status': 'processed', 'order_id': order_id, 'error': error_message}
@@ -377,9 +378,9 @@ class AirwallexService:
         db = firestore.Client()
         
         if order_id:
-            db.collection('orders').document(order_id).update({
-                'payment_status': 'canceled',
-                'airwallex_payment_id': payment_id
+            db.collection(Collections.ORDERS).document(order_id).update({
+                Fields.PAYMENT_STATUS: 'canceled',
+                'airwallexPaymentId': payment_id
             })
         
         return {'status': 'processed', 'order_id': order_id}
@@ -393,12 +394,12 @@ class AirwallexService:
         db = firestore.Client()
         
         # Log payout success
-        db.collection('payouts').document(payout_id).set({
-            'seller_id': seller_id,
-            'status': 'succeeded',
-            'amount': data['amount'],
-            'completed_at': firestore.SERVER_TIMESTAMP,
-            'provider': 'airwallex'
+        db.collection(Collections.PAYOUTS).document(payout_id).set({
+            Fields.SELLER_ID: seller_id,
+            Fields.STATUS: 'succeeded',
+            Fields.AMOUNT: data['amount'],
+            Fields.COMPLETED_AT: firestore.SERVER_TIMESTAMP,
+            Fields.PROVIDER: 'airwallex'
         })
         
         return {'status': 'processed', 'payout_id': payout_id}
@@ -413,12 +414,12 @@ class AirwallexService:
         db = firestore.Client()
         
         # Log payout failure
-        db.collection('payouts').document(payout_id).set({
-            'seller_id': seller_id,
-            'status': 'failed',
-            'error': error_message,
-            'failed_at': firestore.SERVER_TIMESTAMP,
-            'provider': 'airwallex'
+        db.collection(Collections.PAYOUTS).document(payout_id).set({
+            Fields.SELLER_ID: seller_id,
+            Fields.STATUS: 'failed',
+            Fields.ERROR: error_message,
+            Fields.FAILED_AT: firestore.SERVER_TIMESTAMP,
+            Fields.PROVIDER: 'airwallex'
         })
         
         return {'status': 'processed', 'payout_id': payout_id, 'error': error_message}
@@ -432,12 +433,12 @@ class AirwallexService:
         db = firestore.Client()
         
         # Log refund
-        db.collection('refunds').document(refund_id).set({
-            'payment_id': payment_id,
-            'status': 'succeeded',
-            'amount': data['amount'],
-            'completed_at': firestore.SERVER_TIMESTAMP,
-            'provider': 'airwallex'
+        db.collection(Collections.REFUNDS).document(refund_id).set({
+            Fields.PAYMENT_ID: payment_id,
+            Fields.STATUS: 'succeeded',
+            Fields.AMOUNT: data['amount'],
+            Fields.COMPLETED_AT: firestore.SERVER_TIMESTAMP,
+            Fields.PROVIDER: 'airwallex'
         })
         
         return {'status': 'processed', 'refund_id': refund_id}
@@ -450,11 +451,11 @@ class AirwallexService:
         from google.cloud import firestore
         db = firestore.Client()
         
-        db.collection('refunds').document(refund_id).set({
-            'status': 'failed',
-            'error': error_message,
-            'failed_at': firestore.SERVER_TIMESTAMP,
-            'provider': 'airwallex'
+        db.collection(Collections.REFUNDS).document(refund_id).set({
+            Fields.STATUS: 'failed',
+            Fields.ERROR: error_message,
+            Fields.FAILED_AT: firestore.SERVER_TIMESTAMP,
+            Fields.PROVIDER: 'airwallex'
         })
         
         return {'status': 'processed', 'refund_id': refund_id, 'error': error_message}
@@ -479,17 +480,17 @@ class AirwallexService:
         print(f"⚠️  Payment {payment_id} requires action: {action_type}")
         
         if order_id:
-            db.collection('orders').document(order_id).update({
-                'payment_status': 'requires_action',
-                'airwallex_payment_id': payment_id,
-                'requires_3ds': True,
-                'authentication_url': action_url,
-                'updated_at': firestore.SERVER_TIMESTAMP
+            db.collection(Collections.ORDERS).document(order_id).update({
+                Fields.PAYMENT_STATUS: 'requires_action',
+                'airwallexPaymentId': payment_id,
+                'requires3ds': True,
+                'authenticationUrl': action_url,
+                Fields.UPDATED_AT: firestore.SERVER_TIMESTAMP
             })
             
             # ✅ COMPLETED TODO: Send email to buyer with 3DS authentication link
             try:
-                order_doc = db.collection('orders').document(order_id).get()
+                order_doc = db.collection(Collections.ORDERS).document(order_id).get()
                 if order_doc.exists:
                     order_data = order_doc.to_dict()
                     from email_service import send_3ds_authentication_email
@@ -519,22 +520,22 @@ class AirwallexService:
         
         if seller_id:
             # Update seller status
-            db.collection('users').document(seller_id).update({
-                'airwallex_account_verified': False,
-                'airwallex_verification_status': 'failed',
-                'airwallex_verification_error': failure_reason,
-                'payouts_enabled': False,  # Disable payouts
-                'updated_at': firestore.SERVER_TIMESTAMP
+            db.collection(Collections.USERS).document(seller_id).update({
+                'airwallexAccountVerified': False,
+                'airwallexVerificationStatus': 'failed',
+                'airwallexVerificationError': failure_reason,
+                Fields.PAYOUTS_ENABLED: False,  # Disable payouts
+                Fields.UPDATED_AT: firestore.SERVER_TIMESTAMP
             })
             
             # Log security event
-            db.collection('security_alerts').add({
-                'type': 'seller_kyc_failed',
-                'sellerId': seller_id,
-                'accountId': account_id,
-                'reason': failure_reason,
-                'provider': 'airwallex',
-                'timestamp': firestore.SERVER_TIMESTAMP
+            db.collection(Collections.SECURITY_ALERTS).add({
+                Fields.TYPE: 'seller_kyc_failed',
+                Fields.SELLER_ID: seller_id,
+                Fields.ACCOUNT_ID: account_id,
+                Fields.REASON: failure_reason,
+                Fields.PROVIDER: 'airwallex',
+                Fields.TIMESTAMP: firestore.SERVER_TIMESTAMP
             })
             
             print(f"  🔒 Seller {seller_id} payouts disabled due to failed verification")

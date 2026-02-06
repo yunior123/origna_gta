@@ -95,6 +95,14 @@ class Collections:
     CART = 'cart'
     FAVORITES = 'favorites'
     PAYOUTS = 'payouts'
+    REFUNDS = 'refunds'
+    WEBHOOK_LOGS = 'webhook_logs'
+    WEBHOOK_EVENTS = 'webhook_events'
+    SECURITY_ALERTS = 'security_alerts'
+    RATE_LIMITS = 'rate_limits'
+    CONFIG = 'config'
+    ADMIN_LOGS = 'admin_logs'
+    PRODUCT_RATINGS = 'product_ratings'
 
 class PayoutStatus:
     PENDING = 'pending'

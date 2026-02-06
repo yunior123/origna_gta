@@ -129,7 +129,7 @@ def is_provider_enabled(provider: str) -> bool:
         return False
     
     try:
-        config_ref = get_db().collection('config').document('payment_providers')
+        config_ref = get_db().collection(Collections.CONFIG).document('payment_providers')
         config_doc = config_ref.get()
         
         if not config_doc.exists:
@@ -157,7 +157,7 @@ def get_enabled_providers() -> list:
     enabled = []
     
     try:
-        config_ref = get_db().collection('config').document('payment_providers')
+        config_ref = get_db().collection(Collections.CONFIG).document('payment_providers')
         config_doc = config_ref.get()
         
         if not config_doc.exists:
@@ -227,7 +227,7 @@ def _require_admin(req: https_fn.CallableRequest) -> tuple:
     
     admin_data = admin_doc.to_dict()
     
-    if 'admin' not in admin_data.get('roles', []):
+    if UserRoleValues.ADMIN not in admin_data.get(Fields.ROLES, []):
         raise https_fn.HttpsError('permission-denied', 'Admin role required')
     
     return admin_id, admin_data
@@ -255,7 +255,7 @@ def get_payment_providers(req: https_fn.CallableRequest) -> Dict[str, Any]:
     admin_id, _ = _require_admin(req)
     
     try:
-        config_ref = get_db().collection('config').document('payment_providers')
+        config_ref = get_db().collection(Collections.CONFIG).document('payment_providers')
         config_doc = config_ref.get()
         
         if not config_doc.exists:
@@ -340,7 +340,7 @@ def update_payment_provider(req: https_fn.CallableRequest) -> Dict[str, Any]:
             )
     
     try:
-        config_ref = get_db().collection('config').document('payment_providers')
+        config_ref = get_db().collection(Collections.CONFIG).document('payment_providers')
         
         # Get current config or use defaults
         config_doc = config_ref.get()
@@ -364,7 +364,7 @@ def update_payment_provider(req: https_fn.CallableRequest) -> Dict[str, Any]:
         config_ref.set(config_data, merge=True)
         
         # Log the change
-        get_db().collection('admin_logs').add({
+        get_db().collection(Collections.ADMIN_LOGS).add({
             'action': 'payment_provider_update',
             'adminId': admin_id,
             'provider': provider,
@@ -376,7 +376,7 @@ def update_payment_provider(req: https_fn.CallableRequest) -> Dict[str, Any]:
         
         # Log security alert if disabling
         if old_enabled and not enabled:
-            get_db().collection('security_alerts').add({
+            get_db().collection(Collections.SECURITY_ALERTS).add({
                 'type': 'payment_provider_disabled',
                 'severity': 'high',
                 'adminId': admin_id,

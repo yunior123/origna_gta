@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
 import 'package:origna_gta/utils/utils.dart';
 
@@ -155,10 +156,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       // Create a Product instance from the JSON (repository expects Product type)
       final product = models.Product.fromJson({
         ...productData,
-        'productId': '', // Will be set by Firestore
-        'dateCreated': DateTime.now().toIso8601String(),
-        'rating': 0.0,
-        'isActive': true,
+        Fields.productId: '', // Will be set by Firestore
+        Fields.dateCreated: DateTime.now().toIso8601String(),
+        Fields.rating: 0.0,
+        Fields.isActive: true,
       });
 
       final productId = await productRepository.addProduct(product);
@@ -167,7 +168,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
       if (urls.isEmpty) throw Exception('Failed to upload images');
 
-      await productRepository.updateProduct(productId, {'productId': productId, 'imageUrls': urls});
+      await productRepository.updateProduct(productId, {Fields.productId: productId, Fields.imageUrls: urls});
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());

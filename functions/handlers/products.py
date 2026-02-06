@@ -19,6 +19,7 @@ from config import (
     Collections, R2_ACCESS_KEY_NEW, R2_SECRET_KEY_NEW, R2_ACCOUNT_ID_NEW,
     R2Config, get_r2_credentials, IS_EMULATOR
 )
+from schema_constants import Fields, UserRoleValues, OrderStatusValues
 from utils import create_success_response, create_error_response
 from algolia_service import index_product, delete_product
 
@@ -175,7 +176,7 @@ def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
     
     user_id = req.auth.uid
-    product_id = req.data.get('productId')
+    product_id = req.data.get(Fields.PRODUCT_ID)
     
     if not product_id:
         raise https_fn.HttpsError('invalid-argument', 'productId required')
@@ -196,16 +197,16 @@ def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('not-found', 'User not found')
     
     user_data = user_doc.to_dict()
-    is_admin = 'admin' in user_data.get('roles', [])
-    is_owner = product_data['sellerId'] == user_id
+    is_admin = UserRoleValues.ADMIN in user_data.get(Fields.ROLES, [])
+    is_owner = product_data[Fields.SELLER_ID] == user_id
     
     if not (is_admin or is_owner):
         raise https_fn.HttpsError('permission-denied', 'Only product owner or admin can delete')
     
     # Check for pending orders with lazy loading limit
     pending_orders_query = get_db().collection(Collections.ORDERS)\
-        .where('items.productId', 'array_contains', product_id)\
-        .where('orderStatus', 'in', ['pending', 'confirmed', 'processing', 'shipped'])\
+        .where(f'{Fields.ITEMS}.{Fields.PRODUCT_ID}', 'array_contains', product_id)\
+        .where(Fields.ORDER_STATUS, 'in', [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING, OrderStatusValues.SHIPPED])\
         .limit(1)
     
     pending_orders = list(pending_orders_query.stream())
@@ -218,9 +219,9 @@ def delete_product(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Soft delete
     product_ref.update({
-        'isActive': False,
-        'deletedAt': get_server_timestamp(),
-        'deletedBy': user_id
+        Fields.IS_ACTIVE: False,
+        Fields.DELETED_AT: get_server_timestamp(),
+        Fields.DELETED_BY: user_id
     })
     
     # Remove from Algolia index
@@ -260,9 +261,9 @@ def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
     # Import validation functions
     from utils import sanitized_text
     
-    product_id = data.get('productId')
-    order_id = data.get('orderId')
-    rating = data.get('rating')
+    product_id = data.get(Fields.PRODUCT_ID)
+    order_id = data.get(Fields.ORDER_ID)
+    rating = data.get(Fields.RATING)
     review_raw = data.get('review', '')
     
     # Sanitize review text to prevent XSS
@@ -284,22 +285,22 @@ def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     order_data = order_doc.to_dict()
     
-    if order_data['userId'] != user_id:
+    if order_data[Fields.USER_ID] != user_id:
         raise https_fn.HttpsError('permission-denied', 'This is not your order')
     
-    if order_data['orderStatus'] != 'delivered':
+    if order_data[Fields.ORDER_STATUS] != OrderStatusValues.DELIVERED:
         raise https_fn.HttpsError('failed-precondition', 'Can only rate delivered orders')
     
     # Check if product is in order
-    product_in_order = any(item['productId'] == product_id for item in order_data['items'])
+    product_in_order = any(item[Fields.PRODUCT_ID] == product_id for item in order_data[Fields.ITEMS])
     
     if not product_in_order:
         raise https_fn.HttpsError('invalid-argument', 'Product not in this order')
     
     # Check if user already rated this product with lazy loading
-    existing_ratings_query = get_db().collection('product_ratings')\
-        .where('productId', '==', product_id)\
-        .where('userId', '==', user_id)\
+    existing_ratings_query = get_db().collection(Collections.PRODUCT_RATINGS)\
+        .where(Fields.PRODUCT_ID, '==', product_id)\
+        .where(Fields.USER_ID, '==', user_id)\
         .limit(1)
     
     existing_ratings = list(existing_ratings_query.stream())
@@ -308,13 +309,13 @@ def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('already-exists', 'You have already rated this product')
     
     # Save rating
-    get_db().collection('product_ratings').add({
-        'productId': product_id,
-        'userId': user_id,
-        'orderId': order_id,
-        'rating': rating,
+    get_db().collection(Collections.PRODUCT_RATINGS).add({
+        Fields.PRODUCT_ID: product_id,
+        Fields.USER_ID: user_id,
+        Fields.ORDER_ID: order_id,
+        Fields.RATING: rating,
         'review': review,
-        'createdAt': get_server_timestamp()
+        Fields.CREATED_AT: get_server_timestamp()
     })
     
     # Update product's average rating using transaction (atomic, prevents race conditions)
@@ -327,8 +328,8 @@ def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
             return None, None
         
         product_data = product_doc.to_dict()
-        current_rating = product_data.get('rating', 0)
-        rating_count = product_data.get('ratingCount', 0)
+        current_rating = product_data.get(Fields.RATING, 0)
+        rating_count = product_data.get(Fields.RATING_COUNT, 0)
         
         # Calculate new average atomically
         total_rating = current_rating * rating_count
@@ -336,8 +337,8 @@ def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
         new_average = (total_rating + rating) / new_rating_count
         
         transaction.update(product_ref, {
-            'rating': new_average,
-            'ratingCount': new_rating_count
+            Fields.RATING: new_average,
+            Fields.RATING_COUNT: new_rating_count
         })
         return new_average, new_rating_count
     
@@ -367,19 +368,19 @@ def on_product_created(event: firestore_fn.Event) -> None:
         return
     
     # Only index active products
-    if not product_data.get('isActive', True):
+    if not product_data.get(Fields.IS_ACTIVE, True):
         print(f'Product {product_id} is not active, skipping indexing')
         return
     
     # FOOD SAFETY: Perishable products should have local delivery or same-day option
-    is_perishable = product_data.get('isPerishable', False)
+    is_perishable = product_data.get(Fields.IS_PERISHABLE, False)
     if is_perishable:
-        delivery_options = product_data.get('deliveryOptions', [])
+        delivery_options = product_data.get(Fields.DELIVERY_OPTIONS, [])
         has_local_or_same_day = any(
             opt.get('type') in ['local_delivery', 'same_day', 'local'] or 
             opt.get('estimatedDays', 99) <= 1
             for opt in delivery_options
-        ) if delivery_options else product_data.get('isLocalDeliveryOnly', False)
+        ) if delivery_options else product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False)
         
         if not has_local_or_same_day:
             print(f'WARNING: Perishable product {product_id} should have local/same-day delivery')
@@ -407,7 +408,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         return
     
     # If product is inactive, delete from index
-    if not product_data.get('isActive', True):
+    if not product_data.get(Fields.IS_ACTIVE, True):
         try:
             delete_product(product_id)
             print(f'Product {product_id} removed from Algolia (inactive)')
@@ -457,7 +458,7 @@ def configure_algolia(req: https_fn.CallableRequest) -> dict:
     
     user_data = user_doc.to_dict()
     
-    if 'admin' not in user_data.get('roles', []):
+    if UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
         raise https_fn.HttpsError('permission-denied', 'Admin only')
     
     try:
@@ -496,13 +497,13 @@ def get_products_paginated(req: https_fn.CallableRequest) -> Dict[str, Any]:
     limit = min(data.get('limit', DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE)
     start_after_id = data.get('startAfter')
     category = data.get('category')
-    seller_id = data.get('sellerId')
-    is_active = data.get('isActive', True)
-    order_by = data.get('orderBy', 'createdAt')
+    seller_id = data.get(Fields.SELLER_ID)
+    is_active = data.get(Fields.IS_ACTIVE, True)
+    order_by = data.get('orderBy', Fields.CREATED_AT)
     order_direction = data.get('orderDirection', 'desc')
     
     # Validation
-    if order_by not in ['createdAt', 'price', 'rating', 'ratingCount', 'title']:
+    if order_by not in [Fields.CREATED_AT, Fields.PRICE, Fields.RATING, Fields.RATING_COUNT, 'title']:
         raise https_fn.HttpsError('invalid-argument', 'Invalid orderBy field')
     
     if order_direction not in ['asc', 'desc']:
@@ -514,13 +515,13 @@ def get_products_paginated(req: https_fn.CallableRequest) -> Dict[str, Any]:
         
         # Filtres
         if is_active is not None:
-            query = query.where('isActive', '==', is_active)
+            query = query.where(Fields.IS_ACTIVE, '==', is_active)
         
         if category:
             query = query.where('category', '==', category)
         
         if seller_id:
-            query = query.where('sellerId', '==', seller_id)
+            query = query.where(Fields.SELLER_ID, '==', seller_id)
         
         # Tri
         if order_direction == 'desc':
@@ -590,7 +591,7 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> Dict[str, An
     """
     data = req.data or {}
     
-    seller_id = data.get('sellerId')
+    seller_id = data.get(Fields.SELLER_ID)
     limit = min(data.get('limit', DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE)
     start_after_id = data.get('startAfter')
     include_inactive = data.get('includeInactive', False)
@@ -617,20 +618,20 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> Dict[str, An
                 raise https_fn.HttpsError('not-found', 'User not found')
             
             user_data = user_doc.to_dict()
-            if 'admin' not in user_data.get('roles', []):
+            if UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
                 raise https_fn.HttpsError('permission-denied', 'Only owner or admin can view inactive products')
     
     try:
         # Construction de la requête
         query = get_db().collection(Collections.PRODUCTS)\
-            .where('sellerId', '==', seller_id)
+            .where(Fields.SELLER_ID, '==', seller_id)
         
         # Filtrer par statut si nécessaire
         if not include_inactive:
-            query = query.where('isActive', '==', True)
+            query = query.where(Fields.IS_ACTIVE, '==', True)
         
         # Tri par date de création (plus récent en premier)
-        query = query.order_by('createdAt', direction='DESCENDING')
+        query = query.order_by(Fields.CREATED_AT, direction='DESCENDING')
         
         # Cursor
         if start_after_id:
@@ -689,7 +690,7 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> Dict[str, An
     """
     data = req.data or {}
     
-    product_id = data.get('productId')
+    product_id = data.get(Fields.PRODUCT_ID)
     if not product_id:
         raise https_fn.HttpsError('invalid-argument', 'productId required')
     
@@ -704,19 +705,19 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> Dict[str, An
     
     try:
         # Construction de la requête
-        query = get_db().collection('product_ratings')\
-            .where('productId', '==', product_id)
+        query = get_db().collection(Collections.PRODUCT_RATINGS)\
+            .where(Fields.PRODUCT_ID, '==', product_id)
         
         # Filtrer par rating minimum
         if min_rating is not None:
-            query = query.where('rating', '>=', min_rating)
+            query = query.where(Fields.RATING, '>=', min_rating)
         
         # Tri par date (plus récent en premier)
-        query = query.order_by('createdAt', direction='DESCENDING')
+        query = query.order_by(Fields.CREATED_AT, direction='DESCENDING')
         
         # Cursor
         if start_after_id:
-            start_doc = get_db().collection('product_ratings').document(start_after_id).get()
+            start_doc = get_db().collection(Collections.PRODUCT_RATINGS).document(start_after_id).get()
             if start_doc.exists:
                 query = query.start_after(start_doc)
         
@@ -741,7 +742,7 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> Dict[str, An
             rating_data['id'] = doc.id
             rating_data_list.append(rating_data)
             
-            user_id = rating_data.get('userId')
+            user_id = rating_data.get(Fields.USER_ID)
             if user_id:
                 user_ids_to_fetch.add(user_id)
         
@@ -761,10 +762,10 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> Dict[str, An
         
         # Enrichir les ratings avec les données utilisateur
         for rating_data in rating_data_list:
-            user_id = rating_data.get('userId')
+            user_id = rating_data.get(Fields.USER_ID)
             if user_id and user_id in user_data_map:
                 user_data = user_data_map[user_id]
-                rating_data['userName'] = user_data.get('name', 'Anonymous')
+                rating_data['userName'] = user_data.get(Fields.NAME, 'Anonymous')
                 rating_data['userAvatar'] = user_data.get('profilePictureUrl')
             
             ratings.append(rating_data)

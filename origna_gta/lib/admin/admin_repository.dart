@@ -28,11 +28,11 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> deleteProduct(String productId) async {
-    await _firestore.collection('products').doc(productId).update({
-      'isActive': false,
-      'deletedAt': FieldValue.serverTimestamp(),
-      'stockQuantity': 0,
-      'keywords': [],
+    await _firestore.collection(Collections.products).doc(productId).update({
+      Fields.isActive: false,
+      Fields.deletedAt: FieldValue.serverTimestamp(),
+      Fields.stockQuantity: 0,
+      Fields.keywords: [],
     });
   }
 
@@ -49,9 +49,9 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Future<UserModel?> fetchUserById(String userId) async {
-    final doc = await _firestore.collection('users').doc(userId).get();
+    final doc = await _firestore.collection(Collections.users).doc(userId).get();
     if (!doc.exists) return null;
-    return UserModel.fromMap({'uid': doc.id, ...doc.data()!});
+    return UserModel.fromMap({Fields.uid: doc.id, ...doc.data()!});
   }
 
   @override
@@ -64,10 +64,10 @@ class FirebaseAdminRepository implements AdminRepository {
   Future<void> setUserSuspended(String userId, bool suspended) async {
     if (suspended) {
       // EDGE CASE FIX #1: Call backend to handle active orders
-      await _functions.httpsCallable('suspend_seller').call({'sellerId': userId, 'reason': 'Suspended by admin'});
+      await _functions.httpsCallable('suspend_seller').call({Fields.sellerId: userId, 'reason': 'Suspended by admin'});
     } else {
       // Unsuspend: just update Firestore
-      await _firestore.collection('users').doc(userId).update({'suspended': false, 'unsuspendedAt': FieldValue.serverTimestamp()});
+      await _firestore.collection(Collections.users).doc(userId).update({Fields.suspended: false, Fields.unsuspendedAt: FieldValue.serverTimestamp()});
     }
   }
 
@@ -82,7 +82,7 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> updateProductStock(String productId, int quantity) async {
-    await _firestore.collection('products').doc(productId).update({'stockQuantity': quantity});
+    await _firestore.collection(Collections.products).doc(productId).update({Fields.stockQuantity: quantity});
   }
 
   @override
@@ -99,46 +99,46 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Stream<List<OrderModel>> watchOrders({String? status, int limit = 50}) {
-    Query query = _firestore.collection('orders').orderBy('createdAt', descending: true).limit(limit);
+    Query query = _firestore.collection(Collections.orders).orderBy(Fields.createdAt, descending: true).limit(limit);
     if (status != null && status != 'all') {
-      query = query.where('paymentStatus', isEqualTo: status);
+      query = query.where(Fields.paymentStatus, isEqualTo: status);
     }
     return query.snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
-        return OrderModel.fromMap({'orderId': doc.id, ...data});
+        return OrderModel.fromMap({Fields.orderId: doc.id, ...data});
       }).toList();
     });
   }
 
   @override
   Stream<List<ProductModel>> watchProducts({int limit = 100, String? sellerId}) {
-    Query query = _firestore.collection('products');
+    Query query = _firestore.collection(Collections.products);
     if (sellerId != null && sellerId.isNotEmpty) {
-      query = query.where('sellerId', isEqualTo: sellerId);
+      query = query.where(Fields.sellerId, isEqualTo: sellerId);
     }
-    query = query.orderBy('dateCreated', descending: true).limit(limit);
+    query = query.orderBy(Fields.dateCreated, descending: true).limit(limit);
     return query.snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
-        return ProductModel.fromMap({'productId': doc.id, ...data});
+        return ProductModel.fromMap({Fields.productId: doc.id, ...data});
       }).toList();
     });
   }
 
   @override
   Stream<List<UserModel>> watchSellers({int limit = 100}) {
-    return _firestore.collection('users').where('roles', arrayContains: UserRoles.seller).orderBy('createdAt', descending: true).limit(limit).snapshots().map((
+    return _firestore.collection(Collections.users).where(Fields.roles, arrayContains: UserRoles.seller).orderBy(Fields.createdAt, descending: true).limit(limit).snapshots().map((
       snapshot,
     ) {
-      return snapshot.docs.map((doc) => UserModel.fromMap({'uid': doc.id, ...doc.data()})).toList();
+      return snapshot.docs.map((doc) => UserModel.fromMap({Fields.uid: doc.id, ...doc.data()})).toList();
     });
   }
 
   @override
   Stream<List<UserModel>> watchUsers({int limit = 100}) {
-    return _firestore.collection('users').orderBy('createdAt', descending: true).limit(limit).snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => UserModel.fromMap({'uid': doc.id, ...doc.data()})).toList();
+    return _firestore.collection(Collections.users).orderBy(Fields.createdAt, descending: true).limit(limit).snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => UserModel.fromMap({Fields.uid: doc.id, ...doc.data()})).toList();
     });
   }
 }

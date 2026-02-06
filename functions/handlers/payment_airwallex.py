@@ -14,8 +14,10 @@ from typing import Dict, Any
 _db = None
 _firestore = None
 _airwallex_service = None
+_airwallex_service = None
 _collections = None
 _utils = None
+_fields = None
 
 def get_db():
     """Get Firestore client (lazy initialization)."""
@@ -46,9 +48,17 @@ def get_collections():
     """Get Collections config (lazy initialization)."""
     global _collections
     if _collections is None:
-        from config import Collections
+        from schema_constants import Collections
         _collections = Collections
     return _collections
+
+def get_fields():
+    """Get Fields config (lazy initialization)."""
+    global _fields
+    if _fields is None:
+        from schema_constants import Fields
+        _fields = Fields
+    return _fields
 
 def get_utils():
     """Get utility functions (lazy initialization)."""
@@ -87,10 +97,11 @@ def airwallex_create_seller_account(req: https_fn.CallableRequest) -> Dict[str, 
         
         # Save account ID to Firestore
         Collections = get_collections()
+        Fields = get_fields()
         user_ref = get_db().collection(Collections.USERS).document(user_id)
         user_ref.update({
-            'airwallexAccountId': account_id,
-            'updatedAt': get_server_timestamp()
+            Fields.AIRWALLEX_ACCOUNT_ID: account_id,
+            Fields.UPDATED_AT: get_server_timestamp()
         })
         
         utils = get_utils()
@@ -136,6 +147,7 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Get order
     Collections = get_collections()
+    Fields = get_fields()
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
     
@@ -143,14 +155,15 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('not-found', 'Order not found')
     
     order_data = order_doc.to_dict()
+    Fields = get_fields()
     
-    if order_data['userId'] != user_id:
+    if order_data[Fields.USER_ID] != user_id:
         raise https_fn.HttpsError('permission-denied', 'Not your order')
     
     try:
         airwallex_service = get_airwallex_service()
 
-        amount_cents = order_data.get('totalAmountCents')
+        amount_cents = order_data.get(Fields.TOTAL_AMOUNT_CENTS)
         if amount_cents is None or not isinstance(amount_cents, int) or amount_cents < 0:
             raise https_fn.HttpsError('failed-precondition', 'Order total not available')
 
@@ -166,8 +179,8 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         # Update order with Airwallex payment intent
         order_ref.update({
             'airwallexPaymentIntentId': result['id'],
-            'paymentProvider': 'airwallex',
-            'updatedAt': get_server_timestamp()
+            Fields.PAYMENT_PROVIDER: 'airwallex',
+            Fields.UPDATED_AT: get_server_timestamp()
         })
         
         utils = get_utils()
@@ -218,9 +231,10 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         airwallex_service = get_airwallex_service()
         airwallex_service.capture_payment(payment_intent_id)
         
+        Fields = get_fields()
         order_ref.update({
-            'paymentStatus': 'captured',
-            'updatedAt': get_server_timestamp()
+            Fields.PAYMENT_STATUS: 'captured',
+            Fields.UPDATED_AT: get_server_timestamp()
         })
         
         utils = get_utils()
@@ -309,7 +323,7 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response('Invalid event format', status=400)
     
     # SECURITY FIX #6: Idempotency check (prevent duplicate processing)
-    webhook_ref = get_db().collection('webhook_events').document(event_id)
+    webhook_ref = get_db().collection(Collections.WEBHOOK_EVENTS).document(event_id)
     webhook_doc = webhook_ref.get()
     
     if webhook_doc.exists:
@@ -318,13 +332,14 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
     
     # SECURITY FIX #7: Log webhook with client IP for audit trail
     try:
+        Fields = get_fields()
         webhook_ref.set({
-            'provider': 'airwallex',
-            'type': event_type,
-            'processed': True,
-            'timestamp': get_server_timestamp(),
-            'client_ip': client_ip,  # Audit trail
-            'event_id': event_id
+            Fields.PROVIDER: 'airwallex',
+            Fields.TYPE: event_type,
+            Fields.PROCESSED: True,
+            Fields.TIMESTAMP: get_server_timestamp(),
+            Fields.CLIENT_IP: client_ip,  # Audit trail
+            Fields.EVENT_ID: event_id
         })
     except Exception as e:
         print(f'⚠️ Failed to log webhook: {type(e).__name__}')  # Sanitized (no sensitive data)
@@ -350,31 +365,34 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
             # Manual capture: payment authorized, awaiting capture
             order_id = _extract_order_id(data)
             if order_id:
+                Fields = get_fields()
                 order_ref = get_db().collection(Collections.ORDERS).document(order_id)
                 order_ref.update({
-                    'paymentStatus': 'authorized',
-                    'orderStatus': 'confirmed',
-                    'updatedAt': get_server_timestamp()
+                    Fields.PAYMENT_STATUS: 'authorized',
+                    Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+                    Fields.UPDATED_AT: get_server_timestamp()
                 })
 
         elif event_type == 'payment_intent.succeeded':
             # Payment fully captured/completed
             order_id = _extract_order_id(data)
             if order_id:
+                Fields = get_fields()
                 order_ref = get_db().collection(Collections.ORDERS).document(order_id)
                 order_ref.update({
-                    'paymentStatus': 'captured',
-                    'updatedAt': get_server_timestamp()
+                    Fields.PAYMENT_STATUS: 'captured',
+                    Fields.UPDATED_AT: get_server_timestamp()
                 })
 
         elif event_type in ('payment_attempt.authorization_failed', 'payment_intent.cancelled'):
             order_id = _extract_order_id(data)
             if order_id:
+                Fields = get_fields()
                 order_ref = get_db().collection(Collections.ORDERS).document(order_id)
                 order_ref.update({
-                    'paymentStatus': 'payment_failed',
-                    'orderStatus': 'failed',
-                    'updatedAt': get_server_timestamp()
+                    Fields.PAYMENT_STATUS: 'payment_failed',
+                    Fields.ORDER_STATUS: OrderStatusValues.FAILED,
+                    Fields.UPDATED_AT: get_server_timestamp()
                 })
         
         print(f'✓ Airwallex webhook processed successfully: {event_type}')

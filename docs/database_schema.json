@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "lastUpdated": "2026-02-05",
+  "lastUpdated": "2026-02-06",
   "description": "Complete Firestore database schema for OrignaGTA e-commerce platform. CANADA-ONLY marketplace.",
 
   "collections": {
@@ -120,6 +120,50 @@
           "type": "timestamp",
           "required": false,
           "description": "When the account was suspended"
+        },
+        "unsuspendedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When the account was unsuspended"
+        },
+        "commissionRate": {
+          "type": "number",
+          "required": false,
+          "default": 0.025,
+          "description": "Per-seller commission rate (e.g., 0.025 = 2.5%)"
+        },
+        "verified": {
+          "type": "boolean",
+          "required": false,
+          "default": false,
+          "description": "Manual verification flag (admin-managed)"
+        },
+        "verificationStatus": {
+          "type": "string",
+          "required": false,
+          "description": "Verification workflow status (admin-managed)",
+          "values": ["pending", "approved", "rejected"]
+        },
+        "platform": {
+          "type": "string",
+          "required": false,
+          "description": "Seller platform/source (e.g., aliexpress, alibaba, 1688, dhgate, temu, local, custom)"
+        },
+        "country": {
+          "type": "string",
+          "required": false,
+          "description": "Seller country code (e.g., CA, CN)"
+        },
+        "businessName": {
+          "type": "string",
+          "required": false,
+          "description": "Business name for business sellers"
+        },
+        "payoutHoldDays": {
+          "type": "integer",
+          "required": false,
+          "default": 7,
+          "description": "Custom hold period before payout (in days)"
         },
         "updatedAt": {
           "type": "timestamp",
@@ -563,7 +607,7 @@
           "type": "string",
           "required": true,
           "description": "Payment status",
-          "values": ["awaiting_payment", "processing", "paid", "payment_failed", "refunded", "session_expired", "authorized", "captured"]
+          "values": ["awaiting_payment", "processing", "paid", "payment_failed", "refunded", "session_expired", "authorized", "captured", "cancelled", "authorization_expired"]
         },
         "shippingAddress": {
           "type": "map",

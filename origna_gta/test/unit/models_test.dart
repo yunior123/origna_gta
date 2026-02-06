@@ -1,22 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 
 void main() {
   group('Address', () {
     test('fromMap creates correct Address', () {
       final map = {
-        'street': '123 Main St',
-        'apartment': 'Unit 4B',
-        'city': 'Toronto',
-        'state': 'ON',
-        'postalCode': 'M5V 1A1',
-        'country': 'Canada',
-        'phoneNumber': '416-555-1234',
-        'isDefault': true,
-        'label': 'Home',
-        'latitude': 43.6532,
-        'longitude': -79.3832,
+        Fields.street: '123 Main St',
+        Fields.apartment: 'Unit 4B',
+        Fields.city: 'Toronto',
+        Fields.state: 'ON',
+        Fields.postalCode: 'M5V 1A1',
+        Fields.country: 'Canada',
+        Fields.phoneNumber: '416-555-1234',
+        Fields.isDefault: true,
+        Fields.label: 'Home',
+        Fields.latitude: 43.6532,
+        Fields.longitude: -79.3832,
       };
 
       final address = Address.fromMap(map);
@@ -66,17 +67,17 @@ void main() {
 
       final map = address.toMap();
 
-      expect(map['street'], '456 Oak Ave');
-      expect(map['apartment'], 'Suite 100');
-      expect(map['city'], 'Vancouver');
-      expect(map['state'], 'BC');
-      expect(map['postalCode'], 'V6B 1A1');
-      expect(map['country'], 'Canada');
-      expect(map['phoneNumber'], '604-555-5678');
-      expect(map['isDefault'], true);
-      expect(map['label'], 'Work');
-      expect(map['latitude'], 49.2827);
-      expect(map['longitude'], -123.1207);
+      expect(map[Fields.street], '456 Oak Ave');
+      expect(map[Fields.apartment], 'Suite 100');
+      expect(map[Fields.city], 'Vancouver');
+      expect(map[Fields.state], 'BC');
+      expect(map[Fields.postalCode], 'V6B 1A1');
+      expect(map[Fields.country], 'Canada');
+      expect(map[Fields.phoneNumber], '604-555-5678');
+      expect(map[Fields.isDefault], true);
+      expect(map[Fields.label], 'Work');
+      expect(map[Fields.latitude], 49.2827);
+      expect(map[Fields.longitude], -123.1207);
     });
 
     test('fullAddress returns formatted string', () {
@@ -100,17 +101,17 @@ void main() {
   group('UserModel', () {
     test('fromMap creates correct UserModel', () {
       final map = {
-        'uid': 'user123',
-        'email': 'test@example.com',
-        'name': 'John Doe',
-        'roles': ['buyer', 'seller'],
-        'address': {'street': '123 Main St', 'city': 'Toronto', 'state': 'ON', 'postalCode': 'M5V 1A1', 'country': 'Canada'},
-        'createdAt': Timestamp.fromDate(DateTime(2024, 1, 15)),
-        'customerId': 'cus_123',
-        'stripeAccountId': 'acct_456',
-        'payoutsEnabled': true,
-        'chargesEnabled': true,
-        'onboardingCompleted': true,
+        Fields.uid: 'user123',
+        Fields.email: 'test@example.com',
+        Fields.name: 'John Doe',
+        Fields.roles: ['buyer', 'seller'],
+        Fields.address: {Fields.street: '123 Main St', Fields.city: 'Toronto', Fields.state: 'ON', Fields.postalCode: 'M5V 1A1', Fields.country: 'Canada'},
+        Fields.createdAt: Timestamp.fromDate(DateTime(2024, 1, 15)),
+        Fields.customerId: 'cus_123',
+        Fields.stripeAccountId: 'acct_456',
+        Fields.payoutsEnabled: true,
+        Fields.chargesEnabled: true,
+        Fields.onboardingCompleted: true,
       };
 
       final user = UserModel.fromMap(map);
@@ -129,11 +130,11 @@ void main() {
 
     test('fromMap handles missing optional fields', () {
       final map = {
-        'uid': 'user123',
-        'email': 'test@example.com',
-        'name': 'John Doe',
-        'roles': ['buyer'],
-        'createdAt': Timestamp.fromDate(DateTime(2024, 1, 15)),
+        Fields.uid: 'user123',
+        Fields.email: 'test@example.com',
+        Fields.name: 'John Doe',
+        Fields.roles: ['buyer'],
+        Fields.createdAt: Timestamp.fromDate(DateTime(2024, 1, 15)),
       };
 
       final user = UserModel.fromMap(map);
@@ -161,13 +162,13 @@ void main() {
 
       final map = user.toMap();
 
-      expect(map['uid'], 'user123');
-      expect(map['email'], 'test@example.com');
-      expect(map['name'], 'John Doe');
-      expect(map['roles'], ['buyer', 'seller']);
-      expect(map['customerId'], 'cus_123');
-      expect(map['stripeAccountId'], 'acct_456');
-      expect(map['payoutsEnabled'], true);
+      expect(map[Fields.uid], 'user123');
+      expect(map[Fields.email], 'test@example.com');
+      expect(map[Fields.name], 'John Doe');
+      expect(map[Fields.roles], ['buyer', 'seller']);
+      expect(map[Fields.customerId], 'cus_123');
+      expect(map[Fields.stripeAccountId], 'acct_456');
+      expect(map[Fields.payoutsEnabled], true);
     });
 
     test('canReceivePayouts returns true when conditions met', () {
@@ -213,21 +214,21 @@ void main() {
   group('ProductModel', () {
     test('fromMap creates correct ProductModel', () {
       final map = {
-        'productId': 'prod123',
-        'name': 'Test Product',
-        'price': 29.99,
-        'imageUrls': ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
-        'sellerAddress': {'street': '123 Main St', 'city': 'Toronto', 'state': 'ON', 'postalCode': 'M5V 1A1', 'country': 'Canada'},
-        'description': 'A great product',
-        'sellerId': 'seller123',
-        'stockQuantity': 50,
-        'categoryId': 1,
-        'rating': 4.5,
-        'ratingCount': 100,
-        'keywords': ['test', 'product'],
-        'weightKg': 0.5,
-        'isLocalDeliveryOnly': false,
-        'estimatedShipDays': 3,
+        Fields.productId: 'prod123',
+        Fields.name: 'Test Product',
+        Fields.price: 29.99,
+        Fields.imageUrls: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
+        Fields.sellerAddress: {Fields.street: '123 Main St', Fields.city: 'Toronto', Fields.state: 'ON', Fields.postalCode: 'M5V 1A1', Fields.country: 'Canada'},
+        Fields.description: 'A great product',
+        Fields.sellerId: 'seller123',
+        Fields.stockQuantity: 50,
+        Fields.categoryId: 1,
+        Fields.rating: 4.5,
+        Fields.ratingCount: 100,
+        Fields.keywords: ['test', 'product'],
+        Fields.weightKg: 0.5,
+        Fields.isLocalDeliveryOnly: false,
+        Fields.estimatedShipDays: 3,
       };
 
       final product = ProductModel.fromMap(map);
@@ -250,7 +251,7 @@ void main() {
     });
 
     test('fromMap handles missing optional fields', () {
-      final map = {'productId': 'prod123', 'name': 'Test Product', 'price': 29.99, 'categoryId': 1};
+      final map = {Fields.productId: 'prod123', Fields.name: 'Test Product', Fields.price: 29.99, Fields.categoryId: 1};
 
       final product = ProductModel.fromMap(map);
 
@@ -282,33 +283,33 @@ void main() {
 
       final map = product.toMap();
 
-      expect(map['id'], 'prod123');
-      expect(map['name'], 'Test Product');
-      expect(map['price'], 29.99);
-      expect(map['stockQuantity'], 50);
-      expect(map['rating'], 4.5);
-      expect(map['isActive'], true);
+      expect(map[Fields.productId], 'prod123');
+      expect(map[Fields.name], 'Test Product');
+      expect(map[Fields.price], 29.99);
+      expect(map[Fields.stockQuantity], 50);
+      expect(map[Fields.rating], 4.5);
+      expect(map[Fields.isActive], true);
     });
 
     test('price parsing handles various numeric types', () {
       // Integer
-      var product = ProductModel.fromMap({'price': 30, 'categoryId': 1});
+      var product = ProductModel.fromMap({Fields.price: 30, Fields.categoryId: 1});
       expect(product.price, 30.0);
 
       // String
-      product = ProductModel.fromMap({'price': '25.50', 'categoryId': 1});
+      product = ProductModel.fromMap({Fields.price: '25.50', Fields.categoryId: 1});
       expect(product.price, 25.50);
 
       // Null
-      product = ProductModel.fromMap({'price': null, 'categoryId': 1});
+      product = ProductModel.fromMap({Fields.price: null, Fields.categoryId: 1});
       expect(product.price, 0.0);
     });
   });
 
   group('CartModel', () {
-    test('fromMap creates correct CartModel', () {
+     test('fromMap creates correct CartModel', () {
       final now = DateTime(2024, 1, 15, 10, 30);
-      final map = {'productId': 'prod123', 'quantity': 3, 'dateCreated': Timestamp.fromDate(now)};
+      final map = {Fields.productId: 'prod123', Fields.quantity: 3, Fields.dateCreated: Timestamp.fromDate(now)};
 
       final cart = CartModel.fromMap(map);
 
@@ -323,9 +324,9 @@ void main() {
 
       final map = cart.toMap();
 
-      expect(map['productId'], 'prod123');
-      expect(map['quantity'], 2);
-      expect((map['dateCreated'] as Timestamp).toDate(), now);
+      expect(map[Fields.productId], 'prod123');
+      expect(map[Fields.quantity], 2);
+      expect((map[Fields.dateCreated] as Timestamp).toDate(), now);
     });
 
     test('default quantity is 1', () {
@@ -337,7 +338,7 @@ void main() {
 
   group('CartItemModel', () {
     test('fromMap creates correct CartItemModel', () {
-      final map = {'productId': 'prod123', 'quantity': 5, 'dateCreated': Timestamp.fromDate(DateTime(2024, 1, 15))};
+      final map = {Fields.productId: 'prod123', Fields.quantity: 5, Fields.dateCreated: Timestamp.fromDate(DateTime(2024, 1, 15))};
 
       final item = CartItemModel.fromMap(map);
 
@@ -351,23 +352,23 @@ void main() {
 
       final map = item.toMap();
 
-      expect(map['productId'], 'prod123');
-      expect(map['quantity'], 3);
-      expect(map['dateCreated'], now);
+      expect(map[Fields.productId], 'prod123');
+      expect(map[Fields.quantity], 3);
+      expect(map[Fields.dateCreated], now);
     });
   });
 
   group('SellerPayout', () {
     test('fromMap creates correct SellerPayout', () {
       final map = {
-        'sellerId': 'seller123',
-        'stripeAccountId': 'acct_456',
-        'amountCents': 10000,
-        'platformFeeCents': 250,
-        'netAmountCents': 9750,
-        'status': 'completed',
-        'stripeTransferId': 'tr_789',
-        'payoutDate': Timestamp.fromDate(DateTime(2024, 1, 20)),
+        Fields.sellerId: 'seller123',
+        Fields.stripeAccountId: 'acct_456',
+        Fields.amountCents: 10000,
+        Fields.platformFeeCents: 250,
+        Fields.netAmountCents: 9750,
+        Fields.status: 'completed',
+        Fields.stripeTransferId: 'tr_789',
+        Fields.payoutDate: Timestamp.fromDate(DateTime(2024, 1, 20)),
       };
 
       final payout = SellerPayout.fromMap(map);
@@ -397,12 +398,12 @@ void main() {
 
       final map = payout.toMap();
 
-      expect(map['sellerId'], 'seller123');
-      expect(map['stripeAccountId'], 'acct_456');
-      expect(map['amountCents'], 10000);
-      expect(map['platformFeeCents'], 250);
-      expect(map['netAmountCents'], 9750);
-      expect(map['status'], 'pending');
+      expect(map[Fields.sellerId], 'seller123');
+      expect(map[Fields.stripeAccountId], 'acct_456');
+      expect(map[Fields.amountCents], 10000);
+      expect(map[Fields.platformFeeCents], 250);
+      expect(map[Fields.netAmountCents], 9750);
+      expect(map[Fields.status], 'pending');
     });
 
     test('dollar getters compute correctly from cents', () {

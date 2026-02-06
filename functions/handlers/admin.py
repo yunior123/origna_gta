@@ -13,7 +13,9 @@ import pyotp
 from typing import Dict, Any
 from datetime import datetime, timedelta
 
+from datetime import datetime, timedelta
 from config import Collections
+from schema_constants import Fields, UserRoleValues, OrderStatusValues, PayoutStatusValues
 from utils import create_success_response, create_error_response
 
 _db = None
@@ -55,13 +57,13 @@ def _require_recent_admin_mfa(admin_data: Dict[str, Any]) -> None:
     Raises:
         https_fn.HttpsError: If MFA not verified or expired
     """
-    if not admin_data.get('mfaEnabled', False):
+    if not admin_data.get(Fields.MFA_ENABLED, False):
         raise https_fn.HttpsError(
             'failed-precondition',
             'Admin MFA is not enabled. Please enable MFA before performing sensitive operations.'
         )
     
-    last_mfa_verify = admin_data.get('lastMfaVerify')
+    last_mfa_verify = admin_data.get(Fields.LAST_MFA_VERIFY)
     
     if not last_mfa_verify:
         raise https_fn.HttpsError(
@@ -105,7 +107,7 @@ def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
     data = req.data
     
     target_user_id_raw = data.get('targetUserId')
-    new_roles = data.get('roles', [])
+    new_roles = data.get(Fields.ROLES, [])
     
     # Import validation functions
     from utils import sanitized_text
@@ -134,7 +136,8 @@ def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     admin_data = admin_doc.to_dict()
     
-    if 'admin' not in admin_data.get('roles', []):
+    
+    if UserRoleValues.ADMIN not in admin_data.get(Fields.ROLES, []):
         raise https_fn.HttpsError('permission-denied', 'Admin role required')
     
     # Require recent MFA verification for sensitive operation
@@ -156,10 +159,10 @@ def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Update roles
     target_user_ref.update({
-        'roles': new_roles,
-        'updatedAt': get_server_timestamp(),
-        'lastRoleUpdate': get_server_timestamp(),
-        'lastRoleUpdateBy': admin_id
+        Fields.ROLES: new_roles,
+        Fields.UPDATED_AT: get_server_timestamp(),
+        Fields.LAST_ROLE_UPDATE: get_server_timestamp(),
+        Fields.LAST_ROLE_UPDATE_BY: admin_id
     })
     
     # Update custom claims in Firebase Auth
@@ -174,7 +177,7 @@ def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
         print(f'Failed to set custom claims: {str(e)}')
     
     # Log security alert
-    get_db().collection('security_alerts').add({
+    get_db().collection(Collections.SECURITY_ALERTS).add({
         'type': 'role_change',
         'severity': 'medium',
         'adminId': admin_id,
@@ -215,7 +218,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
     # Import validation functions
     from utils import sanitized_text
     
-    seller_id_raw = data.get('sellerId')
+    seller_id_raw = data.get(Fields.SELLER_ID)
     reason_raw = data.get('reason', 'Policy violation')
     
     # Sanitize inputs
@@ -234,7 +237,8 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     admin_data = admin_doc.to_dict()
     
-    if 'admin' not in admin_data.get('roles', []):
+    
+    if UserRoleValues.ADMIN not in admin_data.get(Fields.ROLES, []):
         raise https_fn.HttpsError('permission-denied', 'Admin role required')
     
     # Require recent MFA verification
@@ -255,17 +259,17 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Suspend seller
     seller_ref.update({
-        'suspended': True,
-        'suspendedAt': get_server_timestamp(),
-        'suspendedBy': admin_id,
-        'suspensionReason': reason,
-        'updatedAt': get_server_timestamp()
+        Fields.SUSPENDED: True,
+        Fields.SUSPENDED_AT: get_server_timestamp(),
+        Fields.SUSPENDED_BY: admin_id,
+        Fields.SUSPENSION_REASON: reason,
+        Fields.UPDATED_AT: get_server_timestamp()
     })
     
     # Deactivate all seller's products (with safety limit)
     products = get_db().collection(Collections.PRODUCTS)\
-        .where('sellerId', '==', seller_id)\
-        .where('isActive', '==', True)\
+        .where(Fields.SELLER_ID, '==', seller_id)\
+        .where(Fields.IS_ACTIVE, '==', True)\
         .limit(500)\
         .stream()
     
@@ -275,8 +279,8 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     for product_doc in products:
         batch.update(product_doc.reference, {
-            'isActive': False,
-            'suspendedAt': get_server_timestamp()
+            Fields.IS_ACTIVE: False,
+            Fields.SUSPENDED_AT: get_server_timestamp()
         })
         product_count += 1
         batch_count += 1
@@ -293,8 +297,8 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Cancel all pending/confirmed orders (with safety limit)
     orders = get_db().collection(Collections.ORDERS)\
-        .where('items.sellerId', 'array_contains', seller_id)\
-        .where('orderStatus', 'in', ['pending', 'confirmed', 'processing'])\
+        .where(f'{Fields.ITEMS}.{Fields.SELLER_ID}', 'array_contains', seller_id)\
+        .where(Fields.ORDER_STATUS, 'in', [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING])\
         .limit(200)\
         .stream()
     
@@ -309,18 +313,18 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
         order_data = order_doc.to_dict()
         
         # Accumulate stock restorations
-        for item in order_data['items']:
-            if item['sellerId'] == seller_id:
-                product_id = item['productId']
-                quantity = item['quantity']
+        for item in order_data[Fields.ITEMS]:
+            if item[Fields.SELLER_ID] == seller_id:
+                product_id = item[Fields.PRODUCT_ID]
+                quantity = item[Fields.QUANTITY]
                 product_updates[product_id] = product_updates.get(product_id, 0) + quantity
         
         order_batch.update(order_doc.reference, {
-            'orderStatus': 'cancelled',
-            'cancellationReason': f'Seller suspended: {reason}',
-            'cancelledBy': admin_id,
-            'cancelledAt': get_server_timestamp(),
-            'updatedAt': get_server_timestamp()
+            Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
+            Fields.CANCELLATION_REASON: f'Seller suspended: {reason}',
+            Fields.CANCELLED_BY: admin_id,
+            Fields.CANCELLED_AT: get_server_timestamp(),
+            Fields.UPDATED_AT: get_server_timestamp()
         })
         order_count += 1
         order_batch_count += 1
@@ -346,20 +350,20 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
             for ref, snapshot in zip(product_refs, product_snapshots):
                 if snapshot.exists:
                     product_data = snapshot.to_dict()
-                    current_stock = product_data.get('stockQuantity', 0)
+                    current_stock = product_data.get(Fields.STOCK_QUANTITY, 0)
                     quantity_to_restore = product_updates[snapshot.id]
-                    transaction.update(ref, {'stockQuantity': current_stock + quantity_to_restore})
+                    transaction.update(ref, {Fields.STOCK_QUANTITY: current_stock + quantity_to_restore})
         
         # Execute transaction
         transaction = get_db().transaction()
         restore_stock_batch(transaction)
     
     # Log security alert
-    get_db().collection('security_alerts').add({
+    get_db().collection(Collections.SECURITY_ALERTS).add({
         'type': 'seller_suspended',
         'severity': 'critical',
         'adminId': admin_id,
-        'sellerId': seller_id,
+        Fields.SELLER_ID: seller_id,
         'reason': reason,
         'productsDeactivated': product_count,
         'ordersCancelled': order_count,
@@ -400,7 +404,7 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     user_data = user_doc.to_dict()
     
-    if 'admin' not in user_data.get('roles', []):
+    if 'admin' not in user_data.get(Fields.ROLES, []):
         raise https_fn.HttpsError('permission-denied', 'Admin role required')
     
     # Generate TOTP secret
@@ -408,13 +412,13 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Save to Firestore (temporary, until verified)
     user_ref.update({
-        'mfaSecretTemp': secret,
-        'updatedAt': get_server_timestamp()
+        Fields.MFA_SECRET_TEMP: secret,
+        Fields.UPDATED_AT: get_server_timestamp()
     })
     
     # Generate QR code URL
     totp = pyotp.TOTP(secret)
-    email = user_data.get('email', user_id)
+    email = user_data.get(Fields.EMAIL, user_id)
     qr_code_url = totp.provisioning_uri(
         name=email,
         issuer_name='Origna Marketplace'
@@ -453,7 +457,7 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('not-found', 'User not found')
     
     user_data = user_doc.to_dict()
-    secret = user_data.get('mfaSecretTemp') or user_data.get('mfaSecret')
+    secret = user_data.get(Fields.MFA_SECRET_TEMP) or user_data.get(Fields.MFA_SECRET)
     
     if not secret:
         raise https_fn.HttpsError('failed-precondition', 'MFA not enrolled. Call admin_mfa_enroll first.')
@@ -466,15 +470,15 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Enable MFA
     update_data = {
-        'mfaEnabled': True,
-        'mfaSecret': secret,
-        'lastMfaVerify': get_server_timestamp(),
-        'updatedAt': get_server_timestamp()
+        Fields.MFA_ENABLED: True,
+        Fields.MFA_SECRET: secret,
+        Fields.LAST_MFA_VERIFY: get_server_timestamp(),
+        Fields.UPDATED_AT: get_server_timestamp()
     }
     
     # Remove temporary secret
-    if 'mfaSecretTemp' in user_data:
-        update_data['mfaSecretTemp'] = get_delete_field()
+    if Fields.MFA_SECRET_TEMP in user_data:
+        update_data[Fields.MFA_SECRET_TEMP] = get_delete_field()
     
     user_ref.update(update_data)
     
@@ -508,7 +512,7 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('not-found', 'User not found')
     
     user_data = user_doc.to_dict()
-    secret = user_data.get('mfaSecret')
+    secret = user_data.get(Fields.MFA_SECRET)
     
     if not secret:
         raise https_fn.HttpsError('failed-precondition', 'MFA not enabled')
@@ -521,10 +525,10 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Disable MFA
     user_ref.update({
-        'mfaEnabled': False,
-        'mfaSecret': get_delete_field(),
-        'lastMfaVerify': get_delete_field(),
-        'updatedAt': get_server_timestamp()
+        Fields.MFA_ENABLED: False,
+        Fields.MFA_SECRET: get_delete_field(),
+        Fields.LAST_MFA_VERIFY: get_delete_field(),
+        Fields.UPDATED_AT: get_server_timestamp()
     })
     
     return create_success_response({'mfaEnabled': False})
@@ -550,8 +554,8 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Check if user has pending orders or payouts (with limit)
     pending_orders = get_db().collection(Collections.ORDERS)\
-        .where('userId', '==', user_id)\
-        .where('orderStatus', 'in', ['pending', 'confirmed', 'processing', 'shipped'])\
+        .where(Fields.USER_ID, '==', user_id)\
+        .where(Fields.ORDER_STATUS, 'in', [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING, OrderStatusValues.SHIPPED])\
         .limit(1)\
         .stream()
     
@@ -565,8 +569,8 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Check if user is a seller with active orders to fulfill
     active_sales = get_db().collection(Collections.ORDERS)\
-        .where('sellerIds', 'array-contains', user_id)\
-        .where('orderStatus', 'in', ['pending', 'confirmed', 'processing', 'shipped'])\
+        .where(Fields.SELLER_IDS, 'array-contains', user_id)\
+        .where(Fields.ORDER_STATUS, 'in', [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING, OrderStatusValues.SHIPPED])\
         .limit(1)\
         .stream()
         
@@ -577,8 +581,8 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
         )
     
     pending_payouts = get_db().collection(Collections.PAYOUTS)\
-        .where('sellerId', '==', user_id)\
-        .where('status', '==', 'pending')\
+        .where(Fields.SELLER_ID, '==', user_id)\
+        .where(Fields.STATUS, '==', PayoutStatusValues.PENDING)\
         .limit(1)\
         .stream()
     
@@ -591,17 +595,17 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     # Anonymize user data
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_ref.update({
-        'email': f'deleted_{user_id}@anonymized.local',
-        'name': '[Deleted User]',
-        'address': get_delete_field(),
-        'stripeAccountId': get_delete_field(),
+        Fields.EMAIL: f'deleted_{user_id}@anonymized.local',
+        Fields.NAME: '[Deleted User]',
+        Fields.ADDRESS: get_delete_field(),
+        Fields.STRIPE_ACCOUNT_ID: get_delete_field(),
         'deleted': True,
-        'deletedAt': get_server_timestamp()
+        Fields.DELETED_AT: get_server_timestamp()
     })
     
     # Deactivate products (with limit and batch)
     products = get_db().collection(Collections.PRODUCTS)\
-        .where('sellerId', '==', user_id)\
+        .where(Fields.SELLER_ID, '==', user_id)\
         .limit(500)\
         .stream()
     
@@ -610,8 +614,8 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     for product_doc in products:
         product_batch.update(product_doc.reference, {
-            'isActive': False,
-            'deletedAt': get_server_timestamp()
+            Fields.IS_ACTIVE: False,
+            Fields.DELETED_AT: get_server_timestamp()
         })
         product_batch_count += 1
         
@@ -624,7 +628,7 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
         product_batch.commit()
     
     # Delete cart and favorites (with limits)
-    cart_docs = get_db().collection(Collections.USERS).document(user_id).collection('cart').limit(500).stream()
+    cart_docs = get_db().collection(Collections.USERS).document(user_id).collection(Collections.CART).limit(500).stream()
     cart_batch = get_db().batch()
     cart_count = 0
     
@@ -639,7 +643,7 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if cart_count > 0:
         cart_batch.commit()
     
-    favorites_docs = get_db().collection(Collections.USERS).document(user_id).collection('favorites').limit(500).stream()
+    favorites_docs = get_db().collection(Collections.USERS).document(user_id).collection(Collections.FAVORITES).limit(500).stream()
     fav_batch = get_db().batch()
     fav_count = 0
     

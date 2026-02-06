@@ -5,6 +5,7 @@ Handles syncing Firestore products to Algolia search index
 
 from algoliasearch.search.client import SearchClient
 from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY
+from schema_constants import Fields
 from typing import Dict, Union
 from pydantic import ValidationError
 
@@ -43,43 +44,44 @@ def format_product_for_algolia(product_id: str, product_data: Union[dict, Produc
             data = product_data
     
     # Algolia requires objectID field
+    # Algolia requires objectID field
     algolia_object = {
         'objectID': product_id,
-        'name': data.get('name', ''),
-        'description': data.get('description', ''),
-        'price': data.get('price', 0.0),
-        'categoryId': data.get('categoryId', 0),
-        'sellerId': data.get('sellerId', ''),
-        'imageUrls': data.get('imageUrls', []),
-        'stockQuantity': data.get('stockQuantity', 0),
-        'rating': data.get('rating', 0.0),
-        'ratingCount': data.get('ratingCount', 0),
-        'isActive': data.get('isActive', True),
-        'searchKeywords': data.get('searchKeywords', []),
-        'freeShipping': data.get('freeShipping', False),
-        'isPerishable': data.get('isPerishable', False),
-        'isLocalDeliveryOnly': data.get('isLocalDeliveryOnly', False),
+        Fields.NAME: data.get(Fields.NAME, ''),
+        Fields.DESCRIPTION: data.get(Fields.DESCRIPTION, ''),
+        Fields.PRICE: data.get(Fields.PRICE, 0.0),
+        Fields.CATEGORY_ID: data.get(Fields.CATEGORY_ID, 0),
+        Fields.SELLER_ID: data.get(Fields.SELLER_ID, ''),
+        Fields.IMAGE_URLS: data.get(Fields.IMAGE_URLS, []),
+        Fields.STOCK_QUANTITY: data.get(Fields.STOCK_QUANTITY, 0),
+        Fields.RATING: data.get(Fields.RATING, 0.0),
+        Fields.RATING_COUNT: data.get(Fields.RATING_COUNT, 0),
+        Fields.IS_ACTIVE: data.get(Fields.IS_ACTIVE, True),
+        Fields.KEYWORDS: data.get(Fields.KEYWORDS, []) or data.get('searchKeywords', []),
+        Fields.FREE_SHIPPING: data.get(Fields.FREE_SHIPPING, False),
+        Fields.IS_PERISHABLE: data.get(Fields.IS_PERISHABLE, False),
+        Fields.IS_LOCAL_DELIVERY_ONLY: data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False),
     }
     
     # Seller address - handle both dict and Address object
-    seller_address = data.get('sellerAddress')
+    seller_address = data.get(Fields.SELLER_ADDRESS)
     if seller_address:
         # Convert Address model to dict if needed
         if hasattr(seller_address, 'model_dump'):
-            algolia_object['sellerAddress'] = seller_address.model_dump(exclude_none=True)
+            algolia_object[Fields.SELLER_ADDRESS] = seller_address.model_dump(exclude_none=True)
         else:
-            algolia_object['sellerAddress'] = seller_address
+            algolia_object[Fields.SELLER_ADDRESS] = seller_address
     
     # Optional fields
-    optional_fields = ['weightKg', 'lengthCm', 'widthCm', 'heightCm', 'taxCode', 
-                      'deliveryOptions', 'estimatedShipDays', 'minimumOrderQuantity']
+    optional_fields = [Fields.WEIGHT_KG, Fields.LENGTH_CM, Fields.WIDTH_CM, Fields.HEIGHT_CM, Fields.TAX_CODE, 
+                      Fields.DELIVERY_OPTIONS, Fields.ESTIMATED_SHIP_DAYS, Fields.MINIMUM_ORDER_QUANTITY]
     for field in optional_fields:
         if field in data:
             algolia_object[field] = data[field]
     
     # Add timestamp for sorting (convert Firestore timestamp to Unix timestamp)
-    if 'dateCreated' in data and data['dateCreated']:
-        algolia_object['dateCreated'] = data['dateCreated'].timestamp() if hasattr(data['dateCreated'], 'timestamp') else 0
+    if Fields.DATE_CREATED in data and data[Fields.DATE_CREATED]:
+        algolia_object[Fields.DATE_CREATED] = data[Fields.DATE_CREATED].timestamp() if hasattr(data[Fields.DATE_CREATED], 'timestamp') else 0
     
     return algolia_object
 
@@ -101,7 +103,7 @@ def index_product(product_id: str, product_data: dict) -> bool:
     
     try:
         # Only index active products
-        if not product_data.get('isActive', True):
+        if not product_data.get(Fields.IS_ACTIVE, True):
             print(f"  ⏭️  Product {product_id} is inactive - removing from index if exists")
             delete_product(product_id)
             return True
@@ -156,7 +158,7 @@ def batch_index_products(products: list) -> tuple:
         algolia_objects = []
         for product_id, product_data in products:
             # Only index active products
-            if product_data.get('isActive', True):
+            if product_data.get(Fields.IS_ACTIVE, True):
                 algolia_objects.append(format_product_for_algolia(product_id, product_data))
         
         if algolia_objects:
@@ -183,47 +185,47 @@ def configure_algolia_index():
         # Set searchable attributes with priority
         products_index.set_settings({
             'searchableAttributes': [
-                'name',                    # Highest priority
-                'description',
-                'searchKeywords',
+                Fields.NAME,                    # Highest priority
+                Fields.DESCRIPTION,
+                Fields.KEYWORDS,
             ],
             'attributesForFaceting': [
-                'categoryId',
-                'sellerId',
-                'isActive',
-                'freeShipping',
-                'isPerishable',
+                Fields.CATEGORY_ID,
+                Fields.SELLER_ID,
+                Fields.IS_ACTIVE,
+                Fields.FREE_SHIPPING,
+                Fields.IS_PERISHABLE,
             ],
             'customRanking': [
-                'desc(rating)',           # Sort by rating first
-                'desc(ratingCount)',      # Then by number of ratings
-                'desc(dateCreated)',      # Then by newest
+                f'desc({Fields.RATING})',           # Sort by rating first
+                f'desc({Fields.RATING_COUNT})',      # Then by number of ratings
+                f'desc({Fields.DATE_CREATED})',      # Then by newest
             ],
             'attributesToRetrieve': [
                 'objectID',
-                'name',
-                'description',
-                'price',
-                'categoryId',
-                'sellerId',
-                'imageUrls',
-                'stockQuantity',
-                'rating',
-                'ratingCount',
-                'isActive',
-                'searchKeywords',
-                'sellerAddress',
-                'weightKg',
-                'lengthCm',
-                'widthCm',
-                'heightCm',
-                'isLocalDeliveryOnly',
-                'estimatedShipDays',
-                'taxCode',
-                'deliveryOptions',
-                'isPerishable',
-                'minimumOrderQuantity',
-                'freeShipping',
+                Fields.NAME,
+                Fields.DESCRIPTION,
+                Fields.PRICE,
+                Fields.CATEGORY_ID,
+                Fields.SELLER_ID,
+                Fields.IMAGE_URLS,
+                Fields.STOCK_QUANTITY,
+                Fields.RATING,
+                Fields.RATING_COUNT,
+                Fields.IS_ACTIVE,
+                Fields.KEYWORDS,
+                Fields.SELLER_ADDRESS,
+                Fields.WEIGHT_KG,
+                Fields.LENGTH_CM,
+                Fields.WIDTH_CM,
+                Fields.HEIGHT_CM,
+                Fields.IS_LOCAL_DELIVERY_ONLY,
+                Fields.ESTIMATED_SHIP_DAYS,
+                Fields.TAX_CODE,
+                Fields.DELIVERY_OPTIONS,
+                Fields.IS_PERISHABLE,
+                Fields.MINIMUM_ORDER_QUANTITY,
+                Fields.FREE_SHIPPING,
             ],
             'highlightPreTag': '<mark>',
             'highlightPostTag': '</mark>',

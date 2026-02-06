@@ -17,6 +17,7 @@ from config import (
     STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, AUTO_CONFIRM_DAYS,
     AUTHORIZATION_VALID_DAYS
 )
+from schema_constants import Fields, UserRoleValues, DeliveryStatusValues, OrderStatusValues, WebhookStatusValues, PaymentStatusValues
 from email_service import send_email, get_order_confirmation_email, get_seller_notification_email
 from utils import (
     create_success_response, create_error_response, validate_item,
@@ -111,20 +112,20 @@ def _assert_seller_active(seller_id: str, require_approval: bool = True) -> Dict
     
     seller_data = seller_doc.to_dict()
     
-    if seller_data.get('suspended', False):
+    if seller_data.get(Fields.SUSPENDED, False):
         raise https_fn.HttpsError(
             'permission-denied',
             f'Seller {seller_id} is suspended and cannot process orders'
         )
     
     if require_approval:
-        if not seller_data.get('onboardingCompleted', False):
+        if not seller_data.get(Fields.ONBOARDING_COMPLETED, False):
             raise https_fn.HttpsError(
                 'failed-precondition',
                 f'Seller {seller_id} has not completed onboarding'
             )
         
-        if not seller_data.get('chargesEnabled', False):
+        if not seller_data.get(Fields.CHARGES_ENABLED, False):
             raise https_fn.HttpsError(
                 'failed-precondition',
                 f'Seller {seller_id} is not approved to receive payments'
@@ -175,7 +176,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     user_snapshot = user_ref.get()
     if user_snapshot.exists:
         user_data = user_snapshot.to_dict()
-        if user_data.get('suspended', False):
+        if user_data.get(Fields.SUSPENDED, False):
             raise https_fn.HttpsError('permission-denied', 'Account suspended. Cannot proceed with checkout.')
     
     # Rate limiting: 5 requests per minute per user
@@ -191,8 +192,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('resource-exhausted', message)
     
     # Validate required fields
-    items = data.get('items', [])
-    shipping_address = data.get('shippingAddress', {})
+    items = data.get(Fields.ITEMS, [])
+    shipping_address = data.get(Fields.SHIPPING_ADDRESS, {})
+    # Note: 'subtotal' is not in Fields as it's an API parameter (dollars) vs Firestore field (cents)
     client_subtotal = data.get('subtotal', 0)
     
     if not items or len(items) == 0:
@@ -201,24 +203,24 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not shipping_address:
         raise https_fn.HttpsError('invalid-argument', 'Shipping address required')
     
-    # NORMALIZE: Flutter sends 'state', backend expects 'province'
-    # Accept both field names for forwards/backwards compatibility
-    if 'province' not in shipping_address and 'state' in shipping_address:
-        shipping_address['province'] = shipping_address['state']
+    # NORMALIZE: Prefer canonical schema field `state` (province code),
+    # but accept legacy `province` from older clients.
+    if Fields.STATE not in shipping_address and 'province' in shipping_address:
+        shipping_address[Fields.STATE] = shipping_address['province']
     
     # Validate shipping address fields
-    required_address_fields = ['street', 'city', 'postalCode', 'province', 'country']
+    required_address_fields = [Fields.STREET, Fields.CITY, Fields.POSTAL_CODE, Fields.STATE, Fields.COUNTRY]
     for field in required_address_fields:
         if field not in shipping_address or not shipping_address[field]:
             raise https_fn.HttpsError('invalid-argument', f'Missing required address field: {field}')
     
     # Validate address field lengths (prevent injection attacks)
     address_length_limits = {
-        'street': 100,
-        'city': 50,
-        'postalCode': 20,
-        'province': 50,
-        'country': 50
+        Fields.STREET: 100,
+        Fields.CITY: 50,
+        Fields.POSTAL_CODE: 20,
+        Fields.STATE: 50,
+        Fields.COUNTRY: 50
     }
     for field, max_length in address_length_limits.items():
         if len(str(shipping_address.get(field, ''))) > max_length:
@@ -226,8 +228,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # Validate postal code format
     from main import validate_postal_code
-    postal_code = shipping_address.get('postalCode', '')
-    if not validate_postal_code(postal_code, shipping_address.get('country', 'Canada')):
+    postal_code = shipping_address.get(Fields.POSTAL_CODE, '')
+    if not validate_postal_code(postal_code, shipping_address.get(Fields.COUNTRY, 'Canada')):
         raise https_fn.HttpsError('invalid-argument', f'Invalid postal code format: {postal_code}')
     
     # Validate subtotal is positive number
@@ -245,7 +247,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     for item in items:
         # Check quantity limits
-        item_quantity = item.get('quantity', 0)
+        item_quantity = item.get(Fields.QUANTITY, 0)
         if not isinstance(item_quantity, int) or item_quantity <= 0:
             raise https_fn.HttpsError(
                 'invalid-argument',
@@ -258,7 +260,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             )
         
         # Fetch product from Firestore for server-side validation
-        product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
+        product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
         product_doc = product_ref.get()
         
         if not product_doc.exists:
@@ -272,36 +274,36 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         # SECURITY: Validate seller ID matches product owner
         # Prevents attack where buyer sends item.sellerId != product.sellerId
         # to redirect payments to wrong seller
-        db_seller_id = product_data.get('sellerId')
-        client_seller_id = item.get('sellerId')
+        db_seller_id = product_data.get(Fields.SELLER_ID)
+        client_seller_id = item.get(Fields.SELLER_ID)
         
         if db_seller_id != client_seller_id:
             raise https_fn.HttpsError(
                 'invalid-argument',
-                f"Seller ID mismatch for product {item['productId']}: expected {db_seller_id}, got {client_seller_id}"
+                f"Seller ID mismatch for product {item[Fields.PRODUCT_ID]}: expected {db_seller_id}, got {client_seller_id}"
             )
         
         # Server-side price validation (prevent client tampering)
-        db_price = product_data['price']
-        client_price = item['price']
+        db_price = product_data[Fields.PRICE]
+        client_price = item[Fields.PRICE]
         
         # Allow 1 cent tolerance for floating point errors
         if abs(db_price - client_price) > 0.01:
             raise https_fn.HttpsError(
                 'invalid-argument',
-                f"Price mismatch for product {item['productId']}: expected ${db_price:.2f}, got ${client_price:.2f}"
+                f"Price mismatch for product {item[Fields.PRODUCT_ID]}: expected ${db_price:.2f}, got ${client_price:.2f}"
             )
         
         # Check stock availability
-        stock_quantity = product_data.get('stockQuantity', 0)
-        if stock_quantity < item['quantity']:
+        stock_quantity = product_data.get(Fields.STOCK_QUANTITY, 0)
+        if stock_quantity < item[Fields.QUANTITY]:
             raise https_fn.HttpsError(
                 'resource-exhausted',
-                f"Insufficient stock for product {item['productId']} ({item['name']}): {stock_quantity} available, {item['quantity']} requested"
+                f"Insufficient stock for product {item[Fields.PRODUCT_ID]} ({item[Fields.NAME]}): {stock_quantity} available, {item[Fields.QUANTITY]} requested"
             )
         
         # Check seller status
-        seller_id = item['sellerId']
+        seller_id = item[Fields.SELLER_ID]
         _assert_seller_active(seller_id, require_approval=True)
         sellers.add(seller_id)
         
@@ -339,30 +341,30 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
             }
 
         validated_item = {
-            'productId': item['productId'],
-            'name': product_data['name'],
-            'description': product_data.get('description', ''),
-            'price': db_price,
-            'quantity': item['quantity'],
-            'sellerId': seller_id,
-            'imageUrls': image_urls if image_urls else [''],
-            'isDigital': product_data.get('isDigital', False),
-            'categoryId': product_data.get('categoryId', 0),
-            'status': 'pending',  # Per-item status: pending | shipped | delivered | refunded
-            'deliveryStatus': 'pending',  # Legacy field (kept for backwards compatibility)
-            'trackingNumber': None,
-            'carrier': None,
-            'shippedAt': None,
-            'deliveredAt': None,
-            'confirmedByBuyer': False,
-            'freeShipping': product_data.get('freeShipping', False),
-            'isLocalDeliveryOnly': product_data.get('isLocalDeliveryOnly', False),
-            'isPerishable': product_data.get('isPerishable', False),
-            'deliveryOptions': product_data.get('deliveryOptions', []),
-            'sellerAddress': raw_seller_address,
+            Fields.PRODUCT_ID: item[Fields.PRODUCT_ID],
+            Fields.NAME: product_data[Fields.NAME],
+            Fields.DESCRIPTION: product_data.get(Fields.DESCRIPTION, ''),
+            Fields.PRICE: db_price,
+            Fields.QUANTITY: item[Fields.QUANTITY],
+            Fields.SELLER_ID: seller_id,
+            Fields.IMAGE_URLS: image_urls if image_urls else [''],
+            Fields.IS_DIGITAL: product_data.get(Fields.IS_DIGITAL, False),
+            Fields.CATEGORY_ID: product_data.get(Fields.CATEGORY_ID, 0),
+            Fields.STATUS: DeliveryStatusValues.PENDING,  # Per-item status: pending | shipped | delivered | refunded
+            Fields.DELIVERY_STATUS: DeliveryStatusValues.PENDING,  # Legacy field (kept for backwards compatibility)
+            Fields.TRACKING_NUMBER: None,
+            Fields.CARRIER: None,
+            Fields.SHIPPED_AT: None,
+            Fields.DELIVERED_AT: None,
+            Fields.CONFIRMED_BY_BUYER: False,
+            Fields.FREE_SHIPPING: product_data.get(Fields.FREE_SHIPPING, False),
+            Fields.IS_LOCAL_DELIVERY_ONLY: product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False),
+            Fields.IS_PERISHABLE: product_data.get(Fields.IS_PERISHABLE, False),
+            Fields.DELIVERY_OPTIONS: product_data.get(Fields.DELIVERY_OPTIONS, []),
+            Fields.SELLER_ADDRESS: raw_seller_address,
         }
         validated_items.append(validated_item)
-        actual_subtotal += db_price * item['quantity']
+        actual_subtotal += db_price * item[Fields.QUANTITY]
     
     # Verify subtotal (exact cent comparison — prices already validated per-item)
     actual_subtotal_cents = round(actual_subtotal * 100)
@@ -381,8 +383,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Shipping calculation failed: {str(e)}')
     
     # Calculate taxes (server-side) - all in cents to avoid rounding errors
-    # NOTE: 'province' is guaranteed by normalization above (state->province)
-    province = shipping_address.get('province', 'ON')
+    province = shipping_address.get(Fields.STATE, 'ON')
     tax_rate = get_tax_rate(province)
     tax_amount_cents = round(actual_subtotal_cents * tax_rate)
 
@@ -413,7 +414,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         product_refs = []
         product_snapshots = []
         for item in validated_items:
-            product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
+            product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
             product_snapshot = product_ref.get(transaction=transaction)
             product_refs.append(product_ref)
             product_snapshots.append(product_snapshot)
@@ -423,22 +424,22 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         for i, item in enumerate(validated_items):
             snapshot = product_snapshots[i]
             if not snapshot.exists:
-                raise https_fn.HttpsError('not-found', f"Product {item['productId']} not found")
+                raise https_fn.HttpsError('not-found', f"Product {item[Fields.PRODUCT_ID]} not found")
             
             product_data = snapshot.to_dict()
-            current_stock = product_data.get('stockQuantity', 0)
+            current_stock = product_data.get(Fields.STOCK_QUANTITY, 0)
             
-            if current_stock < item['quantity']:
+            if current_stock < item[Fields.QUANTITY]:
                 raise https_fn.HttpsError(
                     'resource-exhausted',
-                    f"Stock changed: {product_data['name']} now has {current_stock} available"
+                    f"Stock changed: {product_data[Fields.NAME]} now has {current_stock} available"
                 )
-            updates.append((product_refs[i], current_stock - item['quantity']))
+            updates.append((product_refs[i], current_stock - item[Fields.QUANTITY]))
         
         # Phase 3: Write ALL updates after all reads are done
         for ref, new_stock in updates:
             transaction.update(ref, {
-                'stockQuantity': new_stock
+                Fields.STOCK_QUANTITY: new_stock
             })
     
     transaction = get_db().transaction()
@@ -457,25 +458,25 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         buyer_email = user_snapshot.to_dict().get('email')
     
     order_data = {
-        'orderId': order_id,
-        'userId': user_id,
-        'customerEmail': buyer_email,
-        'sellerIds': sorted(list(sellers)),
-        'items': validated_items,
-        'subtotalCents': actual_subtotal_cents,
-        'shippingCostCents': shipping_cost_cents,
-        'taxAmountCents': tax_amount_cents,
-        'totalAmountCents': total_amount_cents,
-        'taxes': taxes_breakdown,
-        'orderStatus': OrderStatus.PENDING,
-        'paymentStatus': PaymentStatus.AWAITING_PAYMENT,
-        'shippingAddress': shipping_address,
-        'createdAt': get_server_timestamp(),
-        'updatedAt': get_server_timestamp(),
-        'captureAttempts': 0,
-        'expiresAt': datetime.now() + timedelta(days=AUTHORIZATION_VALID_DAYS),
-        'currency': 'cad',
-        'paymentProvider': 'stripe',
+        Fields.ORDER_ID: order_id,
+        Fields.USER_ID: user_id,
+        Fields.CUSTOMER_EMAIL: buyer_email,
+        Fields.SELLER_IDS: sorted(list(sellers)),
+        Fields.ITEMS: validated_items,
+        Fields.SUBTOTAL_CENTS: actual_subtotal_cents,
+        Fields.SHIPPING_COST_CENTS: shipping_cost_cents,
+        Fields.TAX_AMOUNT_CENTS: tax_amount_cents,
+        Fields.TOTAL_AMOUNT_CENTS: total_amount_cents,
+        Fields.TAXES: taxes_breakdown,
+        Fields.ORDER_STATUS: OrderStatus.PENDING,
+        Fields.PAYMENT_STATUS: PaymentStatus.AWAITING_PAYMENT,
+        Fields.SHIPPING_ADDRESS: shipping_address,
+        Fields.CREATED_AT: get_server_timestamp(),
+        Fields.UPDATED_AT: get_server_timestamp(),
+        Fields.CAPTURE_ATTEMPTS: 0,
+        Fields.EXPIRES_AT: datetime.now() + timedelta(days=AUTHORIZATION_VALID_DAYS),
+        Fields.CURRENCY: 'cad',
+        Fields.PAYMENT_PROVIDER: 'stripe',
         'archived': False,
         'stockRestored': False,
     }
@@ -691,12 +692,12 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     event_type = event['type']
     
     # SECURITY FIX #4: Idempotency check (prevent duplicate processing)
-    webhook_ref = get_db().collection('webhook_events').document(event_id)
+    webhook_ref = get_db().collection(Collections.WEBHOOK_EVENTS).document(event_id)
     webhook_doc = webhook_ref.get()
 
     if webhook_doc.exists:
-        existing_status = webhook_doc.to_dict().get('status', 'completed')
-        if existing_status == 'completed':
+        existing_status = webhook_doc.to_dict().get('status', WebhookStatusValues.COMPLETED)
+        if existing_status == WebhookStatusValues.COMPLETED:
             print(f'✓ Stripe webhook already processed: {event_type} (event: {event_id[:16]}...)')
             return https_fn.Response('Event already processed', status=200)
         # Allow retry of failed events
@@ -706,13 +707,13 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     try:
         order_id = event.get('data', {}).get('object', {}).get('metadata', {}).get('orderId', 'N/A')
         webhook_ref.set({
-            'provider': 'stripe',
-            'type': event_type,
-            'status': 'processing',
-            'timestamp': get_server_timestamp(),
-            'client_ip': client_ip,  # Audit trail
-            'event_id': event_id,
-            'order_id': order_id  # For troubleshooting
+            Fields.PROVIDER: 'stripe',
+            Fields.TYPE: event_type,
+            Fields.STATUS: WebhookStatusValues.PROCESSING,
+            Fields.TIMESTAMP: get_server_timestamp(),
+            Fields.CLIENT_IP: client_ip,  # Audit trail
+            Fields.EVENT_ID: event_id,
+            Fields.ORDER_ID: order_id  # For troubleshooting
         })
     except Exception as e:
         print(f'⚠️ Failed to log webhook: {type(e).__name__}')  # Sanitized (no sensitive data)
@@ -755,7 +756,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         
         # Mark as completed
         try:
-            webhook_ref.update({'status': 'completed'})
+            webhook_ref.update({'status': WebhookStatusValues.COMPLETED})
         except Exception:
             pass
 
@@ -765,7 +766,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     except Exception as e:
         # Mark as failed so Stripe can retry
         try:
-            webhook_ref.update({'status': 'failed', 'error': type(e).__name__})
+            webhook_ref.update({'status': WebhookStatusValues.FAILED, 'error': type(e).__name__})
         except Exception:
             pass
 
@@ -850,7 +851,7 @@ def process_checkout_session_completed(session: Dict) -> Optional[str]:
 
 def _clear_user_cart(user_id: str) -> None:
     """Deletes all items from user's cart subcollection"""
-    cart_ref = get_db().collection(Collections.USERS).document(user_id).collection('cart')
+    cart_ref = get_db().collection(Collections.USERS).document(user_id).collection(Collections.CART)
     cart_docs = cart_ref.stream()
     
     for doc in cart_docs:
@@ -1022,15 +1023,15 @@ def process_dispute_created(dispute: Dict) -> Optional[str]:
     dispute_amount = dispute.get('amount', 0)
     
     # Log security alert
-    alert_ref = get_db().collection('security_alerts').add({
-        'type': 'dispute_created',
-        'severity': 'high',
-        'chargeId': charge_id,
+    alert_ref = get_db().collection(Collections.SECURITY_ALERTS).add({
+        Fields.TYPE: 'dispute_created',
+        Fields.SEVERITY: 'high',
+        Fields.CHARGE_ID: charge_id,
         'paymentIntentId': payment_intent_id,
-        'amount': dispute_amount,
-        'reason': dispute.get('reason'),
-        'timestamp': get_server_timestamp(),
-        'resolved': False
+        Fields.AMOUNT: dispute_amount,
+        Fields.REASON: dispute.get('reason'),
+        Fields.TIMESTAMP: get_server_timestamp(),
+        Fields.RESOLVED: False
     })
     
     if not payment_intent_id:
@@ -1102,7 +1103,7 @@ def process_dispute_closed(dispute: Dict) -> Optional[str]:
     status = dispute.get('status')
     
     # Update security alert
-    alerts = get_db().collection('security_alerts')\
+    alerts = get_db().collection(Collections.SECURITY_ALERTS)\
         .where('chargeId', '==', charge_id)\
         .where('type', '==', 'dispute_created')\
         .limit(1)\
@@ -1110,9 +1111,9 @@ def process_dispute_closed(dispute: Dict) -> Optional[str]:
     
     for alert_doc in alerts:
         alert_doc.reference.update({
-            'resolved': True,
-            'resolution': status,
-            'resolvedAt': get_server_timestamp()
+            Fields.RESOLVED: True,
+            Fields.RESOLUTION: status,
+            Fields.RESOLVED_AT: get_server_timestamp()
         })
     
     return f'Dispute closed: {status}'
@@ -1143,14 +1144,14 @@ def process_payout_failed(payout: Dict) -> None:
     """Handles failed payouts"""
     destination = payout.get('destination')
     
-    get_db().collection('security_alerts').add({
-        'type': 'payout_failed',
-        'severity': 'high',
-        'destination': destination,
-        'amount': payout.get('amount'),
-        'failureMessage': payout.get('failure_message'),
-        'timestamp': get_server_timestamp(),
-        'resolved': False
+    get_db().collection(Collections.SECURITY_ALERTS).add({
+        Fields.TYPE: 'payout_failed',
+        Fields.SEVERITY: 'high',
+        Fields.DESTINATION: destination,
+        Fields.AMOUNT: payout.get('amount'),
+        Fields.FAILURE_MESSAGE: payout.get('failure_message'),
+        Fields.TIMESTAMP: get_server_timestamp(),
+        Fields.RESOLVED: False
     })
 
 
@@ -1158,14 +1159,14 @@ def process_refund_failed(refund: Dict) -> None:
     """Handles failed refunds"""
     charge_id = refund.get('charge')
     
-    get_db().collection('security_alerts').add({
-        'type': 'refund_failed',
-        'severity': 'critical',
-        'chargeId': charge_id,
-        'amount': refund.get('amount'),
-        'failureReason': refund.get('failure_reason'),
-        'timestamp': get_server_timestamp(),
-        'resolved': False
+    get_db().collection(Collections.SECURITY_ALERTS).add({
+        Fields.TYPE: 'refund_failed',
+        Fields.SEVERITY: 'critical',
+        Fields.CHARGE_ID: charge_id,
+        Fields.AMOUNT: refund.get('amount'),
+        Fields.FAILURE_REASON: refund.get('failure_reason'),
+        Fields.TIMESTAMP: get_server_timestamp(),
+        Fields.RESOLVED: False
     })
 
 
@@ -1221,9 +1222,9 @@ def process_account_updated(account: Dict) -> None:
     
     # If onboarding is completed, ensure seller role is set
     if account.get('details_submitted', False):
-        current_roles = user_data.get('roles', [])
-        if 'seller' not in current_roles:
-            update_data['roles'] = current_roles + ['seller']
+        current_roles = user_data.get(Fields.ROLES, [])
+        if UserRoleValues.SELLER not in current_roles:
+            update_data[Fields.ROLES] = current_roles + [UserRoleValues.SELLER]
             print(f"  ✅ Adding seller role to user {user_id}")
     
     user_ref.update(update_data)
@@ -1296,7 +1297,7 @@ def create_connect_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
         from firebase_admin import firestore as admin_firestore
         user_ref.update({
             'stripeAccountId': account.id,
-            'roles': admin_firestore.ArrayUnion(['seller']),
+            Fields.ROLES: admin_firestore.ArrayUnion([UserRoleValues.SELLER]),
             'updatedAt': get_server_timestamp()
         })
         
@@ -1395,7 +1396,7 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
         
         # If onboarding is complete, ensure seller role is added
         if account.details_submitted:
-            update_data['roles'] = admin_firestore.ArrayUnion(['seller'])
+            update_data[Fields.ROLES] = admin_firestore.ArrayUnion([UserRoleValues.SELLER])
         
         user_ref.update(update_data)
         
@@ -1431,7 +1432,7 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
     
     caller_uid = req.auth.uid
-    order_id = req.data.get('orderId')
+    order_id = req.data.get(Fields.ORDER_ID)
     
     if not order_id:
         raise https_fn.HttpsError('invalid-argument', 'orderId required')
@@ -1445,9 +1446,9 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     order_data = order_doc.to_dict()
     
     # CRITICAL SECURITY CHECK: Only order owner or admin can capture
-    order_user_id = order_data.get('userId')
+    order_user_id = order_data.get(Fields.USER_ID)
     # FIX: Custom claims are set as {'admin': True/False}, not {'roles': [...]}
-    is_admin = req.auth.token.get('admin', False) == True
+    is_admin = req.auth.token.get(UserRoleValues.ADMIN, False) == True
     
     if caller_uid != order_user_id and not is_admin:
         raise https_fn.HttpsError(
@@ -1456,18 +1457,18 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         )
     
     # Verify order is in valid state for capture
-    payment_status = order_data.get('paymentStatus')
-    order_status = order_data.get('orderStatus')
+    payment_status = order_data.get(Fields.PAYMENT_STATUS)
+    order_status = order_data.get(Fields.ORDER_STATUS)
     
     # Idempotency: if already captured, return success
-    if payment_status == PaymentStatus.CAPTURED:
+    if payment_status == PaymentStatusValues.CAPTURED:
         # Ensure buyer receipt confirmation is persisted (best-effort)
-        if not order_data.get('confirmedByClient'):
+        if not order_data.get(Fields.CONFIRMED_BY_CLIENT):
             try:
                 order_ref.update({
-                    'confirmedByClient': True,
-                    'confirmedAt': get_server_timestamp(),
-                    'updatedAt': get_server_timestamp(),
+                    Fields.CONFIRMED_BY_CLIENT: True,
+                    Fields.CONFIRMED_AT: get_server_timestamp(),
+                    Fields.UPDATED_AT: get_server_timestamp(),
                 })
             except Exception:
                 pass
@@ -1475,7 +1476,7 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'success': True,
             'captured': True,
             'message': 'Payment already captured',
-            'paymentIntentId': order_data.get('stripePaymentIntentId')
+            'paymentIntentId': order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
         }
     
     # Verify order is in correct state (should be authorized/shipped)
@@ -1506,21 +1507,21 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
 
     # Emulator mode: skip real Stripe capture for fake payment intents
     if IS_EMULATOR and payment_intent_id and not payment_intent_id.startswith('pi_3'):
-        items = order_data.get('items', [])
-        all_items_delivered = all(item.get('status') == 'delivered' for item in items)
+        items = order_data.get(Fields.ITEMS, [])
+        all_items_delivered = all(item.get(Fields.STATUS) == DeliveryStatusValues.DELIVERED for item in items)
         order_ref.update({
-            'paymentStatus': PaymentStatus.CAPTURED,
-            'orderStatus': OrderStatus.DELIVERED if all_items_delivered else order_status,
-            'confirmedByClient': True,
-            'confirmedAt': get_server_timestamp(),
-            'capturedAt': get_server_timestamp(),
-            'captureAttempts': capture_attempts + 1,
-            'updatedAt': get_server_timestamp(),
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+            Fields.ORDER_STATUS: OrderStatusValues.DELIVERED if all_items_delivered else order_status,
+            Fields.CONFIRMED_BY_CLIENT: True,
+            Fields.CONFIRMED_AT: get_server_timestamp(),
+            Fields.CAPTURED_AT: get_server_timestamp(),
+            Fields.CAPTURE_ATTEMPTS: capture_attempts + 1,
+            Fields.UPDATED_AT: get_server_timestamp(),
         })
         return {
             'success': True,
             'captured': True,
-            'newStatus': OrderStatus.DELIVERED if all_items_delivered else order_status,
+            'newStatus': OrderStatusValues.DELIVERED if all_items_delivered else order_status,
             'emulatorMode': True,
             'payoutErrors': False,
         }
@@ -1545,16 +1546,16 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
             )
             
         # SECURITY FIX: Calculate payouts first to detect issues BEFORE identifying as captured
-        items = order_data.get('items', [])
-        all_items_delivered = all(item.get('status') == 'delivered' for item in items)
+        items = order_data.get(Fields.ITEMS, [])
+        all_items_delivered = all(item.get(Fields.STATUS, DeliveryStatusValues.PENDING) == DeliveryStatusValues.DELIVERED for item in items)
         
         # Create payouts ONLY for sellers whose items are delivered
         sellers_total_cents = {}
         for item in items:
             # Only include delivered items (or all items if no per-item status tracking)
-            item_status = item.get('status', 'pending')
-            if item_status in ['delivered', 'pending']:  # 'pending' for backwards compatibility
-                seller_id = item['sellerId']
+            item_status = item.get(Fields.STATUS, DeliveryStatusValues.PENDING)
+            if item_status in [DeliveryStatusValues.DELIVERED, DeliveryStatusValues.PENDING]:  # 'pending' for backwards compatibility
+                seller_id = item[Fields.SELLER_ID]
                 # Price is in dollars, convert to cents
                 item_price_cents = round(item['price'] * 100)
                 item_total_cents = item_price_cents * item['quantity']
@@ -1581,12 +1582,12 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 
                 # CRITICAL SECURITY: Re-verify seller is not suspended at capture time
                 # Prevents race condition where seller suspended after checkout but before capture
-                if seller_data.get('suspended', False):
+                if seller_data.get(Fields.SUSPENDED, False):
                     print(f'⚠️ Skipping payout to suspended seller {seller_id} for order {order_id}')
                     # Mark for manual review
                     order_ref.update({
-                        'requiresManualReview': True,
-                        'manualReviewReason': f'Seller {seller_id} suspended at capture time'
+                        Fields.REQUIRES_MANUAL_REVIEW: True,
+                        Fields.MANUAL_REVIEW_REASON: f'Seller {seller_id} suspended at capture time'
                     })
                     continue
                 
@@ -1596,22 +1597,22 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                     continue
                 
                 # Verify seller account is enabled for charges
-                if not seller_data.get('chargesEnabled', False):
+                if not seller_data.get(Fields.CHARGES_ENABLED, False):
                     print(f'⚠️ Seller {seller_id} account not enabled for charges for order {order_id}')
                     order_ref.update({
-                        'requiresManualReview': True,
-                        'manualReviewReason': f'Seller {seller_id} account not charges_enabled'
+                        Fields.REQUIRES_MANUAL_REVIEW: True,
+                        Fields.MANUAL_REVIEW_REASON: f'Seller {seller_id} account not charges_enabled'
                     })
                     continue
                 
                 if stripe_account_id:
                     # Check for existing transfer (idempotency)
                     existing_payout = get_db().collection(Collections.PAYOUTS).where(
-                        'orderId', '==', order_id
+                        Fields.ORDER_ID, '==', order_id
                     ).where(
-                        'sellerId', '==', seller_id
+                        Fields.SELLER_ID, '==', seller_id
                     ).where(
-                        'status', '==', 'completed'
+                        Fields.STATUS, '==', PayoutStatusValues.COMPLETED
                     ).limit(1).get()
                     
                     if len(existing_payout) > 0:
@@ -1627,25 +1628,25 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                             source_transaction=payment_intent_id,
                             transfer_group=order_id,
                             metadata={
-                                'orderId': order_id,
-                                'sellerId': seller_id,
+                                Fields.ORDER_ID: order_id,
+                                Fields.SELLER_ID: seller_id,
                                 'platformFee': platform_fee_cents
-                            }
+                            },
                         )
 
                         # Create payout record for transparency (all amounts in cents)
                         payout_ref = get_db().collection(Collections.PAYOUTS).document()
                         payout_ref.set({
-                            'orderId': order_id,
-                            'sellerId': seller_id,
-                            'amountCents': amount_cents,
-                            'platformFeeCents': platform_fee_cents,
-                            'netAmountCents': net_amount_cents,
-                            'currency': 'cad',
-                            'stripeTransferId': transfer.id,
-                            'stripeAccountId': stripe_account_id,
-                            'status': 'completed',
-                            'createdAt': get_server_timestamp()
+                            Fields.ORDER_ID: order_id,
+                            Fields.SELLER_ID: seller_id,
+                            Fields.AMOUNT_CENTS: amount_cents,
+                            Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
+                            Fields.NET_AMOUNT_CENTS: net_amount_cents,
+                            Fields.CURRENCY: 'cad',
+                            Fields.STRIPE_TRANSFER_ID: transfer.id,
+                            Fields.STRIPE_ACCOUNT_ID: stripe_account_id,
+                            Fields.STATUS: PayoutStatusValues.COMPLETED,
+                            Fields.CREATED_AT: get_server_timestamp()
                         })
                     except Exception as e:
                         print(f"Transfer error to seller {seller_id}: {str(e)}")
@@ -1653,19 +1654,19 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
 
         # Update order status AFTER transfers to ensure consistency
         update_data = {
-            'paymentStatus': PaymentStatus.CAPTURED,
-            'orderStatus': OrderStatus.DELIVERED if all_items_delivered else order_status,
-            'capturedAt': get_server_timestamp(),
-            'confirmedByClient': True,
-            'confirmedAt': get_server_timestamp(),
-            'captureAttempts': capture_attempts + 1,
-            'updatedAt': get_server_timestamp()
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+            Fields.ORDER_STATUS: OrderStatusValues.DELIVERED if all_items_delivered else order_status,
+            Fields.CAPTURED_AT: get_server_timestamp(),
+            Fields.CONFIRMED_BY_CLIENT: True,
+            Fields.CONFIRMED_AT: get_server_timestamp(),
+            Fields.CAPTURE_ATTEMPTS: capture_attempts + 1,
+            Fields.UPDATED_AT: get_server_timestamp()
         }
         
         if transfer_errors:
              # Log errors but still mark captured (since money was taken), but add flag
-            update_data['payoutErrors'] = transfer_errors
-            update_data['requiresManualReview'] = True
+            update_data[Fields.PAYOUT_ERRORS] = transfer_errors
+            update_data[Fields.REQUIRES_MANUAL_REVIEW] = True
             print(f"Payout errors for order {order_id}: {transfer_errors}")
             
         order_ref.update(update_data)
@@ -1673,7 +1674,7 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         return {
             'success': True, 
             'captured': True, 
-            'newStatus': update_data['orderStatus'],
+            'newStatus': update_data[Fields.ORDER_STATUS],
             'payoutErrors': len(transfer_errors) > 0
         }
 

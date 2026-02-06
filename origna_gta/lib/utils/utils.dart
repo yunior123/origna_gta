@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/screens/login_screen.dart';
 import 'package:origna_gta/services/conf_services.dart';
@@ -95,15 +96,15 @@ Future<bool> addToCart({required String productId, required int quantity, requir
     return false;
   }
 
-  final cartItemRef = FirebaseFirestore.instance.collection('users').doc(user.uid).collection('cart').doc(productId);
+  final cartItemRef = FirebaseFirestore.instance.collection(Collections.users).doc(user.uid).collection(Collections.cart).doc(productId);
 
   try {
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       final snapshot = await transaction.get(cartItemRef);
 
       if (snapshot.exists) {
-        int currentQty = snapshot.data()?['quantity'] ?? 0;
-        transaction.update(cartItemRef, {'quantity': currentQty + quantity});
+        int currentQty = snapshot.data()?[Fields.quantity] ?? 0;
+        transaction.update(cartItemRef, {Fields.quantity: currentQty + quantity});
       } else {
         transaction.set(cartItemRef, CartModel(productId: productId, quantity: quantity, dateCreated: DateTime.now()).toMap());
       }
@@ -268,14 +269,14 @@ List<String> generateSearchKeywords(String name) {
 }
 
 Future<int> getCartItemCount(String userId) async {
-  final query = FirebaseFirestore.instance.collection('users').doc(userId).collection('cart');
+  final query = FirebaseFirestore.instance.collection(Collections.users).doc(userId).collection(Collections.cart);
 
   final snapshot = await query.count().get();
   return snapshot.count ?? 0;
 }
 
 Stream<List<CartItemModel>> getCartStream(String userId) {
-  return FirebaseFirestore.instance.collection('users').doc(userId).collection('cart').snapshots().map((snapshot) {
+  return FirebaseFirestore.instance.collection(Collections.users).doc(userId).collection(Collections.cart).snapshots().map((snapshot) {
     return snapshot.docs.map((doc) => CartItemModel.fromMap(doc.data())).toList();
   });
 }
@@ -477,16 +478,20 @@ double _calculateTieredShipping(double distanceKm, List<CartItemDetailModel> sel
 _FixedPriceResult _hasFixedPriceForSpeed(List<CartItemDetailModel> items, DeliverySpeed speed) {
   double total = 0;
   for (final item in items) {
-    final option = item.deliveryOptions.firstWhere(
-      (o) => o.speed == speed && o.isEnabled,
-      orElse: () => const SellerDeliveryOption(speed: DeliverySpeed.standard, isEnabled: false, estimatedDays: 0, price: 0),
-    );
-
-    if (!option.isEnabled || option.price <= 0) {
+    final matches = item.deliveryOptions.where((o) => o.type == speed.value);
+    if (matches.isEmpty) {
       return const _FixedPriceResult(isEnabled: false, total: 0);
     }
 
-    total += option.price * item.quantity;
+    final option = matches.first;
+    final cost = option.calculateCostForQuantity(item.quantity);
+    // Keep legacy behavior: only treat as fixed-price shipping when cost is positive.
+    // `freeShipping` is handled separately via the product flag.
+    if (cost.isNaN || cost.isInfinite || cost <= 0) {
+      return const _FixedPriceResult(isEnabled: false, total: 0);
+    }
+
+    total += cost;
   }
 
   return _FixedPriceResult(isEnabled: true, total: total);

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart' as constants;
 
 class FirebaseOrderRepository implements OrderRepository {
@@ -11,17 +12,17 @@ class FirebaseOrderRepository implements OrderRepository {
 
   @override
   Future<void> approveShippingCost(String orderId, bool approved) async {
-    await _functions.httpsCallable('approve_shipping_cost').call({'orderId': orderId, 'approved': approved});
+    await _functions.httpsCallable('approve_shipping_cost').call({Fields.orderId: orderId, 'approved': approved});
   }
 
   @override
   Future<void> capturePayment(String orderId) async {
-    await _functions.httpsCallable('capture_payment').call({'orderId': orderId});
+    await _functions.httpsCallable('capture_payment').call({Fields.orderId: orderId});
   }
 
   @override
   Future<void> confirmReceipt(String orderId, List<String> itemIds) async {
-    await _functions.httpsCallable('confirm_order_receipt').call({'orderId': orderId, 'itemIds': itemIds});
+    await _functions.httpsCallable('confirm_order_receipt').call({Fields.orderId: orderId, 'itemIds': itemIds});
   }
 
   @override
@@ -33,7 +34,7 @@ class FirebaseOrderRepository implements OrderRepository {
 
   @override
   Future<models.Order?> fetchOrderById(String orderId) async {
-    final doc = await _firestore.collection('orders').doc(orderId).get();
+    final doc = await _firestore.collection(Collections.orders).doc(orderId).get();
     if (!doc.exists) return null;
     return models.Order.fromFirestore(doc);
   }
@@ -41,35 +42,35 @@ class FirebaseOrderRepository implements OrderRepository {
   @override
   Future<void> updateItemStatus(String orderId, String itemId, String status, {String? trackingNumber, String? carrier}) async {
     await _functions.httpsCallable('update_item_status').call({
-      'orderId': orderId,
-      'productId': itemId,
-      'status': status,
-      if (trackingNumber != null) 'trackingNumber': trackingNumber,
-      if (carrier != null) 'carrier': carrier,
+      Fields.orderId: orderId,
+      Fields.productId: itemId,
+      Fields.status: status,
+      if (trackingNumber != null) Fields.trackingNumber: trackingNumber,
+      if (carrier != null) Fields.carrier: carrier,
     });
   }
 
   @override
   Future<void> updateLastSession(String userId, String sessionId, String orderId) async {
-    await _firestore.collection('users').doc(userId).update({
-      'lastCheckoutSession': sessionId,
-      'lastOrderId': orderId,
-      'lastCheckoutTimestamp': FieldValue.serverTimestamp(),
+    await _firestore.collection(Collections.users).doc(userId).update({
+      Fields.lastCheckoutSession: sessionId,
+      Fields.lastOrderId: orderId,
+      Fields.lastCheckoutTimestamp: FieldValue.serverTimestamp(),
     });
   }
 
   @override
   Future<void> updateShippingCost(String orderId, double newShippingCost, String reason) async {
-    await _functions.httpsCallable('update_shipping_cost').call({'orderId': orderId, 'newShippingCost': newShippingCost, 'reason': reason});
+    await _functions.httpsCallable('update_shipping_cost').call({Fields.orderId: orderId, 'newShippingCost': newShippingCost, 'reason': reason});
   }
 
   @override
   Stream<List<models.Order>> watchBuyerOrders(String userId) {
     return _firestore
-        .collection('orders')
-        .where('userId', isEqualTo: userId)
-        .where('paymentStatus', whereIn: [constants.PaymentStatus.paid.value, constants.PaymentStatus.authorized.value])
-        .orderBy('createdAt', descending: true)
+        .collection(Collections.orders)
+        .where(Fields.userId, isEqualTo: userId)
+        .where(Fields.paymentStatus, whereIn: [constants.PaymentStatus.paid.value, constants.PaymentStatus.authorized.value])
+        .orderBy(Fields.createdAt, descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => models.Order.fromFirestore(doc)).toList());
   }
@@ -77,9 +78,9 @@ class FirebaseOrderRepository implements OrderRepository {
   @override
   Stream<models.Order?> watchPaidOrderBySession(String sessionId) {
     return _firestore
-        .collection('orders')
-        .where('stripeSessionId', isEqualTo: sessionId)
-        .where('paymentStatus', isEqualTo: constants.PaymentStatus.paid.value)
+        .collection(Collections.orders)
+        .where(Fields.stripeSessionId, isEqualTo: sessionId)
+        .where(Fields.paymentStatus, isEqualTo: constants.PaymentStatus.paid.value)
         .limit(1)
         .snapshots()
         .map((snapshot) {
@@ -91,10 +92,10 @@ class FirebaseOrderRepository implements OrderRepository {
   @override
   Stream<List<models.Order>> watchSellerOrders(String userId) {
     return _firestore
-        .collection('orders')
-        .where('sellerIds', arrayContains: userId)
-        .where('paymentStatus', whereIn: ['paid', 'authorized'])
-        .orderBy('createdAt', descending: true)
+        .collection(Collections.orders)
+        .where(Fields.sellerIds, arrayContains: userId)
+        .where(Fields.paymentStatus, whereIn: [constants.PaymentStatus.paid.value, constants.PaymentStatus.authorized.value])
+        .orderBy(Fields.createdAt, descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => models.Order.fromFirestore(doc)).toList());
   }

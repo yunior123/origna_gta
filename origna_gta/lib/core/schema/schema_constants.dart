@@ -30,8 +30,14 @@ abstract final class Collections {
   static const products = 'products';
   static const orders = 'orders';
   static const payouts = 'payouts';
+  static const refunds = 'refunds';
   static const webhookLogs = 'webhook_logs';
   static const webhookEvents = 'webhook_events';
+  static const securityAlerts = 'security_alerts';
+  static const rateLimits = 'rate_limits';
+  static const config = 'config';
+  static const adminLogs = 'admin_logs';
+  static const productRatings = 'product_ratings';
 
   // Subcollections
   static const cart = 'cart'; // users/{userId}/cart
@@ -56,7 +62,8 @@ abstract final class Fields {
   // === COMMON TIMESTAMPS (used across multiple collections) ===
   static const createdAt = 'createdAt';
   static const updatedAt = 'updatedAt';
-  static const deletedAt = 'deletedAt';
+  static const String deletedAt = 'deletedAt';
+  static const String deletedBy = 'deletedBy';
 
   // === USER FIELDS ===
   static const uid = 'uid';
@@ -79,6 +86,13 @@ abstract final class Fields {
   static const airwallexStatus = 'airwallexStatus';
   static const suspended = 'suspended';
   static const suspendedAt = 'suspendedAt';
+  static const unsuspendedAt = 'unsuspendedAt';
+  static const commissionRate = 'commissionRate';
+  static const verified = 'verified';
+  static const verificationStatus = 'verificationStatus';
+  static const platform = 'platform';
+  static const businessName = 'businessName';
+  static const payoutHoldDays = 'payoutHoldDays';
 
   // === PRODUCT FIELDS ===
   static const productId = 'productId';
@@ -146,6 +160,9 @@ abstract final class Fields {
   static const shippingApprovalRequired = 'shippingApprovalRequired';
   static const actualShipping = 'actualShipping';
   static const pendingTotal = 'pendingTotal';
+  static const requiresManualReview = 'requiresManualReview';
+  static const manualReviewReason = 'manualReviewReason';
+  static const payoutErrors = 'payoutErrors';
 
   // === ORDER ITEM FIELDS ===
   static const quantity = 'quantity';
@@ -200,6 +217,7 @@ abstract final class Fields {
 
   // === CART FIELDS (subcollection uses dateCreated for legacy reasons) ===
   // NOTE: Cart items use [dateCreated], not [createdAt]
+  static const dateFavorited = 'dateFavorited';
 }
 
 // =============================================================================
@@ -245,6 +263,8 @@ abstract final class PaymentStatusValues {
   static const sessionExpired = 'session_expired';
   static const authorized = 'authorized';
   static const captured = 'captured';
+  static const cancelled = 'cancelled';
+  static const authorizationExpired = 'authorization_expired';
 
   static const all = {
     awaitingPayment,
@@ -255,6 +275,8 @@ abstract final class PaymentStatusValues {
     sessionExpired,
     authorized,
     captured,
+    cancelled,
+    authorizationExpired,
   };
 }
 
@@ -287,6 +309,16 @@ abstract final class PayoutStatusValues {
     reversed,
     reversedDispute,
   };
+}
+
+/// Valid values for shippingApprovalStatus field
+abstract final class ShippingApprovalStatusValues {
+  static const notRequired = 'not_required';
+  static const pending = 'pending';
+  static const approved = 'approved';
+  static const rejected = 'rejected';
+
+  static const all = {notRequired, pending, approved, rejected};
 }
 
 /// Valid values for roles array

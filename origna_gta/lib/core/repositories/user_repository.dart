@@ -9,24 +9,24 @@ class FirebaseUserRepository implements UserRepository {
 
   @override
   Future<SellerAccountStatus> getSellerAccountStatus(String userId) async {
-    final doc = await _firestore.collection('users').doc(userId).get();
+    final doc = await _firestore.collection(Collections.users).doc(userId).get();
     return _parseSellerStatus(doc.data());
   }
 
   @override
   Stream<SellerAccountStatus> watchSellerAccountStatus(String userId) {
-    return _firestore.collection('users').doc(userId).snapshots().map((doc) {
+    return _firestore.collection(Collections.users).doc(userId).snapshots().map((doc) {
       return _parseSellerStatus(doc.data());
     });
   }
 
   SellerAccountStatus _parseSellerStatus(Map<String, dynamic>? data) {
-    final roles = List<String>.from(data?['roles'] ?? const []);
+    final roles = List<String>.from(data?[Fields.roles] ?? const []);
     final isSeller = roles.contains(UserRoles.seller) || roles.contains(UserRoles.admin);
-    final chargesEnabled = data?['chargesEnabled'] == true;
-    final payoutsEnabled = data?['payoutsEnabled'] == true;
-    final onboardingCompleted = data?['onboardingCompleted'] == true;
-    final pendingRequirements = List<String>.from(data?['pendingRequirements'] ?? const []);
+    final chargesEnabled = data?[Fields.chargesEnabled] == true;
+    final payoutsEnabled = data?[Fields.payoutsEnabled] == true;
+    final onboardingCompleted = data?[Fields.onboardingCompleted] == true;
+    final pendingRequirements = List<String>.from(data?[Fields.pendingRequirements] ?? const []);
     return SellerAccountStatus(
       isSeller: isSeller,
       chargesEnabled: chargesEnabled && payoutsEnabled,
@@ -38,14 +38,14 @@ class FirebaseUserRepository implements UserRepository {
 
   @override
   Future<UserModel?> getUserProfile(String userId) async {
-    final doc = await _firestore.collection('users').doc(userId).get();
+    final doc = await _firestore.collection(Collections.users).doc(userId).get();
     if (!doc.exists) return null;
     return UserModel.fromMap(doc.data()!);
   }
 
   @override
   Future<void> updateAddress(String userId, Address address) async {
-    await _firestore.collection('users').doc(userId).update({'address': address.toMap()});
+    await _firestore.collection(Collections.users).doc(userId).update({Fields.address: address.toMap()});
   }
 }
 

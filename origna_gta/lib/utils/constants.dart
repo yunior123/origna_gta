@@ -1,8 +1,13 @@
 // Application-wide constants for OrignaGTA
 // Eliminates magic strings and provides type-safe status handling
 
+import 'package:origna_gta/core/schema/schema_constants.dart';
+
+// Re-export schema constants so existing imports keep working
+export 'package:origna_gta/core/schema/schema_constants.dart' show Collections, Fields, OrderStatusValues, PaymentStatusValues, DeliveryStatusValues, PayoutStatusValues, ShippingApprovalStatusValues, UserRoleValues, ProductStatusValues, SchemaRegistry, BusinessRules, CategoryIds;
+
 // ============================================================================
-// COLLECTION NAMES
+// APP CONFIGURATION
 // ============================================================================
 
 /// Application configuration constants
@@ -37,16 +42,7 @@ enum CaptureMethod {
 // ORDER STATUS
 // ============================================================================
 
-/// Firestore collection names
-class Collections {
-  static const String users = 'users';
-  static const String products = 'products';
-  static const String orders = 'orders';
-  static const String cart = 'cart';
-  static const String favorites = 'favorites';
-  static const String webhookLogs = 'webhook_logs';
-  static const String webhookEvents = 'webhook_events';
-}
+// Collections class is now defined in schema_constants.dart (re-exported above)
 
 // ============================================================================
 // PAYMENT STATUS
@@ -111,9 +107,9 @@ enum DeliverySpeed {
 
 /// Delivery status enum for individual order items
 enum DeliveryStatus {
-  pending('pending'),
-  shipped('shipped'),
-  delivered('delivered');
+  pending(DeliveryStatusValues.pending),
+  shipped(DeliveryStatusValues.shipped),
+  delivered(DeliveryStatusValues.delivered);
 
   final String value;
   const DeliveryStatus(this.value);
@@ -142,17 +138,17 @@ enum DeliveryStatus {
 
 /// Order status enum with string value conversion
 enum OrderStatus {
-  pending('pending'),
-  confirmed('confirmed'),
-  processing('processing'),
-  shipped('shipped'),
-  inTransit('in_transit'),
-  delivered('delivered'),
-  cancelled('cancelled'),
-  failed('failed'),
-  expired('expired'),
-  refunded('refunded'),
-  partiallyRefunded('partially_refunded');
+  pending(OrderStatusValues.pending),
+  confirmed(OrderStatusValues.confirmed),
+  processing(OrderStatusValues.processing),
+  shipped(OrderStatusValues.shipped),
+  inTransit(OrderStatusValues.inTransit),
+  delivered(OrderStatusValues.delivered),
+  cancelled(OrderStatusValues.cancelled),
+  failed(OrderStatusValues.failed),
+  expired(OrderStatusValues.expired),
+  refunded(OrderStatusValues.refunded),
+  partiallyRefunded(OrderStatusValues.partiallyRefunded);
 
   final String value;
   const OrderStatus(this.value);
@@ -197,16 +193,16 @@ enum OrderStatus {
 
 /// Payment status enum with string value conversion
 enum PaymentStatus {
-  awaitingPayment('awaiting_payment'),
-  processing('processing'),
-  authorized('authorized'),
-  paid('paid'),
-  captured('captured'),
-  paymentFailed('payment_failed'),
-  refunded('refunded'),
-  sessionExpired('session_expired'),
-  cancelled('cancelled'),
-  authorizationExpired('authorization_expired');
+  awaitingPayment(PaymentStatusValues.awaitingPayment),
+  processing(PaymentStatusValues.processing),
+  authorized(PaymentStatusValues.authorized),
+  paid(PaymentStatusValues.paid),
+  captured(PaymentStatusValues.captured),
+  paymentFailed(PaymentStatusValues.paymentFailed),
+  refunded(PaymentStatusValues.refunded),
+  sessionExpired(PaymentStatusValues.sessionExpired),
+  cancelled(PaymentStatusValues.cancelled),
+  authorizationExpired(PaymentStatusValues.authorizationExpired);
 
   final String value;
   const PaymentStatus(this.value);
@@ -253,11 +249,11 @@ enum PaymentStatus {
 
 /// Payout status for seller transfers
 enum PayoutStatus {
-  pending('pending'),
-  processing('processing'),
-  completed('completed'),
-  partial('partial'),
-  failed('failed');
+  pending(PayoutStatusValues.pending),
+  processing(PayoutStatusValues.processing),
+  completed(PayoutStatusValues.completed),
+  partial(PayoutStatusValues.partial),
+  failed(PayoutStatusValues.failed);
 
   final String value;
   const PayoutStatus(this.value);
@@ -283,23 +279,98 @@ enum PayoutStatus {
 }
 
 /// Seller-defined delivery option for a product
-/// Allows sellers to configure delivery speeds, times (1-60 days), and prices
+/// Stored in Firestore under [Fields.deliveryOptions].
+///
+/// Canonical schema uses: type/description/cost/estimatedDays (+ optional volume discounts).
+/// Legacy schema (pre-migration) used: speed/isEnabled/price/maxRadiusKm.
+class ShippingQuantityDiscount {
+  final int minQuantity;
+
+  /// 'percent' | 'fixed' | 'flat_rate'
+  final String discountType;
+
+  final double discountValue;
+  final String? label;
+
+  const ShippingQuantityDiscount({
+    required this.minQuantity,
+    this.discountType = 'percent',
+    required this.discountValue,
+    this.label,
+  });
+
+  factory ShippingQuantityDiscount.fromMap(Map<String, dynamic> map) {
+    return ShippingQuantityDiscount(
+      minQuantity: (map['minQuantity'] as num?)?.toInt() ?? 0,
+      discountType: map['discountType'] as String? ?? 'percent',
+      discountValue: (map['discountValue'] as num?)?.toDouble() ?? 0.0,
+      label: map['label'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'minQuantity': minQuantity,
+    'discountType': discountType,
+    'discountValue': discountValue,
+    if (label != null) 'label': label,
+  };
+}
+
 class SellerDeliveryOption {
-  final DeliverySpeed speed;
-  final bool isEnabled;
-  final int estimatedDays; // 0 for same-day, 1-60 for others
-  final double price; // 0.0 for free
-  final int? maxRadiusKm; // Only for same-day (local delivery radius)
+  final String type; // pickup | standard | express | same_day | custom
+  final String description;
+  final double cost; // Base cost in CAD
+  final int estimatedDays;
+  final List<ShippingQuantityDiscount> quantityDiscounts;
+  final int maxItemsPerShipment; // 0 = no limit
+  final double additionalItemCost;
+  final bool availableInternational;
 
-  const SellerDeliveryOption({required this.speed, this.isEnabled = false, required this.estimatedDays, this.price = 0.0, this.maxRadiusKm});
+  const SellerDeliveryOption({
+    required this.type,
+    required this.description,
+    required this.cost,
+    required this.estimatedDays,
+    this.quantityDiscounts = const [],
+    this.maxItemsPerShipment = 0,
+    this.additionalItemCost = 0.0,
+    this.availableInternational = true,
+  });
 
-  factory SellerDeliveryOption.fromMap(Map<String, dynamic> map) {
+  static SellerDeliveryOption? fromMap(Map<String, dynamic> map) {
+    // New schema
+    if (map.containsKey('type') || map.containsKey('cost')) {
+      final rawDiscounts = map['quantityDiscounts'];
+      final discounts = rawDiscounts is List
+          ? rawDiscounts.whereType<Map>().map((d) => ShippingQuantityDiscount.fromMap(d.cast<String, dynamic>())).toList()
+          : const <ShippingQuantityDiscount>[];
+
+      return SellerDeliveryOption(
+        type: map['type'] as String? ?? '',
+        description: map['description'] as String? ?? '',
+        cost: (map['cost'] as num?)?.toDouble() ?? 0.0,
+        estimatedDays: (map['estimatedDays'] as num?)?.toInt() ?? 0,
+        quantityDiscounts: discounts,
+        maxItemsPerShipment: (map['maxItemsPerShipment'] as num?)?.toInt() ?? 0,
+        additionalItemCost: (map['additionalItemCost'] as num?)?.toDouble() ?? 0.0,
+        availableInternational: map['availableInternational'] as bool? ?? true,
+      );
+    }
+
+    // Legacy schema
+    final isEnabled = map['isEnabled'] as bool? ?? false;
+    if (!isEnabled) return null;
+
+    final legacySpeed = map['speed'] as String? ?? DeliverySpeed.standard.value;
+    final legacyDays = (map['estimatedDays'] as num?)?.toInt() ?? 5;
+    final legacyPrice = (map['price'] as num?)?.toDouble() ?? 0.0;
+
+    final displayName = DeliverySpeed.fromValue(legacySpeed).displayName;
     return SellerDeliveryOption(
-      speed: DeliverySpeed.fromValue(map['speed'] ?? 'standard'),
-      isEnabled: map['isEnabled'] ?? false,
-      estimatedDays: map['estimatedDays'] ?? 5,
-      price: (map['price'] ?? 0.0).toDouble(),
-      maxRadiusKm: map['maxRadiusKm'],
+      type: legacySpeed,
+      description: '$displayName Delivery',
+      cost: legacyPrice,
+      estimatedDays: legacyDays,
     );
   }
 
@@ -311,49 +382,72 @@ class SellerDeliveryOption {
   }
 
   /// Get price display text
-  String get priceText => price == 0 ? 'Free' : '\$${price.toStringAsFixed(2)}';
+  String get priceText => cost == 0 ? 'Free' : '\$${cost.toStringAsFixed(2)}';
 
-  SellerDeliveryOption copyWith({DeliverySpeed? speed, bool? isEnabled, int? estimatedDays, double? price, int? maxRadiusKm}) => SellerDeliveryOption(
-    speed: speed ?? this.speed,
-    isEnabled: isEnabled ?? this.isEnabled,
-    estimatedDays: estimatedDays ?? this.estimatedDays,
-    price: price ?? this.price,
-    maxRadiusKm: maxRadiusKm ?? this.maxRadiusKm,
-  );
+  /// Calculate effective shipping cost for a given quantity.
+  /// Mirrors backend `ShippingQuantityDiscount` logic.
+  double calculateCostForQuantity(int quantity) {
+    if (quantity <= 0) return cost;
+
+    ShippingQuantityDiscount? bestDiscount;
+    for (final discount in quantityDiscounts) {
+      if (quantity >= discount.minQuantity) {
+        if (bestDiscount == null || discount.minQuantity > bestDiscount!.minQuantity) {
+          bestDiscount = discount;
+        }
+      }
+    }
+
+    var baseCost = cost;
+
+    // Apply per-item costs if applicable
+    if (maxItemsPerShipment > 0 && quantity > maxItemsPerShipment) {
+      final extraItems = quantity - maxItemsPerShipment;
+      baseCost += extraItems * additionalItemCost;
+    }
+
+    // Apply quantity discount
+    if (bestDiscount != null) {
+      switch (bestDiscount.discountType) {
+        case 'percent':
+          return baseCost * (1 - bestDiscount.discountValue / 100);
+        case 'fixed':
+          return (baseCost - bestDiscount.discountValue).clamp(0, double.infinity);
+        case 'flat_rate':
+          return bestDiscount.discountValue;
+        default:
+          return baseCost;
+      }
+    }
+
+    return baseCost;
+  }
 
   Map<String, dynamic> toMap() => {
-    'speed': speed.value,
-    'isEnabled': isEnabled,
+    'type': type,
+    'description': description,
+    'cost': cost,
     'estimatedDays': estimatedDays,
-    'price': price,
-    if (maxRadiusKm != null) 'maxRadiusKm': maxRadiusKm,
+    if (quantityDiscounts.isNotEmpty) 'quantityDiscounts': quantityDiscounts.map((d) => d.toMap()).toList(),
+    if (maxItemsPerShipment != 0) 'maxItemsPerShipment': maxItemsPerShipment,
+    if (additionalItemCost != 0.0) 'additionalItemCost': additionalItemCost,
+    if (!availableInternational) 'availableInternational': availableInternational,
   };
 
   /// Create default options for a new product
   static List<SellerDeliveryOption> defaultOptions() => [
-    const SellerDeliveryOption(
-      speed: DeliverySpeed.standard,
-      isEnabled: true,
-      estimatedDays: 5,
-      price: 0.0, // Free standard shipping
-    ),
-    const SellerDeliveryOption(speed: DeliverySpeed.express, isEnabled: false, estimatedDays: 2, price: 9.99),
-    const SellerDeliveryOption(
-      speed: DeliverySpeed.sameDay,
-      isEnabled: false,
-      estimatedDays: 0,
-      price: 14.99,
-      maxRadiusKm: 50, // Default 50km radius
-    ),
+    const SellerDeliveryOption(type: 'standard', description: 'Standard Delivery', cost: 0.0, estimatedDays: 5),
+    const SellerDeliveryOption(type: 'express', description: 'Express Delivery', cost: 9.99, estimatedDays: 2),
+    const SellerDeliveryOption(type: 'same_day', description: 'Same Day Delivery', cost: 14.99, estimatedDays: 0),
   ];
 }
 
 /// Shipping approval status for manual capture orders
 enum ShippingApprovalStatus {
-  notRequired('not_required'),
-  pending('pending'),
-  approved('approved'),
-  rejected('rejected');
+  notRequired(ShippingApprovalStatusValues.notRequired),
+  pending(ShippingApprovalStatusValues.pending),
+  approved(ShippingApprovalStatusValues.approved),
+  rejected(ShippingApprovalStatusValues.rejected);
 
   final String value;
   const ShippingApprovalStatus(this.value);
@@ -382,7 +476,7 @@ enum ShippingApprovalStatus {
 
 /// User role constants
 class UserRoles {
-  static const String admin = 'admin';
-  static const String seller = 'seller';
-  static const String buyer = 'buyer';
+  static const admin = UserRoleValues.admin;
+  static const seller = UserRoleValues.seller;
+  static const buyer = UserRoleValues.buyer;
 }

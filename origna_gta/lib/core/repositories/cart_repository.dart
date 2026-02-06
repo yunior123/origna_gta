@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 abstract class CartRepository {
@@ -19,9 +20,9 @@ class FirebaseCartRepository implements CartRepository {
   @override
   Stream<List<CartItemModel>> watchCart(String userId) {
     return _firestore
-        .collection('users')
+        .collection(Collections.users)
         .doc(userId)
-        .collection('cart')
+        .collection(Collections.cart)
         .snapshots()
         .map((snapshot) {
           return snapshot.docs.map((doc) => CartItemModel.fromMap(doc.data())).where((item) => item.quantity > 0).toList();
@@ -31,15 +32,15 @@ class FirebaseCartRepository implements CartRepository {
   @override
   Future<void> addToCart(String userId, String productId, int quantity) async {
     if (quantity < minCartItemQuantity) return;
-    final cartItemRef = _firestore.collection('users').doc(userId).collection('cart').doc(productId);
+    final cartItemRef = _firestore.collection(Collections.users).doc(userId).collection(Collections.cart).doc(productId);
 
     await _firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(cartItemRef);
 
       if (snapshot.exists) {
-        int currentQty = snapshot.data()?['quantity'] ?? 0;
+        int currentQty = snapshot.data()?[Fields.quantity] ?? 0;
         int newQty = (currentQty + quantity).clamp(minCartItemQuantity, maxCartItemQuantity);
-        transaction.update(cartItemRef, {'quantity': newQty});
+        transaction.update(cartItemRef, {Fields.quantity: newQty});
       } else {
         final clampedQty = quantity.clamp(minCartItemQuantity, maxCartItemQuantity);
         transaction.set(cartItemRef, CartModel(productId: productId, quantity: clampedQty, dateCreated: DateTime.now()).toMap());
@@ -49,22 +50,22 @@ class FirebaseCartRepository implements CartRepository {
 
   @override
   Future<void> updateQuantity(String userId, String productId, int quantity) async {
-    final cartItemRef = _firestore.collection('users').doc(userId).collection('cart').doc(productId);
+    final cartItemRef = _firestore.collection(Collections.users).doc(userId).collection(Collections.cart).doc(productId);
     if (quantity < minCartItemQuantity) {
       await cartItemRef.delete();
     } else {
-      await cartItemRef.update({'quantity': quantity.clamp(minCartItemQuantity, maxCartItemQuantity)});
+      await cartItemRef.update({Fields.quantity: quantity.clamp(minCartItemQuantity, maxCartItemQuantity)});
     }
   }
 
   @override
   Future<void> removeFromCart(String userId, String productId) async {
-    await _firestore.collection('users').doc(userId).collection('cart').doc(productId).delete();
+    await _firestore.collection(Collections.users).doc(userId).collection(Collections.cart).doc(productId).delete();
   }
 
   @override
   Future<void> clearCart(String userId) async {
-    final cartRef = _firestore.collection('users').doc(userId).collection('cart');
+    final cartRef = _firestore.collection(Collections.users).doc(userId).collection(Collections.cart);
     final snapshot = await cartRef.get();
     final batch = _firestore.batch();
     for (var doc in snapshot.docs) {

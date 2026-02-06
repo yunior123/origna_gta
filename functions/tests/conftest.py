@@ -708,7 +708,7 @@ def create_mock_order_doc(
         'items': items,
         'totalAmountCents': round(float(total_amount_dollars) * 100),
         'sellerId': seller_id,
-        'stripePaymentIntentId': 'pi_test_123',
+        'stripePaymentIntentId': 'pi_3test_123',
         'createdAt': MagicMock(),
         'updatedAt': MagicMock()
     }

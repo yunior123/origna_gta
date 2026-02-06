@@ -29,36 +29,44 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
   final dateCreated = ref.watch(cartItemDateProvider(productId));
   if (dateCreated == null) return null;
 
-  final quantity = ref.watch(cartItemQuantityProvider(productId)).valueOrNull ?? 1;
+  // Quantity is NOT watched here. CartItemScreen has its own Consumer that
+  // watches cartItemQuantityProvider directly for the +/- controls.
+  // Previously, watching quantity here caused the entire item card (image,
+  // name, price) to rebuild on every +/- press AND triggered a redundant
+  // Firestore product re-fetch each time.
 
-  final productDoc = await firestore.collection('products').doc(productId).get();
+  final productDoc = await firestore.collection(Collections.products).doc(productId).get();
   if (!productDoc.exists) return null;
 
   final productData = productDoc.data()!;
   return CartItemDetailModel(
     productId: productId,
-    name: productData['name'] ?? '',
-    description: productData['description'] ?? '',
-    price: (productData['price'] ?? 0).toDouble(),
-    imageUrls: List<String>.from(productData['imageUrls'] ?? []),
-    quantity: quantity,
+    name: productData[Fields.name] ?? '',
+    description: productData[Fields.description] ?? '',
+    price: (productData[Fields.price] ?? 0).toDouble(),
+    imageUrls: List<String>.from(productData[Fields.imageUrls] ?? []),
+    quantity: 0, // Placeholder — real quantity rendered by CartItemScreen's own Consumer
     dateCreated: dateCreated,
-    sellerAddress: Address.fromMap(productData['sellerAddress'] ?? {}),
-    sellerId: productData['sellerId'] ?? '',
-    deliveryStatus: 'pending',
-    weightKg: productData['weightKg'] != null ? (productData['weightKg'] as num).toDouble() : null,
-    lengthCm: productData['lengthCm'] != null ? (productData['lengthCm'] as num).toDouble() : null,
-    widthCm: productData['widthCm'] != null ? (productData['widthCm'] as num).toDouble() : null,
-    heightCm: productData['heightCm'] != null ? (productData['heightCm'] as num).toDouble() : null,
-    isLocalDeliveryOnly: productData['isLocalDeliveryOnly'] ?? false,
-    isPerishable: productData['isPerishable'] ?? false,
-    estimatedShipDays: productData['estimatedShipDays'] ?? 3,
-    deliveryOptions: productData['deliveryOptions'] != null
-        ? (productData['deliveryOptions'] as List).map((o) => SellerDeliveryOption.fromMap(o as Map<String, dynamic>)).toList()
+    sellerAddress: Address.fromMap(productData[Fields.sellerAddress] ?? {}),
+    sellerId: productData[Fields.sellerId] ?? '',
+    deliveryStatus: DeliveryStatusValues.pending,
+    weightKg: productData[Fields.weightKg] != null ? (productData[Fields.weightKg] as num).toDouble() : null,
+    lengthCm: productData[Fields.lengthCm] != null ? (productData[Fields.lengthCm] as num).toDouble() : null,
+    widthCm: productData[Fields.widthCm] != null ? (productData[Fields.widthCm] as num).toDouble() : null,
+    heightCm: productData[Fields.heightCm] != null ? (productData[Fields.heightCm] as num).toDouble() : null,
+    isLocalDeliveryOnly: productData[Fields.isLocalDeliveryOnly] ?? false,
+    isPerishable: productData[Fields.isPerishable] ?? false,
+    estimatedShipDays: productData[Fields.estimatedShipDays] ?? 3,
+    deliveryOptions: productData[Fields.deliveryOptions] != null
+        ? (productData[Fields.deliveryOptions] as List)
+            .whereType<Map>()
+            .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
+            .whereType<SellerDeliveryOption>()
+            .toList()
         : [],
-    minimumOrderQuantity: (productData['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
-    freeShipping: productData['freeShipping'] ?? false,
-    isDigital: productData['isDigital'] ?? false,
+    minimumOrderQuantity: (productData[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
+    freeShipping: productData[Fields.freeShipping] ?? false,
+    isDigital: productData[Fields.isDigital] ?? false,
   );
 });
 
@@ -72,9 +80,9 @@ final cartItemQuantityProvider = StreamProvider.autoDispose.family<int, String>(
   final userId = ref.watch(userIdProvider);
   if (userId == null) return Stream.value(0);
 
-  return ref.watch(firestoreProvider).collection('users').doc(userId).collection('cart').doc(productId).snapshots().map((doc) {
+  return ref.watch(firestoreProvider).collection(Collections.users).doc(userId).collection(Collections.cart).doc(productId).snapshots().map((doc) {
     if (!doc.exists) return 0;
-    return (doc.data()?['quantity'] ?? 0) as int;
+    return (doc.data()?[Fields.quantity] ?? 0) as int;
   });
 });
 
@@ -114,7 +122,7 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
       // Batch fetch products using whereIn (Firestore limit is 30 per query)
       for (var i = 0; i < productIds.length; i += 30) {
         final batch = productIds.skip(i).take(30).toList();
-        final snapshot = await firestore.collection('products').where(FieldPath.documentId, whereIn: batch).get();
+        final snapshot = await firestore.collection(Collections.products).where(FieldPath.documentId, whereIn: batch).get();
 
         // Create a map for O(1) lookup
         final productMap = {for (var doc in snapshot.docs) doc.id: doc};
@@ -129,28 +137,32 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
             results.add(
               CartItemDetailModel(
                 productId: productId,
-                name: productData['name'] ?? '',
-                description: productData['description'] ?? '',
-                price: (productData['price'] ?? 0).toDouble(),
-                imageUrls: List<String>.from(productData['imageUrls'] ?? []),
+                name: productData[Fields.name] ?? '',
+                description: productData[Fields.description] ?? '',
+                price: (productData[Fields.price] ?? 0).toDouble(),
+                imageUrls: List<String>.from(productData[Fields.imageUrls] ?? []),
                 quantity: cartItem.quantity,
                 dateCreated: cartItem.dateCreated,
-                sellerAddress: Address.fromMap(productData['sellerAddress'] ?? {}),
-                sellerId: productData['sellerId'] ?? '',
-                deliveryStatus: 'pending',
-                weightKg: productData['weightKg'] != null ? (productData['weightKg'] as num).toDouble() : null,
-                lengthCm: productData['lengthCm'] != null ? (productData['lengthCm'] as num).toDouble() : null,
-                widthCm: productData['widthCm'] != null ? (productData['widthCm'] as num).toDouble() : null,
-                heightCm: productData['heightCm'] != null ? (productData['heightCm'] as num).toDouble() : null,
-                isLocalDeliveryOnly: productData['isLocalDeliveryOnly'] ?? false,
-                isPerishable: productData['isPerishable'] ?? false,
-                estimatedShipDays: productData['estimatedShipDays'] ?? 3,
-                deliveryOptions: productData['deliveryOptions'] != null
-                    ? (productData['deliveryOptions'] as List).map((o) => SellerDeliveryOption.fromMap(o as Map<String, dynamic>)).toList()
+                sellerAddress: Address.fromMap(productData[Fields.sellerAddress] ?? {}),
+                sellerId: productData[Fields.sellerId] ?? '',
+                deliveryStatus: DeliveryStatusValues.pending,
+                weightKg: productData[Fields.weightKg] != null ? (productData[Fields.weightKg] as num).toDouble() : null,
+                lengthCm: productData[Fields.lengthCm] != null ? (productData[Fields.lengthCm] as num).toDouble() : null,
+                widthCm: productData[Fields.widthCm] != null ? (productData[Fields.widthCm] as num).toDouble() : null,
+                heightCm: productData[Fields.heightCm] != null ? (productData[Fields.heightCm] as num).toDouble() : null,
+                isLocalDeliveryOnly: productData[Fields.isLocalDeliveryOnly] ?? false,
+                isPerishable: productData[Fields.isPerishable] ?? false,
+                estimatedShipDays: productData[Fields.estimatedShipDays] ?? 3,
+                deliveryOptions: productData[Fields.deliveryOptions] != null
+                    ? (productData[Fields.deliveryOptions] as List)
+                        .whereType<Map>()
+                        .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
+                        .whereType<SellerDeliveryOption>()
+                        .toList()
                     : [],
-                minimumOrderQuantity: (productData['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
-                freeShipping: productData['freeShipping'] ?? false,
-                isDigital: productData['isDigital'] ?? false,
+                minimumOrderQuantity: (productData[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
+                freeShipping: productData[Fields.freeShipping] ?? false,
+                isDigital: productData[Fields.isDigital] ?? false,
               ),
             );
           }
@@ -179,11 +191,11 @@ class CartController {
     
     try {
       final firestore = _ref.read(firestoreProvider);
-      final productDoc = await firestore.collection('products').doc(productId).get();
-      
+      final productDoc = await firestore.collection(Collections.products).doc(productId).get();
+
       if (!productDoc.exists) return false;
-      
-      final sellerId = productDoc.data()?['sellerId'] as String?;
+
+      final sellerId = productDoc.data()?[Fields.sellerId] as String?;
       return sellerId != userId;
     } catch (e) {
       return false;
@@ -193,15 +205,15 @@ class CartController {
   Future<bool> addToCart(String productId, int quantity) async {
     final userId = _userId;
     if (userId == null) return false;
-    
+
     try {
       // Check if user is trying to buy their own product
       final firestore = _ref.read(firestoreProvider);
-      final productDoc = await firestore.collection('products').doc(productId).get();
-      
+      final productDoc = await firestore.collection(Collections.products).doc(productId).get();
+
       if (!productDoc.exists) return false;
-      
-      final sellerId = productDoc.data()?['sellerId'] as String?;
+
+      final sellerId = productDoc.data()?[Fields.sellerId] as String?;
       if (sellerId == userId) {
         // User is trying to buy their own product
         return false;

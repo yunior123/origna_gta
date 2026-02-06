@@ -7,6 +7,7 @@ import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/seller_orders_viewmodel.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:origna_gta/utils/constants.dart' hide PaymentStatus, ShippingApprovalStatus;
 
 class SellerOrdersScreen extends ConsumerWidget {
   const SellerOrdersScreen({super.key});
@@ -173,7 +174,7 @@ class _SellerOrderCard extends ConsumerWidget {
     // Use new status field, fallback to deliveryStatus for backwards compatibility
     final statusStr = item.status;
     final isAuthorized = order.paymentStatus == PaymentStatus.awaitingPayment;
-    final isRefunded = statusStr == 'refunded';
+    final isRefunded = statusStr == DeliveryStatusValues.refunded;
 
     return ListTile(
       leading: Image.network(item.imageUrls.first, width: 40, height: 40, fit: BoxFit.cover, errorBuilder: (_, _, _) => const Icon(Icons.image)),
@@ -186,14 +187,14 @@ class _SellerOrderCard extends ConsumerWidget {
           if (item.refundedAt != null) Text('Refunded: ${DateFormat.yMd().format(item.refundedAt!)}', style: const TextStyle(fontSize: 11, color: Colors.orange)),
         ],
       ),
-      trailing: !isAuthorized && statusStr != 'delivered' && !isRefunded
+      trailing: !isAuthorized && statusStr != DeliveryStatusValues.delivered && !isRefunded
           ? IconButton(
-              icon: Icon(statusStr == 'shipped' ? Icons.check_circle : Icons.local_shipping),
+              icon: Icon(statusStr == DeliveryStatusValues.shipped ? Icons.check_circle : Icons.local_shipping),
               onPressed: () {
-                if (statusStr == 'pending') {
+                if (statusStr == DeliveryStatusValues.pending) {
                   _showMarkAsShippedDialog(context, ref, item);
                 } else {
-                  ref.read(sellerOrdersViewModelProvider.notifier).updateItemStatus(order.orderId, item.productId, 'delivered');
+                  ref.read(sellerOrdersViewModelProvider.notifier).updateItemStatus(order.orderId, item.productId, DeliveryStatusValues.delivered);
                 }
               },
             )
@@ -202,13 +203,11 @@ class _SellerOrderCard extends ConsumerWidget {
   }
 
   String _getStatusDisplayText(String status) {
-    switch (status) {
-      case 'pending': return 'Pending';
-      case 'shipped': return 'Shipped';
-      case 'delivered': return 'Delivered';
-      case 'refunded': return 'Refunded';
-      default: return status;
-    }
+    if (status == DeliveryStatusValues.pending) return 'Pending';
+    if (status == DeliveryStatusValues.shipped) return 'Shipped';
+    if (status == DeliveryStatusValues.delivered) return 'Delivered';
+    if (status == DeliveryStatusValues.refunded) return 'Refunded';
+    return status;
   }
 
   void _showMarkAsShippedDialog(BuildContext context, WidgetRef ref, OrderItem item) {
@@ -228,7 +227,7 @@ class _SellerOrderCard extends ConsumerWidget {
               final tracking = trackingController.text.trim();
               if (tracking.isNotEmpty) {
                 Navigator.pop(context);
-                ref.read(sellerOrdersViewModelProvider.notifier).updateItemStatus(order.orderId, item.productId, 'shipped', trackingNumber: tracking);
+                ref.read(sellerOrdersViewModelProvider.notifier).updateItemStatus(order.orderId, item.productId, DeliveryStatusValues.shipped, trackingNumber: tracking);
               }
             },
             child: const Text('Confirm'),

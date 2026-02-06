@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/services/conf_services.dart';
 
@@ -18,7 +19,7 @@ class FirebaseProductRepository implements ProductRepository {
     if (kDebugMode) debugPrint('REPO: Attempting to add product: ${product.name}');
     try {
       final firestoreData = _sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
-      final docRef = await _firestore.collection('products').add(firestoreData);
+      final docRef = await _firestore.collection(Collections.products).add(firestoreData);
       if (kDebugMode) debugPrint('REPO: Product added successfully locally with ID: ${docRef.id}');
 
       // DIAGNOSTIC: Check connectivity
@@ -55,34 +56,34 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Future<void> deleteProduct(String productId) async {
-    await _functions.httpsCallable('delete_product').call({'productId': productId});
+    await _functions.httpsCallable('delete_product').call({Fields.productId: productId});
   }
 
   @override
   Future<Product?> fetchProductById(String productId) async {
-    final doc = await _firestore.collection('products').doc(productId).get();
+    final doc = await _firestore.collection(Collections.products).doc(productId).get();
     if (!doc.exists) return null;
     final data = doc.data();
     if (data == null) return null;
-    if (data['isActive'] == false) return null;
+    if (data[Fields.isActive] == false) return null;
     return Product.fromFirestore(doc);
   }
 
   @override
   Future<ProductQueryResult> fetchProducts({String? searchQuery, int? categoryId, DocumentSnapshot? lastDocument, int pageSize = 20}) async {
-    Query query = _firestore.collection('products');
+    Query query = _firestore.collection(Collections.products);
 
-    query = query.where('isActive', isEqualTo: true);
+    query = query.where(Fields.isActive, isEqualTo: true);
 
     if (searchQuery != null && searchQuery.isNotEmpty) {
-      query = query.where('keywords', arrayContains: searchQuery.toLowerCase().trim());
+      query = query.where(Fields.keywords, arrayContains: searchQuery.toLowerCase().trim());
     }
 
     if (categoryId != null) {
-      query = query.where('categoryId', isEqualTo: categoryId);
+      query = query.where(Fields.categoryId, isEqualTo: categoryId);
     }
 
-    query = query.orderBy('dateCreated', descending: true).limit(pageSize);
+    query = query.orderBy(Fields.dateCreated, descending: true).limit(pageSize);
 
     if (lastDocument != null) {
       query = query.startAfterDocument(lastDocument);
@@ -104,7 +105,7 @@ class FirebaseProductRepository implements ProductRepository {
     // Actually current limit is 30. Let's use 30.
     for (int i = 0; i < productIds.length; i += 30) {
       final chunk = productIds.skip(i).take(30).toList();
-      final snapshot = await _firestore.collection('products').where(FieldPath.documentId, whereIn: chunk).where('isActive', isEqualTo: true).get();
+      final snapshot = await _firestore.collection(Collections.products).where(FieldPath.documentId, whereIn: chunk).where(Fields.isActive, isEqualTo: true).get();
       results.addAll(snapshot.docs.map((doc) => Product.fromFirestore(doc)).where((p) => p.isActive));
     }
     return results;
@@ -129,25 +130,25 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Future<void> submitRating(String orderId, String productId, int rating) async {
-    await _functions.httpsCallable('submit_product_rating').call({'orderId': orderId, 'productId': productId, 'rating': rating});
+    await _functions.httpsCallable('submit_product_rating').call({Fields.orderId: orderId, Fields.productId: productId, Fields.rating: rating});
   }
 
   @override
   Future<void> toggleFavorite(String userId, String productId) async {
-    final favRef = _firestore.collection('users').doc(userId).collection('favorites').doc(productId);
+    final favRef = _firestore.collection(Collections.users).doc(userId).collection(Collections.favorites).doc(productId);
     final doc = await favRef.get();
 
     if (doc.exists) {
       await favRef.delete();
     } else {
-      await favRef.set({'productId': productId, 'dateFavorited': Timestamp.now()});
+      await favRef.set({Fields.productId: productId, Fields.dateFavorited: FieldValue.serverTimestamp()});
     }
   }
 
   @override
   Future<void> updateProduct(String productId, Map<String, dynamic> data) async {
     final sanitized = _sanitizeProductForFirestore(data);
-    await _firestore.collection('products').doc(productId).update(sanitized);
+    await _firestore.collection(Collections.products).doc(productId).update(sanitized);
   }
 
   @override
@@ -162,7 +163,7 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Stream<Set<String>> watchFavorites(String userId) {
-    return _firestore.collection('users').doc(userId).collection('favorites').snapshots().map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
+    return _firestore.collection(Collections.users).doc(userId).collection(Collections.favorites).snapshots().map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
   }
 
   Map<String, dynamic> _deepToJsonEncodableMap(Map<String, dynamic> data) {
@@ -175,21 +176,21 @@ class FirebaseProductRepository implements ProductRepository {
     final data = _deepToJsonEncodableMap(rawData);
 
     // productId is derived from document id; avoid storing a client-controlled field.
-    data.remove('productId');
+    data.remove(Fields.productId);
 
     // Ensure dateCreated is stored as a Firestore Timestamp (not ISO string)
-    if (data.containsKey('dateCreated') || ensureDateCreated) {
-      final dateCreated = data['dateCreated'];
+    if (data.containsKey(Fields.dateCreated) || ensureDateCreated) {
+      final dateCreated = data[Fields.dateCreated];
       if (dateCreated is String) {
         try {
-          data['dateCreated'] = Timestamp.fromDate(DateTime.parse(dateCreated));
+          data[Fields.dateCreated] = Timestamp.fromDate(DateTime.parse(dateCreated));
         } catch (_) {
-          data['dateCreated'] = Timestamp.now();
+          data[Fields.dateCreated] = Timestamp.now();
         }
       } else if (dateCreated is DateTime) {
-        data['dateCreated'] = Timestamp.fromDate(dateCreated);
+        data[Fields.dateCreated] = Timestamp.fromDate(dateCreated);
       } else if (dateCreated == null && ensureDateCreated) {
-        data['dateCreated'] = Timestamp.now();
+        data[Fields.dateCreated] = Timestamp.now();
       }
     }
 

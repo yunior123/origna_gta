@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 from firebase_functions import https_fn
 from firebase_admin import firestore
 from config import IS_EMULATOR
+from schema_constants import Fields, Collections
 from pydantic import ValidationError
 
 # Import Pydantic models
@@ -208,20 +209,20 @@ def validate_order_data(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
     This is a lightweight check before creating full Order object.
     Returns (True, None) on success or (False, error_message) on failure.
     """
-    for field in ['userId', 'items']:
+    for field in [Fields.USER_ID, Fields.ITEMS]:
         if field not in data:
             return False, f"Missing required field: {field}"
 
-    if not isinstance(data['items'], list) or len(data['items']) == 0:
+    if not isinstance(data[Fields.ITEMS], list) or len(data[Fields.ITEMS]) == 0:
         return False, "Invalid items: must be non-empty array"
 
     # totalAmountCents is required (integer cents)
-    amount_cents = data.get('totalAmountCents')
+    amount_cents = data.get(Fields.TOTAL_AMOUNT_CENTS)
     if amount_cents is None or not isinstance(amount_cents, (int, float)) or isinstance(amount_cents, bool) or amount_cents < 0:
         return False, "Invalid totalAmountCents: must be non-negative integer"
 
     # customerEmail is optional (can be fetched from user doc)
-    customer_email = data.get('customerEmail')
+    customer_email = data.get(Fields.CUSTOMER_EMAIL)
     if customer_email:
         try:
             from pydantic import EmailStr
@@ -230,9 +231,9 @@ def validate_order_data(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
             return False, "Invalid email address format"
 
     # Validate address (only for physical items)
-    has_physical_items = any(not item.get('isDigital', False) for item in data['items'])
+    has_physical_items = any(not item.get(Fields.IS_DIGITAL, False) for item in data[Fields.ITEMS])
     if has_physical_items:
-        shipping_address = data.get('shippingAddress')
+        shipping_address = data.get(Fields.SHIPPING_ADDRESS)
         if not shipping_address:
             return False, "Missing required field: shippingAddress"
 
@@ -242,7 +243,7 @@ def validate_order_data(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
             return False, str(e)
     
     # Validate each item
-    for idx, item in enumerate(data['items']):
+    for idx, item in enumerate(data[Fields.ITEMS]):
         is_valid, error_msg = validate_item(item)
         if not is_valid:
             return False, f"Item {idx}: {error_msg}"
@@ -255,14 +256,14 @@ def log_webhook_to_database(db, event_id: str, event_type: str, payload_size: in
     """Log all webhook calls to database for audit trail and debugging"""
     try:
         log_data = {
-            "eventId": event_id,
-            "eventType": event_type,
-            "payloadSize": payload_size,
-            "signatureVerified": signature_verified,
-            "processingStatus": processing_status,
-            "orderId": order_id,
-            "errorMessage": error_message,
-            "timestamp": firestore.SERVER_TIMESTAMP,
+            Fields.EVENT_ID: event_id,
+            Fields.EVENT_TYPE: event_type,
+            Fields.PAYLOAD_SIZE: payload_size,
+            Fields.SIGNATURE_VERIFIED: signature_verified,
+            Fields.PROCESSING_STATUS: processing_status,
+            Fields.ORDER_ID: order_id,
+            Fields.ERROR_MESSAGE: error_message,
+            Fields.TIMESTAMP: firestore.SERVER_TIMESTAMP,
             "environment": "emulator" if IS_EMULATOR else "production",
         }
         if raw_event_data:
@@ -273,7 +274,7 @@ def log_webhook_to_database(db, event_id: str, event_type: str, payload_size: in
                 "livemode": raw_event_data.get("livemode"),
                 "object_id": raw_event_data.get("data", {}).get("object", {}).get("id"),
             }
-        db.collection('webhook_logs').document(event_id).set(log_data)
+        db.collection(Collections.WEBHOOK_LOGS).document(event_id).set(log_data)
         print(f"✅ Logged webhook {event_id} to database")
     except Exception as e:
         print(f"⚠️ Failed to log webhook to database: {str(e)}")

@@ -38,8 +38,14 @@ class Collections:
     PRODUCTS = "products"
     ORDERS = "orders"
     PAYOUTS = "payouts"
+    REFUNDS = "refunds"
     WEBHOOK_LOGS = "webhook_logs"
     WEBHOOK_EVENTS = "webhook_events"
+    SECURITY_ALERTS = "security_alerts"
+    RATE_LIMITS = "rate_limits"
+    CONFIG = "config"
+    ADMIN_LOGS = "admin_logs"
+    PRODUCT_RATINGS = "product_ratings"
 
     # Subcollections
     CART = "cart"  # users/{userId}/cart
@@ -67,6 +73,7 @@ class Fields:
     CREATED_AT = "createdAt"
     UPDATED_AT = "updatedAt"
     DELETED_AT = "deletedAt"
+    DELETED_BY = "deletedBy"
 
     # === USER FIELDS ===
     UID = "uid"
@@ -89,6 +96,21 @@ class Fields:
     AIRWALLEX_STATUS = "airwallexStatus"
     SUSPENDED = "suspended"
     SUSPENDED_AT = "suspendedAt"
+    UNSUSPENDED_AT = "unsuspendedAt"
+    SUSPENDED_BY = "suspendedBy"
+    SUSPENSION_REASON = "suspensionReason"
+    COMMISSION_RATE = "commissionRate"
+    VERIFIED = "verified"
+    VERIFICATION_STATUS = "verificationStatus"
+    PLATFORM = "platform"
+    BUSINESS_NAME = "businessName"
+    PAYOUT_HOLD_DAYS = "payoutHoldDays"
+    MFA_ENABLED = "mfaEnabled"
+    MFA_SECRET = "mfaSecret"
+    MFA_SECRET_TEMP = "mfaSecretTemp"
+    LAST_MFA_VERIFY = "lastMfaVerify"
+    LAST_ROLE_UPDATE = "lastRoleUpdate"
+    LAST_ROLE_UPDATE_BY = "lastRoleUpdateBy"
 
     # === PRODUCT FIELDS ===
     PRODUCT_ID = "productId"
@@ -154,6 +176,16 @@ class Fields:
     SHIPPING_APPROVAL_REQUIRED = "shippingApprovalRequired"
     ACTUAL_SHIPPING = "actualShipping"
     PENDING_TOTAL = "pendingTotal"
+    SHIPPING_APPROVAL = "shippingApproval"
+    STOCK_RESTORED = "stockRestored"
+    CANCELLED_BY = "cancelledBy"
+    CANCELLED_AT = "cancelledAt"
+    CANCELLATION_REASON = "cancellationReason"
+    RESPONDED_AT = "respondedAt"
+    ACTUAL_COST = "actualCost"
+    REQUIRES_MANUAL_REVIEW = "requiresManualReview"
+    MANUAL_REVIEW_REASON = "manualReviewReason"
+    PAYOUT_ERRORS = "payoutErrors"
 
     # === ORDER ITEM FIELDS ===
     QUANTITY = "quantity"
@@ -204,7 +236,33 @@ class Fields:
     LATITUDE = "latitude"
     LONGITUDE = "longitude"
 
-    # === CART FIELDS (subcollection uses dateCreated for legacy reasons) ===
+    # === PAYOUT/REFUND COMMON FIELDS ===
+    PROVIDER = "provider"
+    AMOUNT = "amount"
+    COMPLETED_AT = "completedAt"
+    FAILED_AT = "failedAt"
+    ERROR = "error"
+    PAYMENT_ID = "paymentId"
+
+    # === SECURITY ALERT FIELDS ===
+    TYPE = "type"
+    SEVERITY = "severity"
+    RESOLVED = "resolved"
+    RESOLVED_AT = "resolvedAt"
+    RESOLUTION = "resolution"
+    TIMESTAMP = "timestamp"
+    CHARGE_ID = "chargeId"
+    ACCOUNT_ID = "accountId"
+    REASON = "reason"
+    DESTINATION = "destination"
+    FAILURE_MESSAGE = "failureMessage"
+    ADMIN_ID = "adminId"
+
+    # === WEBHOOK EVENT FIELDS ===
+    CLIENT_IP = "clientIp"
+
+    # === FAVORITES FIELDS ===
+    DATE_FAVORITED = 'dateFavorited'
     # NOTE: Cart items use DATE_CREATED, not CREATED_AT
 
 
@@ -242,10 +300,13 @@ class PaymentStatusValues:
     SESSION_EXPIRED = "session_expired"
     AUTHORIZED = "authorized"
     CAPTURED = "captured"
+    CANCELLED = "cancelled"
+    AUTHORIZATION_EXPIRED = "authorization_expired"
 
     ALL: FrozenSet[str] = frozenset({
         AWAITING_PAYMENT, PROCESSING, PAID, PAYMENT_FAILED,
-        REFUNDED, SESSION_EXPIRED, AUTHORIZED, CAPTURED
+        REFUNDED, SESSION_EXPIRED, AUTHORIZED, CAPTURED,
+        CANCELLED, AUTHORIZATION_EXPIRED
     })
 
 
@@ -292,6 +353,25 @@ class ProductStatusValues:
     OUT_OF_STOCK = "out_of_stock"
 
     ALL: FrozenSet[str] = frozenset({DRAFT, ACTIVE, PAUSED, ARCHIVED, OUT_OF_STOCK})
+
+
+class ShippingApprovalStatusValues:
+    """Valid values for shipping approval status"""
+    NOT_REQUIRED = "not_required"
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+    ALL: FrozenSet[str] = frozenset({NOT_REQUIRED, PENDING, APPROVED, REJECTED})
+
+
+class WebhookStatusValues:
+    """Valid values for webhook processing status"""
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+    ALL: FrozenSet[str] = frozenset({PROCESSING, COMPLETED, FAILED})
 
 
 # =============================================================================

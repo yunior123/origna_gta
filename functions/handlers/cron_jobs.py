@@ -16,7 +16,7 @@ from config import (
     AUTO_CONFIRM_DAYS, AUTHORIZATION_VALID_DAYS,
     PLATFORM_FEE_PERCENT, STRIPE_SECRET_KEY
 )
-from schema_constants import Fields  # Field name constants to prevent typos
+from schema_constants import Fields, OrderStatusValues, PayoutStatusValues
 from function_options import CRON_OPTIONS
 
 stripe.api_key = STRIPE_SECRET_KEY
@@ -72,8 +72,8 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
     
     # Limit to 500 orders per run to handle higher volume
     orders = get_db().collection(Collections.ORDERS)\
-        .where('orderStatus', '==', OrderStatus.DELIVERED)\
-        .where('paymentStatus', '==', PaymentStatus.AUTHORIZED)\
+        .where(Fields.ORDER_STATUS, '==', OrderStatusValues.DELIVERED)\
+        .where(Fields.PAYMENT_STATUS, '==', PaymentStatus.AUTHORIZED)\
         .where(Fields.UPDATED_AT, '<=', cutoff_date)\
         .limit(500)\
         .stream()
@@ -96,22 +96,22 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
             
             # Update order
             order_doc.reference.update({
-                'paymentStatus': PaymentStatus.CAPTURED,
-                'capturedAt': get_server_timestamp(),
-                'autoCaptured': True,
-                'updatedAt': get_server_timestamp()
+                Fields.PAYMENT_STATUS: PaymentStatus.CAPTURED,
+                Fields.CAPTURED_AT: get_server_timestamp(),
+                Fields.AUTO_CAPTURED: True,
+                Fields.UPDATED_AT: get_server_timestamp()
             })
             
             # Create payouts ONLY for sellers whose items are delivered
-            items = order_data.get('items', [])
+            items = order_data.get(Fields.ITEMS, [])
             sellers_total_cents = {}
             for item in items:
                 # Only include delivered items (or all items if no per-item status tracking)
-                item_status = item.get('status', 'pending')
-                if item_status in ['delivered', 'pending']:  # 'pending' for backwards compatibility
-                    seller_id = item['sellerId']
-                    item_price_cents = round(item['price'] * 100)
-                    item_total_cents = item_price_cents * item['quantity']
+                item_status = item.get(Fields.STATUS, OrderStatusValues.PENDING) # Changed 'pending' to OrderStatusValues.PENDING
+                if item_status in [OrderStatusValues.DELIVERED, OrderStatusValues.PENDING]:  # 'pending' for backwards compatibility
+                    seller_id = item[Fields.SELLER_ID]
+                    item_price_cents = round(item[Fields.PRICE] * 100)
+                    item_total_cents = item_price_cents * item[Fields.QUANTITY]
                     sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
             
             for seller_id, amount_cents in sellers_total_cents.items():
@@ -124,9 +124,9 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                 
                 if seller_doc.exists:
                     seller_data = seller_doc.to_dict()
-                    stripe_account_id = seller_data.get('stripeAccountId')
+                    stripe_account_id = seller_data.get(Fields.STRIPE_ACCOUNT_ID)
                     
-                    if stripe_account_id and seller_data.get('payoutsEnabled', False):
+                    if stripe_account_id and seller_data.get(Fields.PAYOUTS_ENABLED, False):
                         try:
                             transfer = stripe.Transfer.create(
                                 amount=net_amount_cents,
@@ -142,31 +142,31 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                             )
                             
                             get_db().collection(Collections.PAYOUTS).add({
-                                'orderId': order_id,
-                                'sellerId': seller_id,
-                                'amountCents': amount_cents,
-                                'platformFeeCents': platform_fee_cents,
-                                'netAmountCents': net_amount_cents,
-                                'status': 'completed',
-                                'stripeTransferId': transfer.id,
-                                'payoutDate': get_server_timestamp(),
-                                'autoCaptured': True,
-                                'createdAt': get_server_timestamp()
+                                Fields.ORDER_ID: order_id,
+                                Fields.SELLER_ID: seller_id,
+                                Fields.AMOUNT_CENTS: amount_cents,
+                                Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
+                                Fields.NET_AMOUNT_CENTS: net_amount_cents,
+                                Fields.STATUS: PayoutStatusValues.COMPLETED,
+                                Fields.STRIPE_TRANSFER_ID: transfer.id,
+                                Fields.PAYOUT_DATE: get_server_timestamp(),
+                                Fields.AUTO_CAPTURED: True,
+                                Fields.CREATED_AT: get_server_timestamp()
                             })
                             
                         except stripe.error.StripeError as e:
                             print(f'Payout failed for seller {seller_id}: {str(e)}')
 
                             get_db().collection(Collections.PAYOUTS).add({
-                                'orderId': order_id,
-                                'sellerId': seller_id,
-                                'amountCents': amount_cents,
-                                'platformFeeCents': platform_fee_cents,
-                                'netAmountCents': net_amount_cents,
-                                'status': 'failed',
-                                'failureReason': str(e),
-                                'autoCaptured': True,
-                                'createdAt': get_server_timestamp()
+                                Fields.ORDER_ID: order_id,
+                                Fields.SELLER_ID: seller_id,
+                                Fields.AMOUNT_CENTS: amount_cents,
+                                Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
+                                Fields.NET_AMOUNT_CENTS: net_amount_cents,
+                                Fields.STATUS: PayoutStatusValues.FAILED,
+                                Fields.FAILURE_REASON: str(e),
+                                Fields.AUTO_CAPTURED: True,
+                                Fields.CREATED_AT: get_server_timestamp()
                             })
             
             captured_count += 1
@@ -177,9 +177,9 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
             print(f'Failed to capture order {order_id}: {str(e)}')
             
             order_doc.reference.update({
-                'captureAttempts': order_data.get('captureAttempts', 0) + 1,
+                Fields.CAPTURE_ATTEMPTS: order_data.get(Fields.CAPTURE_ATTEMPTS, 0) + 1,
                 'lastCaptureError': str(e),
-                'updatedAt': get_server_timestamp()
+                Fields.UPDATED_AT: get_server_timestamp()
             })
     
     print(f'Auto-capture completed: {captured_count} captured, {failed_count} failed')
@@ -204,8 +204,8 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     # Limit to 100 orders per run to avoid timeout
     # Use Fields.CREATED_AT constant to prevent field name typos (orders use 'createdAt')
     orders = get_db().collection(Collections.ORDERS)\
-        .where('paymentStatus', '==', PaymentStatus.AUTHORIZED)\
-        .where('orderStatus', 'in', [OrderStatus.PENDING, OrderStatus.CONFIRMED])\
+        .where(Fields.PAYMENT_STATUS, '==', PaymentStatus.AUTHORIZED)\
+        .where(Fields.ORDER_STATUS, 'in', [OrderStatus.PENDING, OrderStatus.CONFIRMED])\
         .where(Fields.CREATED_AT, '<=', cutoff_date)\
         .limit(100)\
         .stream()
@@ -217,26 +217,26 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
         order_id = order_doc.id
         
         # Skip if stock already restored (idempotency)
-        if order_data.get('stockRestored', False):
+        if order_data.get(Fields.STOCK_RESTORED, False):
             print(f'Stock already restored for expired order {order_id}')
         else:
             # CRITICAL FIX: Use atomic Increment instead of read-then-write
-            for item in order_data.get('items', []):
-                product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
+            for item in order_data.get(Fields.ITEMS, []):
+                product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
                 try:
                     product_ref.update({
-                        'stockQuantity': get_firestore().Increment(item['quantity'])
+                        Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY])
                     })
                 except Exception as e:
                     print(f'Failed to restore stock for product {item["productId"]}: {str(e)}')
         
         # Update order
         order_doc.reference.update({
-            'orderStatus': OrderStatus.EXPIRED,
-            'paymentStatus': PaymentStatus.SESSION_EXPIRED,
-            'stockRestored': True,
-            'expiredAt': get_server_timestamp(),
-            'updatedAt': get_server_timestamp()
+            Fields.ORDER_STATUS: OrderStatus.EXPIRED,
+            Fields.PAYMENT_STATUS: PaymentStatus.SESSION_EXPIRED,
+            Fields.STOCK_RESTORED: True,
+            Fields.EXPIRES_AT: get_server_timestamp(),
+            Fields.UPDATED_AT: get_server_timestamp()
         })
         
         expired_count += 1
@@ -266,8 +266,8 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
     # documents where the field doesn't exist. Instead, we query without the filter
     # and skip already-archived orders in the loop.
     orders = get_db().collection(Collections.ORDERS)\
-        .where('orderStatus', 'in', [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REFUNDED])\
-        .where('updatedAt', '<=', cutoff_date)\
+        .where(Fields.ORDER_STATUS, 'in', [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REFUNDED])\
+        .where(Fields.UPDATED_AT, '<=', cutoff_date)\
         .limit(200)\
         .stream()
     
@@ -316,7 +316,7 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
         from google.cloud.firestore_v1.aggregation import CountAggregation
         
         products_query = get_db().collection(Collections.PRODUCTS)\
-            .where('isActive', '==', True)
+            .where(Fields.IS_ACTIVE, '==', True)
         
         # Use count aggregation (more efficient than streaming)
         count_query = products_query.count()
@@ -334,7 +334,7 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
         mismatch_percent = abs(firestore_count - algolia_count) / firestore_count
         
         if mismatch_percent > 0.05:  # > 5% mismatch
-            get_db().collection('security_alerts').add({
+            get_db().collection(Collections.SECURITY_ALERTS).add({
                 'type': 'algolia_sync_issue',
                 'severity': 'medium',
                 'firestoreCount': firestore_count,
@@ -368,7 +368,7 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
     cutoff_time = datetime.now() - timedelta(hours=1)
     
     # Limit and batch delete
-    rate_limits = get_db().collection('rate_limits')\
+    rate_limits = get_db().collection(Collections.RATE_LIMITS)\
         .where('lastRequest', '<=', cutoff_time)\
         .limit(500)\
         .stream()

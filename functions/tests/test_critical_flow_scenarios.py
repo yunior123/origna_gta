@@ -1381,12 +1381,12 @@ class TestPayoutConsistency:
         from handlers.payment_stripe import capture_payment
 
         source = inspect.getsource(capture_payment)
-        # After fix, should use amountCents, platformFeeCents, netAmountCents
-        assert "'amountCents'" in source or '"amountCents"' in source, \
+        # Accept both string literals and Fields.* constants
+        assert "'amountCents'" in source or '"amountCents"' in source or 'Fields.AMOUNT_CENTS' in source, \
             "Payout should use 'amountCents' field"
-        assert "'platformFeeCents'" in source or '"platformFeeCents"' in source, \
+        assert "'platformFeeCents'" in source or '"platformFeeCents"' in source or 'Fields.PLATFORM_FEE_CENTS' in source, \
             "Payout should use 'platformFeeCents' field"
-        assert "'netAmountCents'" in source or '"netAmountCents"' in source, \
+        assert "'netAmountCents'" in source or '"netAmountCents"' in source or 'Fields.NET_AMOUNT_CENTS' in source, \
             "Payout should use 'netAmountCents' field"
 
     def test_payout_field_consistency_with_cron(self):
@@ -1398,9 +1398,9 @@ class TestPayoutConsistency:
         cron_source = cron_source_file.read_text()
         capture_source = inspect.getsource(capture_payment)
 
-        # Both should use amountCents (not just 'amount')
-        assert 'amountCents' in cron_source, "Cron should use amountCents"
-        assert 'amountCents' in capture_source, "Capture should use amountCents"
+        # Both should use amountCents (string literal or Fields constant)
+        assert 'amountCents' in cron_source or 'AMOUNT_CENTS' in cron_source, "Cron should use amountCents"
+        assert 'amountCents' in capture_source or 'AMOUNT_CENTS' in capture_source, "Capture should use amountCents"
 
 
 # ============================================================================
@@ -1416,7 +1416,7 @@ class TestOrderCreationFields:
         from handlers.payment_stripe import create_checkout_session
 
         source = inspect.getsource(create_checkout_session)
-        assert "'customerEmail'" in source or '"customerEmail"' in source, \
+        assert "'customerEmail'" in source or '"customerEmail"' in source or 'Fields.CUSTOMER_EMAIL' in source, \
             "Order creation should include customerEmail"
 
     def test_order_includes_archived_field(self):
@@ -1451,9 +1451,9 @@ class TestApproveShippingCost:
         from handlers.orders import approve_shipping_cost
 
         source = inspect.getsource(approve_shipping_cost)
-        assert "'totalAmountCents'" in source or '"totalAmountCents"' in source, \
+        assert "'totalAmountCents'" in source or '"totalAmountCents"' in source or 'Fields.TOTAL_AMOUNT_CENTS' in source, \
             "Should use totalAmountCents not totalAmount"
-        assert "'shippingCostCents'" in source or '"shippingCostCents"' in source, \
+        assert "'shippingCostCents'" in source or '"shippingCostCents"' in source or 'Fields.SHIPPING_COST_CENTS' in source, \
             "Should use shippingCostCents not shippingCost"
 
     def test_approve_shipping_sets_stock_restored_on_reject(self):
@@ -1462,7 +1462,8 @@ class TestApproveShippingCost:
         from handlers.orders import approve_shipping_cost
 
         source = inspect.getsource(approve_shipping_cost)
-        assert "'stockRestored': True" in source or '"stockRestored": True' in source, \
+        assert "'stockRestored': True" in source or '"stockRestored": True' in source \
+            or ('Fields.STOCK_RESTORED' in source and 'True' in source), \
             "Should set stockRestored flag on rejection"
 
     def test_approve_shipping_unauthenticated(self):

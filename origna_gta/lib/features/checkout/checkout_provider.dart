@@ -211,21 +211,21 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       // Backend expects: items, shippingAddress, subtotal, userId
       // Backend handles: tax calculation, shipping calculation, total calculation server-side
       final orderData = {
-        'userId': userId,
-        'items': items
+        Fields.userId: userId,
+        Fields.items: items
             .map(
               (item) => {
-                'productId': item.productId,
-                'name': item.name,
-                'price': item.price,
-                'quantity': item.quantity,
-                'sellerId': item.sellerId,
-                'imageUrls': item.imageUrls,
+                Fields.productId: item.productId,
+                Fields.name: item.name,
+                Fields.price: item.price,
+                Fields.quantity: item.quantity,
+                Fields.sellerId: item.sellerId,
+                Fields.imageUrls: item.imageUrls,
               },
             )
             .toList(),
         'subtotal': subtotal,
-        'shippingAddress': state.address?.toMap() ?? {},
+        Fields.shippingAddress: state.address?.toMap() ?? {},
       };
 
       debugPrint('Sending checkout request for user: $userId');

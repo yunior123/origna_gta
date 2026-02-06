@@ -66,7 +66,7 @@ class TestPaymentFlow(unittest.TestCase):
             "userId": "buyer_123",
             "paymentStatus": "authorized",
             "orderStatus": "shipped",
-            "stripePaymentIntentId": "pi_123",
+            "stripePaymentIntentId": "pi_3test_123",
             "totalAmountCents": 5000,
             "items": [
                 {"sellerId": "seller_1", "deliveryStatus": DeliveryStatus.PENDING, "price": 50.00, "quantity": 1}

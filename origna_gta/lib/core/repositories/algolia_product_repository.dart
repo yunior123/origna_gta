@@ -89,7 +89,7 @@ class AlgoliaProductRepository implements ProductRepository {
     final List<Product> results = [];
     for (int i = 0; i < productIds.length; i += 30) {
       final chunk = productIds.skip(i).take(30).toList();
-      final snapshot = await _firestore.collection(Collections.products).where(FieldPath.documentId, whereIn: chunk).where('isActive', isEqualTo: true).get();
+      final snapshot = await _firestore.collection(Collections.products).where(FieldPath.documentId, whereIn: chunk).where(Fields.isActive, isEqualTo: true).get();
       results.addAll(snapshot.docs.map((doc) => Product.fromFirestore(doc)));
     }
     return results;
@@ -102,12 +102,12 @@ class AlgoliaProductRepository implements ProductRepository {
 
     final snapshot = await _firestore
         .collection(Collections.products)
-        .where('keywords', arrayContains: query.toLowerCase())
-        .where('isActive', isEqualTo: true)
+        .where(Fields.keywords, arrayContains: query.toLowerCase())
+        .where(Fields.isActive, isEqualTo: true)
         .limit(5)
         .get();
 
-    return snapshot.docs.map((doc) => {'name': doc.data()['name'], 'productId': doc.id}).toList();
+    return snapshot.docs.map((doc) => {Fields.name: doc.data()[Fields.name], Fields.productId: doc.id}).toList();
   }
 
   @override
@@ -120,9 +120,9 @@ class AlgoliaProductRepository implements ProductRepository {
     // Call backend Cloud Function for secure rating submission
     // Backend validates: auth, ownership, delivery status, duplicate check
     await _functions.httpsCallable('submit_product_rating').call({
-      'orderId': orderId,
-      'productId': productId,
-      'rating': rating,
+      Fields.orderId: orderId,
+      Fields.productId: productId,
+      Fields.rating: rating,
     });
   }
 
@@ -134,7 +134,7 @@ class AlgoliaProductRepository implements ProductRepository {
     if (doc.exists) {
       await favRef.delete();
     } else {
-      await favRef.set({'timestamp': FieldValue.serverTimestamp()});
+      await favRef.set({Fields.productId: productId, Fields.dateFavorited: FieldValue.serverTimestamp()});
     }
   }
 
@@ -164,21 +164,21 @@ class AlgoliaProductRepository implements ProductRepository {
     Query<Map<String, dynamic>> query = _firestore.collection(Collections.products);
 
     // Apply filters
-    query = query.where('isActive', isEqualTo: true);
+    query = query.where(Fields.isActive, isEqualTo: true);
 
     if (categoryId != null) {
-      query = query.where('categoryId', isEqualTo: categoryId);
+      query = query.where(Fields.categoryId, isEqualTo: categoryId);
     }
 
     if (searchQuery != null && searchQuery.isNotEmpty) {
       // Firestore array-contains search on keywords
       final keywords = searchQuery.toLowerCase().split(' ');
       if (keywords.isNotEmpty) {
-        query = query.where('keywords', arrayContains: keywords.first);
+        query = query.where(Fields.keywords, arrayContains: keywords.first);
       }
     }
 
-    query = query.orderBy('dateCreated', descending: true);
+    query = query.orderBy(Fields.dateCreated, descending: true);
 
     if (lastDocument != null) {
       query = query.startAfterDocument(lastDocument);
@@ -207,7 +207,7 @@ class AlgoliaProductRepository implements ProductRepository {
       // Convert Algolia hits to Product
       final products = response.hits.map((hit) {
         final data = AlgoliaService.hitToProductMap(hit);
-        return Product.fromJson({...data, 'productId': data['productId'] ?? ''});
+        return Product.fromJson({...data, Fields.productId: data[Fields.productId] ?? ''});
       }).toList();
 
       if (kDebugMode) print('✅ Algolia search returned ${products.length} products');

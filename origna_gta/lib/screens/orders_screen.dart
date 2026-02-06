@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/orders/buyer_orders_viewmodel.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
@@ -62,23 +63,23 @@ _StatusConfig _orderStatusConfig(OrderStatus status) {
 
 /// Get visual config for an item-level status string
 _StatusConfig _itemStatusConfig(String status) {
-  switch (status) {
-    case 'confirmed':
-      return _StatusConfig(color: DesignTokens.info, icon: Icons.verified_outlined, label: 'Confirmed', description: 'Payment confirmed');
-    case 'processing':
-      return _StatusConfig(color: DesignTokens.primary, icon: Icons.autorenew, label: 'Processing', description: 'Being prepared');
-    case 'shipped':
-      return const _StatusConfig(color: Color(0xFF06B6D4), icon: Icons.local_shipping, label: 'Shipped', description: 'Shipped');
-    case 'in_transit':
-      return const _StatusConfig(color: Color(0xFF14B8A6), icon: Icons.flight_takeoff, label: 'In Transit', description: 'Almost there');
-    case 'delivered':
-      return _StatusConfig(color: DesignTokens.success, icon: Icons.check_circle, label: 'Delivered', description: 'Received');
-    case 'refunded':
-      return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'Refunded', description: 'Refund issued');
-    case 'cancelled':
-      return _StatusConfig(color: DesignTokens.error, icon: Icons.cancel_outlined, label: 'Cancelled', description: 'Cancelled');
-    default: // 'pending' or unknown
-      return const _StatusConfig(color: Color(0xFF764BA2), icon: Icons.hourglass_empty, label: 'Pending', description: 'Awaiting preparation');
+  if (status == OrderStatusValues.confirmed) {
+    return _StatusConfig(color: DesignTokens.info, icon: Icons.verified_outlined, label: 'Confirmed', description: 'Payment confirmed');
+  } else if (status == OrderStatusValues.processing) {
+    return _StatusConfig(color: DesignTokens.primary, icon: Icons.autorenew, label: 'Processing', description: 'Being prepared');
+  } else if (status == OrderStatusValues.shipped) {
+    return const _StatusConfig(color: Color(0xFF06B6D4), icon: Icons.local_shipping, label: 'Shipped', description: 'Shipped');
+  } else if (status == OrderStatusValues.inTransit) {
+    return const _StatusConfig(color: Color(0xFF14B8A6), icon: Icons.flight_takeoff, label: 'In Transit', description: 'Almost there');
+  } else if (status == OrderStatusValues.delivered) {
+    return _StatusConfig(color: DesignTokens.success, icon: Icons.check_circle, label: 'Delivered', description: 'Received');
+  } else if (status == OrderStatusValues.refunded) {
+    return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'Refunded', description: 'Refund issued');
+  } else if (status == OrderStatusValues.cancelled) {
+    return _StatusConfig(color: DesignTokens.error, icon: Icons.cancel_outlined, label: 'Cancelled', description: 'Cancelled');
+  } else {
+    // 'pending' or unknown
+    return const _StatusConfig(color: Color(0xFF764BA2), icon: Icons.hourglass_empty, label: 'Pending', description: 'Awaiting preparation');
   }
 }
 
@@ -554,7 +555,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
   Widget _buildOrderItem(BuildContext context, OrderItem item, bool isOrderConfirmed) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final statusConfig = _itemStatusConfig(item.status);
-    final isDelivered = item.status == 'delivered';
+    final isDelivered = item.status == OrderStatusValues.delivered;
     final isRated = _isProductRated(item.productId);
     final isConfirmed = _isItemConfirmed(item);
     final isConfirmingThis = _isConfirming && _confirmingItemId == item.productId;

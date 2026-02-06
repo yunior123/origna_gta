@@ -542,7 +542,7 @@ class TestCapturePayment:
             'userId': 'user_123',
             'paymentStatus': 'authorized',
             'orderStatus': 'shipped',
-            'stripePaymentIntentId': 'pi_test_123',
+            'stripePaymentIntentId': 'pi_3test_123',
             'totalAmountCents': 10000,
             'items': [{
                 'productId': 'prod_1',
@@ -573,8 +573,8 @@ class TestCapturePayment:
 
         assert result['success'] is True
         assert result['captured'] is True
-        mock_retrieve.assert_called_once_with('pi_test_123')
-        mock_capture.assert_called_once_with('pi_test_123')
+        mock_retrieve.assert_called_once_with('pi_3test_123')
+        mock_capture.assert_called_once_with('pi_3test_123')
     
     @patch('handlers.payment_stripe.get_db')
     def test_capture_non_existent_order_fails(self, mock_get_db):
@@ -613,7 +613,7 @@ class TestCapturePayment:
             'userId': 'user_123',
             'paymentStatus': 'authorized',
             'orderStatus': 'shipped',
-            'stripePaymentIntentId': 'pi_test_123',
+            'stripePaymentIntentId': 'pi_3test_123',
             'totalAmountCents': 10000,
             'items': [{
                 'productId': 'prod_1',

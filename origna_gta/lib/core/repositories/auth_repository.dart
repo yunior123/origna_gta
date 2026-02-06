@@ -236,7 +236,7 @@ class FirebaseAuthRepository implements AuthRepository {
       await user.reload();
       
       // Also check if Firestore profile exists
-      final doc = await _firestore.collection('users').doc(user.uid).get();
+      final doc = await _firestore.collection(Collections.users).doc(user.uid).get();
       if (!doc.exists) {
         debugPrint('⚠️ User profile not found in Firestore, signing out stale session');
         await signOut();
@@ -262,31 +262,31 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Stream<UserModel?> watchProfile(String userId) {
-    return _firestore.collection('users').doc(userId).snapshots().map((doc) {
+    return _firestore.collection(Collections.users).doc(userId).snapshots().map((doc) {
       if (!doc.exists) return null;
-      return UserModel.fromMap({...doc.data()!, 'uid': doc.id});
+      return UserModel.fromMap({...doc.data()!, Fields.uid: doc.id});
     });
   }
 
   Future<void> _createUserDocumentIfNeeded(User? user, {String? name}) async {
     if (user == null) return;
-    final userDoc = _firestore.collection('users').doc(user.uid);
+    final userDoc = _firestore.collection(Collections.users).doc(user.uid);
     final docSnapshot = await userDoc.get();
 
     if (!docSnapshot.exists) {
       await userDoc.set({
-        'uid': user.uid,
-        'email': user.email ?? '',
-        'name': name ?? user.displayName ?? 'User',
-        'roles': [UserRoles.buyer],
-        'createdAt': FieldValue.serverTimestamp(),
+        Fields.uid: user.uid,
+        Fields.email: user.email ?? '',
+        Fields.name: name ?? user.displayName ?? 'User',
+        Fields.roles: [UserRoles.buyer],
+        Fields.createdAt: FieldValue.serverTimestamp(),
       });
     } else {
       final data = docSnapshot.data();
-      final roles = List<String>.from(data?['roles'] ?? const []);
+      final roles = List<String>.from(data?[Fields.roles] ?? const []);
       if (!roles.contains(UserRoles.buyer)) {
         await userDoc.update({
-          'roles': FieldValue.arrayUnion([UserRoles.buyer]),
+          Fields.roles: FieldValue.arrayUnion([UserRoles.buyer]),
         });
       }
     }
