@@ -780,4 +780,29 @@ The following scenarios MUST be covered by E2E tests to prevent bugs from recurr
 
 **For true 24/7:** Keep Mac plugged into power + connected to WiFi/Ethernet.
 
+### Multi-Model Support (Feb 2026)
+The bot now supports **multiple AI backends** via Telegram commands:
+
+| Command | Model | Backend | Use Case |
+|---------|-------|---------|----------|
+| `/claude` | Claude Code | CLI (`claude --print`) | Execute code, edit files, run tests, deploy |
+| `/kimi` | Kimi 2.5 | NVIDIA NIM API (streaming) | Fast reasoning, code review, architecture, security |
+| `/model` | — | — | Show current active model |
+| `/help` | — | — | List all commands |
+
+**Default model:** Claude (on `/start`)
+
+**Kimi 2.5 specifics:**
+- API: `https://integrate.api.nvidia.com/v1/chat/completions` (OpenAI-compatible)
+- Model ID: `moonshotai/kimi-k2.5`
+- Key: `NVIDIA_NIM_API_KEY` in `functions/.env`
+- Uses streaming mode (SSE) — Kimi has `reasoning_content` (thinking) + `content` (answer)
+- Bot extracts `content` only, falls back to `reasoning_content` if content empty
+- System prompt gives Kimi full OrignaGta project context
+- Has conversation memory (last 10 messages)
+- NIM free tier: model may cold-start (30-60s first request), then fast after
+- Max tokens: 16384 (accommodates Kimi's internal reasoning)
+
+**Future models to add:** GitHub Copilot, Gemini
+
 ---
