@@ -278,8 +278,10 @@ cd e2e && npm run test:ui
 | Cloud Functions | 5001 | http://localhost:5001 |
 | Storage | 9199 | http://localhost:9199 |
 | Firebase UI | 4000 | http://localhost:4000 |
-| Flutter Web (SPA) | 5005 | http://localhost:5005 |
+| Flutter Web (SPA) | 8888 | http://localhost:8888 |
 | Stripe Webhooks | → | localhost:5001/orignagta/us-central1/stripe_webhook |
+
+**NOTE:** Firebase Hosting emulator (port 5005) returns 500 errors — use the SPA server on port 8888 instead.
 
 ### Firebase Project ID: `orignagta`
 
@@ -292,8 +294,8 @@ cd e2e && npm run test:ui
 firebase emulators:start --import=./emulator-data --export-on-exit=./emulator-data
 stripe listen --forward-to localhost:5001/orignagta/us-central1/stripe_webhook
 
-# SPA Server for Flutter web
-cd e2e && python3 spa-server.py 5005 &
+# SPA Server for Flutter web (port 8888, NOT 5005)
+cd /path/to/project && python3 e2e/spa-server.py &
 ```
 
 ### Flutter Build for Emulator Mode
@@ -302,10 +304,13 @@ cd origna_gta && flutter build web --dart-define=ENVIRONMENT=emulator --dart-def
 ```
 **CRITICAL:** Without these dart-defines, the app connects to Firebase PRODUCTION, not emulators. Always rebuild after switching modes.
 
+**CRITICAL:** The pre-push git hook runs `flutter build web --release --dart-define=ENVIRONMENT=production` which OVERWRITES the emulator build. After a `git push`, you MUST rebuild in emulator mode.
+
 ### SPA Server
 - Located at: `e2e/spa-server.py`
-- Serves `origna_gta/build/web` on port 5005
+- Serves `origna_gta/build/web` on port **8888**
 - Handles SPA routing (returns index.html for all non-file routes)
+- Firebase Hosting emulator (port 5005) is BROKEN (returns 500) — always use SPA server
 
 ### VS Code Dev Settings
 - `.vscode/settings.json` should have proper emulator configuration
@@ -329,6 +334,7 @@ cd origna_gta && flutter build web --dart-define=ENVIRONMENT=emulator --dart-def
 |---------|-------|----------|-----|-------|
 | Admin | yr62813@gmail.com | 960227Y#y | gcM3C09wyisNRkp2gJS0y2RVAReT | admin, seller, buyer |
 | Yahoo | yuniorrodriguezo4601@yahoo.com | TestYahoo123! | nb80ZX32Rx7PFtCiMiyWg4wmS8dM | buyer, seller |
+| Buyer1 | buyer1@test.origna.ca | REDACTED_TEST_PASSWORD | 1BavwSl3O0ObrDakFF3KtbuPXIx1 | buyer |
 
 **NOTE:** Emulator Auth does NOT persist `emailVerified` reliably across restarts. A bypass exists in `auth_repository.dart` for emulator mode.
 
@@ -374,6 +380,35 @@ Full backend audit completed across ALL Python files in `functions/`.
 - `onboardingCompleted` and `chargesEnabled` must be at **top-level** of user doc, not just inside `sellerProfile` nested object
 - Both locations needed for different parts of the system
 
+### Bug #17: Timestamp vs String in Seed Data (CRITICAL)
+- **Files:** `e2e/mega-seed.ts`, `origna_gta/lib/models/models.dart`, `origna_gta/lib/models/generated/order_models.dart`, `origna_gta/lib/models/generated/user_models.dart`
+- **Root cause:** `mega-seed.ts` used `new Date().toISOString()` which writes string values to Firestore. Flutter models had hard casts like `(map['createdAt'] as Timestamp?)` which crash on strings.
+- **Fix:** (1) Changed seed to use raw `new Date()` objects → Firestore stores as `timestampValue`. (2) Added `_parseDateTime()` helper in all model files to handle Timestamp, DateTime, or String gracefully. (3) Fixed hard casts in UserModel, CartItemModel, ProductModel, Order, User.
+- **Rule:** NEVER use `.toISOString()` when writing to Firestore. Use raw `Date` objects so `toFirestoreValue()` encodes them as `timestampValue`.
+
+### Bug #18: Seed Field Name Mismatches
+- **File:** `e2e/seed-orders.py`
+- Wrong field names in seed data vs what Flutter models expect:
+  - `status` → `orderStatus`
+  - `totalCents` → `totalAmountCents`
+  - `stripeCustomerId` → `customerId`
+  - `buyerConfirmed` → `confirmedByClient`
+  - `actualShippingCost` → `actualShipping`
+  - `pendingShippingTotal` → `pendingTotal`
+  - `requiresShippingApproval` → `shippingApprovalRequired`
+- **Rule:** Always match field names to `docs/database_schema.json` and the generated Freezed models.
+
+### Bug #19: Orders Screen Missing Status Handling
+- **File:** `origna_gta/lib/screens/orders_screen.dart`
+- Only handled 4 item statuses: shipped, delivered, refunded, pending (default).
+- Missing: `confirmed`, `processing`, `in_transit`, `cancelled`
+- UI showed "processing is not supported" error.
+- **Fix:** Complete rewrite with `_StatusConfig` maps for ALL `OrderStatus` and item status values, plus a visual timeline stepper.
+
+### Bug #20: Address Import Conflict
+- `orders_screen.dart` imported both `models/generated/models.dart` (which exports `Address` from `base_models.dart`) and `utils/utils.dart` (which re-exported `models/models.dart` containing another `Address`).
+- **Fix:** Removed the `utils.dart` import that was pulling in the legacy Address.
+
 ---
 
 ## EMAIL SYSTEM
@@ -386,7 +421,7 @@ Full backend audit completed across ALL Python files in `functions/`.
 
 ### APP_BASE_URL (Dynamic Links)
 ```python
-APP_BASE_URL = 'http://localhost:5005' if IS_EMULATOR else 'https://orignagta.ca'
+APP_BASE_URL = 'http://localhost:8888' if IS_EMULATOR else 'https://orignagta.ca'
 ```
 - All email CTA links (Track Order, Manage Orders, View Order, Contact Support) use `{APP_BASE_URL}`
 - In emulator → links point to localhost:5005
@@ -446,17 +481,56 @@ Real email delivery tests:
 2. Yahoo BUYER email — Yahoo buys Beef Jerky (product_007) → yuniorrodriguezo4601@yahoo.com
 3. Yahoo SELLER email — Admin buys Yahoo's Candle Set → seller notification to Yahoo
 
-**Total: 94 tests all passing** (37 + 54 + 3)
+**Total: 94+ E2E tests all passing** (37 + 54 + 3)
+**Backend: 288/288 Python tests passing**
 
 ### Seed Scripts
 | Script | Purpose |
 |--------|---------|
 | `e2e/mega-seed.ts` | 75 users, 30 products, ~20 carts |
 | `e2e/seed-emulator.ts` | 25 users, 16 products, 3 carts (original) |
+| `e2e/seed-orders.py` | 8 test orders at various statuses for buyer1 |
+| `e2e/write_cycle.py` | Writes `/tmp/cycle-order.py` — cycles order_test_008 through all statuses (10s each) |
 
 ### Stock Warning
 - `product_002` (Leather Bag) can run out of stock from repeated test runs
 - Prefer `product_001` (Scarf, 25 stock) and `product_007` (Jerky, 60 stock) for tests
+
+---
+
+## MODEL ARCHITECTURE
+
+### Generated Models (Freezed + json_serializable)
+- Location: `origna_gta/lib/models/generated/`
+- Barrel: `models.dart` exports `base_models.dart`, `order_models.dart`, `product_models.dart`, `user_models.dart`
+- These are the PRIMARY models used by features/screens
+- Use `Order.fromFirestore(doc)`, `User.fromFirestore(doc)` for Firestore reads
+- All have `_parseDateTime()` helpers for safe Timestamp/String/DateTime parsing
+
+### Legacy Models
+- Location: `origna_gta/lib/models/models.dart`
+- Contains: `UserModel`, `CartItemModel`, `CartItemDetailModel`, `ProductModel`, `OrderModel`, `SellerPayout`
+- Still used by some older screens/services
+- **CRITICAL:** Do NOT import both `models/generated/models.dart` AND `models/models.dart` in the same file — `Address` class exists in both and causes compilation conflict. Use `hide Address` if needed.
+
+### Order Status State Machine
+```
+pending → confirmed → processing → shipped → in_transit → delivered
+                                                          ↘ cancelled
+                                                          ↘ failed / expired
+                                                          ↘ refunded / partially_refunded
+```
+- Order-level: `OrderStatus` enum in `base_models.dart`
+- Item-level: `status` String field ('pending', 'confirmed', 'processing', 'shipped', 'in_transit', 'delivered', 'refunded')
+- Item-level `deliveryStatus` enum is DEPRECATED — use `status` string
+
+### Orders Screen (Redesigned)
+- File: `origna_gta/lib/screens/orders_screen.dart`
+- Uses `_StatusConfig` pattern for ALL status values (colors, icons, labels, descriptions)
+- Visual timeline stepper (`_OrderStatusTimeline`) for normal flow statuses
+- Terminal badge for cancelled/failed/expired/refunded
+- `CachedNetworkImage` for product images with shimmer placeholder
+- Status chip per item with proper color coding
 
 ---
 
@@ -488,5 +562,137 @@ Real email delivery tests:
 5. Deploy rules: `./scripts/deploy_rules.sh`
 6. Deploy hosting: `firebase deploy --only hosting`
 7. Verify Stripe webhooks pointing to production URL
+
+---
+
+## PENDING BUGS / TODOS (Session Feb 5, 2026)
+
+### Bug #22: Item Status Shows "Pending" for Delivered Orders
+- **Priority:** HIGH
+- **File:** `origna_gta/lib/models/generated/order_models.dart` — `_parseOrderItem()`
+- **Root cause:** `_parseOrderItem` reads `map['status']` with fallback `'pending'`, but seed data only writes `deliveryStatus` (not `status`). All 7 orders (except order_test_008) have `status=MISSING` on their items.
+- **Data confirmed via API:**
+  ```
+  order_test_001: items=[s=MISSING/ds=pending]
+  order_test_004: items=[s=MISSING/ds=shipped]
+  order_test_006: items=[s=MISSING/ds=delivered]
+  ```
+- **Fix needed:**
+  1. In `_parseOrderItem()`, add fallback: if `status` is empty/missing, read `deliveryStatus` string value
+  2. In `e2e/seed-orders.py` `make_item()`, add `"status": sv(delivery_status)` field
+  3. Patch existing Firestore orders to add `status` field matching `deliveryStatus`
+
+### Bug #23: Payment Banner Shows on Delivered Orders
+- **Priority:** HIGH
+- **File:** `origna_gta/lib/screens/orders_screen.dart` line ~305, ~378
+- **Root cause:** `isAuthorized = order.paymentStatus == PaymentStatus.authorized` — this shows the "Payment authorized — awaiting seller shipment" banner even for orders that are already delivered.
+- **Fix needed:** Add condition: only show payment banner if order is NOT delivered/completed:
+  ```dart
+  final showPaymentBanner = isAuthorized && !isTerminal && order.orderStatus != OrderStatus.delivered;
+  ```
+
+### Bug #24: Seed Data Has Wrong paymentStatus
+- **Priority:** MEDIUM
+- **File:** `e2e/seed-orders.py`
+- **Root cause:** Most orders have `paymentStatus: authorized` even when they should be `paid` (e.g., shipped, in_transit, delivered orders)
+- **Fix needed:** Update seed to set `paymentStatus` correctly per order status:
+  - pending → `awaiting_payment`
+  - confirmed/processing → `authorized`
+  - shipped/in_transit/delivered → `paid` (or `captured`)
+  - cancelled → `refunded` or `awaiting_payment`
+
+### Bug #25: No Product Images in Orders View
+- **Priority:** MEDIUM
+- **File:** `e2e/seed-orders.py` `make_item()`
+- **Root cause:** Seed uses `https://placehold.co/400x400?text=Product` — these placeholders may fail with `CachedNetworkImage` or CORS issues in emulator.
+- **Fix needed:** Use real product images from the seeded products (query Firestore for product imageUrls during seed-orders.py) or use picsum.photos which works better with CORS.
+
+### Bug #26: Airwallex Shown as Payment Option When Not Configured
+- **Priority:** HIGH
+- **File:** `origna_gta/lib/screens/checkout_screen.dart` — `_PaymentProviderSection`
+- **Root cause:** The checkout always shows both Stripe and Airwallex `ChoiceChip` options, regardless of whether Airwallex API keys are configured on the backend.
+- **Fix needed:** Either:
+  1. Add a backend endpoint/config check for available payment providers, OR
+  2. Remove Airwallex from checkout UI until fully integrated (simplest — it's not wired to backend anyway, `startCheckout()` always creates a Stripe session)
+  3. The `setPaymentProvider` in `checkout_provider.dart` accepts 'airwallex' but the checkout flow ignores it
+
+### Bug #27: Shipping Shows "FREE" but Order Summary Shows $1.99
+- **Priority:** HIGH
+- **Files:** `origna_gta/lib/screens/checkout_screen.dart` — `_DeliveryOptionsSection` + `_OrderSummary`
+- **Root cause:** The delivery speed selector shows "FREE" for standard delivery (surcharge = $0), but `_OrderSummary` displays the **base shipping cost** (`shippingCost` from `checkoutStateProvider`) which includes the calculated base cost ($1.99, $12.99, etc. from `calculateShippingCost()`). The "FREE" label only refers to the delivery speed *surcharge*, not the total shipping cost.
+- **Fix needed:** Change the delivery speed selector to show the **total** cost (base + surcharge), not just the surcharge. Standard should show the base cost (e.g., "$12.99"), express should show base + surcharge.
+
+### Bug #28: Place Order Button Clickable Without Accepting Terms
+- **Priority:** CRITICAL
+- **File:** `origna_gta/lib/screens/checkout_screen.dart` — `_TermsText` + `_CheckoutButton`
+- **Root cause:** `_TermsText` is a separate `StatefulWidget` with its own `_termsAccepted` state. `_CheckoutButton` is a different widget that has NO access to this state. The checkbox is purely visual — clicking "Place Order" never checks if terms were accepted.
+- **Fix needed:** Lift `_termsAccepted` state up to the parent (or use a provider). `_CheckoutButton.onPressed` should be null when terms are not accepted. Show visual feedback (e.g., red border on terms checkbox, shake animation) when user tries to place order without accepting terms.
+
+### Bug #29: "Internal Error" When Clicking Place Order
+- **Priority:** CRITICAL
+- **File:** Backend `functions/handlers/payment_stripe.py` — `create_checkout_session()`
+- **Root cause:** The function calls Stripe API (`stripe.checkout.Session.create()`) which fails in emulator because there's no real Stripe session being created through the emulator. The Stripe CLI `stripe listen` must be running AND the Stripe test API keys must be valid in `functions/.env`.
+- **Debug steps:**
+  1. Check Functions emulator logs at http://localhost:4000/logs
+  2. Verify `STRIPE_SECRET_KEY` is set in `functions/.env`
+  3. Verify Stripe CLI is running: `stripe listen --forward-to localhost:5001/orignagta/us-central1/stripe_webhook`
+  4. The error comes back as `HttpsError('internal', ...)` which Flutter shows as "Internal error"
+
+### Bug #30: Cart +/- Button Rebuilds Entire Bottom Widget
+- **Priority:** MEDIUM
+- **File:** Cart screen (likely `origna_gta/lib/screens/cart_screen.dart`)
+- **Root cause:** The entire bottom bar (with subtotal) rebuilds when quantity changes. This causes a visible flash/rebuild of the whole widget.
+- **Fix needed:** Use `Selector` or granular `ref.watch` with `.select()` to only rebuild the subtotal text, not the entire bottom bar container. The quantity buttons should use `ref.read` (not watch) and the subtotal display should be in its own `Consumer` widget.
+
+### Bug #31: Cart Quantity Stays at 1 After Pressing +
+- **Priority:** HIGH
+- **File:** Cart screen + cart provider
+- **Root cause:** Need investigation. The + button may be calling the update but the UI doesn't reflect it, possibly due to the Sentry error or a provider issue.
+- **Debug steps:**
+  1. Check cart provider (`origna_gta/lib/features/cart/cart_provider.dart`) for `updateQuantity` or `incrementQuantity`
+  2. Check if Firestore write succeeds (emulator logs)
+  3. Check if the stream/provider correctly propagates the update
+
+### Bug #32: Rating Submission Error
+- **Priority:** MEDIUM
+- **File:** Backend `functions/handlers/product_handler.py` — `submit_rating()`
+- **Root cause:** The rating function checks `orderStatus == 'delivered'` — but the order may have other issues (wrong paymentStatus, missing fields).
+- **Also:** `AlgoliaProductRepository` (Flutter) bypasses backend and writes directly to Firestore with a **mathematically wrong** formula — it adds the raw rating to a cumulative total instead of computing an average.
+
+### Bug #33: Confirm Receipt Error
+- **Priority:** MEDIUM
+- **File:** Backend `functions/handlers/payment_stripe.py` — `capture_payment()`
+- **Root cause:** `confirm_order_receipt` delegates to `capture_payment` which tries to capture a real Stripe PaymentIntent. In emulator mode with seed data, there's no real PaymentIntent — the `paymentIntentId` in seed data is a fake string, so Stripe API returns an error.
+- **Fix options:**
+  1. In emulator mode, skip the Stripe capture and just update the order status
+  2. Create mock PaymentIntents during seeding (complex)
+
+---
+
+## REGRESSION TEST REQUIREMENTS
+
+The following scenarios MUST be covered by E2E tests to prevent bugs from recurring:
+
+### Orders View Tests
+- [ ] Delivered order items show "Delivered" status chip (not "Pending")
+- [ ] Payment banner NOT shown on delivered orders
+- [ ] Product images load correctly in order items
+- [ ] All order statuses display correctly (pending, confirmed, processing, shipped, in_transit, delivered, cancelled)
+- [ ] Timeline stepper advances correctly for each status
+- [ ] Confirm receipt button works for delivered items
+- [ ] Rating dialog works for delivered items
+
+### Checkout Flow Tests
+- [ ] Place Order button is DISABLED until terms checkbox is checked
+- [ ] Airwallex option is NOT shown when not configured
+- [ ] Shipping cost in delivery options matches shipping cost in order summary
+- [ ] Standard delivery shows actual base shipping cost (not "FREE")
+- [ ] Place Order succeeds with valid Stripe configuration
+- [ ] Error message is user-friendly (not "internal error")
+
+### Cart Tests
+- [ ] Pressing +/- updates quantity without full page rebuild
+- [ ] Subtotal updates correctly after quantity change
+- [ ] Only subtotal text rebuilds, not entire bottom bar
 
 ---
