@@ -1,5 +1,6 @@
 import 'package:algolia_helper_flutter/algolia_helper_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
@@ -7,19 +8,21 @@ import 'package:origna_gta/core/repositories/algolia_product_repository.dart';
 import 'package:origna_gta/services/algolia_service.dart';
 
 // Generate mocks with: flutter pub run build_runner build
-@GenerateMocks([AlgoliaService, FirebaseFirestore, HitsSearcher])
+@GenerateMocks([AlgoliaService, FirebaseFirestore, HitsSearcher, FirebaseFunctions])
 import 'algolia_search_test.mocks.dart';
 
 void main() {
   group('AlgoliaProductRepository Tests', () {
     late MockAlgoliaService mockAlgoliaService;
     late MockFirebaseFirestore mockFirestore;
+    late MockFirebaseFunctions mockFunctions;
     late AlgoliaProductRepository repository;
 
     setUp(() {
       mockAlgoliaService = MockAlgoliaService();
       mockFirestore = MockFirebaseFirestore();
-      repository = AlgoliaProductRepository(mockAlgoliaService, mockFirestore);
+      mockFunctions = MockFirebaseFunctions();
+      repository = AlgoliaProductRepository(mockAlgoliaService, mockFirestore, mockFunctions);
     });
 
     test('should use Algolia for non-empty search queries', () async {

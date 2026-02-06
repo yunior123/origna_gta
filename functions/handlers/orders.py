@@ -330,8 +330,10 @@ def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     current_status = order_data['orderStatus']
     payment_status = order_data.get('paymentStatus')
     
-    if current_status in [OrderStatus.DELIVERED, OrderStatus.REFUNDED]:
-        raise https_fn.HttpsError('failed-precondition', 'Cannot cancel delivered or refunded orders')
+    # FIXED: Added shipped and in_transit to forbidden states to prevent post-shipment cancellation
+    forbidden_states = [OrderStatus.DELIVERED, OrderStatus.REFUNDED, 'shipped', 'in_transit']
+    if current_status in forbidden_states:
+        raise https_fn.HttpsError('failed-precondition', f'Cannot cancel order with status: {current_status}')
     
     # Restore stock atomically (idempotency handled by stockRestored flag)
     if not order_data.get('stockRestored', False):
@@ -427,10 +429,19 @@ def refund_order_item(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     user_data = user_doc.to_dict()
     is_admin = 'admin' in user_data.get('roles', [])
-    is_buyer = (order_data.get('userId') == user_id)
+    # is_buyer = (order_data.get('userId') == user_id)  # REMOVED: Buyers cannot self-refund directly
     
-    if not (is_admin or is_buyer):
-        raise https_fn.HttpsError('permission-denied', 'Only buyer or admin can refund items')
+    # Check if user is seller for the specific item
+    item_seller_id = None
+    for item in order_data.get('items', []):
+        if item['productId'] == product_id:
+            item_seller_id = item['sellerId']
+            break
+            
+    is_item_seller = (item_seller_id == user_id)
+
+    if not (is_admin or is_item_seller):
+        raise https_fn.HttpsError('permission-denied', 'Only seller of the item or admin can issue refunds')
     
     # Check if payment was captured
     payment_status = order_data.get('paymentStatus')
@@ -461,7 +472,8 @@ def refund_order_item(req: https_fn.CallableRequest) -> Dict[str, Any]:
     item_subtotal_cents = item_price_cents * item_quantity
     
     # Calculate proportional tax and shipping
-    order_subtotal_cents = order_data.get('subtotalAmountCents', 0)
+    # CRITICAL FIX: Field name is 'subtotalCents' not 'subtotalAmountCents'
+    order_subtotal_cents = order_data.get('subtotalCents', 0)
     order_tax_cents = order_data.get('taxAmountCents', 0)
     order_shipping_cents = order_data.get('shippingCostCents', 0)
     
@@ -570,77 +582,6 @@ def refund_order_item(req: https_fn.CallableRequest) -> Dict[str, Any]:
         'refundAmount': refund_amount_cents / 100,  # Return in dollars
         'refundId': refund.id
     })
-    if not order_id:
-        raise https_fn.HttpsError('invalid-argument', 'orderId required')
-    
-    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
-    order_doc = order_ref.get()
-    
-    if not order_doc.exists:
-        raise https_fn.HttpsError('not-found', 'Order not found')
-    
-    order_data = order_doc.to_dict()
-    
-    # Check permissions
-    user_ref = get_db().collection(Collections.USERS).document(user_id)
-    user_doc = user_ref.get()
-    
-    if not user_doc.exists:
-        raise https_fn.HttpsError('not-found', 'User not found')
-    
-    user_data = user_doc.to_dict()
-    is_admin = 'admin' in user_data.get('roles', [])
-    is_buyer = order_data['userId'] == user_id
-    is_seller = any(item['sellerId'] == user_id for item in order_data['items'])
-    
-    if not (is_admin or is_buyer or is_seller):
-        raise https_fn.HttpsError('permission-denied', 'Not authorized to cancel this order')
-    
-    # Cannot cancel delivered orders
-    if order_data['orderStatus'] in ['delivered', 'refunded']:
-        raise https_fn.HttpsError('failed-precondition', 'Cannot cancel delivered or refunded orders')
-    
-    # Check if stock already restored (idempotency)
-    if order_data.get('stockRestored'):
-        print(f'Stock already restored for order {order_id}')
-    else:
-        # Restore stock using atomic Increment (prevents race conditions)
-        for item in order_data['items']:
-            product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
-            product_ref.update({
-                'stockQuantity': get_firestore().Increment(item['quantity'])
-            })
-        # Mark stock as restored (idempotency flag)
-        order_ref.update({'stockRestored': True})
-    
-    refunded = False
-    
-    # Issue refund if payment was captured
-    if order_data.get('paymentStatus') == PaymentStatus.CAPTURED:
-        payment_intent_id = order_data.get('stripePaymentIntentId')
-        
-        if payment_intent_id:
-            try:
-                refund = stripe.Refund.create(
-                    payment_intent=payment_intent_id,
-                    reason='requested_by_customer',
-                    idempotency_key=f"refund_{order_id}"
-                )
-                refunded = True
-            except stripe.error.StripeError as e:
-                print(f'Refund failed: {str(e)}')
-    
-    # Update order
-    order_ref.update({
-        'orderStatus': OrderStatus.CANCELLED,
-        'paymentStatus': PaymentStatus.REFUNDED if refunded else order_data['paymentStatus'],
-        'cancellationReason': reason,
-        'cancelledBy': user_id,
-        'cancelledAt': get_server_timestamp(),
-        'updatedAt': get_server_timestamp()
-    })
-    
-    return create_success_response({'refunded': refunded})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -685,28 +626,29 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('failed-precondition', 'No pending shipping approval')
     
     if approved:
-        # Update order with new shipping cost
-        new_shipping_cost = shipping_approval.get('actualCost', 0)
-        old_shipping_cost = order_data.get('shippingCost', 0)
-        difference = new_shipping_cost - old_shipping_cost
+        # Update order with new shipping cost (all amounts in cents)
+        new_shipping_cost_cents = round(shipping_approval.get('actualCost', 0) * 100)
+        old_shipping_cost_cents = order_data.get('shippingCostCents', 0)
+        difference_cents = new_shipping_cost_cents - old_shipping_cost_cents
+        new_total_cents = order_data.get('totalAmountCents', 0) + difference_cents
         
         order_ref.update({
-            'shippingCost': new_shipping_cost,
-            'totalAmount': order_data['totalAmount'] + difference,
+            'shippingCostCents': new_shipping_cost_cents,
+            'totalAmountCents': new_total_cents,
             'shippingApproval.status': 'approved',
             'shippingApproval.respondedAt': get_server_timestamp(),
             'updatedAt': get_server_timestamp()
         })
         
         # Charge additional amount if needed
-        if difference > 0:
+        if difference_cents > 0:
             payment_intent_id = order_data.get('stripePaymentIntentId')
             if payment_intent_id:
                 try:
-                    # Update payment intent amount
+                    # Update payment intent amount (already in cents)
                     stripe.PaymentIntent.modify(
                         payment_intent_id,
-                        amount=int((order_data['totalAmount'] + difference) * 100)
+                        amount=new_total_cents
                     )
                 except stripe.error.StripeError as e:
                     print(f'Failed to update payment amount: {str(e)}')
@@ -717,6 +659,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'shippingApproval.respondedAt': get_server_timestamp(),
             'orderStatus': OrderStatus.CANCELLED,
             'cancellationReason': 'Buyer rejected shipping cost',
+            'stockRestored': True,
             'updatedAt': get_server_timestamp()
         })
         
@@ -751,6 +694,22 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
     # Send notification emails based on status change
     user_id = after_data.get('userId')
     
+    # CRITICAL FIX: Fetch actual buyer email from user document (not user_id!)
+    buyer_email = after_data.get('customerEmail')
+    if not buyer_email:
+        try:
+            from firebase_admin import firestore as _fs
+            _db = _fs.client()
+            buyer_doc = _db.collection('users').document(user_id).get()
+            if buyer_doc.exists:
+                buyer_email = buyer_doc.to_dict().get('email')
+        except Exception as e:
+            print(f'Failed to fetch buyer email for order {order_id}: {str(e)}')
+    
+    if not buyer_email:
+        print(f'⚠️ No email found for user {user_id}, skipping notification for order {order_id}')
+        return
+    
     try:
         if new_status == 'shipped':
             tracking_number = after_data.get('trackingNumber', 'N/A')
@@ -758,34 +717,56 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
             
             # Email buyer
             send_email(
-                to_email=user_id,
+                to_email=buyer_email,
                 subject='Your Order Has Shipped - Origna',
                 html_content=f'''
                 <h2>Your order has been shipped!</h2>
                 <p>Order ID: {order_id}</p>
                 <p>Tracking Number: {tracking_number}</p>
                 <p>Carrier: {carrier}</p>
-                <p>You can track your order at: https://origna.ca/orders/{order_id}</p>
+                <p>You can track your order at: https://orignagta.ca/orders/{order_id}</p>
                 '''
             )
+            
+            # Also notify sellers that shipment was confirmed
+            seller_ids = set(item.get('sellerId') for item in after_data.get('items', []))
+            for sid in seller_ids:
+                try:
+                    seller_doc = _db.collection('users').document(sid).get()
+                    if seller_doc.exists:
+                        seller_email = seller_doc.to_dict().get('email')
+                        if seller_email:
+                            send_email(
+                                to_email=seller_email,
+                                subject=f'Order {order_id[:8]} Shipped Successfully',
+                                html_content=f'''
+                                <h2>Shipment Confirmed</h2>
+                                <p>Order ID: {order_id}</p>
+                                <p>Tracking: {tracking_number}</p>
+                                <p>Carrier: {carrier}</p>
+                                '''
+                            )
+                except Exception:
+                    pass
         
         elif new_status == 'delivered':
             # Email buyer to confirm receipt
             send_email(
-                to_email=user_id,
+                to_email=buyer_email,
                 subject='Order Delivered - Please Confirm Receipt',
                 html_content=f'''
                 <h2>Your order has been delivered!</h2>
                 <p>Order ID: {order_id}</p>
                 <p>Please confirm receipt to release payment to sellers:</p>
-                <a href="https://origna.ca/orders/{order_id}">Confirm Receipt</a>
+                <a href="https://orignagta.ca/orders/{order_id}">Confirm Receipt</a>
+                <p><strong>Note:</strong> Payment will be auto-released after 7 days if not confirmed.</p>
                 '''
             )
         
         elif new_status == 'cancelled':
             reason = after_data.get('cancellationReason', 'Unknown')
             send_email(
-                to_email=user_id,
+                to_email=buyer_email,
                 subject='Order Cancelled - Origna',
                 html_content=f'''
                 <h2>Your order has been cancelled</h2>
@@ -796,4 +777,4 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
             )
     
     except Exception as e:
-        print(f'Failed to send order status email: {str(e)}')
+        print(f'Failed to send order status email for order {order_id}: {str(e)}')

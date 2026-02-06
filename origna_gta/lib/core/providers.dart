@@ -15,7 +15,11 @@ import 'package:origna_gta/services/conf_services.dart';
 
 // Algolia-based product repository (hybrid mode with Firestore fallback)
 final algoliaProductRepositoryProvider = Provider<ProductRepository>((ref) {
-  return AlgoliaProductRepository(ref.watch(algoliaServiceProvider), ref.watch(firestoreProvider));
+  return AlgoliaProductRepository(
+    ref.watch(algoliaServiceProvider),
+    ref.watch(firestoreProvider),
+    ref.watch(firebaseFunctionsProvider),
+  );
 });
 
 // Algolia service for fast product search

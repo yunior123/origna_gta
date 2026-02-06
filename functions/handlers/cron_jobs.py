@@ -16,6 +16,7 @@ from config import (
     AUTO_CONFIRM_DAYS, AUTHORIZATION_VALID_DAYS,
     PLATFORM_FEE_PERCENT, STRIPE_SECRET_KEY
 )
+from schema_constants import Fields  # Field name constants to prevent typos
 from function_options import CRON_OPTIONS
 
 stripe.api_key = STRIPE_SECRET_KEY
@@ -69,12 +70,12 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
     
     cutoff_date = datetime.now() - timedelta(days=AUTO_CONFIRM_DAYS)
     
-    # Limit to 100 orders per run to avoid timeout
+    # Limit to 500 orders per run to handle higher volume
     orders = get_db().collection(Collections.ORDERS)\
         .where('orderStatus', '==', OrderStatus.DELIVERED)\
         .where('paymentStatus', '==', PaymentStatus.AUTHORIZED)\
-        .where('updatedAt', '<=', cutoff_date)\
-        .limit(100)\
+        .where(Fields.UPDATED_AT, '<=', cutoff_date)\
+        .limit(500)\
         .stream()
     
     captured_count = 0
@@ -201,10 +202,11 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     cutoff_date = datetime.now() - timedelta(days=AUTHORIZATION_VALID_DAYS)
     
     # Limit to 100 orders per run to avoid timeout
+    # Use Fields.CREATED_AT constant to prevent field name typos (orders use 'createdAt')
     orders = get_db().collection(Collections.ORDERS)\
         .where('paymentStatus', '==', PaymentStatus.AUTHORIZED)\
         .where('orderStatus', 'in', [OrderStatus.PENDING, OrderStatus.CONFIRMED])\
-        .where('dateCreated', '<=', cutoff_date)\
+        .where(Fields.CREATED_AT, '<=', cutoff_date)\
         .limit(100)\
         .stream()
     
@@ -214,22 +216,25 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
         order_data = order_doc.to_dict()
         order_id = order_doc.id
         
-        # Restore stock
-        for item in order_data.get('items', []):
-            product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
-            product_doc = product_ref.get()
-            
-            if product_doc.exists:
-                product_data = product_doc.to_dict()
-                current_stock = product_data.get('stockQuantity', 0)
-                product_ref.update({
-                    'stockQuantity': current_stock + item['quantity']
-                })
+        # Skip if stock already restored (idempotency)
+        if order_data.get('stockRestored', False):
+            print(f'Stock already restored for expired order {order_id}')
+        else:
+            # CRITICAL FIX: Use atomic Increment instead of read-then-write
+            for item in order_data.get('items', []):
+                product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
+                try:
+                    product_ref.update({
+                        'stockQuantity': get_firestore().Increment(item['quantity'])
+                    })
+                except Exception as e:
+                    print(f'Failed to restore stock for product {item["productId"]}: {str(e)}')
         
         # Update order
         order_doc.reference.update({
             'orderStatus': OrderStatus.EXPIRED,
             'paymentStatus': PaymentStatus.SESSION_EXPIRED,
+            'stockRestored': True,
             'expiredAt': get_server_timestamp(),
             'updatedAt': get_server_timestamp()
         })
@@ -257,10 +262,12 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
     cutoff_date = datetime.now() - timedelta(days=30)
     
     # Limit to 200 orders per run and use batch
+    # NOTE: We cannot filter 'archived == False' because Firestore doesn't match
+    # documents where the field doesn't exist. Instead, we query without the filter
+    # and skip already-archived orders in the loop.
     orders = get_db().collection(Collections.ORDERS)\
         .where('orderStatus', 'in', [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REFUNDED])\
         .where('updatedAt', '<=', cutoff_date)\
-        .where('archived', '==', False)\
         .limit(200)\
         .stream()
     
@@ -268,6 +275,10 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
     batch = get_db().batch()
     
     for order_doc in orders:
+        # Skip already-archived orders (field may not exist on old orders)
+        if order_doc.to_dict().get('archived', False):
+            continue
+        
         batch.update(order_doc.reference, {
             'archived': True,
             'archivedAt': get_server_timestamp()

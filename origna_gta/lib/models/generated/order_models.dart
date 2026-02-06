@@ -11,6 +11,147 @@ import 'product_models.dart';
 part 'order_models.freezed.dart';
 part 'order_models.g.dart';
 
+/// Safely parse a dynamic value (Timestamp, String, DateTime) to DateTime?
+DateTime? _parseDateTime(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+  if (value is String) return DateTime.tryParse(value);
+  return null;
+}
+
+/// Safely convert any Firestore value to String (handles MiniFieldValue, int, etc.)
+String _safeString(dynamic value, [String fallback = '']) {
+  if (value == null) return fallback;
+  if (value is String) return value;
+  return value.toString();
+}
+
+/// Safely convert to double
+double _safeDouble(dynamic value, [double fallback = 0.0]) {
+  if (value == null) return fallback;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? fallback;
+  return fallback;
+}
+
+/// Safely convert to int
+int _safeInt(dynamic value, [int fallback = 0]) {
+  if (value == null) return fallback;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? fallback;
+  return fallback;
+}
+
+/// Safely convert to bool
+bool _safeBool(dynamic value, [bool fallback = false]) {
+  if (value == null) return fallback;
+  if (value is bool) return value;
+  if (value is String) return value.toLowerCase() == 'true';
+  return fallback;
+}
+
+/// Safely convert to List<String>
+List<String> _safeStringList(dynamic value) {
+  if (value == null) return [];
+  if (value is List) return value.map((e) => _safeString(e)).toList();
+  return [];
+}
+
+/// Safely parse a Map from dynamic (handles Firestore internal types)
+Map<String, dynamic> _safeMap(dynamic value) {
+  if (value == null) return {};
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  return {};
+}
+
+/// Parse an Address from any dynamic Firestore value
+Address _safeAddress(dynamic value) {
+  final map = _safeMap(value);
+  return Address(
+    street: _safeString(map['street']),
+    apartment: _safeString(map['apartment']),
+    city: _safeString(map['city']),
+    state: _safeString(map['state']),
+    postalCode: _safeString(map['postalCode']),
+    country: _safeString(map['country'], 'Canada'),
+    phoneNumber: map['phoneNumber'] != null ? _safeString(map['phoneNumber']) : null,
+    isDefault: _safeBool(map['isDefault']),
+    label: map['label'] != null ? _safeString(map['label']) : null,
+    latitude: map['latitude'] != null ? _safeDouble(map['latitude']) : null,
+    longitude: map['longitude'] != null ? _safeDouble(map['longitude']) : null,
+  );
+}
+
+/// Parse an OrderItem from a Firestore map without relying on generated fromJson
+OrderItem _parseOrderItem(dynamic raw) {
+  final map = _safeMap(raw);
+  return OrderItem(
+    productId: _safeString(map['productId']),
+    name: _safeString(map['name']),
+    description: _safeString(map['description']),
+    price: _safeDouble(map['price']),
+    quantity: _safeInt(map['quantity'], 1),
+    imageUrls: _safeStringList(map['imageUrls']),
+    sellerId: _safeString(map['sellerId']),
+    sellerAddress: _safeAddress(map['sellerAddress']),
+    status: _safeString(
+      (map['status'] == null || map['status'].toString().isEmpty)
+          ? map['deliveryStatus']
+          : map['status'],
+      'pending',
+    ),
+    deliveryStatus: _parseDeliveryStatus(map['deliveryStatus']),
+    trackingNumber: map['trackingNumber'] != null ? _safeString(map['trackingNumber']) : null,
+    carrier: map['carrier'] != null ? _safeString(map['carrier']) : null,
+    shippedAt: _parseDateTime(map['shippedAt']),
+    deliveredAt: _parseDateTime(map['deliveredAt']),
+    refundedAt: _parseDateTime(map['refundedAt']),
+    refundReason: map['refundReason'] != null ? _safeString(map['refundReason']) : null,
+    refundAmountCents: map['refundAmountCents'] != null ? _safeInt(map['refundAmountCents']) : null,
+    refundId: map['refundId'] != null ? _safeString(map['refundId']) : null,
+    confirmedByBuyer: _safeBool(map['confirmedByBuyer'] ?? map['buyerConfirmed']),
+    weightKg: map['weightKg'] != null ? _safeDouble(map['weightKg']) : null,
+    lengthCm: map['lengthCm'] != null ? _safeDouble(map['lengthCm']) : null,
+    widthCm: map['widthCm'] != null ? _safeDouble(map['widthCm']) : null,
+    heightCm: map['heightCm'] != null ? _safeDouble(map['heightCm']) : null,
+    isLocalDeliveryOnly: _safeBool(map['isLocalDeliveryOnly'] ?? map['localDeliveryOnly']),
+    isPerishable: _safeBool(map['isPerishable'] ?? map['perishable']),
+    estimatedShipDays: _safeInt(map['estimatedShipDays'] ?? map['supplierShippingDays'], 3),
+    minimumOrderQuantity: _safeInt(map['minimumOrderQuantity'] ?? map['minOrderQuantity'], 1),
+    freeShipping: _safeBool(map['freeShipping']),
+    isDigital: _safeBool(map['isDigital']),
+  );
+}
+
+/// Parse DeliveryStatus from dynamic
+DeliveryStatus _parseDeliveryStatus(dynamic raw) {
+  final value = _safeString(raw, 'pending');
+  switch (value) {
+    case 'shipped':
+      return DeliveryStatus.shipped;
+    case 'delivered':
+      return DeliveryStatus.delivered;
+    default:
+      return DeliveryStatus.pending;
+  }
+}
+
+/// Parse Ratings from a Firestore map without relying on generated fromJson
+Ratings _parseRating(dynamic raw) {
+  final map = _safeMap(raw);
+  return Ratings(
+    productId: _safeString(map['productId']),
+    rating: _safeDouble(map['rating']),
+    review: map['review'] != null ? _safeString(map['review']) : null,
+    createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
+  );
+}
+
 // ============================================================================
 // ORDER
 // ============================================================================
@@ -124,36 +265,36 @@ class Order with _$Order {
       }
     }
 
-    // Parse items
+    // Parse items — use safe parser, NOT generated fromJson (avoids hard casts)
     final itemsData = data['items'] as List<dynamic>? ?? [];
-    final items = itemsData.map((item) => OrderItem.fromJson(item as Map<String, dynamic>)).toList();
+    final items = itemsData.map(_parseOrderItem).toList();
 
     // Parse taxes
     final taxesData = data['taxes'];
-    final taxes = taxesData is Map ? Taxes.fromMap(taxesData as Map<String, dynamic>) : const Taxes();
+    final taxes = taxesData is Map ? Taxes.fromMap(Map<String, dynamic>.from(taxesData)) : const Taxes();
 
-    // Parse seller payouts
+    // Parse seller payouts — use safe parser
     final payoutsData = data['sellerPayouts'] as List<dynamic>? ?? [];
-    final payouts = payoutsData.map((p) => SellerPayout.fromMap(p as Map<String, dynamic>)).toList();
+    final payouts = payoutsData.map((p) => SellerPayout.fromMap(_safeMap(p))).toList();
 
-    // Parse ratings
+    // Parse ratings — use safe parser
     final ratingsData = data['ratings'];
-    final ratings = ratingsData is List ? (ratingsData).map((r) => Ratings.fromJson(r as Map<String, dynamic>)).toList() : <Ratings>[];
+    final ratings = ratingsData is List ? ratingsData.map(_parseRating).toList() : <Ratings>[];
 
     // Money — all cents
-    final totalAmountCents = (data['totalAmountCents'] as num?)?.toInt() ?? 0;
-    final subtotalCents = (data['subtotalCents'] as num?)?.toInt() ?? 0;
-    final shippingCostCents = (data['shippingCostCents'] as num?)?.toInt() ?? 0;
-    final taxAmountCents = (data['taxAmountCents'] as num?)?.toInt() ?? 0;
+    final totalAmountCents = _safeInt(data['totalAmountCents']);
+    final subtotalCents = _safeInt(data['subtotalCents']);
+    final shippingCostCents = _safeInt(data['shippingCostCents']);
+    final taxAmountCents = _safeInt(data['taxAmountCents']);
 
     // Address
-    final rawAddress = (data['shippingAddress'] as Map<String, dynamic>?) ?? {};
+    final rawAddress = _safeMap(data['shippingAddress']);
 
     return Order(
-      orderId: data['orderId'] ?? doc.id,
-      userId: data['userId'] ?? '',
-      customerId: data['customerId'] ?? '',
-      customerEmail: data['customerEmail'] ?? '',
+      orderId: _safeString(data['orderId'], doc.id),
+      userId: _safeString(data['userId']),
+      customerId: _safeString(data['customerId']),
+      customerEmail: _safeString(data['customerEmail']),
       items: items,
       totalAmountCents: totalAmountCents,
       subtotalCents: subtotalCents,
@@ -162,20 +303,20 @@ class Order with _$Order {
       taxes: taxes,
       orderStatus: parseOrderStatus(data['orderStatus']),
       paymentStatus: parsePaymentStatus(data['paymentStatus']),
-      shippingAddress: Address.fromJson(rawAddress),
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      currency: data['currency'] ?? 'cad',
-      sellerIds: List<String>.from(data['sellerIds'] ?? []),
-      stripeSessionId: data['stripeSessionId'] ?? '',
+      shippingAddress: _safeAddress(rawAddress),
+      createdAt: _parseDateTime(data['createdAt']) ?? DateTime.now(),
+      currency: _safeString(data['currency'], 'cad'),
+      sellerIds: _safeStringList(data['sellerIds']),
+      stripeSessionId: _safeString(data['stripeSessionId']),
       shippingApprovalStatus: parseShippingApprovalStatus(data['shippingApprovalStatus']),
-      shippingApprovalRequired: data['shippingApprovalRequired'] ?? false,
-      actualShipping: (data['actualShipping'] ?? 0.0).toDouble(),
-      pendingTotal: (data['pendingTotal'] ?? 0.0).toDouble(),
+      shippingApprovalRequired: _safeBool(data['shippingApprovalRequired']),
+      actualShipping: _safeDouble(data['actualShipping']),
+      pendingTotal: _safeDouble(data['pendingTotal']),
       sellerPayouts: payouts,
-      confirmedByClient: data['confirmedByClient'] ?? false,
-      confirmedAt: (data['confirmedAt'] as Timestamp?)?.toDate(),
-      platformFeeTotal: (data['platformFeeTotal'] ?? 0.0).toDouble(),
-      payoutStatus: data['payoutStatus'] ?? 'pending',
+      confirmedByClient: _safeBool(data['confirmedByClient']),
+      confirmedAt: _parseDateTime(data['confirmedAt']),
+      platformFeeTotal: _safeDouble(data['platformFeeTotal']),
+      payoutStatus: _safeString(data['payoutStatus'], 'pending'),
       ratings: ratings,
     );
   }
@@ -299,19 +440,15 @@ class SellerPayout with _$SellerPayout {
 
   factory SellerPayout.fromMap(Map<String, dynamic> map) {
     return SellerPayout(
-      sellerId: map['sellerId'] ?? '',
-      stripeAccountId: map['stripeAccountId'],
-      amountCents: (map['amountCents'] as num?)?.toInt() ?? 0,
-      platformFeeCents: (map['platformFeeCents'] as num?)?.toInt() ?? 0,
-      netAmountCents: (map['netAmountCents'] as num?)?.toInt() ?? 0,
-      status: map['status'] ?? 'pending',
-      payoutDate: map['payoutDate'] is Timestamp
-          ? (map['payoutDate'] as Timestamp).toDate()
-          : map['payoutDate'] is DateTime
-              ? map['payoutDate']
-              : null,
-      stripeTransferId: map['stripeTransferId'],
-      failureReason: map['failureReason'],
+      sellerId: _safeString(map['sellerId']),
+      stripeAccountId: map['stripeAccountId'] != null ? _safeString(map['stripeAccountId']) : null,
+      amountCents: _safeInt(map['amountCents']),
+      platformFeeCents: _safeInt(map['platformFeeCents']),
+      netAmountCents: _safeInt(map['netAmountCents']),
+      status: _safeString(map['status'], 'pending'),
+      payoutDate: _parseDateTime(map['payoutDate']),
+      stripeTransferId: map['stripeTransferId'] != null ? _safeString(map['stripeTransferId']) : null,
+      failureReason: map['failureReason'] != null ? _safeString(map['failureReason']) : null,
     );
   }
 

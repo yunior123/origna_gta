@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/services/algolia_service.dart';
@@ -11,8 +12,9 @@ import 'product_repository.dart';
 class AlgoliaProductRepository implements ProductRepository {
   final AlgoliaService _algoliaService;
   final FirebaseFirestore _firestore;
+  final FirebaseFunctions _functions;
 
-  AlgoliaProductRepository(this._algoliaService, this._firestore);
+  AlgoliaProductRepository(this._algoliaService, this._firestore, this._functions);
 
   @override
   @override
@@ -115,9 +117,12 @@ class AlgoliaProductRepository implements ProductRepository {
 
   @override
   Future<void> submitRating(String orderId, String productId, int rating) async {
-    await _firestore.collection(Collections.products).doc(productId).update({
-      'rating': FieldValue.increment(rating.toDouble()),
-      'ratingCount': FieldValue.increment(1),
+    // Call backend Cloud Function for secure rating submission
+    // Backend validates: auth, ownership, delivery status, duplicate check
+    await _functions.httpsCallable('submit_product_rating').call({
+      'orderId': orderId,
+      'productId': productId,
+      'rating': rating,
     });
   }
 

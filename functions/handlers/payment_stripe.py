@@ -163,8 +163,20 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
     
+    # Check email verification (skip in emulator mode - tokens may not carry email_verified)
+    if not IS_EMULATOR and not req.auth.token.get('email_verified', False):
+        raise https_fn.HttpsError('permission-denied', 'Please verify your email address before making a purchase.')
+    
     user_id = req.auth.uid
     data = req.data
+
+    # Security: Check if user is suspended
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
+    user_snapshot = user_ref.get()
+    if user_snapshot.exists:
+        user_data = user_snapshot.to_dict()
+        if user_data.get('suspended', False):
+            raise https_fn.HttpsError('permission-denied', 'Account suspended. Cannot proceed with checkout.')
     
     # Rate limiting: 5 requests per minute per user
     allowed, message = get_rate_limiter().check_rate_limit(
@@ -188,6 +200,11 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     if not shipping_address:
         raise https_fn.HttpsError('invalid-argument', 'Shipping address required')
+    
+    # NORMALIZE: Flutter sends 'state', backend expects 'province'
+    # Accept both field names for forwards/backwards compatibility
+    if 'province' not in shipping_address and 'state' in shipping_address:
+        shipping_address['province'] = shipping_address['state']
     
     # Validate shipping address fields
     required_address_fields = ['street', 'city', 'postalCode', 'province', 'country']
@@ -364,6 +381,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Shipping calculation failed: {str(e)}')
     
     # Calculate taxes (server-side) - all in cents to avoid rounding errors
+    # NOTE: 'province' is guaranteed by normalization above (state->province)
     province = shipping_address.get('province', 'ON')
     tax_rate = get_tax_rate(province)
     tax_amount_cents = round(actual_subtotal_cents * tax_rate)
@@ -387,16 +405,27 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     total_amount_cents = actual_subtotal_cents + shipping_cost_cents + tax_amount_cents
     
     # Reserve stock atomically using Firestore transactions
+    # IMPORTANT: All reads MUST happen before any writes to avoid
+    # "Attempted read after write in a transaction" errors
     @get_transactional()
     def reserve_stock_transaction(transaction):
+        # Phase 1: Read ALL product snapshots first
+        product_refs = []
+        product_snapshots = []
         for item in validated_items:
             product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
             product_snapshot = product_ref.get(transaction=transaction)
-            
-            if not product_snapshot.exists:
+            product_refs.append(product_ref)
+            product_snapshots.append(product_snapshot)
+        
+        # Phase 2: Validate ALL stock levels
+        updates = []
+        for i, item in enumerate(validated_items):
+            snapshot = product_snapshots[i]
+            if not snapshot.exists:
                 raise https_fn.HttpsError('not-found', f"Product {item['productId']} not found")
             
-            product_data = product_snapshot.to_dict()
+            product_data = snapshot.to_dict()
             current_stock = product_data.get('stockQuantity', 0)
             
             if current_stock < item['quantity']:
@@ -404,9 +433,12 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                     'resource-exhausted',
                     f"Stock changed: {product_data['name']} now has {current_stock} available"
                 )
-            
-            transaction.update(product_ref, {
-                'stockQuantity': current_stock - item['quantity']
+            updates.append((product_refs[i], current_stock - item['quantity']))
+        
+        # Phase 3: Write ALL updates after all reads are done
+        for ref, new_stock in updates:
+            transaction.update(ref, {
+                'stockQuantity': new_stock
             })
     
     transaction = get_db().transaction()
@@ -419,9 +451,15 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
     order_ref = get_db().collection(Collections.ORDERS).document()
     order_id = order_ref.id
 
+    # Fetch buyer email for order record (avoids extra DB read in webhook)
+    buyer_email = None
+    if user_snapshot.exists:
+        buyer_email = user_snapshot.to_dict().get('email')
+    
     order_data = {
         'orderId': order_id,
         'userId': user_id,
+        'customerEmail': buyer_email,
         'sellerIds': sorted(list(sellers)),
         'items': validated_items,
         'subtotalCents': actual_subtotal_cents,
@@ -438,6 +476,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         'expiresAt': datetime.now() + timedelta(days=AUTHORIZATION_VALID_DAYS),
         'currency': 'cad',
         'paymentProvider': 'stripe',
+        'archived': False,
+        'stockRestored': False,
     }
     
     order_ref.set(order_data)
@@ -540,14 +580,20 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         # Rollback stock reservation
         @get_transactional()
         def rollback_stock(transaction):
+            # Phase 1: Read ALL product snapshots first
+            refs_and_snapshots = []
             for item in validated_items:
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
                 product_snapshot = product_ref.get(transaction=transaction)
-                if product_snapshot.exists:
-                    product_data = product_snapshot.to_dict()
+                refs_and_snapshots.append((product_ref, product_snapshot, item['quantity']))
+            
+            # Phase 2: Write ALL updates after all reads
+            for ref, snapshot, qty in refs_and_snapshots:
+                if snapshot.exists:
+                    product_data = snapshot.to_dict()
                     current_stock = product_data.get('stockQuantity', 0)
-                    transaction.update(product_ref, {
-                        'stockQuantity': current_stock + item['quantity']
+                    transaction.update(ref, {
+                        'stockQuantity': current_stock + qty
                     })
         
         transaction = get_db().transaction()
@@ -923,11 +969,16 @@ def process_payment_intent_failed(payment_intent: Dict) -> Optional[str]:
 
 
 def process_charge_refunded(charge: Dict) -> Optional[str]:
-    """Handles charge refunds"""
+    """Handles charge refunds - distinguishes full vs partial refunds"""
     payment_intent_id = charge.get('payment_intent')
     
     if not payment_intent_id:
         return None
+    
+    # Determine if full or partial refund
+    amount_refunded = charge.get('amount_refunded', 0)
+    amount_total = charge.get('amount', 0)
+    is_full_refund = (amount_refunded >= amount_total) if amount_total > 0 else True
     
     # Find order by payment intent
     orders = get_db().collection(Collections.ORDERS)\
@@ -937,13 +988,23 @@ def process_charge_refunded(charge: Dict) -> Optional[str]:
     
     for order_doc in orders:
         order_ref = order_doc.reference
-        order_ref.update({
-            'orderStatus': OrderStatus.REFUNDED,
-            'paymentStatus': PaymentStatus.REFUNDED,
-            'updatedAt': get_server_timestamp()
-        })
         
-        return f'Order {order_doc.id} refunded'
+        if is_full_refund:
+            order_ref.update({
+                'orderStatus': OrderStatus.REFUNDED,
+                'paymentStatus': PaymentStatus.REFUNDED,
+                'updatedAt': get_server_timestamp()
+            })
+            return f'Order {order_doc.id} fully refunded'
+        else:
+            # Partial refund - don't mark entire order as refunded
+            order_ref.update({
+                'orderStatus': OrderStatus.PARTIALLY_REFUNDED,
+                'paymentStatus': PaymentStatus.REFUNDED,
+                'partialRefundAmountCents': amount_refunded,
+                'updatedAt': get_server_timestamp()
+            })
+            return f'Order {order_doc.id} partially refunded ({amount_refunded} cents)'
     
     return None
 
@@ -955,6 +1016,9 @@ def process_dispute_created(dispute: Dict) -> Optional[str]:
     to prevent double-loss (platform refunds buyer + already paid seller).
     """
     charge_id = dispute.get('charge')
+    # CRITICAL FIX: Use payment_intent from dispute (not charge_id!)
+    # charge_id is 'ch_xxx' but orders store 'pi_xxx' as stripePaymentIntentId
+    payment_intent_id = dispute.get('payment_intent')
     dispute_amount = dispute.get('amount', 0)
     
     # Log security alert
@@ -962,16 +1026,20 @@ def process_dispute_created(dispute: Dict) -> Optional[str]:
         'type': 'dispute_created',
         'severity': 'high',
         'chargeId': charge_id,
+        'paymentIntentId': payment_intent_id,
         'amount': dispute_amount,
         'reason': dispute.get('reason'),
         'timestamp': get_server_timestamp(),
         'resolved': False
     })
     
-    # CRITICAL: Auto-reverse all transfers linked to this charge
-    # Find all payouts for orders with this payment intent
+    if not payment_intent_id:
+        print(f'⚠️ Dispute {dispute.get("id")} has no payment_intent, cannot find order')
+        return f'Dispute logged for charge {charge_id}, no payment_intent to look up order'
+    
+    # CRITICAL: Auto-reverse all transfers linked to this payment intent
     orders = get_db().collection(Collections.ORDERS)\
-        .where('stripePaymentIntentId', '==', charge_id)\
+        .where('stripePaymentIntentId', '==', payment_intent_id)\
         .limit(1)\
         .stream()
     
@@ -1378,12 +1446,13 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     # CRITICAL SECURITY CHECK: Only order owner or admin can capture
     order_user_id = order_data.get('userId')
-    is_admin = 'admin' in req.auth.token.get('roles', [])
+    # FIX: Custom claims are set as {'admin': True/False}, not {'roles': [...]}
+    is_admin = req.auth.token.get('admin', False) == True
     
     if caller_uid != order_user_id and not is_admin:
         raise https_fn.HttpsError(
             'permission-denied',
-            'Only the order owner can capture this payment'
+            'Only the order owner or admin can capture this payment'
         )
     
     # Verify order is in valid state for capture
@@ -1434,7 +1503,28 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'failed-precondition',
             'Maximum capture attempts exceeded'
         )
-    
+
+    # Emulator mode: skip real Stripe capture for fake payment intents
+    if IS_EMULATOR and payment_intent_id and not payment_intent_id.startswith('pi_3'):
+        items = order_data.get('items', [])
+        all_items_delivered = all(item.get('status') == 'delivered' for item in items)
+        order_ref.update({
+            'paymentStatus': PaymentStatus.CAPTURED,
+            'orderStatus': OrderStatus.DELIVERED if all_items_delivered else order_status,
+            'confirmedByClient': True,
+            'confirmedAt': get_server_timestamp(),
+            'capturedAt': get_server_timestamp(),
+            'captureAttempts': capture_attempts + 1,
+            'updatedAt': get_server_timestamp(),
+        })
+        return {
+            'success': True,
+            'captured': True,
+            'newStatus': OrderStatus.DELIVERED if all_items_delivered else order_status,
+            'emulatorMode': True,
+            'payoutErrors': False,
+        }
+
     try:
         # Validate PI is in capturable state
         payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
@@ -1453,24 +1543,10 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 'failed-precondition',
                 f'Payment amount mismatch: expected {expected_amount_cents} cents, got {payment_intent.amount} cents'
             )
-
-        # Capture the payment
-        payment_intent = stripe.PaymentIntent.capture(payment_intent_id)
-
-        # Check if all items are delivered before capturing
+            
+        # SECURITY FIX: Calculate payouts first to detect issues BEFORE identifying as captured
         items = order_data.get('items', [])
         all_items_delivered = all(item.get('status') == 'delivered' for item in items)
-        
-        # Update order
-        order_ref.update({
-            'paymentStatus': PaymentStatus.CAPTURED,
-            'orderStatus': OrderStatus.DELIVERED if all_items_delivered else order_status,
-            'capturedAt': get_server_timestamp(),
-            'confirmedByClient': True,
-            'confirmedAt': get_server_timestamp(),
-            'captureAttempts': capture_attempts + 1,
-            'updatedAt': get_server_timestamp()
-        })
         
         # Create payouts ONLY for sellers whose items are delivered
         sellers_total_cents = {}
@@ -1483,6 +1559,12 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 item_price_cents = round(item['price'] * 100)
                 item_total_cents = item_price_cents * item['quantity']
                 sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
+
+        # Capture the payment
+        payment_intent = stripe.PaymentIntent.capture(payment_intent_id)
+        
+        # Execute Transfers / Payouts
+        transfer_errors = []
         
         for seller_id, amount_cents in sellers_total_cents.items():
             # Platform fee in cents (rounded)
@@ -1536,34 +1618,65 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                         # Transfer already completed for this seller, skip
                         continue
                     
-                    # Create transfer to seller (amount already in cents)
-                    transfer = stripe.Transfer.create(
-                        amount=net_amount_cents,
-                        currency='cad',
-                        destination=stripe_account_id,
-                        source_transaction=payment_intent_id,
-                        transfer_group=order_id,
-                        metadata={
+                    try:
+                        # Create transfer to seller (amount already in cents)
+                        transfer = stripe.Transfer.create(
+                            amount=net_amount_cents,
+                            currency='cad',
+                            destination=stripe_account_id,
+                            source_transaction=payment_intent_id,
+                            transfer_group=order_id,
+                            metadata={
+                                'orderId': order_id,
+                                'sellerId': seller_id,
+                                'platformFee': platform_fee_cents
+                            }
+                        )
+
+                        # Create payout record for transparency (all amounts in cents)
+                        payout_ref = get_db().collection(Collections.PAYOUTS).document()
+                        payout_ref.set({
                             'orderId': order_id,
-                            'sellerId': seller_id
-                        }
-                    )
-                    
-                    # Log payout (store in cents for consistency)
-                    get_db().collection(Collections.PAYOUTS).add({
-                        'orderId': order_id,
-                        'sellerId': seller_id,
-                        'amountCents': amount_cents,
-                        'platformFeeCents': platform_fee_cents,
-                        'netAmountCents': net_amount_cents,
-                        'status': 'completed',
-                        'stripeTransferId': transfer.id,
-                        'payoutDate': get_server_timestamp(),
-                        'createdAt': get_server_timestamp()
-                    })
+                            'sellerId': seller_id,
+                            'amountCents': amount_cents,
+                            'platformFeeCents': platform_fee_cents,
+                            'netAmountCents': net_amount_cents,
+                            'currency': 'cad',
+                            'stripeTransferId': transfer.id,
+                            'stripeAccountId': stripe_account_id,
+                            'status': 'completed',
+                            'createdAt': get_server_timestamp()
+                        })
+                    except Exception as e:
+                        print(f"Transfer error to seller {seller_id}: {str(e)}")
+                        transfer_errors.append({'sellerId': seller_id, 'error': str(e)})
+
+        # Update order status AFTER transfers to ensure consistency
+        update_data = {
+            'paymentStatus': PaymentStatus.CAPTURED,
+            'orderStatus': OrderStatus.DELIVERED if all_items_delivered else order_status,
+            'capturedAt': get_server_timestamp(),
+            'confirmedByClient': True,
+            'confirmedAt': get_server_timestamp(),
+            'captureAttempts': capture_attempts + 1,
+            'updatedAt': get_server_timestamp()
+        }
         
-        # Return dict directly for on_call functions
-        return {'success': True, 'captured': True, 'paymentIntentId': payment_intent_id}
+        if transfer_errors:
+             # Log errors but still mark captured (since money was taken), but add flag
+            update_data['payoutErrors'] = transfer_errors
+            update_data['requiresManualReview'] = True
+            print(f"Payout errors for order {order_id}: {transfer_errors}")
+            
+        order_ref.update(update_data)
+        
+        return {
+            'success': True, 
+            'captured': True, 
+            'newStatus': update_data['orderStatus'],
+            'payoutErrors': len(transfer_errors) > 0
+        }
+
         
     except https_fn.HttpsError:
         raise

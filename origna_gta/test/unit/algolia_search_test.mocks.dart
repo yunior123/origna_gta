@@ -4,16 +4,19 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i5;
-import 'dart:typed_data' as _i9;
+import 'dart:typed_data' as _i11;
 
 import 'package:algolia_helper_flutter/algolia_helper_flutter.dart' as _i6;
 import 'package:cloud_firestore/cloud_firestore.dart' as _i4;
 import 'package:cloud_firestore_platform_interface/cloud_firestore_platform_interface.dart'
     as _i3;
+import 'package:cloud_functions/cloud_functions.dart' as _i8;
+import 'package:cloud_functions_platform_interface/cloud_functions_platform_interface.dart'
+    as _i7;
 import 'package:firebase_core/firebase_core.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i8;
-import 'package:origna_gta/services/algolia_service.dart' as _i7;
+import 'package:mockito/src/dummies.dart' as _i10;
+import 'package:origna_gta/services/algolia_service.dart' as _i9;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -84,10 +87,21 @@ class _FakeSearchState_9 extends _i1.SmartFake implements _i6.SearchState {
     : super(parent, parentInvocation);
 }
 
+class _FakeFirebaseFunctionsPlatform_10 extends _i1.SmartFake
+    implements _i7.FirebaseFunctionsPlatform {
+  _FakeFirebaseFunctionsPlatform_10(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeHttpsCallable_11 extends _i1.SmartFake implements _i8.HttpsCallable {
+  _FakeHttpsCallable_11(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
 /// A class which mocks [AlgoliaService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockAlgoliaService extends _i1.Mock implements _i7.AlgoliaService {
+class MockAlgoliaService extends _i1.Mock implements _i9.AlgoliaService {
   MockAlgoliaService() {
     _i1.throwOnMissingStub(this);
   }
@@ -133,7 +147,7 @@ class MockFirebaseFirestore extends _i1.Mock implements _i4.FirebaseFirestore {
   String get databaseId =>
       (super.noSuchMethod(
             Invocation.getter(#databaseId),
-            returnValue: _i8.dummyValue<String>(
+            returnValue: _i10.dummyValue<String>(
               this,
               Invocation.getter(#databaseId),
             ),
@@ -205,7 +219,7 @@ class MockFirebaseFirestore extends _i1.Mock implements _i4.FirebaseFirestore {
           as _i5.Future<void>);
 
   @override
-  _i4.LoadBundleTask loadBundle(_i9.Uint8List? bundle) =>
+  _i4.LoadBundleTask loadBundle(_i11.Uint8List? bundle) =>
       (super.noSuchMethod(
             Invocation.method(#loadBundle, [bundle]),
             returnValue: _FakeLoadBundleTask_4(
@@ -346,8 +360,8 @@ class MockFirebaseFirestore extends _i1.Mock implements _i4.FirebaseFirestore {
               {#timeout: timeout, #maxAttempts: maxAttempts},
             ),
             returnValue:
-                _i8.ifNotNull(
-                  _i8.dummyValueOrNull<T>(
+                _i10.ifNotNull(
+                  _i10.dummyValueOrNull<T>(
                     this,
                     Invocation.method(
                       #runTransaction,
@@ -429,7 +443,7 @@ class MockHitsSearcher extends _i1.Mock implements _i6.HitsSearcher {
   String get indexName =>
       (super.noSuchMethod(
             Invocation.getter(#indexName),
-            returnValue: _i8.dummyValue<String>(
+            returnValue: _i10.dummyValue<String>(
               this,
               Invocation.getter(#indexName),
             ),
@@ -469,6 +483,114 @@ class MockHitsSearcher extends _i1.Mock implements _i6.HitsSearcher {
   @override
   void dispose() => super.noSuchMethod(
     Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
+}
+
+/// A class which mocks [FirebaseFunctions].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockFirebaseFunctions extends _i1.Mock implements _i8.FirebaseFunctions {
+  MockFirebaseFunctions() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i2.FirebaseApp get app =>
+      (super.noSuchMethod(
+            Invocation.getter(#app),
+            returnValue: _FakeFirebaseApp_0(this, Invocation.getter(#app)),
+          )
+          as _i2.FirebaseApp);
+
+  @override
+  _i7.FirebaseFunctionsPlatform get delegate =>
+      (super.noSuchMethod(
+            Invocation.getter(#delegate),
+            returnValue: _FakeFirebaseFunctionsPlatform_10(
+              this,
+              Invocation.getter(#delegate),
+            ),
+          )
+          as _i7.FirebaseFunctionsPlatform);
+
+  @override
+  Map<dynamic, dynamic> get pluginConstants =>
+      (super.noSuchMethod(
+            Invocation.getter(#pluginConstants),
+            returnValue: <dynamic, dynamic>{},
+          )
+          as Map<dynamic, dynamic>);
+
+  @override
+  _i8.HttpsCallable httpsCallable(
+    String? name, {
+    _i7.HttpsCallableOptions? options,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#httpsCallable, [name], {#options: options}),
+            returnValue: _FakeHttpsCallable_11(
+              this,
+              Invocation.method(#httpsCallable, [name], {#options: options}),
+            ),
+          )
+          as _i8.HttpsCallable);
+
+  @override
+  _i8.HttpsCallable httpsCallableFromUrl(
+    String? url, {
+    _i7.HttpsCallableOptions? options,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #httpsCallableFromUrl,
+              [url],
+              {#options: options},
+            ),
+            returnValue: _FakeHttpsCallable_11(
+              this,
+              Invocation.method(
+                #httpsCallableFromUrl,
+                [url],
+                {#options: options},
+              ),
+            ),
+          )
+          as _i8.HttpsCallable);
+
+  @override
+  _i8.HttpsCallable httpsCallableFromUri(
+    Uri? uri, {
+    _i7.HttpsCallableOptions? options,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #httpsCallableFromUri,
+              [uri],
+              {#options: options},
+            ),
+            returnValue: _FakeHttpsCallable_11(
+              this,
+              Invocation.method(
+                #httpsCallableFromUri,
+                [uri],
+                {#options: options},
+              ),
+            ),
+          )
+          as _i8.HttpsCallable);
+
+  @override
+  void useFunctionsEmulator(
+    String? host,
+    int? port, {
+    bool? automaticHostMapping = true,
+  }) => super.noSuchMethod(
+    Invocation.method(
+      #useFunctionsEmulator,
+      [host, port],
+      {#automaticHostMapping: automaticHostMapping},
+    ),
     returnValueForMissingStub: null,
   );
 }

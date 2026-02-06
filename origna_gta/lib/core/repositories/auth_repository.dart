@@ -3,6 +3,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 // Hardened email validation matching login_screen.dart
@@ -62,8 +63,15 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<bool> isEmailVerified() async {
     /// Check if current user's email is verified
     /// Required before allowing checkout
+    /// In emulator mode, always return true (emulator doesn't persist emailVerified reliably)
     final user = _auth.currentUser;
     if (user == null) return false;
+
+    // Bypass in emulator mode — emulator Auth doesn't persist emailVerified
+    if (EnvConfig().isEmulator) {
+      debugPrint('🔧 EMULATOR: Bypassing email verification for ${user.email}');
+      return true;
+    }
 
     // Refresh user data to get latest verification status
     await user.reload();

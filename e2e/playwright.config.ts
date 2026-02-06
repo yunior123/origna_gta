@@ -13,6 +13,7 @@ export default defineConfig({
     'tests/**',
     'marketplace-e2e.spec.ts',
     'tests.spec.ts',
+    'seed-emulator.ts',
   ],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

@@ -263,6 +263,9 @@ service cloud.firestore {
           request.resource.data.keywords is list &&
           request.resource.data.keywords.size() <= 30 &&
           request.resource.data.stockQuantity >= 0 &&
+          // FIX: Enforce positive price on update (prevents negative price attack)
+          request.resource.data.price > 0 &&
+          request.resource.data.price <= 100000 &&
           // Sellers cannot toggle isActive; admins can.
           (isAdmin() || request.resource.data.isActive == resource.data.isActive) &&
           !request.resource.data.keys().hasAny(['deletedAt']);

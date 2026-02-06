@@ -13,14 +13,9 @@ from models.product import Product
 from models.order import OrderItem, Order
 from models.user import User
 
-def create_success_response(data: Dict[str, Any], status_code: int = 200) -> https_fn.Response:
-    """Create standardized success response"""
-    response_data = {"success": True, **data}
-    return https_fn.Response(
-        json.dumps(response_data),
-        status=status_code,
-        headers={"Content-Type": "application/json"}
-    )
+def create_success_response(data: Dict[str, Any], status_code: int = 200) -> Dict[str, Any]:
+    """Create standardized success response dict for on_call functions"""
+    return {"success": True, **data}
 
 def create_error_response(error: str, status_code: int = 400, details: Optional[str] = None) -> https_fn.Response:
     """Create standardized error response"""

@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
@@ -328,6 +329,13 @@ class _AddToCartButton extends ConsumerWidget {
         }
         final messenger = ScaffoldMessenger.of(context);
         final success = await ref.read(cartControllerProvider).addToCart(productId, quantity);
+        
+        if (success) {
+          HapticFeedback.mediumImpact();
+        } else {
+          HapticFeedback.vibrate();
+        }
+
         if (context.mounted) {
           messenger.showSnackBar(
             SnackBar(

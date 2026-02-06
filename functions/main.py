@@ -86,14 +86,15 @@ def calculate_shipping_cost(items, buyer_addr, speed="standard"):
         return 0.0
     
     total_cost = 0.0
-    buyer_state = buyer_addr.get('state', '')
+    # Support both 'state' (Flutter convention) and 'province' (backend convention)
+    buyer_state = buyer_addr.get('state', '') or buyer_addr.get('province', '')
     
     for item in items:
         if item.get('freeShipping', False):
             continue
         
         quantity = item.get('quantity', 1)
-        seller_state = item.get('sellerAddress', {}).get('state', '')
+        seller_state = item.get('sellerAddress', {}).get('state', '') or item.get('sellerAddress', {}).get('province', '')
         
         # Check for fixed delivery options
         delivery_options = item.get('deliveryOptions', [])
@@ -160,6 +161,8 @@ from handlers.products import (
 from handlers.orders import (
     confirm_order_receipt,
     update_order_status,
+    update_item_status,
+    refund_order_item,
     cancel_order,
     approve_shipping_cost,
     on_order_status_changed
@@ -234,6 +237,8 @@ __all__ = [
     # Orders
     'confirm_order_receipt',
     'update_order_status',
+    'update_item_status',
+    'refund_order_item',
     'cancel_order',
     'approve_shipping_cost',
     'on_order_status_changed',
@@ -257,7 +262,6 @@ __all__ = [
     'auto_archive_old_orders',
     'monitor_algolia_sync',
     'cleanup_stale_rate_limits',
-    'send_daily_metrics'
 ]
 
 print(f"""

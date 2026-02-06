@@ -48,6 +48,19 @@ class _ProductAddImagesState extends State<ProductAddImages> {
               GestureDetector(
                 onTap: () async {
                   final messenger = ScaffoldMessenger.of(context);
+                  
+                  // UX Improvement: Limit to 5 images (matching backend)
+                  if (_imageModels.length >= 5) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Maximum 5 images allowed per product'),
+                        backgroundColor: Colors.orange,
+                        behavior: SnackBarBehavior.floating,
+                      )
+                    );
+                    return;
+                  }
+
                   try {
                     final picker = ImagePicker();
 

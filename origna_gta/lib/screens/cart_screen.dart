@@ -85,20 +85,42 @@ class CartScreen extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(24),
+                          padding: const EdgeInsets.all(32),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: LinearGradient(colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.1)]),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.1)],
+                            ),
                           ),
-                          child: Icon(Icons.shopping_cart_outlined, size: 80, color: DesignTokens.primary.withValues(alpha: 0.6)),
+                          child: Icon(Icons.shopping_cart_outlined, size: 100, color: DesignTokens.primary.withValues(alpha: 0.6)),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 32),
                         Text(
                           'Your cart is empty',
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.grey[900]),
+                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.grey[900]),
                         ),
-                        const SizedBox(height: 8),
-                        Text('Start shopping to add items', style: TextStyle(fontSize: 16, color: Colors.grey[500])),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Looks like you haven\'t added any items yet.',
+                          style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+                        ),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          width: 200,
+                          child: ModernButton(
+                            label: 'Start Shopping',
+                            icon: Icons.arrow_back,
+                            onPressed: () {
+                              if (Navigator.canPop(context)) {
+                                Navigator.pop(context);
+                              } else {
+                                Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                              }
+                            },
+                          ),
+                        ),
                       ],
                     ),
                   );

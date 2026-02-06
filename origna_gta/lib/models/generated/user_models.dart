@@ -10,6 +10,15 @@ import 'base_models.dart';
 part 'user_models.freezed.dart';
 part 'user_models.g.dart';
 
+/// Safely parse a dynamic value (Timestamp, String, DateTime) to DateTime?
+DateTime? _parseDateTime(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+  if (value is String) return DateTime.tryParse(value);
+  return null;
+}
+
 // ============================================================================
 // USER MODEL
 // ============================================================================
@@ -52,18 +61,18 @@ class User with _$User {
       name: data['name'] ?? '',
       roles: roles,
       address: data['address'] != null ? Address.fromJson(data['address'] as Map<String, dynamic>) : null,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDateTime(data['createdAt']) ?? DateTime.now(),
       customerId: data['customerId'],
       lastCheckoutSession: data['lastCheckoutSession'],
       lastOrderId: data['lastOrderId'],
-      lastCheckoutTimestamp: (data['lastCheckoutTimestamp'] as Timestamp?)?.toDate(),
+      lastCheckoutTimestamp: _parseDateTime(data['lastCheckoutTimestamp']),
       stripeAccountId: data['stripeAccountId'],
       payoutsEnabled: data['payoutsEnabled'] ?? false,
       chargesEnabled: data['chargesEnabled'] ?? false,
       onboardingCompleted: data['onboardingCompleted'] ?? false,
       suspended: data['suspended'] ?? false,
-      suspendedAt: (data['suspendedAt'] as Timestamp?)?.toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+      suspendedAt: _parseDateTime(data['suspendedAt']),
+      updatedAt: _parseDateTime(data['updatedAt']),
     );
   }
 

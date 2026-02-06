@@ -563,6 +563,19 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'Cannot delete account with pending orders. Please wait for orders to complete.'
         )
     
+    # Check if user is a seller with active orders to fulfill
+    active_sales = get_db().collection(Collections.ORDERS)\
+        .where('sellerIds', 'array-contains', user_id)\
+        .where('orderStatus', 'in', ['pending', 'confirmed', 'processing', 'shipped'])\
+        .limit(1)\
+        .stream()
+        
+    if any(active_sales):
+        raise https_fn.HttpsError(
+            'failed-precondition',
+            'Cannot delete account with active sales to fulfill. Please complete your orders first.'
+        )
+    
     pending_payouts = get_db().collection(Collections.PAYOUTS)\
         .where('sellerId', '==', user_id)\
         .where('status', '==', 'pending')\

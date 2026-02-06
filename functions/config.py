@@ -314,7 +314,7 @@ AIRWALLEX_BASE_URL = os.environ.get("AIRWALLEX_BASE_URL", "https://api.airwallex
 # OTHER CONFIGURATION
 # ============================================================================
 
-SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "seller@orignagta.com")
+SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "support@orignaventures.ca")
 
 # Stripe Tax Code Mapping
 CATEGORY_TAX_CODE_MAP = {

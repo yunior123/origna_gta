@@ -29,7 +29,7 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
   final dateCreated = ref.watch(cartItemDateProvider(productId));
   if (dateCreated == null) return null;
 
-  final quantity = ref.read(cartItemQuantityProvider(productId)).valueOrNull ?? 1;
+  final quantity = ref.watch(cartItemQuantityProvider(productId)).valueOrNull ?? 1;
 
   final productDoc = await firestore.collection('products').doc(productId).get();
   if (!productDoc.exists) return null;

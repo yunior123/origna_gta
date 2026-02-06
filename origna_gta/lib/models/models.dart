@@ -5,6 +5,26 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/constants.dart';
 
+/// Safely parse a dynamic value (Timestamp, String, DateTime) to DateTime?
+DateTime? _parseDateTime(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+  if (value is String) return DateTime.tryParse(value);
+  return null;
+}
+
+/// Safely parse a dynamic value to Timestamp (never null)
+Timestamp _parseTimestamp(dynamic value) {
+  if (value is Timestamp) return value;
+  if (value is DateTime) return Timestamp.fromDate(value);
+  if (value is String) {
+    final dt = DateTime.tryParse(value);
+    if (dt != null) return Timestamp.fromDate(dt);
+  }
+  return Timestamp.now();
+}
+
 class Address {
   final String street;
   final String apartment; // Unit, Suite, Apt #
@@ -183,7 +203,7 @@ class CartItemDetailModel {
       price: (map['price'] ?? 0).toDouble(),
       imageUrls: List<String>.from(map['imageUrls'] ?? []),
       quantity: (map['quantity'] as num?)?.toInt() ?? 0,
-      dateCreated: (map['dateCreated'] as Timestamp?) ?? Timestamp.now(),
+      dateCreated: _parseTimestamp(map['dateCreated']),
       sellerAddress: map['sellerAddress'] != null ? Address.fromMap(map['sellerAddress'] as Map<String, dynamic>) : Address.empty(),
       sellerId: map['sellerId'] ?? '',
       deliveryStatus: map['deliveryStatus'] ?? DeliveryStatus.pending.value,
@@ -241,10 +261,21 @@ class CartItemModel {
   final Timestamp dateCreated;
   CartItemModel({required this.quantity, required this.productId, required this.dateCreated});
   factory CartItemModel.fromMap(Map<String, dynamic> map) {
+    final raw = map['dateCreated'];
+    Timestamp ts;
+    if (raw is Timestamp) {
+      ts = raw;
+    } else if (raw is String) {
+      ts = Timestamp.fromDate(DateTime.parse(raw));
+    } else if (raw is DateTime) {
+      ts = Timestamp.fromDate(raw);
+    } else {
+      ts = Timestamp.now();
+    }
     return CartItemModel(
       quantity: (map['quantity'] as num?)?.toInt() ?? 0,
       productId: map['productId'] ?? '',
-      dateCreated: map['dateCreated'] ?? Timestamp.now(),
+      dateCreated: ts,
     );
   }
 
@@ -652,7 +683,7 @@ class ProductModel {
       categoryId: _parseInt(map['categoryId']),
       rating: _parseDouble(map['rating']),
       ratingCount: _parseInt(map['ratingCount']),
-      dateCreated: map['dateCreated'] as Timestamp?,
+      dateCreated: map['dateCreated'] != null ? _parseTimestamp(map['dateCreated']) : null,
       sellerId: map['sellerId']?.toString() ?? '',
       keywords: _parseStringList(map['keywords']),
       stockQuantity: _parseInt(map['stockQuantity']),
@@ -669,7 +700,7 @@ class ProductModel {
       minimumOrderQuantity: _parseIntOr(map['minimumOrderQuantity'], defaultValue: 1),
       freeShipping: map['freeShipping'] ?? false,
       isActive: map['isActive'] ?? true,
-      deletedAt: map['deletedAt'] as Timestamp?,
+      deletedAt: map['deletedAt'] != null ? _parseTimestamp(map['deletedAt']) : null,
     );
   }
 
@@ -785,7 +816,7 @@ class SellerPayout {
       netAmountCents: (map['netAmountCents'] as num?)?.toInt() ?? 0,
       status: map['status'] ?? 'pending',
       stripeTransferId: map['stripeTransferId'],
-      payoutDate: (map['payoutDate'] as Timestamp?)?.toDate(),
+      payoutDate: _parseDateTime(map['payoutDate']),
       failureReason: map['failureReason'],
     );
   }
@@ -875,17 +906,17 @@ class UserModel {
       name: map['name']?.toString() ?? '',
       roles: List<String>.from(map['roles'] ?? const []),
       address: map['address'] != null ? Address.fromMap(map['address'] as Map<String, dynamic>) : null,
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
       customerId: map['customerId'] as String?,
       lastCheckoutSession: map['lastCheckoutSession'] as String?,
       lastOrderId: map['lastOrderId'] as String?,
-      lastCheckoutTimestamp: (map['lastCheckoutTimestamp'] as Timestamp?)?.toDate(),
+      lastCheckoutTimestamp: _parseDateTime(map['lastCheckoutTimestamp']),
       stripeAccountId: map['stripeAccountId'] as String?,
       payoutsEnabled: map['payoutsEnabled'] ?? false,
       chargesEnabled: map['chargesEnabled'] ?? false,
       onboardingCompleted: map['onboardingCompleted'] ?? map['stripeOnboardingComplete'] ?? false,
       suspended: map['suspended'] ?? false,
-      suspendedAt: (map['suspendedAt'] as Timestamp?)?.toDate(),
+      suspendedAt: _parseDateTime(map['suspendedAt']),
       paymentProvider: map['paymentProvider'] ?? 'stripe',
       airwallexAccountId: map['airwallexAccountId'] as String?,
       airwallexCustomerId: map['airwallexCustomerId'] as String?,

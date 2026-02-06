@@ -12,6 +12,9 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Provider for terms acceptance state — shared between _TermsText and _CheckoutButton
+final _termsAcceptedProvider = StateProvider.autoDispose<bool>((ref) => false);
+
 class CheckoutScreen extends ConsumerStatefulWidget {
   final List<CartItemDetailModel> items;
   final double total;
@@ -133,7 +136,8 @@ class _CheckoutButton extends ConsumerWidget {
     final isProcessing = ref.watch(checkoutStateProvider.select((state) => state.isProcessing));
     final isCalculating = ref.watch(checkoutStateProvider.select((state) => state.isCalculatingShipping));
     final shippingError = ref.watch(checkoutStateProvider.select((state) => state.shippingError));
-    final isDisabled = isProcessing || isCalculating || shippingError != null;
+    final termsAccepted = ref.watch(_termsAcceptedProvider);
+    final isDisabled = isProcessing || isCalculating || shippingError != null || !termsAccepted;
 
     return Container(
       padding: EdgeInsets.all(ResponsiveBreakpoints.getSpacing(context, SpacingSize.md)),
@@ -364,6 +368,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
     final availableSpeeds = ref.watch(checkoutStateProvider.select((state) => state.availableDeliverySpeeds));
     final selectedSpeed = ref.watch(checkoutStateProvider.select((state) => state.deliverySpeed));
     final isCalculating = ref.watch(checkoutStateProvider.select((state) => state.isCalculatingShipping));
+    final baseShippingCost = ref.watch(checkoutStateProvider.select((state) => state.baseShippingCost));
 
     if (isCalculating) {
       return const SizedBox.shrink();
@@ -389,7 +394,10 @@ class _DeliveryOptionsSection extends ConsumerWidget {
         ...DeliverySpeed.values.map((speed) {
           final isAvailable = availableSpeeds.contains(speed);
           final isSelected = selectedSpeed == speed;
-          final surcharge = speed == DeliverySpeed.standard ? 0.0 : speed.baseSurcharge;
+          // Show total shipping cost (base + surcharge), not just surcharge
+          final totalCost = speed == DeliverySpeed.standard
+              ? baseShippingCost
+              : baseShippingCost + speed.baseSurcharge;
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -464,8 +472,8 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        surcharge > 0 ? '+\$${surcharge.toStringAsFixed(2)}' : 'FREE',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: surcharge > 0 ? Colors.black87 : Colors.green.shade700),
+                        totalCost > 0 ? '\$${totalCost.toStringAsFixed(2)}' : 'FREE',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: totalCost > 0 ? Colors.black87 : Colors.green.shade700),
                       ),
                     ],
                   ),
@@ -698,6 +706,7 @@ class _PaymentProviderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Only Stripe is currently integrated — Airwallex removed until backend support is wired
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -707,26 +716,14 @@ class _PaymentProviderSection extends StatelessWidget {
           children: [
             ChoiceChip(
               label: const Text('Stripe'),
-              selected: selectedProvider == 'stripe',
-              onSelected: (selected) {
-                if (selected) onChanged('stripe');
-              },
-            ),
-            const SizedBox(width: 12),
-            ChoiceChip(
-              label: const Text('Airwallex'),
-              selected: selectedProvider == 'airwallex',
-              onSelected: (selected) {
-                if (selected) onChanged('airwallex');
-              },
+              selected: true,
+              onSelected: (_) {},
             ),
           ],
         ),
         const SizedBox(height: 8),
         Text(
-          selectedProvider == 'airwallex'
-              ? 'Airwallex supports international cards and multi-currency settlement.'
-              : 'Stripe is the default and fastest checkout experience.',
+          'Secure checkout powered by Stripe.',
           style: TextStyle(color: Colors.grey[600], fontSize: 12),
         ),
       ],
@@ -771,18 +768,13 @@ class _SecurityInfo extends StatelessWidget {
   }
 }
 
-class _TermsText extends StatefulWidget {
+class _TermsText extends ConsumerWidget {
   const _TermsText();
 
   @override
-  State<_TermsText> createState() => _TermsTextState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final termsAccepted = ref.watch(_termsAcceptedProvider);
 
-class _TermsTextState extends State<_TermsText> {
-  bool _termsAccepted = false;
-
-  @override
-  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Container(
@@ -790,7 +782,10 @@ class _TermsTextState extends State<_TermsText> {
         decoration: BoxDecoration(
           color: Colors.grey.shade50,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.grey.shade200, width: 1),
+          border: Border.all(
+            color: termsAccepted ? Colors.grey.shade200 : Colors.red.shade100,
+            width: 1,
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -799,9 +794,9 @@ class _TermsTextState extends State<_TermsText> {
               height: 20,
               width: 20,
               child: Checkbox(
-                value: _termsAccepted,
-                onChanged: (value) => setState(() => _termsAccepted = value ?? false),
-                side: BorderSide(color: Colors.grey.shade400),
+                value: termsAccepted,
+                onChanged: (value) => ref.read(_termsAcceptedProvider.notifier).state = value ?? false,
+                side: BorderSide(color: termsAccepted ? Colors.grey.shade400 : Colors.red.shade300),
               ),
             ),
             const SizedBox(width: 12),

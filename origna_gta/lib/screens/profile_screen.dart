@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/admin/admin_panel_screen.dart';
 import 'package:origna_gta/screens/addressmanagement_screen.dart';
@@ -250,7 +251,10 @@ class ProfileScreen extends ConsumerWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: () {
+            HapticFeedback.lightImpact();
+            onTap();
+          },
           borderRadius: BorderRadius.circular(DesignTokens.radius12),
           splashColor: DesignTokens.primary.withValues(alpha: 0.1),
           child: Padding(

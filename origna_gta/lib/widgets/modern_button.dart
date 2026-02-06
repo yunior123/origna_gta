@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../utils/design_tokens.dart';
 
@@ -44,7 +45,14 @@ class _ModernButtonState extends State<ModernButton>
     final isDisabled = widget.onPressed == null || widget.isLoading;
 
     return GestureDetector(
-      onTapDown: isDisabled ? null : (_) => _scaleController.forward(),
+      onTapDown: isDisabled
+          ? null
+          : (_) {
+              if (widget.isPrimary && !widget.isOutlined) {
+                HapticFeedback.lightImpact();
+              }
+              _scaleController.forward();
+            },
       onTapUp: isDisabled
           ? null
           : (_) {
