@@ -144,18 +144,27 @@ class TestCreateCheckoutSession:
         """Test rate limiting prevents abuse (100 requests/15min)"""
         from handlers.payment_stripe import create_checkout_session
         
+        # Mock user doc (not suspended) — suspension check runs before rate limiting
+        mock_db = MagicMock()
+        mock_get_db.return_value = mock_db
+        mock_user_doc = MagicMock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {'suspended': False}
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_user_doc
+        
         mock_rate_limiter_instance = Mock()
-        mock_rate_limiter_instance.check_rate_limit = Mock(side_effect=Exception("Rate limit exceeded: 100 requests per 15 minutes"))
+        mock_rate_limiter_instance.check_rate_limit = Mock(return_value=(False, "Rate limit exceeded: 100 requests per 15 minutes"))
         mock_get_rate_limiter.return_value = mock_rate_limiter_instance
         
         mock_request = Mock()
         mock_request.auth = Mock(uid="test_user_123")
+        mock_request.auth.token = {'email_verified': True}
         mock_request.data = {'items': []}
         
-        with pytest.raises(Exception) as exc:
+        with pytest.raises(https_fn.HttpsError) as exc:
             create_checkout_session(mock_request)
         
-        assert "Rate limit exceeded" in str(exc.value)
+        assert exc.value.code == 'resource-exhausted'
     
     @patch('handlers.payment_stripe.get_db')
     @patch('handlers.payment_stripe.get_rate_limiter')
@@ -166,6 +175,12 @@ class TestCreateCheckoutSession:
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
         
+        # Mock user doc (not suspended) — suspension check runs before cart validation
+        mock_user_doc = MagicMock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {'suspended': False}
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_user_doc
+        
         # Setup rate limiter
         mock_rate_limiter_instance = Mock()
         mock_rate_limiter_instance.check_rate_limit = Mock(return_value=(True, "OK"))
@@ -173,6 +188,7 @@ class TestCreateCheckoutSession:
         
         mock_request = Mock()
         mock_request.auth = Mock(uid="test_user_123")
+        mock_request.auth.token = {'email_verified': True}
         mock_request.data = {'items': []}
         
         with pytest.raises(https_fn.HttpsError) as exc:
@@ -550,7 +566,7 @@ class TestCapturePayment:
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")
-        mock_request.auth.token = {'roles': ['admin']}
+        mock_request.auth.token = {'admin': True}
         mock_request.data = {'orderId': 'order_123'}
 
         result = capture_payment(mock_request)
@@ -620,7 +636,7 @@ class TestCapturePayment:
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")
-        mock_request.auth.token = {'roles': ['admin']}
+        mock_request.auth.token = {'admin': True}
         mock_request.data = {'orderId': 'order_123'}
 
         with pytest.raises(https_fn.HttpsError) as exc:
@@ -638,7 +654,16 @@ class TestCapturePayment:
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        mock_order_doc = create_mock_order_doc(payment_status='authorized')
+        mock_order_doc = create_mock_order_doc(
+            payment_status='authorized',
+            items=[{
+                'productId': 'prod_123',
+                'quantity': 2,
+                'price': 50.00,
+                'sellerId': 'seller_123',
+                'name': 'Test Product'
+            }]
+        )
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_order_doc
         mock_db.collection.return_value.document.return_value = mock_doc_ref
@@ -651,7 +676,7 @@ class TestCapturePayment:
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")
-        mock_request.auth.token = {'roles': ['admin']}
+        mock_request.auth.token = {'admin': True}
         mock_request.data = {'orderId': 'order_123'}
 
         with pytest.raises(https_fn.HttpsError) as exc:
