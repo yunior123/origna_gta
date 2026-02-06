@@ -5,7 +5,6 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/seller_orders_viewmodel.dart';
-import 'package:origna_gta/models/enum_extensions.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 
