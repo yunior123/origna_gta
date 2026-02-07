@@ -9,7 +9,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
   @override
   void initState() {
     super.initState();
-    _imageModels = widget.imageModels;
+    _imageModels = List<ImageModel>.from(widget.imageModels);
   }
 
   @override

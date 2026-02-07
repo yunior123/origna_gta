@@ -196,6 +196,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                           ),
                           const SizedBox(height: DesignTokens.spacing16),
                           DropdownButtonFormField<String>(
+                            key: ValueKey(state.selectedProvince),
                             initialValue: state.selectedProvince,
                             decoration: InputDecoration(
                               labelText: 'Province',

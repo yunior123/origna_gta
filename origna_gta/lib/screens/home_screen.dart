@@ -306,7 +306,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Pagination Loader
             const _PaginationLoader(),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 50)),
+            // Footer with legal links
+            SliverToBoxAdapter(
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                child: Column(
+                  children: [
+                    Divider(color: Colors.grey.withValues(alpha: 0.2)),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pushNamed(context, '/privacy-policy'),
+                          child: Text(
+                            'Privacy Policy',
+                            style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+                          ),
+                        ),
+                        Text('|', style: TextStyle(color: Colors.grey.withValues(alpha: 0.4), fontSize: 13)),
+                        TextButton(
+                          onPressed: () => Navigator.pushNamed(context, '/terms-of-service'),
+                          child: Text(
+                            'Terms of Service',
+                            style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '© 2026 Origna GTA. All rights reserved.',
+                      style: TextStyle(color: isDark ? Colors.grey[600] : Colors.grey[400], fontSize: 11),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -487,8 +525,7 @@ class _ProductGrid extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (products.isEmpty && !isLoading) {
-      return SliverFillRemaining(
-        hasScrollBody: false,
+      return SliverToBoxAdapter(
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(64),
@@ -522,16 +559,32 @@ class _ProductGrid extends ConsumerWidget {
     }
 
     if (isLoading) {
-      return SliverFillRemaining(
-        hasScrollBody: false,
-        child: Center(
-          child: ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(
-              colors: [DesignTokens.primary, DesignTokens.secondary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ).createShader(bounds),
-            child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 80),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [DesignTokens.primary, DesignTokens.secondary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ).createShader(bounds),
+                  child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Loading products...',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );

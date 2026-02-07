@@ -13,7 +13,7 @@ class HomeState {
 
   HomeState({
     this.products = const [],
-    this.isLoading = true,
+    this.isLoading = false,
     this.isLoadingMore = false,
     this.hasMore = true,
     this.lastDocument,

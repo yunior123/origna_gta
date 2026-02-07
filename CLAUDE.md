@@ -211,6 +211,7 @@ origna_gta/
 - Always check `mounted` after await
 - Prefer const constructors
 - `withOpacity` is deprecated → use `withValues` or `Color.withValues`
+- `DropdownButtonFormField.value` is DEPRECATED → use `initialValue` + `key: ValueKey(stateValue)` to force rebuild when state changes reactively (e.g. address suggestion selecting a province)
 
 ---
 
