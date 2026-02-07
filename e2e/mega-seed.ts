@@ -458,7 +458,7 @@ async function seedCartItems(uidMap: Map<string, string>) {
   // Give ~20 buyers various cart items (some multi-seller)
   const cartAssignments: { buyerEmail: string; items: { productId: string; quantity: number }[] }[] = [
     // Single-item carts
-    { buyerEmail: 'buyer1@test.origna.ca', items: [{ productId: 'product_001', quantity: 1 }] },
+    { buyerEmail: 'yuniorrodriguezo460@gmail.com', items: [{ productId: 'product_001', quantity: 1 }] },
     { buyerEmail: 'buyer2@test.origna.ca', items: [{ productId: 'product_004', quantity: 2 }] },
     { buyerEmail: 'buyer3@test.origna.ca', items: [{ productId: 'product_009', quantity: 1 }] },
     { buyerEmail: 'buyer4@test.origna.ca', items: [{ productId: 'product_012', quantity: 3 }] },

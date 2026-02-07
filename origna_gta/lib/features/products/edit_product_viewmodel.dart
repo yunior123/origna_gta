@@ -82,9 +82,10 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
 
   void toggleDigital(bool value) => state = state.copyWith(
     isDigital: value,
+    freeShipping: value ? true : state.freeShipping, // Bug #1: digital products MUST have freeShipping
     isPerishable: value ? false : state.isPerishable,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
-    standardEnabled: value ? false : state.standardEnabled,
+    standardEnabled: value ? false : (state.standardEnabled || true), // Re-enable standard when going back to physical
     expressEnabled: value ? false : state.expressEnabled,
     sameDayEnabled: value ? false : state.sameDayEnabled,
   );
@@ -145,6 +146,14 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     if ((weight ?? 0) < 0 || (length ?? 0) < 0 || (width ?? 0) < 0 || (height ?? 0) < 0) {
       state = state.copyWith(errorMessage: 'Package dimensions must be positive');
       return;
+    }
+
+    // Bug #4: Physical products need at least one delivery tier (unless local-only)
+    if (!state.isDigital && !state.isLocalDeliveryOnly) {
+      if (!state.standardEnabled && !state.expressEnabled && !state.sameDayEnabled) {
+        state = state.copyWith(errorMessage: 'Enable at least one delivery option for physical products');
+        return;
+      }
     }
 
     final totalImages = state.existingImageUrls.length + state.newImages.length;

@@ -15,7 +15,7 @@ def decode_token(token):
 
 # Step 1: Sign in
 r1 = post(f'{AUTH}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key',
-    {'email': 'buyer1@test.origna.ca', 'password': 'REDACTED_TEST_PASSWORD', 'returnSecureToken': True})
+    {'email': 'yuniorrodriguezo460@gmail.com', 'password': 'REDACTED_TEST_PASSWORD', 'returnSecureToken': True})
 token1 = r1['idToken']
 j1 = decode_token(token1)
 print('Before update - email_verified:', j1.get('email_verified'))

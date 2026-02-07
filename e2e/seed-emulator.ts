@@ -104,7 +104,7 @@ const USERS: SeedUser[] = [
     sellerProfile: { businessName: 'West Coast Wares', businessAddress: CANADIAN_ADDRESSES[16], stripeAccountId: 'acct_test_seller005', payoutsEnabled: false, chargesEnabled: false, onboardingCompleted: false } },
   
   // BUYERS (15) - across various provinces
-  { email: 'buyer1@test.origna.ca', password: 'REDACTED_TEST_PASSWORD', displayName: 'David Brown', roles: ['buyer'], addressIndex: 5 },
+  { email: 'yuniorrodriguezo460@gmail.com', password: 'REDACTED_TEST_PASSWORD', displayName: 'David Brown', roles: ['buyer'], addressIndex: 5 },
   { email: 'buyer2@test.origna.ca', password: 'REDACTED_TEST_PASSWORD', displayName: 'Emma Davis', roles: ['buyer'], addressIndex: 6 },
   { email: 'buyer3@test.origna.ca', password: 'REDACTED_TEST_PASSWORD', displayName: 'Oliver Martin', roles: ['buyer'], addressIndex: 7 },
   { email: 'buyer4@test.origna.ca', password: 'REDACTED_TEST_PASSWORD', displayName: 'Chloé Dubois', roles: ['buyer'], addressIndex: 8 },
@@ -418,7 +418,7 @@ async function seedCartItems(uidMap: Map<string, string>) {
   console.log('\n🛒 Adding items to buyer carts...');
   
   // Give a few buyers some cart items
-  const buyerEmails = ['buyer1@test.origna.ca', 'buyer2@test.origna.ca', 'buyer3@test.origna.ca'];
+  const buyerEmails = ['yuniorrodriguezo460@gmail.com', 'buyer2@test.origna.ca', 'buyer3@test.origna.ca'];
   const cartProducts = [
     { productId: 'product_001', quantity: 1 },
     { productId: 'product_003', quantity: 2 },

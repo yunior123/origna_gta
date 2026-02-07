@@ -125,6 +125,7 @@ abstract final class Fields {
   static const supplier = 'supplier';
   static const inventory = 'inventory';
   static const status = 'status';
+  static const deliverySpeed = 'deliverySpeed';
 
   // === ORDER FIELDS ===
   static const orderId = 'orderId';

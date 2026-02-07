@@ -20,7 +20,7 @@ def decode_jwt(token):
 # Step 1: Sign in first to get uid and token
 sign_in = post_json(
     f'{AUTH}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key',
-    {'email': 'buyer1@test.origna.ca', 'password': 'REDACTED_TEST_PASSWORD', 'returnSecureToken': True}
+    {'email': 'yuniorrodriguezo460@gmail.com', 'password': 'REDACTED_TEST_PASSWORD', 'returnSecureToken': True}
 )
 uid = sign_in['localId']
 claims_before = decode_jwt(sign_in['idToken'])
@@ -42,7 +42,7 @@ except Exception as e:
 # Step 3: Sign in again to get new token after PATCH
 sign_in2 = post_json(
     f'{AUTH}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key',
-    {'email': 'buyer1@test.origna.ca', 'password': 'REDACTED_TEST_PASSWORD', 'returnSecureToken': True}
+    {'email': 'yuniorrodriguezo460@gmail.com', 'password': 'REDACTED_TEST_PASSWORD', 'returnSecureToken': True}
 )
 claims_after = decode_jwt(sign_in2['idToken'])
 print(f"After PATCH+signIn token email_verified: {claims_after.get('email_verified')}")

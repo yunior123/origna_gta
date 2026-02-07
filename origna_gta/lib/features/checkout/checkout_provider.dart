@@ -208,7 +208,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       final idempotencyKey = state.idempotencyKey ?? _generateIdempotencyKey(userId);
       state = state.copyWith(idempotencyKey: idempotencyKey);
 
-      // Backend expects: items, shippingAddress, subtotal, userId
+      // Backend expects: items, shippingAddress, subtotal, userId, deliverySpeed
       // Backend handles: tax calculation, shipping calculation, total calculation server-side
       final orderData = {
         Fields.userId: userId,
@@ -226,6 +226,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
             .toList(),
         'subtotal': subtotal,
         Fields.shippingAddress: state.address?.toMap() ?? {},
+        // Bug #9: Send delivery speed so backend applies correct multiplier
+        'deliverySpeed': state.deliverySpeed.value,
       };
 
       debugPrint('Sending checkout request for user: $userId');

@@ -41,7 +41,7 @@ const STRIPE_TEST_CARD = {
 // Test users (created by seed-emulator.ts)
 const ADMIN = { email: 'yr62813@gmail.com', password: '960227Y#y', name: 'Admin Yunior' };
 const SELLER = { email: 'seller1@test.origna.ca', password: 'REDACTED_TEST_PASSWORD', name: 'Marie Tremblay' };
-const BUYER = { email: 'buyer1@test.origna.ca', password: 'REDACTED_TEST_PASSWORD', name: 'David Brown' };
+const BUYER = { email: 'yuniorrodriguezo460@gmail.com', password: 'REDACTED_TEST_PASSWORD', name: 'David Brown' };
 
 // Timeouts
 const FLUTTER_INIT_TIMEOUT = 30_000;

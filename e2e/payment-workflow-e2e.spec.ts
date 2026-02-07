@@ -237,7 +237,7 @@ test.describe('A. Checkout Validation', () => {
   });
 
   test('A.2 Rejects empty items array', async () => {
-    const auth = await signIn('buyer1@test.origna.ca');
+    const auth = await signIn('yuniorrodriguezo460@gmail.com');
     try {
       await callCallable('create_checkout_session', {
         userId: auth.localId, items: [], subtotal: 0,
@@ -250,7 +250,7 @@ test.describe('A. Checkout Validation', () => {
   });
 
   test('A.3 Rejects missing shipping address fields', async () => {
-    const auth = await signIn('buyer1@test.origna.ca');
+    const auth = await signIn('yuniorrodriguezo460@gmail.com');
     const prodDoc = await readDoc('products/product_001');
     const product = parseDoc(prodDoc);
     try {
@@ -1131,7 +1131,7 @@ test.describe('J. Email Notifications', () => {
     // Use any recent order (from suite B)
     if (!orderB?.orderId) {
       console.log('⚠️ No order from suite B — creating a quick one');
-      const auth = await signIn('buyer1@test.origna.ca');
+      const auth = await signIn('yuniorrodriguezo460@gmail.com');
       const { data } = await buildCheckoutPayload(auth.localId, 'product_003');
       const r = await callCallable('create_checkout_session', data, auth.idToken);
       const doc = await readDoc(`orders/${r.orderId}`);

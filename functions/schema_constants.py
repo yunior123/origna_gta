@@ -141,6 +141,7 @@ class Fields:
     SUPPLIER = "supplier"
     INVENTORY = "inventory"
     STATUS = "status"
+    DELIVERY_SPEED = "deliverySpeed"
 
     # === ORDER FIELDS ===
     ORDER_ID = "orderId"

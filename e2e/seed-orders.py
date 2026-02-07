@@ -24,7 +24,7 @@ SELLER1_UID = UID_MAP["seller1@test.origna.ca"]
 SELLER2_UID = UID_MAP["seller2@test.origna.ca"]
 SELLER3_UID = UID_MAP["seller3@test.origna.ca"]
 SELLER4_UID = UID_MAP["seller4@test.origna.ca"]
-BUYER1_UID = UID_MAP["buyer1@test.origna.ca"]
+BUYER1_UID = UID_MAP["yuniorrodriguezo460@gmail.com"]
 BUYER2_UID = UID_MAP["buyer2@test.origna.ca"]
 BUYER3_UID = UID_MAP["buyer3@test.origna.ca"]
 BUYER4_UID = UID_MAP["buyer4@test.origna.ca"]
@@ -262,7 +262,7 @@ print("═" * 50)
 create_order("order_test_001", build_order(
     "order_test_001",
     buyer_uid=BUYER1_UID,
-    buyer_email="buyer1@test.origna.ca",
+    buyer_email="yuniorrodriguezo460@gmail.com",
     buyer_province="ON",
     status="pending",
     payment_status="paid",
@@ -346,7 +346,7 @@ create_order("order_test_005", build_order(
 create_order("order_test_006", build_order(
     "order_test_006",
     buyer_uid=BUYER1_UID,
-    buyer_email="buyer1@test.origna.ca",
+    buyer_email="yuniorrodriguezo460@gmail.com",
     buyer_province="ON",
     status="delivered",
     payment_status="captured",
@@ -377,7 +377,7 @@ create_order("order_test_007", build_order(
 create_order("order_test_008", build_order(
     "order_test_008",
     buyer_uid=BUYER1_UID,
-    buyer_email="buyer1@test.origna.ca",
+    buyer_email="yuniorrodriguezo460@gmail.com",
     buyer_province="ON",
     status="confirmed",
     payment_status="authorized",
@@ -404,6 +404,6 @@ print("  📋 order_test_006: delivered (1 digital item)")
 print("  📋 order_test_007: cancelled")
 print("  📋 order_test_008: confirmed (3 items, multi-seller — for status cycling)")
 print()
-print("🔑 Login as buyer1@test.origna.ca (password: REDACTED_TEST_PASSWORD) to see orders")
+print("🔑 Login as yuniorrodriguezo460@gmail.com (password: REDACTED_TEST_PASSWORD) to see orders")
 print("   Orders visible: order_test_001, 006, 008")
 print("   Or login as buyer2@test.origna.ca for orders: 002, 007")

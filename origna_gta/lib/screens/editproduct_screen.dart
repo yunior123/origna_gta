@@ -434,8 +434,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
               (v) => viewModel.setSameDayEnabled(v),
               null,
               _sameDayPriceController,
-              'Radius (km)',
-              extraController: _sameDayRadiusController,
+              'Price (\$)',
             ),
           ],
         ),
@@ -545,31 +544,58 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final state = ref.read(editProductViewModelProvider(widget.product));
-    final deliveryOptions = state.isDigital
-        ? <SellerDeliveryOption>[]
-        : <SellerDeliveryOption>[
-            if (state.standardEnabled)
-              SellerDeliveryOption(
-                type: 'standard',
-                description: 'Standard Delivery',
-                estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
-                cost: double.tryParse(_standardPriceController.text) ?? 0.0,
-              ),
-            if (state.expressEnabled)
-              SellerDeliveryOption(
-                type: 'express',
-                description: 'Express Delivery',
-                estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
-                cost: double.tryParse(_expressPriceController.text) ?? 9.99,
-              ),
-            if (state.sameDayEnabled)
-              SellerDeliveryOption(
-                type: 'same_day',
-                description: 'Same Day Delivery',
-                estimatedDays: 0,
-                cost: double.tryParse(_sameDayPriceController.text) ?? 14.99,
-              ),
-          ];
+
+    // Bug #6: Preserve existing quantityDiscounts/additionalItemCost/maxItemsPerShipment from product
+    final existingStandard = widget.product.deliveryOptions.where((o) => o.type == 'standard').firstOrNull;
+    final existingExpress = widget.product.deliveryOptions.where((o) => o.type == 'express').firstOrNull;
+    final existingQuantityDiscounts = existingStandard?.quantityDiscounts ?? existingExpress?.quantityDiscounts ?? const [];
+    final existingAdditionalItemCost = existingStandard?.additionalItemCost ?? existingExpress?.additionalItemCost ?? 0.0;
+    final existingMaxItems = existingStandard?.maxItemsPerShipment ?? existingExpress?.maxItemsPerShipment ?? 0;
+
+    List<SellerDeliveryOption> deliveryOptions;
+    if (state.isDigital) {
+      deliveryOptions = <SellerDeliveryOption>[];
+    } else if (state.isLocalDeliveryOnly) {
+      // Bug #2: Inject pickup option for local-only products
+      deliveryOptions = [
+        const SellerDeliveryOption(
+          type: 'pickup',
+          description: 'Local Pickup',
+          estimatedDays: 0,
+          cost: 0.0,
+        ),
+      ];
+    } else {
+      deliveryOptions = <SellerDeliveryOption>[
+        if (state.standardEnabled)
+          SellerDeliveryOption(
+            type: 'standard',
+            description: 'Standard Delivery',
+            estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
+            cost: double.tryParse(_standardPriceController.text) ?? 0.0,
+            quantityDiscounts: existingQuantityDiscounts,
+            additionalItemCost: existingAdditionalItemCost,
+            maxItemsPerShipment: existingMaxItems,
+          ),
+        if (state.expressEnabled)
+          SellerDeliveryOption(
+            type: 'express',
+            description: 'Express Delivery',
+            estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
+            cost: double.tryParse(_expressPriceController.text) ?? 9.99,
+            quantityDiscounts: existingQuantityDiscounts,
+            additionalItemCost: existingAdditionalItemCost,
+            maxItemsPerShipment: existingMaxItems,
+          ),
+        if (state.sameDayEnabled)
+          SellerDeliveryOption(
+            type: 'same_day',
+            description: 'Same Day Delivery',
+            estimatedDays: 0,
+            cost: double.tryParse(_sameDayPriceController.text) ?? 14.99,
+          ),
+      ];
+    }
 
     viewModel.updateProduct(
       name: _nameController.text.trim(),

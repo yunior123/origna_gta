@@ -297,7 +297,7 @@ test.describe('A. Happy Path — Full Shipping Lifecycle', () => {
   let sellerId: string;
   let buyerId: string;
 
-  const BUYER_EMAIL  = 'buyer1@test.origna.ca';
+  const BUYER_EMAIL  = 'yuniorrodriguezo460@gmail.com';
   const SELLER_EMAIL = 'seller1@test.origna.ca';
   const PRODUCT_ID   = 'product_001'; // Handmade Quebec Scarf, $45.99, seller1
 

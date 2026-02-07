@@ -322,7 +322,7 @@ test.describe('E: Cart Quantity Operations', () => {
   let buyerUid: string;
 
   test.beforeAll(async () => {
-    buyerAuth = await signIn('buyer1@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+    buyerAuth = await signIn('yuniorrodriguezo460@gmail.com', 'REDACTED_TEST_PASSWORD');
     buyerUid = buyerAuth.localId;
   });
 

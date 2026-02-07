@@ -358,7 +358,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> Dict[str, Any]:
 def on_product_created(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Indexes product to Algolia when created.
-    Also validates perishable products have proper delivery options.
+    Also validates product data consistency and fixes known issues.
     """
     product_id = event.params['productId']
     product_data = event.data.to_dict()
@@ -372,19 +372,51 @@ def on_product_created(event: firestore_fn.Event) -> None:
         print(f'Product {product_id} is not active, skipping indexing')
         return
     
+    # ── DATA CONSISTENCY VALIDATION ──────────────────────────────────
+    patches = {}
+    
+    # Bug #1: Digital products MUST have freeShipping=true
+    is_digital = product_data.get(Fields.IS_DIGITAL, False)
+    if is_digital and not product_data.get(Fields.FREE_SHIPPING, False):
+        patches[Fields.FREE_SHIPPING] = True
+        print(f'FIX: Product {product_id} is digital but freeShipping=false → patching to true')
+    
+    # Bug #2: Local-only products should have a pickup delivery option
+    is_local_only = product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False)
+    delivery_options = product_data.get(Fields.DELIVERY_OPTIONS, [])
+    if is_local_only and not any(opt.get('type') == 'pickup' for opt in delivery_options if isinstance(opt, dict)):
+        pickup_option = {'type': 'pickup', 'description': 'Local Pickup', 'estimatedDays': 0, 'cost': 0.0}
+        patches[Fields.DELIVERY_OPTIONS] = [pickup_option] + delivery_options
+        print(f'FIX: Product {product_id} is local-only but missing pickup option → patching')
+    
+    # Bug #4: Physical products with no delivery options (and not local-only) → add standard
+    if not is_digital and not is_local_only and not delivery_options:
+        standard_option = {'type': 'standard', 'description': 'Standard Delivery', 'estimatedDays': 5, 'cost': 0.0}
+        patches[Fields.DELIVERY_OPTIONS] = [standard_option]
+        print(f'FIX: Product {product_id} has no delivery options → adding standard')
+    
+    # Apply patches if any
+    if patches:
+        try:
+            get_db().collection('products').document(product_id).update(patches)
+            print(f'Applied {len(patches)} fix(es) to product {product_id}')
+            # Update local copy for indexing
+            product_data.update(patches)
+        except Exception as e:
+            print(f'WARNING: Failed to apply patches to product {product_id}: {str(e)}')
+    
     # FOOD SAFETY: Perishable products should have local delivery or same-day option
     is_perishable = product_data.get(Fields.IS_PERISHABLE, False)
     if is_perishable:
         delivery_options = product_data.get(Fields.DELIVERY_OPTIONS, [])
         has_local_or_same_day = any(
-            opt.get('type') in ['local_delivery', 'same_day', 'local'] or 
+            opt.get('type') in ['local_delivery', 'same_day', 'local', 'pickup'] or 
             opt.get('estimatedDays', 99) <= 1
             for opt in delivery_options
         ) if delivery_options else product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False)
         
         if not has_local_or_same_day:
             print(f'WARNING: Perishable product {product_id} should have local/same-day delivery')
-            # Log warning but don't block - seller can update later
     
     try:
         # Add document ID to product data

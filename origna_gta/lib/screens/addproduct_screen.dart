@@ -317,6 +317,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                             icon: Icons.local_shipping_rounded,
                                             value: state.freeShipping,
                                             onChanged: viewModel.toggleFreeShipping,
+                                            infoTitle: 'Free Shipping',
+                                            infoBody: 'When enabled, the buyer pays \$0 for shipping — you absorb the cost.\n\nThis is great for increasing conversions, especially for lightweight or high-margin products.\n\nTip: You can also offer free shipping only for bulk orders (10+ items) in the Delivery section below.',
                                           ),
                                         ),
                                       ],
@@ -330,6 +332,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       icon: Icons.receipt_long_rounded,
                                       hint: 'txcd_########',
                                       validator: (v) => isValidTaxCode(v) ? null : 'Invalid tax code',
+                                    ),
+                                    _buildTappableInfoHint(
+                                      'What is a tax code? Tap to learn more',
+                                      'Stripe Tax Codes',
+                                      'Tax codes tell Stripe which tax rate to apply at checkout.\n\nFormat: txcd_ followed by 8 digits (e.g. txcd_99999999).\n\nCommon codes:\n• txcd_99999999 — General tangible goods\n• txcd_10000000 — General services\n• txcd_10201000 — Software as a Service (SaaS)\n• txcd_35010000 — Clothing & apparel\n\nLeave empty to use Stripe\'s default tax behavior. Find the full list at stripe.com/docs/tax/tax-codes.',
                                     ),
                                   ],
                                 ),
@@ -360,6 +367,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       icon: Icons.cloud_download_rounded,
                                       value: state.isDigital,
                                       onChanged: viewModel.toggleDigital,
+                                      infoTitle: 'Digital Products',
+                                      infoBody: 'Enable this for products delivered electronically — e-books, software, digital art, courses, etc.\n\nWhat happens:\n• Shipping is automatically set to free\n• Delivery tiers and package dimensions are hidden\n• No physical address is needed from the buyer\n\nThe buyer will receive the product through your delivery method (email, download link, etc.).',
                                     ),
                                     if (state.isDigital)
                                       Padding(
@@ -377,6 +386,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         icon: Icons.thermostat_rounded,
                                         value: state.isPerishable,
                                         onChanged: viewModel.togglePerishable,
+                                        infoTitle: 'Perishable Items',
+                                        infoBody: 'Mark products that are temperature-sensitive or have a short shelf life — food, flowers, cosmetics, etc.\n\nWhat this does:\n• Flags the product for priority handling\n• Buyers are informed about special shipping conditions\n• Express or Same-Day delivery is recommended\n\nTip: Consider enabling Same-Day Delivery below for perishable items to ensure freshness.',
                                       ),
                                       const SizedBox(height: 16),
                                       _buildDeliveryTierCard(
@@ -385,6 +396,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         isEnabled: state.standardEnabled,
                                         onChanged: viewModel.setStandardEnabled,
                                         color: DesignTokens.primary,
+                                        infoTitle: 'Standard Delivery',
+                                        infoBody: 'The base shipping option for your product.\n\nPricing:\n• Set Price to \$0 for free standard shipping\n• Or set your own flat rate (e.g. \$5.99)\n• If left at \$0 and Free Shipping is off, distance-based rates apply\n\nDays: Estimated business days for delivery (shown to buyers).\n\nAt least one delivery tier must be enabled for physical products.',
                                         children: [
                                           Row(
                                             children: [
@@ -402,6 +415,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         isEnabled: state.expressEnabled,
                                         onChanged: viewModel.setExpressEnabled,
                                         color: DesignTokens.warning,
+                                        infoTitle: 'Express Delivery',
+                                        infoBody: 'Offer faster shipping at a premium price.\n\nDefault surcharge: \$9.99 on top of standard shipping.\n\nWhen a buyer selects Express at checkout:\n• Your price here is the base rate shown\n• An additional express surcharge is applied automatically\n• You keep the shipping revenue minus platform fees\n\nTypical express timeframe: 1-2 business days.',
                                         children: [
                                           Row(
                                             children: [
@@ -419,14 +434,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         isEnabled: state.sameDayEnabled,
                                         onChanged: viewModel.setSameDayEnabled,
                                         color: DesignTokens.success,
+                                        infoTitle: 'Same-Day Delivery',
+                                        infoBody: 'Offer same-day delivery for local buyers.\n\nDefault surcharge: \$14.99 on top of base shipping.\n\nHow it works:\n• Only available for buyers within your delivery area\n• Orders must be placed before your cutoff time\n• Best for perishable items, gifts, or urgent needs\n\nIdeal for food, flowers, and time-sensitive products.',
                                         children: [
-                                          Row(
-                                            children: [
-                                              Expanded(child: _buildGlassTextField(controller: _sameDayPriceController, label: 'Price (\$)', keyboardType: TextInputType.number)),
-                                              const SizedBox(width: 12),
-                                              Expanded(child: _buildGlassTextField(controller: _sameDayRadiusController, label: 'Radius (km)', keyboardType: TextInputType.number)),
-                                            ],
-                                          ),
+                                          _buildGlassTextField(controller: _sameDayPriceController, label: 'Price (\$)', keyboardType: TextInputType.number),
                                         ],
                                       ),
                                       const SizedBox(height: 16),
@@ -449,6 +460,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         icon: Icons.store_rounded,
                                         value: state.isLocalDeliveryOnly,
                                         onChanged: viewModel.setLocalDeliveryOnly,
+                                        infoTitle: 'Local Pickup Only',
+                                        infoBody: 'Enable this if the product can only be picked up in person — no shipping.\n\nWhat happens:\n• Shipping cost is \$0 for the buyer\n• Package weight and dimensions fields are hidden\n• A "pickup" delivery option is automatically created\n• The buyer sees your address as the pickup location\n\nPerfect for: furniture, large items, fresh food, or any product you don\'t want to ship.',
                                       ),
                                       if (!state.isLocalDeliveryOnly) ...[
                                         const SizedBox(height: 16),
@@ -463,6 +476,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                             const SizedBox(width: 8),
                                             Expanded(child: _buildGlassTextField(controller: _heightController, label: 'H (cm)', keyboardType: TextInputType.number)),
                                           ],
+                                        ),
+                                        _buildTappableInfoHint(
+                                          'How weight & dimensions affect shipping cost',
+                                          'Package Weight & Dimensions',
+                                          'Accurate weight and dimensions help calculate fair shipping rates.\n\nHow pricing works:\n• Carriers use the greater of actual weight vs dimensional weight\n• Dimensional weight = (L × W × H) ÷ 5000 (in cm/kg)\n• Example: A box 40×30×20 cm = 4.8 kg dimensional\n\nIf your product is light but bulky, you may pay more than expected. Enter accurate dimensions to avoid surprises.\n\nTip: Measure the packaged product, not just the product itself.',
                                         ),
                                       ],
                                       const SizedBox(height: 20),
@@ -588,6 +606,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                             icon: Icons.gps_fixed_rounded,
                                             value: _hasTracking,
                                             onChanged: (v) => setState(() => _hasTracking = v),
+                                            infoTitle: 'Supplier Tracking',
+                                            infoBody: 'Does your supplier provide tracking numbers?\n\nWhen enabled:\n• You can enter tracking numbers for each order\n• Buyers receive shipping updates automatically\n• Helps reduce "where is my order?" inquiries\n\nMost suppliers (AliExpress, Amazon, etc.) provide tracking. Smaller local suppliers may not.',
                                           ),
                                         ),
                                       ],
@@ -603,6 +623,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       icon: Icons.inventory_rounded,
                                       value: _inventoryManaged,
                                       onChanged: (v) => setState(() => _inventoryManaged = v),
+                                      infoTitle: 'Inventory Management',
+                                      infoBody: 'Controls whether stock levels are tracked for this product.\n\nON (recommended for most):\n• Stock decreases automatically on each sale\n• Low stock alerts notify you when to restock\n• Product is hidden when stock reaches 0\n\nOFF (for dropship products):\n• Stock is never tracked — unlimited availability\n• Your supplier fulfills orders directly\n\nTip: Turn OFF if using AliExpress or similar dropship suppliers.',
                                     ),
                                     if (_inventoryManaged) ...[
                                       const SizedBox(height: 8),
@@ -612,6 +634,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         icon: Icons.numbers_rounded,
                                         value: _trackQuantity,
                                         onChanged: (v) => setState(() => _trackQuantity = v),
+                                        infoTitle: 'Track Quantity',
+                                        infoBody: 'When ON, stock counts down with each sale and the product becomes unavailable at 0.\n\nWhen OFF, the product always shows as "in stock" regardless of orders. Useful for made-to-order or digital-like physical products.\n\nNote: Only applies when Manage Inventory is also ON.',
                                       ),
                                       const SizedBox(height: 8),
                                       _buildGlassToggle(
@@ -620,6 +644,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         icon: Icons.replay_rounded,
                                         value: _allowBackorder,
                                         onChanged: (v) => setState(() => _allowBackorder = v),
+                                        infoTitle: 'Allow Backorders',
+                                        infoBody: 'When enabled, buyers can still place orders even when stock is 0.\n\nThis is useful if:\n• You can restock quickly from your supplier\n• You accept pre-orders\n• You manufacture on demand\n\nThe buyer will NOT be warned — update your product description if fulfillment may be delayed.',
                                       ),
                                       const SizedBox(height: 12),
                                       _buildGlassTextField(
@@ -847,6 +873,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     required IconData icon,
     required bool value,
     required ValueChanged<bool> onChanged,
+    String? infoTitle,
+    String? infoBody,
   }) {
     return GestureDetector(
       onTap: () => onChanged(!value),
@@ -873,6 +901,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 ],
               ),
             ),
+            if (infoTitle != null && infoBody != null)
+              GestureDetector(
+                onTap: () => _showInfoSheet(infoTitle, infoBody),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Icon(Icons.info_outline_rounded, size: 16, color: DesignTokens.info.withValues(alpha: 0.5)),
+                ),
+              ),
             SizedBox(
               height: 28,
               child: Switch.adaptive(
@@ -925,6 +962,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     required ValueChanged<bool> onChanged,
     required Color color,
     required List<Widget> children,
+    String? infoTitle,
+    String? infoBody,
   }) {
     return AnimatedContainer(
       duration: DesignTokens.durationNormal,
@@ -944,6 +983,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 Expanded(
                   child: Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isEnabled ? color : Colors.grey[500])),
                 ),
+                if (infoTitle != null && infoBody != null)
+                  GestureDetector(
+                    onTap: () => _showInfoSheet(infoTitle, infoBody),
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Icon(Icons.info_outline_rounded, size: 16, color: isEnabled ? color.withValues(alpha: 0.5) : Colors.grey[400]),
+                    ),
+                  ),
                 Switch.adaptive(
                   value: isEnabled,
                   onChanged: onChanged,
@@ -982,8 +1029,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               ),
               const SizedBox(width: 10),
               const Expanded(child: Text('Bulk Shipping Discounts', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
-              Tooltip(
-                message: 'Offer shipping discounts for bulk orders',
+              GestureDetector(
+                onTap: () => _showInfoSheet(
+                  'Bulk Shipping Discounts',
+                  'Encourage bigger orders by offering progressive shipping discounts.\n\nHow tiers work:\n• 3+ items: A percentage off shipping (e.g. 20% off)\n• 5+ items: A bigger percentage (e.g. 50% off)\n• 10+ items: Free shipping entirely\n\nAdditional item cost: Extra shipping per item beyond the first (e.g. \$1.50/item for heavier products).\n\nMax per shipment: Limit items per package. Set to 0 for unlimited. If a buyer orders more, multiple shipments are created automatically.',
+                ),
                 child: Icon(Icons.info_outline_rounded, size: 18, color: Colors.grey[400]),
               ),
             ],
@@ -1000,6 +1050,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             icon: Icons.celebration_rounded,
             value: state.freeShippingAt10Plus,
             onChanged: viewModel.setFreeShippingAt10Plus,
+            infoTitle: 'Bulk Free Shipping',
+            infoBody: 'When enabled, buyers who order 10 or more units get completely free shipping.\n\nThis is a powerful incentive for wholesale and repeat customers. Stacks with your 3+ and 5+ discount tiers.\n\nNote: At least one delivery tier (Standard, Express, or Same-Day) must be enabled for this to take effect.',
           ),
           const SizedBox(height: 12),
           Row(
@@ -1008,6 +1060,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               const SizedBox(width: 12),
               Expanded(child: _buildGlassTextField(controller: _maxItemsPerShipmentController, label: 'Max per shipment', keyboardType: TextInputType.number, hint: '0 = unlimited')),
             ],
+          ),
+          _buildTappableInfoHint(
+            'What do these multi-item fields mean?',
+            'Multi-Item Shipping',
+            'Cost per extra item: Additional shipping charge for each item beyond the first (e.g. \$1.50). Set to \$0 if no extra cost.\n\nMax per shipment: Maximum items that fit in one package. Set to 0 for unlimited. If a buyer orders more, multiple shipments are created automatically.\n\nExample: Max 5/shipment + \$1.50/extra → 7 items = 2 shipments, first at base + 4×\$1.50, second at base + 1×\$1.50.',
           ),
         ],
       ),
@@ -1218,6 +1275,73 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
+  void _showInfoSheet(String title, String body) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -4))],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: DesignTokens.info.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.lightbulb_rounded, color: DesignTokens.info, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface)),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(color: DesignTokens.surfaceVariant, shape: BoxShape.circle),
+                    child: const Icon(Icons.close_rounded, size: 16, color: Colors.grey),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(body, style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.6)),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTappableInfoHint(String shortText, String title, String body) {
+    return GestureDetector(
+      onTap: () => _showInfoSheet(title, body),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, size: 14, color: DesignTokens.info.withValues(alpha: 0.6)),
+            const SizedBox(width: 6),
+            Expanded(child: Text(shortText, style: TextStyle(fontSize: 11, color: Colors.grey[500]))),
+            Icon(Icons.chevron_right_rounded, size: 14, color: Colors.grey[400]),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSubmitButton(AddProductState state, AddProductViewModel viewModel) {
     return GestureDetector(
       onTapDown: state.isLoading ? null : (_) => HapticFeedback.mediumImpact(),
@@ -1319,6 +1443,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
 
   List<SellerDeliveryOption> _buildDeliveryOptions(AddProductState state) {
     if (state.isDigital) return [];
+
+    // Bug #2: Local-only products need a pickup delivery option
+    if (state.isLocalDeliveryOnly) {
+      return [
+        const SellerDeliveryOption(
+          type: 'pickup',
+          description: 'Local Pickup',
+          estimatedDays: 0,
+          cost: 0.0,
+        ),
+      ];
+    }
 
     final quantityDiscounts = <ShippingQuantityDiscount>[];
 

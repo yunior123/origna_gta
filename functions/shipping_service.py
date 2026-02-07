@@ -401,7 +401,7 @@ def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str =
         seller_state = seller_address.get(Fields.STATE, 'ON')
         buyer_state = buyer_address.get(Fields.STATE, 'ON')
 
-        chargeable_items = [i for i in seller_items if not i.get(Fields.FREE_SHIPPING)]
+        chargeable_items = [i for i in seller_items if not i.get(Fields.FREE_SHIPPING) and not i.get(Fields.IS_DIGITAL)]
         if not chargeable_items:
             continue
         

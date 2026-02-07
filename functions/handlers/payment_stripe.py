@@ -326,10 +326,12 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
 
         primary_image_url = image_urls[0] if image_urls else ''
 
-        # Build sellerAddress - must have required Address fields for Flutter parsing
-        raw_seller_address = seller_profile.get('businessAddress', {})
+        # Bug #3: Use product's sellerAddress FIRST (set at product creation),
+        # then fall back to seller profile businessAddress, then user address
+        raw_seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
+        if not raw_seller_address or not isinstance(raw_seller_address, dict) or not raw_seller_address.get('street'):
+            raw_seller_address = seller_profile.get('businessAddress', {})
         if not raw_seller_address or not raw_seller_address.get('street'):
-            # Fallback: use seller's main address or a minimal valid stub
             raw_seller_address = seller_data.get('address', {})
         if not raw_seller_address or not raw_seller_address.get('street'):
             raw_seller_address = {
@@ -376,8 +378,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         )
     
     # Calculate shipping (server-side) - returns dollars
+    # Bug #9: Read delivery speed from client request (express/same_day cost more)
+    delivery_speed = data.get('deliverySpeed', 'standard')
+    if delivery_speed not in ('standard', 'express', 'same_day'):
+        delivery_speed = 'standard'  # Sanitize to prevent injection
+    
     try:
-        shipping_cost_dollars = calculate_shipping_cost(validated_items, shipping_address)
+        shipping_cost_dollars = calculate_shipping_cost(validated_items, shipping_address, speed=delivery_speed)
         shipping_cost_cents = round(shipping_cost_dollars * 100)
     except Exception as e:
         raise https_fn.HttpsError('internal', f'Shipping calculation failed: {str(e)}')
@@ -477,6 +484,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         Fields.EXPIRES_AT: datetime.now() + timedelta(days=AUTHORIZATION_VALID_DAYS),
         Fields.CURRENCY: 'cad',
         Fields.PAYMENT_PROVIDER: 'stripe',
+        Fields.DELIVERY_SPEED: delivery_speed,  # Bug #9: Persist chosen speed for audit trail
         'archived': False,
         'stockRestored': False,
     }

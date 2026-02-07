@@ -27,6 +27,7 @@ Rules:
 - Trace every user-facing input to its backend handler — flag anything not validated server-side
 - If something is solid, say it in one line and move on
 - Focus on what makes this code bulletproof for production launch
+- Make sure the logic of the code is ok, that is the most important part. priority number 1, create scenarios that could break the system, try at least 50 different ones.
 
 Project files:
 """
