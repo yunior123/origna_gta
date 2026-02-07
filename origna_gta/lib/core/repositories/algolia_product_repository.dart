@@ -14,24 +14,41 @@ class AlgoliaProductRepository implements ProductRepository {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
 
-  AlgoliaProductRepository(this._algoliaService, this._firestore, this._functions);
+  AlgoliaProductRepository(
+    this._algoliaService,
+    this._firestore,
+    this._functions,
+  );
 
   @override
-  @override
   Future<String> addProduct(Product product) async {
-    if (kDebugMode) debugPrint('REPO: [AlgoliaProductRepository] Attempting to add product...');
+    if (kDebugMode)
+      debugPrint(
+        'REPO: [AlgoliaProductRepository] Attempting to add product...',
+      );
     try {
-      final docRef = await _firestore.collection(Collections.products).add(product.toJson());
+      final docRef = await _firestore
+          .collection(Collections.products)
+          .add(product.toJson());
       if (kDebugMode) debugPrint('REPO: Local write returned ID: ${docRef.id}');
 
       // Force server synchronization verification
       if (kDebugMode) debugPrint('REPO: Verifying server persistence...');
-      final serverDoc = await docRef.get(const GetOptions(source: Source.server));
+      final serverDoc = await docRef.get(
+        const GetOptions(source: Source.server),
+      );
 
       if (!serverDoc.exists) {
-        if (kDebugMode) debugPrint('REPO: CRITICAL ERROR - Document not found on server immediately after write!');
+        if (kDebugMode)
+          debugPrint(
+            'REPO: CRITICAL ERROR - Document not found on server immediately after write!',
+          );
         // Throwing ensures the UI/Test treats this as a failure
-        throw FirebaseException(plugin: 'cloud_firestore', code: 'sync-failed', message: 'Write succeeded locally but failed to persist to server.');
+        throw FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'sync-failed',
+          message: 'Write succeeded locally but failed to persist to server.',
+        );
       }
 
       if (kDebugMode) debugPrint('REPO: Server verification SUCCESS.');
@@ -50,7 +67,10 @@ class AlgoliaProductRepository implements ProductRepository {
   @override
   Future<Product?> fetchProductById(String productId) async {
     try {
-      final doc = await _firestore.collection(Collections.products).doc(productId).get();
+      final doc = await _firestore
+          .collection(Collections.products)
+          .doc(productId)
+          .get();
       if (!doc.exists) return null;
       return Product.fromFirestore(doc);
     } catch (e) {
@@ -60,26 +80,32 @@ class AlgoliaProductRepository implements ProductRepository {
   }
 
   @override
-  Future<ProductQueryResult> fetchProducts({String? searchQuery, int? categoryId, DocumentSnapshot? lastDocument, int pageSize = 20}) async {
-    try {
-      // Use Algolia for search
-      if (searchQuery != null && searchQuery.isNotEmpty) {
+  Future<ProductQueryResult> fetchProducts({
+    String? searchQuery,
+    int? categoryId,
+    DocumentSnapshot? lastDocument,
+    int pageSize = 20,
+  }) async {
+    final hasTextSearch = searchQuery != null && searchQuery.isNotEmpty;
+
+    // Route: text search + Algolia available → Algolia (with Firestore fallback)
+    if (hasTextSearch && _algoliaService.isAvailable) {
+      try {
         return await _searchWithAlgolia(searchQuery, categoryId, pageSize);
+      } catch (e) {
+        if (kDebugMode)
+          debugPrint('⚠️  Algolia error, falling back to Firestore: $e');
+        // Fall through to Firestore
       }
-
-      // Use Algolia for category filtering if available
-      if (categoryId != null) {
-        return await _searchWithAlgolia('', categoryId, pageSize);
-      }
-
-      // For empty queries, fall back to Firestore
-      return await _fetchFromFirestore(searchQuery: searchQuery, categoryId: categoryId, lastDocument: lastDocument, pageSize: pageSize);
-    } catch (e) {
-      if (kDebugMode) debugPrint('⚠️  Algolia error, falling back to Firestore: $e');
-
-      // Fallback to Firestore on any error
-      return await _fetchFromFirestore(searchQuery: searchQuery, categoryId: categoryId, lastDocument: lastDocument, pageSize: pageSize);
     }
+
+    // Route: everything else → Firestore (categories, browse, text when Algolia down)
+    return await _fetchFromFirestore(
+      searchQuery: searchQuery,
+      categoryId: categoryId,
+      lastDocument: lastDocument,
+      pageSize: pageSize,
+    );
   }
 
   @override
@@ -89,14 +115,20 @@ class AlgoliaProductRepository implements ProductRepository {
     final List<Product> results = [];
     for (int i = 0; i < productIds.length; i += 30) {
       final chunk = productIds.skip(i).take(30).toList();
-      final snapshot = await _firestore.collection(Collections.products).where(FieldPath.documentId, whereIn: chunk).where(Fields.isActive, isEqualTo: true).get();
+      final snapshot = await _firestore
+          .collection(Collections.products)
+          .where(FieldPath.documentId, whereIn: chunk)
+          .where(Fields.isActive, isEqualTo: true)
+          .get();
       results.addAll(snapshot.docs.map((doc) => Product.fromFirestore(doc)));
     }
     return results;
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(String query) async {
+  Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(
+    String query,
+  ) async {
     // Could be enhanced with Algolia autocomplete in the future
     if (query.isEmpty) return [];
 
@@ -107,16 +139,29 @@ class AlgoliaProductRepository implements ProductRepository {
         .limit(5)
         .get();
 
-    return snapshot.docs.map((doc) => {Fields.name: doc.data()[Fields.name], Fields.productId: doc.id}).toList();
+    return snapshot.docs
+        .map(
+          (doc) => {
+            Fields.name: doc.data()[Fields.name],
+            Fields.productId: doc.id,
+          },
+        )
+        .toList();
   }
 
   @override
   Future<String?> getUploadUrl(String fileName) async {
-    throw UnimplementedError('Image upload URLs should be handled by FirebaseProductRepository');
+    throw UnimplementedError(
+      'Image upload URLs should be handled by FirebaseProductRepository',
+    );
   }
 
   @override
-  Future<void> submitRating(String orderId, String productId, int rating) async {
+  Future<void> submitRating(
+    String orderId,
+    String productId,
+    int rating,
+  ) async {
     // Call backend Cloud Function for secure rating submission
     // Backend validates: auth, ownership, delivery status, duplicate check
     await _functions.httpsCallable('submit_product_rating').call({
@@ -128,24 +173,42 @@ class AlgoliaProductRepository implements ProductRepository {
 
   @override
   Future<void> toggleFavorite(String userId, String productId) async {
-    final favRef = _firestore.collection(Collections.users).doc(userId).collection(Collections.favorites).doc(productId);
+    final favRef = _firestore
+        .collection(Collections.users)
+        .doc(userId)
+        .collection(Collections.favorites)
+        .doc(productId);
 
     final doc = await favRef.get();
     if (doc.exists) {
       await favRef.delete();
     } else {
-      await favRef.set({Fields.productId: productId, Fields.dateFavorited: FieldValue.serverTimestamp()});
+      await favRef.set({
+        Fields.productId: productId,
+        Fields.dateFavorited: FieldValue.serverTimestamp(),
+      });
     }
   }
 
   @override
-  Future<void> updateProduct(String productId, Map<String, dynamic> updates) async {
-    await _firestore.collection(Collections.products).doc(productId).update(updates);
+  Future<void> updateProduct(
+    String productId,
+    Map<String, dynamic> updates,
+  ) async {
+    await _firestore
+        .collection(Collections.products)
+        .doc(productId)
+        .update(updates);
   }
 
   @override
-  Future<List<String>> uploadImages(List<Uint8List> images, String productId) async {
-    throw UnimplementedError('Image upload should be handled by FirebaseProductRepository');
+  Future<List<String>> uploadImages(
+    List<Uint8List> images,
+    String productId,
+  ) async {
+    throw UnimplementedError(
+      'Image upload should be handled by FirebaseProductRepository',
+    );
   }
 
   @override
@@ -158,10 +221,17 @@ class AlgoliaProductRepository implements ProductRepository {
         .map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
   }
 
-  Future<ProductQueryResult> _fetchFromFirestore({String? searchQuery, int? categoryId, DocumentSnapshot? lastDocument, int pageSize = 20}) async {
+  Future<ProductQueryResult> _fetchFromFirestore({
+    String? searchQuery,
+    int? categoryId,
+    DocumentSnapshot? lastDocument,
+    int pageSize = 20,
+  }) async {
     if (kDebugMode) print('📍 Using Firestore fallback');
 
-    Query<Map<String, dynamic>> query = _firestore.collection(Collections.products);
+    Query<Map<String, dynamic>> query = _firestore.collection(
+      Collections.products,
+    );
 
     // Apply filters
     query = query.where(Fields.isActive, isEqualTo: true);
@@ -187,7 +257,9 @@ class AlgoliaProductRepository implements ProductRepository {
     query = query.limit(pageSize);
 
     final snapshot = await query.get();
-    final products = snapshot.docs.map((doc) => Product.fromFirestore(doc)).toList();
+    final products = snapshot.docs
+        .map((doc) => Product.fromFirestore(doc))
+        .toList();
 
     return ProductQueryResult(
       products: products,
@@ -196,26 +268,39 @@ class AlgoliaProductRepository implements ProductRepository {
     );
   }
 
-  Future<ProductQueryResult> _searchWithAlgolia(String query, int? categoryId, int pageSize) async {
+  Future<ProductQueryResult> _searchWithAlgolia(
+    String query,
+    int? categoryId,
+    int pageSize,
+  ) async {
     try {
       // Trigger search
       _algoliaService.search(query, categoryId: categoryId);
 
-      // Wait for response
-      final response = await _algoliaService.responses.first;
+      // Wait for response with timeout to prevent infinite hang
+      // when Algolia is unreachable (e.g. emulator environment)
+      final response = await _algoliaService.responses.first.timeout(
+        const Duration(seconds: 5),
+      );
 
       // Convert Algolia hits to Product
       final products = response.hits.map((hit) {
         final data = AlgoliaService.hitToProductMap(hit);
-        return Product.fromJson({...data, Fields.productId: data[Fields.productId] ?? ''});
+        return Product.fromJson({
+          ...data,
+          Fields.productId: data[Fields.productId] ?? '',
+        });
       }).toList();
 
-      if (kDebugMode) print('✅ Algolia search returned ${products.length} products');
+      if (kDebugMode)
+        print('✅ Algolia search returned ${products.length} products');
 
       return ProductQueryResult(
         products: products,
-        hasMore: response.hits.length >= pageSize,
-        lastDocument: null, // Algolia uses pagination differently
+        // Algolia doesn't support cursor-based pagination with Firestore
+        // DocumentSnapshots, so signal no more pages to prevent infinite loops.
+        hasMore: false,
+        lastDocument: null,
       );
     } catch (e) {
       if (kDebugMode) print('❌ Algolia search failed: $e');

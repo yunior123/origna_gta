@@ -25,10 +25,18 @@ final favoritesControllerProvider = Provider<FavoritesController>((ref) {
 // PRODUCTS PROVIDER
 // ============================================================================
 
-/// Stream of favorite product IDs for current user
+/// Stream of favorite product IDs for current user.
+/// Uses [keepAlive] when a user is logged in to prevent the stream from being
+/// disposed during transient rebuilds (e.g. category switches clear the product
+/// grid which briefly removes all ProductCard watchers). Without this, the
+/// stream restarts in AsyncLoading and the heart icon blinks.
 final favoritesProvider = StreamProvider.autoDispose<Set<String>>((ref) {
   final userId = ref.watch(userIdProvider);
   if (userId == null) return Stream.value({});
+
+  // Keep the stream alive while a user is logged in so it survives
+  // product-grid rebuilds (category change, search, etc.).
+  ref.keepAlive();
 
   final repository = ref.watch(productRepositoryProvider);
   return repository.watchFavorites(userId);

@@ -1,34 +1,74 @@
 import 'package:algolia_helper_flutter/algolia_helper_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/env_config.dart';
 
 /// Algolia search service for products
-/// Simple wrapper that delegates to Firestore fallback immediately
-/// Algolia implementation reserved for future optimization
+/// Uses EnvConfig to select the correct index (products vs products_emulator).
+/// Detects empty credentials and exposes [isAvailable] so callers can
+/// fall back to Firestore without waiting for a timeout.
 class AlgoliaService {
-  static const String _indexName = 'products';
+  final HitsSearcher? _hitsSearcher;
 
-  final HitsSearcher _hitsSearcher;
+  /// Whether Algolia is usable (credentials present & non-empty).
+  final bool isAvailable;
 
-  AlgoliaService._({required HitsSearcher hitsSearcher}) : _hitsSearcher = hitsSearcher;
+  AlgoliaService._({HitsSearcher? hitsSearcher, required this.isAvailable})
+    : _hitsSearcher = hitsSearcher;
 
-  /// Stream of search responses
-  Stream<SearchResponse> get responses => _hitsSearcher.responses;
+  /// Stream of search responses (empty stream when unavailable)
+  Stream<SearchResponse> get responses =>
+      _hitsSearcher?.responses ?? const Stream.empty();
 
   /// Dispose resources
   void dispose() {
-    _hitsSearcher.dispose();
+    _hitsSearcher?.dispose();
   }
 
-  /// Set search with optional category filter
+  /// Set search with optional category filter (facet)
   void search(String searchQuery, {int? categoryId}) {
-    _hitsSearcher.applyState((state) => state.copyWith(query: searchQuery, page: 0));
+    if (_hitsSearcher == null) return;
+    _hitsSearcher.applyState((state) {
+      var newState = state.copyWith(query: searchQuery, page: 0);
+      // Apply category as facet filter when provided
+      if (categoryId != null) {
+        newState = newState.copyWith(
+          filterGroups: {
+            FilterGroup.facet(
+              filters: {Filter.facet(Fields.categoryId, categoryId)},
+            ),
+          },
+        );
+      } else {
+        newState = newState.copyWith(filterGroups: {});
+      }
+      return newState;
+    });
   }
 
-  /// Initialize Algolia service with credentials from env
-  static AlgoliaService create({required String appId, required String searchApiKey}) {
-    final searcher = HitsSearcher(applicationID: appId, apiKey: searchApiKey, indexName: _indexName);
+  /// Initialize Algolia service with credentials from env.
+  /// Returns a disabled instance (isAvailable=false) when keys are empty.
+  static AlgoliaService create({
+    required String appId,
+    required String searchApiKey,
+  }) {
+    if (appId.isEmpty || searchApiKey.isEmpty) {
+      if (kDebugMode)
+        debugPrint(
+          '⚠️  Algolia credentials empty → search disabled, using Firestore only',
+        );
+      return AlgoliaService._(isAvailable: false);
+    }
 
-    return AlgoliaService._(hitsSearcher: searcher);
+    final indexName = EnvConfig().algoliaIndexName;
+    if (kDebugMode) debugPrint('✅ Algolia initialized: index=$indexName');
+
+    final searcher = HitsSearcher(
+      applicationID: appId,
+      apiKey: searchApiKey,
+      indexName: indexName,
+    );
+    return AlgoliaService._(hitsSearcher: searcher, isAvailable: true);
   }
 
   /// Parse Algolia hit to product map
@@ -41,7 +81,8 @@ class AlgoliaService {
       Fields.description: hit[Fields.description] ?? '',
       Fields.categoryId: hit[Fields.categoryId],
       Fields.sellerId: hit[Fields.sellerId] ?? '',
-      Fields.dateCreated: hit[Fields.dateCreated] ?? DateTime.now().toIso8601String(),
+      Fields.dateCreated:
+          hit[Fields.dateCreated] ?? DateTime.now().toIso8601String(),
       Fields.stockQuantity: hit[Fields.stockQuantity] ?? 0,
       Fields.rating: hit[Fields.rating] ?? 0.0,
       Fields.ratingCount: hit[Fields.ratingCount] ?? 0,

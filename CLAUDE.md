@@ -125,6 +125,21 @@ See @docs/AGENT_GUIDE.md for full agent usage guide, workflow chunking, and sess
 `pending → confirmed → processing → shipped → in_transit → delivered` (happy path)
 Cancel/refund: restore stock + refund/void. Cron: 7-day auto-confirm, auth expiry.
 
+### Add Product Flow
+→ **Full knowledge in `.claude/skills/add-product-flow/SKILL.md`**
+Sentinel `copyWith`, image sync callback, free shipping cascade, digital product guards, postal code normalization, stale coordinates, double-submit guard.
+
+### Home Screen Shimmer Bug
+`_onScroll` → `loadProducts()` every pixel when empty → infinite loop. Fix: guard with `products.isNotEmpty` + `hasMore=false` on 0 results.
+
+### Algolia Search Architecture
+- **`AlgoliaService.isAvailable`** — detects empty credentials at init. Emulator has no Algolia keys → `isAvailable=false` → all queries route to Firestore.
+- **`EnvConfig().algoliaIndexName`** — `products_emulator` in emulator, `products` in prod. Used by AlgoliaService.create().
+- **Routing**: text search + available → Algolia (5s timeout, Firestore fallback). Category-only or browse → always Firestore (cursor pagination).
+- **Facet filters**: `categoryId` applied via `FilterGroup.facet` in Algolia when both text + category present.
+- **`productRepositoryProvider`** — always returns `AlgoliaProductRepository` (no dead try/catch). Graceful degradation is built into the repository itself.
+- Full decision table in `.github/copilot-skills.md`.
+
 ### .claude/ Infrastructure
 - **5 agents**: logic-auditor, cross-stack-auditor, payment-auditor, schema-sync-checker, order-lifecycle-auditor
 - **7 rules** (path-scoped): flutter, backend, payments, orders, firestore, testing, security
@@ -142,3 +157,7 @@ Cancel/refund: restore stock + refund/void. Cron: 7-day auto-confirm, auth expir
 - Ensure schema constants are widely used
 - Update json schema constants when database schema changes
 - ChromeDriver compatibility for Flutter web integration tests
+- Add Product: `_inventoryManaged`, `_trackQuantity`, `_allowBackorder` local state variables are disconnected from ViewModel (not persisted)
+- Add Product: `_apartmentController` declared but no UI field rendered for apartment input
+- Add Product: Discount tiers should validate 5+ ≥ 3+ (currently can set 3+=50%, 5+=20%)
+- Add Product: Free Shipping toggle still visible for digital products (cosmetic — works fine, but confusing since it's forced true)

@@ -268,13 +268,15 @@ class TestSchemaConsistency:
         with open(algolia_service_path) as f:
             algolia_content = f.read()
 
-        # Check that config is imported
-        assert 'from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY' in algolia_content, \
-            "Algolia service should import credentials from config.py"
+        # Check that config is imported (including AlgoliaConfig for dynamic index names)
+        assert 'from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY, AlgoliaConfig' in algolia_content, \
+            "Algolia service should import credentials and AlgoliaConfig from config.py"
 
-        # Check index name
-        assert "'products'" in algolia_content or '"products"' in algolia_content, \
-            "Algolia service should use 'products' index"
+        # Check environment-aware index name helper exists
+        assert '_get_index_name' in algolia_content, \
+            "Algolia service should use _get_index_name() for environment-aware index selection"
+        assert 'AlgoliaConfig.get_index_name()' in algolia_content, \
+            "Algolia service should delegate to AlgoliaConfig.get_index_name()"
 
         # Check key functions exist
         required_functions = ['format_product_for_algolia', 'index_product', 'delete_product']
@@ -282,7 +284,7 @@ class TestSchemaConsistency:
             assert f'def {func}' in algolia_content, f"Missing function: {func}"
 
         print("✅ Algolia configuration valid")
-        print("   Index: products")
+        print("   Index: dynamic via AlgoliaConfig.get_index_name()")
         print(f"   Functions: {required_functions}")
 
 

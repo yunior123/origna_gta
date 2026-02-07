@@ -8,7 +8,7 @@ from typing import Union
 from algoliasearch.search.client import SearchClient
 from pydantic import ValidationError
 
-from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY
+from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY, AlgoliaConfig
 
 # Import Pydantic Product model for type-safe operations
 from models.product import Product
@@ -17,6 +17,11 @@ from schema_constants import Fields
 # Initialize Algolia client (v4 API)
 algolia_client = SearchClient(ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY) if ALGOLIA_APP_ID and ALGOLIA_WRITE_API_KEY else None
 products_index = algolia_client if algolia_client else None
+
+
+def _get_index_name() -> str:
+    """Get the correct Algolia index name based on environment (emulator vs production)."""
+    return AlgoliaConfig.get_index_name()
 
 
 def format_product_for_algolia(product_id: str, product_data: Union[dict, Product]) -> dict:
@@ -136,8 +141,8 @@ def index_product(product_id: str, product_data: dict, max_retries: int = 3) -> 
 
     for attempt in range(max_retries):
         try:
-            products_index.save_object(index_name='products', body=algolia_object)
-            print(f"  ✅ Indexed product {product_id} to Algolia")
+            products_index.save_object(index_name=_get_index_name(), body=algolia_object)
+            print(f"  ✅ Indexed product {product_id} to Algolia (index={_get_index_name()})")
             return True
         except Exception as e:
             last_error = e
@@ -173,8 +178,8 @@ def delete_product(product_id: str, max_retries: int = 3) -> bool:
 
     for attempt in range(max_retries):
         try:
-            products_index.delete_object(index_name='products', object_id=product_id)
-            print(f"  ✅ Deleted product {product_id} from Algolia")
+            products_index.delete_object(index_name=_get_index_name(), object_id=product_id)
+            print(f"  ✅ Deleted product {product_id} from Algolia (index={_get_index_name()})")
             return True
         except Exception as e:
             last_error = e
@@ -210,8 +215,8 @@ def batch_index_products(products: list) -> tuple:
                 algolia_objects.append(format_product_for_algolia(product_id, product_data))
 
         if algolia_objects:
-            products_index.save_objects(index_name='products', objects=algolia_objects)
-            print(f"  ✅ Batch indexed {len(algolia_objects)} products to Algolia")
+            products_index.save_objects(index_name=_get_index_name(), objects=algolia_objects)
+            print(f"  ✅ Batch indexed {len(algolia_objects)} products to Algolia (index={_get_index_name()})")
             return (len(algolia_objects), len(products) - len(algolia_objects))
 
         return (0, len(products))
@@ -230,8 +235,10 @@ def configure_algolia_index():
         return False
 
     try:
+        index_name = _get_index_name()
+        print(f"  🔧 Configuring Algolia index: {index_name}")
         # Set searchable attributes with priority
-        products_index.set_settings({
+        products_index.set_settings(index_name=index_name, index_settings={
             'searchableAttributes': [
                 Fields.NAME,                    # Highest priority
                 Fields.DESCRIPTION,
@@ -279,8 +286,8 @@ def configure_algolia_index():
             'highlightPostTag': '</mark>',
             'hitsPerPage': 20,
         })
-        print("  ✅ Configured Algolia index settings")
+        print(f"  ✅ Configured Algolia index settings for '{index_name}'")
         return True
     except Exception as e:
-        print(f"  ❌ Failed to configure Algolia index: {str(e)}")
+        print(f"  ❌ Failed to configure Algolia index '{_get_index_name()}': {str(e)}")
         return False

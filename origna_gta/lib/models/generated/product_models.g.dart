@@ -196,10 +196,10 @@ Map<String, dynamic> _$$ProductCreateImplToJson(_$ProductCreateImpl instance) =>
 _$SellerDeliveryOptionImpl _$$SellerDeliveryOptionImplFromJson(
   Map<String, dynamic> json,
 ) => _$SellerDeliveryOptionImpl(
-  type: json['type'] as String,
-  description: json['description'] as String,
-  cost: (json['cost'] as num).toDouble(),
-  estimatedDays: (json['estimatedDays'] as num).toInt(),
+  type: json['type'] as String? ?? 'standard',
+  description: json['description'] as String? ?? '',
+  cost: (json['cost'] as num?)?.toDouble() ?? 0.0,
+  estimatedDays: (json['estimatedDays'] as num?)?.toInt() ?? 3,
   quantityDiscounts:
       (json['quantityDiscounts'] as List<dynamic>?)
           ?.map(

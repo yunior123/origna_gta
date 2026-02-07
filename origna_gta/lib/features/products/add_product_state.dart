@@ -1,5 +1,8 @@
 import 'package:origna_gta/utils/utils.dart';
 
+/// Sentinel to explicitly clear nullable fields in copyWith.
+const _sentinel = Object();
+
 class AddProductState {
   final bool isLoading;
   final bool isLocalDeliveryOnly;
@@ -41,12 +44,14 @@ class AddProductState {
     this.isSuccess = false,
   });
 
+  /// Use `clearError()` to explicitly set errorMessage to null.
+  /// Without it, `copyWith()` preserves the current errorMessage.
   AddProductState copyWith({
     bool? isLoading,
     bool? isLocalDeliveryOnly,
     String? selectedProvince,
-    double? latitude,
-    double? longitude,
+    Object? latitude = _sentinel,
+    Object? longitude = _sentinel,
     List<ImageModel>? imageModels,
     List<Map<String, dynamic>>? addressSuggestions,
     bool? showSuggestions,
@@ -58,15 +63,15 @@ class AddProductState {
     int? minimumOrderQuantity,
     bool? freeShipping,
     bool? freeShippingAt10Plus,
-    String? errorMessage,
+    Object? errorMessage = _sentinel,
     bool? isSuccess,
   }) {
     return AddProductState(
       isLoading: isLoading ?? this.isLoading,
       isLocalDeliveryOnly: isLocalDeliveryOnly ?? this.isLocalDeliveryOnly,
       selectedProvince: selectedProvince ?? this.selectedProvince,
-      latitude: latitude ?? this.latitude,
-      longitude: longitude ?? this.longitude,
+      latitude: latitude == _sentinel ? this.latitude : latitude as double?,
+      longitude: longitude == _sentinel ? this.longitude : longitude as double?,
       imageModels: imageModels ?? this.imageModels,
       addressSuggestions: addressSuggestions ?? this.addressSuggestions,
       showSuggestions: showSuggestions ?? this.showSuggestions,
@@ -78,7 +83,7 @@ class AddProductState {
       minimumOrderQuantity: minimumOrderQuantity ?? this.minimumOrderQuantity,
       freeShipping: freeShipping ?? this.freeShipping,
       freeShippingAt10Plus: freeShippingAt10Plus ?? this.freeShippingAt10Plus,
-      errorMessage: errorMessage,
+      errorMessage: errorMessage == _sentinel ? this.errorMessage : errorMessage as String?,
       isSuccess: isSuccess ?? this.isSuccess,
     );
   }

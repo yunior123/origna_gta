@@ -210,44 +210,48 @@ class _CartSummary extends ConsumerWidget {
   }
 }
 
-/// Cart total display - only rebuilds when subtotal changes
-class _CartTotalDisplay extends ConsumerWidget {
+/// Cart total display - static container, only the amount text rebuilds
+class _CartTotalDisplay extends StatelessWidget {
   const _CartTotalDisplay();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Only watch the subtotal calculation
-    final subtotalAsync = ref.watch(
-      cartWithDetailsProvider.select((async) => async.whenData((items) => items.fold(0.0, (total, item) => total + (item.price * item.quantity)))),
-    );
-
-    return subtotalAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (error, stack) => const SizedBox.shrink(),
-      data: (subtotal) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [DesignTokens.primary.withValues(alpha: 0.08), DesignTokens.secondary.withValues(alpha: 0.08)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [DesignTokens.primary.withValues(alpha: 0.08), DesignTokens.secondary.withValues(alpha: 0.08)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Subtotal:',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.grey[900],
             ),
-            borderRadius: BorderRadius.circular(DesignTokens.radius16),
-            border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.2), width: 1),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Subtotal:',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.grey[900],
+          // Only this Consumer rebuilds when the subtotal value changes
+          Consumer(builder: (context, ref, _) {
+            final subtotalAsync = ref.watch(
+              cartWithDetailsProvider.select(
+                (async) => async.whenData(
+                  (items) => items.fold(0.0, (total, item) => total + (item.price * item.quantity)),
                 ),
               ),
-              ShaderMask(
+            );
+            return subtotalAsync.when(
+              loading: () => const SizedBox(width: 100, height: 28),
+              error: (_, _) => const SizedBox.shrink(),
+              data: (subtotal) => ShaderMask(
                 shaderCallback: (bounds) => LinearGradient(
                   colors: [DesignTokens.primary, DesignTokens.secondary],
                   begin: Alignment.topLeft,
@@ -258,44 +262,37 @@ class _CartTotalDisplay extends ConsumerWidget {
                   style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white),
                 ),
               ),
-            ],
-          ),
-        );
-      },
+            );
+          }),
+        ],
+      ),
     );
   }
 }
 
-/// Checkout button - only rebuilds when cart items change
+/// Checkout button - static widget, reads cart data lazily on press
 class _CheckoutButton extends ConsumerWidget {
   const _CheckoutButton();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch cart details for checkout navigation
-    final cartDetailsAsync = ref.watch(cartWithDetailsProvider);
-
-    return cartDetailsAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (error, stack) => const SizedBox.shrink(),
-      data: (itemsWithDetails) {
-        return ModernButton(
-          label: 'Proceed to Checkout',
-          onPressed: itemsWithDetails.isEmpty
-              ? null
-              : () {
-                  final subtotal = itemsWithDetails.fold(0.0, (total, item) => total + (item.price * item.quantity));
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CheckoutScreen(items: itemsWithDetails, total: subtotal),
-                    ),
-                  );
-                },
-          fullWidth: true,
-          icon: Icons.payment,
-        );
+    return ModernButton(
+      label: 'Proceed to Checkout',
+      onPressed: () {
+        final cartDetails = ref.read(cartWithDetailsProvider);
+        cartDetails.whenData((itemsWithDetails) {
+          if (itemsWithDetails.isEmpty) return;
+          final subtotal = itemsWithDetails.fold(0.0, (total, item) => total + (item.price * item.quantity));
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CheckoutScreen(items: itemsWithDetails, total: subtotal),
+            ),
+          );
+        });
       },
+      fullWidth: true,
+      icon: Icons.payment,
     );
   }
 }

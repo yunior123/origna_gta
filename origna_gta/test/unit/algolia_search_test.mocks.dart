@@ -107,6 +107,11 @@ class MockAlgoliaService extends _i1.Mock implements _i9.AlgoliaService {
   }
 
   @override
+  bool get isAvailable =>
+      (super.noSuchMethod(Invocation.getter(#isAvailable), returnValue: false)
+          as bool);
+
+  @override
   _i5.Stream<_i6.SearchResponse> get responses =>
       (super.noSuchMethod(
             Invocation.getter(#responses),

@@ -2099,9 +2099,16 @@ SellerDeliveryOption _$SellerDeliveryOptionFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$SellerDeliveryOption {
+  /// Delivery type: 'standard', 'express', 'same_day', etc.
   String get type => throw _privateConstructorUsedError;
+
+  /// Human-readable description
   String get description => throw _privateConstructorUsedError;
+
+  /// Shipping cost in dollars
   double get cost => throw _privateConstructorUsedError;
+
+  /// Estimated delivery days
   int get estimatedDays => throw _privateConstructorUsedError;
 
   /// Optional quantity-based discounts for this delivery option
@@ -2300,10 +2307,10 @@ class __$$SellerDeliveryOptionImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$SellerDeliveryOptionImpl implements _SellerDeliveryOption {
   const _$SellerDeliveryOptionImpl({
-    required this.type,
-    required this.description,
-    required this.cost,
-    required this.estimatedDays,
+    this.type = 'standard',
+    this.description = '',
+    this.cost = 0.0,
+    this.estimatedDays = 3,
     final List<ShippingQuantityDiscount> quantityDiscounts = const [],
     this.maxItemsPerShipment = 0,
     this.additionalItemCost = 0.0,
@@ -2313,13 +2320,24 @@ class _$SellerDeliveryOptionImpl implements _SellerDeliveryOption {
   factory _$SellerDeliveryOptionImpl.fromJson(Map<String, dynamic> json) =>
       _$$SellerDeliveryOptionImplFromJson(json);
 
+  /// Delivery type: 'standard', 'express', 'same_day', etc.
   @override
+  @JsonKey()
   final String type;
+
+  /// Human-readable description
   @override
+  @JsonKey()
   final String description;
+
+  /// Shipping cost in dollars
   @override
+  @JsonKey()
   final double cost;
+
+  /// Estimated delivery days
   @override
+  @JsonKey()
   final int estimatedDays;
 
   /// Optional quantity-based discounts for this delivery option
@@ -2412,10 +2430,10 @@ class _$SellerDeliveryOptionImpl implements _SellerDeliveryOption {
 
 abstract class _SellerDeliveryOption implements SellerDeliveryOption {
   const factory _SellerDeliveryOption({
-    required final String type,
-    required final String description,
-    required final double cost,
-    required final int estimatedDays,
+    final String type,
+    final String description,
+    final double cost,
+    final int estimatedDays,
     final List<ShippingQuantityDiscount> quantityDiscounts,
     final int maxItemsPerShipment,
     final double additionalItemCost,
@@ -2425,12 +2443,19 @@ abstract class _SellerDeliveryOption implements SellerDeliveryOption {
   factory _SellerDeliveryOption.fromJson(Map<String, dynamic> json) =
       _$SellerDeliveryOptionImpl.fromJson;
 
+  /// Delivery type: 'standard', 'express', 'same_day', etc.
   @override
   String get type;
+
+  /// Human-readable description
   @override
   String get description;
+
+  /// Shipping cost in dollars
   @override
   double get cost;
+
+  /// Estimated delivery days
   @override
   int get estimatedDays;
 

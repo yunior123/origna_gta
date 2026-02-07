@@ -1,6 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:origna_gta/models/generated/models.dart';
 
+/// Sentinel used to distinguish "not passed" from "explicitly set to null".
+class _Sentinel {
+  const _Sentinel();
+}
+
 class HomeState {
   final List<Product> products;
   final bool isLoading;
@@ -27,20 +32,26 @@ class HomeState {
     bool? isLoading,
     bool? isLoadingMore,
     bool? hasMore,
-    DocumentSnapshot? lastDocument,
+    Object? lastDocument = const _Sentinel(),
     String? searchQuery,
-    int? selectedCategoryId,
-    String? errorMessage,
+    Object? selectedCategoryId = const _Sentinel(),
+    Object? errorMessage = const _Sentinel(),
   }) {
     return HomeState(
       products: products ?? this.products,
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       hasMore: hasMore ?? this.hasMore,
-      lastDocument: lastDocument, // Note: Always use the new one or null
+      lastDocument: lastDocument is _Sentinel
+          ? this.lastDocument
+          : lastDocument as DocumentSnapshot?,
       searchQuery: searchQuery ?? this.searchQuery,
-      selectedCategoryId: selectedCategoryId, // Note: Explicitly passed
-      errorMessage: errorMessage,
+      selectedCategoryId: selectedCategoryId is _Sentinel
+          ? this.selectedCategoryId
+          : selectedCategoryId as int?,
+      errorMessage: errorMessage is _Sentinel
+          ? this.errorMessage
+          : errorMessage as String?,
     );
   }
 }

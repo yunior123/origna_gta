@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/repositories/algolia_product_repository.dart';
 import 'package:origna_gta/core/repositories/auth_repository.dart';
@@ -25,7 +24,10 @@ final algoliaProductRepositoryProvider = Provider<ProductRepository>((ref) {
 // Algolia service for fast product search
 final algoliaServiceProvider = Provider<AlgoliaService>((ref) {
   final config = ConfigService();
-  return AlgoliaService.create(appId: config.algoliaAppId, searchApiKey: config.algoliaSearchApiKey);
+  return AlgoliaService.create(
+    appId: config.algoliaAppId,
+    searchApiKey: config.algoliaSearchApiKey,
+  );
 });
 
 // ============================================================================
@@ -33,26 +35,36 @@ final algoliaServiceProvider = Provider<AlgoliaService>((ref) {
 // ============================================================================
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return FirebaseAuthRepository(ref.watch(firebaseAuthProvider), ref.watch(firestoreProvider), ref.watch(firebaseFunctionsProvider));
+  return FirebaseAuthRepository(
+    ref.watch(firebaseAuthProvider),
+    ref.watch(firestoreProvider),
+    ref.watch(firebaseFunctionsProvider),
+  );
 });
 
 // ============================================================================
 // AUTH STATE PROVIDER
 // ============================================================================
 
-final authStateProvider = StreamProvider<User?>((ref) => ref.watch(firebaseAuthProvider).authStateChanges());
+final authStateProvider = StreamProvider<User?>(
+  (ref) => ref.watch(firebaseAuthProvider).authStateChanges(),
+);
 
 final cartRepositoryProvider = Provider<CartRepository>((ref) {
   return FirebaseCartRepository(ref.watch(firestoreProvider));
 });
 
-final currentUserProvider = Provider<User?>((ref) => ref.watch(authStateProvider).valueOrNull);
+final currentUserProvider = Provider<User?>(
+  (ref) => ref.watch(authStateProvider).valueOrNull,
+);
 
 // ============================================================================
 // CORE PROVIDERS - Firebase instances
 // ============================================================================
 
-final firebaseAuthProvider = Provider<FirebaseAuth>((ref) => FirebaseAuth.instance);
+final firebaseAuthProvider = Provider<FirebaseAuth>(
+  (ref) => FirebaseAuth.instance,
+);
 
 final firebaseFunctionsProvider = Provider<FirebaseFunctions>((ref) {
   final functions = FirebaseFunctions.instance;
@@ -64,28 +76,31 @@ final firebaseFunctionsProvider = Provider<FirebaseFunctions>((ref) {
   return functions;
 });
 
-final firestoreProvider = Provider<FirebaseFirestore>((ref) => FirebaseFirestore.instance);
+final firestoreProvider = Provider<FirebaseFirestore>(
+  (ref) => FirebaseFirestore.instance,
+);
 
 final locationRepositoryProvider = Provider<LocationRepository>((ref) {
   return GeoapifyLocationRepository();
 });
 
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
-  return FirebaseOrderRepository(ref.watch(firestoreProvider), ref.watch(firebaseFunctionsProvider));
+  return FirebaseOrderRepository(
+    ref.watch(firestoreProvider),
+    ref.watch(firebaseFunctionsProvider),
+  );
 });
 
-// Default product repository - uses Algolia with automatic Firestore fallback
+// Default product repository — Algolia with automatic Firestore fallback.
+// AlgoliaService.isAvailable handles empty credentials gracefully,
+// so AlgoliaProductRepository always works (routes to Firestore when needed).
 final productRepositoryProvider = Provider<ProductRepository>((ref) {
-  // Try Algolia first, falls back to Firestore automatically if needed
-  try {
-    return ref.watch(algoliaProductRepositoryProvider);
-  } catch (e) {
-    if (kDebugMode) print('⚠️  Algolia unavailable, using Firestore: $e');
-    return FirebaseProductRepository(ref.watch(firestoreProvider), ref.watch(firebaseFunctionsProvider));
-  }
+  return ref.watch(algoliaProductRepositoryProvider);
 });
 
-final userIdProvider = Provider<String?>((ref) => ref.watch(currentUserProvider)?.uid);
+final userIdProvider = Provider<String?>(
+  (ref) => ref.watch(currentUserProvider)?.uid,
+);
 final userRepositoryProvider = Provider<UserRepository>((ref) {
   return FirebaseUserRepository(ref.watch(firestoreProvider));
 });

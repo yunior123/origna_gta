@@ -348,7 +348,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                   title: 'Product Images',
                                   subtitle: 'Up to 5 photos',
                                   children: [
-                                    ProductAddImages(imageModels: state.imageModels),
+                                    ProductAddImages(imageModels: state.imageModels, onImagesChanged: viewModel.updateImages),
                                   ],
                                 ),
                                 const SizedBox(height: 16),
@@ -407,40 +407,53 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 10),
-                                      _buildDeliveryTierCard(
-                                        title: 'Express Delivery',
-                                        icon: Icons.bolt_rounded,
-                                        isEnabled: state.expressEnabled,
-                                        onChanged: viewModel.setExpressEnabled,
-                                        color: DesignTokens.warning,
-                                        infoTitle: 'Express Delivery',
-                                        infoBody: 'Offer faster shipping at a premium price.\n\nDefault surcharge: \$9.99 on top of standard shipping.\n\nWhen a buyer selects Express at checkout:\n• Your price here is the base rate shown\n• An additional express surcharge is applied automatically\n• You keep the shipping revenue minus platform fees\n\nTypical express timeframe: 1-2 business days.',
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Expanded(child: _buildGlassTextField(controller: _expressDaysController, label: 'Days', keyboardType: TextInputType.number)),
-                                              const SizedBox(width: 12),
-                                              Expanded(child: _buildGlassTextField(controller: _expressPriceController, label: 'Price (\$)', keyboardType: TextInputType.number)),
-                                            ],
+                                      // When free shipping is ON, Express/Same-Day/Bulk discounts are hidden
+                                      // because the backend makes ALL tiers $0 anyway
+                                      if (state.freeShipping)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 12),
+                                          child: _buildInfoBanner(
+                                            'Free shipping is enabled — Express and Same-Day tiers are hidden. Standard delivery will be offered at no cost to the buyer.',
+                                            Icons.local_shipping_rounded,
+                                            DesignTokens.success,
                                           ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      _buildDeliveryTierCard(
-                                        title: 'Same-Day Delivery',
-                                        icon: Icons.rocket_launch_rounded,
-                                        isEnabled: state.sameDayEnabled,
-                                        onChanged: viewModel.setSameDayEnabled,
-                                        color: DesignTokens.success,
-                                        infoTitle: 'Same-Day Delivery',
-                                        infoBody: 'Offer same-day delivery for local buyers.\n\nDefault surcharge: \$14.99 on top of base shipping.\n\nHow it works:\n• Only available for buyers within your delivery area\n• Orders must be placed before your cutoff time\n• Best for perishable items, gifts, or urgent needs\n\nIdeal for food, flowers, and time-sensitive products.',
-                                        children: [
-                                          _buildGlassTextField(controller: _sameDayPriceController, label: 'Price (\$)', keyboardType: TextInputType.number),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 16),
-                                      _buildQuantityShippingDiscountsSection(viewModel, state),
+                                        ),
+                                      if (!state.freeShipping) ...[
+                                        const SizedBox(height: 10),
+                                        _buildDeliveryTierCard(
+                                          title: 'Express Delivery',
+                                          icon: Icons.bolt_rounded,
+                                          isEnabled: state.expressEnabled,
+                                          onChanged: viewModel.setExpressEnabled,
+                                          color: DesignTokens.warning,
+                                          infoTitle: 'Express Delivery',
+                                          infoBody: 'Offer faster shipping at a premium price.\n\nDefault surcharge: \$9.99 on top of standard shipping.\n\nWhen a buyer selects Express at checkout:\n• Your price here is the base rate shown\n• An additional express surcharge is applied automatically\n• You keep the shipping revenue minus platform fees\n\nTypical express timeframe: 1-2 business days.',
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Expanded(child: _buildGlassTextField(controller: _expressDaysController, label: 'Days', keyboardType: TextInputType.number)),
+                                                const SizedBox(width: 12),
+                                                Expanded(child: _buildGlassTextField(controller: _expressPriceController, label: 'Price (\$)', keyboardType: TextInputType.number)),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 10),
+                                        _buildDeliveryTierCard(
+                                          title: 'Same-Day Delivery',
+                                          icon: Icons.rocket_launch_rounded,
+                                          isEnabled: state.sameDayEnabled,
+                                          onChanged: viewModel.setSameDayEnabled,
+                                          color: DesignTokens.success,
+                                          infoTitle: 'Same-Day Delivery',
+                                          infoBody: 'Offer same-day delivery for local buyers.\n\nDefault surcharge: \$14.99 on top of base shipping.\n\nHow it works:\n• Only available for buyers within your delivery area\n• Orders must be placed before your cutoff time\n• Best for perishable items, gifts, or urgent needs\n\nIdeal for food, flowers, and time-sensitive products.',
+                                          children: [
+                                            _buildGlassTextField(controller: _sameDayPriceController, label: 'Price (\$)', keyboardType: TextInputType.number),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        _buildQuantityShippingDiscountsSection(viewModel, state),
+                                      ],
                                     ],
                                   ],
                                 ),
@@ -500,6 +513,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         controller: _cityController,
                                         label: 'City',
                                         validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                                        onChanged: (_) => viewModel.clearCoordinates(),
                                       ),
                                       const SizedBox(height: 12),
                                       Row(
@@ -519,6 +533,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                               label: 'Postal Code',
                                               textCapitalization: TextCapitalization.characters,
                                               validator: _validatePostalCode,
+                                              onChanged: (_) => viewModel.clearCoordinates(),
                                             ),
                                           ),
                                         ],
@@ -728,25 +743,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                       ],
                     ),
                   ),
-                  // Section number badge
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: _activeStep == index ? DesignTokens.primary : DesignTokens.surfaceVariant,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${index + 1}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: _activeStep == index ? Colors.white : Colors.grey[500],
-                        ),
-                      ),
-                    ),
-                  ),
+                  // Active indicator icon
+                  if (_activeStep == index)
+                    Icon(Icons.edit_rounded, size: 18, color: DesignTokens.primary),
                 ],
               ),
             ),
@@ -1082,6 +1081,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             controller: controller,
             keyboardType: TextInputType.number,
             style: const TextStyle(fontSize: 13),
+            validator: (v) {
+              if (v == null || v.isEmpty) return null; // optional field
+              final val = double.tryParse(v);
+              if (val == null || val < 0 || val > 100) return '0-100%';
+              return null;
+            },
             decoration: InputDecoration(
               hintText: hint,
               suffixText: '% off',
@@ -1122,42 +1127,55 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Margin circle
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.05)]),
-            ),
-            child: Center(
+          Row(
+            children: [
+              // Margin circle
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.05)]),
+                ),
+                child: Center(
+                  child: Text(
+                    '${margin.toStringAsFixed(0)}%',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Profit Margin', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 2),
+                    Text(
+                      '\$${profit.toStringAsFixed(2)} per unit',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                isGood ? Icons.trending_up_rounded : (isOk ? Icons.trending_flat_rounded : Icons.trending_down_rounded),
+                color: color,
+                size: 28,
+              ),
+            ],
+          ),
+          if (_selectedSupplierCurrency != 'CAD')
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
               child: Text(
-                '${margin.toStringAsFixed(0)}%',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color),
+                '\u26a0 Supplier cost in $_selectedSupplierCurrency \u2014 margin is approximate until converted to CAD.',
+                style: TextStyle(fontSize: 11, color: Colors.grey[500], fontStyle: FontStyle.italic),
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Profit Margin', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)),
-                const SizedBox(height: 2),
-                Text(
-                  '\$${profit.toStringAsFixed(2)} per unit',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color),
-                ),
-              ],
-            ),
-          ),
-          Icon(
-            isGood ? Icons.trending_up_rounded : (isOk ? Icons.trending_flat_rounded : Icons.trending_down_rounded),
-            color: color,
-            size: 28,
-          ),
         ],
       ),
     );
@@ -1394,9 +1412,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                       viewModel.addProduct(
                         name: _nameController.text.trim(),
                         description: _descriptionController.text.trim(),
-                        price: double.parse(_priceController.text.trim()),
-                        stock: int.parse(_stockController.text.trim()),
-                        categoryId: int.parse(_categoryController.text.trim()),
+                        price: double.tryParse(_priceController.text.trim()) ?? 0,
+                        stock: int.tryParse(_stockController.text.trim()) ?? 0,
+                        categoryId: int.tryParse(_categoryController.text.trim()) ?? 0,
                         street: _streetController.text.trim(),
                         apartment: _apartmentController.text.trim(),
                         city: _cityController.text.trim(),
@@ -1511,6 +1529,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           description: 'Same Day Delivery',
           estimatedDays: 0,
           cost: double.tryParse(_sameDayPriceController.text) ?? 14.99,
+          quantityDiscounts: quantityDiscounts,
+          additionalItemCost: additionalItemCost,
+          maxItemsPerShipment: maxItems,
         ),
     ];
   }
@@ -1536,8 +1557,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
 
   String? _validatePostalCode(String? v) {
     if (v == null || v.isEmpty) return 'Required';
-    final reg = RegExp(r'^[A-Z]\d[A-Z] \d[A-Z]\d$');
-    if (!reg.hasMatch(v.toUpperCase().trim())) return 'Invalid (A1A 1A1)';
+    final normalized = v.toUpperCase().replaceAll(' ', '').trim();
+    final reg = RegExp(r'^[A-Z]\d[A-Z]\d[A-Z]\d$');
+    if (!reg.hasMatch(normalized)) return 'Invalid (A1A 1A1)';
     return null;
   }
 

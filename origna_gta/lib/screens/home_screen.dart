@@ -476,7 +476,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _onScroll() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
-      ref.read(homeViewModelProvider.notifier).loadProducts();
+      // Only paginate when products already exist — initial load is handled by the ViewModel constructor
+      final products = ref.read(homeViewModelProvider).products;
+      if (products.isNotEmpty) {
+        ref.read(homeViewModelProvider.notifier).loadProducts();
+      }
     }
   }
 }

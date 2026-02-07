@@ -53,6 +53,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
                     isPrimary: index == 0,
                     onRemove: () {
                       setState(() => _imageModels.remove(m));
+                      widget.onImagesChanged?.call(List.unmodifiable(_imageModels));
                     },
                   ),
                 );
@@ -136,6 +137,9 @@ class _ProductAddImagesState extends State<ProductAddImages> {
             messenger.showSnackBar(SnackBar(content: Text('Selected image is empty.')));
           }
         });
+        if (bytes.isNotEmpty) {
+          widget.onImagesChanged?.call(List.unmodifiable(_imageModels));
+        }
       }
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Error picking image: $e')));
@@ -174,15 +178,11 @@ class _ImageTile extends StatelessWidget {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(isPrimary ? 14 : 15),
-            child: Image.network(
-              imageModel.url,
+            child: Image.memory(
+              imageModel.bytes,
               width: 110,
               height: 110,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                color: DesignTokens.surfaceVariant,
-                child: Icon(Icons.broken_image_rounded, color: Colors.grey[400], size: 32),
-              ),
             ),
           ),
         ),
@@ -227,8 +227,9 @@ class _ImageTile extends StatelessWidget {
 
 class ProductAddImages extends StatefulWidget {
   final List<ImageModel> imageModels;
+  final ValueChanged<List<ImageModel>>? onImagesChanged;
 
-  const ProductAddImages({super.key, required this.imageModels});
+  const ProductAddImages({super.key, required this.imageModels, this.onImagesChanged});
 
   @override
   State<ProductAddImages> createState() => _ProductAddImagesState();

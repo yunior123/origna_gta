@@ -49,6 +49,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     // NEW: Product status
     String? status,
   }) async {
+    // Bug #27: Prevent double-submit
+    if (state.isLoading) return;
+
     if (name.trim().isEmpty) {
       state = state.copyWith(errorMessage: 'Product name is required');
       return;
@@ -78,9 +81,12 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       state = state.copyWith(errorMessage: 'Category is required');
       return;
     }
-    if (street.trim().isEmpty || city.trim().isEmpty || postalCode.trim().isEmpty || state.selectedProvince.trim().isEmpty) {
-      state = state.copyWith(errorMessage: 'Complete product address is required');
-      return;
+    // Bug #4: Skip address validation for digital products (no shipping needed)
+    if (!state.isDigital) {
+      if (street.trim().isEmpty || city.trim().isEmpty || postalCode.trim().isEmpty || state.selectedProvince.trim().isEmpty) {
+        state = state.copyWith(errorMessage: 'Complete product address is required');
+        return;
+      }
     }
     // Relaxed address validation for Web/Test environment where Geocoder might fail
     /* 
@@ -184,6 +190,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   }
 
   Future<void> onStreetChanged(String value) async {
+    // Bug #16: Invalidate stale coordinates when user manually edits address
+    clearCoordinates();
     if (value.length < 3) {
       state = state.copyWith(showSuggestions: false, addressSuggestions: []);
       return;
@@ -210,6 +218,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     isLocalDeliveryOnly: value,
     standardEnabled: value ? false : state.standardEnabled,
     expressEnabled: value ? false : state.expressEnabled,
+    sameDayEnabled: value ? false : state.sameDayEnabled,
   );
 
   void setMinimumOrderQuantity(int value) => state = state.copyWith(minimumOrderQuantity: value);
@@ -222,17 +231,30 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   void toggleDigital(bool value) => state = state.copyWith(
     isDigital: value,
-    freeShipping: value ? true : state.freeShipping, // Bug #1: digital products MUST have freeShipping
+    freeShipping: value ? true : state.freeShipping,
     isPerishable: value ? false : state.isPerishable,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
-    standardEnabled: value ? false : (state.standardEnabled || true), // Re-enable standard when going back to physical
+    standardEnabled: value ? false : true, // Re-enable standard when going back to physical
     expressEnabled: value ? false : state.expressEnabled,
     sameDayEnabled: value ? false : state.sameDayEnabled,
   );
 
-  void toggleFreeShipping(bool value) => state = state.copyWith(freeShipping: value);
+  void toggleFreeShipping(bool value) => state = state.copyWith(
+    freeShipping: state.isDigital ? true : value,
+    // When free shipping is ON, only standard delivery makes sense —
+    // the backend makes ALL tiers $0, so express/same-day would be free too.
+    expressEnabled: (state.isDigital ? true : value) ? false : state.expressEnabled,
+    sameDayEnabled: (state.isDigital ? true : value) ? false : state.sameDayEnabled,
+    freeShippingAt10Plus: (state.isDigital ? true : value) ? false : state.freeShippingAt10Plus,
+  );
 
   void togglePerishable(bool value) => state = state.copyWith(isPerishable: value);
+
+  /// Bug #16: Invalidate lat/lng when user manually edits address fields
+  void clearCoordinates() => state = state.copyWith(latitude: null, longitude: null);
+
+  /// Bug #1: Allow ProductAddImages widget to sync images back to ViewModel
+  void updateImages(List<ImageModel> images) => state = state.copyWith(imageModels: images);
 
   Future<List<Uint8List>> _compressImages(List<ImageModel> imageModels) async {
     final results = <Uint8List>[];

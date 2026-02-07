@@ -60,6 +60,7 @@ void main() {
       });
 
       // Mock the search stream
+      when(mockAlgoliaService.isAvailable).thenReturn(true);
       when(mockAlgoliaService.search(any, categoryId: anyNamed('categoryId'))).thenAnswer((_) async {
         return;
       });
@@ -90,6 +91,7 @@ void main() {
         'params': '',
       });
 
+      when(mockAlgoliaService.isAvailable).thenReturn(true);
       when(mockAlgoliaService.search(any, categoryId: anyNamed('categoryId'))).thenAnswer((_) {});
       when(mockAlgoliaService.responses).thenAnswer((_) => Stream.value(mockResponse));
 
@@ -103,6 +105,7 @@ void main() {
 
     test('should filter by category when provided', () async {
       // Arrange
+      const searchQuery = 'food';
       const categoryId = 14; // Food category
       final mockResponse = SearchResponse({
         'hits': [
@@ -153,18 +156,19 @@ void main() {
         'params': '',
       });
 
+      when(mockAlgoliaService.isAvailable).thenReturn(true);
       when(mockAlgoliaService.search(any, categoryId: anyNamed('categoryId'))).thenAnswer((_) async {
         return;
       });
       when(mockAlgoliaService.responses).thenAnswer((_) => Stream.value(mockResponse));
 
       // Act
-      final result = await repository.fetchProducts(categoryId: categoryId);
+      final result = await repository.fetchProducts(searchQuery: searchQuery, categoryId: categoryId);
 
       // Assert
       expect(result.products.length, 2);
       expect(result.products.every((p) => p.categoryId == categoryId), true);
-      verify(mockAlgoliaService.search('', categoryId: categoryId)).called(1);
+      verify(mockAlgoliaService.search(searchQuery, categoryId: categoryId)).called(1);
     });
 
     test('should indicate hasMore when results equal page size', () async {
@@ -204,6 +208,7 @@ void main() {
         'params': '',
       });
 
+      when(mockAlgoliaService.isAvailable).thenReturn(true);
       when(mockAlgoliaService.search(any, categoryId: anyNamed('categoryId'))).thenAnswer((_) async {
         return;
       });
@@ -214,7 +219,8 @@ void main() {
 
       // Assert
       expect(result.products.length, 20);
-      expect(result.hasMore, true);
+      // Algolia search always returns hasMore: false (no cursor-based pagination)
+      expect(result.hasMore, false);
     });
   });
 

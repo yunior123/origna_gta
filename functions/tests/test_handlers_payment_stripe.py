@@ -75,16 +75,12 @@ def mock_unauthenticated_context():
 class TestCreateCheckoutSession:
     """Test create_checkout_session endpoint"""
 
-    @patch('handlers.payment_stripe.create_success_response')
     @patch('handlers.payment_stripe.get_db')
     @patch('handlers.payment_stripe.stripe.checkout.Session.create')
     @patch('handlers.payment_stripe.get_rate_limiter')
-    def test_successful_checkout_session_creation(self, mock_get_rate_limiter, mock_stripe_create, mock_get_db, mock_success_response, valid_checkout_data, firestore_mock_builder):
+    def test_successful_checkout_session_creation(self, mock_get_rate_limiter, mock_stripe_create, mock_get_db, valid_checkout_data, firestore_mock_builder):
         """Test successful checkout session creation with valid items"""
         from handlers.payment_stripe import create_checkout_session
-
-        # Mock create_success_response to return the dict directly
-        mock_success_response.side_effect = lambda data: {'success': True, **data}
 
         # Setup Firestore mock with test data
         firestore_mock_builder.add_seller('seller_123', suspended=False, onboarded=True)
@@ -292,19 +288,15 @@ class TestCreateCheckoutSession:
         assert exc.value.code == 'resource-exhausted'
         assert 'stock' in str(exc.value).lower()
 
-    @patch('handlers.payment_stripe.create_success_response')
     @patch('handlers.payment_stripe.get_db')
     @patch('handlers.payment_stripe.stripe.checkout.Session.create')
     @patch('handlers.payment_stripe.get_rate_limiter')
     @patch('main.validate_postal_code')
     @patch('handlers.payment_stripe.calculate_shipping_cost')
     @patch('handlers.payment_stripe.get_tax_rate')
-    def test_price_tampering_detection(self, mock_tax_rate, mock_shipping, mock_validate_postal, mock_get_rate_limiter, mock_stripe_create, mock_get_db, mock_success_response, valid_checkout_data):
+    def test_price_tampering_detection(self, mock_tax_rate, mock_shipping, mock_validate_postal, mock_get_rate_limiter, mock_stripe_create, mock_get_db, valid_checkout_data):
         """SECURITY: Test detection of price tampering"""
         from handlers.payment_stripe import create_checkout_session
-
-        # Mock create_success_response to return the dict directly
-        mock_success_response.side_effect = lambda data: {'success': True, **data}
 
         # Setup rate limiter
         mock_rate_limiter_instance = Mock()
@@ -520,16 +512,12 @@ class TestStripeWebhook:
 class TestCapturePayment:
     """Test capture_payment endpoint"""
 
-    @patch('handlers.payment_stripe.create_success_response')
     @patch('handlers.payment_stripe.get_db')
     @patch('handlers.payment_stripe.stripe.PaymentIntent.capture')
     @patch('handlers.payment_stripe.stripe.PaymentIntent.retrieve')
-    def test_successful_payment_capture(self, mock_retrieve, mock_capture, mock_get_db, mock_success_response):
+    def test_successful_payment_capture(self, mock_retrieve, mock_capture, mock_get_db):
         """Test successful payment capture after receipt confirmation"""
         from handlers.payment_stripe import capture_payment
-
-        # Mock create_success_response to return the dict directly
-        mock_success_response.side_effect = lambda data: {'success': True, **data}
 
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
@@ -686,15 +674,11 @@ class TestCapturePayment:
 class TestStripeConnectAccount:
     """Test Stripe Connect account creation and management"""
 
-    @patch('handlers.payment_stripe.create_success_response')
     @patch('handlers.payment_stripe.get_db')
     @patch('handlers.payment_stripe.stripe.Account.create')
-    def test_create_connect_account_success(self, mock_create, mock_get_db, mock_success_response):
+    def test_create_connect_account_success(self, mock_create, mock_get_db):
         """Test successful Stripe Connect account creation for seller"""
         from handlers.payment_stripe import create_connect_account
-
-        # Mock create_success_response to return the dict directly
-        mock_success_response.side_effect = lambda data: {'success': True, **data}
 
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db

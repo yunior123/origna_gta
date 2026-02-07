@@ -61,30 +61,66 @@ class HomeViewModel extends StateNotifier<HomeState> {
       if (kDebugMode) print('✅ Loaded ${result.products.length} products');
 
       if (!mounted) return; // Check mounted after async operation
+
+      // If initial load returned 0 products, force hasMore=false to prevent
+      // scroll-triggered reload loops (shimmer flicker bug)
+      final effectiveHasMore = (isInitialLoad && result.products.isEmpty)
+          ? false
+          : result.hasMore;
+
+      // Deduplicate: filter out products already present (by productId)
+      final existingIds = state.products.map((p) => p.productId).toSet();
+      final newProducts = result.products
+          .where((p) => !existingIds.contains(p.productId))
+          .toList();
+
       state = state.copyWith(
-        products: isInitialLoad ? result.products : [...state.products, ...result.products],
-        lastDocument: result.lastDocument,
-        hasMore: result.hasMore,
+        products: isInitialLoad ? result.products : [...state.products, ...newProducts],
+        lastDocument: result.lastDocument ?? state.lastDocument,
+        hasMore: effectiveHasMore,
         isLoading: false,
         isLoadingMore: false,
       );
     } catch (e) {
       if (kDebugMode) print('❌ Error loading products: $e');
       if (!mounted) return; // Check mounted after async operation
-      state = state.copyWith(isLoading: false, isLoadingMore: false, errorMessage: e.toString());
+      // On error with empty products, set hasMore=false to prevent infinite
+      // scroll-triggered retry loops. Category/search changes reset hasMore.
+      state = state.copyWith(
+        isLoading: false,
+        isLoadingMore: false,
+        errorMessage: e.toString(),
+        hasMore: state.products.isEmpty ? false : state.hasMore,
+      );
     }
   }
 
   void onCategorySelected(int? categoryId) {
     if (!mounted) return;
-    state = state.copyWith(selectedCategoryId: categoryId, products: [], lastDocument: null, hasMore: true);
+    state = state.copyWith(
+      selectedCategoryId: categoryId,
+      products: [],
+      lastDocument: null,
+      hasMore: true,
+      isLoading: false,
+      isLoadingMore: false,
+      errorMessage: null,
+    );
     loadProducts();
   }
 
   void onSearchChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      state = state.copyWith(searchQuery: value, products: [], lastDocument: null, hasMore: true);
+      state = state.copyWith(
+        searchQuery: value,
+        products: [],
+        lastDocument: null,
+        hasMore: true,
+        isLoading: false,
+        isLoadingMore: false,
+        errorMessage: null,
+      );
       loadProducts();
     });
   }

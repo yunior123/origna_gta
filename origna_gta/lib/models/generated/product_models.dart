@@ -201,10 +201,17 @@ class ProductCreate with _$ProductCreate {
 @freezed
 class SellerDeliveryOption with _$SellerDeliveryOption {
   const factory SellerDeliveryOption({
-    required String type,
-    required String description,
-    required double cost,
-    required int estimatedDays,
+    /// Delivery type: 'standard', 'express', 'same_day', etc.
+    @Default('standard') String type,
+
+    /// Human-readable description
+    @Default('') String description,
+
+    /// Shipping cost in dollars
+    @Default(0.0) double cost,
+
+    /// Estimated delivery days
+    @Default(3) int estimatedDays,
 
     /// Optional quantity-based discounts for this delivery option
     @Default([]) List<ShippingQuantityDiscount> quantityDiscounts,
@@ -219,7 +226,8 @@ class SellerDeliveryOption with _$SellerDeliveryOption {
     @Default(true) bool availableInternational,
   }) = _SellerDeliveryOption;
 
-  factory SellerDeliveryOption.fromJson(Map<String, dynamic> json) => _$SellerDeliveryOptionFromJson(json);
+  factory SellerDeliveryOption.fromJson(Map<String, dynamic> json) =>
+      _$SellerDeliveryOptionFromJson(json);
 }
 
 // ============================================================================
