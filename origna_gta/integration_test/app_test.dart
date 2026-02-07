@@ -14,7 +14,11 @@ void main() {
   testWidgets('Flutter Web E2E - Complete App Test', (WidgetTester tester) async {
     // Launch app once
     await app.mainTest();
-    await tester.pumpAndSettle(const Duration(seconds: 5));
+    // Use pump instead of pumpAndSettle to avoid timeout from
+    // persistent animations/timers (Firebase, Riverpod, etc.)
+    for (int i = 0; i < 10; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
 
     // ===== 1. App launches successfully =====
     expect(find.byType(MaterialApp), findsOneWidget);
@@ -63,7 +67,7 @@ void main() {
     // ===== 10. Test button interactions =====
     if (elevatedButtons.evaluate().isNotEmpty) {
       await tester.tap(elevatedButtons.first);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
       debugPrint('✓ Button tap test passed');
     }
 
@@ -71,7 +75,7 @@ void main() {
     final scrollable = find.byType(Scrollable);
     if (scrollable.evaluate().isNotEmpty) {
       await tester.drag(scrollable.first, const Offset(0, -200));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
       debugPrint('✓ Scroll test passed');
     }
 
