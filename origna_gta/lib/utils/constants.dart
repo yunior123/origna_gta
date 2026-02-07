@@ -392,7 +392,7 @@ class SellerDeliveryOption {
     ShippingQuantityDiscount? bestDiscount;
     for (final discount in quantityDiscounts) {
       if (quantity >= discount.minQuantity) {
-        if (bestDiscount == null || discount.minQuantity > bestDiscount!.minQuantity) {
+        if (bestDiscount == null || discount.minQuantity > bestDiscount.minQuantity) {
           bestDiscount = discount;
         }
       }
