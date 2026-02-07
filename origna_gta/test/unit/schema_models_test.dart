@@ -318,14 +318,15 @@ void main() {
     test('PaymentStatus values', () {
       expect(PaymentStatus.awaitingPayment.name, 'awaitingPayment');
       expect(PaymentStatus.paid.name, 'paid');
-      expect(PaymentStatus.values.length, 8);
+      expect(PaymentStatus.values.length, 10);
     });
 
     test('DeliveryStatus values', () {
       expect(DeliveryStatus.pending.name, 'pending');
       expect(DeliveryStatus.shipped.name, 'shipped');
       expect(DeliveryStatus.delivered.name, 'delivered');
-      expect(DeliveryStatus.values.length, 3);
+      expect(DeliveryStatus.refunded.name, 'refunded');
+      expect(DeliveryStatus.values.length, 4);
     });
 
     test('UserRole values', () {
