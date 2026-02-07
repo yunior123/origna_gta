@@ -628,25 +628,28 @@ test.describe('Marketplace Smoke Tests', () => {
         });
         console.log(`Splash gone: ${splashGone}`);
         
-        // Wait for Flutter canvas to be ready
+        // Wait for any Flutter rendering element (flt-glass-pane, flutter-view, or canvas)
         await page.waitForFunction(() => {
-            const canvas = document.querySelector('flt-glass-pane canvas');
-            return canvas !== null;
-        }, { timeout: 60000 }).catch(e => console.log('Canvas wait failed:', e.message));
+            const glasspane = document.querySelector('flt-glass-pane');
+            const flutterView = document.querySelector('flutter-view');
+            const canvas = document.querySelector('canvas');
+            return !!glasspane || !!flutterView || !!canvas;
+        }, { timeout: 60000 }).catch(e => console.log('Flutter element wait failed:', e.message));
         
         // Verify Flutter engine loaded
         const flutterLoaded = await page.evaluate(() => {
             const glasspane = document.querySelector('flt-glass-pane');
+            const flutterView = document.querySelector('flutter-view');
             const canvas = document.querySelector('canvas');
             return { 
                 hasGlasspane: !!glasspane, 
+                hasFlutterView: !!flutterView,
                 hasCanvas: !!canvas,
-                glasspaneVisible: glasspane ? getComputedStyle(glasspane).visibility !== 'hidden' && getComputedStyle(glasspane).display !== 'none' : false
             };
         });
         console.log(`Flutter state: ${JSON.stringify(flutterLoaded)}`);
         
-        expect(flutterLoaded.hasGlasspane || flutterLoaded.hasCanvas).toBeTruthy();
+        expect(flutterLoaded.hasGlasspane || flutterLoaded.hasFlutterView || flutterLoaded.hasCanvas).toBeTruthy();
         console.log('✅ Home page Flutter app loaded successfully');
     });
 
@@ -659,9 +662,11 @@ test.describe('Marketplace Smoke Tests', () => {
         
         const flutterLoaded = await page.evaluate(() => {
             const glasspane = document.querySelector('flt-glass-pane');
-            return { hasGlasspane: !!glasspane };
+            const flutterView = document.querySelector('flutter-view');
+            const canvas = document.querySelector('canvas');
+            return { hasFlutter: !!glasspane || !!flutterView || !!canvas };
         });
-        expect(flutterLoaded.hasGlasspane).toBeTruthy();
+        expect(flutterLoaded.hasFlutter).toBeTruthy();
         console.log('✅ Login page accessible');
     });
 
@@ -685,9 +690,11 @@ test.describe('Marketplace Smoke Tests', () => {
         // Verify Flutter app loaded (might redirect to login)
         const flutterLoaded = await page.evaluate(() => {
             const glasspane = document.querySelector('flt-glass-pane');
-            return { hasGlasspane: !!glasspane };
+            const flutterView = document.querySelector('flutter-view');
+            const canvas = document.querySelector('canvas');
+            return { hasFlutter: !!glasspane || !!flutterView || !!canvas };
         });
-        expect(flutterLoaded.hasGlasspane).toBeTruthy();
+        expect(flutterLoaded.hasFlutter).toBeTruthy();
         console.log('✅ Cart/Login page accessible');
     });
 });

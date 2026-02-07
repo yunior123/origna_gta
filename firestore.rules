@@ -123,12 +123,12 @@ service cloud.firestore {
         isValidName(request.resource.data.name) &&
         isValidEmail(request.resource.data.email) &&
         (request.resource.data.address == null || isValidAddress(request.resource.data.address)) &&
-        // Prevent users from modifying seller-specific fields
-        request.resource.data.commissionRate == resource.data.commissionRate &&
-        request.resource.data.verified == resource.data.verified &&
-        request.resource.data.verificationStatus == resource.data.verificationStatus &&
-        request.resource.data.payoutHoldDays == resource.data.payoutHoldDays &&
-        request.resource.data.suspended == resource.data.suspended &&
+        // Prevent users from modifying seller-specific fields (safe access for buyer accounts that lack these fields)
+        (!resource.data.keys().hasAny(['commissionRate']) || request.resource.data.commissionRate == resource.data.commissionRate) &&
+        (!resource.data.keys().hasAny(['verified']) || request.resource.data.verified == resource.data.verified) &&
+        (!resource.data.keys().hasAny(['verificationStatus']) || request.resource.data.verificationStatus == resource.data.verificationStatus) &&
+        (!resource.data.keys().hasAny(['payoutHoldDays']) || request.resource.data.payoutHoldDays == resource.data.payoutHoldDays) &&
+        (!resource.data.keys().hasAny(['suspended']) || request.resource.data.suspended == resource.data.suspended) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name',
           'address',

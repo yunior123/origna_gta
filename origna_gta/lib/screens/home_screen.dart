@@ -487,11 +487,13 @@ class _ProductGrid extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (products.isEmpty && !isLoading) {
-      return SliverToBoxAdapter(
+      return SliverFillRemaining(
+        hasScrollBody: false,
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(64),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   padding: const EdgeInsets.all(24),
@@ -520,18 +522,16 @@ class _ProductGrid extends ConsumerWidget {
     }
 
     if (isLoading) {
-      return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 64),
-          child: Center(
-            child: ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [DesignTokens.primary, DesignTokens.secondary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(bounds),
-              child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-            ),
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(
+          child: ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [DesignTokens.primary, DesignTokens.secondary],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ).createShader(bounds),
+            child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
           ),
         ),
       );

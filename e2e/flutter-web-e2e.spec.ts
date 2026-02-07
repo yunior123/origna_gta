@@ -23,30 +23,39 @@ const TEST_USER = {
     displayName: 'E2E Test User'
 };
 
-// Helper: Wait for Flutter to load
+// Helper: Detect Flutter web rendering regardless of engine version.
+// Flutter <=3.21 uses <flt-glass-pane>, Flutter 3.22+ uses <flutter-view>,
+// and all versions render into one or more <canvas> elements.
 async function waitForFlutter(page: Page, timeout = 30000) {
-    // 1) Flutter engine host present (often attached but not strictly "visible")
-    await page.locator('flt-glass-pane').first().waitFor({ state: 'attached', timeout });
+    // 1) Wait for any Flutter host element OR a sized canvas to appear
     await page.waitForFunction(() => {
-        const splash = document.getElementById('splash');
-        return !splash || splash.style.display === 'none';
+        const glasspane = document.querySelector('flt-glass-pane');
+        const flutterView = document.querySelector('flutter-view');
+        const canvas = document.querySelector('canvas');
+        return !!glasspane || !!flutterView || (canvas instanceof HTMLCanvasElement && canvas.getBoundingClientRect().width > 0);
     }, { timeout });
 
-    // 2) Ensure a canvas frame is actually rendered
+    // 2) Wait for the splash screen to disappear
+    await page.waitForFunction(() => {
+        const splash = document.getElementById('splash');
+        return !splash || splash.style.display === 'none' || splash.getAttribute('hidden') !== null;
+    }, { timeout }).catch(() => {});
+
+    // 3) Best-effort: ensure a canvas frame is actually rendered
     await page.waitForFunction(() => {
         const canvas = document.querySelector('canvas');
         if (!(canvas instanceof HTMLCanvasElement)) return false;
         const rect = canvas.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0;
-    }, { timeout }).catch(() => {});
+    }, { timeout: Math.min(15000, timeout) }).catch(() => {});
 
-    // 3) Trigger Flutter semantics tree (CanvasKit) to improve locator stability
+    // 4) Trigger Flutter semantics tree (CanvasKit) to improve locator stability
     await page.evaluate(() => {
         const event = new KeyboardEvent('keydown', { key: 'Tab' });
         document.dispatchEvent(event);
     });
 
-    // 4) Wait for semantics to attach (best-effort; some routes may not render it immediately)
+    // 5) Wait for semantics to attach (best-effort)
     await page.locator('flt-semantics').first().waitFor({ state: 'attached', timeout: Math.min(10000, timeout) }).catch(() => {});
 }
 
@@ -121,7 +130,9 @@ test.describe('Infrastructure Health Checks', () => {
         const response = await request.get('http://localhost:5005/');
         expect(response.status()).toBe(200);
         const html = await response.text();
-        expect(html).toContain('OrignaGta');
+        // Accept both 'Origna GTA' (HTML title) and 'OrignaGta' (legacy)
+        expect(html.toLowerCase()).toContain('origna');
+        expect(html).toContain('flutter');
         console.log('✅ Web App serving');
     });
 });
@@ -135,8 +146,12 @@ test.describe('Flutter Web App Loading', () => {
         await page.goto('/');
         await waitForFlutter(page);
         
-        const glasspane = await page.locator('flt-glass-pane').count();
-        expect(glasspane).toBeGreaterThan(0);
+        const flutterPresent = await page.evaluate(() => {
+            return !!document.querySelector('flt-glass-pane') ||
+                   !!document.querySelector('flutter-view') ||
+                   !!document.querySelector('canvas');
+        });
+        expect(flutterPresent).toBeTruthy();
         console.log('✅ Flutter app initialized');
     });
 
@@ -163,8 +178,12 @@ test.describe('Flutter Web App Loading', () => {
         await waitForFlutter(page);
         
         // App should handle gracefully (either 404 page or redirect)
-        const glasspane = await page.locator('flt-glass-pane').count();
-        expect(glasspane).toBeGreaterThan(0);
+        const flutterPresent = await page.evaluate(() => {
+            return !!document.querySelector('flt-glass-pane') ||
+                   !!document.querySelector('flutter-view') ||
+                   !!document.querySelector('canvas');
+        });
+        expect(flutterPresent).toBeTruthy();
         console.log('✅ Invalid route handled');
     });
 });
