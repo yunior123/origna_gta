@@ -111,12 +111,16 @@ class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProvide
                 scale: _scaleAnimation.value,
                 child: IconButton(
                   icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
-                  onPressed: () {
+                  onPressed: () async {
                     _triggerAnimation();
                     if (user == null) {
                       showLoginPrompt(context);
                       return;
                     }
+                    if (!context.mounted) return;
+                    final verified = await checkEmailVerifiedOrPrompt(context);
+                    if (!verified) return;
+                    if (!context.mounted) return;
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
                   },
                 ),
@@ -266,6 +270,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: CustomScrollView(
           controller: _scrollController,
           slivers: [
+            // App Purpose Tagline
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Text(
+                  'Your marketplace for buying and selling across the Greater Toronto Area and all of Canada.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    fontWeight: FontWeight.w400,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ),
+
             // Animated Search Bar
             SliverToBoxAdapter(
               child: Padding(
@@ -353,7 +374,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         end: Alignment.bottomRight,
                       ).createShader(bounds),
                       child: const Text(
-                        'OrignaGta',
+                        'Origna GTA',
                         style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 24, letterSpacing: 0.5),
                       ),
                     ),

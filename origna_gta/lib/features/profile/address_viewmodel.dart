@@ -37,7 +37,7 @@ class AddressViewModel extends StateNotifier<AddressState> {
 
   void selectAddress(Map<String, dynamic> suggestion) {
     final details = parseAddressSuggestion(suggestion);
-    state = state.copyWith(selectedProvince: details.province, latitude: details.latitude, longitude: details.longitude, showSuggestions: false, addressSuggestions: []);
+    state = state.copyWith(selectedProvince: details.state, latitude: details.latitude, longitude: details.longitude, showSuggestions: false, addressSuggestions: []);
   }
 
   Future<void> saveAddress({

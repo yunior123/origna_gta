@@ -116,8 +116,12 @@ class OrdersScreen extends ConsumerWidget {
 
     if (user == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('My Orders')),
-        body: const Center(child: Text('Please log in to view orders')),
+        appBar: AppBarFactory.simple(title: 'My Orders'),
+        body: const AnimatedEmptyState(
+          icon: Icons.lock_outline_rounded,
+          title: 'Sign in to view orders',
+          subtitle: 'Your order history will appear here.',
+        ),
       );
     }
 
@@ -150,15 +154,20 @@ class OrdersScreen extends ConsumerWidget {
               children: [
                 if (pendingApprovals.isNotEmpty) _PendingApprovalsBanner(count: pendingApprovals.length),
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    itemCount: orders.length,
-                    itemBuilder: (context, index) {
-                      return FadeSlideIn(
-                        delay: Duration(milliseconds: 80 * index),
-                        child: _BuyerOrderCard(order: orders[index]),
-                      );
-                    },
+                  child: RefreshIndicator(
+                    color: DesignTokens.primary,
+                    onRefresh: () async => ref.invalidate(buyerOrdersProvider),
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      itemCount: orders.length,
+                      itemBuilder: (context, index) {
+                        return FadeSlideIn(
+                          delay: Duration(milliseconds: 80 * index),
+                          child: _BuyerOrderCard(order: orders[index]),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -202,44 +211,10 @@ class OrdersScreen extends ConsumerWidget {
   }
 
   Widget _buildEmptyState(bool isDark) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [DesignTokens.primary.withValues(alpha: 0.12), DesignTokens.secondary.withValues(alpha: 0.12)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Center(
-                child: ShaderMask(
-                  shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                  child: const Icon(Icons.shopping_bag_outlined, size: 64, color: Colors.white),
-                ),
-              ),
-            ),
-            const SizedBox(height: 28),
-            Text(
-              'No orders yet',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.grey[900]),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Your paid orders will appear here.\nStart shopping to see them!',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey[500], height: 1.6),
-            ),
-          ],
-        ),
-      ),
+    return const AnimatedEmptyState(
+      icon: Icons.shopping_bag_outlined,
+      title: 'No orders yet',
+      subtitle: 'Your paid orders will appear here.\nStart shopping to see them!',
     );
   }
 

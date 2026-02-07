@@ -109,7 +109,7 @@ class TestTaxAudit(unittest.TestCase):
                 "street": "123 Kids St",
                 "city": "Toronto",
                 "postalCode": "M5V 1A1",
-                "province": "ON",
+                "state": "ON",
                 "country": "Canada"
             }
         }
@@ -204,7 +204,7 @@ class TestTaxAudit(unittest.TestCase):
                 "street": "123 Grocery St",
                 "city": "Toronto",
                 "postalCode": "M5V 1A1",
-                "province": "ON",
+                "state": "ON",
                 "country": "Canada"
             }
         }

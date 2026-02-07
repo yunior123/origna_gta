@@ -238,9 +238,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       }
 
       // Backend returns: {success, sessionId, orderId, checkoutUrl}
-      final checkoutUrl = result['checkoutUrl'] as String;
-      final orderId = result['orderId'] as String;
-      final sessionId = result['sessionId'] as String;
+      final checkoutUrl = result[ApiKeys.checkoutUrl] as String;
+      final orderId = result[Fields.orderId] as String;
+      final sessionId = result[ApiKeys.sessionId] as String;
 
       await _orderRepository.updateLastSession(userId, sessionId, orderId);
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/admin/admin_actions_viewmodel.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 
 class AdminSecurityTab extends ConsumerStatefulWidget {
   const AdminSecurityTab({super.key});
@@ -26,23 +28,53 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
       children: [
         // MFA Status Card
         Card(
-          elevation: 2,
-          color: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Admin Multi-Factor Authentication', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        gradient: DesignTokens.primaryGradient,
+                        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                      ),
+                      child: const Icon(Icons.shield_rounded, color: Colors.white, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Multi-Factor Authentication', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 2),
+                          Text('Admin account protection', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                        ],
+                      ),
+                    ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(color: _mfaEnabled ? Colors.green : Colors.grey, borderRadius: BorderRadius.circular(20)),
-                      child: Text(
-                        _mfaEnabled ? 'ENABLED' : 'DISABLED',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                      decoration: BoxDecoration(
+                        color: _mfaEnabled ? DesignTokens.success.withValues(alpha: 0.12) : Colors.grey.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _mfaEnabled ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                            size: 14,
+                            color: _mfaEnabled ? DesignTokens.success : Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _mfaEnabled ? 'ENABLED' : 'DISABLED',
+                            style: TextStyle(color: _mfaEnabled ? DesignTokens.success : Colors.grey, fontWeight: FontWeight.w700, fontSize: 11),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -55,25 +87,25 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                 ),
                 const SizedBox(height: 20),
                 if (!_mfaEnabled)
-                  ElevatedButton.icon(
+                  FilledButton.icon(
                     onPressed: adminActionsState.isLoading ? null : _enableMfa,
-                    icon: const Icon(Icons.security),
+                    icon: const Icon(Icons.security_rounded),
                     label: const Text('Enable MFA'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF667EEA),
-                      foregroundColor: Colors.white,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: DesignTokens.primary,
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
                     ),
                   )
                 else
-                  ElevatedButton.icon(
+                  FilledButton.icon(
                     onPressed: adminActionsState.isLoading ? null : _disableMfa,
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Icons.close_rounded),
                     label: const Text('Disable MFA'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: DesignTokens.error,
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
                     ),
                   ),
               ],
@@ -85,14 +117,14 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
         // MFA Setup Instructions (if enabling)
         if (_secret != null && !_mfaEnabled)
           Card(
-            elevation: 2,
-            color: Colors.blue.shade50,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+            color: DesignTokens.info.withValues(alpha: 0.04),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Step 1: Scan QR Code', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text('Step 1: Scan QR Code', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 12),
                   const Text(
                     'Use an authenticator app (Google Authenticator, Microsoft Authenticator, Authy, etc.) '
@@ -169,18 +201,18 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
+                    child: FilledButton(
                       onPressed: adminActionsState.isLoading ? null : _verifyAndCompleteMfa,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: DesignTokens.success,
                         padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
                       ),
                       child: const Text('Verify & Enable MFA'),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text('Step 3: Save Backup Codes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  const Text('Step 3: Save Backup Codes', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 12),
                   const Text(
                     'If you lose access to your authenticator, use these backup codes to regain access. '
@@ -239,13 +271,19 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
         if (adminActionsState.errorMessage != null)
           Container(
             margin: const EdgeInsets.only(top: 16),
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.red.shade50,
-              border: Border.all(color: Colors.red),
-              borderRadius: BorderRadius.circular(8),
+              color: DesignTokens.error.withValues(alpha: 0.08),
+              border: Border.all(color: DesignTokens.error.withValues(alpha: 0.3)),
+              borderRadius: BorderRadius.circular(DesignTokens.radius12),
             ),
-            child: Text(adminActionsState.errorMessage!, style: TextStyle(color: Colors.red.shade700)),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline_rounded, color: DesignTokens.error, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(adminActionsState.errorMessage!, style: TextStyle(color: DesignTokens.error))),
+              ],
+            ),
           ),
 
         // Loading Indicator
@@ -304,9 +342,9 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
     final result = await viewModel.enableAdminMfa();
     if (result != null && mounted) {
       setState(() {
-        _secret = result['secret'];
-        _qrCodeUri = result['provisioning_uri'];
-        _backupCodes = List<String>.from(result['backup_codes'] ?? []);
+        _secret = result[ApiKeys.secret];
+        _qrCodeUri = result[ApiKeys.provisioningUri];
+        _backupCodes = List<String>.from(result[ApiKeys.backupCodes] ?? []);
       });
     }
   }

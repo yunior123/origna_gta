@@ -9,6 +9,7 @@ import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/editproduct_screen.dart';
 import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -30,6 +31,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final List<String> imageUrls = widget.product.imageUrls;
     final name = widget.product.name;
     final price = widget.product.price;
@@ -61,9 +63,23 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? const Color(0xFF1E1E32) : Colors.white,
           borderRadius: BorderRadius.circular(isCompact ? 12 : 16),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 4))],
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.transparent,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: DesignTokens.primary.withValues(alpha: isDark ? 0.08 : 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -73,10 +89,12 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
               flex: 5,
               child: Stack(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(isCompact ? 12 : 16)),
-                    child: SizedBox.expand(
-                      child: imageUrls.isNotEmpty
+                  Hero(
+                    tag: 'product_image_${widget.productId}',
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(isCompact ? 12 : 16)),
+                      child: SizedBox.expand(
+                        child: imageUrls.isNotEmpty
                           ? Stack(
                               children: [
                                 PageView.builder(
@@ -120,6 +138,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                               color: Colors.grey[200],
                               child: Icon(Icons.image_not_supported, size: isCompact ? 30 : 50),
                             ),
+                      ),
                     ),
                   ),
                   Positioned(
@@ -162,7 +181,11 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                     Flexible(
                       child: Text(
                         name,
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: titleFontSize),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: titleFontSize,
+                          color: isDark ? Colors.white : Colors.grey[900],
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -184,7 +207,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                         Flexible(
                           child: Text(
                             '\$${price.toStringAsFixed(2)}',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: priceFontSize, color: const Color(0xFF667EEA)),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: priceFontSize, color: DesignTokens.primary),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -192,7 +215,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                         // Hide add to cart button if user owns this product
                         if (!isOwner)
                           Material(
-                            color: const Color(0xFF667EEA),
+                            color: DesignTokens.primary,
                             borderRadius: BorderRadius.circular(isCompact ? 6 : 8),
                             child: InkWell(
                               onTap: () async {
@@ -229,13 +252,13 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
             if (canManageProduct)
               Container(
                 decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: Colors.grey[200]!)),
+                  border: Border(top: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey[200]!)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     IconButton(
-                      icon: Icon(Icons.edit, color: const Color(0xFF667EEA), size: iconSize),
+                      icon: Icon(Icons.edit, color: DesignTokens.primary, size: iconSize),
                       onPressed: () => _editProduct(context),
                       tooltip: 'Edit Product',
                       padding: EdgeInsets.all(isCompact ? 4 : 8),

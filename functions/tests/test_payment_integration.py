@@ -134,7 +134,7 @@ class TestPaymentFlow(unittest.TestCase):
             "shippingAddress": {
                 "street": "123 Main",
                 "city": "Toronto",
-                "province": "ON",
+                "state": "ON",
                 "postalCode": "M1A 1A1",
                 "country": "Canada"
             },

@@ -62,7 +62,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
   void selectAddress(Map<String, dynamic> suggestion) {
     final details = parseAddressSuggestion(suggestion);
     state = state.copyWith(
-      selectedProvince: details.province,
+      selectedProvince: details.state,
       latitude: details.latitude,
       longitude: details.longitude,
       showSuggestions: false,

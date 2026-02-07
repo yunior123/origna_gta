@@ -224,6 +224,7 @@ class Fields:
     LIVEMODE = "livemode"
 
     # === ADDRESS FIELDS ===
+    FORMATTED_ADDRESS = "formattedAddress"
     STREET = "street"
     APARTMENT = "apartment"
     CITY = "city"
@@ -489,3 +490,34 @@ class CategoryIds:
 
     MIN = 1
     MAX = 21
+
+
+class ApiKeys:
+    """Cloud Function API parameter and response keys.
+    These are NOT Firestore fields — they are the contract between
+    Flutter and Cloud Functions (request params + response keys).
+    """
+    # === REQUEST PARAMS (sent to Cloud Functions) ===
+    ADD = "add"
+    REMOVE = "remove"
+    REASON = "reason"
+    CODE = "code"
+    PROVIDER = "provider"
+    ENABLED = "enabled"
+    REFRESH_URL = "refreshUrl"
+    RETURN_URL = "returnUrl"
+
+    # === RESPONSE KEYS (returned from Cloud Functions) ===
+    CHECKOUT_URL = "checkoutUrl"
+    SESSION_ID = "sessionId"
+    URL = "url"
+    SECRET = "secret"
+    QR_CODE_URL = "qrCodeUrl"
+    DETAILS_SUBMITTED = "detailsSubmitted"
+    REQUIREMENTS_CURRENTLY_DUE = "requirementsCurrentlyDue"
+
+    # === PAYMENT PROVIDER RESPONSE KEYS ===
+    PROVIDERS = "providers"
+    CONFIGURED = "configured"
+    MISSING_KEYS = "missingKeys"
+    ENABLED_PROVIDERS = "enabledProviders"

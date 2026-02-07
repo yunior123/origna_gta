@@ -404,7 +404,7 @@ AddressDetails _$AddressDetailsFromJson(Map<String, dynamic> json) {
 mixin _$AddressDetails {
   String get street => throw _privateConstructorUsedError;
   String get city => throw _privateConstructorUsedError;
-  String get province => throw _privateConstructorUsedError;
+  String get state => throw _privateConstructorUsedError;
   String get postalCode => throw _privateConstructorUsedError;
   double get latitude => throw _privateConstructorUsedError;
   double get longitude => throw _privateConstructorUsedError;
@@ -429,7 +429,7 @@ abstract class $AddressDetailsCopyWith<$Res> {
   $Res call({
     String street,
     String city,
-    String province,
+    String state,
     String postalCode,
     double latitude,
     double longitude,
@@ -453,7 +453,7 @@ class _$AddressDetailsCopyWithImpl<$Res, $Val extends AddressDetails>
   $Res call({
     Object? street = null,
     Object? city = null,
-    Object? province = null,
+    Object? state = null,
     Object? postalCode = null,
     Object? latitude = null,
     Object? longitude = null,
@@ -468,9 +468,9 @@ class _$AddressDetailsCopyWithImpl<$Res, $Val extends AddressDetails>
                 ? _value.city
                 : city // ignore: cast_nullable_to_non_nullable
                       as String,
-            province: null == province
-                ? _value.province
-                : province // ignore: cast_nullable_to_non_nullable
+            state: null == state
+                ? _value.state
+                : state // ignore: cast_nullable_to_non_nullable
                       as String,
             postalCode: null == postalCode
                 ? _value.postalCode
@@ -502,7 +502,7 @@ abstract class _$$AddressDetailsImplCopyWith<$Res>
   $Res call({
     String street,
     String city,
-    String province,
+    String state,
     String postalCode,
     double latitude,
     double longitude,
@@ -525,7 +525,7 @@ class __$$AddressDetailsImplCopyWithImpl<$Res>
   $Res call({
     Object? street = null,
     Object? city = null,
-    Object? province = null,
+    Object? state = null,
     Object? postalCode = null,
     Object? latitude = null,
     Object? longitude = null,
@@ -540,9 +540,9 @@ class __$$AddressDetailsImplCopyWithImpl<$Res>
             ? _value.city
             : city // ignore: cast_nullable_to_non_nullable
                   as String,
-        province: null == province
-            ? _value.province
-            : province // ignore: cast_nullable_to_non_nullable
+        state: null == state
+            ? _value.state
+            : state // ignore: cast_nullable_to_non_nullable
                   as String,
         postalCode: null == postalCode
             ? _value.postalCode
@@ -567,7 +567,7 @@ class _$AddressDetailsImpl implements _AddressDetails {
   const _$AddressDetailsImpl({
     required this.street,
     required this.city,
-    required this.province,
+    required this.state,
     required this.postalCode,
     required this.latitude,
     required this.longitude,
@@ -581,7 +581,7 @@ class _$AddressDetailsImpl implements _AddressDetails {
   @override
   final String city;
   @override
-  final String province;
+  final String state;
   @override
   final String postalCode;
   @override
@@ -591,7 +591,7 @@ class _$AddressDetailsImpl implements _AddressDetails {
 
   @override
   String toString() {
-    return 'AddressDetails(street: $street, city: $city, province: $province, postalCode: $postalCode, latitude: $latitude, longitude: $longitude)';
+    return 'AddressDetails(street: $street, city: $city, state: $state, postalCode: $postalCode, latitude: $latitude, longitude: $longitude)';
   }
 
   @override
@@ -601,8 +601,8 @@ class _$AddressDetailsImpl implements _AddressDetails {
             other is _$AddressDetailsImpl &&
             (identical(other.street, street) || other.street == street) &&
             (identical(other.city, city) || other.city == city) &&
-            (identical(other.province, province) ||
-                other.province == province) &&
+            (identical(other.state, state) ||
+                other.state == state) &&
             (identical(other.postalCode, postalCode) ||
                 other.postalCode == postalCode) &&
             (identical(other.latitude, latitude) ||
@@ -617,7 +617,7 @@ class _$AddressDetailsImpl implements _AddressDetails {
     runtimeType,
     street,
     city,
-    province,
+    state,
     postalCode,
     latitude,
     longitude,
@@ -644,7 +644,7 @@ abstract class _AddressDetails implements AddressDetails {
   const factory _AddressDetails({
     required final String street,
     required final String city,
-    required final String province,
+    required final String state,
     required final String postalCode,
     required final double latitude,
     required final double longitude,
@@ -658,7 +658,7 @@ abstract class _AddressDetails implements AddressDetails {
   @override
   String get city;
   @override
-  String get province;
+  String get state;
   @override
   String get postalCode;
   @override

@@ -211,7 +211,7 @@ class AddressDetails(BaseModel):
     """
     street: str = Field(..., min_length=1, max_length=100)
     city: str = Field(..., min_length=2, max_length=50)
-    province: str = Field(..., min_length=2, max_length=2)
+    state: str = Field(..., min_length=2, max_length=2)
     postalCode: str = Field(...)
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
@@ -225,10 +225,10 @@ class AddressDetails(BaseModel):
             raise ValueError("Invalid postal code format")
         return v.upper()
 
-    @field_validator("province")
+    @field_validator("state")
     @classmethod
-    def validate_province(cls, v: str) -> str:
-        """Validate province code"""
+    def validate_state(cls, v: str) -> str:
+        """Validate province/state code"""
         valid_provinces = {
             "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"
         }

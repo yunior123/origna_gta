@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/admin/admin_actions_viewmodel.dart';
 import 'package:origna_gta/admin/admin_providers.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 
@@ -22,20 +23,32 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
     return Column(
       children: [
         // Search and Filter
-        Padding(
-          padding: const EdgeInsets.all(16),
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+            boxShadow: DesignTokens.shadowSm,
+          ),
           child: Column(
             children: [
               TextField(
                 decoration: InputDecoration(
                   hintText: 'Search products...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                  prefixIcon: Icon(Icons.search_rounded, color: DesignTokens.primary),
+                  filled: true,
+                  fillColor: DesignTokens.surfaceVariant,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
                 onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -111,12 +124,22 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
     final isSelected = _stockFilter == value;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (_) => setState(() => _stockFilter = value),
-        selectedColor: const Color(0xFF667EEA),
-        labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+      child: GestureDetector(
+        onTap: () => setState(() => _stockFilter = value),
+        child: AnimatedContainer(
+          duration: DesignTokens.durationFast,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: isSelected ? DesignTokens.primary : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: isSelected ? DesignTokens.primary : Colors.grey.withValues(alpha: 0.2)),
+            boxShadow: isSelected ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 2))] : [],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(color: isSelected ? Colors.white : Colors.grey[600], fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400, fontSize: 12),
+          ),
+        ),
       ),
     );
   }
@@ -136,63 +159,75 @@ class _ProductCard extends ConsumerWidget {
 
     Color stockColor;
     String stockText;
+    IconData stockIcon;
     if (stock == 0) {
-      stockColor = Colors.red;
+      stockColor = DesignTokens.error;
       stockText = 'Out of Stock';
+      stockIcon = Icons.remove_circle_rounded;
     } else if (stock < 5) {
-      stockColor = Colors.orange;
+      stockColor = DesignTokens.warning;
       stockText = 'Low Stock ($stock)';
+      stockIcon = Icons.warning_rounded;
     } else {
-      stockColor = Colors.green;
+      stockColor = DesignTokens.success;
       stockText = 'In Stock ($stock)';
+      stockIcon = Icons.check_circle_rounded;
     }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
             // Product Image
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(DesignTokens.radius12),
               child: imageUrls.isNotEmpty
                   ? CachedNetworkImage(
                       imageUrl: imageUrls.first,
                       width: 70,
                       height: 70,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(width: 70, height: 70, color: Colors.grey[200], child: const Icon(Icons.image)),
-                      errorWidget: (context, url, error) => Container(width: 70, height: 70, color: Colors.grey[200], child: const Icon(Icons.broken_image)),
+                      placeholder: (context, url) => Container(
+                        width: 70, height: 70,
+                        decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+                        child: Icon(Icons.image_rounded, color: Colors.grey[400]),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        width: 70, height: 70,
+                        decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+                        child: Icon(Icons.broken_image_rounded, color: Colors.grey[400]),
+                      ),
                     )
-                  : Container(width: 70, height: 70, color: Colors.grey[200], child: const Icon(Icons.image)),
+                  : Container(
+                      width: 70, height: 70,
+                      decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+                      child: Icon(Icons.image_rounded, color: Colors.grey[400]),
+                    ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
 
             // Product Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '\$${price.toStringAsFixed(2)}',
-                    style: const TextStyle(color: Color(0xFF667EEA), fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
+                  Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 6),
+                  Text('\$${price.toStringAsFixed(2)}', style: const TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600, fontSize: 15)),
+                  const SizedBox(height: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(color: stockColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                    child: Text(
-                      stockText,
-                      style: TextStyle(color: stockColor, fontSize: 11, fontWeight: FontWeight.w600),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: stockColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(stockIcon, size: 13, color: stockColor),
+                        const SizedBox(width: 4),
+                        Text(stockText, style: TextStyle(color: stockColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                      ],
                     ),
                   ),
                 ],
@@ -202,14 +237,13 @@ class _ProductCard extends ConsumerWidget {
             // Actions
             PopupMenuButton<String>(
               onSelected: (value) => _handleAction(context, ref, value),
+              icon: Icon(Icons.more_vert_rounded, color: Colors.grey[400]),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
               itemBuilder: (context) => [
-                const PopupMenuItem(value: 'set_stock', child: Text('Set Stock')),
-                const PopupMenuItem(value: 'mark_out_of_stock', child: Text('Mark Out of Stock')),
-                const PopupMenuItem(value: 'view_seller', child: Text('View Seller')),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Text('Delete Product', style: TextStyle(color: Colors.red)),
-                ),
+                _menuItem('set_stock', Icons.edit_rounded, 'Set Stock', DesignTokens.primary),
+                _menuItem('mark_out_of_stock', Icons.remove_circle_outline_rounded, 'Mark Out of Stock', DesignTokens.warning),
+                _menuItem('view_seller', Icons.person_rounded, 'View Seller', DesignTokens.info),
+                _menuItem('delete', Icons.delete_rounded, 'Delete Product', DesignTokens.error),
               ],
             ),
           ],
@@ -256,24 +290,31 @@ class _ProductCard extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Product'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: DesignTokens.error),
+            const SizedBox(width: 10),
+            const Text('Delete Product'),
+          ],
+        ),
         content: Text('Are you sure you want to delete "${product.name}"? This cannot be undone.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
+          FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
               final messenger = ScaffoldMessenger.of(context);
               final success = await ref.read(adminActionsViewModelProvider.notifier).deleteProduct(product.id);
               if (!context.mounted) return;
               if (success) {
-                messenger.showSnackBar(const SnackBar(content: Text('Product deleted'), backgroundColor: Colors.red));
+                messenger.showSnackBar(SnackBar(content: const Text('Product deleted'), backgroundColor: DesignTokens.error));
               } else {
                 final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to delete product';
-                messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
             child: const Text('Delete'),
           ),
         ],
@@ -315,7 +356,7 @@ class _ProductCard extends ConsumerWidget {
     final sellerData = await ref.read(adminActionsViewModelProvider.notifier).fetchUserById(sellerId);
     if (!context.mounted) return;
     if (sellerData == null) {
-      messenger.showSnackBar(const SnackBar(content: Text('Seller not found'), backgroundColor: Colors.red));
+      messenger.showSnackBar(SnackBar(content: const Text('Seller not found'), backgroundColor: DesignTokens.error));
       return;
     }
 
@@ -323,19 +364,58 @@ class _ProductCard extends ConsumerWidget {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Seller Info'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: DesignTokens.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.person_rounded, color: DesignTokens.primary, size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Text('Seller Info'),
+            ],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Name: ${sellerData.name.isNotEmpty ? sellerData.name : 'Unknown'}'),
-              Text('Email: ${sellerData.email.isNotEmpty ? sellerData.email : 'Unknown'}'),
-              Text('Stripe: ${sellerData.onboardingCompleted ? 'Connected' : 'Pending'}'),
+              _detailRow('Name', sellerData.name.isNotEmpty ? sellerData.name : 'Unknown'),
+              const SizedBox(height: 8),
+              _detailRow('Email', sellerData.email.isNotEmpty ? sellerData.email : 'Unknown'),
+              const SizedBox(height: 8),
+              _detailRow('Stripe', sellerData.onboardingCompleted ? 'Connected' : 'Pending'),
             ],
           ),
           actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
         ),
       );
     }
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(width: 60, child: Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 13))),
+        Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13))),
+      ],
+    );
+  }
+
+  PopupMenuItem<String> _menuItem(String value, IconData icon, String label, Color color) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 10),
+          Text(label, style: TextStyle(fontSize: 13, color: color)),
+        ],
+      ),
+    );
   }
 }

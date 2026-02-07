@@ -5,11 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/screens/login_screen.dart';
 import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/env_config.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 export 'package:origna_gta/models/models.dart';
@@ -47,22 +47,74 @@ final List<ProductCategories> productCategories = [
   ProductCategories(categoryId: 3, name: "Gaming", icon: Icons.sports_esports),
   ProductCategories(categoryId: 4, name: "Home & Kitchen", icon: Icons.kitchen),
   ProductCategories(categoryId: 5, name: "Fashion", icon: Icons.shopping_bag),
-  ProductCategories(categoryId: 6, name: "Shoes & Accessories", icon: Icons.backpack),
-  ProductCategories(categoryId: 7, name: "Jewelry & Watches", icon: Icons.watch),
-  ProductCategories(categoryId: 8, name: "Beauty & Personal Care", icon: Icons.spa),
-  ProductCategories(categoryId: 9, name: "Health & Wellness", icon: Icons.favorite),
-  ProductCategories(categoryId: 10, name: "Sports & Fitness", icon: Icons.fitness_center),
-  ProductCategories(categoryId: 11, name: "Automotive", icon: Icons.directions_car),
-  ProductCategories(categoryId: 12, name: "Tools & Hardware", icon: Icons.handyman),
-  ProductCategories(categoryId: 13, name: "Office Supplies", icon: Icons.folder),
+  ProductCategories(
+    categoryId: 6,
+    name: "Shoes & Accessories",
+    icon: Icons.backpack,
+  ),
+  ProductCategories(
+    categoryId: 7,
+    name: "Jewelry & Watches",
+    icon: Icons.watch,
+  ),
+  ProductCategories(
+    categoryId: 8,
+    name: "Beauty & Personal Care",
+    icon: Icons.spa,
+  ),
+  ProductCategories(
+    categoryId: 9,
+    name: "Health & Wellness",
+    icon: Icons.favorite,
+  ),
+  ProductCategories(
+    categoryId: 10,
+    name: "Sports & Fitness",
+    icon: Icons.fitness_center,
+  ),
+  ProductCategories(
+    categoryId: 11,
+    name: "Automotive",
+    icon: Icons.directions_car,
+  ),
+  ProductCategories(
+    categoryId: 12,
+    name: "Tools & Hardware",
+    icon: Icons.handyman,
+  ),
+  ProductCategories(
+    categoryId: 13,
+    name: "Office Supplies",
+    icon: Icons.folder,
+  ),
   ProductCategories(categoryId: 14, name: "Books", icon: Icons.book),
-  ProductCategories(categoryId: 15, name: "Music & Instruments", icon: Icons.music_note),
+  ProductCategories(
+    categoryId: 15,
+    name: "Music & Instruments",
+    icon: Icons.music_note,
+  ),
   ProductCategories(categoryId: 16, name: "Toys & Games", icon: Icons.gamepad),
-  ProductCategories(categoryId: 17, name: "Baby & Kids", icon: Icons.child_care),
+  ProductCategories(
+    categoryId: 17,
+    name: "Baby & Kids",
+    icon: Icons.child_care,
+  ),
   ProductCategories(categoryId: 18, name: "Pet Supplies", icon: Icons.pets),
-  ProductCategories(categoryId: 19, name: "Groceries", icon: Icons.local_grocery_store),
-  ProductCategories(categoryId: 20, name: "Art & Collectibles", icon: Icons.palette),
-  ProductCategories(categoryId: 21, name: "Digital Products", icon: Icons.cloud),
+  ProductCategories(
+    categoryId: 19,
+    name: "Groceries",
+    icon: Icons.local_grocery_store,
+  ),
+  ProductCategories(
+    categoryId: 20,
+    name: "Art & Collectibles",
+    icon: Icons.palette,
+  ),
+  ProductCategories(
+    categoryId: 21,
+    name: "Digital Products",
+    icon: Icons.cloud,
+  ),
 ];
 
 // Provincial tax configuration
@@ -82,21 +134,36 @@ final taxConfig = {
   'YT': {'GST': 0.05},
 };
 
-Future<bool> addToCart({required String productId, required int quantity, required BuildContext context}) async {
+Future<bool> addToCart({
+  required String productId,
+  required int quantity,
+  required BuildContext context,
+}) async {
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => LoginScreen()));
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => LoginScreen()));
     return false;
   }
 
   if (quantity <= 0) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid quantity'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid quantity'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
     return false;
   }
 
-  final cartItemRef = FirebaseFirestore.instance.collection(Collections.users).doc(user.uid).collection(Collections.cart).doc(productId);
+  final cartItemRef = FirebaseFirestore.instance
+      .collection(Collections.users)
+      .doc(user.uid)
+      .collection(Collections.cart)
+      .doc(productId);
 
   try {
     await FirebaseFirestore.instance.runTransaction((transaction) async {
@@ -104,14 +171,28 @@ Future<bool> addToCart({required String productId, required int quantity, requir
 
       if (snapshot.exists) {
         int currentQty = snapshot.data()?[Fields.quantity] ?? 0;
-        transaction.update(cartItemRef, {Fields.quantity: currentQty + quantity});
+        transaction.update(cartItemRef, {
+          Fields.quantity: currentQty + quantity,
+        });
       } else {
-        transaction.set(cartItemRef, CartModel(productId: productId, quantity: quantity, dateCreated: DateTime.now()).toMap());
+        transaction.set(
+          cartItemRef,
+          CartModel(
+            productId: productId,
+            quantity: quantity,
+            dateCreated: DateTime.now(),
+          ).toMap(),
+        );
       }
     });
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cart updated'), backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cart updated'),
+          backgroundColor: Colors.green,
+        ),
+      );
     }
   } catch (e, stack) {
     AppError.log(e, stackTrace: stack, context: 'addToCart');
@@ -135,7 +216,11 @@ Map<String, double> calculateDetailedTaxes(Address? address, double total) {
 
 /// Fallback shipping calculation when coordinates are unavailable.
 /// Uses province-based flat rates.
-double calculateFallbackShipping(List<CartItemDetailModel> items, String sellerProvince, String buyerProvince) {
+double calculateFallbackShipping(
+  List<CartItemDetailModel> items,
+  String sellerProvince,
+  String buyerProvince,
+) {
   final totalItems = items.fold(0, (i, item) => i + item.quantity);
   double baseCost = 26.99;
 
@@ -147,15 +232,22 @@ double calculateFallbackShipping(List<CartItemDetailModel> items, String sellerP
     baseCost = 22.99;
   }
 
-  final additionalItemsCost = (totalItems - 1).clamp(0, 999) * (baseCost * 0.15);
+  final additionalItemsCost =
+      (totalItems - 1).clamp(0, 999) * (baseCost * 0.15);
 
   return baseCost + additionalItemsCost;
 }
 
 /// Calculate shipping cost based on distance, quantity, weight, and delivery speed.
 /// Aligns with backend shipping_service.py for deterministic totals.
-Future<double> calculateShippingCost(List<CartItemDetailModel> items, Address? buyerAddress, {DeliverySpeed chosenSpeed = DeliverySpeed.standard}) async {
-  if (buyerAddress == null || buyerAddress.latitude == null || buyerAddress.longitude == null) {
+Future<double> calculateShippingCost(
+  List<CartItemDetailModel> items,
+  Address? buyerAddress, {
+  DeliverySpeed chosenSpeed = DeliverySpeed.standard,
+}) async {
+  if (buyerAddress == null ||
+      buyerAddress.latitude == null ||
+      buyerAddress.longitude == null) {
     return 0.0;
   }
 
@@ -177,7 +269,9 @@ Future<double> calculateShippingCost(List<CartItemDetailModel> items, Address? b
       continue;
     }
 
-    final hasLocalRestriction = sellerItems.any((i) => i.isLocalDeliveryOnly || i.isPerishable);
+    final hasLocalRestriction = sellerItems.any(
+      (i) => i.isLocalDeliveryOnly || i.isPerishable,
+    );
     if (hasLocalRestriction && sellerState != buyerState) {
       totalShipping += 50.0;
     }
@@ -188,9 +282,13 @@ Future<double> calculateShippingCost(List<CartItemDetailModel> items, Address? b
       continue;
     }
 
-    if (seller.latitude != null && seller.longitude != null && apiKey.isNotEmpty) {
+    if (seller.latitude != null &&
+        seller.longitude != null &&
+        apiKey.isNotEmpty) {
       try {
-        final url = Uri.parse("https://api.geoapify.com/v1/routematrix?apiKey=$apiKey");
+        final url = Uri.parse(
+          "https://api.geoapify.com/v1/routematrix?apiKey=$apiKey",
+        );
         final response = await http
             .post(
               url,
@@ -213,7 +311,10 @@ Future<double> calculateShippingCost(List<CartItemDetailModel> items, Address? b
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body) as Map<String, dynamic>;
-          final distanceMeters = (data['sources_to_targets'] as List).first.first['distance'] as num? ?? 0;
+          final distanceMeters =
+              (data['sources_to_targets'] as List).first.first['distance']
+                  as num? ??
+              0;
           final distanceKm = distanceMeters / 1000.0;
 
           if (hasLocalRestriction && distanceKm > 100) {
@@ -221,7 +322,11 @@ Future<double> calculateShippingCost(List<CartItemDetailModel> items, Address? b
             continue;
           }
 
-          totalShipping += _calculateTieredShipping(distanceKm, chargeableItems, chosenSpeed);
+          totalShipping += _calculateTieredShipping(
+            distanceKm,
+            chargeableItems,
+            chosenSpeed,
+          );
           continue;
         }
       } catch (e, stack) {
@@ -229,13 +334,21 @@ Future<double> calculateShippingCost(List<CartItemDetailModel> items, Address? b
       }
     }
 
-    totalShipping += calculateFallbackShipping(chargeableItems, sellerState, buyerState);
+    totalShipping += calculateFallbackShipping(
+      chargeableItems,
+      sellerState,
+      buyerState,
+    );
   }
 
   return totalShipping;
 }
 
-double calculateTieredShipping(double distanceKm, List<CartItemDetailModel> sellerItems, DeliverySpeed speed) {
+double calculateTieredShipping(
+  double distanceKm,
+  List<CartItemDetailModel> sellerItems,
+  DeliverySpeed speed,
+) {
   return _calculateTieredShipping(distanceKm, sellerItems, speed);
 }
 
@@ -269,20 +382,31 @@ List<String> generateSearchKeywords(String name) {
 }
 
 Future<int> getCartItemCount(String userId) async {
-  final query = FirebaseFirestore.instance.collection(Collections.users).doc(userId).collection(Collections.cart);
+  final query = FirebaseFirestore.instance
+      .collection(Collections.users)
+      .doc(userId)
+      .collection(Collections.cart);
 
   final snapshot = await query.count().get();
   return snapshot.count ?? 0;
 }
 
 Stream<List<CartItemModel>> getCartStream(String userId) {
-  return FirebaseFirestore.instance.collection(Collections.users).doc(userId).collection(Collections.cart).snapshots().map((snapshot) {
-    return snapshot.docs.map((doc) => CartItemModel.fromMap(doc.data())).toList();
-  });
+  return FirebaseFirestore.instance
+      .collection(Collections.users)
+      .doc(userId)
+      .collection(Collections.cart)
+      .snapshots()
+      .map((snapshot) {
+        return snapshot.docs
+            .map((doc) => CartItemModel.fromMap(doc.data()))
+            .toList();
+      });
 }
 
 int getCrossAxisCount(BuildContext context) {
-  if (TargetPlatform.android == defaultTargetPlatform || TargetPlatform.iOS == defaultTargetPlatform) {
+  if (TargetPlatform.android == defaultTargetPlatform ||
+      TargetPlatform.iOS == defaultTargetPlatform) {
     return 2;
   }
   final width = MediaQuery.of(context).size.width;
@@ -339,12 +463,15 @@ AddressDetails parseAddressSuggestion(Map<String, dynamic> suggestion) {
 
   final houseNumber = props['housenumber'];
   final streetName = props['street'];
-  final addressLine1 = [if (houseNumber != null) houseNumber, if (streetName != null) streetName].join(' ');
+  final addressLine1 = [
+    if (houseNumber != null) houseNumber,
+    if (streetName != null) streetName,
+  ].join(' ');
 
   return AddressDetails(
     street: props['formatted'] ?? addressLine1,
     city: props['city'] ?? '',
-    province: props['state_code'] ?? 'ON',
+    state: props['state_code'] ?? 'ON',
     postalCode: props['postcode'] ?? '',
     latitude: (suggestion['geometry']?['coordinates']?[1] ?? 0).toDouble(),
     longitude: (suggestion['geometry']?['coordinates']?[0] ?? 0).toDouble(),
@@ -352,25 +479,199 @@ AddressDetails parseAddressSuggestion(Map<String, dynamic> suggestion) {
 }
 
 // Add this helper method
-void showLoginPrompt(BuildContext context, {String text = 'You need to sign in to add items to your cart.'}) {
+void showLoginPrompt(
+  BuildContext context, {
+  String text = 'You need to sign in to add items to your cart.',
+}) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Sign In Required'),
       content: Text(text),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
         ElevatedButton(
           onPressed: () {
             Navigator.pop(context);
-            Navigator.push(context, MaterialPageRoute(builder: (_) => LoginScreen()));
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => LoginScreen()),
+            );
           },
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF667EEA),
+            foregroundColor: Colors.white,
+          ),
           child: const Text('Sign In'),
         ),
       ],
     ),
   );
+}
+
+/// Show a dialog prompting the user to verify their email before proceeding.
+/// [onResend] optional callback to resend verification email.
+/// Returns true if user dismissed, false if they tapped resend.
+void showEmailVerificationDialog(
+  BuildContext context, {
+  VoidCallback? onResend,
+}) {
+  final user = FirebaseAuth.instance.currentUser;
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      icon: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: const BoxDecoration(
+          color: Color(0xFFFFF3E0),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.mark_email_unread_outlined,
+          color: Color(0xFFF57C00),
+          size: 36,
+        ),
+      ),
+      title: const Text(
+        'Email Verification Required',
+        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (user?.email != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF667EEA).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                user!.email!,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF667EEA),
+                ),
+              ),
+            ),
+          Text(
+            'Please verify your email address to use this feature:',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '  1. Check your email inbox',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '  2. Look in spam/junk folder if not found',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '  3. Click the verification link',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '  4. Return here and try again',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                ),
+              ],
+            ),
+          ),
+          if (onResend != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              "Didn't receive the email?",
+              style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+            ),
+          ],
+        ],
+      ),
+      actionsAlignment: MainAxisAlignment.center,
+      actions: [
+        if (onResend != null)
+          TextButton.icon(
+            onPressed: () {
+              onResend();
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Verification email sent! Check your inbox.'),
+                  backgroundColor: Color(0xFF667EEA),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            icon: const Icon(Icons.send, size: 16),
+            label: const Text('Resend Email'),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF667EEA),
+            ),
+          ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(ctx),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF667EEA),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+          ),
+          child: const Text('Got It'),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Check if current user's email is verified. Returns true if verified or in emulator mode.
+/// Shows dialog and returns false if not verified.
+Future<bool> checkEmailVerifiedOrPrompt(BuildContext context) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return false;
+
+  // Emulator bypass
+  if (EnvConfig().isEmulator) {
+    return true;
+  }
+
+  await user.reload();
+  final freshUser = FirebaseAuth.instance.currentUser;
+  if (freshUser != null && freshUser.emailVerified) {
+    return true;
+  }
+
+  if (context.mounted) {
+    showEmailVerificationDialog(
+      context,
+      onResend: () async {
+        try {
+          await freshUser?.sendEmailVerification();
+        } catch (_) {}
+      },
+    );
+  }
+  return false;
 }
 
 /// Check if two provinces are adjacent
@@ -412,7 +713,11 @@ bool _areSameRegion(String p1, String p2) {
   return false;
 }
 
-double _calculateTieredShipping(double distanceKm, List<CartItemDetailModel> sellerItems, DeliverySpeed speed) {
+double _calculateTieredShipping(
+  double distanceKm,
+  List<CartItemDetailModel> sellerItems,
+  DeliverySpeed speed,
+) {
   double baseCost = 26.99;
 
   if (distanceKm <= 15) {
@@ -447,7 +752,10 @@ double _calculateTieredShipping(double distanceKm, List<CartItemDetailModel> sel
     }
   }
 
-  final subtotal = baseCost + weightSurcharge + ((totalItems - 1).clamp(0, 999) * (baseCost * 0.15));
+  final subtotal =
+      baseCost +
+      weightSurcharge +
+      ((totalItems - 1).clamp(0, 999) * (baseCost * 0.15));
 
   double multiplier = 1.0;
   if (speed == DeliverySpeed.express) {
@@ -475,7 +783,10 @@ double _calculateTieredShipping(double distanceKm, List<CartItemDetailModel> sel
   return subtotal * multiplier;
 }
 
-_FixedPriceResult _hasFixedPriceForSpeed(List<CartItemDetailModel> items, DeliverySpeed speed) {
+_FixedPriceResult _hasFixedPriceForSpeed(
+  List<CartItemDetailModel> items,
+  DeliverySpeed speed,
+) {
   double total = 0;
   for (final item in items) {
     final matches = item.deliveryOptions.where((o) => o.type == speed.value);
@@ -519,7 +830,12 @@ class AppError {
   /// Log error with optional user message
   /// - Logs to debugPrint in development
   /// - Sends to Sentry in production
-  static void log(dynamic error, {StackTrace? stackTrace, String? context, Map<String, dynamic>? extras}) {
+  static void log(
+    dynamic error, {
+    StackTrace? stackTrace,
+    String? context,
+    Map<String, dynamic>? extras,
+  }) {
     final contextPrefix = context != null ? '[$context] ' : '';
     debugPrint('$contextPrefix$error');
     if (stackTrace != null) {

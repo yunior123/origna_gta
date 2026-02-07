@@ -55,9 +55,17 @@ class LoginViewModel extends StateNotifier<LoginState> {
         await repository.signInWithEmail(email, password);
         final isVerified = await repository.isEmailVerified();
         if (!isVerified) {
-          await repository.sendEmailVerification();
+          try {
+            await repository.sendEmailVerification();
+          } catch (_) {
+            // Ignore send failures - user can resend later
+          }
           await repository.signOut();
-          state = state.copyWith(isLoading: false, errorMessage: 'Email not verified. Verification link sent.');
+          state = state.copyWith(
+            isLoading: false,
+            errorMessage: null,
+            successMessage: 'Please verify your email first. A verification link has been sent to $email.',
+          );
           return;
         }
       } else {

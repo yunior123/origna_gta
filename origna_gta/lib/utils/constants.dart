@@ -4,7 +4,7 @@
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
 // Re-export schema constants so existing imports keep working
-export 'package:origna_gta/core/schema/schema_constants.dart' show Collections, Fields, OrderStatusValues, PaymentStatusValues, DeliveryStatusValues, PayoutStatusValues, ShippingApprovalStatusValues, UserRoleValues, ProductStatusValues, SchemaRegistry, BusinessRules, CategoryIds;
+export 'package:origna_gta/core/schema/schema_constants.dart' show Collections, Fields, OrderStatusValues, PaymentStatusValues, DeliveryStatusValues, PayoutStatusValues, ShippingApprovalStatusValues, UserRoleValues, ProductStatusValues, SchemaRegistry, BusinessRules, CategoryIds, ApiKeys;
 
 // ============================================================================
 // APP CONFIGURATION
@@ -12,7 +12,7 @@ export 'package:origna_gta/core/schema/schema_constants.dart' show Collections, 
 
 /// Application configuration constants
 class AppConfig {
-  static const String appName = 'OrignaGta';
+  static const String appName = 'Origna GTA';
   static const String supportEmail = 'support@orignagta.ca';
   static const String websiteUrl = 'https://www.orignaventures.ca';
   static const String currency = 'cad';
@@ -392,7 +392,7 @@ class SellerDeliveryOption {
     ShippingQuantityDiscount? bestDiscount;
     for (final discount in quantityDiscounts) {
       if (quantity >= discount.minQuantity) {
-        if (bestDiscount == null || discount.minQuantity > bestDiscount!.minQuantity) {
+        if (bestDiscount == null || discount.minQuantity > bestDiscount.minQuantity) {
           bestDiscount = discount;
         }
       }

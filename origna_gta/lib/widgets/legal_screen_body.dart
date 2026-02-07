@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 
-import '../features/terms/terms_provider.dart';
+// ============================================================================
+// PARSED SECTION MODEL
+// ============================================================================
 
-/// Parsed section from raw terms text
-class _TermsSection {
+class PolicySection {
   final int number;
   final String title;
   final String body;
   final IconData icon;
 
-  const _TermsSection({
+  const PolicySection({
     required this.number,
     required this.title,
     required this.body,
@@ -20,30 +20,38 @@ class _TermsSection {
   });
 }
 
-/// Icon mapping per section keyword
-IconData _iconForSection(String title) {
+IconData iconForSection(String title) {
   final t = title.toLowerCase();
+  if (t.contains('collect') || t.contains('information')) return Icons.description_outlined;
+  if (t.contains('use')) return Icons.analytics_outlined;
+  if (t.contains('shar') || t.contains('third')) return Icons.share_outlined;
+  if (t.contains('right') || t.contains('choice')) return Icons.verified_user_outlined;
+  if (t.contains('security') || t.contains('protect')) return Icons.shield_outlined;
+  if (t.contains('cookie')) return Icons.cookie_outlined;
+  if (t.contains('retention') || t.contains('stor')) return Icons.storage_outlined;
+  if (t.contains('children') || t.contains('minor')) return Icons.child_care_outlined;
+  if (t.contains('change') || t.contains('update')) return Icons.edit_note_outlined;
+  if (t.contains('contact')) return Icons.mail_outlined;
+  if (t.contains('partner')) return Icons.people_outlined;
+  if (t.contains('payment')) return Icons.payment_outlined;
+  if (t.contains('seller')) return Icons.storefront_outlined;
   if (t.contains('acceptance')) return Icons.handshake_outlined;
-  if (t.contains('account') || t.contains('registration')) return Icons.person_add_outlined;
-  if (t.contains('purchase') || t.contains('payment')) return Icons.payment_outlined;
+  if (t.contains('account')) return Icons.person_add_outlined;
+  if (t.contains('purchase')) return Icons.payment_outlined;
   if (t.contains('shipping') || t.contains('delivery')) return Icons.local_shipping_outlined;
   if (t.contains('return') || t.contains('refund')) return Icons.assignment_return_outlined;
-  if (t.contains('seller')) return Icons.storefront_outlined;
   if (t.contains('prohibited')) return Icons.block_outlined;
   if (t.contains('intellectual') || t.contains('property')) return Icons.copyright_outlined;
   if (t.contains('liability') || t.contains('limitation')) return Icons.shield_outlined;
   if (t.contains('privacy')) return Icons.lock_outlined;
-  if (t.contains('change')) return Icons.edit_note_outlined;
   if (t.contains('termination')) return Icons.cancel_outlined;
   if (t.contains('governing') || t.contains('law')) return Icons.gavel_outlined;
-  if (t.contains('contact')) return Icons.mail_outlined;
   return Icons.article_outlined;
 }
 
-/// Parse raw terms string into structured sections
-List<_TermsSection> _parseSections(String raw) {
-  final sections = <_TermsSection>[];
-  final pattern = RegExp(r'(\d+)\.\s+([A-Z][A-Z &/]+)\n');
+List<PolicySection> parseSections(String raw) {
+  final sections = <PolicySection>[];
+  final pattern = RegExp(r'(\d+)\.\s+(.+)\n');
   final matches = pattern.allMatches(raw).toList();
 
   for (var i = 0; i < matches.length; i++) {
@@ -53,125 +61,41 @@ List<_TermsSection> _parseSections(String raw) {
     final bodyStart = match.end;
     final bodyEnd = i + 1 < matches.length ? matches[i + 1].start : raw.length;
     final body = raw.substring(bodyStart, bodyEnd).trim();
-    sections.add(_TermsSection(
+    sections.add(PolicySection(
       number: number,
       title: title,
       body: body,
-      icon: _iconForSection(title),
+      icon: iconForSection(title),
     ));
   }
 
   return sections;
 }
 
-class TermsScreen extends ConsumerWidget {
-  const TermsScreen({super.key});
+// ============================================================================
+// REUSABLE SECTION-BASED LEGAL SCREEN BODY
+// ============================================================================
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final termsAsync = ref.watch(termsProvider);
-
-    return Scaffold(
-      body: termsAsync.when(
-        loading: () => _buildLoadingState(),
-        error: (err, stack) => _buildErrorState(context),
-        data: (content) => _TermsBody(rawContent: content),
-      ),
-    );
-  }
-
-  Widget _buildLoadingState() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(
-                colors: [Colors.white, DesignTokens.accent],
-              ).createShader(bounds),
-              child: const CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2.5,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Loading Terms...',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 14,
-                letterSpacing: 1,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorState(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle],
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: DesignTokens.error.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.error_outline, size: 48, color: DesignTokens.error),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Unable to load terms',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Please check your connection and try again.',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
-            ),
-            const SizedBox(height: 28),
-            TextButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
-              label: const Text('Go Back', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TermsBody extends StatefulWidget {
+class LegalScreenBody extends StatefulWidget {
   final String rawContent;
+  final String heroTitle;
+  final String heroBadge;
+  final IconData heroBadgeIcon;
 
-  const _TermsBody({required this.rawContent});
+  const LegalScreenBody({
+    super.key,
+    required this.rawContent,
+    required this.heroTitle,
+    required this.heroBadge,
+    required this.heroBadgeIcon,
+  });
 
   @override
-  State<_TermsBody> createState() => _TermsBodyState();
+  State<LegalScreenBody> createState() => _LegalScreenBodyState();
 }
 
-class _TermsBodyState extends State<_TermsBody> {
-  late final List<_TermsSection> _sections;
+class _LegalScreenBodyState extends State<LegalScreenBody> {
+  late final List<PolicySection> _sections;
   late final Set<int> _expanded;
   final _scrollController = ScrollController();
   final Map<int, GlobalKey> _sectionKeys = {};
@@ -179,7 +103,7 @@ class _TermsBodyState extends State<_TermsBody> {
   @override
   void initState() {
     super.initState();
-    _sections = _parseSections(widget.rawContent);
+    _sections = parseSections(widget.rawContent);
     _expanded = {};
     for (final s in _sections) {
       _sectionKeys[s.number] = GlobalKey();
@@ -215,11 +139,8 @@ class _TermsBodyState extends State<_TermsBody> {
         controller: _scrollController,
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // Gradient Hero Header
-          _buildHeroHeader(context),
-          // Quick Nav Pills
+          _buildHeroHeader(context, isDark),
           SliverToBoxAdapter(child: _buildQuickNav(isDark)),
-          // Sections
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
             sliver: SliverList(
@@ -240,7 +161,7 @@ class _TermsBodyState extends State<_TermsBody> {
     );
   }
 
-  Widget _buildHeroHeader(BuildContext context) {
+  Widget _buildHeroHeader(BuildContext context, bool isDark) {
     return SliverAppBar(
       expandedHeight: 220,
       pinned: true,
@@ -273,7 +194,6 @@ class _TermsBodyState extends State<_TermsBody> {
           ),
           child: Stack(
             children: [
-              // Decorative circles
               Positioned(
                 top: -40,
                 right: -30,
@@ -298,7 +218,6 @@ class _TermsBodyState extends State<_TermsBody> {
                   ),
                 ),
               ),
-              // Content
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                 child: Column(
@@ -319,13 +238,13 @@ class _TermsBodyState extends State<_TermsBody> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              Icons.verified_outlined,
+                              widget.heroBadgeIcon,
                               size: 14,
                               color: DesignTokens.accent.withValues(alpha: 0.9),
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Legal Agreement',
+                              widget.heroBadge,
                               style: TextStyle(
                                 color: DesignTokens.accent.withValues(alpha: 0.9),
                                 fontSize: 12,
@@ -340,9 +259,9 @@ class _TermsBodyState extends State<_TermsBody> {
                     const SizedBox(height: 12),
                     FadeSlideIn(
                       delay: const Duration(milliseconds: 100),
-                      child: const Text(
-                        'Terms &\nConditions',
-                        style: TextStyle(
+                      child: Text(
+                        widget.heroTitle,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 32,
                           fontWeight: FontWeight.w800,
@@ -355,7 +274,7 @@ class _TermsBodyState extends State<_TermsBody> {
                     FadeSlideIn(
                       delay: const Duration(milliseconds: 200),
                       child: Text(
-                        'Last updated ${DateTime.now().year}  •  ${_sections.length} sections',
+                        'Last updated February 2026  •  ${_sections.length} sections',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.55),
                           fontSize: 13,
@@ -395,7 +314,7 @@ class _TermsBodyState extends State<_TermsBody> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: _sections.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final section = _sections[index];
               return GestureDetector(
@@ -436,7 +355,7 @@ class _TermsBodyState extends State<_TermsBody> {
     );
   }
 
-  Widget _buildSectionCard(_TermsSection section, bool isDark) {
+  Widget _buildSectionCard(PolicySection section, bool isDark) {
     final isExpanded = _expanded.contains(section.number);
 
     return Padding(
@@ -481,17 +400,13 @@ class _TermsBodyState extends State<_TermsBody> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Section header
                 Row(
                   children: [
-                    // Number badge
                     Container(
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        gradient: isExpanded
-                            ? DesignTokens.primaryGradient
-                            : null,
+                        gradient: isExpanded ? DesignTokens.primaryGradient : null,
                         color: isExpanded
                             ? null
                             : (isDark
@@ -511,10 +426,9 @@ class _TermsBodyState extends State<_TermsBody> {
                       ),
                     ),
                     const SizedBox(width: 14),
-                    // Title
                     Expanded(
                       child: Text(
-                        _titleCase(section.title),
+                        section.title,
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -523,14 +437,12 @@ class _TermsBodyState extends State<_TermsBody> {
                         ),
                       ),
                     ),
-                    // Icon
                     Icon(
                       section.icon,
                       size: 20,
                       color: isDark ? Colors.white38 : Colors.grey.shade400,
                     ),
                     const SizedBox(width: 8),
-                    // Expand indicator
                     AnimatedRotation(
                       turns: isExpanded ? 0.5 : 0,
                       duration: DesignTokens.durationNormal,
@@ -544,7 +456,6 @@ class _TermsBodyState extends State<_TermsBody> {
                     ),
                   ],
                 ),
-                // Expanded content
                 AnimatedCrossFade(
                   firstChild: const SizedBox.shrink(),
                   secondChild: Padding(
@@ -624,39 +535,6 @@ class _TermsBodyState extends State<_TermsBody> {
             ),
           ),
         );
-      } else if (trimmed.startsWith('  * ') || trimmed.startsWith('  - ')) {
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4, left: 20),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Container(
-                    width: 4,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: DesignTokens.secondary.withValues(alpha: 0.5),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    trimmed.substring(4),
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1.55,
-                      color: isDark ? Colors.white54 : const Color(0xFF6A6A7A),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
       } else {
         widgets.add(
           Padding(
@@ -678,16 +556,5 @@ class _TermsBodyState extends State<_TermsBody> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: widgets,
     );
-  }
-
-  String _titleCase(String input) {
-    final lower = input.toLowerCase().split(' ');
-    final skip = {'and', 'or', 'of', 'to', 'the', 'in', 'for', '&'};
-    return lower.asMap().entries.map((e) {
-      if (e.key == 0 || !skip.contains(e.value)) {
-        return e.value[0].toUpperCase() + e.value.substring(1);
-      }
-      return e.value;
-    }).join(' ');
   }
 }

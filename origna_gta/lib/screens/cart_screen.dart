@@ -25,18 +25,11 @@ class CartScreen extends ConsumerWidget {
 
     if (user == null) {
       return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.lock_outline, size: 80, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              Text(
-                'Sign in to view cart',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[700]),
-              ),
-            ],
-          ),
+        appBar: AppBarFactory.simple(title: 'Shopping Cart'),
+        body: const AnimatedEmptyState(
+          icon: Icons.lock_outline_rounded,
+          title: 'Sign in to view cart',
+          subtitle: 'Your cart items will be saved to your account.',
         ),
       );
     }
@@ -46,12 +39,15 @@ class CartScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBarFactory.simple(title: 'Shopping Cart'),
+      backgroundColor: Colors.transparent,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [isDark ? Colors.grey[900]! : Colors.grey[50]!, isDark ? Colors.grey[800]! : Colors.white],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
+                : [const Color(0xFFF0F2FF), Colors.white],
           ),
         ),
         child: Center(
@@ -59,69 +55,58 @@ class CartScreen extends ConsumerWidget {
             constraints: const BoxConstraints(maxWidth: 800),
             child: productIdsAsync.when(
               loading: () => Center(
-                child: ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [DesignTokens.primary, DesignTokens.secondary],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ).createShader(bounds),
-                  child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                ),
-              ),
-              error: (error, stack) => Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, size: 80, color: Colors.red[300]),
+                    Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
+                        ),
+                      ),
+                      child: Center(
+                        child: ShaderMask(
+                          shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
+                          child: const SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 16),
-                    Text('Error: $error', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                    Text('Loading cart...', style: TextStyle(color: Colors.grey[500], fontSize: 14, fontWeight: FontWeight.w500)),
                   ],
                 ),
               ),
+              error: (error, stack) => AnimatedEmptyState(
+                icon: Icons.error_outline_rounded,
+                title: 'Unable to load cart',
+                subtitle: '$error',
+              ),
               data: (productIds) {
                 if (productIds.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.1)],
-                            ),
-                          ),
-                          child: Icon(Icons.shopping_cart_outlined, size: 100, color: DesignTokens.primary.withValues(alpha: 0.6)),
-                        ),
-                        const SizedBox(height: 32),
-                        Text(
-                          'Your cart is empty',
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.grey[900]),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Looks like you haven\'t added any items yet.',
-                          style: TextStyle(fontSize: 16, color: Colors.grey[500]),
-                        ),
-                        const SizedBox(height: 32),
-                        SizedBox(
-                          width: 200,
-                          child: ModernButton(
-                            label: 'Start Shopping',
-                            icon: Icons.arrow_back,
-                            onPressed: () {
-                              if (Navigator.canPop(context)) {
-                                Navigator.pop(context);
-                              } else {
-                                Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-                              }
-                            },
-                          ),
-                        ),
-                      ],
+                  return AnimatedEmptyState(
+                    icon: Icons.shopping_cart_outlined,
+                    title: 'Your cart is empty',
+                    subtitle: 'Looks like you haven\'t added any items yet.',
+                    action: SizedBox(
+                      width: 200,
+                      child: ModernButton(
+                        label: 'Start Shopping',
+                        icon: Icons.arrow_back,
+                        onPressed: () {
+                          if (Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          } else {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                          }
+                        },
+                      ),
                     ),
                   );
                 }
@@ -169,9 +154,25 @@ class _CartItemWidget extends ConsumerWidget {
     final itemAsync = ref.watch(cartItemDetailProvider(productId));
 
     return itemAsync.when(
-      loading: () => const ListTile(
-        leading: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
-        title: Text('Loading...'),
+      loading: () => Container(
+        margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
+        padding: const EdgeInsets.all(DesignTokens.spacing12),
+        height: 104,
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1E32) : Colors.white,
+          borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        ),
+        child: Row(
+          children: [
+            Container(width: 80, height: 80, decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(DesignTokens.radius12))),
+            const SizedBox(width: DesignTokens.spacing12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+              Container(width: 120, height: 14, decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(4))),
+              const SizedBox(height: 8),
+              Container(width: 60, height: 14, decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(4))),
+            ])),
+          ],
+        ),
       ),
       error: (error, stack) => const SizedBox.shrink(),
       data: (item) {
@@ -199,13 +200,16 @@ class _CartSummary extends ConsumerWidget {
         if (isEmpty) return const SizedBox.shrink();
 
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing16, vertical: DesignTokens.spacing20),
           decoration: BoxDecoration(
-            color: isDark ? Colors.grey[900] : Colors.white,
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -8))],
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            color: isDark ? const Color(0xFF1E1E32) : Colors.white,
+            border: Border(top: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.outline.withValues(alpha: 0.3))),
+            boxShadow: [
+              BoxShadow(color: DesignTokens.primary.withValues(alpha: isDark ? 0.1 : 0.06), blurRadius: 20, offset: const Offset(0, -8)),
+            ],
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(DesignTokens.radius24)),
           ),
-          child: Column(children: [const _CartTotalDisplay(), const SizedBox(height: 20), const _CheckoutButton()]),
+          child: Column(children: [const _CartTotalDisplay(), const SizedBox(height: DesignTokens.spacing20), const _CheckoutButton()]),
         );
       },
     );

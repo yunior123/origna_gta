@@ -91,9 +91,9 @@ _COUNTRY_REGIONS = {
     'NZ': 'oceania',
 }
 
-def get_tax_rate(province: str) -> float:
-    """Get tax rate for a Canadian province (cached)"""
-    return _TAX_RATES_CACHE.get(province, 0.13)
+def get_tax_rate(state_code: str) -> float:
+    """Get tax rate for a Canadian province by state code (cached)"""
+    return _TAX_RATES_CACHE.get(state_code, 0.13)
 
 
 def get_international_shipping_estimate(

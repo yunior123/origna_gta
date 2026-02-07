@@ -64,7 +64,7 @@ class FirebaseAdminRepository implements AdminRepository {
   Future<void> setUserSuspended(String userId, bool suspended) async {
     if (suspended) {
       // EDGE CASE FIX #1: Call backend to handle active orders
-      await _functions.httpsCallable('suspend_seller').call({Fields.sellerId: userId, 'reason': 'Suspended by admin'});
+      await _functions.httpsCallable('suspend_seller').call({Fields.sellerId: userId, ApiKeys.reason: 'Suspended by admin'});
     } else {
       // Unsuspend: just update Firestore
       await _firestore.collection(Collections.users).doc(userId).update({Fields.suspended: false, Fields.unsuspendedAt: FieldValue.serverTimestamp()});
@@ -74,9 +74,9 @@ class FirebaseAdminRepository implements AdminRepository {
   @override
   Future<void> updatePaymentProvider(String provider, bool enabled, {String? reason}) async {
     await _functions.httpsCallable('update_payment_provider').call({
-      'provider': provider,
-      'enabled': enabled,
-      'reason': reason ?? '',
+      ApiKeys.provider: provider,
+      ApiKeys.enabled: enabled,
+      ApiKeys.reason: reason ?? '',
     });
   }
 
@@ -88,12 +88,12 @@ class FirebaseAdminRepository implements AdminRepository {
   @override
   Future<void> updateUserRoles(String userId, {List<String> add = const [], List<String> remove = const [], String? reason}) async {
     // SECURITY FIX H-1: Call Cloud Function with server-side validation
-    await _functions.httpsCallable('update_user_roles').call({'userId': userId, 'add': add, 'remove': remove, 'reason': reason ?? 'No reason provided'});
+    await _functions.httpsCallable('update_user_roles').call({Fields.userId: userId, ApiKeys.add: add, ApiKeys.remove: remove, ApiKeys.reason: reason ?? 'No reason provided'});
   }
 
   @override
   Future<Map<String, dynamic>> verifyAdminMfa(String code) async {
-    final result = await _functions.httpsCallable('admin_mfa_verify').call({'code': code});
+    final result = await _functions.httpsCallable('admin_mfa_verify').call({ApiKeys.code: code});
     return Map<String, dynamic>.from(result.data as Map);
   }
 

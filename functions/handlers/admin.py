@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 
 from datetime import datetime, timedelta
 from config import Collections
-from schema_constants import Fields, UserRoleValues, OrderStatusValues, PayoutStatusValues
+from schema_constants import Fields, UserRoleValues, OrderStatusValues, PayoutStatusValues, ApiKeys
 from utils import create_success_response, create_error_response
 
 _db = None
@@ -219,7 +219,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
     from utils import sanitized_text
     
     seller_id_raw = data.get(Fields.SELLER_ID)
-    reason_raw = data.get('reason', 'Policy violation')
+    reason_raw = data.get(ApiKeys.REASON, 'Policy violation')
     
     # Sanitize inputs
     seller_id = sanitized_text(seller_id_raw) if seller_id_raw else None
@@ -425,8 +425,8 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> Dict[str, Any]:
     )
     
     return create_success_response({
-        'secret': secret,
-        'qrCodeUrl': qr_code_url
+        ApiKeys.SECRET: secret,
+        ApiKeys.QR_CODE_URL: qr_code_url
     })
 
 
@@ -445,7 +445,7 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
     
     user_id = req.auth.uid
-    code = req.data.get('code')
+    code = req.data.get(ApiKeys.CODE)
     
     if not code:
         raise https_fn.HttpsError('invalid-argument', 'code required')
@@ -500,7 +500,7 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
     
     user_id = req.auth.uid
-    code = req.data.get('code')
+    code = req.data.get(ApiKeys.CODE)
     
     if not code:
         raise https_fn.HttpsError('invalid-argument', 'code required')

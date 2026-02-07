@@ -40,7 +40,7 @@ _$AddressDetailsImpl _$$AddressDetailsImplFromJson(Map<String, dynamic> json) =>
     _$AddressDetailsImpl(
       street: json['street'] as String,
       city: json['city'] as String,
-      province: json['province'] as String,
+      state: json['state'] as String,
       postalCode: json['postalCode'] as String,
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
@@ -51,7 +51,7 @@ Map<String, dynamic> _$$AddressDetailsImplToJson(
 ) => <String, dynamic>{
   'street': instance.street,
   'city': instance.city,
-  'province': instance.province,
+  'state': instance.state,
   'postalCode': instance.postalCode,
   'latitude': instance.latitude,
   'longitude': instance.longitude,

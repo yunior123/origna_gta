@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/screens/privacy_policy_screen.dart';
 import 'package:origna_gta/screens/terms_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -190,6 +191,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                                   recognizer: TapGestureRecognizer()
                                                     ..onTap = () {
                                                       Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
+                                                    },
+                                                ),
+                                                const TextSpan(text: ' and '),
+                                                TextSpan(
+                                                  text: 'Privacy Policy',
+                                                  style: const TextStyle(
+                                                    color: DesignTokens.primary,
+                                                    fontWeight: FontWeight.w600,
+                                                    decoration: TextDecoration.underline,
+                                                  ),
+                                                  recognizer: TapGestureRecognizer()
+                                                    ..onTap = () {
+                                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()));
                                                     },
                                                 ),
                                               ],

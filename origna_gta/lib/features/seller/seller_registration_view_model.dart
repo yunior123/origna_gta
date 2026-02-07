@@ -3,6 +3,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'seller_registration_state.dart';
@@ -99,7 +100,7 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
     state = state.copyWith(paymentProvider: provider, error: null, successMessage: null);
     try {
       final functions = _ref.read(firebaseFunctionsProvider);
-      await functions.httpsCallable('set_payment_provider').call({'provider': provider});
+      await functions.httpsCallable('set_payment_provider').call({ApiKeys.provider: provider});
     } catch (e) {
       state = state.copyWith(error: 'Failed to update payment provider');
     }
@@ -164,10 +165,10 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
       final refreshUrl = '$baseUrl/seller/refresh';
       final returnUrl = '$baseUrl/seller/return';
 
-      final result = await createLink.call({'refreshUrl': refreshUrl, 'returnUrl': returnUrl});
+      final result = await createLink.call({ApiKeys.refreshUrl: refreshUrl, ApiKeys.returnUrl: returnUrl});
 
       final data = result.data as Map<String, dynamic>;
-      final url = data['url'] as String?;
+      final url = data[ApiKeys.url] as String?;
 
       if (url != null) {
         final uri = Uri.parse(url);

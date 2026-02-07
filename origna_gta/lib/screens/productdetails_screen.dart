@@ -327,6 +327,10 @@ class _AddToCartButton extends ConsumerWidget {
           if (context.mounted) showLoginPrompt(context);
           return;
         }
+        if (context.mounted) {
+          final verified = await checkEmailVerifiedOrPrompt(context);
+          if (!verified) return;
+        }
         final messenger = ScaffoldMessenger.of(context);
         final success = await ref.read(cartControllerProvider).addToCart(productId, quantity);
         

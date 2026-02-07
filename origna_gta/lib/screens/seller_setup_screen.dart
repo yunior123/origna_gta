@@ -5,6 +5,8 @@ import 'package:origna_gta/features/app/seller_account_status_viewmodel.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/screens/seller_registration_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/widgets/animations.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 
 /// Screen shown when seller returns from Stripe Connect onboarding
 class SellerSetupCompleteScreen extends ConsumerStatefulWidget {
@@ -78,39 +80,101 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
   @override
   Widget build(BuildContext context) {
     final statusAsync = ref.watch(sellerAccountStatusProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (_isRefreshing) {
-      return const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [CircularProgressIndicator(), SizedBox(height: 16), Text('Checking status...')],
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
+                : [const Color(0xFFF0F2FF), Colors.white],
+          ),
+        ),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(
+            child: FadeSlideIn(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: DesignTokens.shadowMd,
+                    ),
+                    child: ShaderMask(
+                      shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
+                      child: const CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: DesignTokens.spacing20),
+                  Text('Checking status...', style: TextStyle(fontSize: 15, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
           ),
         ),
       );
     }
 
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: statusAsync.when(
-            loading: () => const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [CircularProgressIndicator(), SizedBox(height: 16), Text('Verifying your seller account...')],
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
+              : [const Color(0xFFF0F2FF), Colors.white],
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: statusAsync.when(
+                  loading: () => FadeSlideIn(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: DesignTokens.shadowMd,
+                          ),
+                          child: ShaderMask(
+                            shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
+                            child: const CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(height: DesignTokens.spacing20),
+                        Text('Verifying your seller account...', style: TextStyle(fontSize: 15, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  ),
+                  error: (error, _) => _buildError(context, error.toString()),
+                  data: (status) {
+                    if (status.isComplete) {
+                      return _buildSuccess(context);
+                    } else if (status.isPendingVerification) {
+                      return _buildPendingVerification(context);
+                    } else {
+                      return _buildIncomplete(context, status);
+                    }
+                  },
+                ),
               ),
             ),
-            error: (error, _) => _buildError(context, error.toString()),
-            data: (status) {
-              if (status.isComplete) {
-                return _buildSuccess(context);
-              } else if (status.isPendingVerification) {
-                return _buildPendingVerification(context);
-              } else {
-                return _buildIncomplete(context, status);
-              }
-            },
           ),
         ),
       ),
@@ -118,25 +182,37 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
   }
 
   Widget _buildError(BuildContext context, String error) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.error_outline, size: 80, color: DesignTokens.error),
-        const SizedBox(height: 24),
-        Text(error, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
-        const SizedBox(height: 32),
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton(
-            onPressed: _checkStatusAgain,
-            style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
-            child: const Text('Retry'),
+    return FadeSlideIn(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: DesignTokens.error.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: DesignTokens.error.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))],
+            ),
+            child: Icon(Icons.error_outline_rounded, size: 56, color: DesignTokens.error),
           ),
-        ),
-        const SizedBox(height: 12),
-        ElevatedButton(onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false), child: const Text('Go Home')),
-      ],
+          const SizedBox(height: DesignTokens.spacing24),
+          Text(error, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, height: 1.5)),
+          const SizedBox(height: DesignTokens.spacing32),
+          SizedBox(
+            width: double.infinity,
+            child: ModernButton(
+              label: 'Retry',
+              onPressed: _checkStatusAgain,
+              height: 52,
+            ),
+          ),
+          const SizedBox(height: DesignTokens.spacing12),
+          TextButton(
+            onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false),
+            child: Text('Go Home', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -167,195 +243,218 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
     final hasDocumentRequirements = status.needsIdentityDocuments;
     final requirementsDescription = status.pendingRequirementsDescription;
     
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), shape: BoxShape.circle),
-          child: Icon(
-            hasDocumentRequirements ? Icons.badge_outlined : Icons.assignment_outlined, 
-            size: 100, 
-            color: Colors.orange,
-          ),
-        ),
-        const SizedBox(height: 32),
-        Text(
-          hasDocumentRequirements 
-              ? 'Identity Verification Required' 
-              : 'Complete Your Setup',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          hasDocumentRequirements
-              ? 'Stripe needs to verify your identity before you can start selling. Please submit the required documents.'
-              : 'You need to finish providing your information to Stripe before you can start selling.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: Colors.grey[600], height: 1.5),
-        ),
-        if (requirementsDescription.isNotEmpty) ...[
-          const SizedBox(height: 24),
+    return FadeSlideIn(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.orange.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+              color: DesignTokens.warning.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.orange, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Still needed:',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '• $requirementsDescription',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.5),
-                ),
-              ],
+            child: Icon(
+              hasDocumentRequirements ? Icons.badge_outlined : Icons.assignment_outlined, 
+              size: 72, 
+              color: DesignTokens.warning,
             ),
+          ),
+          const SizedBox(height: DesignTokens.spacing32),
+          Text(
+            hasDocumentRequirements 
+                ? 'Identity Verification Required' 
+                : 'Complete Your Setup',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: DesignTokens.spacing16),
+          Text(
+            hasDocumentRequirements
+                ? 'Stripe needs to verify your identity before you can start selling. Please submit the required documents.'
+                : 'You need to finish providing your information to Stripe before you can start selling.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15, color: Colors.grey[600], height: 1.6),
+          ),
+          if (requirementsDescription.isNotEmpty) ...[
+            const SizedBox(height: DesignTokens.spacing24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: DesignTokens.warning.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.25)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.warning.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.info_outline_rounded, color: DesignTokens.warning, size: 16),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Still needed:',
+                        style: TextStyle(fontWeight: FontWeight.w700, color: DesignTokens.warning, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '• $requirementsDescription',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.5),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: DesignTokens.spacing32),
+          SizedBox(
+            width: double.infinity,
+            child: ModernButton(
+              label: hasDocumentRequirements ? 'Submit Documents' : 'Continue Setup',
+              icon: Icons.arrow_forward_rounded,
+              onPressed: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const SellerRegistrationScreen()),
+                );
+              },
+              height: 54,
+              backgroundColor: const Color(0xFFF59E0B),
+            ),
+          ),
+          const SizedBox(height: DesignTokens.spacing12),
+          TextButton(
+            onPressed: _goToHome,
+            child: Text('Go to Home', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
           ),
         ],
-        const SizedBox(height: 32),
-        SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const SellerRegistrationScreen()),
-              );
-            },
-            icon: const Icon(Icons.arrow_forward),
-            label: Text(
-              hasDocumentRequirements ? 'Submit Documents' : 'Continue Setup',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange, 
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextButton(
-          onPressed: _goToHome,
-          child: const Text('Go to Home'),
-        ),
-      ],
+      ),
     );
   }
 
   /// User has submitted the form but Stripe is verifying identity
   Widget _buildPendingVerification(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), shape: BoxShape.circle),
-          child: const Icon(Icons.hourglass_empty, size: 100, color: Colors.orange),
-        ),
-        const SizedBox(height: 32),
-        const Text(
-          'Identity Verification Pending',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Stripe is reviewing your identity documents. This usually takes a few minutes but can take up to 2 business days.\n\nYou will be able to add products once your verification is complete.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: Colors.grey[600], height: 1.5),
-        ),
-        const SizedBox(height: 48),
-        SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: ElevatedButton(
-            onPressed: _goToHome,
-            style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
-            child: const Text('Go to Home', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextButton(
-          onPressed: _checkStatusAgain,
-          child: const Text('Check Verification Status'),
-        ),
-        if (_statusMessage != null) ...[
-          const SizedBox(height: 16),
+    return FadeSlideIn(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: _statusMessage!.startsWith('✅') 
-                  ? DesignTokens.success.withValues(alpha: 0.1)
-                  : _statusMessage!.startsWith('❌')
-                      ? DesignTokens.error.withValues(alpha: 0.1)
-                      : DesignTokens.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              color: DesignTokens.warning.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))],
             ),
-            child: Text(
-              _statusMessage!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: _statusMessage!.startsWith('✅')
-                    ? DesignTokens.success
-                    : _statusMessage!.startsWith('❌')
-                        ? DesignTokens.error
-                        : DesignTokens.primary,
+            child: Icon(Icons.hourglass_empty_rounded, size: 72, color: DesignTokens.warning),
+          ),
+          const SizedBox(height: DesignTokens.spacing32),
+          const Text(
+            'Identity Verification Pending',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: DesignTokens.spacing16),
+          Text(
+            'Stripe is reviewing your identity documents. This usually takes a few minutes but can take up to 2 business days.\n\nYou will be able to add products once your verification is complete.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15, color: Colors.grey[600], height: 1.6),
+          ),
+          const SizedBox(height: DesignTokens.spacing40),
+          SizedBox(
+            width: double.infinity,
+            child: ModernButton(
+              label: 'Go to Home',
+              onPressed: _goToHome,
+              height: 54,
+            ),
+          ),
+          const SizedBox(height: DesignTokens.spacing12),
+          TextButton(
+            onPressed: _checkStatusAgain,
+            child: Text('Check Verification Status', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
+          ),
+          if (_statusMessage != null) ...[
+            const SizedBox(height: DesignTokens.spacing16),
+            FadeSlideIn(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _statusMessage!.startsWith('✅') 
+                      ? DesignTokens.success.withValues(alpha: 0.1)
+                      : _statusMessage!.startsWith('❌')
+                          ? DesignTokens.error.withValues(alpha: 0.1)
+                          : DesignTokens.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                ),
+                child: Text(
+                  _statusMessage!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: _statusMessage!.startsWith('✅')
+                        ? DesignTokens.success
+                        : _statusMessage!.startsWith('❌')
+                            ? DesignTokens.error
+                            : DesignTokens.primary,
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
   Widget _buildSuccess(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: DesignTokens.success.withValues(alpha: 0.1), shape: BoxShape.circle),
-          child: Icon(Icons.check_circle, size: 100, color: DesignTokens.success),
-        ),
-        const SizedBox(height: 32),
-        const Text(
-          'Seller Account Ready!',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Your account is set up and you can now start selling products.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-        ),
-        const SizedBox(height: 48),
-        SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: ElevatedButton(
-            onPressed: _goToHome,
-            style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
-            child: const Text('Start Selling', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+    return FadeSlideIn(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: DesignTokens.success.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: DesignTokens.success.withValues(alpha: 0.2), blurRadius: 24, offset: const Offset(0, 8))],
+            ),
+            child: Icon(Icons.check_circle_rounded, size: 72, color: DesignTokens.success),
           ),
-        ),
-      ],
+          const SizedBox(height: DesignTokens.spacing32),
+          ShaderMask(
+            shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
+            child: const Text(
+              'Seller Account Ready!',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.3),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: DesignTokens.spacing16),
+          Text(
+            'Your account is set up and you can now start selling products.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15, color: Colors.grey[600], height: 1.5),
+          ),
+          const SizedBox(height: DesignTokens.spacing40),
+          SizedBox(
+            width: double.infinity,
+            child: ModernButton(
+              label: 'Start Selling',
+              icon: Icons.storefront_rounded,
+              onPressed: _goToHome,
+              height: 54,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -366,45 +465,73 @@ class SellerSetupRefreshScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
+              : [const Color(0xFFF0F2FF), Colors.white],
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: Padding(
                 padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(color: DesignTokens.info.withValues(alpha: 0.1), shape: BoxShape.circle),
-                child: Icon(Icons.refresh, size: 100, color: DesignTokens.info),
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                'Continue Your Setup',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Your seller account setup needs to be completed. Please continue to finish setting up your account.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 48),
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const SellerRegistrationScreen()));
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
-                  child: const Text('Continue Setup', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: FadeSlideIn(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.info.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: DesignTokens.info.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))],
+                        ),
+                        child: Icon(Icons.refresh_rounded, size: 72, color: DesignTokens.info),
+                      ),
+                      const SizedBox(height: DesignTokens.spacing32),
+                      const Text(
+                        'Continue Your Setup',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: DesignTokens.spacing16),
+                      Text(
+                        'Your seller account setup needs to be completed. Please continue to finish setting up your account.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 15, color: Colors.grey[600], height: 1.6),
+                      ),
+                      const SizedBox(height: DesignTokens.spacing40),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ModernButton(
+                          label: 'Continue Setup',
+                          icon: Icons.arrow_forward_rounded,
+                          onPressed: () {
+                            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const SellerRegistrationScreen()));
+                          },
+                          height: 54,
+                        ),
+                      ),
+                      const SizedBox(height: DesignTokens.spacing12),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false),
+                        child: Text('Back to Home', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
-              TextButton(onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false), child: const Text('Back to Home')),
-            ],
+            ),
           ),
         ),
       ),

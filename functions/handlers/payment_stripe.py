@@ -17,7 +17,7 @@ from config import (
     STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, AUTO_CONFIRM_DAYS,
     AUTHORIZATION_VALID_DAYS
 )
-from schema_constants import Fields, UserRoleValues, DeliveryStatusValues, OrderStatusValues, WebhookStatusValues, PaymentStatusValues
+from schema_constants import Fields, UserRoleValues, DeliveryStatusValues, OrderStatusValues, WebhookStatusValues, PaymentStatusValues, ApiKeys
 from email_service import send_email, get_order_confirmation_email, get_seller_notification_email
 from utils import (
     create_success_response, create_error_response, validate_item,
@@ -383,8 +383,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Shipping calculation failed: {str(e)}')
     
     # Calculate taxes (server-side) - all in cents to avoid rounding errors
-    province = shipping_address.get(Fields.STATE, 'ON')
-    tax_rate = get_tax_rate(province)
+    state_code = shipping_address.get(Fields.STATE, 'ON')
+    tax_rate = get_tax_rate(state_code)
     tax_amount_cents = round(actual_subtotal_cents * tax_rate)
 
     # Build tax breakdown dict (matches Flutter provinceTaxRates)
@@ -396,7 +396,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         'QC': {'GST': 0.05, 'QST': 0.09975}, 'SK': {'GST': 0.05, 'PST': 0.06},
         'YT': {'GST': 0.05},
     }
-    province_rates = _PROVINCE_TAX_BREAKDOWN.get(province, {'GST': 0.05})
+    province_rates = _PROVINCE_TAX_BREAKDOWN.get(state_code, {'GST': 0.05})
     taxes_breakdown = {
         name: round(actual_subtotal * rate, 2)
         for name, rate in province_rates.items()
@@ -536,7 +536,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
                 'price_data': {
                     'currency': 'cad',
                     'product_data': {
-                        'name': f'Tax ({province})'
+                        'name': f'Tax ({state_code})'
                     },
                     'unit_amount': tax_amount_cents
                 },
@@ -572,9 +572,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         # Return dict directly for on_call functions
         return {
             'success': True,
-            'sessionId': session.id,
-            'orderId': order_id,
-            'checkoutUrl': session.url
+            ApiKeys.SESSION_ID: session.id,
+            Fields.ORDER_ID: order_id,
+            ApiKeys.CHECKOUT_URL: session.url
         }
         
     except Exception as e:

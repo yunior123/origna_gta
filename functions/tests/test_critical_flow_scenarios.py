@@ -288,7 +288,7 @@ class TestCheckoutValidation:
                 'subtotal': -100,
                 'shippingAddress': {
                     'street': '123 Test', 'city': 'Toronto',
-                    'postalCode': 'M5V 3A8', 'province': 'ON', 'country': 'Canada'
+                    'postalCode': 'M5V 3A8', 'state': 'ON', 'country': 'Canada'
                 }
             })
 
@@ -312,7 +312,7 @@ class TestCheckoutValidation:
                 'subtotal': 200000,
                 'shippingAddress': {
                     'street': '123 Test', 'city': 'Toronto',
-                    'postalCode': 'M5V 3A8', 'province': 'ON', 'country': 'Canada'
+                    'postalCode': 'M5V 3A8', 'state': 'ON', 'country': 'Canada'
                 }
             })
 
@@ -337,7 +337,7 @@ class TestCheckoutValidation:
                 'subtotal': 10,
                 'shippingAddress': {
                     'street': '123 Test', 'city': 'Toronto',
-                    'postalCode': 'M5V 3A8', 'province': 'ON', 'country': 'Canada'
+                    'postalCode': 'M5V 3A8', 'state': 'ON', 'country': 'Canada'
                 }
             })
 
@@ -361,7 +361,7 @@ class TestCheckoutValidation:
                 'subtotal': 10,
                 'shippingAddress': {
                     'street': '123 Test', 'city': 'Toronto',
-                    'postalCode': 'M5V 3A8', 'province': 'ON', 'country': 'Canada'
+                    'postalCode': 'M5V 3A8', 'state': 'ON', 'country': 'Canada'
                 }
             })
 

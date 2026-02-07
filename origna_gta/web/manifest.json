@@ -1,11 +1,11 @@
 {
-    "name": "origna_gta",
-    "short_name": "origna_gta",
+    "name": "Origna GTA",
+    "short_name": "Origna GTA",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#667EEA",
     "theme_color": "#667EEA",
-    "description": "A new Flutter project.",
+    "description": "Your marketplace for buying and selling across the Greater Toronto Area and all of Canada.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

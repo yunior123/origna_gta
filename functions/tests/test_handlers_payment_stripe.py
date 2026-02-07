@@ -229,7 +229,7 @@ class TestCreateCheckoutSession:
             'shippingAddress': {
                 'street': '123 Main St',
                 'city': 'Toronto',
-                'province': 'ON',
+                'state': 'ON',
                 'postalCode': 'M5V3A8',
                 'country': 'Canada'
             }

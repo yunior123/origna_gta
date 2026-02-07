@@ -118,7 +118,7 @@ class TestPaymentSecurity(unittest.TestCase):
                 "street": "123 Test St",
                 "city": "Toronto",
                 "postalCode": "M5V 1A1",
-                "province": "ON",
+                "state": "ON",
                 "country": "Canada",
                 "longitude": -79.0,
                 "latitude": 43.0
@@ -315,7 +315,7 @@ class TestPaymentSecurity(unittest.TestCase):
                 "street": "123 Test St",
                 "city": "Toronto",
                 "postalCode": "M5V 1A1",
-                "province": "ON",
+                "state": "ON",
                 "country": "Canada"
             }
         }
@@ -388,7 +388,7 @@ class TestPaymentSecurity(unittest.TestCase):
                 "street": "123 Test St",
                 "city": "Toronto",
                 "postalCode": "INVALID",
-                "province": "ON",
+                "state": "ON",
                 "country": "Canada"
             }
         }
@@ -419,7 +419,7 @@ class TestPaymentSecurity(unittest.TestCase):
                 "street": "X" * 200,
                 "city": "Toronto",
                 "postalCode": "M5V 1A1",
-                "province": "ON",
+                "state": "ON",
                 "country": "Canada"
             }
         }

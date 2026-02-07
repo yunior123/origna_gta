@@ -18,6 +18,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 
 from config import Collections
+from schema_constants import ApiKeys
 
 # ============================================================================
 # LAZY INITIALIZATION
@@ -272,15 +273,15 @@ def get_payment_providers(req: https_fn.CallableRequest) -> Dict[str, Any]:
             providers[provider] = {
                 **default, 
                 **stored,
-                'configured': is_configured,
-                'missingKeys': missing_keys if not is_configured else []
+                ApiKeys.CONFIGURED: is_configured,
+                ApiKeys.MISSING_KEYS: missing_keys if not is_configured else []
             }
-        
+
         # Return dict directly for on_call functions (not Response object)
         return {
             'success': True,
-            'providers': providers,
-            'enabledProviders': get_enabled_providers()
+            ApiKeys.PROVIDERS: providers,
+            ApiKeys.ENABLED_PROVIDERS: get_enabled_providers()
         }
     
     except Exception as e:
@@ -303,9 +304,9 @@ def update_payment_provider(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     admin_id, _ = _require_admin(req)
     
-    provider = req.data.get('provider')
-    enabled = req.data.get('enabled')
-    reason = req.data.get('reason', '')
+    provider = req.data.get(ApiKeys.PROVIDER)
+    enabled = req.data.get(ApiKeys.ENABLED)
+    reason = req.data.get(ApiKeys.REASON, '')
     
     # Validate inputs
     if provider not in PaymentProvider.ALL:
@@ -389,8 +390,8 @@ def update_payment_provider(req: https_fn.CallableRequest) -> Dict[str, Any]:
         # Return dict directly for on_call functions (not Response object)
         return {
             'success': True,
-            'provider': provider,
-            'enabled': enabled,
+            ApiKeys.PROVIDER: provider,
+            ApiKeys.ENABLED: enabled,
             'providerName': DEFAULT_PROVIDER_CONFIG.get(provider, {}).get('name', provider)
         }
     
@@ -427,8 +428,8 @@ def get_provider_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
             default = DEFAULT_PROVIDER_CONFIG.get(provider, {})
             is_configured, _ = _is_provider_configured(provider)
             providers[provider] = {
-                'enabled': is_provider_enabled(provider),
-                'configured': is_configured,
+                ApiKeys.ENABLED: is_provider_enabled(provider),
+                ApiKeys.CONFIGURED: is_configured,
                 'name': default.get('name', provider),
                 'features': default.get('features', [])
             }

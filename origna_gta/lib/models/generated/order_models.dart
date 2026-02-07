@@ -54,7 +54,7 @@ bool _safeBool(dynamic value, [bool fallback = false]) {
   return fallback;
 }
 
-/// Safely convert to List<String>
+/// Safely convert to List String
 List<String> _safeStringList(dynamic value) {
   if (value == null) return [];
   if (value is List) return value.map((e) => _safeString(e)).toList();

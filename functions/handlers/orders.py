@@ -16,7 +16,7 @@ from config import (
     OrderStatus, PaymentStatus, DeliveryStatus, Collections,
     PLATFORM_FEE_PERCENT, STRIPE_SECRET_KEY
 )
-from schema_constants import Fields, UserRoleValues, OrderStatusValues, DeliveryStatusValues, PaymentStatusValues, ShippingApprovalStatusValues
+from schema_constants import Fields, UserRoleValues, OrderStatusValues, DeliveryStatusValues, PaymentStatusValues, ShippingApprovalStatusValues, ApiKeys
 from utils import create_success_response, create_error_response, is_valid_order_status_transition
 from email_service import send_email
 
@@ -214,7 +214,6 @@ def update_item_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     # Find the item to update
     item_index = None
     item_seller_id = None
-    item_seller_id = None
     for idx, item in enumerate(items):
         if item[Fields.PRODUCT_ID] == product_id:
             item_index = idx
@@ -292,7 +291,7 @@ def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     data = req.data
     
     order_id = data.get(Fields.ORDER_ID)
-    reason_raw = data.get('reason', 'User requested cancellation')
+    reason_raw = data.get(ApiKeys.REASON, 'User requested cancellation')
     
     # Import validation functions
     from utils import sanitized_text
@@ -404,7 +403,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     order_id = data.get(Fields.ORDER_ID)
     product_id = data.get(Fields.PRODUCT_ID)
-    reason_raw = data.get('reason', 'Item refund requested')
+    reason_raw = data.get(ApiKeys.REASON, 'Item refund requested')
     
     # Import validation functions
     from utils import sanitized_text

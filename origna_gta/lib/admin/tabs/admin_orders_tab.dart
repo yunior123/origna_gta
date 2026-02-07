@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:origna_gta/admin/admin_providers.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 
@@ -46,13 +47,15 @@ class _AdminOrderCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
         leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-          child: Icon(Icons.receipt, color: statusColor),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+          child: Icon(Icons.receipt_long_rounded, color: statusColor, size: 22),
         ),
         title: Row(
           children: [
@@ -153,15 +156,15 @@ class _AdminOrderCard extends StatelessWidget {
   }
 
   String _formatDeliveryAddress(Map<String, dynamic> deliveryInfo) {
-    final formatted = deliveryInfo['formattedAddress']?.toString();
+    final formatted = deliveryInfo[Fields.formattedAddress]?.toString();
     if (formatted != null && formatted.trim().isNotEmpty) return formatted;
 
-    final street = deliveryInfo['street']?.toString() ?? '';
-    final apartment = deliveryInfo['apartment']?.toString() ?? '';
-    final city = deliveryInfo['city']?.toString() ?? '';
-    final state = deliveryInfo['state']?.toString() ?? '';
-    final postalCode = deliveryInfo['postalCode']?.toString() ?? '';
-    final country = deliveryInfo['country']?.toString() ?? '';
+    final street = deliveryInfo[Fields.street]?.toString() ?? '';
+    final apartment = deliveryInfo[Fields.apartment]?.toString() ?? '';
+    final city = deliveryInfo[Fields.city]?.toString() ?? '';
+    final state = deliveryInfo[Fields.state]?.toString() ?? '';
+    final postalCode = deliveryInfo[Fields.postalCode]?.toString() ?? '';
+    final country = deliveryInfo[Fields.country]?.toString() ?? '';
 
     final line1 = [street, if (apartment.isNotEmpty) apartment].where((e) => e.isNotEmpty).join(' ');
     final line2 = [city, state, postalCode].where((e) => e.isNotEmpty).join(', ');
@@ -173,18 +176,23 @@ class _AdminOrderCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Issue Refund'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        title: Row(
+          children: [
+            Icon(Icons.undo_rounded, color: DesignTokens.error),
+            const SizedBox(width: 10),
+            const Text('Issue Refund'),
+          ],
+        ),
         content: const Text('This will refund the order via Stripe. This action cannot be undone.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
+          FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('Refund functionality requires Stripe API integration'), backgroundColor: Colors.orange));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Refund functionality requires Stripe API integration'), backgroundColor: DesignTokens.warning));
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
             child: const Text('Issue Refund'),
           ),
         ],
@@ -196,7 +204,7 @@ class _AdminOrderCard extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(DesignTokens.radius24))),
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 0.7,
         minChildSize: 0.5,
@@ -293,12 +301,26 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
     final isSelected = _statusFilter == value;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (_) => setState(() => _statusFilter = value),
-        selectedColor: const Color(0xFF667EEA),
-        labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+      child: GestureDetector(
+        onTap: () => setState(() => _statusFilter = value),
+        child: AnimatedContainer(
+          duration: DesignTokens.durationFast,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? DesignTokens.primary : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: isSelected ? DesignTokens.primary : Colors.grey.withValues(alpha: 0.2)),
+            boxShadow: isSelected ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 2))] : [],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.grey[600],
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              fontSize: 13,
+            ),
+          ),
+        ),
       ),
     );
   }

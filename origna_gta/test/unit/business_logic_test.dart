@@ -220,7 +220,7 @@ void main() {
       final result = parseAddressSuggestion(suggestion);
 
       expect(result.city, 'Toronto');
-      expect(result.province, 'ON');
+      expect(result.state, 'ON');
       expect(result.postalCode, 'M5V 1A1');
       expect(result.latitude, 43.6532);
       expect(result.longitude, -79.3832);
@@ -256,7 +256,7 @@ void main() {
       final result = parseAddressSuggestion(suggestion);
 
       expect(result.city, '');
-      expect(result.province, 'ON'); // Default
+      expect(result.state, 'ON'); // Default
       expect(result.postalCode, '');
     });
   });

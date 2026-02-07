@@ -49,7 +49,7 @@ class AddressDetails with _$AddressDetails {
   const factory AddressDetails({
     required String street,
     required String city,
-    required String province,
+    required String state,
     required String postalCode,
     required double latitude,
     required double longitude,

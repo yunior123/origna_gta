@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/admin/admin_actions_viewmodel.dart';
 import 'package:origna_gta/admin/admin_providers.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 
@@ -14,25 +15,114 @@ class AdminSellersTab extends ConsumerWidget {
         .watch(adminSellersProvider)
         .when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => const Center(child: Text('Error Fetching from Database')),
+          error: (error, _) => _buildErrorState(),
           data: (sellers) {
             if (sellers.isEmpty) {
               return const AnimatedEmptyState(icon: Icons.store_outlined, title: 'No sellers yet', subtitle: 'Sellers will appear here when they register');
             }
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: sellers.length,
-              itemBuilder: (context, index) {
-                final data = sellers[index]; // Keep this line for context
-                return FadeSlideIn(
-                  delay: Duration(milliseconds: 50 * index),
-                  child: _SellerCard(user: data),
-                );
-              },
+            return Column(
+              children: [
+                // Summary bar
+                _SellersSummaryBar(sellers: sellers),
+                // Seller list
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    itemCount: sellers.length,
+                    itemBuilder: (context, index) {
+                      final data = sellers[index];
+                      return FadeSlideIn(
+                        delay: Duration(milliseconds: 50 * index),
+                        child: _SellerCard(user: data),
+                      );
+                    },
+                  ),
+                ),
+              ],
             );
           },
         );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: DesignTokens.error.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.cloud_off_rounded, size: 40, color: DesignTokens.error),
+          ),
+          const SizedBox(height: 16),
+          const Text('Error Fetching from Database', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text('Pull to refresh or try again later', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
+
+class _SellersSummaryBar extends StatelessWidget {
+  final List<UserModel> sellers;
+  const _SellersSummaryBar({required this.sellers});
+
+  @override
+  Widget build(BuildContext context) {
+    final active = sellers.where((s) => !s.suspended).length;
+    final suspended = sellers.where((s) => s.suspended).length;
+    final connected = sellers.where((s) => s.onboardingCompleted).length;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [DesignTokens.primary.withValues(alpha: 0.08), DesignTokens.secondary.withValues(alpha: 0.05)],
+        ),
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+        border: Border.all(color: DesignTokens.primary.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          _summaryChip(Icons.people_rounded, '$active', 'Active', DesignTokens.success),
+          const SizedBox(width: 16),
+          _summaryChip(Icons.block_rounded, '$suspended', 'Suspended', DesignTokens.error),
+          const SizedBox(width: 16),
+          _summaryChip(Icons.link_rounded, '$connected', 'Stripe', DesignTokens.info),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryChip(IconData icon, String count, String label, Color color) {
+    return Expanded(
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(count, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: color)),
+              Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -52,7 +142,7 @@ class _SellerCard extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -60,11 +150,21 @@ class _SellerCard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: isSuspended ? Colors.red : const Color(0xFF667EEA),
-                  child: Text(
-                    name.isNotEmpty ? name[0].toUpperCase() : 'S',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                // Gradient avatar
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: isSuspended
+                        ? LinearGradient(colors: [DesignTokens.error, DesignTokens.error.withValues(alpha: 0.7)])
+                        : DesignTokens.primaryGradient,
+                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : 'S',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -74,77 +174,86 @@ class _SellerCard extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Expanded(
-                            child: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Flexible(
+                            child: Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15), overflow: TextOverflow.ellipsis),
                           ),
-                          if (isSuspended)
+                          if (isSuspended) ...[
+                            const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                              child: const Text(
-                                'Suspended',
-                                style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w600),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: DesignTokens.error.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.pause_circle_filled_rounded, size: 12, color: DesignTokens.error),
+                                  const SizedBox(width: 4),
+                                  Text('Suspended', style: TextStyle(color: DesignTokens.error, fontSize: 11, fontWeight: FontWeight.w600)),
+                                ],
                               ),
                             ),
+                          ],
                         ],
                       ),
-                      Text(email, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                      const SizedBox(height: 2),
+                      Text(email, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-
-            // Stripe Status
-            Row(
+            const SizedBox(height: 14),
+            // Info chips row
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Icon(stripeOnboarded ? Icons.check_circle : Icons.pending, size: 18, color: stripeOnboarded ? Colors.green : const Color(0xFF667EEA)),
-                const SizedBox(width: 8),
-                Text(
-                  stripeOnboarded ? 'Stripe Connected' : 'Stripe Pending',
-                  style: TextStyle(color: stripeOnboarded ? Colors.green : const Color(0xFF667EEA), fontSize: 13, fontWeight: FontWeight.w500),
+                // Stripe status chip
+                _infoChip(
+                  icon: stripeOnboarded ? Icons.check_circle_rounded : Icons.schedule_rounded,
+                  label: stripeOnboarded ? 'Stripe Connected' : 'Stripe Pending',
+                  color: stripeOnboarded ? DesignTokens.success : DesignTokens.warning,
                 ),
-                if (stripeAccountId != null) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    '(${stripeAccountId.length > 12 ? stripeAccountId.substring(0, 12) : stripeAccountId}...)',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                if (stripeAccountId != null)
+                  _infoChip(
+                    icon: Icons.tag_rounded,
+                    label: stripeAccountId.length > 14 ? '${stripeAccountId.substring(0, 14)}...' : stripeAccountId,
+                    color: Colors.grey,
                   ),
-                ],
+                _infoChip(
+                  icon: Icons.calendar_today_rounded,
+                  label: 'Joined ${_formatDate(createdAt)}',
+                  color: Colors.grey,
+                ),
               ],
             ),
-
-            const SizedBox(height: 8),
-            Text('Joined: ${_formatDate(createdAt)}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-
-            const SizedBox(height: 12),
-
-            // Action Buttons
+            const SizedBox(height: 14),
+            // Action buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 if (!isSuspended)
-                  TextButton.icon(
-                    onPressed: () => _suspendSeller(context, ref, user.uid, name),
-                    icon: const Icon(Icons.block, size: 18),
-                    label: const Text('Suspend'),
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  _actionButton(
+                    icon: Icons.block_rounded,
+                    label: 'Suspend',
+                    color: DesignTokens.error,
+                    onTap: () => _suspendSeller(context, ref, user.uid, name),
                   )
                 else
-                  TextButton.icon(
-                    onPressed: () => _unsuspendSeller(context, ref, user.uid, name),
-                    icon: const Icon(Icons.check_circle_outline, size: 18),
-                    label: const Text('Unsuspend'),
-                    style: TextButton.styleFrom(foregroundColor: Colors.green),
+                  _actionButton(
+                    icon: Icons.check_circle_outline_rounded,
+                    label: 'Unsuspend',
+                    color: DesignTokens.success,
+                    onTap: () => _unsuspendSeller(context, ref, user.uid, name),
                   ),
                 const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: () => _viewSellerProducts(context, user.uid, name),
-                  icon: const Icon(Icons.inventory_2_outlined, size: 18),
-                  label: const Text('Products'),
+                _actionButton(
+                  icon: Icons.inventory_2_outlined,
+                  label: 'Products',
+                  color: DesignTokens.primary,
+                  onTap: () => _viewSellerProducts(context, user.uid, name),
                 ),
               ],
             ),
@@ -154,19 +263,67 @@ class _SellerCard extends ConsumerWidget {
     );
   }
 
+  Widget _actionButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  Widget _infoChip({required IconData icon, required String label, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 5),
+          Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
   }
 
   void _suspendSeller(BuildContext context, WidgetRef ref, String userId, String name) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Suspend Seller'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: DesignTokens.error),
+            const SizedBox(width: 10),
+            const Text('Suspend Seller'),
+          ],
+        ),
         content: Text('Are you sure you want to suspend $name? They will not be able to receive orders.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
+          FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
               final messenger = ScaffoldMessenger.of(context);
@@ -174,14 +331,14 @@ class _SellerCard extends ConsumerWidget {
               if (!context.mounted) return;
               if (context.mounted) {
                 if (success) {
-                  messenger.showSnackBar(const SnackBar(content: Text('Seller suspended'), backgroundColor: Colors.redAccent));
+                  messenger.showSnackBar(SnackBar(content: const Text('Seller suspended'), backgroundColor: DesignTokens.error));
                 } else {
                   final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to suspend seller';
-                  messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                  messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
                 }
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
             child: const Text('Suspend'),
           ),
         ],
@@ -221,15 +378,29 @@ class _SellerProductsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: Text('$sellerName\'s Products'), backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
+      appBar: AppBar(
+        flexibleSpace: Container(decoration: const BoxDecoration(gradient: DesignTokens.primaryGradient)),
+        title: Text('$sellerName\'s Products'),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+      ),
       body: ref
           .watch(adminProductsProvider(sellerId))
           .when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => const Center(child: Text('Error loading products')),
+            error: (error, stack) => Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline_rounded, size: 48, color: DesignTokens.error),
+                  const SizedBox(height: 12),
+                  const Text('Error loading products'),
+                ],
+              ),
+            ),
             data: (products) {
               if (products.isEmpty) {
-                return const Center(child: Text('No products'));
+                return const AnimatedEmptyState(icon: Icons.inventory_2_outlined, title: 'No products', subtitle: 'This seller has no products yet');
               }
 
               return ListView.builder(
@@ -242,15 +413,32 @@ class _SellerProductsScreen extends ConsumerWidget {
                   final stock = product.stockQuantity;
 
                   return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
                     child: ListTile(
-                      title: Text(name),
-                      subtitle: Text('Stock: $stock • \$${price.toStringAsFixed(2)}'),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      leading: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: DesignTokens.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.shopping_bag_rounded, color: DesignTokens.primary, size: 22),
+                      ),
+                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(
+                        'Stock: $stock • \$${price.toStringAsFixed(2)}',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                      ),
                       trailing: stock == 0
-                          ? const Chip(
-                              label: Text('Out of Stock', style: TextStyle(fontSize: 11)),
-                              backgroundColor: Colors.red,
-                              labelStyle: TextStyle(color: Colors.white),
+                          ? Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: DesignTokens.error.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text('Out of Stock', style: TextStyle(fontSize: 11, color: DesignTokens.error, fontWeight: FontWeight.w600)),
                             )
                           : null,
                     ),

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 
 /// Main provider - watches Firestore in realtime for seller status updates
 /// When webhook updates Firestore, UI automatically reflects the change
@@ -33,10 +34,10 @@ final refreshSellerStatusProvider = FutureProvider.family.autoDispose<SellerAcco
     final result = await callable.call();
     final data = result.data as Map<String, dynamic>;
     
-    final chargesEnabled = data['chargesEnabled'] == true;
-    final payoutsEnabled = data['payoutsEnabled'] == true;
-    final detailsSubmitted = data['detailsSubmitted'] == true;
-    final requirementsDue = (data['requirementsCurrentlyDue'] as List<dynamic>? ?? [])
+    final chargesEnabled = data[Fields.chargesEnabled] == true;
+    final payoutsEnabled = data[Fields.payoutsEnabled] == true;
+    final detailsSubmitted = data[ApiKeys.detailsSubmitted] == true;
+    final requirementsDue = (data[ApiKeys.requirementsCurrentlyDue] as List<dynamic>? ?? [])
         .map((e) => e.toString())
         .toList();
     

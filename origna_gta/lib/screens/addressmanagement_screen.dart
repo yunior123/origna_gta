@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/screens/editaddress_screen.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:origna_gta/widgets/modern_button.dart';
 
 class AddressManagementScreen extends ConsumerWidget {
   const AddressManagementScreen({super.key});
@@ -10,85 +14,193 @@ class AddressManagementScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfileAsync = ref.watch(userProfileProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBarFactory.simple(title: 'My Address'),
-      body: userProfileAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text('Error: $error')),
-        data: (userModel) {
-          if (userModel == null) return const Center(child: Text('Log in to view address'));
-          
-          final address = userModel.address;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [Colors.grey[900]!, Colors.grey[800]!]
+              : [const Color(0xFFF0F2FF), Colors.white],
+        ),
+      ),
+      child: Scaffold(
+        appBar: AppBarFactory.simple(title: 'My Address'),
+        backgroundColor: Colors.transparent,
+        body: userProfileAsync.when(
+          loading: () => Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ShaderMask(
+                  shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
+                  child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                ),
+                const SizedBox(height: 16),
+                Text('Loading address...', style: TextStyle(color: Colors.grey[500], fontSize: 14, fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+          error: (error, stack) => AnimatedEmptyState(
+            icon: Icons.error_outline_rounded,
+            title: 'Error loading address',
+            subtitle: '$error',
+          ),
+          data: (userModel) {
+            if (userModel == null) {
+              return const AnimatedEmptyState(
+                icon: Icons.lock_outline_rounded,
+                title: 'Sign in to view address',
+                subtitle: 'Your saved addresses will appear here.',
+              );
+            }
 
-          if (address == null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.location_off_outlined, size: 80, color: Colors.grey[300]),
-                  const SizedBox(height: 16),
-                  const Text('No address saved'),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
+            final address = userModel.address;
+
+            if (address == null) {
+              return AnimatedEmptyState(
+                icon: Icons.location_off_outlined,
+                title: 'No address saved',
+                subtitle: 'Add a delivery address to speed up checkout.',
+                action: SizedBox(
+                  width: 220,
+                  child: ModernButton(
+                    label: 'Add Address',
+                    icon: Icons.add_location_alt_outlined,
                     onPressed: () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEditAddressScreen()));
                     },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Address'),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
                   ),
-                ],
-              ),
-            );
-          }
-
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF667EEA), width: 2),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              );
+            }
+
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: ListView(
+                  padding: const EdgeInsets.all(DesignTokens.spacing20),
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        if (address.label != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(color: const Color(0xFF667EEA), borderRadius: BorderRadius.circular(12)),
-                            child: Text(
-                              address.label!,
-                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined),
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => AddEditAddressScreen(address: address)));
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(address.formattedAddress, style: const TextStyle(fontSize: 14, height: 1.5)),
-                    if (address.phoneNumber != null) ...[
-                      const SizedBox(height: 8),
-                      Row(children: [const Icon(Icons.phone_outlined, size: 16), const SizedBox(width: 8), Text(address.phoneNumber!)]),
-                    ],
+                    FadeSlideIn(child: _buildAddressCard(context, address, isDark)),
                   ],
                 ),
               ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddressCard(BuildContext context, dynamic address, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(DesignTokens.spacing20),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[800]!.withValues(alpha: 0.5) : Colors.white,
+        borderRadius: BorderRadius.circular(DesignTokens.radius20),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : DesignTokens.primary.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(color: DesignTokens.primary.withValues(alpha: isDark ? 0.15 : 0.08), blurRadius: 20, offset: const Offset(0, 8)),
+          BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (address.label != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
+                    ),
+                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        address.label == 'Home' ? Icons.home_outlined : address.label == 'Work' ? Icons.business_outlined : Icons.location_on_outlined,
+                        size: 14,
+                        color: DesignTokens.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(address.label!, style: const TextStyle(color: DesignTokens.primary, fontSize: 12, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                )
+              else
+                const SizedBox.shrink(),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => AddEditAddressScreen(address: address)));
+                  },
+                  borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                  splashColor: DesignTokens.primary.withValues(alpha: 0.1),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.edit_outlined, size: 16, color: DesignTokens.primary),
+                        const SizedBox(width: 6),
+                        Text('Edit', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600, fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
-          );
-        },
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(DesignTokens.spacing16),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.04) : DesignTokens.surfaceVariant,
+              borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.location_on_outlined, size: 20, color: DesignTokens.primary.withValues(alpha: 0.7)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(address.formattedAddress, style: TextStyle(fontSize: 14, height: 1.6, color: isDark ? Colors.grey[300] : Colors.grey[700])),
+                ),
+              ],
+            ),
+          ),
+          if (address.phoneNumber != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(DesignTokens.spacing12),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withValues(alpha: 0.04) : DesignTokens.surfaceVariant,
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.phone_outlined, size: 18, color: DesignTokens.primary.withValues(alpha: 0.7)),
+                  const SizedBox(width: 12),
+                  Text(address.phoneNumber!, style: TextStyle(fontSize: 14, color: isDark ? Colors.grey[300] : Colors.grey[700], fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

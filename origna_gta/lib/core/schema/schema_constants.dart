@@ -203,6 +203,7 @@ abstract final class Fields {
   static const livemode = 'livemode';
 
   // === ADDRESS FIELDS ===
+  static const formattedAddress = 'formattedAddress';
   static const street = 'street';
   static const apartment = 'apartment';
   static const city = 'city';
@@ -424,4 +425,39 @@ abstract final class CategoryIds {
 
   static const min = 1;
   static const max = 21;
+}
+
+// =============================================================================
+// API KEYS - Cloud Function request/response parameter names
+// =============================================================================
+
+/// Cloud Function API parameter and response keys.
+/// These are NOT Firestore fields — they are the contract between
+/// Flutter and Cloud Functions (request params + response keys).
+abstract final class ApiKeys {
+  // === REQUEST PARAMS (sent to Cloud Functions) ===
+  static const add = 'add';
+  static const remove = 'remove';
+  static const reason = 'reason';
+  static const code = 'code';
+  static const provider = 'provider';
+  static const enabled = 'enabled';
+  static const refreshUrl = 'refreshUrl';
+  static const returnUrl = 'returnUrl';
+
+  // === RESPONSE KEYS (returned from Cloud Functions) ===
+  static const checkoutUrl = 'checkoutUrl';
+  static const sessionId = 'sessionId';
+  static const url = 'url';
+  static const secret = 'secret';
+  static const provisioningUri = 'provisioning_uri';
+  static const backupCodes = 'backup_codes';
+  static const detailsSubmitted = 'detailsSubmitted';
+  static const requirementsCurrentlyDue = 'requirementsCurrentlyDue';
+
+  // === PAYMENT PROVIDER RESPONSE KEYS ===
+  static const providers = 'providers';
+  static const configured = 'configured';
+  static const missingKeys = 'missingKeys';
+  static const enabledProviders = 'enabledProviders';
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/admin/admin_providers.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 
 /// Payment provider names
 class PaymentProviders {
@@ -34,7 +36,11 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(color: DesignTokens.error.withValues(alpha: 0.1), shape: BoxShape.circle),
+                        child: Icon(Icons.error_outline_rounded, size: 36, color: DesignTokens.error),
+                      ),
                       const SizedBox(height: 16),
                       Text(_error!, style: TextStyle(color: Colors.red[700])),
                       const SizedBox(height: 16),
@@ -51,46 +57,51 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                   children: [
                     // Header card
                     Card(
-                      elevation: 2,
-                      color: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
                       child: Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
-                                Icon(Icons.payment, color: Color(0xFF667EEA)),
-                                SizedBox(width: 12),
-                                Text(
-                                  'Payment Provider Management',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    gradient: DesignTokens.primaryGradient,
+                                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                                  ),
+                                  child: const Icon(Icons.payment_rounded, color: Colors.white, size: 22),
+                                ),
+                                const SizedBox(width: 14),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Payment Provider Management', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                                      SizedBox(height: 2),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 14),
                             Text(
                               'Control which payment providers are available in the app. '
                               'Disabling a provider will prevent new payments and captures.',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
+                              style: TextStyle(color: Colors.grey[500], fontSize: 13),
                             ),
                             const SizedBox(height: 8),
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.orange[50],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.orange[200]!),
+                                color: DesignTokens.warning.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                                border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.2)),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.warning_amber_rounded, color: Colors.orange[700]),
+                                  Icon(Icons.warning_amber_rounded, color: DesignTokens.warning, size: 20),
                                   const SizedBox(width: 12),
                                   const Expanded(
                                     child: Text(
@@ -131,34 +142,28 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
 
                     // Enabled providers summary
                     Card(
-                      elevation: 2,
-                      color: Colors.green[50],
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+                      color: DesignTokens.success.withValues(alpha: 0.06),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Row(
                           children: [
-                            Icon(Icons.check_circle, color: Colors.green[700], size: 32),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: DesignTokens.success.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(Icons.check_circle_rounded, color: DesignTokens.success, size: 24),
+                            ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'Enabled Providers',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green[800],
-                                    ),
-                                  ),
+                                  Text('Enabled Providers', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.success)),
                                   const SizedBox(height: 4),
-                                  Text(
-                                    _getEnabledProvidersList(),
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.green[900],
-                                    ),
-                                  ),
+                                  Text(_getEnabledProvidersList(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: DesignTokens.success)),
                                 ],
                               ),
                             ),
@@ -190,17 +195,16 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
     required String description,
     required List<String> features,
   }) {
-    final providers = _providersData?['providers'] as Map<String, dynamic>? ?? {};
+    final providers = _providersData?[ApiKeys.providers] as Map<String, dynamic>? ?? {};
     final providerData = providers[provider] as Map<String, dynamic>? ?? {};
-    final isEnabled = providerData['enabled'] as bool? ?? false;
-    final isConfigured = providerData['configured'] as bool? ?? false;
-    final missingKeys = (providerData['missingKeys'] as List<dynamic>?)?.cast<String>() ?? [];
+    final isEnabled = providerData[ApiKeys.enabled] as bool? ?? false;
+    final isConfigured = providerData[ApiKeys.configured] as bool? ?? false;
+    final missingKeys = (providerData[ApiKeys.missingKeys] as List<dynamic>?)?.cast<String>() ?? [];
 
     return Card(
-      elevation: 2,
-      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -209,14 +213,10 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isEnabled ? const Color(0xFF667EEA).withValues(alpha: 0.1) : Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
+                    color: isEnabled ? DesignTokens.primary.withValues(alpha: 0.1) : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
                   ),
-                  child: Icon(
-                    icon,
-                    size: 28,
-                    color: isEnabled ? const Color(0xFF667EEA) : Colors.grey,
-                  ),
+                  child: Icon(icon, size: 28, color: isEnabled ? DesignTokens.primary : Colors.grey),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -262,8 +262,8 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                   value: isEnabled,
                   onChanged: isConfigured || isEnabled
                       ? (value) => _toggleProvider(provider, name, value, isConfigured)
-                      : null, // Disable switch if not configured and not enabled
-                  activeTrackColor: const Color(0xFF667EEA),
+                      : null,
+                  activeTrackColor: DesignTokens.primary,
                 ),
               ],
             ),
@@ -306,12 +306,9 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                     (feature) => Chip(
                       label: Text(
                         feature,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isEnabled ? const Color(0xFF667EEA) : Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 12, color: isEnabled ? DesignTokens.primary : Colors.grey),
                       ),
-                      backgroundColor: isEnabled ? const Color(0xFF667EEA).withValues(alpha: 0.1) : Colors.grey[100],
+                      backgroundColor: isEnabled ? DesignTokens.primary.withValues(alpha: 0.08) : Colors.grey[100],
                       side: BorderSide.none,
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                     ),
@@ -322,16 +319,16 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
             Row(
               children: [
                 Icon(
-                  isEnabled ? Icons.check_circle : Icons.cancel,
+                  isEnabled ? Icons.check_circle_rounded : Icons.cancel_rounded,
                   size: 18,
-                  color: isEnabled ? Colors.green : Colors.red,
+                  color: isEnabled ? DesignTokens.success : DesignTokens.error,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   isEnabled ? 'Accepting payments' : 'Not accepting payments',
                   style: TextStyle(
                     fontSize: 13,
-                    color: isEnabled ? Colors.green[700] : Colors.red[700],
+                    color: isEnabled ? DesignTokens.success : DesignTokens.error,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -344,7 +341,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
   }
 
   String _getEnabledProvidersList() {
-    final enabledProviders = _providersData?['enabledProviders'] as List<dynamic>? ?? [];
+    final enabledProviders = _providersData?[ApiKeys.enabledProviders] as List<dynamic>? ?? [];
     if (enabledProviders.isEmpty) {
       return 'None';
     }
@@ -418,7 +415,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF667EEA),
+                backgroundColor: DesignTokens.primary,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Got it'),
@@ -472,7 +469,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
               Navigator.pop(context, reason);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: enable ? const Color(0xFF667EEA) : Colors.red,
+              backgroundColor: enable ? DesignTokens.primary : DesignTokens.error,
               foregroundColor: Colors.white,
             ),
             child: Text(enable ? 'Enable' : 'Disable'),
