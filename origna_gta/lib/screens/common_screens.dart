@@ -509,7 +509,7 @@ class _EmailVerificationRequiredScreenState
         final freshUser = FirebaseAuth.instance.currentUser;
         if (freshUser != null && freshUser.emailVerified) {
           await ref.read(authRepositoryProvider).ensureUserDocumentExists();
-          if (context.mounted) {
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('🎉 Email verified successfully! Welcome!'),
@@ -522,7 +522,7 @@ class _EmailVerificationRequiredScreenState
             ).pushNamedAndRemoveUntil('/', (route) => false);
           }
         } else {
-          if (context.mounted) {
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: const Text(
@@ -536,7 +536,7 @@ class _EmailVerificationRequiredScreenState
         }
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Error checking verification. Please try again.'),
@@ -554,7 +554,7 @@ class _EmailVerificationRequiredScreenState
     setState(() => _isResending = true);
     try {
       await ref.read(authRepositoryProvider).sendEmailVerification();
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✅ Verification email sent! Check your inbox.'),
@@ -564,7 +564,7 @@ class _EmailVerificationRequiredScreenState
         );
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

@@ -280,8 +280,8 @@ class ProfileScreen extends ConsumerWidget {
                             _buildMenuItem(
                               context,
                               icon: Icons.location_on_outlined,
-                              title: 'Addresses',
-                              subtitle: 'Manage delivery addresses',
+                              title: 'Address',
+                              subtitle: 'Manage delivery address',
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -1042,7 +1042,7 @@ class _EmailVerificationRequiredViewState
         if (freshUser != null && freshUser.emailVerified) {
           // Email is now verified! Create the Firestore document
           await ref.read(authRepositoryProvider).ensureUserDocumentExists();
-          if (context.mounted) {
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('🎉 Email verified! Your profile is ready.'),
@@ -1054,7 +1054,7 @@ class _EmailVerificationRequiredViewState
             // ProfileScreen will automatically rebuild and show the full profile
           }
         } else {
-          if (context.mounted) {
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: const Text(
@@ -1068,7 +1068,7 @@ class _EmailVerificationRequiredViewState
         }
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Error checking verification. Please try again.'),
@@ -1086,7 +1086,7 @@ class _EmailVerificationRequiredViewState
     setState(() => _isResending = true);
     try {
       await ref.read(authRepositoryProvider).sendEmailVerification();
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✅ Verification email sent! Check your inbox.'),
@@ -1096,7 +1096,7 @@ class _EmailVerificationRequiredViewState
         );
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
