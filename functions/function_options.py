@@ -1,14 +1,18 @@
 """
 Global configuration options for Firebase Cloud Functions
-Optimized for FREE TIER - minimal configuration
+Optimized for FREE TIER - minimal resource usage, reasonable timeouts
 """
+from firebase_functions import options
 
-# For Python Firebase Functions, memory and timeout are configured in firebase.json
-# or via the Firebase Console, NOT in decorators
-# These dictionaries are kept empty to avoid errors
+# Default: 256MB memory, 60s timeout (Firebase defaults - FREE TIER friendly)
+DEFAULT_OPTIONS = {}
 
-DEFAULT_OPTIONS = {}  # No options - use Firebase defaults
+# Webhooks: 256MB memory, 90s timeout (Stripe retries on timeout, need margin)
+WEBHOOK_OPTIONS = {
+    'timeout_sec': 90,
+}
 
-WEBHOOK_OPTIONS = {}  # No options - use Firebase defaults
-
-CRON_OPTIONS = {}  # No options - use Firebase defaults
+# Cron jobs: 256MB memory, 300s timeout (batch processing up to 500 orders)
+CRON_OPTIONS = {
+    'timeout_sec': 300,
+}

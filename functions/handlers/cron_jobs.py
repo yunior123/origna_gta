@@ -12,11 +12,17 @@ import stripe
 from datetime import datetime, timedelta
 
 from config import (
-    OrderStatus, PaymentStatus, Collections,
+    Collections,
     AUTO_CONFIRM_DAYS, AUTHORIZATION_VALID_DAYS,
     PLATFORM_FEE_PERCENT, STRIPE_SECRET_KEY
 )
-from schema_constants import Fields, OrderStatusValues, PayoutStatusValues
+from schema_constants import (
+    Fields, OrderStatusValues, PayoutStatusValues, DeliveryStatusValues,
+    PaymentStatusValues
+)
+# Aliases for backward compatibility — canonical source is schema_constants
+OrderStatus = OrderStatusValues
+PaymentStatus = PaymentStatusValues
 from function_options import CRON_OPTIONS
 
 stripe.api_key = STRIPE_SECRET_KEY
@@ -70,18 +76,24 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
     
     cutoff_date = datetime.now() - timedelta(days=AUTO_CONFIRM_DAYS)
     
-    # Limit to 500 orders per run to handle higher volume
-    orders = get_db().collection(Collections.ORDERS)\
-        .where(Fields.ORDER_STATUS, '==', OrderStatusValues.DELIVERED)\
-        .where(Fields.PAYMENT_STATUS, '==', PaymentStatus.AUTHORIZED)\
-        .where(Fields.UPDATED_AT, '<=', cutoff_date)\
-        .limit(500)\
-        .stream()
+    # Query both DELIVERED and SHIPPED orders past cutoff
+    # SHIPPED orders auto-complete after AUTO_CONFIRM_DAYS if buyer doesn't confirm
+    # FIX S23: Use UPDATED_AT only as initial filter; verify actual delivery/ship
+    # timestamps per-order to avoid capturing too early on edited orders.
+    all_orders = []
+    for target_status in [OrderStatusValues.DELIVERED, OrderStatusValues.SHIPPED]:
+        status_orders = get_db().collection(Collections.ORDERS)\
+            .where(Fields.ORDER_STATUS, '==', target_status)\
+            .where(Fields.PAYMENT_STATUS, '==', PaymentStatus.AUTHORIZED)\
+            .where(Fields.UPDATED_AT, '<=', cutoff_date)\
+            .limit(250)\
+            .stream()
+        all_orders.extend(status_orders)
     
     captured_count = 0
     failed_count = 0
     
-    for order_doc in orders:
+    for order_doc in all_orders:
         order_data = order_doc.to_dict()
         order_id = order_doc.id
         payment_intent_id = order_data.get('stripePaymentIntentId')
@@ -90,9 +102,44 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
             print(f'Order {order_id} has no payment intent, skipping')
             continue
         
+        # FIX S23: Verify actual delivery/ship time before capture.
+        # updatedAt can be bumped by unrelated edits; use item-level timestamps.
+        items = order_data.get(Fields.ITEMS, [])
+        latest_event_time = None
+        for item in items:
+            ts = item.get(Fields.DELIVERED_AT) or item.get(Fields.SHIPPED_AT)
+            if ts:
+                if isinstance(ts, str):
+                    try:
+                        ts = datetime.fromisoformat(ts)
+                    except ValueError:
+                        continue
+                if latest_event_time is None or ts > latest_event_time:
+                    latest_event_time = ts
+        
+        if latest_event_time and latest_event_time > cutoff_date:
+            print(f'Order {order_id} item-level timestamp too recent ({latest_event_time}), skipping')
+            continue
+        if order_data.get(Fields.ORDER_STATUS) == OrderStatusValues.SHIPPED:
+            items = order_data.get(Fields.ITEMS, [])
+            for item in items:
+                if item.get(Fields.STATUS) == DeliveryStatusValues.SHIPPED:
+                    item[Fields.STATUS] = DeliveryStatusValues.DELIVERED
+                    item[Fields.DELIVERED_AT] = datetime.now().isoformat()
+            order_doc.reference.update({
+                Fields.ITEMS: items,
+                Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
+                Fields.AUTO_CONFIRMED: True,
+            })
+            order_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
+            print(f'Auto-marked order {order_id} as delivered (was shipped, {AUTO_CONFIRM_DAYS}+ days)')
+        
         try:
-            # Capture payment
-            payment_intent = stripe.PaymentIntent.capture(payment_intent_id)
+            # Capture payment (with idempotency key)
+            payment_intent = stripe.PaymentIntent.capture(
+                payment_intent_id,
+                idempotency_key=f'auto_capture_{order_id}_{payment_intent_id}'
+            )
             
             # Update order
             order_doc.reference.update({
@@ -102,13 +149,13 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                 Fields.UPDATED_AT: get_server_timestamp()
             })
             
-            # Create payouts ONLY for sellers whose items are delivered
+            # Create payouts ONLY for sellers whose items are DELIVERED
+            # SECURITY FIX: Removed PENDING fallback — only pay for confirmed deliveries
             items = order_data.get(Fields.ITEMS, [])
             sellers_total_cents = {}
             for item in items:
-                # Only include delivered items (or all items if no per-item status tracking)
-                item_status = item.get(Fields.STATUS, OrderStatusValues.PENDING) # Changed 'pending' to OrderStatusValues.PENDING
-                if item_status in [OrderStatusValues.DELIVERED, OrderStatusValues.PENDING]:  # 'pending' for backwards compatibility
+                item_status = item.get(Fields.STATUS, OrderStatusValues.PENDING)
+                if item_status == OrderStatusValues.DELIVERED:
                     seller_id = item[Fields.SELLER_ID]
                     item_price_cents = round(item[Fields.PRICE] * 100)
                     item_total_cents = item_price_cents * item[Fields.QUANTITY]
@@ -138,7 +185,8 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                                     'orderId': order_id,
                                     'sellerId': seller_id,
                                     'autoCaptured': True
-                                }
+                                },
+                                idempotency_key=f'auto_transfer_{order_id}_{seller_id}',
                             )
                             
                             get_db().collection(Collections.PAYOUTS).add({
@@ -230,10 +278,21 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
                 except Exception as e:
                     print(f'Failed to restore stock for product {item["productId"]}: {str(e)}')
         
+        # Cancel the PaymentIntent to release buyer funds
+        payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+        if payment_intent_id:
+            try:
+                stripe.PaymentIntent.cancel(
+                    payment_intent_id,
+                    cancellation_reason='abandoned',
+                )
+            except stripe.error.StripeError as e:
+                print(f'Failed to cancel PI for expired order {order_id}: {str(e)}')
+        
         # Update order
         order_doc.reference.update({
             Fields.ORDER_STATUS: OrderStatus.EXPIRED,
-            Fields.PAYMENT_STATUS: PaymentStatus.SESSION_EXPIRED,
+            Fields.PAYMENT_STATUS: PaymentStatus.AUTHORIZATION_EXPIRED,
             Fields.STOCK_RESTORED: True,
             Fields.EXPIRES_AT: get_server_timestamp(),
             Fields.UPDATED_AT: get_server_timestamp()

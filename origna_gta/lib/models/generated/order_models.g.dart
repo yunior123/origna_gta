@@ -116,6 +116,8 @@ const _$PaymentStatusEnumMap = {
   PaymentStatus.paymentFailed: 'payment_failed',
   PaymentStatus.refunded: 'refunded',
   PaymentStatus.sessionExpired: 'session_expired',
+  PaymentStatus.cancelled: 'cancelled',
+  PaymentStatus.authorizationExpired: 'authorization_expired',
 };
 
 const _$ShippingApprovalStatusEnumMap = {
@@ -243,6 +245,7 @@ const _$DeliveryStatusEnumMap = {
   DeliveryStatus.pending: 'pending',
   DeliveryStatus.shipped: 'shipped',
   DeliveryStatus.delivered: 'delivered',
+  DeliveryStatus.refunded: 'refunded',
 };
 
 _$RatingsImpl _$$RatingsImplFromJson(Map<String, dynamic> json) =>

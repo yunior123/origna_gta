@@ -249,7 +249,7 @@ _$SupplierInfoImpl _$$SupplierInfoImplFromJson(Map<String, dynamic> json) =>
       supplierSku: json['supplierSku'] as String?,
       supplierUrl: json['supplierUrl'] as String?,
       cost: (json['cost'] as num?)?.toDouble(),
-      currency: json['currency'] as String? ?? 'CAD',
+      currency: json['currency'] as String? ?? 'USD',
       shippingDays: json['shippingDays'] as String?,
       hasTracking: json['hasTracking'] as bool? ?? false,
       notes: json['notes'] as String?,

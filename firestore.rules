@@ -295,11 +295,11 @@ service cloud.firestore {
       // Backend/admin only with state machine validation and field whitelisting
       // Phase 3.5 fields: sellerCaptures, captureAttempts, requiresManualReview, fraudScore
       allow update: if isAdmin() &&
-        // CRITICAL: Validate order status transitions
-        isValidOrderStateTransition(resource.data.status, request.resource.data.status) &&
-        // CRITICAL: Whitelist updatable fields — prevent overwriting totalAmount, userId, paymentIntentId
+        // CRITICAL: Validate order status transitions using the CORRECT field name
+        isValidOrderStateTransition(resource.data.orderStatus, request.resource.data.orderStatus) &&
+        // CRITICAL: Whitelist updatable fields — prevent overwriting financial data, userId, paymentIntentId
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'status', 'orderStatus', 'paymentStatus', 'deliveryStatus',
+          'orderStatus', 'paymentStatus', 'deliveryStatus',
           'adminNote', 'updatedAt', 'cancelledAt', 'cancelledBy',
           'cancellationReason', 'confirmedAt', 'shippedAt',
           'trackingNumber', 'carrier', 'stockRestored',
@@ -312,9 +312,10 @@ service cloud.firestore {
         (!request.resource.data.keys().hasAny(['requiresManualReview']) || request.resource.data.requiresManualReview is bool) &&
         (!request.resource.data.keys().hasAny(['fraudScore']) || (request.resource.data.fraudScore is int && request.resource.data.fraudScore >= 0 && request.resource.data.fraudScore <= 100)) &&
         // CRITICAL: Immutable fields — admin cannot change financial data or ownership
+        // Field names MUST match what backend writes (cents-based fields)
         request.resource.data.userId == resource.data.userId &&
-        request.resource.data.totalAmount == resource.data.totalAmount &&
-        request.resource.data.subtotal == resource.data.subtotal &&
+        request.resource.data.totalAmountCents == resource.data.totalAmountCents &&
+        request.resource.data.subtotalCents == resource.data.subtotalCents &&
         request.resource.data.items == resource.data.items;
       
       // No one can delete orders (only backend)
@@ -361,6 +362,33 @@ service cloud.firestore {
       
       // Only backend can write config
       allow write: if false;
+    }
+    
+    // ================================================================
+    // BACKEND-ONLY COLLECTIONS (explicit deny for defense-in-depth)
+    // ================================================================
+    match /product_ratings/{ratingId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if false;
+    }
+    
+    match /refunds/{refundId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+    
+    match /webhook_logs/{logId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+    
+    match /webhook_events/{eventId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+    
+    match /rate_limits/{limitId} {
+      allow read, write: if false;
     }
     
     // ================================================================

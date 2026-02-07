@@ -330,6 +330,54 @@
 				"panel": "shared"
 			}
 		},
+		// =====================================================================
+		// TARGETED WORKFLOW AUDITS (Kimi 2.5)
+		// =====================================================================
+		{
+			"label": "🔍 Audit: Product Lifecycle",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_product.py",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "shared" }
+		},
+		{
+			"label": "💳 Audit: Payment System",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_payment.py",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "shared" }
+		},
+		{
+			"label": "📋 Audit: Order Lifecycle",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_orders.py",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "shared" }
+		},
+		{
+			"label": "🏪 Audit: Seller Onboarding",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_seller.py",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "shared" }
+		},
+		{
+			"label": "🔐 Audit: Auth & Security",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_auth.py",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "shared" }
+		},
 		{
 			"label": "Stop All Emulator Services",
 			"type": "shell",

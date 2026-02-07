@@ -2737,7 +2737,8 @@ mixin _$SupplierInfo {
   /// Cost price from supplier
   double? get cost => throw _privateConstructorUsedError;
 
-  /// Currency of cost price
+  /// Currency of supplier cost price (supplier's currency, NOT selling currency).
+  /// Selling price is always CAD. This tracks the supplier's original currency.
   String get currency => throw _privateConstructorUsedError;
 
   /// Estimated shipping days range (e.g., '7-15')
@@ -2933,7 +2934,7 @@ class _$SupplierInfoImpl implements _SupplierInfo {
     this.supplierSku,
     this.supplierUrl,
     this.cost,
-    this.currency = 'CAD',
+    this.currency = 'USD',
     this.shippingDays,
     this.hasTracking = false,
     this.notes,
@@ -2958,7 +2959,8 @@ class _$SupplierInfoImpl implements _SupplierInfo {
   @override
   final double? cost;
 
-  /// Currency of cost price
+  /// Currency of supplier cost price (supplier's currency, NOT selling currency).
+  /// Selling price is always CAD. This tracks the supplier's original currency.
   @override
   @JsonKey()
   final String currency;
@@ -3060,7 +3062,8 @@ abstract class _SupplierInfo implements SupplierInfo {
   @override
   double? get cost;
 
-  /// Currency of cost price
+  /// Currency of supplier cost price (supplier's currency, NOT selling currency).
+  /// Selling price is always CAD. This tracks the supplier's original currency.
   @override
   String get currency;
 

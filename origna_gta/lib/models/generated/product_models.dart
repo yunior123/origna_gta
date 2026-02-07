@@ -264,8 +264,9 @@ class SupplierInfo with _$SupplierInfo {
     /// Cost price from supplier
     double? cost,
 
-    /// Currency of cost price
-    @Default('CAD') String currency,
+    /// Currency of supplier cost price (supplier's currency, NOT selling currency).
+    /// Selling price is always CAD. This tracks the supplier's original currency.
+    @Default('USD') String currency,
 
     /// Estimated shipping days range (e.g., '7-15')
     String? shippingDays,

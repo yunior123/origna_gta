@@ -87,6 +87,8 @@ abstract final class Fields {
   static const suspended = 'suspended';
   static const suspendedAt = 'suspendedAt';
   static const unsuspendedAt = 'unsuspendedAt';
+  static const suspendedBy = 'suspendedBy';
+  static const suspensionReason = 'suspensionReason';
   static const commissionRate = 'commissionRate';
   static const verified = 'verified';
   static const verificationStatus = 'verificationStatus';
@@ -372,7 +374,7 @@ abstract final class SchemaRegistry {
 /// Business rule constants
 abstract final class BusinessRules {
   static const platformFeePercent = 2.5;
-  static const autoConfirmDays = 14;
+  static const autoConfirmDays = 5;  // Must be < authorizationExpiryDays (2-day safety margin)
   static const authorizationExpiryDays = 7;
   static const maxCaptureAttempts = 3;
   static const defaultCurrency = 'cad';

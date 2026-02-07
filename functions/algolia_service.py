@@ -86,58 +86,104 @@ def format_product_for_algolia(product_id: str, product_data: Union[dict, Produc
     return algolia_object
 
 
-def index_product(product_id: str, product_data: dict) -> bool:
+def _log_sync_failure(product_id: str, action: str, error: str, retries: int):
+    """Log failed Algolia sync to Firestore dead letter queue for later retry."""
+    try:
+        from firebase_admin import firestore as fs
+        db = fs.client()
+        db.collection('algolia_sync_failures').add({
+            'productId': product_id,
+            'action': action,
+            'error': error,
+            'timestamp': fs.SERVER_TIMESTAMP,
+            'retries': retries,
+            'resolved': False,
+        })
+        print(f"  📝 Logged sync failure for {product_id} to dead letter queue")
+    except Exception as dlq_err:
+        print(f"  ❌ Failed to log to dead letter queue: {dlq_err}")
+
+
+def index_product(product_id: str, product_data: dict, max_retries: int = 3) -> bool:
     """
-    Index a single product to Algolia
+    Index a single product to Algolia with retry + exponential backoff.
+    On final failure, logs to algolia_sync_failures collection for later reconciliation.
     
     Args:
         product_id: Firestore document ID
         product_data: Product document data
+        max_retries: Number of retry attempts (default 3)
     
     Returns:
         True if successful, False otherwise
     """
+    import time
+
     if not products_index:
         print("⚠️  Algolia not configured - skipping indexing")
         return False
     
-    try:
-        # Only index active products
-        if not product_data.get(Fields.IS_ACTIVE, True):
-            print(f"  ⏭️  Product {product_id} is inactive - removing from index if exists")
-            delete_product(product_id)
-            return True
-        
-        algolia_object = format_product_for_algolia(product_id, product_data)
-        products_index.save_object(index_name='products', body=algolia_object)
-        print(f"  ✅ Indexed product {product_id} to Algolia")
+    # Only index active products
+    if not product_data.get(Fields.IS_ACTIVE, True):
+        print(f"  ⏭️  Product {product_id} is inactive - removing from index if exists")
+        delete_product(product_id)
         return True
-    except Exception as e:
-        print(f"  ❌ Failed to index product {product_id}: {str(e)}")
-        return False
+    
+    algolia_object = format_product_for_algolia(product_id, product_data)
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            products_index.save_object(index_name='products', body=algolia_object)
+            print(f"  ✅ Indexed product {product_id} to Algolia")
+            return True
+        except Exception as e:
+            last_error = e
+            wait = 2 ** attempt
+            print(f"  ⚠️  Algolia index attempt {attempt + 1}/{max_retries} failed for {product_id}: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(wait)
+
+    # All retries exhausted — log to dead letter queue
+    _log_sync_failure(product_id, 'index', str(last_error), max_retries)
+    return False
 
 
-def delete_product(product_id: str) -> bool:
+def delete_product(product_id: str, max_retries: int = 3) -> bool:
     """
-    Delete a product from Algolia index
+    Delete a product from Algolia index with retry + exponential backoff.
+    On final failure, logs to algolia_sync_failures collection.
     
     Args:
         product_id: Firestore document ID
+        max_retries: Number of retry attempts (default 3)
     
     Returns:
         True if successful, False otherwise
     """
+    import time
+
     if not products_index:
         print("⚠️  Algolia not configured - skipping deletion")
         return False
     
-    try:
-        products_index.delete_object(index_name='products', object_id=product_id)
-        print(f"  ✅ Deleted product {product_id} from Algolia")
-        return True
-    except Exception as e:
-        print(f"  ❌ Failed to delete product {product_id}: {str(e)}")
-        return False
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            products_index.delete_object(index_name='products', object_id=product_id)
+            print(f"  ✅ Deleted product {product_id} from Algolia")
+            return True
+        except Exception as e:
+            last_error = e
+            wait = 2 ** attempt
+            print(f"  ⚠️  Algolia delete attempt {attempt + 1}/{max_retries} failed for {product_id}: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(wait)
+
+    # All retries exhausted — log to dead letter queue
+    _log_sync_failure(product_id, 'delete', str(last_error), max_retries)
+    return False
 
 
 def batch_index_products(products: list) -> tuple:

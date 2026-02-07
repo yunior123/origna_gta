@@ -14,6 +14,8 @@ extension DeliveryStatusExtension on DeliveryStatus {
         return 'Shipped';
       case DeliveryStatus.delivered:
         return 'Delivered';
+      case DeliveryStatus.refunded:
+        return 'Refunded';
     }
   }
 
@@ -25,6 +27,8 @@ extension DeliveryStatusExtension on DeliveryStatus {
         return 'shipped';
       case DeliveryStatus.delivered:
         return 'delivered';
+      case DeliveryStatus.refunded:
+        return 'refunded';
     }
   }
 
@@ -36,6 +40,8 @@ extension DeliveryStatusExtension on DeliveryStatus {
         return DeliveryStatus.shipped;
       case 'delivered':
         return DeliveryStatus.delivered;
+      case 'refunded':
+        return DeliveryStatus.refunded;
       default:
         return DeliveryStatus.pending;
     }
@@ -154,6 +160,10 @@ extension PaymentStatusExtension on PaymentStatus {
         return 'Refunded';
       case PaymentStatus.sessionExpired:
         return 'Session Expired';
+      case PaymentStatus.cancelled:
+        return 'Cancelled';
+      case PaymentStatus.authorizationExpired:
+        return 'Authorization Expired';
     }
   }
 
@@ -175,6 +185,10 @@ extension PaymentStatusExtension on PaymentStatus {
         return 'refunded';
       case PaymentStatus.sessionExpired:
         return 'session_expired';
+      case PaymentStatus.cancelled:
+        return 'cancelled';
+      case PaymentStatus.authorizationExpired:
+        return 'authorization_expired';
     }
   }
 
@@ -196,6 +210,10 @@ extension PaymentStatusExtension on PaymentStatus {
         return PaymentStatus.refunded;
       case 'session_expired':
         return PaymentStatus.sessionExpired;
+      case 'cancelled':
+        return PaymentStatus.cancelled;
+      case 'authorization_expired':
+        return PaymentStatus.authorizationExpired;
       default:
         return PaymentStatus.awaitingPayment;
     }

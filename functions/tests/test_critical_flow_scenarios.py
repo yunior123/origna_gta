@@ -136,7 +136,6 @@ class TestOrderStateMachine:
             ('processing', 'cancelled'),
             ('shipped', 'in_transit'),
             ('shipped', 'delivered'),
-            ('shipped', 'cancelled'),
             ('in_transit', 'delivered'),
             ('delivered', 'refunded'),
             ('delivered', 'partially_refunded'),
@@ -159,6 +158,7 @@ class TestOrderStateMachine:
             ('refunded', 'pending'),       # Terminal state
             ('refunded', 'cancelled'),     # Terminal state
             ('delivered', 'shipped'),      # Can't go backwards
+            ('shipped', 'cancelled'),      # Shipped items can't be cancelled (use refund after delivery)
             ('pending', 'delivered'),      # Can't skip states
             ('confirmed', 'delivered'),    # Can't skip shipped
             ('pending', 'refunded'),       # Can't refund un-delivered
@@ -799,7 +799,8 @@ class TestOrderStatusUpdate:
 
         with pytest.raises(HttpsError) as exc_info:
             update_order_status(req)
-        assert exc_info.value.code == 'failed-precondition'
+        # Sellers are blocked from setting DELIVERED (security fix) - permission check fires before state machine
+        assert exc_info.value.code in ('failed-precondition', 'permission-denied')
 
     @patch('handlers.orders.get_db')
     @patch('handlers.orders.get_server_timestamp')

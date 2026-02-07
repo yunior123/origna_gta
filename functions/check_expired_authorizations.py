@@ -17,7 +17,8 @@ This function:
 from datetime import datetime
 from firebase_functions import https_fn, scheduler_fn
 from firebase_admin import firestore
-from config import Collections, OrderStatus
+from config import Collections
+from schema_constants import OrderStatusValues as OrderStatus
 from email_service import send_authorization_expired_email
 import traceback
 

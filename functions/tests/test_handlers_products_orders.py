@@ -309,10 +309,8 @@ class TestOrderHandlers:
         with pytest.raises(https_fn.HttpsError) as exc:
             update_order_status(mock_request)
         
-        assert exc.value.code == 'failed-precondition'
-    
-    def test_update_order_status_valid_transitions(self):
-        """Test valid state transitions are allowed"""
+        # Sellers are blocked from setting DELIVERED (security fix) - permission check fires before state machine
+        assert exc.value.code in ('failed-precondition', 'permission-denied')
         # Valid: pending → confirmed → shipped → delivered → completed
         valid_transitions = [
             ('pending', 'confirmed'),

@@ -1,688 +1,140 @@
 # CLAUDE.md
 
-## ⚠️ PRIORITY #1 — ABSOLUTE (OVERRIDES EVERYTHING ELSE)
+## ⚠️ PRIORITY #1 — ABSOLUTE
 
-**Make sure the logic of the code is correct. This is the most important thing. NOTHING is more important. Everything else in this file is secondary.**
+**Logic correctness above ALL. NOTHING is more important.**
+- Create 50+ adversarial break scenarios for every code change
+- Think like a malicious seller, a malicious buyer, a race condition
+- Trace every code path. If logic is wrong, don't move on.
 
-Before approving, shipping, or completing ANY code change:
-- Verify the logic is sound and cannot be broken
-- Create scenarios that could break the system — try at least 50 different ones
-- Think like an adversarial user, a malicious seller, a malicious buyer
-- Trace every code path for logic holes, race conditions, state violations, and edge cases
-- If the logic is wrong, nothing else matters — don't move on until it's bulletproof
+---
 
-This rule has HIGHEST PRIORITY over all other rules in this file.
+## RULES
+
+0. **Logic first** — stress-test with 50+ adversarial scenarios before shipping
+1. **Ask before running subagents** — don't launch agents without user consent
+2. **Hide thinking** — show only actions and results. Save tokens.
+3. **"save"/"remember"** → persist to CLAUDE.md LEARNED section immediately
+4. **Match Yunior's language** — respond in whichever language he uses
+5. **No new markdown files** unless explicitly asked
+6. **Consult @docs/WORKFLOW_INDEX.md** before editing ANY file
+7. **Cross-stack impact check** after every edit — Python ↔ Dart ↔ Schema
+8. **Use `/pause-work` before ending** a long task — saves state for resume
+9. **Delegate investigation** to subagents — preserve main context for action
 
 ---
 
 ## About Me (Yunior Rodriguez Osorio)
 
-**Profile:** Senior Self-Taught Software Developer  
-**Objective:** Build and launch an e-commerce store to generate revenue and start a business.  
-**Location:** Canada (GTA area)  
-**Machine:** MacBook Pro (macOS)  
-**Username:** `yuniorrodriguezosorio`  
-**Home:** `/Users/yuniorrodriguezosorio`  
-**Project dir:** `/Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta`
-
-### Who Yunior Is
-- **Solo founder-developer** building OrignaGta from scratch — wears ALL hats
-- Self-taught but thinks and operates at **staff engineer level**
-- Learns fast, builds fast, ships fast — values speed + correctness over perfection
-- Prefers **action over discussion** — "just do it, show me the result"
-- Hates filler, hates over-explanation, hates wasted tokens
-- Thinks in systems — connects frontend, backend, infra, business logic as one unit
-- Works late nights and weekends — this is a passion project AND a business
-- Uses **Telegram bot** to send coding commands from his phone at any hour (3am, on the bus, wherever)
-- Trusts Claude to execute autonomously — wants a coding **partner**, not an assistant
-- When he says "save your learning" → update this file so context persists across sessions
-
-### Working Style & Preferences
-- **Language:** Speaks English, sometimes mixes informal tone. Respond in the language he uses.
-- **Communication:** Short, direct, bullet points. No intros, no conclusions, no pleasantries.
-- **Decision making:** Give the 80/20 solution. Don't list 5 options — pick the best one and do it.
-- **Errors:** Fix them silently. Don't apologize. Just solve and move on.
-- **Code:** Clever > clean, but make it clean after. Production-ready always.
-- **Testing:** He values tests but doesn't want to write them manually — automate testing.
-- **DevOps:** Loves automation — scripts, bots, CI/CD. If something can run itself, make it.
-- **Security:** Paranoid level. Assume attackers will use the app. No loose ends.
-- **Cost:** Minimize API costs, DB reads, cloud spend. He's bootstrapping.
-
-### How I (Claude) Should Behave
-- You are a senior staff engineer specializing in Flutter, Firebase, and high-scale marketplaces.
-- Assume production experience at Amazon / Shopify / Stripe-level systems.
-- Do not explain basics unless explicitly asked.
-- You are amazing, your code beats ChatGPT — think like a pro, like Magnus Carlsen but for building software, like Linus Torvalds.
-- **Be his second brain** — remember context, anticipate needs, connect dots.
-- When he asks to "save" or "remember" something → update CLAUDE.md.
-- Don't ask for permission to use tools — just do it (except subagents).
-- If something will take multiple steps, show a todo list and execute.
-
----
-
-## IMPORTANT RULES
-
-0. **PRIORITY #1: Logic correctness above all. Create 50+ break scenarios for every code change. This overrides all other rules.**
-1. **If you need to run a subagent or background agent, ASK THE USER FIRST for permission.**
-2. **HIDE YOUR THINKING — Do not show internal reasoning, analysis, or thoughts. Only show actions and results. This saves tokens.**
-3. **When Yunior says "save" or "remember" → persist to CLAUDE.md immediately.**
-4. **Respond in the same language Yunior uses in his message.**
-5. **Do NOT create new markdown files, reports, or summaries unless explicitly asked.** Only update existing files — CLAUDE.md for learning, README.md for project info. No audit reports, no changelogs, no new docs.
-
----
-
-## QUICK START
-
-```bash
-# Start development environment (emulators + Stripe webhooks)
-./start-dev.sh
-
-# Run backend tests
-cd functions && source venv/bin/activate && pytest
-
-# Run Flutter app (web)
-cd origna_gta && flutter run -d chrome
-
-# Run E2E tests
-cd e2e && npm test
-
-# Deploy Firestore rules
-./scripts/deploy_rules.sh
-
-# Full deploy with validation
-./scripts/deploy_with_validation.sh
-```
+**Solo founder-developer** building OrignaGta. Staff engineer level, self-taught.
+- **Action over discussion** — "just do it, show me the result"
+- Short, direct, bullet points. No filler. Pick best solution and do it.
+- Fix errors silently. Don't apologize. Be his **second brain**.
 
 ---
 
 ## PROJECT
 
-**OrignaGta** — Canada-only e-commerce marketplace.
+**OrignaGta** — Canada-only e-commerce marketplace. Scale: 100M+ users/year. Launch: March 2026.
 
-- Scale target: 100M+ users/year
-- Single developer project optimized for maintainability, cost, and safety
-- Start from empty database and no users for production
-- Always use common schema between frontend and backend
-- Database schema is source of truth
-- Make rules strict and safe
-- Malicious people will use the app — handle edge cases, no loose ends
-- Audit security before every release
-- make sure to update json schema contants when ever something changes in database schema
-
-**Always update when changing code:**
-- Tests
-- Database rules
-- Indexes
-- Deploy scripts (sh)
-- Schema file
-- Backend code
-- README
+**Tech:** Flutter (Web/Android/iOS) + Firebase + Stripe Connect Express + R2 Cloudflare + Geoapify + Algolia + Sentry + Mailjet + Riverpod
 
 ---
 
-## TECH STACK
+## ARCHITECTURE (NON-NEGOTIABLE)
 
-**Frontend:** Flutter (Web, Android, iOS)  
-**Backend:** Firebase (Auth, Functions, Firestore), Stripe Connect Express, R2 Cloudflare, Geoapify, Algolia  
-**Monitoring:** Sentry  
-**Hosting:** Firebase Hosting + Cloudflare  
-**Testing:** Playwright (E2E), pytest (backend)
-**Future:** OCI (Appwrite + Typesense)
-
----
-
-## ENVIRONMENT SETUP
-
-**Required:**
-- Firebase CLI: `npm install -g firebase-tools && firebase login`
-- Stripe CLI: `brew install stripe/stripe-cli/stripe && stripe login`
-- Flutter: Latest stable
-- Python 3.11+ with venv: `cd functions && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt`
-
-**Env files:**
-- `functions/.env` — Stripe keys, Algolia, R2 credentials
-- `origna_gta/.env` — Flutter environment config
+1. MVVM only. Frontend = no business logic.
+2. APIs replaceable by editing service files only
+3. Idempotency required for all payments/transfers
+4. Canada-only enforced backend-first
+5. Assume eventual consistency. Minimize DB reads/writes.
+6. **Changing one line → update EVERY file that line impacts** (Tests, Rules, Indexes, Schema, Deploy)
 
 ---
 
-## ARCHITECTURE RULES (NON-NEGOTIABLE)
+## CROSS-STACK MAP
 
-0. Logic correctness is non-negotiable — every change must be stress-tested with 50+ adversarial scenarios before shipping
-1. MVVM architecture only
-2. Clever code over clean code, but keep it clean after
-3. Frontend must not contain business logic
-4. APIs must be replaceable by editing service files only
-5. No expensive APIs unless unavoidable
-6. Minimize database reads/writes globally
-7. Assume eventual consistency
-8. Idempotency required for all payments and transfers
-9. Canada-only logic enforced backend-first
-
----
-
-## KEY FILES
-
-| Path | Purpose |
-|------|---------|
-| `functions/main.py` | All Cloud Functions entry points |
-| `functions/handlers/` | Business logic by domain (orders, payments, admin) |
-| `origna_gta/lib/main.dart` | Flutter app entry |
-| `origna_gta/lib/services/` | API service layer (replaceable) |
-| `origna_gta/lib/viewmodels/` | MVVM ViewModels |
-| `docs/database_schema.json` | Schema source of truth |
-| `firestore.rules` | Security rules |
-| `firestore.indexes.json` | Composite indexes |
+| Concept | Frontend (Dart) | Backend (Python) | Schema |
+|---------|-----------------|-------------------|--------|
+| Schema constants | `lib/core/schema/schema_constants.dart` | `functions/schema_constants.py` | `docs/database_schema.json` |
+| Order model | `lib/models/generated/order_models.dart` | `functions/models/order.py` | `docs/json_schemas/individual/Order.json` |
+| Product model | `lib/models/generated/product_models.dart` | `functions/models/product.py` | `docs/json_schemas/individual/Product.json` |
+| User model | `lib/models/generated/user_models.dart` | `functions/models/user.py` | `docs/json_schemas/individual/User.json` |
+| Payment flow | `lib/features/checkout/checkout_provider.dart` | `functions/handlers/payment_stripe.py` | — |
+| Order lifecycle | `lib/features/orders/*.dart` | `functions/handlers/orders.py` | `docs/diagrams/state-order-lifecycle.puml` |
+| Shipping | `lib/features/checkout/checkout_provider.dart` | `functions/shipping_service.py` | — |
+| Products | `lib/features/products/*.dart` | `functions/handlers/products.py` | — |
+| Auth/Seller | `lib/features/auth/*.dart`, `lib/features/seller/*.dart` | `functions/handlers/admin.py` | — |
 
 ---
 
-## DIRECTORY STRUCTURE
+## @IMPORTS — Deep Context (loaded on demand)
 
-```
-origna_gta/
-├── functions/          # Python Cloud Functions backend
-│   ├── handlers/       # Domain handlers (orders, payments, admin, cron)
-│   ├── tests/          # pytest tests
-│   └── main.py         # Function exports
-├── origna_gta/         # Flutter frontend
-│   └── lib/
-│       ├── screens/    # UI screens
-│       ├── viewmodels/ # MVVM ViewModels
-│       ├── services/   # API services
-│       └── models/     # Data models
-├── e2e/                # Playwright E2E tests
-├── scripts/            # Build/deploy/test scripts
-└── docs/               # Schema, diagrams, setup guides
-```
+@docs/WORKFLOW_INDEX.md
+@docs/REPO_MAP.md
+@docs/AGENT_GUIDE.md
+@docs/ENVIRONMENT.md
 
 ---
 
-## PAYMENTS (STRIPE CONNECT)
+## AGENT RULES (MANDATORY)
 
-- Sellers use Stripe Express (connected accounts)
-- Direct charges model
-- Platform fee: 2.5%
-- Payment Intents with manual capture
-- Authorization first, capture after shipping confirmation
-- Stripe handles KYC, payouts, fraud, disputes
-- No platform fund holding
+- **Before editing 3+ files** → run `logic-auditor` FIRST
+- **After editing payment files** → run `payment-auditor` IMMEDIATELY
+- **After editing schema_constants** → run `schema-sync-checker` IMMEDIATELY
+- **After editing order handler** → run `order-lifecycle-auditor` IMMEDIATELY
+- **Any CRITICAL findings** → fix before committing. 0 CRITICAL → proceed.
 
----
-
-## CODE STYLE
-
-- Dart / Flutter best practices (modern APIs only)
-- Avoid BuildContext across async gaps
-- No deprecated Flutter APIs
-- No unnecessary rebuilds
-- Defensive coding over optimistic assumptions
-- All async code must be cancellation-safe
-- Explicit error handling (no silent failures)
-- Fix all Dart compiler warnings — code must be clean
-- Make sure that if u change one line of code u also change every file where that change can impact 
+See @docs/AGENT_GUIDE.md for full agent usage guide, workflow chunking, and session management.
 
 ---
 
-## FLUTTER RULES
+## WORKFLOW COMMANDS
 
-- No passing BuildContext into async methods
-- Resolve ScaffoldMessenger before await
-- Always check `mounted` after await
-- Prefer const constructors
-- `withOpacity` is deprecated → use `withValues` or `Color.withValues`
-- `DropdownButtonFormField.value` is DEPRECATED → use `initialValue` + `key: ValueKey(stateValue)` to force rebuild when state changes reactively (e.g. address suggestion selecting a province)
-
----
-
-## DATABASE
-
-- Firestore schema is documented and stable
-- Avoid collection group queries unless justified
-- Reads are more expensive than writes
-- Index cost matters
-- Cache aggressively when safe
+| Command | Purpose |
+|---------|---------|
+| `/plan-task [description]` | Break complex task into phases with verification |
+| `/execute-plan` | Execute current plan phase-by-phase |
+| `/pause-work` | Save current progress + state for later resume |
+| `/resume-work` | Restore state and continue where you left off |
+| `/investigate [topic]` | Delegate research to a subagent |
+| `/create-skill [name]` | Capture current approach as a reusable skill |
+| `/audit-workflow [name]` | Full logic audit on a workflow |
+| `/check-schema-sync` | Verify all 6 schema layers in sync |
+| `/cross-stack-check` | Compare all frontend ↔ backend pairs |
+| `/commit-push [msg]` | Stage, commit, push with smart message |
+| `/test-all` | Run all test suites |
+| `/deploy [env]` | Full deploy pipeline |
 
 ---
 
-## TESTING
+## LEARNED (Persistent Knowledge)
 
-```bash
-# Backend unit tests
-cd functions && source venv/bin/activate && pytest -v
+### Key Architecture
+- **Stripe Connect Express** — direct charges, manual capture, 2.5% platform fee
+- **Canada-only** — backend-first postal code/province validation
+- **R2 Cloudflare** for images, **Algolia** for search, **Mailjet** for email, **Sentry** for errors
+- **Riverpod** for state (NOT Provider, NOT Bloc)
 
-# Backend with coverage
-pytest --cov=. --cov-report=html
+### Payment Pipeline
+`checkout_provider.dart` → `create_payment_intent` → `payment_stripe.py` (manual capture) → seller confirms → `capture_payment` → Stripe Connect transfer after delivery
 
-# E2E tests (requires emulators running)
-cd e2e && npm test
+### Order Lifecycle
+`pending → confirmed → processing → shipped → in_transit → delivered` (happy path)
+Cancel/refund: restore stock + refund/void. Cron: 7-day auto-confirm, auth expiry.
 
-# E2E with UI
-cd e2e && npm run test:ui
-
-# All tests
-./scripts/run_all_tests.sh
-```
-
----
-
-## OUTPUT RULES
-
-- Be concise
-- No filler phrases
-- No introductions or conclusions
-- Use bullet points or short sections
-- Max 5 bullets unless asked otherwise
-- Think internally, output final answer only
-- If unsure, state assumptions explicitly and proceed
+### .claude/ Infrastructure
+- **5 agents**: logic-auditor, cross-stack-auditor, payment-auditor, schema-sync-checker, order-lifecycle-auditor
+- **7 rules** (path-scoped): flutter, backend, payments, orders, firestore, testing, security
+- **9+ skills**: audit-workflow, design-tokens, e2e-test-suites, email-system, full-stack-audit, read-workflow, shipping-costs, ux-info-buttons, widget-finders
+- **4 hooks**: validate-schema-sync, validate-payment, validate-orders, protect-production
+- **14+ commands**: plan-task, execute-plan, pause-work, resume-work, investigate, create-skill, audit-workflow, check-schema-sync, cross-stack-check, commit-push, deploy, test-all, fix-tests, optimize-db
 
 ---
 
-## WHAT TO DO WHEN ASKED A QUESTION
-
-1. Decide the best approach first
-2. Present the 80/20 solution
-3. Mention tradeoffs only if meaningful
-4. Flag risks clearly
-5. Do NOT list alternatives unless requested
-
----
-
-## WHAT NOT TO DO
-
-- Do not re-explain Stripe/Firebase/Flutter basics
-- Do not suggest libraries casually
-- Do not optimize prematurely unless scale is relevant
-- Do not propose over-engineered abstractions
-- Do not try to migrate the database if not asked, right now database is empty
-
----
-
-## SCHEMA CONVENTIONS (MARCH 2026 LAUNCH)
-
-- Database is EMPTY — no legacy data, no migration needed
-- Schema source of truth: `docs/database_schema.json`
-
----
-
-## SECURITY
-
-- Make code bulletproof
-- If you have suggestions for the future, add them to README
-- Handle all edge cases
-- No loose ends
-- Audit security before every release
-
----
-
-## EMULATOR ENVIRONMENT (DEVELOPMENT)
-
-### Services & Ports
-| Service | Port | URL |
-|---------|------|-----|
-| Firebase Auth | 9099 | http://localhost:9099 |
-| Firestore | 8080 | http://localhost:8080 |
-| Cloud Functions | 5001 | http://localhost:5001 |
-| Storage | 9199 | http://localhost:9199 |
-| Firebase UI | 4000 | http://localhost:4000 |
-| Flutter Web (SPA) | 8888 | http://localhost:8888 |
-| Stripe Webhooks | → | localhost:5001/orignagta/us-central1/stripe_webhook |
-
-**NOTE:** Firebase Hosting emulator (port 5005) returns 500 errors — use the SPA server on port 8888 instead.
-
-### Firebase Project ID: `orignagta`
-
-### Starting Everything
-```bash
-# Option 1: All-in-one script
-./start-dev.sh
-
-# Option 2: Manual
-firebase emulators:start --import=./emulator-data --export-on-exit=./emulator-data
-stripe listen --forward-to localhost:5001/orignagta/us-central1/stripe_webhook
-
-# SPA Server for Flutter web (port 8888, NOT 5005)
-cd /path/to/project && python3 e2e/spa-server.py &
-```
-
-### Flutter Build for Emulator Mode
-```bash
-cd origna_gta && flutter build web --dart-define=ENVIRONMENT=emulator --dart-define=USE_EMULATORS=true
-```
-**CRITICAL:** Without these dart-defines, the app connects to Firebase PRODUCTION, not emulators. Always rebuild after switching modes.
-
-**CRITICAL:** The pre-push git hook runs `flutter build web --release --dart-define=ENVIRONMENT=production` which OVERWRITES the emulator build. After a `git push`, you MUST rebuild in emulator mode.
-
-### SPA Server
-- Located at: `e2e/spa-server.py`
-- Serves `origna_gta/build/web` on port **8888**
-- Handles SPA routing (returns index.html for all non-file routes)
-- Firebase Hosting emulator (port 5005) is BROKEN (returns 500) — always use SPA server
-
-### VS Code Dev Settings
-- `.vscode/settings.json` should have proper emulator configuration
-- Use the task `🚀 Start Dev Environment (Emulators + Stripe)` to start everything
-
----
-
-## ENVCONFIG (FLUTTER SINGLETON)
-
-- File: `origna_gta/lib/utils/env_config.dart`
-- **Pattern:** Factory constructor singleton — access via `EnvConfig()`, NOT `EnvConfig.instance`
-- `factory EnvConfig() => _instance;` (no static `instance` getter exists)
-- Key properties: `isEmulator`, `useEmulators`, `environment`
-- Configured via `--dart-define` at build time
-
----
-
-## TEST ACCOUNTS (EMULATOR ONLY)
-
-| Account | Email | Password | UID | Roles |
-|---------|-------|----------|-----|-------|
-| Admin | yr62813@gmail.com | 960227Y#y | gcM3C09wyisNRkp2gJS0y2RVAReT | admin, seller, buyer |
-| Yahoo | yuniorrodriguezo4601@yahoo.com | TestYahoo123! | nb80ZX32Rx7PFtCiMiyWg4wmS8dM | buyer, seller |
-| Buyer1 | yuniorrodriguezo460@gmail.com | REDACTED_TEST_PASSWORD | 1BavwSl3O0ObrDakFF3KtbuPXIx1 | buyer |
-
-**NOTE:** Emulator Auth does NOT persist `emailVerified` reliably across restarts. A bypass exists in `auth_repository.dart` for emulator mode.
-
-### Seeding Emulator Data
-```bash
-cd e2e && npx ts-node mega-seed.ts
-```
-- Creates 75 users, 30 products, ~20 carts
-- Admin user (yr62813@gmail.com) is always created
-- Seed data includes seller profiles with Stripe connected accounts
-
----
-
-
-## EMAIL SYSTEM
-
-### Configuration
-- **Sender:** support@orignaventures.ca
-- **Provider:** Mailjet (real API, real sends)
-- **Env var:** `FORCE_REAL_EMAIL=true` in `functions/.env` to send real emails even in emulator
-- **File:** `functions/email_service.py` (~733 lines)
-
-### APP_BASE_URL (Dynamic Links)
-```python
-APP_BASE_URL = 'http://localhost:8888' if IS_EMULATOR else 'https://orignagta.ca'
-```
-- All email CTA links (Track Order, Manage Orders, View Order, Contact Support) use `{APP_BASE_URL}`
-- In emulator → links point to localhost:5005
-- In production → links point to orignagta.ca
-
-### Email Templates (Redesigned)
-Both buyer and seller email templates have been **completely redesigned** with the app's design system:
-- Gradient hero header (#1F235A → #2F3B8F → #764BA2)
-- ORIGNA brand identity
-- Order status tracker with progress bar
-- Gradient table headers
-- Glassmorphism price summary
-- Pill-shaped CTA buttons
-- Responsive design
-
-### Key Email Functions
-| Function | Purpose |
-|----------|---------|
-| `send_email()` | Core Mailjet send |
-| `get_order_confirmation_email()` | Buyer order confirmation |
-| `get_seller_notification_email()` | Seller new order notification |
-| `send_payment_capture_failed_email()` | Capture failure alert |
-| `send_3ds_authentication_email()` | 3DS authentication required |
-| `send_authorization_expired_email()` | Authorization expired alert |
-
----
-
-## APP DESIGN SYSTEM
-
-From `origna_gta/lib/core/theme/design_tokens.dart`:
-
-| Token | Value |
-|-------|-------|
-| Primary | #667EEA |
-| Secondary | #764BA2 |
-| Tertiary | #FF6B6B |
-| Accent | #5CE1E6 |
-| Background Gradient | #1F235A → #2F3B8F → #764BA2 |
-| Dark Surface | #1A1A2E |
-| Success | #10B981 |
-| Warning | #F59E0B |
-| Error | #EF4444 |
-
----
-
-## E2E TEST SUITES
-
-### fullstack-e2e.spec.ts — 37 tests ✅
-Core marketplace flow tests (auth, products, cart, checkout, orders)
-
-### payment-workflow-e2e.spec.ts — 54 tests ✅
-Mega payment workflow (10 suites A-J covering edge cases, multi-seller, stock, auth, refunds)
-
-### admin-email-test.spec.ts — 3 tests ✅
-Real email delivery tests:
-1. Gmail BUYER email — Admin buys Quebec Scarf (product_001) → yr62813@gmail.com
-2. Yahoo BUYER email — Yahoo buys Beef Jerky (product_007) → yuniorrodriguezo4601@yahoo.com
-3. Yahoo SELLER email — Admin buys Yahoo's Candle Set → seller notification to Yahoo
-
-### regression-e2e.spec.ts — 38 tests ✅
-Regression suite (10 suites A-J: order statuses, timeline, confirm receipt, checkout data, cart ops, item status, payment status, schema consistency, rating formula, multi-seller)
-
-**Total: 132+ E2E tests** (37 + 54 + 3 + 38)
-**Backend: 288/288 Python tests passing**
-
-### Seed Scripts
-| Script | Purpose |
-|--------|---------|
-| `e2e/mega-seed.ts` | 75 users, 30 products, ~20 carts |
-| `e2e/seed-emulator.ts` | 25 users, 16 products, 3 carts (original) |
-| `e2e/seed-orders.py` | 8 test orders at various statuses for buyer1 |
-| `e2e/write_cycle.py` | Writes `/tmp/cycle-order.py` — cycles order_test_008 through all statuses (10s each) |
-
-### Stock Warning
-- `product_002` (Leather Bag) can run out of stock from repeated test runs
-- Prefer `product_001` (Scarf, 25 stock) and `product_007` (Jerky, 60 stock) for tests
-
----
-
-## MODEL ARCHITECTURE
-
-### Generated Models (Freezed + json_serializable)
-- Location: `origna_gta/lib/models/generated/`
-- Barrel: `models.dart` exports `base_models.dart`, `order_models.dart`, `product_models.dart`, `user_models.dart`
-- These are the PRIMARY models used by features/screens
-- Use `Order.fromFirestore(doc)`, `User.fromFirestore(doc)` for Firestore reads
-- All have `_parseDateTime()` helpers for safe Timestamp/String/DateTime parsing
-
-### Legacy Models
-- Location: `origna_gta/lib/models/models.dart`
-- Contains: `UserModel`, `CartItemModel`, `CartItemDetailModel`, `ProductModel`, `OrderModel`, `SellerPayout`
-- Still used by some older screens/services
-- **CRITICAL:** Do NOT import both `models/generated/models.dart` AND `models/models.dart` in the same file — `Address` class exists in both and causes compilation conflict. Use `hide Address` if needed.
-
-### Order Status State Machine
-```
-pending → confirmed → processing → shipped → in_transit → delivered
-                                                          ↘ cancelled
-                                                          ↘ failed / expired
-                                                          ↘ refunded / partially_refunded
-```
-- Order-level: `OrderStatus` enum in `base_models.dart`
-- Item-level: `status` String field ('pending', 'confirmed', 'processing', 'shipped', 'in_transit', 'delivered', 'refunded')
-- Item-level `deliveryStatus` enum is DEPRECATED — use `status` string
-
-### Orders Screen (Redesigned)
-- File: `origna_gta/lib/screens/orders_screen.dart`
-- Uses `_StatusConfig` pattern for ALL status values (colors, icons, labels, descriptions)
-- Visual timeline stepper (`_OrderStatusTimeline`) for normal flow statuses
-- Terminal badge for cancelled/failed/expired/refunded
-- `CachedNetworkImage` for product images with shimmer placeholder
-- Status chip per item with proper color coding
-
----
-
-## KNOWN NON-BLOCKING ISSUES
-
-- `KeyError: 'authtype'` in Firestore triggers — firebase_functions SDK emulator bug, harmless
-- Emulator Auth `emailVerified` does not persist across restarts — bypassed in Flutter code
-- Emulator data (`emulator-data/`) can become stale — re-seed with `mega-seed.ts` if needed
-
----
-
-## STRIPE CONFIGURATION
-
-- **Model:** Direct Charges with Stripe Connect Express
-- **Platform Fee:** 2.5%
-- **Payment Flow:** Authorize (manual capture) → Ship → Capture
-- **Webhook endpoint:** `stripe_webhook` function
-- **Stripe CLI webhook secret:** Changes on each `stripe listen` restart — check terminal output
-- **Test cards:** `pm_card_visa` (success), `pm_card_authenticationRequired` (3DS)
-
----
-
-## DEPLOYMENT CHECKLIST
-
-1. Run all backend tests: `cd functions && pytest -v`
-2. Run E2E tests: `cd e2e && npx playwright test`
-3. Build Flutter: `cd origna_gta && flutter build web --release --dart-define=ENVIRONMENT=production --dart-define=USE_EMULATORS=false`
-4. Deploy functions: `firebase deploy --only functions`
-5. Deploy rules: `./scripts/deploy_rules.sh`
-6. Deploy hosting: `firebase deploy --only hosting`
-7. Verify Stripe webhooks pointing to production URL
-
-
-TODO issue in cart screen, the user clicks the plus button then the only widget that new ui rebuild is the text widget for the price, what happens is that others get rebuild unnecessarily
-
-TODO make sure that the new schema constants are widely used in app
-
-TODO - make sure to update json schema contants when ever something changes in database schema
-
----
-
-## SHIPPING & DELIVERY AUDIT (Feb 2026)
-
-### Confirmed Bugs (ALL FIXED ✅ — Feb 2026)
-
-| # | Severity | Bug | Fix | Files |
-|---|----------|-----|-----|-------|
-| 1 | 🔴 CRITICAL | `isDigital=true` + `freeShipping=false` → backend charges $12.99+ | `toggleDigital()` forces `freeShipping=true`; backend filters `isDigital` in chargeable_items; `on_product_created` patches | `add_product_viewmodel.dart`, `edit_product_viewmodel.dart`, `shipping_service.py`, `handlers/products.py` |
-| 2 | 🔴 HIGH | `isLocalDeliveryOnly=true` → no delivery option → fallback $12.99+ | `_buildDeliveryOptions()` injects `pickup` option; edit screen same; backend trigger patches | `addproduct_screen.dart`, `editproduct_screen.dart`, `handlers/products.py` |
-| 3 | 🟡 MEDIUM | Backend uses seller profile `businessAddress` instead of product `sellerAddress` | Priority: product `sellerAddress` → seller profile → user address → stub | `payment_stripe.py` |
-| 4 | 🔴 HIGH | `freeShippingAt10Plus=true` + all tiers disabled → quantityDiscounts orphaned | ViewModel validation: physical non-local must have ≥1 tier enabled | `add_product_viewmodel.dart`, `edit_product_viewmodel.dart` |
-| 5 | 🟡 MEDIUM | `sameDayRadius` UI field never saved to Firestore | Removed orphan UI field from both add/edit screens | `addproduct_screen.dart`, `editproduct_screen.dart` |
-| 6 | 🔴 HIGH | Edit screen overwrites `quantityDiscounts`, `additionalItemCost`, `maxItemsPerShipment` | `_handleSave()` preserves existing values from `widget.product.deliveryOptions` | `editproduct_screen.dart` |
-| 7 | 🟢 MINOR | `on_product_created` does zero validation | Added consistency patches: digital→freeShipping, localOnly→pickup, empty→standard | `handlers/products.py` |
-| 8 | 🟢 MINOR | Backend type `"pickup"` defined but never used by frontend | Now used by Bug #2 fix (frontend injects pickup for localOnly) | `addproduct_screen.dart`, `editproduct_screen.dart` |
-| 9 | 🔴 CRITICAL | Frontend `deliverySpeed` in checkout state but NOT sent in `startCheckout()` payload → backend always `speed='standard'` → express/same-day multipliers never applied | `orderData` includes `deliverySpeed`; backend reads it, passes to `calculate_shipping_cost()`, stores in order doc | `checkout_provider.dart`, `payment_stripe.py` |
-
-### Shipping Cost Reference Table
-
-| Scenario | Cost |
-|----------|------|
-| `freeShipping=true` | $0.00 |
-| Same province (fallback) | $12.99 |
-| Adjacent province | $18.99 |
-| Same region | $22.99 |
-| Cross-country | $26.99 |
-| Distance ≤15km (tiered) | $1.99 |
-| Distance ≤50km | $4.99 |
-| Distance ≤150km | $9.99 |
-| Distance ≤500km | $14.99 |
-| Distance ≤1200km | $18.99 |
-| Distance ≤2500km | $22.99 |
-| Distance >2500km | $26.99 |
-| Local-only cross-province penalty | +$50.00 |
-| Local-only >100km penalty | $75.00 |
-| Express multiplier (≤15km) | ×4.0 |
-| Same-day multiplier (≤15km) | ×4.5 |
-| Weight surcharge (>2kg) | +$1.50/kg × qty |
-| Default weight (if missing) | 0.5kg |
-| Default dimensions (if missing) | 10×10×10cm |
-
-| 9 | 🔴 CRITICAL | Frontend `deliverySpeed` (express/same_day) is in checkout state but NEVER included in `startCheckout()` payload → backend always uses `speed='standard'` → express/same-day multipliers never applied | `checkout_provider.dart`, `payment_stripe.py` |
-
-### Checkout Backend Speed Issue
-- Backend `calculate_shipping_cost()` defaults to `speed='standard'` — the frontend shipping speed selection is **NOT sent** in the checkout payload. Express/same-day surcharges never applied server-side (Bug #9).
-
-### Widget Finders Reference (Integration Tests)
-
-| Widget | Type | Finder |
-|--------|------|--------|
-| Login Email | `ModernTextField` wraps `TextFormField` | `find.byKey(Key('login_email_field'))` |
-| Login Password | `ModernTextField` wraps `TextFormField` | `find.byKey(Key('login_password_field'))` |
-| Login Submit | `ModernButton` wraps `InkWell` (NOT `ElevatedButton`) | `find.byKey(Key('login_submit_button'))` |
-| Add Product Button | `IconButton` on HomeScreen AppBar | `find.byKey(Key('home_add_product_button'))` |
-| Product Name | `_buildGlassTextField` wraps `TextFormField` | `find.byKey(Key('product_name_field'))` |
-| Product Description | `_buildGlassTextField` wraps `TextFormField` | `find.byKey(Key('product_description_field'))` |
-| Product Price | `_buildGlassTextField` wraps `TextFormField` | `find.byKey(Key('product_price_field'))` |
-| Product Stock | `_buildGlassTextField` wraps `TextFormField` | `find.byKey(Key('product_stock_field'))` |
-| Publish Product | `InkWell` with child `Text('Publish Product')` | `find.text('Publish Product')` |
-| Glass Toggle | `GestureDetector` > `AnimatedContainer` > `Switch.adaptive` | `find.text('<label>') + ancestor GestureDetector` |
-| Delivery Tier Card | Custom card with `Switch` + expandable children | `find.text('<tier>') + descendant Switch` |
-| Cart Icon | `IconButton` on AppBar | `find.byIcon(Icons.shopping_cart_outlined)` |
-| Add to Cart | `ModernButton` wraps `InkWell` | `find.text('Add to Cart')` |
-| Proceed to Checkout | `ModernButton` | `find.text('Proceed to Checkout')` |
-| Place Order | `ModernButton` on CheckoutScreen | `find.text('Place Order')` |
-
-### UX Info Buttons Pattern (Add Product Screen)
-
-**3 helper patterns** for contextual help in `addproduct_screen.dart`:
-
-| Pattern | Widget | Trigger | Visual |
-|---------|--------|---------|--------|
-| `_showInfoSheet(title, body)` | Modal bottom sheet | Tap ℹ️ icon | 💡 icon, title bold, body text, ✕ close |
-| `_buildTappableInfoHint(short, title, body)` | Inline row → opens sheet | Tap row | `(i) text >` — subtle, discoverable |
-| `_buildInfoBanner(text, icon, color)` | Static colored banner | Always visible | Colored bg + icon + text (existing) |
-
-**Toggle info** — `_buildGlassToggle` and `_buildDeliveryTierCard` accept optional `infoTitle`/`infoBody` params → renders small ℹ️ icon before Switch that opens `_showInfoSheet`.
-
-**16 info points added:**
-
-| # | Location | Type | Info Title |
-|---|----------|------|-----------|
-| 1 | Free Shipping toggle | ℹ️→sheet | "Free Shipping" — absorb cost, boost conversions |
-| 2 | Tax Code field | hint→sheet | "Stripe Tax Codes" — txcd_ format, common codes |
-| 3 | Digital Product toggle | ℹ️→sheet | "Digital Products" — auto free shipping, no dims |
-| 4 | Perishable Item toggle | ℹ️→sheet | "Perishable Items" — temp-sensitive, express recommended |
-| 5 | Standard Delivery tier | ℹ️→sheet | "Standard Delivery" — base tier, $0=free or flat rate |
-| 6 | Express Delivery tier | ℹ️→sheet | "Express Delivery" — $9.99 surcharge, 1-2 days |
-| 7 | Same-Day Delivery tier | ℹ️→sheet | "Same-Day Delivery" — $14.99, local only |
-| 8 | Local Pickup Only toggle | ℹ️→sheet | "Local Pickup Only" — no shipping, pickup address |
-| 9 | Weight & Dimensions | hint→sheet | "Package Weight & Dimensions" — dimensional weight formula |
-| 10 | Bulk Discounts header | ℹ️→sheet | "Bulk Shipping Discounts" — 3+/5+/10+ tiers (upgraded from Tooltip) |
-| 11 | 10+ Free Shipping toggle | ℹ️→sheet | "Bulk Free Shipping" — wholesale incentive |
-| 12 | Multi-item fields | hint→sheet | "Multi-Item Shipping" — cost/extra + max/shipment |
-| 13 | Has Tracking toggle | ℹ️→sheet | "Supplier Tracking" — tracking numbers, buyer updates |
-| 14 | Manage Inventory toggle | ℹ️→sheet | "Inventory Management" — ON=track stock, OFF=dropship |
-| 15 | Track Quantity toggle | ℹ️→sheet | "Track Quantity" — OFF=unlimited stock |
-| 16 | Allow Backorders toggle | ℹ️→sheet | "Allow Backorders" — orders when stock=0 |
-
-### App Init for Tests
-- **Entry:** `main_test.dart` → `mainTest()` (skips URL strategy, always emulators)
-- **CRITICAL:** Use pump loops (`10×1s`) NOT `pumpAndSettle()` — persistent animations cause timeout
-- **CRITICAL:** Only ONE `testWidgets` per file — "Cannot set URL strategy a second time" error
-- **Flow:** `OrignaApp` → `AuthWrapper` (5s) → `MainScreen` (3s) → `HomeScreen`
-
-### Flutter Integration Test Files
-
-| File | Scenarios | Target |
-|------|-----------|--------|
-| `integration_test/app_test.dart` | Basic widget checks (11 assertions) | Chrome |
-| `integration_test/shipping_product_e2e_test.dart` | 12 shipping/product scenarios (T01-T12) | Chrome |
-
-```bash
-# Run shipping integration tests
-cd origna_gta && flutter drive \
-  --driver=test_driver/integration_test.dart \
-  --target=integration_test/shipping_product_e2e_test.dart \
-  -d web-server --browser-name=chrome
-```
-
-### What's Correct (Verified)
-- Field names are consistent: Flutter camelCase ↔ Firestore ↔ Python (type/cost/estimatedDays)
-- Legacy field compatibility (speed/price/isEnabled) handled in both `constants.dart` and `shipping_service.py`
-- `freeShipping` logic correct in both frontend and backend (items excluded from calculation)
-- Mixed cart (digital+physical): frontend handles correctly, backend relies on `freeShipping` flag
-- Multi-seller: items grouped by sellerId, shipping calculated per-seller then summed
-- Stock reservation: atomic Firestore transaction in checkout
-- Price tampering: backend re-fetches price from Firestore, validates within ±$0.01
-- Self-purchase blocked: seller cannot buy own products
+## TODO (Active)
+
+- Cart screen: plus button rebuilds unnecessary widgets
+- Ensure schema constants are widely used
+- Update json schema constants when database schema changes
+- ChromeDriver compatibility for Flutter web integration tests

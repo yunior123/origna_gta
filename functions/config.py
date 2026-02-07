@@ -77,11 +77,14 @@ class PaymentStatus:
     SESSION_EXPIRED = 'session_expired'
     AUTHORIZED = 'authorized'
     CAPTURED = 'captured'
+    CANCELLED = 'cancelled'
+    AUTHORIZATION_EXPIRED = 'authorization_expired'
 
 class DeliveryStatus:
     PENDING = 'pending'
     SHIPPED = 'shipped'
     DELIVERED = 'delivered'
+    REFUNDED = 'refunded'
 
 class UserRoles:
     ADMIN = 'admin'
@@ -110,6 +113,8 @@ class PayoutStatus:
     COMPLETED = 'completed'
     PARTIAL = 'partial'
     FAILED = 'failed'
+    REVERSED = 'reversed'
+    REVERSED_DISPUTE = 'reversed_dispute'
 
 class CaptureMethod:
     MANUAL = 'manual'
@@ -126,7 +131,7 @@ class ShippingApprovalStatus:
 # ============================================================================
 
 PLATFORM_FEE_PERCENT = 0.025  # 2.5% platform fee
-AUTO_CONFIRM_DAYS = 7  # Auto-confirm must be <= AUTHORIZATION_VALID_DAYS (Stripe limit)
+AUTO_CONFIRM_DAYS = 14  # Auto-capture after 14 days post-delivery (matches Flutter BusinessRules.autoConfirmDays)
 AUTHORIZATION_VALID_DAYS = 7  # Stripe authorization valid for 7 days
 SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20%
 

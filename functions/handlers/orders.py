@@ -13,10 +13,17 @@ from typing import Dict, Any
 from datetime import datetime
 
 from config import (
-    OrderStatus, PaymentStatus, DeliveryStatus, Collections,
+    Collections,
     PLATFORM_FEE_PERCENT, STRIPE_SECRET_KEY
 )
-from schema_constants import Fields, UserRoleValues, OrderStatusValues, DeliveryStatusValues, PaymentStatusValues, ShippingApprovalStatusValues, ApiKeys
+from schema_constants import (
+    Fields, UserRoleValues, OrderStatusValues, DeliveryStatusValues,
+    PaymentStatusValues, ShippingApprovalStatusValues, ApiKeys
+)
+# Aliases for backward compatibility — canonical source is schema_constants
+OrderStatus = OrderStatusValues
+PaymentStatus = PaymentStatusValues
+DeliveryStatus = DeliveryStatusValues
 from utils import create_success_response, create_error_response, is_valid_order_status_transition
 from email_service import send_email
 
@@ -119,6 +126,10 @@ def update_order_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     order_data = order_doc.to_dict()
     old_status = order_data[Fields.ORDER_STATUS]
     
+    # Block updates on archived orders
+    if order_data.get('archived', False):
+        raise https_fn.HttpsError('failed-precondition', 'Cannot update archived order')
+    
     # Check permissions
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
@@ -130,10 +141,44 @@ def update_order_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     is_admin = UserRoleValues.ADMIN in user_data.get(Fields.ROLES, [])
     
     # Check if user is seller for any item in order
-    is_seller = any(item[Fields.SELLER_ID] == user_id for item in order_data[Fields.ITEMS])
+    seller_items = [item for item in order_data[Fields.ITEMS] if item[Fields.SELLER_ID] == user_id]
+    is_seller = len(seller_items) > 0
     
     if not (is_admin or is_seller):
         raise https_fn.HttpsError('permission-denied', 'Only seller or admin can update order status')
+    
+    # MULTI-SELLER ISOLATION: Sellers can only update to SHIPPED if ALL their items
+    # are ready. They cannot set DELIVERED (only buyer confirm or auto-capture can).
+    if is_seller and not is_admin:
+        if new_status == OrderStatusValues.DELIVERED:
+            raise https_fn.HttpsError(
+                'permission-denied',
+                'Sellers cannot mark orders as delivered. Use per-item status updates or wait for buyer confirmation.'
+            )
+        
+        # For multi-seller orders, a seller can only affect status if they own ALL items
+        # or they should use update_item_status instead
+        all_seller_ids = set(item[Fields.SELLER_ID] for item in order_data[Fields.ITEMS])
+        if len(all_seller_ids) > 1:
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                'Multi-seller order: use update_item_status to update per-item status instead of order-level status.'
+            )
+    
+    # SHIPPING APPROVAL GATE: Block shipping if approval is pending
+    if new_status == OrderStatusValues.SHIPPED:
+        shipping_approval = order_data.get(Fields.SHIPPING_APPROVAL, {})
+        approval_status = shipping_approval.get(Fields.STATUS) if isinstance(shipping_approval, dict) else None
+        if approval_status == ShippingApprovalStatusValues.PENDING:
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                'Cannot ship: shipping cost approval is pending from buyer.'
+            )
+        if approval_status == ShippingApprovalStatusValues.REJECTED:
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                'Cannot ship: buyer rejected the shipping cost.'
+            )
     
     # Validate state transition
     if not is_valid_order_status_transition(old_status, new_status):
@@ -142,7 +187,52 @@ def update_order_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
             f'Invalid transition from {old_status} to {new_status}'
         )
     
-    # Update order
+    # SECURITY FIX: Scope seller actions to their own items only
+    if is_seller and not is_admin:
+        # For SHIPPED: update only this seller's items, derive order status
+        if new_status == OrderStatusValues.SHIPPED:
+            items = order_data.get(Fields.ITEMS, [])
+            seller_items_updated = False
+            
+            for idx, item in enumerate(items):
+                if item.get(Fields.SELLER_ID) == user_id:
+                    items[idx][Fields.STATUS] = DeliveryStatusValues.SHIPPED
+                    items[idx][Fields.SHIPPED_AT] = get_server_timestamp()
+                    if tracking_number:
+                        items[idx][Fields.TRACKING_NUMBER] = tracking_number
+                        items[idx][Fields.CARRIER] = carrier or ''
+                    seller_items_updated = True
+            
+            if not seller_items_updated:
+                raise https_fn.HttpsError('permission-denied', 'No items belong to this seller')
+            
+            # Only update order-level status if ALL items from ALL sellers are shipped/delivered
+            all_items_shipped = all(
+                item.get(Fields.STATUS) in [DeliveryStatusValues.SHIPPED, DeliveryStatusValues.DELIVERED]
+                for item in items
+            )
+            
+            update_data = {
+                Fields.ITEMS: items,
+                Fields.UPDATED_AT: get_server_timestamp()
+            }
+            
+            if all_items_shipped:
+                update_data[Fields.ORDER_STATUS] = OrderStatusValues.SHIPPED
+                update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.SHIPPED
+                update_data[Fields.SHIPPED_AT] = get_server_timestamp()
+                if tracking_number:
+                    update_data[Fields.TRACKING_NUMBER] = tracking_number
+                    update_data[Fields.CARRIER] = carrier or ''
+            
+            order_ref.update(update_data)
+            
+            return create_success_response({
+                'newStatus': OrderStatusValues.SHIPPED if all_items_shipped else old_status,
+                'allItemsShipped': all_items_shipped
+            })
+    
+    # Admin path: update order-level status directly
     update_data = {
         Fields.ORDER_STATUS: new_status,
         Fields.UPDATED_AT: get_server_timestamp()
@@ -197,7 +287,9 @@ def update_item_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not order_id or not product_id or not new_status:
         raise https_fn.HttpsError('invalid-argument', 'orderId, productId, and newStatus required')
     
-    # Validate status value
+    # Validate status value — sellers can only set PENDING or SHIPPED.
+    # DELIVERED is set by buyer confirmation or auto-capture cron only.
+    # REFUNDED is set by refund_order_item handler only.
     valid_statuses = [OrderStatusValues.PENDING, OrderStatusValues.SHIPPED, OrderStatusValues.DELIVERED, OrderStatusValues.REFUNDED]
     if new_status not in valid_statuses:
         raise https_fn.HttpsError('invalid-argument', f'Status must be one of: {valid_statuses}')
@@ -209,6 +301,11 @@ def update_item_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('not-found', 'Order not found')
     
     order_data = order_doc.to_dict()
+    
+    # Block updates on archived orders
+    if order_data.get('archived', False):
+        raise https_fn.HttpsError('failed-precondition', 'Cannot update archived order')
+    
     items = order_data.get(Fields.ITEMS, [])
     
     # Find the item to update
@@ -237,6 +334,30 @@ def update_item_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not (is_admin or is_item_seller):
         raise https_fn.HttpsError('permission-denied', 'Only the item seller or admin can update item status')
     
+    # SELLER SELF-DELIVERY PREVENTION: Sellers cannot mark their own items as DELIVERED.
+    # Only buyer confirmation (capture_payment) or auto-capture cron can set DELIVERED.
+    if is_item_seller and not is_admin and new_status == DeliveryStatusValues.DELIVERED:
+        raise https_fn.HttpsError(
+            'permission-denied',
+            'Sellers cannot mark items as delivered. Buyer must confirm receipt.'
+        )
+    
+    # Per-item state machine validation
+    current_item_status = items[item_index].get(Fields.STATUS, DeliveryStatusValues.PENDING)
+    valid_item_transitions = {
+        DeliveryStatusValues.PENDING: [DeliveryStatusValues.SHIPPED],
+        DeliveryStatusValues.SHIPPED: [DeliveryStatusValues.DELIVERED],
+        DeliveryStatusValues.DELIVERED: [DeliveryStatusValues.REFUNDED],
+        DeliveryStatusValues.REFUNDED: [],  # Terminal
+    }
+    allowed_next = valid_item_transitions.get(current_item_status, [])
+    # Admins can bypass state machine for edge cases
+    if not is_admin and new_status not in allowed_next:
+        raise https_fn.HttpsError(
+            'failed-precondition',
+            f'Invalid item status transition from {current_item_status} to {new_status}'
+        )
+    
     # Update the item
     items[item_index][Fields.STATUS] = new_status
     
@@ -248,7 +369,7 @@ def update_item_status(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     elif new_status == DeliveryStatusValues.DELIVERED:
         items[item_index][Fields.DELIVERED_AT] = get_server_timestamp()
-        items[item_index][Fields.CONFIRMED_BY_BUYER] = True
+        # Note: confirmedByBuyer is NOT set here; it's only set via capture_payment (buyer action)
     
     # Check if all items are delivered
     all_items_delivered = all(item.get(Fields.STATUS) == DeliveryStatusValues.DELIVERED for item in items)
@@ -310,6 +431,8 @@ def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     
     order_data = order_doc.to_dict()
     
+    # Block updates on archived orders\n    if order_data.get('archived', False):\n        raise https_fn.HttpsError('failed-precondition', 'Cannot cancel archived order')
+    
     # Check permissions
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
@@ -327,45 +450,60 @@ def cancel_order(req: https_fn.CallableRequest) -> Dict[str, Any]:
     if not (is_admin or is_buyer or is_seller):
         raise https_fn.HttpsError('permission-denied', 'Only buyer, seller, or admin can cancel order')
     
-    # Check if order can be cancelled
+    # SECURITY FIX: Use proper state machine validation instead of blocklist
     current_status = order_data[Fields.ORDER_STATUS]
     payment_status = order_data.get(Fields.PAYMENT_STATUS)
     
-    # FIXED: Added shipped and in_transit to forbidden states to prevent post-shipment cancellation
-    forbidden_states = [OrderStatusValues.DELIVERED, OrderStatusValues.REFUNDED, OrderStatusValues.SHIPPED, OrderStatusValues.IN_TRANSIT]
-    if current_status in forbidden_states:
+    if not is_valid_order_status_transition(current_status, OrderStatusValues.CANCELLED):
         raise https_fn.HttpsError('failed-precondition', f'Cannot cancel order with status: {current_status}')
     
-    # Restore stock atomically (idempotency handled by stockRestored flag)
+    # Restore stock using batch write for atomicity (idempotency handled by stockRestored flag)
     if not order_data.get(Fields.STOCK_RESTORED, False):
+        batch = get_db().batch()
         for item in order_data[Fields.ITEMS]:
             product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-            product_ref.update({
+            batch.update(product_ref, {
                 Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
                 Fields.UPDATED_AT: get_server_timestamp()
             })
+        # Mark stockRestored first for idempotency
+        batch.update(order_ref, {Fields.STOCK_RESTORED: True})
+        batch.commit()
     
-    # Issue refund if payment was captured
-    # Issue refund if payment was captured
+    # Handle payment based on current payment status
     refunded = False
-    if payment_status == PaymentStatusValues.CAPTURED:
-        payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
-        if payment_intent_id:
-            try:
-                stripe.Refund.create(
-                    payment_intent=payment_intent_id,
-                    reason='requested_by_customer',
-                    metadata={'orderId': order_id},
-                    idempotency_key=f'refund_{order_id}'
-                )
-                refunded = True
-            except stripe.error.StripeError as e:
-                print(f'Refund failed: {str(e)}')
+    payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+    new_payment_status = payment_status
+    
+    if payment_status == PaymentStatusValues.CAPTURED and payment_intent_id:
+        # Payment was captured — issue refund
+        try:
+            stripe.Refund.create(
+                payment_intent=payment_intent_id,
+                reason='requested_by_customer',
+                metadata={'orderId': order_id},
+                idempotency_key=f'refund_{order_id}'
+            )
+            refunded = True
+            new_payment_status = PaymentStatusValues.REFUNDED
+        except stripe.error.StripeError as e:
+            print(f'Refund failed: {str(e)}')
+    
+    elif payment_status == PaymentStatusValues.AUTHORIZED and payment_intent_id:
+        # CRITICAL FIX: Payment was authorized but not captured — cancel the PI to release buyer funds
+        try:
+            stripe.PaymentIntent.cancel(
+                payment_intent_id,
+                cancellation_reason='requested_by_customer',
+            )
+            new_payment_status = PaymentStatusValues.CANCELLED
+        except stripe.error.StripeError as e:
+            print(f'PaymentIntent cancel failed: {str(e)}')
     
     # Update order
     order_ref.update({
         Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
-        Fields.PAYMENT_STATUS: PaymentStatusValues.REFUNDED if refunded else payment_status,
+        Fields.PAYMENT_STATUS: new_payment_status,
         Fields.CANCELLED_BY: user_id,
         Fields.CANCELLED_AT: get_server_timestamp(),
         Fields.CANCELLATION_REASON: reason,
@@ -514,8 +652,8 @@ def refund_order_item(req: https_fn.CallableRequest) -> Dict[str, Any]:
     # Restore stock for this item
     product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
     product_ref.update({
-        'stockQuantity': get_firestore().Increment(item_quantity),
-        'updatedAt': get_server_timestamp()
+        Fields.STOCK_QUANTITY: get_firestore().Increment(item_quantity),
+        Fields.UPDATED_AT: get_server_timestamp()
     })
     
     # Update item status
@@ -562,13 +700,13 @@ def refund_order_item(req: https_fn.CallableRequest) -> Dict[str, Any]:
                     
                     # Log partial reversal
                     payout_doc.reference.update({
-                        'partialReversals': get_firestore().ArrayUnion([{
-                            'reversalId': reversal.id,
-                            'amountCents': reversal_amount_cents,
-                            'productId': product_id,
-                            'createdAt': get_server_timestamp()
+                        Fields.PARTIAL_REVERSALS: get_firestore().ArrayUnion([{
+                            Fields.REVERSAL_ID: reversal.id,
+                            Fields.AMOUNT_CENTS: reversal_amount_cents,
+                            Fields.PRODUCT_ID: product_id,
+                            Fields.CREATED_AT: get_server_timestamp()
                         }]),
-                        'updatedAt': get_server_timestamp()
+                        Fields.UPDATED_AT: get_server_timestamp()
                     })
             except stripe.error.StripeError as e:
                 # Log failed reversal but don't fail the refund
@@ -631,6 +769,26 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
         # Update order with new shipping cost (all amounts in cents)
         new_shipping_cost_cents = round(shipping_approval.get('actualCost', 0) * 100)
         old_shipping_cost_cents = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
+        
+        # SECURITY: Validate shipping cost bounds (max +20% of original estimate)
+        from config import SHIPPING_APPROVAL_THRESHOLD
+        max_allowed_cents = round(old_shipping_cost_cents * (1 + SHIPPING_APPROVAL_THRESHOLD))
+        if old_shipping_cost_cents > 0 and new_shipping_cost_cents > max_allowed_cents:
+            raise https_fn.HttpsError(
+                'invalid-argument',
+                f'Shipping cost ${new_shipping_cost_cents / 100:.2f} exceeds maximum allowed '
+                f'(+{int(SHIPPING_APPROVAL_THRESHOLD * 100)}% of original ${old_shipping_cost_cents / 100:.2f}). '
+                f'Contact admin for manual approval.'
+            )
+        
+        # Validate authorization is still valid before modifying payment
+        expires_at = order_data.get(Fields.EXPIRES_AT)
+        if expires_at and isinstance(expires_at, datetime) and expires_at < datetime.now():
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                'Payment authorization has expired. Order must be re-created.'
+            )
+        
         difference_cents = new_shipping_cost_cents - old_shipping_cost_cents
         new_total_cents = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) + difference_cents
         
@@ -656,10 +814,25 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> Dict[str, Any]:
                     print(f'Failed to update payment amount: {str(e)}')
     else:
         # Buyer rejected, cancel order
+        cancel_payment_status = order_data.get(Fields.PAYMENT_STATUS)
+        
+        # CRITICAL FIX: Cancel PaymentIntent to release buyer funds
+        payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+        if payment_intent_id and cancel_payment_status == PaymentStatusValues.AUTHORIZED:
+            try:
+                stripe.PaymentIntent.cancel(
+                    payment_intent_id,
+                    cancellation_reason='requested_by_customer',
+                )
+                cancel_payment_status = PaymentStatusValues.CANCELLED
+            except stripe.error.StripeError as e:
+                print(f'PaymentIntent cancel failed on shipping rejection: {str(e)}')
+        
         order_ref.update({
             f'{Fields.SHIPPING_APPROVAL}.{Fields.STATUS}': ShippingApprovalStatusValues.REJECTED,
             f'{Fields.SHIPPING_APPROVAL}.{Fields.RESPONDED_AT}': get_server_timestamp(),
             Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
+            Fields.PAYMENT_STATUS: cancel_payment_status,
             Fields.CANCELLATION_REASON: 'Buyer rejected shipping cost',
             Fields.STOCK_RESTORED: True,
             Fields.UPDATED_AT: get_server_timestamp()
@@ -744,7 +917,6 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                                 html_content=f'''
                                 <h2>Shipment Confirmed</h2>
                                 <p>Order ID: {order_id}</p>
-                                <p>Tracking: {tracking_number}</p>
                                 <p>Tracking: {tracking_number}</p>
                                 <p>Carrier: {carrier}</p>
                                 '''

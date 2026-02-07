@@ -291,8 +291,8 @@ def is_valid_order_status_transition(current_status: str, new_status: str) -> bo
     This mirrors the Firestore rules validation.
     
     Valid transitions:
-    - pending -> [confirmed, cancelled, failed]
-    - confirmed -> [processing, cancelled]
+    - pending -> [confirmed, cancelled, failed, expired]
+    - confirmed -> [processing, cancelled, expired]
     - processing -> [shipped, cancelled]
     - shipped -> [delivered, cancelled]
     - delivered -> [refunded, partially_refunded]
@@ -303,10 +303,10 @@ def is_valid_order_status_transition(current_status: str, new_status: str) -> bo
     - partially_refunded -> [refunded]
     """
     valid_transitions = {
-        'pending': ['confirmed', 'cancelled', 'failed'],
-        'confirmed': ['processing', 'cancelled'],
+        'pending': ['confirmed', 'cancelled', 'failed', 'expired'],
+        'confirmed': ['processing', 'cancelled', 'expired'],
         'processing': ['shipped', 'cancelled'],
-        'shipped': ['in_transit', 'delivered', 'cancelled'],
+        'shipped': ['in_transit', 'delivered'],
         'in_transit': ['delivered', 'cancelled'],
         'delivered': ['refunded', 'partially_refunded'],
         'cancelled': [],

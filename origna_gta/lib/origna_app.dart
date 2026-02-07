@@ -150,7 +150,14 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     );
   }
 
-  return null;
+  // Default fallback: redirect unknown routes to home
+  if (kDebugMode) {
+    debugPrint('⚠️ Unknown route: ${uri.path} — redirecting to home');
+  }
+  return MaterialPageRoute(
+    settings: const RouteSettings(name: '/'),
+    builder: (_) => const AuthWrapper(),
+  );
 }
 
 class OrignaApp extends ConsumerStatefulWidget {
@@ -181,6 +188,10 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
         // Handle initial URL from web (e.g., Stripe redirect to /payment-success)
         onGenerateInitialRoutes: _onGenerateInitialRoutes,
         onGenerateRoute: _onGenerateRoute,
+        onUnknownRoute: (_) => MaterialPageRoute(
+          settings: const RouteSettings(name: '/'),
+          builder: (_) => const AuthWrapper(),
+        ),
         theme: ThemeData(
           useMaterial3: true,
           // Centralized Theme using DesignTokens

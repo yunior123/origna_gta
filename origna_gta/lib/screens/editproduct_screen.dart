@@ -41,7 +41,6 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   late final TextEditingController _expressDaysController;
   late final TextEditingController _expressPriceController;
   late final TextEditingController _sameDayPriceController;
-  late final TextEditingController _sameDayRadiusController;
 
   final Map<String, String> _provinceNames = {
     'AB': 'Alberta',
@@ -335,7 +334,6 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _expressDaysController.dispose();
     _expressPriceController.dispose();
     _sameDayPriceController.dispose();
-    _sameDayRadiusController.dispose();
     super.dispose();
   }
 
@@ -381,7 +379,6 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _expressDaysController = TextEditingController(text: expressOpt.estimatedDays.toString());
     _expressPriceController = TextEditingController(text: expressOpt.cost.toStringAsFixed(2));
     _sameDayPriceController = TextEditingController(text: sameDayOpt.cost.toStringAsFixed(2));
-    _sameDayRadiusController = TextEditingController(text: '50');
   }
 
   Widget _buildAddressSuggestions(EditProductState state, EditProductViewModel viewModel) {

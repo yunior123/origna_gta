@@ -53,7 +53,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   final _expressDaysController = TextEditingController(text: '2');
   final _expressPriceController = TextEditingController(text: '9.99');
   final _sameDayPriceController = TextEditingController(text: '14.99');
-  final _sameDayRadiusController = TextEditingController(text: '50');
 
   // Quantity-based shipping discount controllers
   final _shippingDiscount3Controller = TextEditingController();
@@ -1565,7 +1564,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     _expressDaysController.dispose();
     _expressPriceController.dispose();
     _sameDayPriceController.dispose();
-    _sameDayRadiusController.dispose();
     _costController.dispose();
     _supplierSkuController.dispose();
     _supplierUrlController.dispose();

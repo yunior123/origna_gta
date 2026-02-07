@@ -39,6 +39,8 @@ class PaymentStatusEnum(str, Enum):
     PAYMENT_FAILED = "payment_failed"
     REFUNDED = "refunded"
     SESSION_EXPIRED = "session_expired"
+    CANCELLED = "cancelled"
+    AUTHORIZATION_EXPIRED = "authorization_expired"
 
 
 class DeliveryStatusEnum(str, Enum):
@@ -46,6 +48,7 @@ class DeliveryStatusEnum(str, Enum):
     PENDING = "pending"
     SHIPPED = "shipped"
     DELIVERED = "delivered"
+    REFUNDED = "refunded"
 
 
 class ShippingApprovalStatusEnum(str, Enum):

@@ -65,6 +65,8 @@ enum DeliveryStatus {
   shipped,
   @JsonValue('delivered')
   delivered,
+  @JsonValue('refunded')
+  refunded,
 }
 
 // ============================================================================
@@ -113,6 +115,10 @@ enum PaymentStatus {
   refunded,
   @JsonValue('session_expired')
   sessionExpired,
+  @JsonValue('cancelled')
+  cancelled,
+  @JsonValue('authorization_expired')
+  authorizationExpired,
 }
 
 enum ShippingApprovalStatus {

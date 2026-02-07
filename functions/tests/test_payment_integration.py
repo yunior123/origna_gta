@@ -7,12 +7,12 @@ import os
 # Add functions directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from config import (
-    DeliveryStatus,
-    PaymentStatus,
-    OrderStatus,
-    PayoutStatus,
-    Collections
+from config import Collections
+from schema_constants import (
+    OrderStatusValues as OrderStatus,
+    PaymentStatusValues as PaymentStatus,
+    DeliveryStatusValues as DeliveryStatus,
+    PayoutStatusValues as PayoutStatus,
 )
 
 

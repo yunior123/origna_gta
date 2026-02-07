@@ -136,6 +136,8 @@ DeliveryStatus _parseDeliveryStatus(dynamic raw) {
       return DeliveryStatus.shipped;
     case 'delivered':
       return DeliveryStatus.delivered;
+    case 'refunded':
+      return DeliveryStatus.refunded;
     default:
       return DeliveryStatus.pending;
   }

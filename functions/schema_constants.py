@@ -437,7 +437,7 @@ class SchemaRegistry:
 class BusinessRules:
     """Business rule constants"""
     PLATFORM_FEE_PERCENT = 2.5
-    AUTO_CONFIRM_DAYS = 14
+    AUTO_CONFIRM_DAYS = 5  # Must be < AUTHORIZATION_EXPIRY_DAYS (2-day safety margin)
     AUTHORIZATION_EXPIRY_DAYS = 7
     MAX_CAPTURE_ATTEMPTS = 3
     DEFAULT_CURRENCY = "cad"

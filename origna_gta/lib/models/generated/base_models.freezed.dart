@@ -601,8 +601,7 @@ class _$AddressDetailsImpl implements _AddressDetails {
             other is _$AddressDetailsImpl &&
             (identical(other.street, street) || other.street == street) &&
             (identical(other.city, city) || other.city == city) &&
-            (identical(other.state, state) ||
-                other.state == state) &&
+            (identical(other.state, state) || other.state == state) &&
             (identical(other.postalCode, postalCode) ||
                 other.postalCode == postalCode) &&
             (identical(other.latitude, latitude) ||

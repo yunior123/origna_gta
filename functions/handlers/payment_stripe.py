@@ -13,11 +13,17 @@ from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 
 from config import (
-    OrderStatus, PaymentStatus, Collections, PLATFORM_FEE_PERCENT,
+    Collections, PLATFORM_FEE_PERCENT,
     STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, AUTO_CONFIRM_DAYS,
     AUTHORIZATION_VALID_DAYS
 )
-from schema_constants import Fields, UserRoleValues, DeliveryStatusValues, OrderStatusValues, WebhookStatusValues, PaymentStatusValues, ApiKeys
+from schema_constants import (
+    Fields, UserRoleValues, DeliveryStatusValues, OrderStatusValues,
+    WebhookStatusValues, PaymentStatusValues, ApiKeys
+)
+# Aliases for backward compatibility — canonical source is schema_constants
+OrderStatus = OrderStatusValues
+PaymentStatus = PaymentStatusValues
 from email_service import send_email, get_order_confirmation_email, get_seller_notification_email
 from utils import (
     create_success_response, create_error_response, validate_item,
@@ -456,6 +462,37 @@ def create_checkout_session(req: https_fn.CallableRequest) -> Dict[str, Any]:
         raise https_fn.HttpsError('internal', f'Stock reservation failed: {str(e)}')
     
     # Create order in Firestore — all amounts in cents
+    # IDEMPOTENCY: Check if user already has a recent pending order with same subtotal
+    # to prevent duplicate orders from client retries
+    import hashlib
+    cart_hash = hashlib.md5(
+        f"{user_id}:{actual_subtotal_cents}:{len(validated_items)}:{sorted(list(sellers))}".encode()
+    ).hexdigest()[:12]
+    
+    recent_orders = get_db().collection(Collections.ORDERS)\
+        .where(Fields.USER_ID, '==', user_id)\
+        .where(Fields.ORDER_STATUS, '==', OrderStatus.PENDING)\
+        .where(Fields.PAYMENT_STATUS, '==', PaymentStatus.AWAITING_PAYMENT)\
+        .order_by(Fields.CREATED_AT, direction='DESCENDING')\
+        .limit(1)\
+        .get()
+    
+    for recent_doc in recent_orders:
+        recent_data = recent_doc.to_dict()
+        # If same user created same-value order in last 60 seconds, return existing
+        recent_created = recent_data.get(Fields.CREATED_AT)
+        if recent_created and hasattr(recent_created, 'timestamp'):
+            age_seconds = (datetime.now() - recent_created).total_seconds()
+            if age_seconds < 60 and recent_data.get(Fields.SUBTOTAL_CENTS) == actual_subtotal_cents:
+                existing_session_id = recent_data.get(Fields.STRIPE_SESSION_ID)
+                if existing_session_id:
+                    return {
+                        'success': True,
+                        ApiKeys.SESSION_ID: existing_session_id,
+                        Fields.ORDER_ID: recent_doc.id,
+                        'duplicate': True,
+                    }
+    
     order_ref = get_db().collection(Collections.ORDERS).document()
     order_id = order_ref.id
 
@@ -1500,6 +1537,19 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
             f'Order not shipped yet (status: {order_status})'
         )
     
+    # SECURITY: Check for active disputes before capturing
+    dispute_alerts = get_db().collection(Collections.SECURITY_ALERTS)\
+        .where(Fields.TYPE, '==', 'dispute_created')\
+        .where(Fields.RESOLVED, '==', False)\
+        .where(Fields.ORDER_ID, '==', order_id)\
+        .limit(1).get()
+    
+    if len(dispute_alerts) > 0:
+        raise https_fn.HttpsError(
+            'failed-precondition',
+            'Cannot capture payment: active dispute on this order. Contact support.'
+        )
+    
     payment_intent_id = order_data.get('stripePaymentIntentId')
     
     if not payment_intent_id:
@@ -1512,6 +1562,38 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'failed-precondition',
             'Maximum capture attempts exceeded'
         )
+    
+    # RACE CONDITION FIX: Atomically transition paymentStatus from AUTHORIZED → CAPTURING
+    # This prevents two concurrent capture_payment calls from both proceeding.
+    @get_transactional()
+    def lock_for_capture(transaction):
+        fresh_doc = order_ref.get(transaction=transaction)
+        if not fresh_doc.exists:
+            raise https_fn.HttpsError('not-found', 'Order not found')
+        fresh_data = fresh_doc.to_dict()
+        if fresh_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.CAPTURED:
+            return 'already_captured'
+        if fresh_data.get(Fields.PAYMENT_STATUS) != PaymentStatus.AUTHORIZED:
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                f'Order payment status changed concurrently (status: {fresh_data.get(Fields.PAYMENT_STATUS)})'
+            )
+        # Mark as "capturing" to block concurrent calls
+        transaction.update(order_ref, {
+            Fields.PAYMENT_STATUS: 'capturing',
+            Fields.CAPTURE_ATTEMPTS: fresh_data.get(Fields.CAPTURE_ATTEMPTS, 0) + 1,
+            Fields.UPDATED_AT: get_server_timestamp(),
+        })
+        return 'locked'
+    
+    lock_result = lock_for_capture(get_db().transaction())
+    if lock_result == 'already_captured':
+        return {
+            'success': True,
+            'captured': True,
+            'message': 'Payment already captured (concurrent request)',
+            'paymentIntentId': payment_intent_id
+        }
 
     # Emulator mode: skip real Stripe capture for fake payment intents
     if IS_EMULATOR and payment_intent_id and not payment_intent_id.startswith('pi_3'):
@@ -1557,20 +1639,23 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
         items = order_data.get(Fields.ITEMS, [])
         all_items_delivered = all(item.get(Fields.STATUS, DeliveryStatusValues.PENDING) == DeliveryStatusValues.DELIVERED for item in items)
         
-        # Create payouts ONLY for sellers whose items are delivered
+        # Create payouts ONLY for sellers whose items are DELIVERED
+        # SECURITY FIX: Removed PENDING fallback — only pay for confirmed deliveries
         sellers_total_cents = {}
         for item in items:
-            # Only include delivered items (or all items if no per-item status tracking)
             item_status = item.get(Fields.STATUS, DeliveryStatusValues.PENDING)
-            if item_status in [DeliveryStatusValues.DELIVERED, DeliveryStatusValues.PENDING]:  # 'pending' for backwards compatibility
+            if item_status == DeliveryStatusValues.DELIVERED:
                 seller_id = item[Fields.SELLER_ID]
                 # Price is in dollars, convert to cents
                 item_price_cents = round(item['price'] * 100)
                 item_total_cents = item_price_cents * item['quantity']
                 sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
 
-        # Capture the payment
-        payment_intent = stripe.PaymentIntent.capture(payment_intent_id)
+        # Capture the payment (with idempotency key to prevent duplicate captures)
+        payment_intent = stripe.PaymentIntent.capture(
+            payment_intent_id,
+            idempotency_key=f'capture_{order_id}_{payment_intent_id}'
+        )
         
         # Execute Transfers / Payouts
         transfer_errors = []
@@ -1629,6 +1714,7 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                     
                     try:
                         # Create transfer to seller (amount already in cents)
+                        # SECURITY: idempotency_key prevents double-payouts at Stripe API level
                         transfer = stripe.Transfer.create(
                             amount=net_amount_cents,
                             currency='cad',
@@ -1640,6 +1726,7 @@ def capture_payment(req: https_fn.CallableRequest) -> Dict[str, Any]:
                                 Fields.SELLER_ID: seller_id,
                                 'platformFee': platform_fee_cents
                             },
+                            idempotency_key=f'transfer_{order_id}_{seller_id}',
                         )
 
                         # Create payout record for transparency (all amounts in cents)

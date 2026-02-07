@@ -23,25 +23,31 @@ service firebase.storage {
     }
     
     // ================================================================
-    // PRODUCT IMAGES
+    // PRODUCT IMAGES (with seller ownership validation)
     // ================================================================
-    match /products/{productId}/{fileName} {
+    // Path format: products/{sellerId}/{productId}/{fileName}
+    match /products/{sellerId}/{productId}/{fileName} {
       // Anyone can read product images (for marketplace browsing)
       allow read: if true;
       
-      // Only authenticated sellers can upload images
-      // Note: Product ownership validated via Cloud Function
-      allow create: if isAuthenticated() && 
+      // Only the owning seller can upload images to their own folder
+      allow create: if isOwner(sellerId) && 
         isValidImageType() && 
         isValidImageSize();
       
-      // Sellers can update their product images
-      allow update: if isAuthenticated() && 
+      // Only the owning seller can update their product images
+      allow update: if isOwner(sellerId) && 
         isValidImageType() && 
         isValidImageSize();
       
-      // Only product owner can delete (handled via Cloud Function validation)
-      allow delete: if isAuthenticated();
+      // Only the owning seller can delete their product images
+      allow delete: if isOwner(sellerId);
+    }
+    
+    // Legacy path (read-only for backwards compatibility)
+    match /products/{productId}/{fileName} {
+      allow read: if true;
+      allow create, update, delete: if false;
     }
     
     // ================================================================
