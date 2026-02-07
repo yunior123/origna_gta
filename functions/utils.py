@@ -1,24 +1,25 @@
 import json
 import re
 from datetime import datetime
-from typing import Any, Dict, Optional
-from firebase_functions import https_fn
+from typing import Any
+
 from firebase_admin import firestore
-from config import IS_EMULATOR
-from schema_constants import Fields, Collections
+from firebase_functions import https_fn
 from pydantic import ValidationError
+
+from config import IS_EMULATOR
 
 # Import Pydantic models
 from models.base import Address
-from models.product import Product
-from models.order import OrderItem, Order
-from models.user import User
+from models.order import OrderItem
+from schema_constants import Collections, Fields
 
-def create_success_response(data: Dict[str, Any], status_code: int = 200) -> Dict[str, Any]:
+
+def create_success_response(data: dict[str, Any], status_code: int = 200) -> dict[str, Any]:
     """Create standardized success response dict for on_call functions"""
     return {"success": True, **data}
 
-def create_error_response(error: str, status_code: int = 400, details: Optional[str] = None) -> https_fn.Response:
+def create_error_response(error: str, status_code: int = 400, details: str | None = None) -> https_fn.Response:
     """Create standardized error response"""
     response_data = {
         "success": False,
@@ -59,29 +60,29 @@ def sanitized_text(value: str) -> str:
     """
     if value is None:
         return ""
-    
+
     text = str(value)
-    
+
     # Remove script tags and their content
     text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
-    
+
     # Remove iframe tags
     text = re.sub(r'<iframe[^>]*>.*?</iframe>', '', text, flags=re.IGNORECASE | re.DOTALL)
-    
+
     # Remove javascript: protocol
     text = re.sub(r'javascript:', '', text, flags=re.IGNORECASE)
-    
+
     # Remove onerror and other event handlers
     text = re.sub(r'\son\w+\s*=', '', text, flags=re.IGNORECASE)
-    
+
     # Remove any remaining script tags (self-closing or malformed)
     text = re.sub(r'</?script[^>]*>', '', text, flags=re.IGNORECASE)
-    
+
     # Remove other dangerous tags
     text = re.sub(r'</?iframe[^>]*>', '', text, flags=re.IGNORECASE)
     text = re.sub(r'</?object[^>]*>', '', text, flags=re.IGNORECASE)
     text = re.sub(r'</?embed[^>]*>', '', text, flags=re.IGNORECASE)
-    
+
     return text
 
 
@@ -92,20 +93,20 @@ def sanitize_path(path: str) -> str:
     """
     if path is None:
         return ""
-    
+
     import os
-    
+
     path_str = str(path)
-    
+
     # Remove all occurrences of '..' (both forward and backslash)
     path_str = path_str.replace('..', '')
-    
+
     # Get only the basename (filename) - removes all directory traversal
     path_str = os.path.basename(path_str)
-    
+
     # Remove any remaining path separators
     path_str = path_str.replace('/', '').replace('\\', '')
-    
+
     return path_str
 
 
@@ -168,7 +169,7 @@ def validate_postal_code(postal_code: str) -> str:
     return cleaned
 
 
-def validate_address_map(address: Dict[str, Any]) -> Address:
+def validate_address_map(address: dict[str, Any]) -> Address:
     """
     Validate and sanitize delivery address using Pydantic Address model.
     Returns validated Address object.
@@ -179,7 +180,7 @@ def validate_address_map(address: Dict[str, Any]) -> Address:
     validated_address = Address(**address)
     return validated_address
 
-def validate_item(item: Dict) -> tuple[bool, str]:
+def validate_item(item: dict) -> tuple[bool, str]:
     """
     Validate individual item data using OrderItem model.
     Returns (True, "") on success or (False, error_message) on failure.
@@ -187,11 +188,11 @@ def validate_item(item: Dict) -> tuple[bool, str]:
     try:
         # Create OrderItem to validate structure
         validated_item = OrderItem(**item)
-        
+
         # Additional business rules
         if validated_item.quantity > 100:
             return False, "quantity exceeds maximum (100)"
-        
+
         return True, ""
     except ValidationError as e:
         errors = e.errors()
@@ -203,7 +204,7 @@ def validate_item(item: Dict) -> tuple[bool, str]:
     except Exception as e:
         return False, str(e)
 
-def validate_order_data(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
+def validate_order_data(data: dict[str, Any]) -> tuple[bool, str | None]:
     """
     Validate order data structure using Pydantic models.
     This is a lightweight check before creating full Order object.
@@ -241,18 +242,18 @@ def validate_order_data(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
             validate_address_map(shipping_address)
         except Exception as e:
             return False, str(e)
-    
+
     # Validate each item
     for idx, item in enumerate(data[Fields.ITEMS]):
         is_valid, error_msg = validate_item(item)
         if not is_valid:
             return False, f"Item {idx}: {error_msg}"
-    
+
     return True, None
 
-def log_webhook_to_database(db, event_id: str, event_type: str, payload_size: int, signature_verified: bool, 
-                           processing_status: str, order_id: Optional[str] = None, 
-                           error_message: Optional[str] = None, raw_event_data: Optional[Dict] = None) -> None:
+def log_webhook_to_database(db, event_id: str, event_type: str, payload_size: int, signature_verified: bool,
+                           processing_status: str, order_id: str | None = None,
+                           error_message: str | None = None, raw_event_data: dict | None = None) -> None:
     """Log all webhook calls to database for audit trail and debugging"""
     try:
         log_data = {
@@ -286,10 +287,10 @@ def log_webhook_to_database(db, event_id: str, event_type: str, payload_size: in
 def is_valid_order_status_transition(current_status: str, new_status: str) -> bool:
     """
     CRITICAL BUSINESS LOGIC: Validate order status transitions
-    
+
     Prevents data corruption from invalid state changes.
     This mirrors the Firestore rules validation.
-    
+
     Valid transitions:
     - pending -> [confirmed, cancelled, failed, expired]
     - confirmed -> [processing, cancelled, expired]
@@ -315,13 +316,13 @@ def is_valid_order_status_transition(current_status: str, new_status: str) -> bo
         'refunded': [],
         'partially_refunded': ['refunded'],
     }
-    
+
     allowed_next_states = valid_transitions.get(current_status, [])
     is_valid = new_status in allowed_next_states
-    
+
     if not is_valid:
         print(f"❌ INVALID STATE TRANSITION: {current_status} → {new_status}")
     else:
         print(f"✅ Valid state transition: {current_status} → {new_status}")
-    
+
     return is_valid

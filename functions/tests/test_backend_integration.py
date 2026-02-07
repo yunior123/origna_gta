@@ -4,12 +4,13 @@ Tests validate that utils.py and main.py work correctly with new models
 """
 
 import pytest
+from pydantic import ValidationError
+
 from models.base import Address
-from models.product import Product
 from models.order import OrderItem, Taxes
+from models.product import Product
 from models.user import User
 from utils import validate_address_map, validate_item, validate_order_data
-from pydantic import ValidationError
 
 
 def test_validate_address_map_valid():
@@ -22,9 +23,9 @@ def test_validate_address_map_valid():
         "country": "Canada",
         "phoneNumber": "4161234567"
     }
-    
+
     result = validate_address_map(address_dict)
-    
+
     assert isinstance(result, Address)
     assert result.street == "123 Main St"
     assert result.city == "Toronto"
@@ -42,10 +43,10 @@ def test_validate_address_map_invalid_postal_code():
         "postalCode": "INVALID",
         "country": "Canada"
     }
-    
+
     with pytest.raises(ValueError) as exc_info:
         validate_address_map(address_dict)
-    
+
     # Check that error mentions postal code (case-insensitive)
     error_msg = str(exc_info.value).lower()
     assert "postal" in error_msg or "postalcode" in error_msg
@@ -60,10 +61,10 @@ def test_validate_address_map_invalid_province():
         "postalCode": "M5V3A8",
         "country": "Canada"
     }
-    
+
     with pytest.raises(ValueError) as exc_info:
         validate_address_map(address_dict)
-    
+
     assert "state" in str(exc_info.value).lower() or "province" in str(exc_info.value).lower()
 
 
@@ -86,9 +87,9 @@ def test_validate_item_valid():
             "country": "Canada"
         }
     }
-    
+
     is_valid, error_msg = validate_item(item_dict)
-    
+
     assert is_valid is True
     assert error_msg == ""
 
@@ -112,9 +113,9 @@ def test_validate_item_invalid_quantity():
             "country": "Canada"
         }
     }
-    
+
     is_valid, error_msg = validate_item(item_dict)
-    
+
     assert is_valid is False
     assert "100" in error_msg or "maximum" in error_msg.lower()
 
@@ -138,9 +139,9 @@ def test_validate_item_missing_required_field():
             "country": "Canada"
         }
     }
-    
+
     is_valid, error_msg = validate_item(item_dict)
-    
+
     assert is_valid is False
     assert "description" in error_msg.lower()
 
@@ -273,15 +274,15 @@ def test_taxes_model_integration():
         HST=0.0,
         QST=0.0
     )
-    
+
     # Test total calculation
     assert taxes.total() == 12.0
-    
+
     # Test JSON serialization
     taxes_dict = taxes.model_dump()
     assert taxes_dict['GST'] == 5.0
     assert taxes_dict['PST'] == 7.0
-    
+
     # Test JSON deserialization
     taxes_restored = Taxes(**taxes_dict)
     assert taxes_restored.total() == 12.0
@@ -306,10 +307,10 @@ def test_order_item_model_integration():
             country="Canada"
         )
     )
-    
+
     # Test subtotal calculation
     assert item.subtotal() == 89.97
-    
+
     # Test JSON serialization
     item_dict = item.model_dump()
     assert item_dict['productId'] == "prod123"

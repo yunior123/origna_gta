@@ -3,14 +3,16 @@ Algolia indexing service for products
 Handles syncing Firestore products to Algolia search index
 """
 
+from typing import Union
+
 from algoliasearch.search.client import SearchClient
-from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY
-from schema_constants import Fields
-from typing import Dict, Union
 from pydantic import ValidationError
+
+from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY
 
 # Import Pydantic Product model for type-safe operations
 from models.product import Product
+from schema_constants import Fields
 
 # Initialize Algolia client (v4 API)
 algolia_client = SearchClient(ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY) if ALGOLIA_APP_ID and ALGOLIA_WRITE_API_KEY else None
@@ -20,11 +22,11 @@ products_index = algolia_client if algolia_client else None
 def format_product_for_algolia(product_id: str, product_data: Union[dict, Product]) -> dict:
     """
     Format product document for Algolia indexing.
-    
+
     Args:
         product_id: Firestore document ID
         product_data: Product document data (dict) or Product Pydantic model
-    
+
     Returns:
         Formatted object for Algolia with objectID
     """
@@ -42,7 +44,7 @@ def format_product_for_algolia(product_id: str, product_data: Union[dict, Produc
             # Fallback to raw dict if validation fails (for migration period)
             print(f"⚠️  Product {product_id} validation failed, using raw data")
             data = product_data
-    
+
     # Algolia requires objectID field
     # Algolia requires objectID field
     algolia_object = {
@@ -62,7 +64,7 @@ def format_product_for_algolia(product_id: str, product_data: Union[dict, Produc
         Fields.IS_PERISHABLE: data.get(Fields.IS_PERISHABLE, False),
         Fields.IS_LOCAL_DELIVERY_ONLY: data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False),
     }
-    
+
     # Seller address - handle both dict and Address object
     seller_address = data.get(Fields.SELLER_ADDRESS)
     if seller_address:
@@ -71,18 +73,18 @@ def format_product_for_algolia(product_id: str, product_data: Union[dict, Produc
             algolia_object[Fields.SELLER_ADDRESS] = seller_address.model_dump(exclude_none=True)
         else:
             algolia_object[Fields.SELLER_ADDRESS] = seller_address
-    
+
     # Optional fields
-    optional_fields = [Fields.WEIGHT_KG, Fields.LENGTH_CM, Fields.WIDTH_CM, Fields.HEIGHT_CM, Fields.TAX_CODE, 
+    optional_fields = [Fields.WEIGHT_KG, Fields.LENGTH_CM, Fields.WIDTH_CM, Fields.HEIGHT_CM, Fields.TAX_CODE,
                       Fields.DELIVERY_OPTIONS, Fields.ESTIMATED_SHIP_DAYS, Fields.MINIMUM_ORDER_QUANTITY]
     for field in optional_fields:
         if field in data:
             algolia_object[field] = data[field]
-    
+
     # Add timestamp for sorting (convert Firestore timestamp to Unix timestamp)
     if Fields.DATE_CREATED in data and data[Fields.DATE_CREATED]:
         algolia_object[Fields.DATE_CREATED] = data[Fields.DATE_CREATED].timestamp() if hasattr(data[Fields.DATE_CREATED], 'timestamp') else 0
-    
+
     return algolia_object
 
 
@@ -108,12 +110,12 @@ def index_product(product_id: str, product_data: dict, max_retries: int = 3) -> 
     """
     Index a single product to Algolia with retry + exponential backoff.
     On final failure, logs to algolia_sync_failures collection for later reconciliation.
-    
+
     Args:
         product_id: Firestore document ID
         product_data: Product document data
         max_retries: Number of retry attempts (default 3)
-    
+
     Returns:
         True if successful, False otherwise
     """
@@ -122,13 +124,13 @@ def index_product(product_id: str, product_data: dict, max_retries: int = 3) -> 
     if not products_index:
         print("⚠️  Algolia not configured - skipping indexing")
         return False
-    
+
     # Only index active products
     if not product_data.get(Fields.IS_ACTIVE, True):
         print(f"  ⏭️  Product {product_id} is inactive - removing from index if exists")
         delete_product(product_id)
         return True
-    
+
     algolia_object = format_product_for_algolia(product_id, product_data)
     last_error = None
 
@@ -153,11 +155,11 @@ def delete_product(product_id: str, max_retries: int = 3) -> bool:
     """
     Delete a product from Algolia index with retry + exponential backoff.
     On final failure, logs to algolia_sync_failures collection.
-    
+
     Args:
         product_id: Firestore document ID
         max_retries: Number of retry attempts (default 3)
-    
+
     Returns:
         True if successful, False otherwise
     """
@@ -166,7 +168,7 @@ def delete_product(product_id: str, max_retries: int = 3) -> bool:
     if not products_index:
         print("⚠️  Algolia not configured - skipping deletion")
         return False
-    
+
     last_error = None
 
     for attempt in range(max_retries):
@@ -189,29 +191,29 @@ def delete_product(product_id: str, max_retries: int = 3) -> bool:
 def batch_index_products(products: list) -> tuple:
     """
     Index multiple products in batch
-    
+
     Args:
         products: List of tuples (product_id, product_data)
-    
+
     Returns:
         Tuple of (success_count, failure_count)
     """
     if not products_index:
         print("⚠️  Algolia not configured - skipping batch indexing")
         return (0, len(products))
-    
+
     try:
         algolia_objects = []
         for product_id, product_data in products:
             # Only index active products
             if product_data.get(Fields.IS_ACTIVE, True):
                 algolia_objects.append(format_product_for_algolia(product_id, product_data))
-        
+
         if algolia_objects:
             products_index.save_objects(index_name='products', objects=algolia_objects)
             print(f"  ✅ Batch indexed {len(algolia_objects)} products to Algolia")
             return (len(algolia_objects), len(products) - len(algolia_objects))
-        
+
         return (0, len(products))
     except Exception as e:
         print(f"  ❌ Failed to batch index products: {str(e)}")
@@ -226,7 +228,7 @@ def configure_algolia_index():
     if not products_index:
         print("⚠️  Algolia not configured - skipping index configuration")
         return False
-    
+
     try:
         # Set searchable attributes with priority
         products_index.set_settings({

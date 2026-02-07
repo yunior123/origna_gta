@@ -5,7 +5,6 @@ This ensures all Cloud Functions have proper timeout and memory settings
 """
 
 import re
-import os
 from pathlib import Path
 
 # Define the replacements
@@ -32,11 +31,11 @@ IMPORT_LINE = "from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CO
 
 def update_file(filepath: Path):
     """Update a single Python file with new decorator patterns"""
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, encoding='utf-8') as f:
         content = f.read()
-    
+
     original_content = content
-    
+
     # Add import if not present and file has https_fn decorators
     if '@https_fn.' in content and 'from function_options import' not in content:
         # Find where to insert (after other imports)
@@ -52,11 +51,11 @@ def update_file(filepath: Path):
                 'import firebase_functions\n' + IMPORT_LINE,
                 1
             )
-    
+
     # Apply replacements
     for pattern, replacement in REPLACEMENTS:
         content = re.sub(pattern, replacement, content)
-    
+
     # Write back if changed
     if content != original_content:
         with open(filepath, 'w', encoding='utf-8') as f:
@@ -68,14 +67,14 @@ def update_file(filepath: Path):
 def main():
     """Update all handler files"""
     handlers_dir = Path(__file__).parent / 'handlers'
-    
+
     updated_count = 0
     for py_file in handlers_dir.glob('*.py'):
         if py_file.name == '__init__.py':
             continue
         if update_file(py_file):
             updated_count += 1
-    
+
     print(f"\n✓ Updated {updated_count} files")
 
 if __name__ == '__main__':

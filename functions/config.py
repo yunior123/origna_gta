@@ -27,8 +27,9 @@ USAGE:
 - Production: Deployed via GitHub Actions after tests pass
 """
 import os
-from firebase_functions import params
 from enum import Enum
+
+from firebase_functions import params
 
 # ============================================================================
 # ENVIRONMENT DETECTION
@@ -142,27 +143,27 @@ SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20%
 
 class R2Config:
     """Cloudflare R2 Storage Configuration.
-    
+
     NOTE: R2 is a REAL service even in emulator mode.
     We use 'emulator/' folder prefix to separate test uploads from production.
     """
-    
+
     BUCKET_NAME = "orignagta-images"
-    
+
     @staticmethod
     def get_products_folder() -> str:
         """Get folder path for product images based on environment."""
         return "emulator/products" if IS_EMULATOR else "products"
-    
+
     @staticmethod
     def get_users_folder() -> str:
         """Get folder path for user images based on environment."""
         return "emulator/users" if IS_EMULATOR else "users"
-    
+
     @staticmethod
     def get_image_path(category: str, filename: str) -> str:
         """Build full image path based on environment.
-        
+
         Args:
             category: 'products' or 'users'
             filename: The image filename
@@ -184,11 +185,11 @@ class R2Config:
 
 class AlgoliaConfig:
     """Algolia search configuration.
-    
+
     NOTE: Algolia is a REAL service even in emulator mode.
     We use 'products_emulator' index to separate test data from production.
     """
-    
+
     @staticmethod
     def get_index_name() -> str:
         """Get Algolia index name based on environment."""
@@ -201,7 +202,7 @@ class AlgoliaConfig:
 def _load_secret(key: str, required: bool = True) -> str:
     """
     Load secret safely based on environment.
-    
+
     EMULATOR: Reads from environment variables (.env file via dotenv)
     PRODUCTION: Reads from Google Secret Manager via params.SecretParam
     """
@@ -215,7 +216,7 @@ def _load_secret(key: str, required: bool = True) -> str:
             return params.SecretParam(key).value
         except Exception as e:
             if required:
-                raise RuntimeError(f"❌ Failed to load {key} from Secret Manager: {e}")
+                raise RuntimeError(f"❌ Failed to load {key} from Secret Manager: {e}") from e
             return ""
 
 # ============================================================================
@@ -224,7 +225,7 @@ def _load_secret(key: str, required: bool = True) -> str:
 
 class StripeConfig:
     """Stripe payment configuration."""
-    
+
     @staticmethod
     def is_test_mode() -> bool:
         """Check if using Stripe test keys (sk_test_*)."""

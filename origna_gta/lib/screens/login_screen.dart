@@ -37,11 +37,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
       } else if (next.successMessage != null) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(next.successMessage!), backgroundColor: Colors.green[700], behavior: SnackBarBehavior.floating));
+        ).showSnackBar(SnackBar(content: Text(next.successMessage!), backgroundColor: DesignTokens.success, behavior: SnackBarBehavior.floating));
       } else if (next.errorMessage != null) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: Colors.red[700], behavior: SnackBarBehavior.floating));
+        ).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: DesignTokens.error, behavior: SnackBarBehavior.floating));
       }
     });
 
@@ -231,7 +231,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('Please accept the Terms and Conditions to continue'),
-                                    backgroundColor: Colors.red,
+                                    backgroundColor: DesignTokens.error,
                                     behavior: SnackBarBehavior.floating,
                                   ),
                                 );
@@ -277,7 +277,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                               icon: Icons.g_mobiledata,
                               isPrimary: false,
                               isLoading: state.isLoading,
-                              onPressed: state.isLoading ? () {} : viewModel.handleGoogleSignIn,
+                              onPressed: state.isLoading ? null : viewModel.handleGoogleSignIn,
                             ),
                             const SizedBox(height: 20),
                           ],
@@ -340,7 +340,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
   void _onAuthSuccess() {
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Welcome back!'), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating));
+    ).showSnackBar(const SnackBar(content: Text('Welcome back!'), backgroundColor: DesignTokens.success, behavior: SnackBarBehavior.floating));
     Navigator.of(context).pop();
   }
 
@@ -393,15 +393,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                               Navigator.pop(dialogContext);
                               ScaffoldMessenger.of(
                                 context,
-                              ).showSnackBar(const SnackBar(content: Text('Password reset link sent!'), backgroundColor: Colors.green));
+                              ).showSnackBar(const SnackBar(content: Text('Password reset link sent!'), backgroundColor: DesignTokens.success));
                             }
                           } catch (e) {
-                            messanger.showSnackBar(const SnackBar(content: Text('Failed to send reset link'), backgroundColor: Colors.red));
+                            messanger.showSnackBar(const SnackBar(content: Text('Failed to send reset link'), backgroundColor: DesignTokens.error));
                           } finally {
                             setState(() => isSending = false);
                           }
                         },
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
                   child: isSending ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white)) : const Text('Send'),
                 ),
               ],

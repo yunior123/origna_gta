@@ -1,7 +1,7 @@
+import os
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
-import sys
-import os
 
 # Global Mocks
 mock_firebase_functions = MagicMock()
@@ -48,8 +48,8 @@ module_mocks = {
 with patch.dict(sys.modules, module_mocks):
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
     import main
-    from main import create_checkout_session
     from handlers import payment_stripe
+    from main import create_checkout_session
 
 class TestTaxAudit(unittest.TestCase):
     def setUp(self):
@@ -57,26 +57,26 @@ class TestTaxAudit(unittest.TestCase):
         payment_stripe._db = None
         payment_stripe._rate_limiter = None
         payment_stripe._firestore = None
-        
+
         main.stripe = mock_stripe
         mock_stripe.checkout.Session.create.reset_mock()
-        
+
         # Create mock DB
         self.mock_db = MagicMock()
-        
+
         # Create mock rate limiter
         self.mock_rate_limiter = MagicMock()
         self.mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
-        
+
         # Start patches using patch.object
         self.patcher_db = patch.object(payment_stripe, 'get_db', return_value=self.mock_db)
         self.patcher_rate_limiter = patch.object(payment_stripe, 'get_rate_limiter', return_value=self.mock_rate_limiter)
         self.patcher_shipping = patch.object(main, 'calculate_shipping_cost', return_value=0.0)
-        
+
         self.patcher_db.start()
         self.patcher_rate_limiter.start()
         self.patcher_shipping.start()
-    
+
     def tearDown(self):
         self.patcher_db.stop()
         self.patcher_rate_limiter.stop()
@@ -92,7 +92,7 @@ class TestTaxAudit(unittest.TestCase):
         req.data = {
             "userId": "user_1",
             "customerEmail": "parent@example.com",
-            "amount": 100, 
+            "amount": 100,
             "subtotal": 100.00,  # Must match price * quantity: 100.00 * 1 = 100.00
             "items": [{
                 "productId": "prod_kids_shirt",
@@ -152,7 +152,7 @@ class TestTaxAudit(unittest.TestCase):
                 return mock_doc_ref
             mock_coll.document = mock_document
             return mock_coll
-        
+
         self.mock_db.collection.side_effect = mock_collection
         self.mock_db.transaction.return_value = MagicMock()
 
@@ -163,18 +163,18 @@ class TestTaxAudit(unittest.TestCase):
 
         # Inspect Stripe Call
         args, kwargs = mock_stripe.checkout.Session.create.call_args
-        
+
         # OrignaGTA calculates tax server-side and adds it as a line item.
         # Stripe automatic_tax is intentionally disabled to avoid double taxation.
         self.assertFalse(kwargs.get('automatic_tax', {}).get('enabled', False))
-        
+
         # Verify Line Item Tax Code
         line_items = kwargs['line_items']
         product_item = line_items[0]
         tax_code = product_item['price_data']['product_data']['tax_code']
-        
+
         print(f"\n[AUDIT] Tax Code Used: {tax_code}")
-        
+
         self.assertEqual(tax_code, "txcd_20030002", "Should use Children's Clothing tax code for Category 17")
 
     def test_basic_groceries_tax_code(self):
@@ -187,7 +187,7 @@ class TestTaxAudit(unittest.TestCase):
         req.data = {
             "userId": "user_1",
             "customerEmail": "shopper@example.com",
-            "amount": 1, 
+            "amount": 1,
             "subtotal": 1.00,  # Must match price * quantity: 1.00 * 1 = 1.00
             "items": [{
                 "productId": "prod_apple",
@@ -246,10 +246,10 @@ class TestTaxAudit(unittest.TestCase):
                 return mock_doc_ref
             mock_coll.document = mock_document
             return mock_coll
-        
+
         self.mock_db.collection.side_effect = mock_collection
         self.mock_db.transaction.return_value = MagicMock()
-        
+
         mock_stripe.checkout.Session.create.return_value = MagicMock(id="sess_2", url="http://test")
 
         create_checkout_session(req)
@@ -260,7 +260,7 @@ class TestTaxAudit(unittest.TestCase):
         tax_code = product_item['price_data']['product_data']['tax_code']
 
         print(f"[AUDIT] Grocery Tax Code Used: {tax_code}")
-        
+
         self.assertEqual(tax_code, "txcd_30060005", "Should use Basic Groceries tax code for Category 19")
 
 if __name__ == '__main__':

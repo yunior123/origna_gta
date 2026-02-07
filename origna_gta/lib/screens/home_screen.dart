@@ -13,6 +13,7 @@ import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:shimmer/shimmer.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   final UserModel? userModel;
@@ -141,13 +142,13 @@ class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProvide
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF667EEA), width: 2),
-                        boxShadow: [BoxShadow(color: const Color(0xFF667EEA).withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 2)],
+                        border: Border.all(color: DesignTokens.primary, width: 2),
+                        boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 2)],
                       ),
                       constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
                       child: Text(
                         cartCount > 99 ? '99+' : '$cartCount',
-                        style: const TextStyle(color: Color(0xFF667EEA), fontSize: 10, fontWeight: FontWeight.bold),
+                        style: const TextStyle(color: DesignTokens.primary, fontSize: 10, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -261,11 +262,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: _buildModernAppBar(),
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [isDark ? Colors.grey[900]! : Colors.grey[50]!, isDark ? Colors.grey[800]! : Colors.white],
-          ),
+          gradient: DesignTokens.surfaceGradient(isDark: isDark),
         ),
         child: CustomScrollView(
           controller: _scrollController,
@@ -559,32 +556,20 @@ class _ProductGrid extends ConsumerWidget {
     }
 
     if (isLoading) {
-      return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 80),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [DesignTokens.primary, DesignTokens.secondary],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ).createShader(bounds),
-                  child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Loading products...',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
+      final spacing = ResponsiveBreakpoints.getSpacing(context, SpacingSize.md);
+      final columns = ResponsiveBreakpoints.getGridColumns(context);
+      return SliverPadding(
+        padding: EdgeInsets.all(spacing),
+        sliver: SliverGrid(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+            childAspectRatio: cardAspectRatio,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => _ShimmerCard(isDark: isDark),
+            childCount: columns * 2,
           ),
         ),
       );
@@ -603,8 +588,8 @@ class _ProductGrid extends ConsumerWidget {
         ),
         delegate: SliverChildBuilderDelegate((context, index) {
           final product = products[index];
-          return FadeTransition(
-            opacity: AlwaysStoppedAnimation(1.0),
+          return Semantics(
+            label: '${product.name}, \$${product.price.toStringAsFixed(2)}',
             child: ProductCard(productId: product.productId, product: product, userModel: userProfile ?? fallbackUserModel),
           );
         }, childCount: products.length),
@@ -668,5 +653,53 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton> with SingleTic
 
   void _triggerAnimation() {
     _controller.forward().then((_) => _controller.reverse());
+  }
+}
+
+class _ShimmerCard extends StatelessWidget {
+  final bool isDark;
+  const _ShimmerCard({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+      highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(DesignTokens.radius16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(DesignTokens.radius16)),
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Container(height: 14, width: double.infinity, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+                    Container(height: 14, width: 80, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+                    Container(height: 14, width: 60, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

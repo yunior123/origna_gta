@@ -14,13 +14,15 @@ This function:
 4. Sends notification emails to buyer and seller
 """
 
-from datetime import datetime
-from firebase_functions import https_fn, scheduler_fn
-from firebase_admin import firestore
-from config import Collections
-from schema_constants import OrderStatusValues as OrderStatus
-from email_service import send_authorization_expired_email
 import traceback
+from datetime import datetime
+
+from firebase_admin import firestore
+from firebase_functions import https_fn, scheduler_fn
+
+from config import Collections
+from email_service import send_authorization_expired_email
+from schema_constants import OrderStatusValues as OrderStatus
 
 db = firestore.client()
 
@@ -31,9 +33,9 @@ def check_expired_authorizations_scheduled(event: scheduler_fn.ScheduledEvent):
     print("=" * 80)
     print("🕐 SCHEDULED JOB: Checking expired authorizations")
     print(f"Timestamp: {datetime.now().isoformat()}")
-    
+
     result = _process_expired_authorizations()
-    
+
     print(f"✅ Job completed: {result['cancelled_count']} orders cancelled")
     print("=" * 80)
     return result
@@ -45,13 +47,13 @@ def check_expired_authorizations_http(req: https_fn.Request) -> https_fn.Respons
     print("=" * 80)
     print("🔧 MANUAL TRIGGER: Checking expired authorizations")
     print(f"Timestamp: {datetime.now().isoformat()}")
-    
+
     try:
         result = _process_expired_authorizations()
-        
+
         print(f"✅ Manual check completed: {result['cancelled_count']} orders cancelled")
         print("=" * 80)
-        
+
         return https_fn.Response(
             status=200,
             headers={"Content-Type": "application/json"},
@@ -72,7 +74,7 @@ def _process_expired_authorizations() -> dict:
     now = datetime.utcnow()
     cancelled_count = 0
     error_count = 0
-    
+
     try:
         # Query orders with expired authorizations
         expired_orders = db.collection(Collections.ORDERS).where(
@@ -80,15 +82,15 @@ def _process_expired_authorizations() -> dict:
         ).where(
             'authorizationExpiresAt', '<', now
         ).stream()
-        
+
         for order_doc in expired_orders:
             order_id = order_doc.id
             order_data = order_doc.to_dict()
-            
+
             print(f"\n⏰ Processing expired authorization: {order_id}")
             print(f"  Authorized at: {order_data.get('authorizedAt')}")
             print(f"  Expired at: {order_data.get('authorizationExpiresAt')}")
-            
+
             try:
                 # CRITICAL FIX: Use transaction to prevent race condition
                 # Without this, seller could accept order while cron cancels it
@@ -96,7 +98,7 @@ def _process_expired_authorizations() -> dict:
                 def cancel_if_still_authorized(transaction, ref):
                     snapshot = ref.get(transaction=transaction)
                     current_status = snapshot.get('paymentStatus')
-                    
+
                     # Only cancel if STILL authorized (not confirmed/captured)
                     if current_status == 'authorized':
                         transaction.update(ref, {
@@ -110,35 +112,35 @@ def _process_expired_authorizations() -> dict:
                     else:
                         print(f"  ⏭️ Skipping: Status changed to {current_status}")
                         return False
-                
+
                 transaction = db.transaction()
                 was_cancelled = cancel_if_still_authorized(transaction, order_doc.reference)
-                
+
                 if was_cancelled:
                     # Restore stock for all items
                     _restore_stock_for_order(order_data)
-                    
+
                     # Send notification emails
                     try:
                         send_authorization_expired_email(order_id, order_data)
                     except Exception as email_error:
                         print(f"  ⚠️ Email notification failed: {str(email_error)}")
-                    
+
                     cancelled_count += 1
-                    print(f"  ✅ Order cancelled and stock restored")
-                
+                    print("  ✅ Order cancelled and stock restored")
+
             except Exception as e:
                 error_count += 1
                 print(f"  ❌ Failed to process order {order_id}: {str(e)}")
                 print(traceback.format_exc())
-        
+
         return {
             "success": True,
             "cancelled_count": cancelled_count,
             "error_count": error_count,
             "checked_at": now.isoformat()
         }
-        
+
     except Exception as e:
         print(f"❌ Query failed: {str(e)}")
         print(traceback.format_exc())
@@ -158,7 +160,7 @@ def _restore_stock_for_order(order_data: dict) -> None:
         for item in items:
             product_id = item.get('productId')
             quantity = item.get('quantity', 1)
-            
+
             if product_id:
                 product_ref = db.collection(Collections.PRODUCTS).document(product_id)
                 product_ref.update({

@@ -24,8 +24,6 @@ NAMING CONVENTION:
 See: docs/database_schema.json for full schema documentation
 """
 
-from enum import Enum
-from typing import Dict, Set, FrozenSet
 
 
 # =============================================================================
@@ -286,7 +284,7 @@ class OrderStatusValues:
     REFUNDED = "refunded"
     PARTIALLY_REFUNDED = "partially_refunded"
 
-    ALL: FrozenSet[str] = frozenset({
+    ALL: frozenset[str] = frozenset({
         PENDING, CONFIRMED, PROCESSING, SHIPPED, IN_TRANSIT,
         DELIVERED, CANCELLED, FAILED, EXPIRED, REFUNDED, PARTIALLY_REFUNDED
     })
@@ -305,7 +303,7 @@ class PaymentStatusValues:
     CANCELLED = "cancelled"
     AUTHORIZATION_EXPIRED = "authorization_expired"
 
-    ALL: FrozenSet[str] = frozenset({
+    ALL: frozenset[str] = frozenset({
         AWAITING_PAYMENT, PROCESSING, PAID, PAYMENT_FAILED,
         REFUNDED, SESSION_EXPIRED, AUTHORIZED, CAPTURED,
         CANCELLED, AUTHORIZATION_EXPIRED
@@ -319,7 +317,7 @@ class DeliveryStatusValues:
     DELIVERED = "delivered"
     REFUNDED = "refunded"
 
-    ALL: FrozenSet[str] = frozenset({PENDING, SHIPPED, DELIVERED, REFUNDED})
+    ALL: frozenset[str] = frozenset({PENDING, SHIPPED, DELIVERED, REFUNDED})
 
 
 class PayoutStatusValues:
@@ -332,7 +330,7 @@ class PayoutStatusValues:
     REVERSED = "reversed"
     REVERSED_DISPUTE = "reversed_dispute"
 
-    ALL: FrozenSet[str] = frozenset({
+    ALL: frozenset[str] = frozenset({
         PENDING, PROCESSING, COMPLETED, PARTIAL, FAILED, REVERSED, REVERSED_DISPUTE
     })
 
@@ -343,7 +341,7 @@ class UserRoleValues:
     SELLER = "seller"
     BUYER = "buyer"
 
-    ALL: FrozenSet[str] = frozenset({ADMIN, SELLER, BUYER})
+    ALL: frozenset[str] = frozenset({ADMIN, SELLER, BUYER})
 
 
 class ProductStatusValues:
@@ -354,7 +352,7 @@ class ProductStatusValues:
     ARCHIVED = "archived"
     OUT_OF_STOCK = "out_of_stock"
 
-    ALL: FrozenSet[str] = frozenset({DRAFT, ACTIVE, PAUSED, ARCHIVED, OUT_OF_STOCK})
+    ALL: frozenset[str] = frozenset({DRAFT, ACTIVE, PAUSED, ARCHIVED, OUT_OF_STOCK})
 
 
 class ShippingApprovalStatusValues:
@@ -364,7 +362,7 @@ class ShippingApprovalStatusValues:
     APPROVED = "approved"
     REJECTED = "rejected"
 
-    ALL: FrozenSet[str] = frozenset({NOT_REQUIRED, PENDING, APPROVED, REJECTED})
+    ALL: frozenset[str] = frozenset({NOT_REQUIRED, PENDING, APPROVED, REJECTED})
 
 
 class WebhookStatusValues:
@@ -373,7 +371,7 @@ class WebhookStatusValues:
     COMPLETED = "completed"
     FAILED = "failed"
 
-    ALL: FrozenSet[str] = frozenset({PROCESSING, COMPLETED, FAILED})
+    ALL: frozenset[str] = frozenset({PROCESSING, COMPLETED, FAILED})
 
 
 # =============================================================================
@@ -387,7 +385,7 @@ class SchemaRegistry:
     """
 
     # Required fields per collection (must exist in every document)
-    REQUIRED_FIELDS: Dict[str, Set[str]] = {
+    REQUIRED_FIELDS: dict[str, set[str]] = {
         Collections.USERS: {
             Fields.UID, Fields.EMAIL, Fields.NAME, Fields.ROLES, Fields.CREATED_AT
         },
@@ -409,7 +407,7 @@ class SchemaRegistry:
     }
 
     # Timestamp field mapping (which field name each collection uses)
-    TIMESTAMP_FIELD: Dict[str, str] = {
+    TIMESTAMP_FIELD: dict[str, str] = {
         Collections.USERS: Fields.CREATED_AT,
         Collections.PRODUCTS: Fields.DATE_CREATED,  # Legacy: uses dateCreated
         Collections.ORDERS: Fields.CREATED_AT,
@@ -444,7 +442,7 @@ class BusinessRules:
     ALLOWED_COUNTRIES = frozenset({"Canada", "CA"})
 
     # Tax rates by province
-    TAX_RATES: Dict[str, Dict[str, float]] = {
+    TAX_RATES: dict[str, dict[str, float]] = {
         "AB": {"GST": 5.0},
         "BC": {"GST": 5.0, "PST": 7.0},
         "MB": {"GST": 5.0, "PST": 7.0},

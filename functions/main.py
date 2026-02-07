@@ -4,7 +4,7 @@ Refactored architecture with modular handlers
 
 All Firebase Cloud Functions are organized by domain:
 - payment_stripe: Stripe payment processing
-- payment_airwallex: Airwallex payment processing  
+- payment_airwallex: Airwallex payment processing
 - products: Product CRUD + Algolia sync
 - orders: Order lifecycle management
 - admin: User roles + MFA + GDPR
@@ -13,7 +13,6 @@ All Firebase Cloud Functions are organized by domain:
 
 # Firebase Admin SDK initialization
 import firebase_admin
-from firebase_admin import firestore
 
 # Only initialize if not already initialized (for testing)
 if not firebase_admin._apps:
@@ -21,8 +20,10 @@ if not firebase_admin._apps:
 
 # Stripe API key setup
 import os
-from google.cloud import secretmanager
+
 import stripe
+from google.cloud import secretmanager
+
 
 def get_secret(secret_id: str) -> str:
     """Retrieve secret from GCP Secret Manager"""
@@ -40,11 +41,9 @@ def _init_stripe():
 
 # Only initialize in production (not in test environment)
 if os.environ.get('TESTING') != 'true':
-    try:
+    import contextlib
+    with contextlib.suppress(Exception):
         _init_stripe()
-    except Exception:
-        # If Secret Manager fails, Stripe will be initialized on first use
-        pass
 
 # ===============================================
 # VALIDATION HELPERS
@@ -52,14 +51,14 @@ if os.environ.get('TESTING') != 'true':
 def validate_postal_code(postal_code, country="Canada"):
     """
     Validate postal code format.
-    
+
     Canadian postal code format: A1A 1A1 (letter-digit-letter space digit-letter-digit)
     """
     import re
-    
+
     if country.lower() != "canada":
         return False
-    
+
     # Canadian postal code pattern: A1A 1A1
     pattern = r'^[A-Z]\d[A-Z]\s?\d[A-Z]\d$'
     return bool(re.match(pattern, postal_code.upper()))
@@ -70,7 +69,7 @@ def validate_postal_code(postal_code, country="Canada"):
 def calculate_shipping_cost(items, buyer_addr, speed="standard"):
     """
     Calculate shipping cost based on items and delivery address.
-    
+
     Rules:
     1. If ALL items have freeShipping=True, return 0.0
     2. For items with fixed delivery options, use those prices
@@ -79,32 +78,32 @@ def calculate_shipping_cost(items, buyer_addr, speed="standard"):
     """
     if not items:
         return 0.0
-    
+
     # Check if all items are free shipping
     all_free_shipping = all(item.get('freeShipping', False) for item in items)
     if all_free_shipping:
         return 0.0
-    
+
     total_cost = 0.0
     # Support both 'state' (Flutter convention) and 'province' (backend convention)
     buyer_state = buyer_addr.get('state', '') or buyer_addr.get('province', '')
-    
+
     for item in items:
         if item.get('freeShipping', False):
             continue
-        
+
         quantity = item.get('quantity', 1)
         seller_state = item.get('sellerAddress', {}).get('state', '') or item.get('sellerAddress', {}).get('province', '')
-        
+
         # Check for fixed delivery options
         delivery_options = item.get('deliveryOptions', [])
         fixed_price = None
-        
+
         for option in delivery_options:
             if option.get('speed') == speed and option.get('isEnabled', False):
                 fixed_price = option.get('price', 0.0)
                 break
-        
+
         if fixed_price is not None:
             total_cost += quantity * fixed_price
         else:
@@ -115,99 +114,94 @@ def calculate_shipping_cost(items, buyer_addr, speed="standard"):
             else:
                 # Different province fallback: 19.99
                 total_cost += quantity * 19.99
-    
+
     return round(total_cost, 2)
 
 # ===============================================
 # PAYMENT HANDLERS - STRIPE
 # ===============================================
-from handlers.payment_stripe import (
-    create_checkout_session,
-    stripe_webhook,
-    capture_payment,
-    create_connect_account,
-    get_connect_account_status,
-    create_account_link,
-    process_charge_refunded,
-    process_dispute_created,
-    process_dispute_closed
-)
-
-# ===============================================
-# PAYMENT HANDLERS - AIRWALLEX
-# ===============================================
-from handlers.payment_airwallex import (
-    airwallex_create_seller_account,
-    airwallex_process_payment,
-    airwallex_capture_payment,
-    airwallex_webhook
-)
-
-# ===============================================
-# PRODUCT HANDLERS
-# ===============================================
-from handlers.products import (
-    upload_product_images,
-    delete_product,
-    submit_product_rating,
-    on_product_created,
-    on_product_updated,
-    on_product_deleted
-)
-
-# ===============================================
-# ORDER HANDLERS
-# ===============================================
-from handlers.orders import (
-    confirm_order_receipt,
-    update_order_status,
-    update_item_status,
-    refund_order_item,
-    cancel_order,
-    approve_shipping_cost,
-    on_order_status_changed
-)
-
 # ===============================================
 # ADMIN HANDLERS
 # ===============================================
-from handlers.admin import (
-    update_user_roles,
-    suspend_seller,
+from handlers.admin import (  # noqa: E402
+    admin_mfa_disable,
     admin_mfa_enroll,
     admin_mfa_verify,
-    admin_mfa_disable,
-    delete_account
-)
-
-# ===============================================
-# PAYMENT PROVIDER MANAGEMENT
-# ===============================================
-from handlers.payment_providers import (
-    get_payment_providers,
-    update_payment_provider,
-    get_provider_status
+    delete_account,
+    suspend_seller,
+    update_user_roles,
 )
 
 # ===============================================
 # CRON JOB HANDLERS
 # ===============================================
-from handlers.cron_jobs import (
+from handlers.cron_jobs import (  # noqa: E402
+    auto_archive_old_orders,
     auto_capture_confirmed_receipts,
     check_expired_authorizations,
-    auto_archive_old_orders,
+    cleanup_stale_rate_limits,
     monitor_algolia_sync,
-    cleanup_stale_rate_limits
+)
+
+# ===============================================
+# ORDER HANDLERS
+# ===============================================
+from handlers.orders import (  # noqa: E402
+    approve_shipping_cost,
+    cancel_order,
+    confirm_order_receipt,
+    on_order_status_changed,
+    refund_order_item,
+    update_item_status,
+    update_order_status,
+)
+
+# ===============================================
+# PAYMENT HANDLERS - AIRWALLEX
+# ===============================================
+from handlers.payment_airwallex import (  # noqa: E402
+    airwallex_capture_payment,
+    airwallex_create_seller_account,
+    airwallex_process_payment,
+    airwallex_webhook,
+)
+
+# ===============================================
+# PAYMENT PROVIDER MANAGEMENT
+# ===============================================
+from handlers.payment_providers import get_payment_providers, get_provider_status, update_payment_provider  # noqa: E402
+from handlers.payment_stripe import (  # noqa: E402
+    capture_payment,
+    create_account_link,
+    create_checkout_session,
+    create_connect_account,
+    get_connect_account_status,
+    process_charge_refunded,
+    process_dispute_closed,
+    process_dispute_created,
+    stripe_webhook,
+)
+
+# ===============================================
+# PRODUCT HANDLERS
+# ===============================================
+from handlers.products import (  # noqa: E402
+    delete_product,
+    on_product_created,
+    on_product_deleted,
+    on_product_updated,
+    submit_product_rating,
+    upload_product_images,
 )
 
 # Export all functions for Firebase deployment
 __all__ = [
     # Validation
     'validate_postal_code',
-    
+
     # Shipping
     'calculate_shipping_cost',
-    
+
     # Stripe payments
     'create_checkout_session',
     'stripe_webhook',
@@ -215,17 +209,16 @@ __all__ = [
     'create_connect_account',
     'get_connect_account_status',
     'create_account_link',
-    'transfer_to_seller',
     'process_charge_refunded',
     'process_dispute_created',
     'process_dispute_closed',
-    
+
     # Airwallex payments
     'airwallex_create_seller_account',
     'airwallex_process_payment',
     'airwallex_capture_payment',
     'airwallex_webhook',
-    
+
     # Products
     'upload_product_images',
     'delete_product',
@@ -233,7 +226,7 @@ __all__ = [
     'on_product_created',
     'on_product_updated',
     'on_product_deleted',
-    
+
     # Orders
     'confirm_order_receipt',
     'update_order_status',
@@ -242,7 +235,7 @@ __all__ = [
     'cancel_order',
     'approve_shipping_cost',
     'on_order_status_changed',
-    
+
     # Admin
     'update_user_roles',
     'suspend_seller',
@@ -250,12 +243,12 @@ __all__ = [
     'admin_mfa_verify',
     'admin_mfa_disable',
     'delete_account',
-    
+
     # Payment Provider Management
     'get_payment_providers',
     'update_payment_provider',
     'get_provider_status',
-    
+
     # Cron jobs
     'auto_capture_confirmed_receipts',
     'check_expired_authorizations',

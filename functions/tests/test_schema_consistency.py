@@ -78,12 +78,12 @@ class TestSchemaConsistency:
     def test_product_fields_consistency(self):
         """Verify product fields match between Python algolia_service.py and Dart constants"""
         root = self.get_project_root()
-        
+
         # Read Python algolia_service.py
         algolia_service_path = root / 'functions' / 'algolia_service.py'
-        with open(algolia_service_path, 'r') as f:
+        with open(algolia_service_path) as f:
             algolia_content = f.read()
-        
+
         # Extract fields from format_product_for_algolia function
         python_fields = set()
         # Find all data.get() calls (updated from product_data.get())
@@ -91,26 +91,26 @@ class TestSchemaConsistency:
         # 1. String literals: data.get('field')
         literal_pattern = r"data\.get\(['\"](\w+)['\"]"
         python_fields.update(re.findall(literal_pattern, algolia_content))
-        
+
         # 2. Fields constants: data.get(Fields.FIELD_NAME)
         # We need to map Fields.NAME back to 'name'
         # First, load schema_constants.py to build a map
         constants_path = root / 'functions' / 'schema_constants.py'
-        with open(constants_path, 'r') as f:
+        with open(constants_path) as f:
             constants_content = f.read()
-            
+
         # Map CONSTANT_NAME to 'fieldValue'
         const_map = {}
         const_pattern = r'^\s+(\w+)\s*=\s*["\'](\w+)["\']'
         for match in re.finditer(const_pattern, constants_content, re.MULTILINE):
             const_map[match.group(1)] = match.group(2)
-            
+
         # Find usage of Fields.CONSTANT
         fields_usage_pattern = r"Fields\.(\w+)"
         for match in re.findall(fields_usage_pattern, algolia_content):
             if match in const_map:
                 python_fields.add(const_map[match])
-        
+
         # Required product fields that must be in Algolia index
         required_fields = {
             'name', 'description', 'price', 'categoryId', 'sellerId',
@@ -118,29 +118,29 @@ class TestSchemaConsistency:
             'isActive', 'searchKeywords', 'sellerAddress', 'freeShipping',
             'isPerishable', 'isLocalDeliveryOnly'
         }
-        
+
         # Check all required fields are in Python code
         missing = required_fields - python_fields
         assert not missing, f"Missing REQUIRED product fields in algolia_service.py: {missing}"
-        
+
         # Optional fields (good to have but not critical)
         optional_fields = python_fields - required_fields
-        
-        print(f"✅ Product schema consistent")
+
+        print("✅ Product schema consistent")
         print(f"   Required fields: {len(required_fields)} ✓")
         print(f"   Optional fields: {len(optional_fields)} (weightKg, dimensions, etc.)")
 
     def test_order_status_consistency(self):
         """Verify OrderStatus values match between Python and Dart schema constants"""
         root = self.get_project_root()
-        
+
         python_constants_path = root / 'functions' / 'schema_constants.py'
-        with open(python_constants_path, 'r') as f:
+        with open(python_constants_path) as f:
             python_content = f.read()
         python_statuses = self._extract_python_string_constants('OrderStatusValues', python_content)
 
         dart_constants_path = root / 'origna_gta' / 'lib' / 'core' / 'schema' / 'schema_constants.dart'
-        with open(dart_constants_path, 'r') as f:
+        with open(dart_constants_path) as f:
             dart_content = f.read()
         dart_statuses = self._extract_dart_string_constants('OrderStatusValues', dart_content)
 
@@ -151,21 +151,21 @@ class TestSchemaConsistency:
             f"  Missing in Python: {sorted(dart_statuses - python_statuses)}\n"
             f"  Missing in Dart: {sorted(python_statuses - dart_statuses)}"
         )
-        
+
         print(f"✅ OrderStatusValues consistent: {len(python_statuses)} values")
         print(f"   Values: {sorted(python_statuses)}")
 
     def test_payment_status_consistency(self):
         """Verify PaymentStatus values match between Python and Dart schema constants"""
         root = self.get_project_root()
-        
+
         python_constants_path = root / 'functions' / 'schema_constants.py'
-        with open(python_constants_path, 'r') as f:
+        with open(python_constants_path) as f:
             python_content = f.read()
         python_statuses = self._extract_python_string_constants('PaymentStatusValues', python_content)
 
         dart_constants_path = root / 'origna_gta' / 'lib' / 'core' / 'schema' / 'schema_constants.dart'
-        with open(dart_constants_path, 'r') as f:
+        with open(dart_constants_path) as f:
             dart_content = f.read()
         dart_statuses = self._extract_dart_string_constants('PaymentStatusValues', dart_content)
 
@@ -176,22 +176,22 @@ class TestSchemaConsistency:
             f"  Missing in Python: {sorted(dart_statuses - python_statuses)}\n"
             f"  Missing in Dart: {sorted(python_statuses - dart_statuses)}"
         )
-        
-        print(f"✅ PaymentStatus consistent")
+
+        print("✅ PaymentStatus consistent")
         print(f"   Python: {sorted(python_statuses)}")
         print(f"   Dart: {sorted(dart_statuses)}")
 
     def test_delivery_status_consistency(self):
         """Verify DeliveryStatus values match between Python and Dart schema constants"""
         root = self.get_project_root()
-        
+
         python_constants_path = root / 'functions' / 'schema_constants.py'
-        with open(python_constants_path, 'r') as f:
+        with open(python_constants_path) as f:
             python_content = f.read()
         python_statuses = self._extract_python_string_constants('DeliveryStatusValues', python_content)
 
         dart_constants_path = root / 'origna_gta' / 'lib' / 'core' / 'schema' / 'schema_constants.dart'
-        with open(dart_constants_path, 'r') as f:
+        with open(dart_constants_path) as f:
             dart_content = f.read()
         dart_statuses = self._extract_dart_string_constants('DeliveryStatusValues', dart_content)
 
@@ -208,16 +208,16 @@ class TestSchemaConsistency:
     def test_address_fields_consistency(self):
         """Verify address fields match between Python Pydantic model and Dart model"""
         root = self.get_project_root()
-        
+
         # Read Python Address model from models/base.py
         models_path = root / 'functions' / 'models' / 'base.py'
-        with open(models_path, 'r') as f:
+        with open(models_path) as f:
             models_content = f.read()
-        
+
         # Expected address fields (from Address Pydantic model)
         expected_required = {'street', 'city', 'state', 'postalCode', 'country'}
         expected_optional = {'apartment', 'phoneNumber', 'label', 'isDefault', 'latitude', 'longitude'}
-        
+
         # Verify Address model exists and has required fields
         assert 'class Address(BaseModel)' in models_content, "Address model not found in models/base.py"
         assert 'street: str' in models_content, "Address.street field not found"
@@ -225,64 +225,64 @@ class TestSchemaConsistency:
         assert 'state: str' in models_content, "Address.state field not found"
         assert 'postalCode: str' in models_content, "Address.postalCode field not found"
         assert 'country: str' in models_content, "Address.country field not found"
-        
-        print(f"✅ Address schema consistent with Pydantic model")
+
+        print("✅ Address schema consistent with Pydantic model")
         print(f"   Required: {sorted(expected_required)}")
         print(f"   Optional: {sorted(expected_optional)}")
 
     def test_collection_names_consistency(self):
         """Verify Firestore collection names match between Python and Dart"""
         root = self.get_project_root()
-        
+
         python_constants_path = root / 'functions' / 'schema_constants.py'
-        with open(python_constants_path, 'r') as f:
+        with open(python_constants_path) as f:
             python_content = f.read()
         python_values = self._extract_python_string_constants('Collections', python_content)
         python_collections = {v: v for v in python_values}
 
         dart_constants_path = root / 'origna_gta' / 'lib' / 'core' / 'schema' / 'schema_constants.dart'
-        with open(dart_constants_path, 'r') as f:
+        with open(dart_constants_path) as f:
             dart_content = f.read()
         dart_values = self._extract_dart_string_constants('Collections', dart_content)
         dart_collections = {v: v for v in dart_values}
-        
+
         # Compare collection values (case-insensitive keys)
         expected_collections = ['users', 'products', 'orders', 'cart', 'favorites']
-        
+
         for coll in expected_collections:
             python_val = python_collections.get(coll)
             dart_val = dart_collections.get(coll)
-            
+
             assert python_val == coll, f"Python collection '{coll}' should be '{coll}', got '{python_val}'"
             assert dart_val == coll, f"Dart collection '{coll}' should be '{coll}', got '{dart_val}'"
             assert python_val == dart_val, f"Collection '{coll}' mismatch: Python='{python_val}', Dart='{dart_val}'"
-        
+
         print(f"✅ Collection names consistent: {expected_collections}")
 
     def test_algolia_index_configuration(self):
         """Verify Algolia configuration is properly set up"""
         root = self.get_project_root()
-        
+
         # Read Python algolia_service.py
         algolia_service_path = root / 'functions' / 'algolia_service.py'
-        with open(algolia_service_path, 'r') as f:
+        with open(algolia_service_path) as f:
             algolia_content = f.read()
-        
+
         # Check that config is imported
         assert 'from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY' in algolia_content, \
             "Algolia service should import credentials from config.py"
-        
+
         # Check index name
         assert "'products'" in algolia_content or '"products"' in algolia_content, \
             "Algolia service should use 'products' index"
-        
+
         # Check key functions exist
         required_functions = ['format_product_for_algolia', 'index_product', 'delete_product']
         for func in required_functions:
             assert f'def {func}' in algolia_content, f"Missing function: {func}"
-        
-        print(f"✅ Algolia configuration valid")
-        print(f"   Index: products")
+
+        print("✅ Algolia configuration valid")
+        print("   Index: products")
         print(f"   Functions: {required_functions}")
 
 
@@ -298,14 +298,14 @@ if __name__ == '__main__':
         ('Collection Names', test_suite.test_collection_names_consistency),
         ('Algolia Configuration', test_suite.test_algolia_index_configuration),
     ]
-    
+
     print("=" * 70)
     print("SCHEMA CONSISTENCY TESTS")
     print("=" * 70)
-    
+
     passed = 0
     failed = 0
-    
+
     for test_name, test_func in tests:
         try:
             print(f"\n🧪 Testing: {test_name}")
@@ -319,9 +319,9 @@ if __name__ == '__main__':
             print(f"❌ ERROR: {test_name}")
             print(f"   Error: {e}")
             failed += 1
-    
+
     print("\n" + "=" * 70)
     print(f"RESULTS: {passed} passed, {failed} failed")
     print("=" * 70)
-    
+
     exit(0 if failed == 0 else 1)

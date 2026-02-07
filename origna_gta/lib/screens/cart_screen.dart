@@ -42,13 +42,7 @@ class CartScreen extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark
-                ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-                : [const Color(0xFFF0F2FF), Colors.white],
-          ),
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
         ),
         child: Center(
           child: ConstrainedBox(
@@ -159,7 +153,7 @@ class _CartItemWidget extends ConsumerWidget {
         padding: const EdgeInsets.all(DesignTokens.spacing12),
         height: 104,
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1E32) : Colors.white,
+          color: Theme.of(context).brightness == Brightness.dark ? DesignTokens.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
         ),
         child: Row(
@@ -202,7 +196,7 @@ class _CartSummary extends ConsumerWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing16, vertical: DesignTokens.spacing20),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E32) : Colors.white,
+            color: isDark ? DesignTokens.darkCard : Colors.white,
             border: Border(top: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.outline.withValues(alpha: 0.3))),
             boxShadow: [
               BoxShadow(color: DesignTokens.primary.withValues(alpha: isDark ? 0.1 : 0.06), blurRadius: 20, offset: const Offset(0, -8)),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 
 /// Fade and slide in animation wrapper
 class FadeSlideIn extends StatefulWidget {
@@ -156,22 +157,22 @@ class _AnimatedEmptyStateState extends State<AnimatedEmptyState> with SingleTick
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF667EEA).withValues(alpha: 0.1),
+                    color: DesignTokens.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(widget.icon, size: 64, color: Colors.grey[400]),
+                  child: Icon(widget.icon, size: 64, color: DesignTokens.textTertiary),
                 ),
                 const SizedBox(height: 24),
                 Text(
                   widget.title,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary),
                   textAlign: TextAlign.center,
                 ),
                 if (widget.subtitle != null) ...[
                   const SizedBox(height: 8),
                   Text(
                     widget.subtitle!,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                    style: const TextStyle(fontSize: 14, color: DesignTokens.textTertiary),
                     textAlign: TextAlign.center,
                   ),
                 ],

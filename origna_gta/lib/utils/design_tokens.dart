@@ -28,6 +28,17 @@ class DesignTokens {
   static const Color darkSurface = Color(0xFF1A1A2E);
   static const Color darkSurfaceVariant = Color(0xFF16213E);
   static const Color darkOutline = Color(0xFF444B63);
+  static const Color darkCard = Color(0xFF1E1E32);
+  static const Color darkBackground = Color(0xFF0F0F1E);
+
+  // Text Colors
+  static const Color textPrimary = Color(0xFF1A1A2E);
+  static const Color textSecondary = Color(0xFF6B7280);
+  static const Color textTertiary = Color(0xFF9CA3AF);
+  static const Color textDisabled = Color(0xFFBDBDBD);
+  static const Color textOnPrimary = Colors.white;
+  static const Color textOnDark = Colors.white;
+  static const Color textOnDarkSecondary = Color(0xFFBDBDBD);
 
   // Semantic
   static const Color success = Color(0xFF10B981); // Emerald
@@ -56,6 +67,17 @@ class DesignTokens {
   static const double spacing24 = 24;
   static const double spacing32 = 32;
   static const double spacing40 = 40;
+  static const double spacing48 = 48;
+  static const double spacing64 = 64;
+  static const double spacing80 = 80;
+
+  // Typography Sizes
+  static const double fontSizeXs = 11;
+  static const double fontSizeSm = 13;
+  static const double fontSizeMd = 15;
+  static const double fontSizeLg = 18;
+  static const double fontSizeXl = 22;
+  static const double fontSizeDisplay = 28;
 
   // Border Radius
   static const double radius8 = 8;
@@ -89,6 +111,29 @@ class DesignTokens {
   // Curves
   static const Curve easeOutCubic = Cubic(0.33, 1, 0.68, 1);
   static const Curve easeInOutCubic = Cubic(0.65, 0, 0.35, 1);
+
+  // ── Gradient Helpers ────────────────────────────────────────────────
+  /// Background gradient that adapts to light/dark theme.
+  static LinearGradient backgroundGradient({required bool isDark}) {
+    return LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: isDark
+          ? [darkBackground, darkSurface]
+          : [const Color(0xFFF0F2FF), Colors.white],
+    );
+  }
+
+  /// Surface gradient for screen bodies.
+  static LinearGradient surfaceGradient({required bool isDark}) {
+    return LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: isDark
+          ? [darkSurface, darkSurfaceVariant]
+          : [surface, Colors.white],
+    );
+  }
 }
 
 /// Glassmorphism Container Helper

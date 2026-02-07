@@ -223,9 +223,15 @@ class ProductDetailScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 80, color: Colors.red[300]),
+              Icon(Icons.error_outline, size: 80, color: DesignTokens.error.withValues(alpha: 0.6)),
               const SizedBox(height: 16),
-              Text('Error: $e', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+              Text('Error: $e', style: const TextStyle(fontSize: 16, color: DesignTokens.textSecondary)),
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: () => ref.invalidate(productByIdProvider(productId)),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
             ],
           ),
         ),
@@ -345,7 +351,7 @@ class _AddToCartButton extends ConsumerWidget {
           messenger.showSnackBar(
             SnackBar(
               content: Text(success ? 'Added to cart successfully! 🎉' : 'Failed to add to cart'),
-              backgroundColor: success ? Colors.green : Colors.red,
+              backgroundColor: success ? DesignTokens.success : DesignTokens.error,
               behavior: SnackBarBehavior.floating,
               margin: const EdgeInsets.all(16),
             ),
@@ -375,9 +381,9 @@ class _DeliveryInfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.grey[50],
+        color: isDark ? DesignTokens.darkCard : DesignTokens.surface,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
-        border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[200]!),
+        border: Border.all(color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,15 +422,15 @@ class _DeliveryInfoCard extends StatelessWidget {
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(color: DesignTokens.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.local_offer_rounded, size: 16, color: Colors.green[700]),
+                  Icon(Icons.local_offer_rounded, size: 16, color: DesignTokens.success),
                   const SizedBox(width: 6),
                   Text(
                     'Free Shipping',
-                    style: TextStyle(color: Colors.green[700], fontWeight: FontWeight.w600, fontSize: 13),
+                    style: TextStyle(color: DesignTokens.success, fontWeight: FontWeight.w600, fontSize: 13),
                   ),
                 ],
               ),
@@ -435,18 +441,18 @@ class _DeliveryInfoCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.amber.withValues(alpha: 0.1),
+                color: DesignTokens.warning.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, size: 16, color: Colors.amber[800]),
+                  Icon(Icons.info_outline_rounded, size: 16, color: DesignTokens.warning),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'International shipping times may vary. Customs processing may add delays.',
-                      style: TextStyle(fontSize: 12, color: Colors.amber[800], height: 1.3),
+                      style: TextStyle(fontSize: 12, color: DesignTokens.warning, height: 1.3),
                     ),
                   ),
                 ],
@@ -472,12 +478,12 @@ class _DeliveryInfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: isWarning ? Colors.amber[700] : (isDark ? Colors.grey[400] : Colors.grey[600])),
+        Icon(icon, size: 18, color: isWarning ? DesignTokens.warning : (isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary)),
         const SizedBox(width: 10),
-        Text('$label: ', style: TextStyle(fontSize: 14, color: isDark ? Colors.grey[400] : Colors.grey[600])),
+        Text('$label: ', style: TextStyle(fontSize: 14, color: isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary)),
         Text(
           value,
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isWarning ? Colors.amber[700] : (isDark ? Colors.white : Colors.grey[900])),
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isWarning ? DesignTokens.warning : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary)),
         ),
       ],
     );

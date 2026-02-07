@@ -5,11 +5,11 @@ Executes HTTP requests against deployed endpoints and verifies responses.
 Usage: python3 run_api_tests.py [--emulator]
 """
 
-import requests
 import json
 import sys
 import time
-from datetime import datetime
+
+import requests
 
 # Configuration
 PROJECT_ID = "orignagta"
@@ -56,21 +56,20 @@ def run_test(test_case, base_url):
     method = test_case.get("method", "POST")
     headers = test_case.get("headers", {"Content-Type": "application/json"})
     body = test_case.get("body", {})
-    
+
     start_time = time.time()
     try:
         response = requests.request(method, url, json=body, headers=headers, timeout=10)
         duration_ms = round((time.time() - start_time) * 1000)
-        
+
         # Validation
         passed = True
         error_msg = None
-        
-        if "expected_status" in test_case:
-            if response.status_code not in test_case["expected_status"]:
-                passed = False
-                error_msg = f"Expected status {test_case['expected_status']}, got {response.status_code}"
-                
+
+        if "expected_status" in test_case and response.status_code not in test_case["expected_status"]:
+            passed = False
+            error_msg = f"Expected status {test_case['expected_status']}, got {response.status_code}"
+
         if passed and "verify_response" in test_case:
             try:
                 res_json = response.json()
@@ -94,9 +93,9 @@ def run_test(test_case, base_url):
 def main():
     use_emulator = "--emulator" in sys.argv
     base_url = EMULATOR_BASE_URL if use_emulator else DEFAULT_BASE_URL
-    
+
     print_header(f"Starting API Integration Tests ({'Emulator' if use_emulator else 'Production'})")
-    
+
     tests = [
         # 1. Stripe Webhook (Public, Authenticated via signature)
         {
@@ -107,7 +106,7 @@ def main():
             "expected_status": [400], # Should fail due to missing Stripe-Signature
             "verify_response": lambda r: "signature" in str(r).lower() or "error" in r
         },
-        
+
         # 2. Airwallex Webhook
         {
             "name": "Airwallex Webhook (Missing Signature)",
@@ -115,7 +114,7 @@ def main():
             "method": "POST",
             "headers": {"x-resource-id": "test"}, # Missing signature header
             "body": {"id": "evt_test"},
-            "expected_status": [400, 401, 403], 
+            "expected_status": [400, 401, 403],
         },
 
         # 3. Create Checkout Session (Callable)
@@ -125,13 +124,13 @@ def main():
             "endpoint": "create_checkout_session",
             "method": "POST",
             "body": {"data": {"items": []}},
-            # On Call functions usually return 200 with "error" in body if handled gracefully, 
+            # On Call functions usually return 200 with "error" in body if handled gracefully,
             # or 400/401/403/500/401 if unhandled or rejected at protocol level.
             # 401 est attendu ici car l'utilisateur n'est pas authentifié.
             "expected_status": [200, 400, 401, 403, 500],
             "verify_response": lambda r: "error" in r or "result" in r
         },
-        
+
         # 4. Upload Product Images (Callable)
         {
             "name": "Upload Product Images (Missing Data)",
@@ -148,12 +147,12 @@ def main():
     for t in tests:
         if run_test(t, base_url):
             passed_count += 1
-            
+
     print_header("Test Summary")
     print(f"Total Tests: {len(tests)}")
     print(f"Passed:      {Colors.OKGREEN}{passed_count}{Colors.ENDC}")
     print(f"Failed:      {Colors.FAIL}{len(tests) - passed_count}{Colors.ENDC}")
-    
+
     if passed_count < len(tests):
         print("\nEnsure the functions are deployed and endpoints are correct.")
         sys.exit(1)

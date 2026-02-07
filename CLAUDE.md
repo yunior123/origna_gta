@@ -74,6 +74,7 @@
 @docs/REPO_MAP.md
 @docs/AGENT_GUIDE.md
 @docs/ENVIRONMENT.md
+@docs/SYMBOL_MAP.md
 
 ---
 
@@ -105,6 +106,7 @@ See @docs/AGENT_GUIDE.md for full agent usage guide, workflow chunking, and sess
 | `/commit-push [msg]` | Stage, commit, push with smart message |
 | `/test-all` | Run all test suites |
 | `/deploy [env]` | Full deploy pipeline |
+| `/clear-context` | Pre-clear safety checklist + context hygiene |
 
 ---
 
@@ -127,8 +129,10 @@ Cancel/refund: restore stock + refund/void. Cron: 7-day auto-confirm, auth expir
 - **5 agents**: logic-auditor, cross-stack-auditor, payment-auditor, schema-sync-checker, order-lifecycle-auditor
 - **7 rules** (path-scoped): flutter, backend, payments, orders, firestore, testing, security
 - **9+ skills**: audit-workflow, design-tokens, e2e-test-suites, email-system, full-stack-audit, read-workflow, shipping-costs, ux-info-buttons, widget-finders
-- **4 hooks**: validate-schema-sync, validate-payment, validate-orders, protect-production
-- **14+ commands**: plan-task, execute-plan, pause-work, resume-work, investigate, create-skill, audit-workflow, check-schema-sync, cross-stack-check, commit-push, deploy, test-all, fix-tests, optimize-db
+- **5 hooks**: validate-schema-sync, validate-payment, validate-orders, protect-production, verify-logic-on-stop (Stop gate)
+- **15+ commands**: plan-task, execute-plan, pause-work, resume-work, investigate, create-skill, audit-workflow, check-schema-sync, cross-stack-check, commit-push, deploy, test-all, fix-tests, optimize-db, clear-context
+- **Quality tools**: ruff (Python linting), dart analyze (Dart), universal-ctags (symbol extraction)
+- **Symbol Map**: `docs/SYMBOL_MAP.md` — auto-generated via `scripts/generate-symbol-map.sh`
 
 ---
 

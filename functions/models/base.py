@@ -3,18 +3,16 @@ Base models and enums for OrignaGTA
 Includes Address, enumerations, and common types
 """
 
-from datetime import datetime
-from enum import Enum
-from typing import Optional
-from pydantic import BaseModel, Field, field_validator, ConfigDict
 import re
+from enum import StrEnum
 
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # ============================================================================
 # ENUMERATIONS
 # ============================================================================
 
-class OrderStatusEnum(str, Enum):
+class OrderStatusEnum(StrEnum):
     """Order status values"""
     PENDING = "pending"
     CONFIRMED = "confirmed"
@@ -29,7 +27,7 @@ class OrderStatusEnum(str, Enum):
     PARTIALLY_REFUNDED = "partially_refunded"
 
 
-class PaymentStatusEnum(str, Enum):
+class PaymentStatusEnum(StrEnum):
     """Payment status values"""
     AWAITING_PAYMENT = "awaiting_payment"
     PROCESSING = "processing"
@@ -43,7 +41,7 @@ class PaymentStatusEnum(str, Enum):
     AUTHORIZATION_EXPIRED = "authorization_expired"
 
 
-class DeliveryStatusEnum(str, Enum):
+class DeliveryStatusEnum(StrEnum):
     """Delivery status for individual items"""
     PENDING = "pending"
     SHIPPED = "shipped"
@@ -51,7 +49,7 @@ class DeliveryStatusEnum(str, Enum):
     REFUNDED = "refunded"
 
 
-class ShippingApprovalStatusEnum(str, Enum):
+class ShippingApprovalStatusEnum(StrEnum):
     """Shipping approval status"""
     NOT_REQUIRED = "not_required"
     PENDING = "pending"
@@ -59,7 +57,7 @@ class ShippingApprovalStatusEnum(str, Enum):
     REJECTED = "rejected"
 
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     """User roles"""
     ADMIN = "admin"
     SELLER = "seller"
@@ -122,7 +120,7 @@ class Address(BaseModel):
         default="Canada",
         description="Country name"
     )
-    phoneNumber: Optional[str] = Field(
+    phoneNumber: str | None = Field(
         default=None,
         description="Contact phone number for delivery"
     )
@@ -130,18 +128,18 @@ class Address(BaseModel):
         default=False,
         description="Whether this is the default address"
     )
-    label: Optional[str] = Field(
+    label: str | None = Field(
         default=None,
         max_length=20,
         description="Address label (Home, Work, Other)"
     )
-    latitude: Optional[float] = Field(
+    latitude: float | None = Field(
         default=None,
         ge=-90,
         le=90,
         description="Latitude for mapping/delivery routing"
     )
-    longitude: Optional[float] = Field(
+    longitude: float | None = Field(
         default=None,
         ge=-180,
         le=180,
@@ -162,7 +160,7 @@ class Address(BaseModel):
 
     @field_validator("phoneNumber")
     @classmethod
-    def validate_phone(cls, v: Optional[str]) -> Optional[str]:
+    def validate_phone(cls, v: str | None) -> str | None:
         """Validate phone number (10-15 digits)"""
         if v is None:
             return None

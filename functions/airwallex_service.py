@@ -2,26 +2,27 @@
 Airwallex Payment Service - Complete Implementation
 P2.1-P2.5: Account, Backend, Payment, Payout, Webhooks
 """
-import hmac
-import hashlib
 import base64
+import hashlib
+import hmac
 import uuid
-import requests
-from typing import Dict, Any, Optional, Union
 from datetime import datetime, timedelta
+from typing import Any, Union
+
+import requests
 
 from config import (
     AIRWALLEX_API_KEY,
+    AIRWALLEX_BASE_URL,
     AIRWALLEX_CLIENT_ID,
     AIRWALLEX_WEBHOOK_SECRET,
-    AIRWALLEX_BASE_URL,
 )
 from schema_constants import Collections, Fields
 
 
 class AirwallexService:
     """Airwallex API Integration for international sellers"""
-    
+
     def __init__(self):
         self.api_key = AIRWALLEX_API_KEY
         self.client_id = AIRWALLEX_CLIENT_ID
@@ -29,14 +30,14 @@ class AirwallexService:
         self.base_url = AIRWALLEX_BASE_URL
         self.token = None
         self.token_expiry = None
-    
+
     def _authenticate(self) -> str:
         """Get OAuth bearer token"""
         if not self.client_id or not self.api_key:
             raise ValueError("Airwallex API credentials not configured")
         if self.token and self.token_expiry and datetime.now() < self.token_expiry:
             return self.token
-        
+
         # Airwallex auth uses API key + client id headers (scoped API key flow).
         # Token lifetime is typically 30 minutes; cache with a safety buffer.
         resp = requests.post(
@@ -52,16 +53,16 @@ class AirwallexService:
         self.token = data['token']
         self.token_expiry = datetime.now() + timedelta(minutes=25)
         return self.token
-    
-    def _headers(self) -> Dict[str, str]:
+
+    def _headers(self) -> dict[str, str]:
         """Get auth headers"""
         return {
             "Authorization": f"Bearer {self._authenticate()}",
             "Content-Type": "application/json"
         }
-    
+
     # ===== P2.1: Account Creation =====
-    def create_customer(self, seller_id: str, seller_data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_customer(self, seller_id: str, seller_data: dict[str, Any]) -> dict[str, Any]:
         """Create Airwallex customer for seller"""
         payload = {
             "customer_name": seller_data.get('business_name', seller_data['full_name']),
@@ -70,7 +71,7 @@ class AirwallexService:
             "country": seller_data.get('country', 'CA'),
             "metadata": {"seller_id": seller_id}
         }
-        
+
         resp = requests.post(
             f"{self.base_url}/customers",
             json=payload,
@@ -79,11 +80,11 @@ class AirwallexService:
         )
         resp.raise_for_status()
         return resp.json()
-    
-    def create_connected_account(self, seller_id: str, seller_data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def create_connected_account(self, seller_id: str, seller_data: dict[str, Any]) -> dict[str, Any]:
         """Create connected account for seller payouts"""
         customer = self.create_customer(seller_id, seller_data)
-        
+
         payload = {
             "customer_id": customer['id'],
             "account_type": "payout",
@@ -91,7 +92,7 @@ class AirwallexService:
             "currency": "CAD",
             "bank_details": seller_data.get('bank_details', {})
         }
-        
+
         resp = requests.post(
             f"{self.base_url}/connected_accounts",
             json=payload,
@@ -100,7 +101,7 @@ class AirwallexService:
         )
         resp.raise_for_status()
         return resp.json()
-    
+
     # ===== P2.2 & P2.3: Payment Flow =====
     def create_payment_intent_for_checkout(
         self,
@@ -110,8 +111,8 @@ class AirwallexService:
         order_id: str,
         return_url: str,
         capture: bool = False,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Create Airwallex payment intent for checkout.
 
@@ -145,12 +146,12 @@ class AirwallexService:
         resp.raise_for_status()
         return resp.json()
 
-    def create_payment_intent(self, 
-                            seller_id: str, 
-                            order_id: str, 
+    def create_payment_intent(self,
+                            seller_id: str,
+                            order_id: str,
                             amount_cents: int,
                             currency: str = 'CAD',
-                            capture: bool = False) -> Dict[str, Any]:
+                            capture: bool = False) -> dict[str, Any]:
         """Create payment intent (authorize or capture)"""
         payload = {
             "amount": amount_cents,
@@ -170,7 +171,7 @@ class AirwallexService:
                 }
             }
         }
-        
+
         resp = requests.post(
             f"{self.base_url}/payments/create",
             json=payload,
@@ -179,13 +180,13 @@ class AirwallexService:
         )
         resp.raise_for_status()
         return resp.json()
-    
-    def capture_payment(self, payment_id: str, amount_cents: Optional[int] = None) -> Dict[str, Any]:
+
+    def capture_payment(self, payment_id: str, amount_cents: int | None = None) -> dict[str, Any]:
         """Capture previously authorized payment"""
         payload = {}
         if amount_cents:
             payload['amount'] = amount_cents
-        
+
         resp = requests.post(
             f"{self.base_url}/payments/{payment_id}/capture",
             json=payload,
@@ -194,14 +195,14 @@ class AirwallexService:
         )
         resp.raise_for_status()
         return resp.json()
-    
-    def refund_payment(self, payment_id: str, amount_cents: int, reason: str = "") -> Dict[str, Any]:
+
+    def refund_payment(self, payment_id: str, amount_cents: int, reason: str = "") -> dict[str, Any]:
         """Refund payment (partial or full)"""
         payload = {
             "amount": amount_cents,
             "reason": reason
         }
-        
+
         resp = requests.post(
             f"{self.base_url}/payments/{payment_id}/refunds",
             json=payload,
@@ -210,8 +211,8 @@ class AirwallexService:
         )
         resp.raise_for_status()
         return resp.json()
-    
-    def cancel_payment(self, payment_id: str) -> Dict[str, Any]:
+
+    def cancel_payment(self, payment_id: str) -> dict[str, Any]:
         """Cancel authorized payment before capture"""
         resp = requests.post(
             f"{self.base_url}/payments/{payment_id}/cancel",
@@ -220,13 +221,13 @@ class AirwallexService:
         )
         resp.raise_for_status()
         return resp.json()
-    
+
     # ===== P2.4: Payouts =====
-    def create_payout(self, 
-                     seller_id: str, 
+    def create_payout(self,
+                     seller_id: str,
                      amount_cents: int,
                      connected_account_id: str,
-                     reference: str = "") -> Dict[str, Any]:
+                     reference: str = "") -> dict[str, Any]:
         """Schedule payout to seller bank account"""
         payload = {
             "connected_account_id": connected_account_id,
@@ -235,7 +236,7 @@ class AirwallexService:
             "reference": reference or f"Payout to {seller_id}",
             "metadata": {"seller_id": seller_id}
         }
-        
+
         resp = requests.post(
             f"{self.base_url}/payouts",
             json=payload,
@@ -244,8 +245,8 @@ class AirwallexService:
         )
         resp.raise_for_status()
         return resp.json()
-    
-    def get_payout_status(self, payout_id: str) -> Dict[str, Any]:
+
+    def get_payout_status(self, payout_id: str) -> dict[str, Any]:
         """Check payout status"""
         resp = requests.get(
             f"{self.base_url}/payouts/{payout_id}",
@@ -254,14 +255,14 @@ class AirwallexService:
         )
         resp.raise_for_status()
         return resp.json()
-    
+
     # ===== P2.5: Webhooks & Error Handling =====
     def verify_webhook_signature(
         self,
         body: Union[str, bytes, bytearray],
         signature: str,
         *,
-        timestamp: Optional[str] = None,
+        timestamp: str | None = None,
     ) -> bool:
         """Verify webhook came from Airwallex.
 
@@ -282,10 +283,7 @@ class AirwallexService:
         if normalized_sig.lower().startswith('sha256='):
             normalized_sig = normalized_sig.split('=', 1)[1].strip()
 
-        if isinstance(body, (bytes, bytearray)):
-            body_bytes = bytes(body)
-        else:
-            body_bytes = str(body).encode('utf-8')
+        body_bytes = bytes(body) if isinstance(body, (bytes, bytearray)) else str(body).encode('utf-8')
 
         ts = str(timestamp).strip().encode('utf-8')
         signed_payload = ts + body_bytes
@@ -312,8 +310,8 @@ class AirwallexService:
             return hmac.compare_digest(computed_digest, decoded)
         except Exception:
             return False
-    
-    def handle_webhook_event(self, event_type: str, event_data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def handle_webhook_event(self, event_type: str, event_data: dict[str, Any]) -> dict[str, Any]:
         """Process webhook events"""
         handlers = {
             'payment_intent.succeeded': self._handle_payment_success,
@@ -326,73 +324,73 @@ class AirwallexService:
             'refund.failed': self._handle_refund_failure,
             'connected_account.verification_failed': self._handle_verification_failed,  # P2 FIX #6: KYC rejection
         }
-        
+
         handler = handlers.get(event_type)
         if not handler:
             return {'status': 'ignored', 'event_type': event_type}
-        
+
         return handler(event_data)
-    
-    def _handle_payment_success(self, data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _handle_payment_success(self, data: dict[str, Any]) -> dict[str, Any]:
         """Handle successful payment"""
         payment_id = data['id']
         order_id = data.get('metadata', {}).get('order_id')
-        
+
         # Update Firestore order status
         from google.cloud import firestore
         db = firestore.Client()
-        
+
         if order_id:
             db.collection(Collections.ORDERS).document(order_id).update({
                 Fields.PAYMENT_STATUS: 'succeeded',
                 'airwallexPaymentId': payment_id,
                 'paymentCompletedAt': firestore.SERVER_TIMESTAMP
             })
-        
+
         return {'status': 'processed', 'order_id': order_id}
-    
-    def _handle_payment_failure(self, data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _handle_payment_failure(self, data: dict[str, Any]) -> dict[str, Any]:
         """Handle failed payment"""
         payment_id = data['id']
         order_id = data.get('metadata', {}).get('order_id')
         error_message = data.get('error', {}).get('message', 'Payment failed')
-        
+
         from google.cloud import firestore
         db = firestore.Client()
-        
+
         if order_id:
             db.collection(Collections.ORDERS).document(order_id).update({
                 Fields.PAYMENT_STATUS: 'failed',
                 'paymentError': error_message,
                 'airwallexPaymentId': payment_id
             })
-        
+
         return {'status': 'processed', 'order_id': order_id, 'error': error_message}
-    
-    def _handle_payment_canceled(self, data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _handle_payment_canceled(self, data: dict[str, Any]) -> dict[str, Any]:
         """Handle canceled payment"""
         payment_id = data['id']
         order_id = data.get('metadata', {}).get('order_id')
-        
+
         from google.cloud import firestore
         db = firestore.Client()
-        
+
         if order_id:
             db.collection(Collections.ORDERS).document(order_id).update({
                 Fields.PAYMENT_STATUS: 'canceled',
                 'airwallexPaymentId': payment_id
             })
-        
+
         return {'status': 'processed', 'order_id': order_id}
-    
-    def _handle_payout_success(self, data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _handle_payout_success(self, data: dict[str, Any]) -> dict[str, Any]:
         """Handle successful payout"""
         payout_id = data['id']
         seller_id = data.get('metadata', {}).get('seller_id')
-        
+
         from google.cloud import firestore
         db = firestore.Client()
-        
+
         # Log payout success
         db.collection(Collections.PAYOUTS).document(payout_id).set({
             Fields.SELLER_ID: seller_id,
@@ -401,18 +399,18 @@ class AirwallexService:
             Fields.COMPLETED_AT: firestore.SERVER_TIMESTAMP,
             Fields.PROVIDER: 'airwallex'
         })
-        
+
         return {'status': 'processed', 'payout_id': payout_id}
-    
-    def _handle_payout_failure(self, data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _handle_payout_failure(self, data: dict[str, Any]) -> dict[str, Any]:
         """Handle failed payout"""
         payout_id = data['id']
         seller_id = data.get('metadata', {}).get('seller_id')
         error_message = data.get('error', {}).get('message', 'Payout failed')
-        
+
         from google.cloud import firestore
         db = firestore.Client()
-        
+
         # Log payout failure
         db.collection(Collections.PAYOUTS).document(payout_id).set({
             Fields.SELLER_ID: seller_id,
@@ -421,17 +419,17 @@ class AirwallexService:
             Fields.FAILED_AT: firestore.SERVER_TIMESTAMP,
             Fields.PROVIDER: 'airwallex'
         })
-        
+
         return {'status': 'processed', 'payout_id': payout_id, 'error': error_message}
-    
-    def _handle_refund_success(self, data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _handle_refund_success(self, data: dict[str, Any]) -> dict[str, Any]:
         """Handle successful refund"""
         refund_id = data['id']
         payment_id = data.get('payment_intent_id')
-        
+
         from google.cloud import firestore
         db = firestore.Client()
-        
+
         # Log refund
         db.collection(Collections.REFUNDS).document(refund_id).set({
             Fields.PAYMENT_ID: payment_id,
@@ -440,45 +438,45 @@ class AirwallexService:
             Fields.COMPLETED_AT: firestore.SERVER_TIMESTAMP,
             Fields.PROVIDER: 'airwallex'
         })
-        
+
         return {'status': 'processed', 'refund_id': refund_id}
-    
-    def _handle_refund_failure(self, data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _handle_refund_failure(self, data: dict[str, Any]) -> dict[str, Any]:
         """Handle failed refund"""
         refund_id = data['id']
         error_message = data.get('error', {}).get('message', 'Refund failed')
-        
+
         from google.cloud import firestore
         db = firestore.Client()
-        
+
         db.collection(Collections.REFUNDS).document(refund_id).set({
             Fields.STATUS: 'failed',
             Fields.ERROR: error_message,
             Fields.FAILED_AT: firestore.SERVER_TIMESTAMP,
             Fields.PROVIDER: 'airwallex'
         })
-        
+
         return {'status': 'processed', 'refund_id': refund_id, 'error': error_message}
-    
-    def _handle_requires_action(self, data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _handle_requires_action(self, data: dict[str, Any]) -> dict[str, Any]:
         """P2 FIX #6: Handle payment requiring 3DS authentication"""
         payment_id = data['id']
         order_id = data.get('metadata', {}).get('order_id')
         next_action = data.get('next_action')
-        
+
         # CRITICAL FIX: Validate next_action exists to prevent crash on malformed events
         if not next_action or not isinstance(next_action, dict):
             print(f"⚠️  Payment {payment_id} requires action but next_action missing")
             return {'status': 'error', 'message': 'Missing next_action in event data'}
-        
+
         action_type = next_action.get('type')  # Usually 'redirect_to_url' for 3DS
         action_url = next_action.get('url')
-        
+
         from google.cloud import firestore
         db = firestore.Client()
-        
+
         print(f"⚠️  Payment {payment_id} requires action: {action_type}")
-        
+
         if order_id:
             db.collection(Collections.ORDERS).document(order_id).update({
                 Fields.PAYMENT_STATUS: 'requires_action',
@@ -487,7 +485,7 @@ class AirwallexService:
                 'authenticationUrl': action_url,
                 Fields.UPDATED_AT: firestore.SERVER_TIMESTAMP
             })
-            
+
             # ✅ COMPLETED TODO: Send email to buyer with 3DS authentication link
             try:
                 order_doc = db.collection(Collections.ORDERS).document(order_id).get()
@@ -501,23 +499,23 @@ class AirwallexService:
                         authentication_url=action_url,
                         amount=order_data.get('total', 0)
                     )
-                    print(f"  ✅ 3DS authentication email sent")
+                    print("  ✅ 3DS authentication email sent")
             except Exception as email_error:
                 print(f"  ⚠️  Failed to send 3DS email: {str(email_error)}")
-        
+
         return {'status': 'processed', 'order_id': order_id, 'action_required': action_type, 'url': action_url}
-    
-    def _handle_verification_failed(self, data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _handle_verification_failed(self, data: dict[str, Any]) -> dict[str, Any]:
         """P2 FIX #6: Handle connected account verification failure (KYC rejection)"""
         account_id = data['id']
         seller_id = data.get('metadata', {}).get('seller_id')
         failure_reason = data.get('failure_reason', 'Verification failed')
-        
+
         from google.cloud import firestore
         db = firestore.Client()
-        
+
         print(f"❌ Seller account verification failed: {account_id}")
-        
+
         if seller_id:
             # Update seller status
             db.collection(Collections.USERS).document(seller_id).update({
@@ -527,7 +525,7 @@ class AirwallexService:
                 Fields.PAYOUTS_ENABLED: False,  # Disable payouts
                 Fields.UPDATED_AT: firestore.SERVER_TIMESTAMP
             })
-            
+
             # Log security event
             db.collection(Collections.SECURITY_ALERTS).add({
                 Fields.TYPE: 'seller_kyc_failed',
@@ -537,9 +535,9 @@ class AirwallexService:
                 Fields.PROVIDER: 'airwallex',
                 Fields.TIMESTAMP: firestore.SERVER_TIMESTAMP
             })
-            
+
             print(f"  🔒 Seller {seller_id} payouts disabled due to failed verification")
-        
+
         return {'status': 'processed', 'seller_id': seller_id, 'error': failure_reason}
 
 

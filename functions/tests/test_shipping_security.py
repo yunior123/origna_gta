@@ -1,7 +1,7 @@
+import os
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
-import sys
-import os
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -62,8 +62,8 @@ module_mocks = {
 
 with patch.dict(sys.modules, module_mocks):
     import main
-    from main import create_checkout_session, calculate_shipping_cost
     from handlers import payment_stripe
+    from main import calculate_shipping_cost, create_checkout_session
 
 class TestPaymentSecurity(unittest.TestCase):
     def setUp(self):
@@ -73,15 +73,15 @@ class TestPaymentSecurity(unittest.TestCase):
         mock_firebase_admin._apps = {}
         mock_firebase_admin.get_app = MagicMock()
         mock_firebase_admin.delete_app = MagicMock()
-        
+
         main.stripe = mock_stripe
         mock_stripe.checkout.Session.create.reset_mock()
-        
+
         # Create default mock db and rate limiter for all tests
         self.mock_db = MagicMock()
         self.mock_rate_limiter = MagicMock()
         self.mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
-        
+
         # Patch get_db and get_rate_limiter for all tests
         self.patcher_db = patch.object(payment_stripe, 'get_db', return_value=self.mock_db)
         self.patcher_rate_limiter = patch.object(payment_stripe, 'get_rate_limiter', return_value=self.mock_rate_limiter)
@@ -102,7 +102,7 @@ class TestPaymentSecurity(unittest.TestCase):
         req.data = {
             "userId": "user_1",
             "customerEmail": "hacker@example.com",
-            "amount": 100000, 
+            "amount": 100000,
             "subtotal": 100000.00,
             "items": [{
                 "productId": "prod_1",
@@ -151,7 +151,7 @@ class TestPaymentSecurity(unittest.TestCase):
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_product
         self.mock_db.collection.return_value.document.return_value = mock_doc_ref
-        
+
         mock_transaction = MagicMock()
         mock_transaction.get.return_value = mock_seller
         self.mock_db.transaction.return_value = mock_transaction
@@ -164,10 +164,10 @@ class TestPaymentSecurity(unittest.TestCase):
         # Execute - Should REJECT the tampered price
         with self.assertRaises(MockHttpsError) as context:
             create_checkout_session(req)
-        
+
         # Verify the error message indicates price mismatch
         self.assertIn("Price mismatch", str(context.exception.message))
-        
+
         # Verify Stripe was NOT called (transaction rejected before payment)
         mock_stripe.checkout.Session.create.assert_not_called()
 
@@ -192,7 +192,7 @@ class TestPaymentSecurity(unittest.TestCase):
         }
 
         cost = calculate_shipping_cost(items, buyer_addr)
-        
+
         # Fallback same province = 12.99
         self.assertEqual(cost, 12.99)
 

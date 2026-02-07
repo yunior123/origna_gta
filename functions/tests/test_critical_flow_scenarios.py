@@ -11,13 +11,14 @@ Author: Solo Engineer Audit
 Date: 2026-02-05
 """
 
-import pytest
 import json
 import os
 import sys
-from unittest.mock import MagicMock, Mock, patch, PropertyMock, call
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import MagicMock, Mock, PropertyMock, call, patch
+
+import pytest
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -178,8 +179,9 @@ class TestCheckoutValidation:
 
     def test_unauthenticated_user_blocked(self):
         """Scenario 21: Unauthenticated user cannot checkout."""
-        from handlers.payment_stripe import create_checkout_session
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import create_checkout_session
 
         req = MagicMock()
         req.auth = None
@@ -190,8 +192,9 @@ class TestCheckoutValidation:
 
     def test_unverified_email_blocked(self):
         """Scenario 22: Unverified email cannot checkout."""
-        from handlers.payment_stripe import create_checkout_session
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import create_checkout_session
 
         req = make_mock_request(email_verified=False, data={'items': [{'productId': 'p1'}]})
 
@@ -203,8 +206,9 @@ class TestCheckoutValidation:
     @patch('handlers.payment_stripe.get_rate_limiter')
     def test_suspended_user_blocked(self, mock_rl, mock_db):
         """Scenario 23: Suspended user cannot checkout."""
-        from handlers.payment_stripe import create_checkout_session
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import create_checkout_session
 
         mock_rl.return_value.check_rate_limit.return_value = (True, "OK")
         user_doc = make_mock_doc({'suspended': True})
@@ -218,8 +222,9 @@ class TestCheckoutValidation:
 
     def test_empty_cart_rejected(self):
         """Scenario 24: Empty cart rejected."""
-        from handlers.payment_stripe import create_checkout_session
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import create_checkout_session
 
         req = make_mock_request(data={'items': [], 'subtotal': 0})
 
@@ -236,8 +241,9 @@ class TestCheckoutValidation:
 
     def test_rate_limit_exceeded(self):
         """Scenario 25: Rate-limited user cannot checkout."""
-        from handlers.payment_stripe import create_checkout_session
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import create_checkout_session
 
         with patch('handlers.payment_stripe.get_db') as mock_db, \
              patch('handlers.payment_stripe.get_rate_limiter') as mock_rl:
@@ -253,8 +259,9 @@ class TestCheckoutValidation:
 
     def test_missing_shipping_address(self):
         """Scenario 26: Missing shipping address rejected."""
-        from handlers.payment_stripe import create_checkout_session
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import create_checkout_session
 
         with patch('handlers.payment_stripe.get_db') as mock_db, \
              patch('handlers.payment_stripe.get_rate_limiter') as mock_rl:
@@ -274,8 +281,9 @@ class TestCheckoutValidation:
 
     def test_negative_subtotal_rejected(self):
         """Scenario 27: Negative subtotal rejected."""
-        from handlers.payment_stripe import create_checkout_session
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import create_checkout_session
 
         with patch('handlers.payment_stripe.get_db') as mock_db, \
              patch('handlers.payment_stripe.get_rate_limiter') as mock_rl:
@@ -298,8 +306,9 @@ class TestCheckoutValidation:
 
     def test_max_subtotal_exceeded(self):
         """Scenario 28: Subtotal over $100,000 rejected."""
-        from handlers.payment_stripe import create_checkout_session
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import create_checkout_session
 
         with patch('handlers.payment_stripe.get_db') as mock_db, \
              patch('handlers.payment_stripe.get_rate_limiter') as mock_rl:
@@ -323,8 +332,9 @@ class TestCheckoutValidation:
     def test_quantity_zero_rejected(self):
         """Scenario 29: Item with quantity 0 rejected."""
         # Quantity <= 0 should be caught during item validation
-        from handlers.payment_stripe import create_checkout_session
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import create_checkout_session
 
         with patch('handlers.payment_stripe.get_db') as mock_db, \
              patch('handlers.payment_stripe.get_rate_limiter') as mock_rl:
@@ -347,8 +357,9 @@ class TestCheckoutValidation:
 
     def test_quantity_over_100_rejected(self):
         """Scenario 30: Item with quantity > 100 rejected."""
-        from handlers.payment_stripe import create_checkout_session
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import create_checkout_session
 
         with patch('handlers.payment_stripe.get_db') as mock_db, \
              patch('handlers.payment_stripe.get_rate_limiter') as mock_rl:
@@ -433,8 +444,9 @@ class TestPaymentCapture:
     @patch('handlers.payment_providers.require_provider_enabled')
     def test_capture_wrong_user_blocked(self, mock_require, mock_db):
         """Scenario 42: Non-owner cannot capture payment."""
-        from handlers.payment_stripe import capture_payment
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import capture_payment
 
         order_data = make_order_data(
             payment_status='authorized',
@@ -454,8 +466,9 @@ class TestPaymentCapture:
     @patch('handlers.payment_providers.require_provider_enabled')
     def test_capture_admin_can_capture(self, mock_require, mock_db):
         """Scenario 43: Admin CAN capture payment (FIX verification)."""
-        from handlers.payment_stripe import capture_payment
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import capture_payment
 
         order_data = make_order_data(
             payment_status='authorized',
@@ -490,8 +503,9 @@ class TestPaymentCapture:
     @patch('handlers.payment_providers.require_provider_enabled')
     def test_capture_pending_order_blocked(self, mock_require, mock_db):
         """Scenario 44: Cannot capture un-shipped order."""
-        from handlers.payment_stripe import capture_payment
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import capture_payment
 
         order_data = make_order_data(
             payment_status='authorized',
@@ -511,8 +525,9 @@ class TestPaymentCapture:
     @patch('handlers.payment_providers.require_provider_enabled')
     def test_capture_max_attempts_exceeded(self, mock_require, mock_db):
         """Scenario 45: Max capture attempts (3) blocks further attempts."""
-        from handlers.payment_stripe import capture_payment
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import capture_payment
 
         order_data = make_order_data(
             payment_status='authorized',
@@ -534,8 +549,9 @@ class TestPaymentCapture:
     @patch('handlers.payment_providers.require_provider_enabled')
     def test_capture_missing_payment_intent(self, mock_require, mock_db):
         """Scenario 46: Order without payment intent cannot be captured."""
-        from handlers.payment_stripe import capture_payment
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import capture_payment
 
         order_data = make_order_data(
             payment_status='authorized',
@@ -553,8 +569,9 @@ class TestPaymentCapture:
 
     def test_capture_unauthenticated_blocked(self):
         """Scenario 47: Unauthenticated user cannot capture."""
-        from handlers.payment_stripe import capture_payment
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import capture_payment
 
         with patch('handlers.payment_providers.require_provider_enabled'):
             req = MagicMock()
@@ -569,8 +586,9 @@ class TestPaymentCapture:
     @patch('handlers.payment_providers.require_provider_enabled')
     def test_capture_nonexistent_order(self, mock_require, mock_db):
         """Scenario 48: Non-existent order returns not-found."""
-        from handlers.payment_stripe import capture_payment
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import capture_payment
 
         order_doc = make_mock_doc({}, exists=False)
         mock_db.return_value.collection.return_value.document.return_value.get.return_value = order_doc
@@ -583,8 +601,9 @@ class TestPaymentCapture:
 
     def test_capture_missing_order_id(self):
         """Scenario 49: Missing orderId returns invalid-argument."""
-        from handlers.payment_stripe import capture_payment
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.payment_stripe import capture_payment
 
         with patch('handlers.payment_providers.require_provider_enabled'):
             req = make_mock_request(data={})
@@ -628,7 +647,7 @@ class TestOrderCancellation:
         mock_db.return_value.collection.side_effect = collection_side_effect
 
         req = make_mock_request(uid='buyer_123', data={'orderId': 'order_001', 'reason': 'Test'})
-        result = cancel_order(req)
+        cancel_order(req)
 
         # Stock restore should NOT have been called (already restored)
         # The products collection should not have been accessed for updates
@@ -638,8 +657,9 @@ class TestOrderCancellation:
     @patch('handlers.orders.get_firestore')
     def test_cancel_delivered_order_blocked(self, mock_fs, mock_ts, mock_db):
         """Scenario 51: Delivered orders cannot be cancelled."""
-        from handlers.orders import cancel_order
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.orders import cancel_order
 
         order_data = make_order_data(status='delivered', payment_status='captured')
         order_doc = make_mock_doc(order_data, doc_id='order_001')
@@ -665,8 +685,9 @@ class TestOrderCancellation:
     @patch('handlers.orders.get_firestore')
     def test_cancel_shipped_order_blocked(self, mock_fs, mock_ts, mock_db):
         """Scenario 52: Shipped orders cannot be cancelled."""
-        from handlers.orders import cancel_order
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.orders import cancel_order
 
         order_data = make_order_data(status='shipped', payment_status='authorized')
         order_doc = make_mock_doc(order_data, doc_id='order_001')
@@ -689,8 +710,9 @@ class TestOrderCancellation:
 
     def test_cancel_unauthenticated_blocked(self):
         """Scenario 53: Unauthenticated user cannot cancel."""
-        from handlers.orders import cancel_order
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.orders import cancel_order
 
         req = MagicMock()
         req.auth = None
@@ -704,8 +726,9 @@ class TestOrderCancellation:
     @patch('handlers.orders.get_firestore')
     def test_cancel_unauthorized_user_blocked(self, mock_fs, mock_ts, mock_db):
         """Scenario 54: Random user cannot cancel someone else's order."""
-        from handlers.orders import cancel_order
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.orders import cancel_order
 
         order_data = make_order_data(status='pending', payment_status='awaiting_payment')
         order_doc = make_mock_doc(order_data, doc_id='order_001')
@@ -736,8 +759,9 @@ class TestOrderStatusUpdate:
 
     def test_update_status_unauthenticated(self):
         """Scenario 55: Unauthenticated user blocked."""
-        from handlers.orders import update_order_status
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.orders import update_order_status
 
         req = MagicMock()
         req.auth = None
@@ -748,8 +772,9 @@ class TestOrderStatusUpdate:
 
     def test_update_status_missing_fields(self):
         """Scenario 56: Missing orderId/newStatus rejected."""
-        from handlers.orders import update_order_status
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.orders import update_order_status
 
         req = make_mock_request(data={})
 
@@ -760,8 +785,9 @@ class TestOrderStatusUpdate:
     @patch('handlers.orders.get_db')
     def test_update_nonexistent_order(self, mock_db):
         """Scenario 57: Update non-existent order returns not-found."""
-        from handlers.orders import update_order_status
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.orders import update_order_status
 
         order_doc = make_mock_doc({}, exists=False)
         mock_db.return_value.collection.return_value.document.return_value.get.return_value = order_doc
@@ -776,8 +802,9 @@ class TestOrderStatusUpdate:
     @patch('handlers.orders.get_server_timestamp')
     def test_update_invalid_transition_blocked(self, mock_ts, mock_db):
         """Scenario 58: Invalid state transition blocked (pending -> delivered)."""
-        from handlers.orders import update_order_status
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.orders import update_order_status
 
         order_data = make_order_data(status='pending')
         order_doc = make_mock_doc(order_data, doc_id='order_001')
@@ -806,8 +833,9 @@ class TestOrderStatusUpdate:
     @patch('handlers.orders.get_server_timestamp')
     def test_buyer_cannot_update_status(self, mock_ts, mock_db):
         """Scenario 59: Buyer cannot update order status (only seller/admin)."""
-        from handlers.orders import update_order_status
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.orders import update_order_status
 
         order_data = make_order_data(status='confirmed')
         order_doc = make_mock_doc(order_data, doc_id='order_001')
@@ -941,8 +969,9 @@ class TestWebhookSecurity:
 
     def test_webhook_idempotency_duplicate_event(self):
         """Scenario 66: Duplicate event ID returns 200 (already processed)."""
-        from handlers.payment_stripe import stripe_webhook
         import stripe as stripe_module
+
+        from handlers.payment_stripe import stripe_webhook
 
         req = MagicMock()
         req.method = 'POST'
@@ -1064,7 +1093,7 @@ class TestEmailNotifications:
         with patch('email_service.IS_EMULATOR', False), \
              patch('email_service.MAILJET_API_KEY', ''):
             from email_service import send_email
-            result = send_email('test@example.com', 'Test', '<p>Test</p>')
+            send_email('test@example.com', 'Test', '<p>Test</p>')
             # Should not crash, returns True (skip) or False (error)
 
     def test_order_confirmation_email_escapes_html(self):
@@ -1254,7 +1283,7 @@ class TestCronJobs:
         """Scenario 89: Auto-capture skips when Stripe is disabled."""
         from handlers.cron_jobs import auto_capture_confirmed_receipts
 
-        with patch('handlers.cron_jobs.get_db') as mock_db, \
+        with patch('handlers.cron_jobs.get_db'), \
              patch('handlers.payment_providers.is_provider_enabled', return_value=False):
             event = MagicMock()
             # Should return early without processing
@@ -1379,6 +1408,7 @@ class TestPayoutConsistency:
     def test_payout_uses_cents_fields(self):
         """Scenario 101: capture_payment creates payouts with *Cents field names (FIX verification)."""
         import inspect
+
         from handlers.payment_stripe import capture_payment
 
         source = inspect.getsource(capture_payment)
@@ -1393,6 +1423,7 @@ class TestPayoutConsistency:
     def test_payout_field_consistency_with_cron(self):
         """Scenario 102: Cron auto_capture uses same payout fields as manual capture."""
         import inspect
+
         from handlers.payment_stripe import capture_payment
 
         cron_source_file = Path(__file__).parent.parent / 'handlers' / 'cron_jobs.py'
@@ -1414,6 +1445,7 @@ class TestOrderCreationFields:
     def test_order_includes_customer_email(self):
         """Scenario 103: Order creation includes customerEmail (FIX verification)."""
         import inspect
+
         from handlers.payment_stripe import create_checkout_session
 
         source = inspect.getsource(create_checkout_session)
@@ -1423,6 +1455,7 @@ class TestOrderCreationFields:
     def test_order_includes_archived_field(self):
         """Scenario 104: Order creation includes 'archived: False' for query-ability."""
         import inspect
+
         from handlers.payment_stripe import create_checkout_session
 
         source = inspect.getsource(create_checkout_session)
@@ -1432,6 +1465,7 @@ class TestOrderCreationFields:
     def test_order_includes_stock_restored_field(self):
         """Scenario 105: Order creation includes 'stockRestored: False' for idempotency."""
         import inspect
+
         from handlers.payment_stripe import create_checkout_session
 
         source = inspect.getsource(create_checkout_session)
@@ -1449,6 +1483,7 @@ class TestApproveShippingCost:
     def test_approve_shipping_uses_cents_fields(self):
         """Scenario 106: approve_shipping_cost uses *Cents fields (FIX verification)."""
         import inspect
+
         from handlers.orders import approve_shipping_cost
 
         source = inspect.getsource(approve_shipping_cost)
@@ -1460,6 +1495,7 @@ class TestApproveShippingCost:
     def test_approve_shipping_sets_stock_restored_on_reject(self):
         """Scenario 107: Rejecting shipping sets stockRestored flag."""
         import inspect
+
         from handlers.orders import approve_shipping_cost
 
         source = inspect.getsource(approve_shipping_cost)
@@ -1469,8 +1505,9 @@ class TestApproveShippingCost:
 
     def test_approve_shipping_unauthenticated(self):
         """Scenario 108: Unauthenticated user cannot approve shipping."""
-        from handlers.orders import approve_shipping_cost
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.orders import approve_shipping_cost
 
         req = MagicMock()
         req.auth = None
@@ -1482,8 +1519,9 @@ class TestApproveShippingCost:
     @patch('handlers.orders.get_db')
     def test_approve_shipping_wrong_buyer(self, mock_db):
         """Scenario 109: Non-owner cannot approve shipping."""
-        from handlers.orders import approve_shipping_cost
         from firebase_functions.https_fn import HttpsError
+
+        from handlers.orders import approve_shipping_cost
 
         order_data = make_order_data()
         order_data['shippingApproval'] = {'status': 'pending', 'actualCost': 15.00}

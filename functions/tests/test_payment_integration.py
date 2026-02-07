@@ -1,17 +1,24 @@
-import pytest
-import unittest
-from unittest.mock import MagicMock, patch, Mock
-import sys
 import os
+import sys
+import unittest
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 # Add functions directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from config import Collections
 from schema_constants import (
-    OrderStatusValues as OrderStatus,
-    PaymentStatusValues as PaymentStatus,
     DeliveryStatusValues as DeliveryStatus,
+)
+from schema_constants import (
+    OrderStatusValues as OrderStatus,
+)
+from schema_constants import (
+    PaymentStatusValues as PaymentStatus,
+)
+from schema_constants import (
     PayoutStatusValues as PayoutStatus,
 )
 
@@ -32,13 +39,13 @@ class TestPaymentFlow(unittest.TestCase):
         Expectation: Success, AND Stripe capture call.
         """
         from handlers.payment_stripe import capture_payment
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
         mock_rate_limiter = MagicMock()
         mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
         mock_get_rate_limiter.return_value = mock_rate_limiter
-        
+
         mock_stripe.PaymentIntent.retrieve.return_value = Mock(status='requires_capture', amount=5000)
         mock_stripe.PaymentIntent.capture = MagicMock()
 
@@ -72,7 +79,7 @@ class TestPaymentFlow(unittest.TestCase):
                 {"sellerId": "seller_1", "deliveryStatus": DeliveryStatus.PENDING, "price": 50.00, "quantity": 1}
             ]
         }
-        
+
         # Setup DB mock
         def mock_document_chain(doc_id):
             mock_ref = MagicMock()
@@ -81,7 +88,7 @@ class TestPaymentFlow(unittest.TestCase):
             elif doc_id == "order_123":
                 mock_ref.get.return_value = mock_order_doc
             return mock_ref
-        
+
         mock_db.collection.return_value.document.side_effect = mock_document_chain
 
         # Execute
@@ -100,17 +107,17 @@ class TestPaymentFlow(unittest.TestCase):
         Expectation: Create Stripe Session with manual capture.
         """
         from handlers.payment_stripe import create_checkout_session
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
         mock_rate_limiter = MagicMock()
         mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
         mock_get_rate_limiter.return_value = mock_rate_limiter
-        
+
         mock_stripe.checkout.Session.create = MagicMock(
             return_value=MagicMock(id="cs_test_123", url="http://test.url")
         )
-        
+
         req = MagicMock()
         req.auth.uid = "user_123"
         req.data = {
@@ -166,14 +173,14 @@ class TestPaymentFlow(unittest.TestCase):
             "imageUrls": ["http://img.com/1.jpg"],
             "categoryId": 1
         }
-        
+
         # Mock transaction
         mock_transaction = MagicMock()
         mock_transaction.get.return_value = mock_seller_doc
         mock_transaction.__enter__ = MagicMock(return_value=mock_transaction)
         mock_transaction.__exit__ = MagicMock(return_value=None)
         mock_db.transaction.return_value = mock_transaction
-        
+
         def mock_document_chain(doc_id=None):
             mock_ref = MagicMock()
             mock_ref.id = doc_id or "new_order_id"
@@ -184,7 +191,7 @@ class TestPaymentFlow(unittest.TestCase):
             else:
                 mock_ref.get.return_value = MagicMock(exists=True, to_dict=lambda: {})
             return mock_ref
-        
+
         mock_db.collection.return_value.document.side_effect = mock_document_chain
 
         # Execute
@@ -202,13 +209,13 @@ class TestPaymentFlow(unittest.TestCase):
         Scenario: Webhook received for checkout.session.completed
         """
         from handlers.payment_stripe import stripe_webhook
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
         mock_rate_limiter = MagicMock()
         mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
         mock_get_rate_limiter.return_value = mock_rate_limiter
-        
+
         req = MagicMock()
         req.data = b'raw_payload'
         req.headers = {'stripe-signature': 'sig_123'}
@@ -238,17 +245,17 @@ class TestPaymentFlow(unittest.TestCase):
             "orderStatus": OrderStatus.PENDING,
             "totalAmountCents": 5000
         }
-        
+
         mock_event_log = MagicMock()
         mock_event_log.get.return_value.exists = False
-        
+
         def doc_side_effect(arg):
             if arg == "evt_123":
                 return mock_event_log
             elif arg == "order_123":
                 return mock_order_ref
             return MagicMock()
-            
+
         mock_db.collection.return_value.document.side_effect = doc_side_effect
         mock_order_ref.get.return_value = mock_order_doc
 
@@ -266,13 +273,13 @@ class TestPaymentFlow(unittest.TestCase):
         Scenario: Webhook includes amount_total and tax details.
         """
         from handlers.payment_stripe import stripe_webhook
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
         mock_rate_limiter = MagicMock()
         mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
         mock_get_rate_limiter.return_value = mock_rate_limiter
-        
+
         req = MagicMock()
         req.data = b'raw_payload'
         req.headers = {'stripe-signature': 'sig_456'}
@@ -326,10 +333,10 @@ class TestPaymentFlow(unittest.TestCase):
         Scenario: User rates a delivered product.
         """
         from handlers.products import submit_product_rating
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
-        
+
         req = MagicMock()
         req.auth.uid = "buyer_1"
         req.data = {"orderId": "order_1", "productId": "prod_1", "rating": 5}
@@ -383,10 +390,10 @@ class TestRefundFlow(unittest.TestCase):
         Expectation: Order marked as refunded.
         """
         from handlers.payment_stripe import process_charge_refunded
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
-        
+
         charge = {
             'payment_intent': 'pi_123',
             'amount_refunded': 5000,
@@ -415,10 +422,10 @@ class TestRefundFlow(unittest.TestCase):
         Scenario: Partial refund processed.
         """
         from handlers.payment_stripe import process_charge_refunded
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
-        
+
         charge = {
             'payment_intent': 'pi_123',
             'amount_refunded': 2500,
@@ -450,10 +457,10 @@ class TestDisputeFlow(unittest.TestCase):
         Scenario: Dispute opened on an order.
         """
         from handlers.payment_stripe import process_dispute_created
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
-        
+
         dispute = {
             'id': 'dp_123',
             'charge': 'ch_123',
@@ -485,10 +492,10 @@ class TestDisputeFlow(unittest.TestCase):
         Expectation: No update and returns None.
         """
         from handlers.payment_stripe import process_dispute_created
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
-        
+
         dispute = {
             'id': 'dp_123',
             'reason': 'fraudulent',
@@ -509,10 +516,10 @@ class TestDisputeFlow(unittest.TestCase):
         Scenario: Dispute closed in seller's favor.
         """
         from handlers.payment_stripe import process_dispute_closed
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
-        
+
         dispute = {
             'id': 'dp_123',
             'charge': 'ch_123',
@@ -541,10 +548,10 @@ class TestDisputeFlow(unittest.TestCase):
         Scenario: Dispute lost (refund to customer).
         """
         from handlers.payment_stripe import process_dispute_closed
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
-        
+
         dispute = {
             'id': 'dp_123',
             'charge': 'ch_123',
@@ -579,13 +586,13 @@ class TestIdempotency(unittest.TestCase):
         Expectation: Second call returns early without processing.
         """
         from handlers.payment_stripe import stripe_webhook
-        
+
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
         mock_rate_limiter = MagicMock()
         mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
         mock_get_rate_limiter.return_value = mock_rate_limiter
-        
+
         req = MagicMock()
         req.data = b'raw_payload'
         req.headers = {'stripe-signature': 'sig_123'}

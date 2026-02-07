@@ -1,23 +1,25 @@
-import requests
-import sys
-import boto3
 import os
+import sys
+
+import boto3
+import requests
 from botocore.config import Config
+
 
 def test_credentials_directly():
     print("\n--- Testing Credentials Directly ---")
     try:
         # Load env vars roughly (or rely on them being set by the shell if source was used)
-        # Note: The script is run via 'firebase emulators:exec', which sets env vars for the EMULATOR process, 
+        # Note: The script is run via 'firebase emulators:exec', which sets env vars for the EMULATOR process,
         # but maybe NOT for this script subprocess unless we parse .env ourselves?
         # The previous run used 'source ...', so env vars might NOT be exported to python script if not explicitly exported.
         # But 'firebase emulators:exec' doesn't inject .env into the command it runs?
         # Actually, python script usually reads os.environ.
-        
+
         # Let's read .env manually to be sure
         env_vars = {}
         try:
-            with open('functions/.env', 'r') as f:
+            with open('functions/.env') as f:
                 for line in f:
                     if '=' in line and not line.strip().startswith('#'):
                         key, val = line.split('=', 1)
@@ -36,7 +38,7 @@ def test_credentials_directly():
             region_name="auto",
             config=Config(signature_version='s3v4'),
         )
-        
+
         print("Attempting list_buckets...")
         resp = r2.list_buckets()
         print(f"Buckets: {[b['Name'] for b in resp.get('Buckets', [])]}")
@@ -51,20 +53,20 @@ def test_r2_upload():
     # Project ID is usually in .firebaserc or assumed from context.
     # The grepped logs showed "orignagta/us-central1"
     function_url = "http://127.0.0.1:5001/orignagta/us-central1/get_r2_presigned_url"
-    
+
     print(f"Testing R2 Presigned URL generation at: {function_url}")
-    
+
     payload = {
         "data": {
             "fileName": "test_verification_image.jpg"
         }
     }
-    
+
     try:
         response = requests.post(function_url, json=payload, headers={'Content-Type': 'application/json'})
         print(f"Function Status Code: {response.status_code}")
         print(f"Function Response: {response.text}")
-        
+
         if response.status_code != 200:
             print("❌ Function call failed")
             return
@@ -72,21 +74,21 @@ def test_r2_upload():
         json_resp = response.json()
         result = json_resp.get("result", {})
         upload_url = result.get("uploadUrl")
-        
+
         if not upload_url:
             print("❌ No uploadUrl in response")
             return
-            
+
         print(f"✅ Generated Upload URL: {upload_url[:50]}...")
-        
+
         # Try to upload
         print("Attempting to upload dummy content...")
         upload_resp = requests.put(
-            upload_url, 
-            data=b"TEST_IMAGE_CONTENT", 
+            upload_url,
+            data=b"TEST_IMAGE_CONTENT",
             headers={"Content-Type": "image/jpeg"}
         )
-        
+
         print(f"Upload Status Code: {upload_resp.status_code}")
         if upload_resp.status_code == 200:
             print("✅ Upload to R2 Successful!")

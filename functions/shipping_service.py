@@ -1,5 +1,6 @@
+
 import requests
-from typing import List, Dict, Optional
+
 from config import GEOAPIFY_API_KEY
 from schema_constants import Fields
 
@@ -97,31 +98,31 @@ def get_tax_rate(state_code: str) -> float:
 
 
 def get_international_shipping_estimate(
-    supplier_type: str, 
+    supplier_type: str,
     speed: str = 'standard',
     weight_kg: float = 0.5
-) -> Dict:
+) -> dict:
     """
     Get estimated shipping info for international suppliers.
-    
+
     Args:
         supplier_type: One of aliexpress, dhgate, alibaba, 1688, temu, cjdropshipping, other
         speed: 'standard' or 'express'
         weight_kg: Product weight for cost calculation
-        
+
     Returns:
         Dict with 'days' (str range), 'cost' (float), 'tracking' (bool)
     """
     config = _INTERNATIONAL_SHIPPING_CONFIG.get(supplier_type, _INTERNATIONAL_SHIPPING_CONFIG['other'])
     speed_config = config.get(speed, config['standard'])
-    
+
     base_cost = speed_config['base_cost']
-    
+
     # Weight surcharge for heavier items
     weight_surcharge = 0.0
     if weight_kg > 1.0:
         weight_surcharge = (weight_kg - 1.0) * 3.0  # $3 per kg over 1kg
-    
+
     return {
         'days': speed_config['days'],
         'cost': base_cost + weight_surcharge,
@@ -131,18 +132,18 @@ def get_international_shipping_estimate(
 
 
 def estimate_delivery_date_range(
-    supplier_info: Optional[Dict] = None,
+    supplier_info: dict | None = None,
     seller_estimated_days: int = 3,
     is_international: bool = False
-) -> Dict:
+) -> dict:
     """
     Calculate estimated delivery date range for buyer display.
-    
+
     Args:
         supplier_info: Product's supplier object (if dropshipping)
         seller_estimated_days: Seller's stated shipping days
         is_international: Whether seller ships from outside Canada
-        
+
     Returns:
         Dict with 'min_days', 'max_days', 'display_text'
     """
@@ -150,7 +151,7 @@ def estimate_delivery_date_range(
         # Dropshipping product with supplier info
         supplier_type = supplier_info.get('type', 'other')
         shipping_days = supplier_info.get('shippingDays', '')
-        
+
         if shipping_days and '-' in shipping_days:
             try:
                 parts = shipping_days.replace(' ', '').split('-')
@@ -169,7 +170,7 @@ def estimate_delivery_date_range(
             parts = days_str.split('-')
             min_days = int(parts[0])
             max_days = int(parts[1])
-        
+
         return {
             'min_days': min_days,
             'max_days': max_days,
@@ -177,7 +178,7 @@ def estimate_delivery_date_range(
             'source': 'international_supplier',
             'has_tracking': supplier_info.get('hasTracking', False),
         }
-    
+
     if is_international:
         # Generic international (non-dropship)
         return {
@@ -187,7 +188,7 @@ def estimate_delivery_date_range(
             'source': 'international_generic',
             'has_tracking': True,
         }
-    
+
     # Domestic Canadian shipping
     return {
         'min_days': seller_estimated_days,
@@ -203,12 +204,9 @@ def _are_adjacent_provinces(p1: str, p2: str) -> bool:
 
 def _are_same_region(p1: str, p2: str) -> bool:
     """Check if two provinces are in the same region (cached)"""
-    for region_provinces in _REGIONS_CACHE.values():
-        if p1 in region_provinces and p2 in region_provinces:
-            return True
-    return False
+    return any(p1 in region_provinces and p2 in region_provinces for region_provinces in _REGIONS_CACHE.values())
 
-def _calculate_tiered_shipping(distance_km: float, seller_items: List[Dict], speed: str) -> float:
+def _calculate_tiered_shipping(distance_km: float, seller_items: list[dict], speed: str) -> float:
     """Hyper-Competitive tiered calculation: Benchmarked against Instacart/DoorDash/PC Express"""
     base_cost = 26.99  # National Ceiling
 
@@ -224,14 +222,14 @@ def _calculate_tiered_shipping(distance_km: float, seller_items: List[Dict], spe
         base_cost = 18.99
     elif distance_km <= 2500:
         base_cost = 22.99
-    
+
     # Weight & Volumetric surcharges
     weight_surcharge = 0
     total_items = 0
     for item in seller_items:
         qty = item.get('quantity', 1)
         total_items += qty
-        
+
         # Volumetric: (L * W * H) / 5000
         actual_weight = item.get('weightKg', 0.5)
         length = max(item.get('lengthCm', 10), 1)  # Prevent zero dimensions
@@ -239,12 +237,12 @@ def _calculate_tiered_shipping(distance_km: float, seller_items: List[Dict], spe
         height = max(item.get('heightCm', 10), 1)
         vol_weight = (length * width * height) / 5000.0
         effective_weight = max(actual_weight, vol_weight)
-        
+
         if effective_weight > 2.0:
             weight_surcharge += (effective_weight - 2.0) * 1.5 * qty
 
     subtotal = base_cost + weight_surcharge + ((max(0, total_items - 1)) * (base_cost * 0.15))
-    
+
     # Speed multipliers (Benchmarked to hit $7.99 and $8.99 targets)
     multiplier = 1.0
     if speed == 'express':
@@ -265,7 +263,7 @@ def _calculate_tiered_shipping(distance_km: float, seller_items: List[Dict], spe
             multiplier = 1.8
         else:
             multiplier = 2.5
-    
+
     return subtotal * multiplier
 
 def _calculate_fallback_shipping(item_count: int, seller_province: str, buyer_province: str) -> float:
@@ -278,12 +276,12 @@ def _calculate_fallback_shipping(item_count: int, seller_province: str, buyer_pr
         base_cost = 18.99
     elif _are_same_region(seller_province, buyer_province):
         base_cost = 22.99
-    
+
     additional_cost = max(0, item_count - 1) * (base_cost * 0.15)
-    
+
     return base_cost + additional_cost
 
-def _best_quantity_discount(discounts: List[Dict], quantity: int) -> Optional[Dict]:
+def _best_quantity_discount(discounts: list[dict], quantity: int) -> dict | None:
     """Return the best (highest minQuantity) discount applicable to quantity."""
     best = None
     for d in discounts or []:
@@ -295,7 +293,7 @@ def _best_quantity_discount(discounts: List[Dict], quantity: int) -> Optional[Di
             best = d
     return best
 
-def _calculate_delivery_option_cost(option: Dict, quantity: int) -> float:
+def _calculate_delivery_option_cost(option: dict, quantity: int) -> float:
     """
     Calculate shipping cost for a delivery option.
 
@@ -351,7 +349,7 @@ def _calculate_delivery_option_cost(option: Dict, quantity: int) -> float:
         price = 0.0
     return price * qty
 
-def _find_matching_delivery_option(options: List[Dict], speed: str) -> Optional[Dict]:
+def _find_matching_delivery_option(options: list[dict], speed: str) -> dict | None:
     """
     Find delivery option matching requested speed.
 
@@ -370,7 +368,7 @@ def _find_matching_delivery_option(options: List[Dict], speed: str) -> Optional[
 
     return None
 
-def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str = 'standard') -> float:
+def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str = 'standard') -> float:
     """
     Server-side shipping calculation matching frontend logic.
     """
@@ -384,18 +382,18 @@ def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str =
         seller_id = item.get(Fields.SELLER_ID)
         if seller_id:
             items_by_seller.setdefault(seller_id, []).append(item)
-    
+
     for seller_id, seller_items in items_by_seller.items():
         # CRITICAL FIX: Defensive checks to prevent crashes on corrupted data
         if not seller_items:
             print(f"⚠️ Skipping seller {seller_id}: Empty items list")
             continue
-        
+
         seller_address = seller_items[0].get(Fields.SELLER_ADDRESS)
         if not seller_address or not isinstance(seller_address, dict):
             print(f"⚠️ Skipping seller {seller_id}: Missing or invalid seller address")
             continue
-        
+
         seller_lat = seller_address.get(Fields.LATITUDE)
         seller_lon = seller_address.get(Fields.LONGITUDE)
         seller_state = seller_address.get(Fields.STATE, 'ON')
@@ -404,7 +402,7 @@ def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str =
         chargeable_items = [i for i in seller_items if not i.get(Fields.FREE_SHIPPING) and not i.get(Fields.IS_DIGITAL)]
         if not chargeable_items:
             continue
-        
+
         # Check Local/Perishable restrictions early
         has_local_restriction = any(i.get(Fields.IS_LOCAL_DELIVERY_ONLY) or i.get(Fields.IS_PERISHABLE) for i in seller_items)
         if has_local_restriction and seller_state != buyer_state:
@@ -428,7 +426,7 @@ def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str =
             else:
                 has_seller_fixed_price = False  # Cost must be positive to qualify as fixed price
                 break
-        
+
         if has_seller_fixed_price:
             total_shipping += seller_fixed_total
             continue
@@ -456,9 +454,9 @@ def calculate_shipping_cost(items: List[Dict], buyer_address: Dict, speed: str =
                     continue
             except Exception as e:
                 print(f"⚠️ Geoapify error: {str(e)}")
-        
+
         # Fallback
         item_count = sum(item.get(Fields.QUANTITY, 1) for item in chargeable_items)
         total_shipping += _calculate_fallback_shipping(item_count, seller_state, buyer_state)
-        
+
     return total_shipping

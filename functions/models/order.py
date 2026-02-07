@@ -4,10 +4,10 @@ Includes OrderItem, Taxes, Ratings, SellerPayout, and Order
 """
 
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, Field, field_validator, ConfigDict
 
-from .base import Address, OrderStatusEnum, PaymentStatusEnum, DeliveryStatusEnum, ShippingApprovalStatusEnum
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from .base import Address, DeliveryStatusEnum, OrderStatusEnum, PaymentStatusEnum, ShippingApprovalStatusEnum
 from .product import SellerDeliveryOption
 
 
@@ -40,22 +40,22 @@ class OrderItem(BaseModel):
     description: str = Field(..., max_length=4000)
     price: float = Field(..., gt=0)
     quantity: int = Field(..., gt=0, le=1000)
-    imageUrls: List[str] = Field(..., min_length=1, description="Product image URLs")
+    imageUrls: list[str] = Field(..., min_length=1, description="Product image URLs")
     sellerId: str = Field(..., min_length=1)
     sellerAddress: Address
     deliveryStatus: DeliveryStatusEnum = Field(default=DeliveryStatusEnum.PENDING)
-    trackingNumber: Optional[str] = Field(default=None, max_length=100)
+    trackingNumber: str | None = Field(default=None, max_length=100)
     confirmedByBuyer: bool = Field(default=False)
 
     # Shipping metadata (captured at purchase time)
-    weightKg: Optional[float] = Field(default=None, gt=0)
-    lengthCm: Optional[float] = Field(default=None, gt=0)
-    widthCm: Optional[float] = Field(default=None, gt=0)
-    heightCm: Optional[float] = Field(default=None, gt=0)
+    weightKg: float | None = Field(default=None, gt=0)
+    lengthCm: float | None = Field(default=None, gt=0)
+    widthCm: float | None = Field(default=None, gt=0)
+    heightCm: float | None = Field(default=None, gt=0)
     isLocalDeliveryOnly: bool = Field(default=False)
     isPerishable: bool = Field(default=False)
     estimatedShipDays: int = Field(default=3, ge=0)
-    deliveryOptions: List[SellerDeliveryOption] = Field(default_factory=list)
+    deliveryOptions: list[SellerDeliveryOption] = Field(default_factory=list)
     minimumOrderQuantity: int = Field(default=1, ge=1)
     freeShipping: bool = Field(default=False)
     isDigital: bool = Field(default=False, description="Whether this item is a digital product")
@@ -81,7 +81,7 @@ class Ratings(BaseModel):
     """Product rating within an order."""
     productId: str = Field(..., min_length=1)
     rating: float = Field(..., ge=0, le=5)
-    review: Optional[str] = Field(default=None, max_length=1000)
+    review: str | None = Field(default=None, max_length=1000)
     createdAt: datetime = Field(default_factory=datetime.now)
 
 
@@ -101,14 +101,14 @@ class SellerPayout(BaseModel):
     )
 
     sellerId: str = Field(..., min_length=1)
-    stripeAccountId: Optional[str] = Field(default=None)
+    stripeAccountId: str | None = Field(default=None)
     amountCents: int = Field(..., ge=0, description="Gross amount in cents")
     platformFeeCents: int = Field(..., ge=0, description="Platform fee in cents")
     netAmountCents: int = Field(..., ge=0, description="Net amount in cents")
     status: str = Field(default="pending", description="Payout status: pending, processing, completed, failed")
-    payoutDate: Optional[datetime] = Field(default=None)
-    stripeTransferId: Optional[str] = Field(default=None)
-    failureReason: Optional[str] = Field(default=None, max_length=500)
+    payoutDate: datetime | None = Field(default=None)
+    stripeTransferId: str | None = Field(default=None)
+    failureReason: str | None = Field(default=None, max_length=500)
 
     @field_validator("status")
     @classmethod
@@ -146,11 +146,11 @@ class Order(BaseModel):
     userId: str = Field(..., min_length=1)
 
     # Optional identity fields (can be fetched from user doc)
-    customerId: Optional[str] = Field(default=None, min_length=1)
-    customerEmail: Optional[str] = Field(default=None, pattern=r"^[^@]+@[^@]+\.[^@]+$")
+    customerId: str | None = Field(default=None, min_length=1)
+    customerEmail: str | None = Field(default=None, pattern=r"^[^@]+@[^@]+\.[^@]+$")
 
-    items: List[OrderItem] = Field(..., min_length=1)
-    sellerIds: List[str] = Field(default_factory=list)
+    items: list[OrderItem] = Field(..., min_length=1)
+    sellerIds: list[str] = Field(default_factory=list)
 
     # Money — all in integer cents
     subtotalCents: int = Field(..., ge=0)
@@ -165,15 +165,15 @@ class Order(BaseModel):
     paymentStatus: PaymentStatusEnum = Field(default=PaymentStatusEnum.AWAITING_PAYMENT)
 
     # Address
-    shippingAddress: Optional[Address] = Field(default=None)
+    shippingAddress: Address | None = Field(default=None)
 
     # Timestamps
     createdAt: datetime = Field(default_factory=datetime.now)
-    updatedAt: Optional[datetime] = Field(default=None)
+    updatedAt: datetime | None = Field(default=None)
 
     # Payment provider IDs
-    stripeSessionId: Optional[str] = Field(default=None, min_length=1)
-    stripePaymentIntentId: Optional[str] = Field(default=None, min_length=1)
+    stripeSessionId: str | None = Field(default=None, min_length=1)
+    stripePaymentIntentId: str | None = Field(default=None, min_length=1)
 
     currency: str = Field(default="cad")
 
@@ -186,9 +186,9 @@ class Order(BaseModel):
     pendingTotal: float = Field(default=0.0, ge=0)
 
     # Payout tracking
-    sellerPayouts: List[SellerPayout] = Field(default_factory=list)
+    sellerPayouts: list[SellerPayout] = Field(default_factory=list)
     confirmedByClient: bool = Field(default=False)
-    confirmedAt: Optional[datetime] = None
+    confirmedAt: datetime | None = None
     platformFeeTotal: float = Field(default=0.0, ge=0)
     payoutStatus: str = Field(
         default="pending",
@@ -196,7 +196,7 @@ class Order(BaseModel):
     )
 
     # Ratings
-    ratings: List[Ratings] = Field(default_factory=list)
+    ratings: list[Ratings] = Field(default_factory=list)
 
     @field_validator("currency")
     @classmethod
@@ -211,7 +211,7 @@ class OrderCreate(BaseModel):
     userId: str = Field(..., min_length=1)
     customerId: str = Field(..., min_length=1)
     customerEmail: str = Field(..., pattern=r"^[^@]+@[^@]+\.[^@]+$")
-    items: List[OrderItem] = Field(..., min_length=1)
+    items: list[OrderItem] = Field(..., min_length=1)
     shippingAddress: Address
     shippingCost: float = Field(default=0.0, ge=0)
     currency: str = Field(default="cad")

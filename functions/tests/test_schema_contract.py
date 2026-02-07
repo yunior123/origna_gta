@@ -10,11 +10,11 @@ These tests ensure:
 Run with: pytest tests/test_schema_contract.py -v
 """
 
+import ast
 import json
 import re
-import ast
 from pathlib import Path
-from typing import Set, Dict, List, Tuple
+
 import pytest
 
 # Paths
@@ -31,19 +31,19 @@ FLUTTER_DIR = PROJECT_ROOT / "origna_gta" / "lib"
 @pytest.fixture(scope="module")
 def schema() -> dict:
     """Load the database schema JSON"""
-    with open(SCHEMA_PATH, "r") as f:
+    with open(SCHEMA_PATH) as f:
         return json.load(f)
 
 
 @pytest.fixture(scope="module")
-def all_schema_fields(schema: dict) -> Set[str]:
+def all_schema_fields(schema: dict) -> set[str]:
     """Extract all field names from the schema"""
     fields = set()
 
     def extract_fields(obj, prefix: str = ""):
         if isinstance(obj, dict):
             if "fields" in obj and isinstance(obj["fields"], dict):
-                for field_name in obj["fields"].keys():
+                for field_name in obj["fields"]:
                     fields.add(field_name)
             for key, value in obj.items():
                 if isinstance(value, dict):
@@ -65,7 +65,7 @@ def all_schema_fields(schema: dict) -> Set[str]:
 
 
 @pytest.fixture(scope="module")
-def schema_timestamp_fields(schema: dict) -> Dict[str, str]:
+def schema_timestamp_fields(schema: dict) -> dict[str, str]:
     """Map collection name to its timestamp field"""
     timestamp_map = {}
 
@@ -103,7 +103,7 @@ class TestSchemaConsistency:
 
     def test_schema_is_valid_json(self):
         """Verify schema is valid JSON"""
-        with open(SCHEMA_PATH, "r") as f:
+        with open(SCHEMA_PATH) as f:
             schema = json.load(f)
         assert isinstance(schema, dict)
         assert "collections" in schema
@@ -113,7 +113,7 @@ class TestSchemaConsistency:
         for name, definition in schema["collections"].items():
             assert "fields" in definition, f"Collection '{name}' missing 'fields'"
 
-    def test_timestamp_fields_documented(self, schema: dict, schema_timestamp_fields: Dict[str, str]):
+    def test_timestamp_fields_documented(self, schema: dict, schema_timestamp_fields: dict[str, str]):
         """Verify timestamp field naming is consistent and documented"""
         # This test documents the current state (some use createdAt, some dateCreated)
         expected_timestamps = {
@@ -210,10 +210,6 @@ class TestPythonSchemaContract:
         )
 
         # Should NOT use dateCreated for orders (either as literal or constant)
-        uses_date_created_literal = (
-            ".where('dateCreated'" in content or
-            '.where("dateCreated"' in content
-        )
         # For orders collection, DATE_CREATED should not appear in order queries
         order_section_match = re.search(
             r"collection\(['\"]orders['\"]\).*?\.stream\(\)",
@@ -228,7 +224,7 @@ class TestPythonSchemaContract:
                 "Orders use 'createdAt'. Found violations."
             )
 
-    def test_schema_constants_match_schema_fields(self, all_schema_fields: Set[str]):
+    def test_schema_constants_match_schema_fields(self, all_schema_fields: set[str]):
         """Verify schema_constants.py defines fields that exist in schema"""
         constants_file = FUNCTIONS_DIR / "schema_constants.py"
         if not constants_file.exists():
@@ -269,7 +265,7 @@ class TestPythonSchemaContract:
                     violations.append(f"{py_file.name}:{line_num}: {matches}")
 
         if violations:
-            print(f"\nTimestamp strings found (consider using Fields constants):")
+            print("\nTimestamp strings found (consider using Fields constants):")
             for v in violations[:20]:  # Limit output
                 print(f"  {v}")
 
@@ -450,9 +446,9 @@ class TestSchemaDrift:
             pytest.skip("Schema has no enums section")
 
         from schema_constants import (
+            DeliveryStatusValues,
             OrderStatusValues,
             PaymentStatusValues,
-            DeliveryStatusValues,
             PayoutStatusValues,
         )
 
@@ -490,7 +486,7 @@ class TestSchemaCI:
 
     def test_schema_json_is_valid_and_parseable(self):
         """Quick smoke test for CI - schema loads without error"""
-        with open(SCHEMA_PATH, "r") as f:
+        with open(SCHEMA_PATH) as f:
             schema = json.load(f)
 
         assert "collections" in schema

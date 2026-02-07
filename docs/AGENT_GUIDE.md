@@ -83,3 +83,42 @@ If you changed `payment_stripe.py`, re-read `checkout_provider.dart` to verify t
 - Use `--continue` to resume sessions across terminal restarts
 - Use `/pause-work` before ending a session to save state
 - Use `/resume-work` to pick up where you left off
+
+---
+
+## 🧹 Daily Workflow Hygiene
+
+### Plan Mode is Mandatory
+- **For ANY non-trivial task**, always ask for a plan first: "Plan how to implement [feature]"
+- Review and refine the plan before giving the green light to write code
+- Use `/plan-task [description]` to formalize the planning step
+- Never allow direct implementation of complex features without an approved plan
+
+### Aggressive Context Clearing
+- **Clear at ~60k tokens or 30% context capacity** — whichever comes first
+- Context rot degrades response quality — Claude loses focus and starts hallucinating
+- Use `/clear-context` before clearing to run the safety checklist
+- Use `/compact Focus on [current task]` when context is bloated but has useful info
+- After **2 failed correction attempts** → `/clear` and start fresh with a better prompt
+- After `/clear`, always start with: `Read STATE.md and CLAUDE.md to restore context`
+
+### Visual Context for UI Work
+- **Drag and drop screenshots** of mocks or current bugs directly into the chat
+- Claude compares visual inputs to code — this produces significantly better UI matches
+- For UI bugs: screenshot the bug + screenshot the expected behavior = fastest fix
+- For new screens: provide a Figma screenshot or hand-drawn wireframe before coding
+
+### Session Rotation Best Practices
+- Prefer **short, focused sessions** (1 workflow per session) over marathon multi-topic sessions
+- **Delegate investigation** to subagents — preserve main context for action
+- Use **background agents** (Ctrl+B) for audits while you continue working
+- Each session should have a clear goal stated upfront: "This session: fix checkout flow"
+- End every session with `/pause-work` to save state for the next session
+
+### Context Budget Guidelines
+| Context Usage | Action |
+|--------------|--------|
+| 0-30% | ✅ Healthy — continue working |
+| 30-50% | ⚠️ Consider `/compact` to trim noise |
+| 50-70% | 🔶 Use `/clear-context` checklist, save state |
+| 70%+ | 🔴 Mandatory `/clear` — quality is degrading |

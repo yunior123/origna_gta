@@ -3,35 +3,35 @@ Tests for Pydantic models
 Validates schema consistency, validation rules, and serialization
 """
 
-import pytest
+import sys
 from datetime import datetime
+from pathlib import Path
+
+import pytest
 from pydantic import ValidationError
 
-import sys
-from pathlib import Path
 functions_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(functions_dir))
 
-from models import (
+from models import (  # noqa: E402
     Address,
     AddressDetails,
-    OrderStatusEnum,
-    PaymentStatusEnum,
     DeliveryStatusEnum,
-    Product,
-    ProductCreate,
-    SellerDeliveryOption,
-    OrderItem,
-    Taxes,
-    Ratings,
-    SellerPayout,
     Order,
     OrderCreate,
+    OrderItem,
+    OrderStatusEnum,
+    PaymentStatusEnum,
+    Product,
+    ProductCreate,
+    Ratings,
+    SellerDeliveryOption,
+    SellerPayout,
+    Taxes,
     User,
     UserCreate,
     UserRole,
 )
-
 
 # ============================================================================
 # ADDRESS TESTS
@@ -69,7 +69,7 @@ def test_address_postal_code_validation():
         country="Canada",
     )
     assert address1.postalCode == "M5V 3A8"
-    
+
     address2 = Address(
         street="123 Main St",
         city="Toronto",
@@ -78,7 +78,7 @@ def test_address_postal_code_validation():
         country="Canada",
     )
     assert " " in address2.postalCode  # Should normalize with space
-    
+
     # Invalid postal code
     with pytest.raises(ValidationError):
         Address(
@@ -101,7 +101,7 @@ def test_address_province_validation():
         country="Canada",
     )
     assert address.state == "QC"  # Should be uppercase
-    
+
     # Invalid province
     with pytest.raises(ValidationError):
         Address(
@@ -125,7 +125,7 @@ def test_address_phone_validation():
         phoneNumber="(416) 555-1234",  # Formatted phone
     )
     assert address.phoneNumber == "4165551234"  # Should be digits only
-    
+
     # Invalid phone (too short)
     with pytest.raises(ValidationError):
         Address(
@@ -151,7 +151,7 @@ def test_product_valid():
         postalCode="M5V 3A8",
         country="Canada",
     )
-    
+
     product = Product(
         productId="prod_123",
         name="Organic Apples",
@@ -166,7 +166,7 @@ def test_product_valid():
         dateCreated=datetime.now(),
         isActive=True,
     )
-    
+
     assert product.name == "Organic Apples"
     assert product.price == 4.99
     assert product.categoryId == 1
@@ -181,7 +181,7 @@ def test_product_price_validation():
         postalCode="M5V 3A8",
         country="Canada",
     )
-    
+
     # Invalid: negative price
     with pytest.raises(ValidationError):
         Product(
@@ -196,7 +196,7 @@ def test_product_price_validation():
             stockQuantity=100,
             dateCreated=datetime.now(),
         )
-    
+
     # Invalid: zero price
     with pytest.raises(ValidationError):
         Product(
@@ -222,7 +222,7 @@ def test_product_category_validation():
         postalCode="M5V 3A8",
         country="Canada",
     )
-    
+
     # Invalid: category 0
     with pytest.raises(ValidationError):
         Product(
@@ -237,7 +237,7 @@ def test_product_category_validation():
             stockQuantity=100,
             dateCreated=datetime.now(),
         )
-    
+
     # Invalid: category 22
     with pytest.raises(ValidationError):
         Product(
@@ -263,7 +263,7 @@ def test_product_image_urls_validation():
         postalCode="M5V 3A8",
         country="Canada",
     )
-    
+
     # Invalid: invalid URL
     with pytest.raises(ValidationError):
         Product(
@@ -288,7 +288,7 @@ def test_taxes_total_calculation():
     """Test taxes total calculation"""
     taxes = Taxes(GST=2.5, PST=3.5, HST=0.0, QST=0.0)
     assert taxes.total() == 6.0
-    
+
     taxes2 = Taxes(GST=0.0, PST=0.0, HST=13.0, QST=0.0)
     assert taxes2.total() == 13.0
 
@@ -316,7 +316,7 @@ def test_order_item_subtotal_calculation():
         postalCode="M5V 3A8",
         country="Canada",
     )
-    
+
     item = OrderItem(
         productId="prod_123",
         name="Organic Apples",
@@ -327,7 +327,7 @@ def test_order_item_subtotal_calculation():
         sellerId="seller_123",
         sellerAddress=address,
     )
-    
+
     assert item.subtotal() == 14.97  # 4.99 * 3
 
 
@@ -380,7 +380,7 @@ def test_user_valid():
         roles=[UserRole.BUYER],
         createdAt=datetime.now(),
     )
-    
+
     assert user.uid == "user_123"
     assert user.email == "user@example.com"
     assert UserRole.BUYER in user.roles
@@ -422,7 +422,7 @@ def test_user_roles_validation():
         createdAt=datetime.now(),
     )
     assert len(user.roles) == 2
-    
+
     # Invalid: empty roles
     with pytest.raises(ValidationError):
         User(
@@ -447,7 +447,7 @@ def test_user_helper_methods():
     assert not buyer.is_seller()
     assert not buyer.is_admin()
     assert not buyer.can_sell()
-    
+
     # Seller (onboarding incomplete)
     seller_incomplete = User(
         uid="user_123",
@@ -459,7 +459,7 @@ def test_user_helper_methods():
     )
     assert seller_incomplete.is_seller()
     assert not seller_incomplete.can_sell()  # Onboarding not complete
-    
+
     # Seller (onboarding complete)
     seller_complete = User(
         uid="user_123",
@@ -471,7 +471,7 @@ def test_user_helper_methods():
     )
     assert seller_complete.is_seller()
     assert seller_complete.can_sell()
-    
+
     # Admin
     admin = User(
         uid="user_123",
@@ -496,12 +496,12 @@ def test_address_json_serialization():
         postalCode="M5V 3A8",
         country="Canada",
     )
-    
+
     # Serialize to JSON
     json_data = address.model_dump()
     assert json_data["street"] == "123 Main Street"
     assert json_data["city"] == "Toronto"
-    
+
     # Deserialize from JSON
     address2 = Address(**json_data)
     assert address2.street == address.street
@@ -517,7 +517,7 @@ def test_product_json_serialization():
         postalCode="M5V 3A8",
         country="Canada",
     )
-    
+
     product = Product(
         productId="prod_123",
         name="Organic Apples",
@@ -530,12 +530,12 @@ def test_product_json_serialization():
         stockQuantity=100,
         dateCreated=datetime.now(),
     )
-    
+
     # Serialize to JSON
     json_data = product.model_dump()
     assert json_data["name"] == "Organic Apples"
     assert json_data["price"] == 4.99
-    
+
     # Deserialize from JSON
     product2 = Product(**json_data)
     assert product2.name == product.name

@@ -11,18 +11,19 @@ Pour exécuter:
     pytest test_webhook_security.py -v
 """
 
-import pytest
-import hmac
 import hashlib
+import hmac
 import json
 import time
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 
 class TestStripeWebhookSecurity:
     """Tests de sécurité pour le webhook Stripe"""
-    
+
     def test_missing_signature_returns_400(self):
         """
         SÉCURITÉ: Webhook sans signature doit être rejeté
@@ -48,7 +49,7 @@ class TestStripeWebhookSecurity:
             # Assert
             assert response.status_code == 400
             assert "Missing signature" in response.response[0].decode()
-    
+
     def test_invalid_signature_returns_400(self, mock_firestore_client):
         """
         SÉCURITÉ: Webhook avec signature invalide doit être rejeté
@@ -57,6 +58,7 @@ class TestStripeWebhookSecurity:
         Attendu: HTTP 400 Bad Request
         """
         import stripe
+
         from handlers import payment_stripe
 
         # Arrange
@@ -82,7 +84,7 @@ class TestStripeWebhookSecurity:
             # Assert
             assert response.status_code == 400
             assert "Invalid signature" in response.response[0].decode()
-    
+
     def test_rate_limiting_blocks_after_100_requests(self, mock_firestore_client):
         """
         SÉCURITÉ: Rate limiting doit bloquer après 100 requêtes/minute
@@ -105,15 +107,15 @@ class TestStripeWebhookSecurity:
             mock_limiter.return_value.check_rate_limit = Mock(
                 return_value=(False, "Rate limit exceeded")
             )
-            
+
             # Act
             from handlers.payment_stripe import stripe_webhook
             response = stripe_webhook(mock_request)
-            
+
             # Assert
             assert response.status_code == 429
             assert "Rate limit exceeded" in response.response[0].decode()
-    
+
     def test_idempotency_prevents_duplicate_processing(self):
         """
         SÉCURITÉ: Idempotency doit empêcher le traitement en double
@@ -159,7 +161,7 @@ class TestStripeWebhookSecurity:
             # Assert
             assert response.status_code == 200
             assert "already processed" in response.response[0].decode().lower()
-    
+
     def test_error_sanitization_hides_sensitive_info(self, mock_firestore_client):
         """
         SÉCURITÉ: Erreurs ne doivent PAS exposer d'informations sensibles
@@ -192,12 +194,12 @@ class TestStripeWebhookSecurity:
             # Assert
             assert response.status_code in [400, 500]
             response_text = response.response[0].decode()
-        
+
         # NE DOIT PAS contenir:
         assert "Traceback" not in response_text
         assert "Exception" not in response_text
         assert "STRIPE_WEBHOOK_SECRET" not in response_text
-        
+
         # DOIT contenir message générique:
         assert any(term in response_text.lower() for term in [
             "invalid", "error", "bad request", "internal"
@@ -206,7 +208,7 @@ class TestStripeWebhookSecurity:
 
 class TestAirwallexWebhookSecurity:
     """Tests de sécurité pour le webhook Airwallex"""
-    
+
     def test_signature_verification_implemented(self):
         """
         CRITIQUE: Vérifier que la signature est VÉRIFIÉE (correction du bug)
@@ -256,7 +258,7 @@ class TestAirwallexWebhookSecurity:
                 'test_signature',
                 timestamp='1700000000',
             )
-    
+
     def test_json_parsing_after_signature_verification(self):
         """
         SÉCURITÉ: JSON ne doit être parsé QU'APRÈS vérification de signature
@@ -293,7 +295,7 @@ class TestAirwallexWebhookSecurity:
             assert response.status_code == 400
             assert "Invalid signature" in response.response[0].decode()
             # Si JSON avait été parsé avant, on aurait une erreur différente
-    
+
     def test_rate_limiting_protects_against_ddos(self):
         """
         SÉCURITÉ: Rate limiting protège contre DDoS
@@ -329,20 +331,20 @@ class TestAirwallexWebhookSecurity:
 
 class TestWebhookSignatureCryptography:
     """Tests de cryptographie pour les signatures"""
-    
+
     def test_stripe_hmac_sha256_timing_safe(self):
         """
         SÉCURITÉ: Signature Stripe utilise HMAC-SHA256 timing-safe
-        
+
         Protection contre timing attacks
         """
         import stripe
-        
+
         # Arrange
         secret = "STRIPE_WEBHOOK_SECRET_REDACTED"
         payload = b'{"id": "evt_test"}'
         timestamp = int(time.time())
-        
+
         # Compute expected signature (Stripe format)
         signed_payload = f"{timestamp}.{payload.decode()}".encode()
         expected_sig = hmac.new(
@@ -350,9 +352,9 @@ class TestWebhookSignatureCryptography:
             signed_payload,
             hashlib.sha256
         ).hexdigest()
-        
+
         sig_header = f"t={timestamp},v1={expected_sig}"
-        
+
         # Act & Assert
         try:
             event = stripe.Webhook.construct_event(
@@ -362,7 +364,7 @@ class TestWebhookSignatureCryptography:
             assert event is not None
         except stripe.error.SignatureVerificationError:
             pytest.fail("Signature valide rejetée")
-    
+
     def test_airwallex_hmac_sha256_hex_encoding(self):
         """
         SÉCURITÉ: Signature Airwallex HMAC-SHA256 (hex encoding)
@@ -370,7 +372,7 @@ class TestWebhookSignatureCryptography:
         # Arrange
         secret = "airwallex_webhook_secret_xyz"
         payload = b'{"id": "evt_test", "name": "payment_intent.succeeded"}'
-        
+
         # Compute signature (hex encoding)
         computed_digest = hmac.new(
             secret.encode('utf-8'),
@@ -378,26 +380,26 @@ class TestWebhookSignatureCryptography:
             hashlib.sha256
         )
         expected_sig_hex = computed_digest.hexdigest()
-        
+
         # Act - Simulate verification
         is_valid = hmac.compare_digest(
             computed_digest.hexdigest(),
             expected_sig_hex
         )
-        
+
         # Assert
         assert is_valid is True
-    
+
     def test_airwallex_hmac_sha256_base64_encoding(self):
         """
         SÉCURITÉ: Signature Airwallex HMAC-SHA256 (base64 encoding)
         """
         import base64
-        
+
         # Arrange
         secret = "airwallex_webhook_secret_xyz"
         payload = b'{"id": "evt_test", "name": "payment_intent.succeeded"}'
-        
+
         # Compute signature (base64 encoding)
         computed_digest = hmac.new(
             secret.encode('utf-8'),
@@ -405,33 +407,33 @@ class TestWebhookSignatureCryptography:
             hashlib.sha256
         ).digest()
         expected_sig_b64 = base64.b64encode(computed_digest).decode()
-        
+
         # Act - Simulate verification
         decoded = base64.b64decode(expected_sig_b64)
         is_valid = hmac.compare_digest(computed_digest, decoded)
-        
+
         # Assert
         assert is_valid is True
 
 
 class TestRateLimiterSecurity:
     """Tests de sécurité du rate limiter"""
-    
+
     def test_rate_limiter_uses_firestore_transaction(self):
         """
         SÉCURITÉ: Rate limiter doit utiliser des transactions atomiques
-        
+
         Protection contre race conditions
         """
         from rate_limiter import RateLimiter
-        
+
         # Arrange
         mock_db = Mock()
         mock_transaction = Mock()
         mock_db.transaction = Mock(return_value=mock_transaction)
-        
+
         limiter = RateLimiter(mock_db)
-        
+
         # Act
         allowed, message = limiter.check_rate_limit(
             identifier="test_user",
@@ -440,24 +442,24 @@ class TestRateLimiterSecurity:
             window_minutes=1,
             fail_closed=True
         )
-        
+
         # Assert - Transaction doit être utilisée
         assert mock_db.transaction.called
-    
+
     def test_rate_limiter_fail_closed_for_security(self):
         """
         SÉCURITÉ: Rate limiter fail-closed pour actions critiques
-        
+
         En cas d'erreur, doit bloquer (pas autoriser)
         """
         from rate_limiter import RateLimiter
-        
+
         # Arrange
         mock_db = Mock()
         mock_db.transaction = Mock(side_effect=Exception("Firestore down"))
-        
+
         limiter = RateLimiter(mock_db)
-        
+
         # Act
         allowed, message = limiter.check_rate_limit(
             identifier="test_user",
@@ -466,25 +468,25 @@ class TestRateLimiterSecurity:
             window_minutes=1,
             fail_closed=True  # CRITIQUE: fail-closed
         )
-        
+
         # Assert - Doit bloquer en cas d'erreur
         assert allowed is False
         assert "blocked for security" in message.lower()
-    
+
     def test_rate_limiter_fail_open_for_ux(self):
         """
         UX: Rate limiter fail-open pour actions non-critiques
-        
+
         En cas d'erreur, autoriser (ne pas bloquer utilisateurs légitimes)
         """
         from rate_limiter import RateLimiter
-        
+
         # Arrange
         mock_db = Mock()
         mock_db.transaction = Mock(side_effect=Exception("Firestore down"))
-        
+
         limiter = RateLimiter(mock_db)
-        
+
         # Act
         allowed, message = limiter.check_rate_limit(
             identifier="test_user",
@@ -493,25 +495,25 @@ class TestRateLimiterSecurity:
             window_minutes=1,
             fail_closed=False  # Fail-open pour UX
         )
-        
+
         # Assert - Doit autoriser en cas d'erreur
         assert allowed is True
 
 
 class TestAuditTrailSecurity:
     """Tests de l'audit trail"""
-    
+
     def test_webhook_event_logs_client_ip(self):
         """
         SÉCURITÉ: Webhook events doivent logger l'IP client
-        
+
         Pour traçabilité et forensics
         """
         # Arrange
         mock_db = Mock()
         mock_webhook_ref = Mock()
         mock_db.collection.return_value.document.return_value = mock_webhook_ref
-        
+
         event_data = {
             'provider': 'stripe',
             'type': 'checkout.session.completed',
@@ -521,28 +523,28 @@ class TestAuditTrailSecurity:
             'event_id': 'evt_123',
             'order_id': 'order_456'
         }
-        
+
         # Act
         mock_webhook_ref.set(event_data)
-        
+
         # Assert
         mock_webhook_ref.set.assert_called_once()
         logged_data = mock_webhook_ref.set.call_args[0][0]
         assert 'client_ip' in logged_data
         assert logged_data['client_ip'] == '192.168.1.1'
-    
+
     def test_ip_sanitization_in_logs(self):
         """
         SÉCURITÉ: IP dans les logs doit être tronqué (GDPR)
-        
+
         Log: "192.168.1..." pas "192.168.1.100"
         """
         # Arrange
         full_ip = "192.168.1.100"
-        
+
         # Act - Simuler la sanitization
         sanitized_ip = full_ip[:10] + "..."
-        
+
         # Assert
         assert sanitized_ip == "192.168.1...."
         assert len(sanitized_ip) <= 13  # 10 chars + "..."
@@ -550,11 +552,11 @@ class TestAuditTrailSecurity:
 
 class TestErrorSanitization:
     """Tests de sanitization des erreurs"""
-    
+
     def test_exception_type_only_logged(self):
         """
         SÉCURITÉ: Logs doivent contenir le TYPE d'erreur uniquement
-        
+
         Pas le message (peut contenir des secrets)
         """
         # Arrange
@@ -563,23 +565,22 @@ class TestErrorSanitization:
         except Exception as e:
             # Act - Simuler le logging sanitizé
             error_type = type(e).__name__
-            
+
             # Assert
             assert error_type == "ValueError"
             assert "sk_live" not in error_type  # Secret PAS dans le log
-    
+
     def test_generic_error_message_to_client(self):
         """
         SÉCURITÉ: Réponse client doit être générique
-        
+
         Pas d'exposition de détails internes
         """
         # Arrange
-        internal_error = "Database connection failed: password='secret123'"
-        
+
         # Act - Simuler la réponse sanitizée
         client_response = "Internal processing error"
-        
+
         # Assert
         assert "secret" not in client_response.lower()
         assert "password" not in client_response.lower()
@@ -590,12 +591,12 @@ class TestErrorSanitization:
 
 class TestWebhookSecurityIntegration:
     """Tests d'intégration de bout en bout"""
-    
+
     @pytest.mark.integration
     def test_complete_stripe_webhook_flow_secure(self):
         """
         TEST INTÉGRATION: Flow complet Stripe avec toutes les protections
-        
+
         1. Rate limiting
         2. Signature verification
         3. Idempotency
@@ -605,12 +606,12 @@ class TestWebhookSecurityIntegration:
         # Ce test nécessite un environnement de test complet
         # À implémenter avec fixtures Firestore
         pass
-    
+
     @pytest.mark.integration
     def test_complete_airwallex_webhook_flow_secure(self):
         """
         TEST INTÉGRATION: Flow complet Airwallex avec toutes les protections
-        
+
         1. Rate limiting
         2. Signature verification (NOUVEAU!)
         3. JSON parsing (après signature)
@@ -631,10 +632,10 @@ def mock_firestore_db():
     mock_db = Mock()
     mock_collection = Mock()
     mock_document = Mock()
-    
+
     mock_db.collection.return_value = mock_collection
     mock_collection.document.return_value = mock_document
-    
+
     return mock_db
 
 
@@ -644,14 +645,14 @@ def valid_stripe_signature():
     secret = "STRIPE_WEBHOOK_SECRET_REDACTED"
     payload = b'{"id": "evt_test", "type": "test"}'
     timestamp = int(time.time())
-    
+
     signed_payload = f"{timestamp}.{payload.decode()}".encode()
     signature = hmac.new(
         secret.encode(),
         signed_payload,
         hashlib.sha256
     ).hexdigest()
-    
+
     return f"t={timestamp},v1={signature}"
 
 
@@ -660,13 +661,13 @@ def valid_airwallex_signature():
     """Génère une signature Airwallex valide pour tests"""
     secret = "airwallex_webhook_secret"
     payload = b'{"id": "evt_test", "name": "payment_intent.succeeded"}'
-    
+
     signature = hmac.new(
         secret.encode(),
         payload,
         hashlib.sha256
     ).hexdigest()
-    
+
     return signature
 
 

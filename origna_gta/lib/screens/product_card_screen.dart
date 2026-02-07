@@ -63,7 +63,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
       },
       child: Container(
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E32) : Colors.white,
+          color: isDark ? DesignTokens.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(isCompact ? 12 : 16),
           border: Border.all(
             color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.transparent,
@@ -193,11 +193,11 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.star, size: isCompact ? 12 : 14, color: Colors.amber[700]),
+                        Icon(Icons.star, size: isCompact ? 12 : 14, color: DesignTokens.warning),
                         const SizedBox(width: 2),
                         Text(
                           rating.toStringAsFixed(1),
-                          style: TextStyle(fontSize: isCompact ? 10 : 12, color: Colors.grey[600]),
+                          style: TextStyle(fontSize: isCompact ? 10 : 12, color: DesignTokens.textSecondary),
                         ),
                       ],
                     ),
@@ -231,7 +231,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                                   messanger.showSnackBar(
                                     SnackBar(
                                       content: Text(success ? 'Added to cart' : 'Failed to add to cart'),
-                                      backgroundColor: success ? Colors.green : Colors.red,
+                                      backgroundColor: success ? DesignTokens.success : DesignTokens.error,
                                     ),
                                   );
                                 }
@@ -304,10 +304,10 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
     if (!mounted) return;
 
     if (success) {
-      messenger.showSnackBar(const SnackBar(content: Text('Product deleted successfully'), backgroundColor: Colors.green));
+      messenger.showSnackBar(const SnackBar(content: Text('Product deleted successfully'), backgroundColor: DesignTokens.success));
     } else {
       final error = ref.read(productActionsViewModelProvider).errorMessage ?? 'Error deleting product';
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
     }
   }
 
@@ -351,7 +351,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
       await ref.read(favoritesControllerProvider).toggleFavorite(widget.productId);
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(SnackBar(content: Text('Error updating favorites: $e'), backgroundColor: Colors.red[700]));
+        messenger.showSnackBar(SnackBar(content: Text('Error updating favorites: $e'), backgroundColor: DesignTokens.error));
       }
     }
   }

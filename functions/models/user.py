@@ -3,8 +3,8 @@ User models for OrignaGTA
 """
 
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, Field, EmailStr, field_validator, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .base import Address, UserRole
 
@@ -42,12 +42,12 @@ class User(BaseModel):
         max_length=60,
         description="User display name"
     )
-    roles: List[UserRole] = Field(
+    roles: list[UserRole] = Field(
         ...,
         min_length=1,
         description="User roles (buyer, seller, admin)"
     )
-    address: Optional[Address] = Field(
+    address: Address | None = Field(
         default=None,
         description="User's default address"
     )
@@ -55,27 +55,27 @@ class User(BaseModel):
         default_factory=datetime.now,
         description="Account creation timestamp"
     )
-    
+
     # Stripe information
-    customerId: Optional[str] = Field(
+    customerId: str | None = Field(
         default=None,
         description="Stripe Customer ID for payments"
     )
-    lastCheckoutSession: Optional[str] = Field(
+    lastCheckoutSession: str | None = Field(
         default=None,
         description="Last Stripe Checkout Session ID"
     )
-    lastOrderId: Optional[str] = Field(
+    lastOrderId: str | None = Field(
         default=None,
         description="Last created order ID"
     )
-    lastCheckoutTimestamp: Optional[datetime] = Field(
+    lastCheckoutTimestamp: datetime | None = Field(
         default=None,
         description="Timestamp of last checkout"
     )
-    
+
     # Seller information (Stripe Connect)
-    stripeAccountId: Optional[str] = Field(
+    stripeAccountId: str | None = Field(
         default=None,
         description="Stripe Connect account ID (for sellers)"
     )
@@ -91,29 +91,29 @@ class User(BaseModel):
         default=False,
         description="Whether Stripe Connect onboarding is complete"
     )
-    
+
     # Account status
     suspended: bool = Field(
         default=False,
         description="Whether account is suspended"
     )
-    suspendedAt: Optional[datetime] = Field(
+    suspendedAt: datetime | None = Field(
         default=None,
         description="When account was suspended"
     )
-    paymentProvider: Optional[str] = Field(
+    paymentProvider: str | None = Field(
         default="stripe",
         description="Payment provider for seller payouts (stripe or airwallex)"
     )
-    airwallexAccountId: Optional[str] = Field(
+    airwallexAccountId: str | None = Field(
         default=None,
         description="Airwallex connected account ID"
     )
-    airwallexCustomerId: Optional[str] = Field(
+    airwallexCustomerId: str | None = Field(
         default=None,
         description="Airwallex customer ID"
     )
-    airwallexStatus: Optional[str] = Field(
+    airwallexStatus: str | None = Field(
         default=None,
         description="Airwallex account status"
     )
@@ -121,19 +121,19 @@ class User(BaseModel):
         default=False,
         description="Whether admin MFA is enabled"
     )
-    adminMfaSecret: Optional[str] = Field(
+    adminMfaSecret: str | None = Field(
         default=None,
         description="Admin TOTP secret (server-only)"
     )
-    adminMfaVerifiedAt: Optional[datetime] = Field(
+    adminMfaVerifiedAt: datetime | None = Field(
         default=None,
         description="Last successful admin MFA verification"
     )
-    adminMfaBackupCodes: Optional[List[str]] = Field(
+    adminMfaBackupCodes: list[str] | None = Field(
         default=None,
         description="One-time admin MFA backup codes"
     )
-    updatedAt: Optional[datetime] = Field(
+    updatedAt: datetime | None = Field(
         default=None,
         description="Last update timestamp"
     )
@@ -151,7 +151,7 @@ class User(BaseModel):
 
     @field_validator("roles")
     @classmethod
-    def validate_roles(cls, v: List[UserRole]) -> List[UserRole]:
+    def validate_roles(cls, v: list[UserRole]) -> list[UserRole]:
         """Ensure at least one role is assigned"""
         if not v:
             raise ValueError("At least one role must be assigned")
@@ -177,5 +177,5 @@ class UserCreate(BaseModel):
     """
     email: EmailStr
     name: str = Field(..., min_length=2, max_length=60)
-    roles: List[UserRole] = Field(default=[UserRole.BUYER])
-    address: Optional[Address] = None
+    roles: list[UserRole] = Field(default=[UserRole.BUYER])
+    address: Address | None = None

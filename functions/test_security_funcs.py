@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from utils import sanitized_text, sanitize_path
+from utils import sanitize_path, sanitized_text
 
 # Test XSS avec différents vecteurs d'attaque
 tests_xss = [
@@ -17,7 +17,7 @@ for test in tests_xss:
     has_iframe = '<iframe>' in result
     has_js = 'javascript:' in result
     has_onerror = 'onerror=' in result
-    
+
     if has_script or has_iframe or has_js or has_onerror:
         print(f'❌ FAIL: {repr(test)} -> {repr(result)}')
     else:
@@ -36,7 +36,7 @@ for test in tests_path:
     result = sanitize_path(test)
     has_dots = '..' in result
     has_slash = '/' in result or '\\' in result
-    
+
     if has_dots or has_slash:
         print(f'❌ FAIL: {repr(test)} -> {repr(result)}')
     else:

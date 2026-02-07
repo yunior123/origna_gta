@@ -6,17 +6,17 @@ Admin & User Management Handlers
 - Account deletion
 """
 
-from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS, CRON_OPTIONS
-from firebase_functions import https_fn
-from firebase_admin import auth
-import pyotp
-from typing import Dict, Any
 from datetime import datetime, timedelta
+from typing import Any
 
-from datetime import datetime, timedelta
+import pyotp
+from firebase_admin import auth
+from firebase_functions import https_fn
+
 from config import Collections
-from schema_constants import Fields, UserRoleValues, OrderStatusValues, PayoutStatusValues, ApiKeys
-from utils import create_success_response, create_error_response
+from function_options import DEFAULT_OPTIONS
+from schema_constants import ApiKeys, Fields, OrderStatusValues, PayoutStatusValues, UserRoleValues
+from utils import create_success_response
 
 _db = None
 _firestore = None
@@ -38,6 +38,14 @@ def get_server_timestamp():
         _firestore = fs
     return _firestore.SERVER_TIMESTAMP
 
+def get_firestore():
+    """Get Firestore module (lazy initialization)."""
+    global _firestore
+    if _firestore is None:
+        from firebase_admin import firestore as fs
+        _firestore = fs
+    return _firestore
+
 def get_delete_field():
     """Get Firestore DELETE_FIELD (lazy initialization)."""
     global _firestore
@@ -47,13 +55,13 @@ def get_delete_field():
     return _firestore.DELETE_FIELD
 
 
-def _require_recent_admin_mfa(admin_data: Dict[str, Any]) -> None:
+def _require_recent_admin_mfa(admin_data: dict[str, Any]) -> None:
     """
     Requires admin to have verified MFA within the last 5 minutes.
-    
+
     Args:
         admin_data: Admin user document data
-    
+
     Raises:
         https_fn.HttpsError: If MFA not verified or expired
     """
@@ -62,19 +70,19 @@ def _require_recent_admin_mfa(admin_data: Dict[str, Any]) -> None:
             'failed-precondition',
             'Admin MFA is not enabled. Please enable MFA before performing sensitive operations.'
         )
-    
+
     last_mfa_verify = admin_data.get(Fields.LAST_MFA_VERIFY)
-    
+
     if not last_mfa_verify:
         raise https_fn.HttpsError(
             'permission-denied',
             'MFA verification required. Please verify your MFA code first.'
         )
-    
+
     # Check if MFA was verified within last 5 minutes
     now = datetime.now()
     time_diff = now - last_mfa_verify.replace(tzinfo=None)
-    
+
     if time_diff > timedelta(minutes=5):
         raise https_fn.HttpsError(
             'permission-denied',
@@ -83,80 +91,80 @@ def _require_recent_admin_mfa(admin_data: Dict[str, Any]) -> None:
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
-def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
+def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Updates user roles (admin only with MFA).
-    
+
     Security:
     - Admin only
     - Requires recent MFA verification (< 5 min)
     - Cannot modify own roles
     - Logs all role changes in security_alerts
-    
+
     Request data:
         targetUserId: User ID to modify
         roles: Array of roles ["buyer", "seller", "admin"]
-    
+
     Returns:
         {success: True, newRoles: [...]}
     """
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
-    
+
     admin_id = req.auth.uid
     data = req.data
-    
+
     target_user_id_raw = data.get('targetUserId')
     new_roles = data.get(Fields.ROLES, [])
-    
+
     # Import validation functions
     from utils import sanitized_text
-    
+
     # Sanitize targetUserId (should be alphanumeric)
     target_user_id = sanitized_text(target_user_id_raw) if target_user_id_raw else None
-    
+
     if not target_user_id:
         raise https_fn.HttpsError('invalid-argument', 'targetUserId required')
-    
+
     if not isinstance(new_roles, list):
         raise https_fn.HttpsError('invalid-argument', 'roles must be an array')
-    
+
     # Validate roles
     valid_roles = ['buyer', 'seller', 'admin']
     for role in new_roles:
         if role not in valid_roles:
             raise https_fn.HttpsError('invalid-argument', f'Invalid role: {role}')
-    
+
     # Check admin permissions
     admin_ref = get_db().collection(Collections.USERS).document(admin_id)
     admin_doc = admin_ref.get()
-    
+
     if not admin_doc.exists:
         raise https_fn.HttpsError('not-found', 'Admin user not found')
-    
+
     admin_data = admin_doc.to_dict()
-    
-    
+
+
     if UserRoleValues.ADMIN not in admin_data.get(Fields.ROLES, []):
         raise https_fn.HttpsError('permission-denied', 'Admin role required')
-    
+
     # Require recent MFA verification for sensitive operation
     _require_recent_admin_mfa(admin_data)
-    
+
     # Cannot modify own roles
     if admin_id == target_user_id:
         raise https_fn.HttpsError('permission-denied', 'Cannot modify your own roles')
-    
+
     # Get target user
     target_user_ref = get_db().collection(Collections.USERS).document(target_user_id)
     target_user_doc = target_user_ref.get()
-    
+
     if not target_user_doc.exists:
         raise https_fn.HttpsError('not-found', 'Target user not found')
-    
+
     target_user_data = target_user_doc.to_dict()
     old_roles = target_user_data.get('roles', [])
-    
+
     # Update roles
     target_user_ref.update({
         Fields.ROLES: new_roles,
@@ -164,7 +172,7 @@ def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
         Fields.LAST_ROLE_UPDATE: get_server_timestamp(),
         Fields.LAST_ROLE_UPDATE_BY: admin_id
     })
-    
+
     # Update custom claims in Firebase Auth
     try:
         custom_claims = {
@@ -175,7 +183,7 @@ def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
         auth.set_custom_user_claims(target_user_id, custom_claims)
     except Exception as e:
         print(f'Failed to set custom claims: {str(e)}')
-    
+
     # Log security alert
     get_db().collection(Collections.SECURITY_ALERTS).add({
         'type': 'role_change',
@@ -187,76 +195,76 @@ def update_user_roles(req: https_fn.CallableRequest) -> Dict[str, Any]:
         'timestamp': get_server_timestamp(),
         'resolved': True
     })
-    
+
     return create_success_response({'newRoles': new_roles})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
-def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
+def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Suspends a seller account (admin only with MFA).
-    
+
     Actions:
     - Marks user as suspended
     - Deactivates all seller's products
     - Cancels all pending/confirmed orders
     - Creates security alert
-    
+
     Request data:
         sellerId: User ID to suspend
         reason: Suspension reason
-    
+
     Returns:
         {success: True, message: "Seller suspended"}
     """
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
-    
+
     admin_id = req.auth.uid
     data = req.data
-    
+
     # Import validation functions
     from utils import sanitized_text
-    
+
     seller_id_raw = data.get(Fields.SELLER_ID)
     reason_raw = data.get(ApiKeys.REASON, 'Policy violation')
-    
+
     # Sanitize inputs
     seller_id = sanitized_text(seller_id_raw) if seller_id_raw else None
     reason = sanitized_text(reason_raw)[:500]  # Max 500 chars
-    
+
     if not seller_id:
         raise https_fn.HttpsError('invalid-argument', 'sellerId required')
-    
+
     # Check admin permissions
     admin_ref = get_db().collection(Collections.USERS).document(admin_id)
     admin_doc = admin_ref.get()
-    
+
     if not admin_doc.exists:
         raise https_fn.HttpsError('not-found', 'Admin user not found')
-    
+
     admin_data = admin_doc.to_dict()
-    
-    
+
+
     if UserRoleValues.ADMIN not in admin_data.get(Fields.ROLES, []):
         raise https_fn.HttpsError('permission-denied', 'Admin role required')
-    
+
     # Require recent MFA verification
     _require_recent_admin_mfa(admin_data)
-    
+
     # Cannot suspend admin
     if admin_id == seller_id:
         raise https_fn.HttpsError('permission-denied', 'Cannot suspend yourself')
-    
+
     # Get seller
     seller_ref = get_db().collection(Collections.USERS).document(seller_id)
     seller_doc = seller_ref.get()
-    
+
     if not seller_doc.exists:
         raise https_fn.HttpsError('not-found', 'Seller not found')
-    
-    seller_data = seller_doc.to_dict()
-    
+
+    seller_doc.to_dict()
+
     # Suspend seller
     seller_ref.update({
         Fields.SUSPENDED: True,
@@ -265,18 +273,18 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
         Fields.SUSPENSION_REASON: reason,
         Fields.UPDATED_AT: get_server_timestamp()
     })
-    
+
     # Deactivate all seller's products (with safety limit)
     products = get_db().collection(Collections.PRODUCTS)\
         .where(Fields.SELLER_ID, '==', seller_id)\
         .where(Fields.IS_ACTIVE, '==', True)\
         .limit(500)\
         .stream()
-    
+
     product_count = 0
     batch = get_db().batch()
     batch_count = 0
-    
+
     for product_doc in products:
         batch.update(product_doc.reference, {
             Fields.IS_ACTIVE: False,
@@ -284,41 +292,41 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
         })
         product_count += 1
         batch_count += 1
-        
+
         # Commit batch every 500 operations (Firestore limit)
         if batch_count >= 500:
             batch.commit()
             batch = get_db().batch()
             batch_count = 0
-    
+
     # Commit remaining operations
     if batch_count > 0:
         batch.commit()
-    
+
     # Cancel all pending/confirmed orders (with safety limit)
     orders = get_db().collection(Collections.ORDERS)\
         .where(f'{Fields.ITEMS}.{Fields.SELLER_ID}', 'array_contains', seller_id)\
         .where(Fields.ORDER_STATUS, 'in', [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING])\
         .limit(200)\
         .stream()
-    
+
     order_count = 0
     # Collect product IDs to update in batch
     product_updates = {}  # {productId: quantity_to_restore}
-    
+
     order_batch = get_db().batch()
     order_batch_count = 0
-    
+
     for order_doc in orders:
         order_data = order_doc.to_dict()
-        
+
         # Accumulate stock restorations
         for item in order_data[Fields.ITEMS]:
             if item[Fields.SELLER_ID] == seller_id:
                 product_id = item[Fields.PRODUCT_ID]
                 quantity = item[Fields.QUANTITY]
                 product_updates[product_id] = product_updates.get(product_id, 0) + quantity
-        
+
         order_batch.update(order_doc.reference, {
             Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
             Fields.CANCELLATION_REASON: f'Seller suspended: {reason}',
@@ -328,36 +336,36 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
         })
         order_count += 1
         order_batch_count += 1
-        
+
         # Commit every 500 operations
         if order_batch_count >= 500:
             order_batch.commit()
             order_batch = get_db().batch()
             order_batch_count = 0
-    
+
     # Commit remaining order updates
     if order_batch_count > 0:
         order_batch.commit()
-    
+
     # Restore stock in batch (avoid N+1 queries)
     if product_updates:
         # Use transaction for stock updates to avoid race conditions
         @get_firestore().transactional
         def restore_stock_batch(transaction):
-            product_refs = [get_db().collection(Collections.PRODUCTS).document(pid) for pid in product_updates.keys()]
+            product_refs = [get_db().collection(Collections.PRODUCTS).document(pid) for pid in product_updates]
             product_snapshots = [transaction.get(ref) for ref in product_refs]
-            
-            for ref, snapshot in zip(product_refs, product_snapshots):
+
+            for ref, snapshot in zip(product_refs, product_snapshots, strict=False):
                 if snapshot.exists:
                     product_data = snapshot.to_dict()
                     current_stock = product_data.get(Fields.STOCK_QUANTITY, 0)
                     quantity_to_restore = product_updates[snapshot.id]
                     transaction.update(ref, {Fields.STOCK_QUANTITY: current_stock + quantity_to_restore})
-        
+
         # Execute transaction
         transaction = get_db().transaction()
         restore_stock_batch(transaction)
-    
+
     # Log security alert
     get_db().collection(Collections.SECURITY_ALERTS).add({
         'type': 'seller_suspended',
@@ -370,7 +378,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
         'timestamp': get_server_timestamp(),
         'resolved': True
     })
-    
+
     return create_success_response({
         'message': 'Seller suspended',
         'productsDeactivated': product_count,
@@ -379,10 +387,10 @@ def suspend_seller(req: https_fn.CallableRequest) -> Dict[str, Any]:
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
-def admin_mfa_enroll(req: https_fn.CallableRequest) -> Dict[str, Any]:
+def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Enrolls admin in MFA (TOTP).
-    
+
     Returns:
         {
             success: True,
@@ -392,30 +400,30 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> Dict[str, Any]:
     """
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
-    
+
     user_id = req.auth.uid
-    
+
     # Check admin role
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
-    
+
     if not user_doc.exists:
         raise https_fn.HttpsError('not-found', 'User not found')
-    
+
     user_data = user_doc.to_dict()
-    
+
     if 'admin' not in user_data.get(Fields.ROLES, []):
         raise https_fn.HttpsError('permission-denied', 'Admin role required')
-    
+
     # Generate TOTP secret
     secret = pyotp.random_base32()
-    
+
     # Save to Firestore (temporary, until verified)
     user_ref.update({
         Fields.MFA_SECRET_TEMP: secret,
         Fields.UPDATED_AT: get_server_timestamp()
     })
-    
+
     # Generate QR code URL
     totp = pyotp.TOTP(secret)
     email = user_data.get(Fields.EMAIL, user_id)
@@ -423,7 +431,7 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> Dict[str, Any]:
         name=email,
         issuer_name='Origna Marketplace'
     )
-    
+
     return create_success_response({
         ApiKeys.SECRET: secret,
         ApiKeys.QR_CODE_URL: qr_code_url
@@ -431,43 +439,43 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> Dict[str, Any]:
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
-def admin_mfa_verify(req: https_fn.CallableRequest) -> Dict[str, Any]:
+def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Verifies MFA code and enables MFA.
-    
+
     Request data:
         code: 6-digit TOTP code
-    
+
     Returns:
         {success: True, mfaEnabled: True}
     """
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
-    
+
     user_id = req.auth.uid
     code = req.data.get(ApiKeys.CODE)
-    
+
     if not code:
         raise https_fn.HttpsError('invalid-argument', 'code required')
-    
+
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
-    
+
     if not user_doc.exists:
         raise https_fn.HttpsError('not-found', 'User not found')
-    
+
     user_data = user_doc.to_dict()
     secret = user_data.get(Fields.MFA_SECRET_TEMP) or user_data.get(Fields.MFA_SECRET)
-    
+
     if not secret:
         raise https_fn.HttpsError('failed-precondition', 'MFA not enrolled. Call admin_mfa_enroll first.')
-    
+
     # Verify code
     totp = pyotp.TOTP(secret)
-    
+
     if not totp.verify(code, valid_window=1):
         raise https_fn.HttpsError('invalid-argument', 'Invalid MFA code')
-    
+
     # Enable MFA
     update_data = {
         Fields.MFA_ENABLED: True,
@@ -475,54 +483,54 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> Dict[str, Any]:
         Fields.LAST_MFA_VERIFY: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp()
     }
-    
+
     # Remove temporary secret
     if Fields.MFA_SECRET_TEMP in user_data:
         update_data[Fields.MFA_SECRET_TEMP] = get_delete_field()
-    
+
     user_ref.update(update_data)
-    
+
     return create_success_response({'mfaEnabled': True})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
-def admin_mfa_disable(req: https_fn.CallableRequest) -> Dict[str, Any]:
+def admin_mfa_disable(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Disables MFA (requires current MFA verification).
-    
+
     Request data:
         code: 6-digit TOTP code
-    
+
     Returns:
         {success: True, mfaEnabled: False}
     """
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
-    
+
     user_id = req.auth.uid
     code = req.data.get(ApiKeys.CODE)
-    
+
     if not code:
         raise https_fn.HttpsError('invalid-argument', 'code required')
-    
+
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
-    
+
     if not user_doc.exists:
         raise https_fn.HttpsError('not-found', 'User not found')
-    
+
     user_data = user_doc.to_dict()
     secret = user_data.get(Fields.MFA_SECRET)
-    
+
     if not secret:
         raise https_fn.HttpsError('failed-precondition', 'MFA not enabled')
-    
+
     # Verify code before disabling
     totp = pyotp.TOTP(secret)
-    
+
     if not totp.verify(code, valid_window=1):
         raise https_fn.HttpsError('invalid-argument', 'Invalid MFA code')
-    
+
     # Disable MFA
     user_ref.update({
         Fields.MFA_ENABLED: False,
@@ -530,35 +538,35 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> Dict[str, Any]:
         Fields.LAST_MFA_VERIFY: get_delete_field(),
         Fields.UPDATED_AT: get_server_timestamp()
     })
-    
+
     return create_success_response({'mfaEnabled': False})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
-def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
+def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Deletes user account (GDPR compliance).
-    
+
     Actions:
     - Deletes Firebase Auth user
     - Anonymizes Firestore data
     - Keeps orders/payouts for accounting (anonymized)
-    
+
     Returns:
         {success: True, message: "Account deleted"}
     """
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
-    
+
     user_id = req.auth.uid
-    
+
     # Check if user has pending orders or payouts (with limit)
     pending_orders = get_db().collection(Collections.ORDERS)\
         .where(Fields.USER_ID, '==', user_id)\
         .where(Fields.ORDER_STATUS, 'in', [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING, OrderStatusValues.SHIPPED])\
         .limit(1)\
         .stream()
-    
+
     # Convert to list with safety check
     pending_orders_list = list(pending_orders)
     if pending_orders_list:
@@ -566,32 +574,32 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
             'failed-precondition',
             'Cannot delete account with pending orders. Please wait for orders to complete.'
         )
-    
+
     # Check if user is a seller with active orders to fulfill
     active_sales = get_db().collection(Collections.ORDERS)\
         .where(Fields.SELLER_IDS, 'array-contains', user_id)\
         .where(Fields.ORDER_STATUS, 'in', [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING, OrderStatusValues.SHIPPED])\
         .limit(1)\
         .stream()
-        
+
     if any(active_sales):
         raise https_fn.HttpsError(
             'failed-precondition',
             'Cannot delete account with active sales to fulfill. Please complete your orders first.'
         )
-    
+
     pending_payouts = get_db().collection(Collections.PAYOUTS)\
         .where(Fields.SELLER_ID, '==', user_id)\
         .where(Fields.STATUS, '==', PayoutStatusValues.PENDING)\
         .limit(1)\
         .stream()
-    
+
     if any(pending_payouts):
         raise https_fn.HttpsError(
             'failed-precondition',
             'Cannot delete account with pending payouts. Please contact support.'
         )
-    
+
     # Anonymize user data
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_ref.update({
@@ -602,36 +610,36 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
         'deleted': True,
         Fields.DELETED_AT: get_server_timestamp()
     })
-    
+
     # Deactivate products (with limit and batch)
     products = get_db().collection(Collections.PRODUCTS)\
         .where(Fields.SELLER_ID, '==', user_id)\
         .limit(500)\
         .stream()
-    
+
     product_batch = get_db().batch()
     product_batch_count = 0
-    
+
     for product_doc in products:
         product_batch.update(product_doc.reference, {
             Fields.IS_ACTIVE: False,
             Fields.DELETED_AT: get_server_timestamp()
         })
         product_batch_count += 1
-        
+
         if product_batch_count >= 500:
             product_batch.commit()
             product_batch = get_db().batch()
             product_batch_count = 0
-    
+
     if product_batch_count > 0:
         product_batch.commit()
-    
+
     # Delete cart and favorites (with limits)
     cart_docs = get_db().collection(Collections.USERS).document(user_id).collection(Collections.CART).limit(500).stream()
     cart_batch = get_db().batch()
     cart_count = 0
-    
+
     for doc in cart_docs:
         cart_batch.delete(doc.reference)
         cart_count += 1
@@ -639,14 +647,14 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
             cart_batch.commit()
             cart_batch = get_db().batch()
             cart_count = 0
-    
+
     if cart_count > 0:
         cart_batch.commit()
-    
+
     favorites_docs = get_db().collection(Collections.USERS).document(user_id).collection(Collections.FAVORITES).limit(500).stream()
     fav_batch = get_db().batch()
     fav_count = 0
-    
+
     for doc in favorites_docs:
         fav_batch.delete(doc.reference)
         fav_count += 1
@@ -654,14 +662,14 @@ def delete_account(req: https_fn.CallableRequest) -> Dict[str, Any]:
             fav_batch.commit()
             fav_batch = get_db().batch()
             fav_count = 0
-    
+
     if fav_count > 0:
         fav_batch.commit()
-    
+
     # Delete Firebase Auth user
     try:
         auth.delete_user(user_id)
     except Exception as e:
         print(f'Failed to delete Auth user: {str(e)}')
-    
+
     return create_success_response({'message': 'Account deleted successfully'})

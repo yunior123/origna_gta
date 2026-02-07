@@ -5,6 +5,7 @@ Test Algolia indexing functionality
 import os
 import sys
 from pathlib import Path
+
 import pytest
 
 # Add parent directory to path for imports
@@ -12,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
     from algoliasearch.search.client import SearchClient
+
     from algolia_service import configure_algolia_index
 except ImportError:
     pass # Will fail in tests if needed
@@ -48,7 +50,7 @@ def test_algolia_credentials(capsys):
     """Check if Algolia credentials are configured"""
     if not ALGOLIA_APP_ID or not ALGOLIA_WRITE_API_KEY:
          pytest.skip("ALGOLIA_APP_ID or ALGOLIA_WRITE_API_KEY not configured")
-    
+
     assert ALGOLIA_APP_ID
     assert ALGOLIA_WRITE_API_KEY
     print(f"✅ Credentials configured: {ALGOLIA_APP_ID}")
@@ -80,18 +82,18 @@ def test_format_product(capsys):
         'isPerishable': False,
         'isLocalDeliveryOnly': False
     }
-    
+
     formatted = format_product_for_algolia('test_product_123', sample_product)
-    
+
     # Verify required fields
     required_fields = [
         'objectID', 'name', 'description', 'price', 'categoryId',
         'sellerId', 'imageUrls', 'stockQuantity'
     ]
-    
+
     for field in required_fields:
         assert field in formatted, f"Missing required field: {field}"
-    
+
     if ALGOLIA_APP_ID and ALGOLIA_WRITE_API_KEY:
         # Test that credentials are valid format (new API: direct constructor)
         client = SearchClient(ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY)
@@ -103,7 +105,7 @@ def test_algolia_configuration(capsys):
     """Test Algolia index configuration"""
     if not ALGOLIA_APP_ID or not ALGOLIA_WRITE_API_KEY:
         pytest.skip("Skipping - credentials not configured")
-    
+
     try:
         configure_algolia_index()
         print("✅ Index configuration successful")
@@ -155,12 +157,12 @@ def test_mock_indexing(capsys):
             }
         }
     ]
-    
+
     formatted_products = []
     for product in sample_products:
         formatted = format_product_for_algolia(product['id'], product['data'])
         formatted_products.append(formatted)
-    
+
     assert len(formatted_products) == 2
     assert formatted_products[0]['objectID'] == 'prod_001'
     print(f"✅ Successfully formatted {len(formatted_products)} products")

@@ -3,11 +3,10 @@ Product models for OrignaGTA
 """
 
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .base import Address
-
 
 # ============================================================================
 # SHIPPING QUANTITY DISCOUNT - Volume-based shipping discounts
@@ -25,7 +24,7 @@ class ShippingQuantityDiscount(BaseModel):
             }
         }
     )
-    
+
     minQuantity: int = Field(
         ...,
         ge=2,
@@ -40,12 +39,12 @@ class ShippingQuantityDiscount(BaseModel):
         ge=0,
         description="Discount value (interpretation depends on discountType)"
     )
-    label: Optional[str] = Field(
+    label: str | None = Field(
         default=None,
         max_length=100,
         description="Optional label for display"
     )
-    
+
     @field_validator("discountType")
     @classmethod
     def validate_discount_type(cls, v: str) -> str:
@@ -93,7 +92,7 @@ class SellerDeliveryOption(BaseModel):
         le=90,
         description="Estimated delivery days"
     )
-    quantityDiscounts: List[ShippingQuantityDiscount] = Field(
+    quantityDiscounts: list[ShippingQuantityDiscount] = Field(
         default_factory=list,
         description="Quantity-based shipping discounts"
     )
@@ -148,22 +147,22 @@ class SupplierInfo(BaseModel):
             }
         }
     )
-    
+
     type: str = Field(
         ...,
         description="Supplier platform: aliexpress, alibaba, 1688, dhgate, temu, amazon_usa, custom, etc."
     )
-    supplierSku: Optional[str] = Field(
+    supplierSku: str | None = Field(
         default=None,
         max_length=100,
         description="Supplier's product SKU"
     )
-    supplierUrl: Optional[str] = Field(
+    supplierUrl: str | None = Field(
         default=None,
         max_length=500,
         description="Direct URL to supplier product"
     )
-    cost: Optional[float] = Field(
+    cost: float | None = Field(
         default=None,
         ge=0,
         le=100000,
@@ -173,7 +172,7 @@ class SupplierInfo(BaseModel):
         default="USD",
         description="Currency of SUPPLIER cost (for tracking). Selling price is always CAD."
     )
-    shippingDays: Optional[str] = Field(
+    shippingDays: str | None = Field(
         default=None,
         max_length=20,
         description="Estimated shipping days range (e.g., '7-15')"
@@ -182,18 +181,18 @@ class SupplierInfo(BaseModel):
         default=False,
         description="Whether supplier provides tracking"
     )
-    notes: Optional[str] = Field(
+    notes: str | None = Field(
         default=None,
         max_length=500,
         description="Internal notes about supplier"
     )
-    
+
     @field_validator("currency")
     @classmethod
     def validate_supplier_currency(cls, v: str) -> str:
         """Validate supplier cost currency (these are for cost tracking, not selling)"""
         valid_currencies = {
-            "CAD", "USD", "EUR", "GBP", "CNY", "JPY", "KRW", 
+            "CAD", "USD", "EUR", "GBP", "CNY", "JPY", "KRW",
             "INR", "AUD", "MXN", "BRL", "HKD", "SGD", "TWD"
         }
         if v.upper() not in valid_currencies:
@@ -218,7 +217,7 @@ class InventoryConfig(BaseModel):
             }
         }
     )
-    
+
     managed: bool = Field(
         default=True,
         description="Whether inventory is actively managed"
@@ -299,7 +298,7 @@ class Product(BaseModel):
         max_length=4000,
         description="Product description"
     )
-    imageUrls: List[str] = Field(
+    imageUrls: list[str] = Field(
         ...,
         min_length=1,
         max_length=5,
@@ -339,33 +338,33 @@ class Product(BaseModel):
         default=True,
         description="Whether product is active and visible"
     )
-    
+
     # Optional shipping metadata
-    weightKg: Optional[float] = Field(
+    weightKg: float | None = Field(
         default=None,
         gt=0,
         le=1000,
         description="Product weight in kilograms"
     )
-    lengthCm: Optional[float] = Field(
+    lengthCm: float | None = Field(
         default=None,
         gt=0,
         le=1000,
         description="Package length in centimeters"
     )
-    widthCm: Optional[float] = Field(
+    widthCm: float | None = Field(
         default=None,
         gt=0,
         le=1000,
         description="Package width in centimeters"
     )
-    heightCm: Optional[float] = Field(
+    heightCm: float | None = Field(
         default=None,
         gt=0,
         le=1000,
         description="Package height in centimeters"
     )
-    
+
     # Delivery options
     isLocalDeliveryOnly: bool = Field(
         default=False,
@@ -381,7 +380,7 @@ class Product(BaseModel):
         le=90,
         description="Estimated days to ship"
     )
-    deliveryOptions: List[SellerDeliveryOption] = Field(
+    deliveryOptions: list[SellerDeliveryOption] = Field(
         default_factory=list,
         description="Seller-specific delivery options"
     )
@@ -395,29 +394,29 @@ class Product(BaseModel):
         default=False,
         description="Free shipping offered by seller"
     )
-    
+
     # Digital product flag
     isDigital: bool = Field(
         default=False,
         description="Whether this is a digital product (no shipping required)"
     )
-    
+
     # Tax and metadata
-    taxCode: Optional[str] = Field(
+    taxCode: str | None = Field(
         default=None,
         description="Tax code override for specific products"
     )
-    keywords: List[str] = Field(
+    keywords: list[str] = Field(
         default_factory=list,
         description="Search keywords for Algolia"
     )
-    
+
     # NEW: Structured objects for scalability
-    supplier: Optional[SupplierInfo] = Field(
+    supplier: SupplierInfo | None = Field(
         default=None,
         description="Supplier information for dropshipping/marketplace products"
     )
-    inventory: Optional[InventoryConfig] = Field(
+    inventory: InventoryConfig | None = Field(
         default=None,
         description="Inventory management configuration"
     )
@@ -425,7 +424,7 @@ class Product(BaseModel):
         default="active",
         description="Product status: draft, active, paused, archived, out_of_stock"
     )
-    
+
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str) -> str:
@@ -436,7 +435,7 @@ class Product(BaseModel):
 
     @field_validator("imageUrls")
     @classmethod
-    def validate_image_urls(cls, v: List[str]) -> List[str]:
+    def validate_image_urls(cls, v: list[str]) -> list[str]:
         """Validate image URLs"""
         for url in v:
             if not url.startswith(("http://", "https://")):
@@ -464,31 +463,31 @@ class ProductCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     price: float = Field(..., gt=0, le=100000)
     description: str = Field(..., min_length=10, max_length=4000)
-    imageUrls: List[str] = Field(..., min_length=1, max_length=5)
+    imageUrls: list[str] = Field(..., min_length=1, max_length=5)
     sellerId: str = Field(..., min_length=1)
     sellerAddress: Address
     categoryId: int = Field(..., ge=1, le=21)
     stockQuantity: int = Field(..., ge=0)
     rating: float = Field(default=0.0, ge=0, le=5)
     isActive: bool = Field(default=True)
-    weightKg: Optional[float] = Field(default=None, gt=0, le=1000)
-    lengthCm: Optional[float] = Field(default=None, gt=0, le=1000)
-    widthCm: Optional[float] = Field(default=None, gt=0, le=1000)
-    heightCm: Optional[float] = Field(default=None, gt=0, le=1000)
+    weightKg: float | None = Field(default=None, gt=0, le=1000)
+    lengthCm: float | None = Field(default=None, gt=0, le=1000)
+    widthCm: float | None = Field(default=None, gt=0, le=1000)
+    heightCm: float | None = Field(default=None, gt=0, le=1000)
     isLocalDeliveryOnly: bool = Field(default=False)
     isPerishable: bool = Field(default=False)
     estimatedShipDays: int = Field(default=3, ge=0, le=90)
-    deliveryOptions: List[SellerDeliveryOption] = Field(default_factory=list)
+    deliveryOptions: list[SellerDeliveryOption] = Field(default_factory=list)
     minimumOrderQuantity: int = Field(default=1, ge=1, le=100)
     freeShipping: bool = Field(default=False)
     isDigital: bool = Field(default=False)
-    taxCode: Optional[str] = None
-    keywords: List[str] = Field(default_factory=list)
+    taxCode: str | None = None
+    keywords: list[str] = Field(default_factory=list)
     # NEW: Structured objects
-    supplier: Optional[SupplierInfo] = Field(default=None)
-    inventory: Optional[InventoryConfig] = Field(default=None)
+    supplier: SupplierInfo | None = Field(default=None)
+    inventory: InventoryConfig | None = Field(default=None)
     status: str = Field(default="active")
-    
+
     @field_validator("sellerAddress")
     @classmethod
     def validate_canada_only(cls, v: Address) -> Address:

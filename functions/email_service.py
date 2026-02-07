@@ -1,7 +1,9 @@
-from datetime import datetime
 import html
 import os
+from datetime import datetime
+
 from mailjet_rest import Client
+
 from config import IS_EMULATOR, MAILJET_API_KEY, MAILJET_SECRET_KEY
 
 # Allow real email sending in emulator mode for E2E testing
@@ -12,14 +14,14 @@ APP_BASE_URL = 'http://localhost:5005' if IS_EMULATOR else 'https://orignagta.ca
 
 def get_order_confirmation_email(order_data, order_id=None):
     """Generate HTML email for customer order confirmation
-    
+
     Args:
         order_data: Dict containing order information
         order_id: Optional order ID (can be in order_data['orderId'] instead)
     """
     oid = order_data.get('orderId', order_id or 'N/A')
     short_oid = oid[:8] if len(oid) > 8 else oid
-    
+
     items_html = ""
     for i, item in enumerate(order_data.get('items', [])):
         safe_name = html.escape(str(item.get('name', 'Product')))
@@ -40,7 +42,7 @@ def get_order_confirmation_email(order_data, order_id=None):
             </td>
         </tr>
         """
-    
+
     subtotal = order_data.get('subtotalCents', 0) / 100
     shipping = order_data.get('shippingCostCents', 0) / 100
     taxes = sum(order_data.get('taxes', {}).values())
@@ -55,7 +57,7 @@ def get_order_confirmation_email(order_data, order_id=None):
     ]
     formatted_address = '<br>'.join(p for p in address_parts if p and p.strip())
     phone_html = f"<br>📱 {delivery_info['phoneNumber']}" if delivery_info.get('phoneNumber') else ''
-    
+
     order_date = datetime.now().strftime('%B %d, %Y at %I:%M %p')
 
     return f"""
@@ -69,14 +71,14 @@ def get_order_confirmation_email(order_data, order_id=None):
     <body style="margin: 0; padding: 0; background-color: #f0f2f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
         <!-- Preheader: inbox preview text (hidden in body) -->
         <div style="display:none;font-size:1px;color:#f0f2f8;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">Your order #{short_oid} has been confirmed and is being prepared for shipment.</div>
-        
+
         <!-- Outer wrapper -->
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f0f2f8;">
         <tr><td align="center" style="padding: 24px 16px;">
-        
+
         <!-- Email container -->
         <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(102, 126, 234, 0.15);">
-        
+
         <!-- HERO HEADER -->
         <tr><td bgcolor="#1F235A" style="background-color: #1F235A; background-image: linear-gradient(135deg, #1F235A 0%, #2F3B8F 40%, #764BA2 100%); padding: 48px 40px 40px 40px; text-align: center;">
             <!-- Logo text -->
@@ -95,7 +97,7 @@ def get_order_confirmation_email(order_data, order_id=None):
                 <span style="font-size: 15px; color: #ffffff; font-weight: 700; margin-left: 6px; font-family: 'Courier New', monospace;">#{short_oid}</span>
             </div>
         </td></tr>
-        
+
         <!-- ORDER STATUS TRACKER -->
         <tr><td style="padding: 32px 40px 24px 40px;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
@@ -125,10 +127,10 @@ def get_order_confirmation_email(order_data, order_id=None):
             </td></tr>
             </table>
         </td></tr>
-        
+
         <!-- DIVIDER -->
         <tr><td style="padding: 0 40px;"><div style="height: 1px; background: linear-gradient(90deg, transparent, #e8ebf0, transparent);"></div></td></tr>
-        
+
         <!-- ITEMS TABLE -->
         <tr><td style="padding: 28px 40px 0 40px;">
             <h2 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 1px;">
@@ -147,7 +149,7 @@ def get_order_confirmation_email(order_data, order_id=None):
                 </tbody>
             </table>
         </td></tr>
-        
+
         <!-- PRICE SUMMARY -->
         <tr><td style="padding: 24px 40px;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: linear-gradient(135deg, #f8f9ff 0%, #f3f0ff 100%); border-radius: 16px; border: 1px solid rgba(102, 126, 234, 0.1); overflow: hidden;">
@@ -178,7 +180,7 @@ def get_order_confirmation_email(order_data, order_id=None):
                 </td></tr>
             </table>
         </td></tr>
-        
+
         <!-- SHIPPING ADDRESS -->
         <tr><td style="padding: 0 40px 24px 40px;">
             <div style="background: #ffffff; border: 1px solid #e8ebf0; border-radius: 16px; padding: 20px 24px;">
@@ -196,7 +198,7 @@ def get_order_confirmation_email(order_data, order_id=None):
         <tr><td style="padding: 0 40px 24px 40px; text-align: center;">
             <p style="margin: 0; font-size: 12px; color: #999;">🕐 Ordered on {order_date}</p>
         </td></tr>
-        
+
         <!-- CTA BUTTON -->
         <tr><td style="padding: 0 40px 32px 40px; text-align: center;">
             <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin: 0 auto;"><tr>
@@ -205,7 +207,7 @@ def get_order_confirmation_email(order_data, order_id=None):
             </td>
             </tr></table>
         </td></tr>
-        
+
         <!-- FOOTER -->
         <tr><td bgcolor="#1a1a2e" style="background-color: #1a1a2e; padding: 32px 40px; text-align: center;">
             <div style="margin-bottom: 16px;">
@@ -217,7 +219,7 @@ def get_order_confirmation_email(order_data, order_id=None):
                 <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.25);">© 2026 Origna Ventures Inc. All rights reserved.</p>
             </div>
         </td></tr>
-        
+
         </table>
         </td></tr>
         </table>
@@ -227,17 +229,17 @@ def get_order_confirmation_email(order_data, order_id=None):
 
 def get_seller_notification_email(order_data, order_id=None, seller_id=None):
     """Generate HTML email for seller notification
-    
+
     Args:
         order_data: Dict containing order information
         order_id: Optional order ID (can be in order_data['orderId'])
         seller_id: Optional seller ID to filter items
-    
+
     Note: seller_id is currently unused but kept for API compatibility
     """
     oid = order_data.get('orderId', order_id or 'N/A')
     short_oid = oid[:8] if len(oid) > 8 else oid
-    
+
     items_html = ""
     for i, item in enumerate(order_data.get('items', [])):
         safe_name = html.escape(str(item.get('name', 'Product')))
@@ -258,13 +260,13 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
             </td>
         </tr>
         """
-    
+
     subtotal = order_data.get('subtotalCents', 0) / 100
     shipping = order_data.get('shippingCostCents', 0) / 100
     taxes = sum(order_data.get('taxes', {}).values())
     total = order_data.get('totalAmountCents', 0) / 100
     num_items = sum(item.get('quantity', 1) for item in order_data.get('items', []))
-    
+
     delivery_info = order_data.get('shippingAddress', {})
     addr_parts = [
         delivery_info.get('street', ''),
@@ -274,7 +276,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
     ]
     address_html = '<br>'.join(p for p in addr_parts if p and p.strip())
     phone_html = f"<br>📱 {delivery_info['phoneNumber']}" if delivery_info.get('phoneNumber') else ''
-    
+
     order_date = datetime.now().strftime('%B %d, %Y at %I:%M %p')
     customer_email = html.escape(order_data.get('customerEmail', 'N/A'))
 
@@ -289,12 +291,12 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
     <body style="margin: 0; padding: 0; background-color: #f0f2f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
         <!-- Preheader: inbox preview text (hidden in body) -->
         <div style="display:none;font-size:1px;color:#f0f2f8;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">New order ${total:.2f} — {num_items} items to ship. Order #{short_oid}</div>
-        
+
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f0f2f8;">
         <tr><td align="center" style="padding: 24px 16px;">
-        
+
         <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(102, 126, 234, 0.15);">
-        
+
         <!-- HERO HEADER -->
         <tr><td bgcolor="#1F235A" style="background-color: #1F235A; background-image: linear-gradient(135deg, #1F235A 0%, #2F3B8F 40%, #764BA2 100%); padding: 48px 40px 40px 40px; text-align: center;">
             <div style="margin-bottom: 8px;">
@@ -306,7 +308,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
             </div>
             <h1 style="margin: 16px 0 8px 0; font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">New Order Received!</h1>
             <p style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.75);">You have a new order to fulfill. Ship it fast!</p>
-            
+
             <!-- Stats row -->
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top: 28px;">
             <tr>
@@ -331,12 +333,12 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
             </tr>
             </table>
         </td></tr>
-        
+
         <!-- URGENT ACTION BANNER -->
         <tr><td bgcolor="#F59E0B" style="background-color: #F59E0B; background-image: linear-gradient(90deg, #F59E0B, #F97316); padding: 14px 40px; text-align: center;">
             <span style="font-size: 13px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">⚡ ACTION REQUIRED — Confirm and ship this order within 48 hours</span>
         </td></tr>
-        
+
         <!-- CUSTOMER INFO -->
         <tr><td style="padding: 28px 40px 0 40px;">
             <div style="background: linear-gradient(135deg, #f8f9ff 0%, #f3f0ff 100%); border: 1px solid rgba(102, 126, 234, 0.1); border-radius: 16px; padding: 20px 24px;">
@@ -356,7 +358,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
                 </table>
             </div>
         </td></tr>
-        
+
         <!-- ITEMS TABLE -->
         <tr><td style="padding: 24px 40px 0 40px;">
             <h2 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 1px;">
@@ -375,7 +377,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
                 </tbody>
             </table>
         </td></tr>
-        
+
         <!-- PRICE SUMMARY -->
         <tr><td style="padding: 24px 40px;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: linear-gradient(135deg, #f8f9ff 0%, #f3f0ff 100%); border-radius: 16px; border: 1px solid rgba(102, 126, 234, 0.1); overflow: hidden;">
@@ -406,7 +408,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
                 </td></tr>
             </table>
         </td></tr>
-        
+
         <!-- SHIPPING ADDRESS -->
         <tr><td style="padding: 0 40px 24px 40px;">
             <div style="background: #ffffff; border: 1px solid #e8ebf0; border-radius: 16px; padding: 20px 24px;">
@@ -419,7 +421,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
                 </p>
             </div>
         </td></tr>
-        
+
         <!-- CTA BUTTON -->
         <tr><td style="padding: 0 40px 32px 40px; text-align: center;">
             <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin: 0 auto;"><tr>
@@ -428,7 +430,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
             </td>
             </tr></table>
         </td></tr>
-        
+
         <!-- FOOTER -->
         <tr><td bgcolor="#1a1a2e" style="background-color: #1a1a2e; padding: 32px 40px; text-align: center;">
             <div style="margin-bottom: 16px;">
@@ -440,7 +442,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
                 <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.25);">© 2026 Origna Ventures Inc. All rights reserved.</p>
             </div>
         </td></tr>
-        
+
         </table>
         </td></tr>
         </table>
@@ -495,19 +497,19 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
     if IS_EMULATOR and not FORCE_REAL_EMAIL:
         print(f"🔧 EMULATOR: Would send authorization expired email for order {order_id}")
         return
-    
+
     if not MAILJET_API_KEY or not MAILJET_SECRET_KEY:
         print("⚠️ Mailjet credentials not configured")
         return
-    
+
     try:
         mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
-        
+
         customer_email = order_data.get('customerEmail')
         total = order_data.get('totalAmountCents', 0) / 100
-        items_summary = ', '.join([f"{item.get('name')} x{item.get('quantity', 1)}" 
+        items_summary = ', '.join([f"{item.get('name')} x{item.get('quantity', 1)}"
                                    for item in order_data.get('items', [])[:3]])
-        
+
         # Email to buyer
         buyer_message = {
             'Messages': [{
@@ -520,16 +522,16 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
                     <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
                         <h2 style="color: #FF6B35;">⏰ Payment Authorization Expired</h2>
                         <p>Your order authorization has expired after 7 days without seller confirmation.</p>
-                        
+
                         <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
                             <p><strong>Order ID:</strong> {order_id}</p>
                             <p><strong>Items:</strong> {items_summary}</p>
                             <p><strong>Amount:</strong> ${total:.2f} CAD</p>
                         </div>
-                        
+
                         <p>The hold on your payment has been released. No charge was made to your card.</p>
                         <p>If you still want these items, please place a new order.</p>
-                        
+
                         <p style="margin-top: 30px; color: #999; font-size: 12px;">
                             Questions? Contact support@orignaventures.ca
                         </p>
@@ -539,10 +541,10 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
                 """
             }]
         }
-        
+
         mailjet.send.create(data=buyer_message)
         print(f"✅ Authorization expired email sent to {customer_email}")
-        
+
     except Exception as e:
         print(f"⚠️ Failed to send authorization expired email: {str(e)}")
 
@@ -555,15 +557,15 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
     if not customer_email:
         print("⚠️ Cannot send capture failure email: missing customer_email")
         return
-    
+
     if IS_EMULATOR and not FORCE_REAL_EMAIL:
         print(f"🧪 EMULATOR: Would send capture failure email to {customer_email}")
         print(f"   Order: {order_id}, Amount: ${amount:.2f}, Error: {error_message}")
         return
-    
+
     # Initialize Mailjet client
     mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
-    
+
     subject = f"Payment Issue - Order #{order_id[:8]}"
     html_body = f"""
     <!DOCTYPE html>
@@ -578,7 +580,7 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f0f2f8;">
         <tr><td align="center" style="padding: 24px 16px;">
         <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 20px; overflow: hidden;">
-        
+
         <!-- Header -->
         <tr><td bgcolor="#1F235A" style="background-color: #1F235A; padding: 40px 40px 32px 40px; text-align: center;">
             <div style="margin-bottom: 8px;">
@@ -588,17 +590,17 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
             <h1 style="margin: 12px 0 8px 0; font-size: 24px; font-weight: 800; color: #ffffff;">Payment Issue</h1>
             <p style="margin: 0; font-size: 14px; color: #b0b0cc;">Action required for Order #{order_id[:8]}</p>
         </td></tr>
-        
+
         <!-- Alert Banner -->
         <tr><td bgcolor="#FEF3C7" style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px 40px;">
             <span style="font-size: 14px; font-weight: 700; color: #92400E;">⚠️ Action Required</span><br>
             <span style="font-size: 14px; color: #78350F;">We couldn't complete the payment for your order.</span>
         </td></tr>
-        
+
         <!-- Content -->
         <tr><td style="padding: 28px 40px;">
             <p style="margin: 0 0 20px 0; font-size: 15px; color: #333;">Hi {customer_name},</p>
-            
+
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8f9ff; border-radius: 12px; border: 1px solid #e5e8f5; margin-bottom: 24px;">
             <tr><td style="padding: 16px 20px;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
@@ -629,7 +631,7 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
             <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">2. Update your payment method</p>
             <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">3. Contact your bank if the issue persists</p>
         </td></tr>
-        
+
         <!-- CTA Button -->
         <tr><td style="padding: 0 40px 28px 40px; text-align: center;">
             <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin: 0 auto;"><tr>
@@ -638,11 +640,11 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
             </td>
             </tr></table>
         </td></tr>
-        
+
         <tr><td style="padding: 0 40px 24px 40px;">
             <p style="margin: 0; font-size: 13px; color: #888; text-align: center;">Need help? Contact us with order ID: <strong>{order_id[:8]}</strong></p>
         </td></tr>
-        
+
         <!-- Footer -->
         <tr><td bgcolor="#1a1a2e" style="background-color: #1a1a2e; padding: 28px 40px; text-align: center;">
             <div style="margin-bottom: 12px;">
@@ -653,14 +655,14 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
                 <p style="margin: 0; font-size: 11px; color: #4a4a60;">&copy; 2026 Origna Ventures Inc. All rights reserved.</p>
             </div>
         </td></tr>
-        
+
         </table>
         </td></tr>
         </table>
     </body>
     </html>
     """
-    
+
     try:
         result = mailjet.send.create(data={
             'Messages': [{
@@ -685,15 +687,15 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
     if not customer_email or not authentication_url:
         print("⚠️ Cannot send 3DS email: missing customer_email or authentication_url")
         return
-    
+
     if IS_EMULATOR and not FORCE_REAL_EMAIL:
         print(f"🧪 EMULATOR: Would send 3DS authentication email to {customer_email}")
         print(f"   Order: {order_id}, Amount: ${amount:.2f}, URL: {authentication_url}")
         return
-    
+
     # Initialize Mailjet client
     mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
-    
+
     subject = f"Action Required: Verify Your Payment - Order #{order_id[:8]}"
     html_body = f"""
     <!DOCTYPE html>
@@ -708,7 +710,7 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f0f2f8;">
         <tr><td align="center" style="padding: 24px 16px;">
         <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 20px; overflow: hidden;">
-        
+
         <!-- Header -->
         <tr><td bgcolor="#1F235A" style="background-color: #1F235A; padding: 40px 40px 32px 40px; text-align: center;">
             <div style="margin-bottom: 8px;">
@@ -718,17 +720,17 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
             <h1 style="margin: 12px 0 8px 0; font-size: 24px; font-weight: 800; color: #ffffff;">Secure Payment Verification</h1>
             <p style="margin: 0; font-size: 14px; color: #b0b0cc;">Your bank requires additional verification</p>
         </td></tr>
-        
+
         <!-- Alert -->
         <tr><td bgcolor="#DBEAFE" style="background-color: #DBEAFE; border-left: 4px solid #2563EB; padding: 16px 40px;">
             <span style="font-size: 14px; font-weight: 700; color: #1E40AF;">Action Required: Verify Your Payment</span><br>
             <span style="font-size: 14px; color: #1E3A5F;">Your bank requires 3D Secure authentication to complete this transaction.</span>
         </td></tr>
-        
+
         <!-- Content -->
         <tr><td style="padding: 28px 40px;">
             <p style="margin: 0 0 20px 0; font-size: 15px; color: #333;">Hi {customer_name},</p>
-            
+
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8f9ff; border-radius: 12px; border: 1px solid #e5e8f5; margin-bottom: 24px;">
             <tr><td style="padding: 16px 20px;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
@@ -751,7 +753,7 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
             <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1a1a2e;">What is 3D Secure?</p>
             <p style="margin: 0 0 20px 0; font-size: 14px; color: #555; line-height: 1.6;">3D Secure (3DS) is an additional security layer that protects your payment. Your bank requires you to verify your identity before completing this purchase.</p>
         </td></tr>
-        
+
         <!-- CTA Button -->
         <tr><td style="padding: 0 40px 20px 40px; text-align: center;">
             <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin: 0 auto;"><tr>
@@ -760,7 +762,7 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
             </td>
             </tr></table>
         </td></tr>
-        
+
         <!-- Warning -->
         <tr><td style="padding: 0 40px 24px 40px;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FEF3C7" style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 8px;">
@@ -770,7 +772,7 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
             </td></tr>
             </table>
         </td></tr>
-        
+
         <!-- Security Tips -->
         <tr><td style="padding: 0 40px 24px 40px;">
             <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1a1a2e;">Security Tips:</p>
@@ -780,7 +782,7 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
             <p style="margin: 0 0 12px 0; font-size: 14px; color: #555;">&#10060; Never share verification codes with anyone</p>
             <p style="margin: 0; font-size: 13px; color: #888;">If you didn't place this order, <a href="{APP_BASE_URL}/support" style="color: #667EEA; text-decoration: none;">contact support immediately</a>.</p>
         </td></tr>
-        
+
         <!-- Footer -->
         <tr><td bgcolor="#1a1a2e" style="background-color: #1a1a2e; padding: 28px 40px; text-align: center;">
             <div style="margin-bottom: 12px;">
@@ -792,14 +794,14 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
                 <p style="margin: 0; font-size: 11px; color: #4a4a60;">&copy; 2026 Origna Ventures Inc. All rights reserved.</p>
             </div>
         </td></tr>
-        
+
         </table>
         </td></tr>
         </table>
     </body>
     </html>
     """
-    
+
     # RETRY LOGIC: We do NOT catch exceptions here.
     # Cloud Functions will retry execution if an exception is raised.
     # This prevents email loss during temporary Mailjet outages.
@@ -811,7 +813,7 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
             'HTMLPart': html_body,
         }]
     })
-    
+
     print(f"✅ 3DS authentication email sent to {customer_email}")
     return result
 
