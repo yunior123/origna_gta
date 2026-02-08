@@ -34,6 +34,21 @@ _$UserImpl _$$UserImplFromJson(Map<String, dynamic> json) => _$UserImpl(
   updatedAt: json['updatedAt'] == null
       ? null
       : DateTime.parse(json['updatedAt'] as String),
+  paymentProvider: json['paymentProvider'] as String?,
+  airwallexAccountId: json['airwallexAccountId'] as String?,
+  airwallexCustomerId: json['airwallexCustomerId'] as String?,
+  airwallexStatus: json['airwallexStatus'] as String?,
+  unsuspendedAt: json['unsuspendedAt'] == null
+      ? null
+      : DateTime.parse(json['unsuspendedAt'] as String),
+  suspendedBy: json['suspendedBy'] as String?,
+  suspensionReason: json['suspensionReason'] as String?,
+  commissionRate: (json['commissionRate'] as num?)?.toDouble(),
+  verified: json['verified'] as bool? ?? false,
+  verificationStatus: json['verificationStatus'] as String?,
+  platform: json['platform'] as String?,
+  businessName: json['businessName'] as String?,
+  payoutHoldDays: (json['payoutHoldDays'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$$UserImplToJson(
@@ -56,6 +71,19 @@ Map<String, dynamic> _$$UserImplToJson(
   'suspended': instance.suspended,
   'suspendedAt': instance.suspendedAt?.toIso8601String(),
   'updatedAt': instance.updatedAt?.toIso8601String(),
+  'paymentProvider': instance.paymentProvider,
+  'airwallexAccountId': instance.airwallexAccountId,
+  'airwallexCustomerId': instance.airwallexCustomerId,
+  'airwallexStatus': instance.airwallexStatus,
+  'unsuspendedAt': instance.unsuspendedAt?.toIso8601String(),
+  'suspendedBy': instance.suspendedBy,
+  'suspensionReason': instance.suspensionReason,
+  'commissionRate': instance.commissionRate,
+  'verified': instance.verified,
+  'verificationStatus': instance.verificationStatus,
+  'platform': instance.platform,
+  'businessName': instance.businessName,
+  'payoutHoldDays': instance.payoutHoldDays,
 };
 
 const _$UserRoleEnumMap = {

@@ -18,11 +18,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from .config import OUTPUT_DIR, PROJECT_ROOT, CRITICAL, HIGH, SEVERITY_ORDER
+from .config import OUTPUT_DIR, PROJECT_ROOT, CRITICAL, HIGH, MEDIUM, SEVERITY_ORDER, ANTHROPIC_MODEL
 from .base import (
     BaseHook, HookResult, Finding,
     get_all_hooks, get_hook, get_git_changed_files,
 )
+from .fixer import AutoFixer, AutoFixReport
 
 
 class HookRunner:
@@ -78,7 +79,7 @@ class HookRunner:
 
         print(f"\n{'='*60}")
         print(f"🪝 Running {len(hook_instances)} audit hook(s)")
-        print(f"   Provider: {self.provider}")
+        print(f"   Model: {ANTHROPIC_MODEL}")
         print(f"   Mode: {'changed files only' if self.changed_only else 'full codebase'}")
         print(f"{'='*60}")
 
@@ -246,6 +247,29 @@ class HookRunner:
         return "\n".join(lines)
 
     # ── Pre-commit Mode ───────────────────────────────────────────────────
+
+    def fix_findings(
+        self,
+        min_severity: str = MEDIUM,
+        dry_run: bool = False,
+        validate: bool = True,
+    ) -> AutoFixReport:
+        """
+        Auto-fix findings using Claude CLI.
+
+        Call this AFTER run() — uses the stored results.
+        """
+        if not self.results:
+            print("⚠️  No audit results to fix. Run audit first.")
+            return AutoFixReport()
+
+        fixer = AutoFixer(
+            min_severity=min_severity,
+            dry_run=dry_run,
+            validate=validate,
+            provider=self.provider,
+        )
+        return fixer.fix_results(self.results)
 
     def check_pre_commit(self) -> bool:
         """

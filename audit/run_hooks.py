@@ -13,6 +13,12 @@ Usage:
   python audit/run_hooks.py --sequential              # Disable parallel execution
   python audit/run_hooks.py --hook schema-sync --no-llm  # Fast local-only check
 
+  # AUTO-FIX MODE (new!)
+  python audit/run_hooks.py --fix                     # Audit all → auto-fix findings
+  python audit/run_hooks.py --hook payment --fix      # Audit payment → auto-fix
+  python audit/run_hooks.py --fix --dry-run           # Preview fixes without writing
+  python audit/run_hooks.py --fix --min-severity HIGH # Only fix HIGH+ findings
+
 Examples:
   # Quick pre-commit check on staged files
   python audit/run_hooks.py --pre-commit
@@ -22,6 +28,12 @@ Examples:
 
   # Full audit on all changed files since last commit
   python audit/run_hooks.py --changed
+
+  # Audit & auto-fix all payment issues
+  python audit/run_hooks.py --hook payment --fix
+
+  # Preview what would be fixed without changing files
+  python audit/run_hooks.py --changed --fix --dry-run
 
   # Schema sync check (fast, no API call for basic mismatches)
   python audit/run_hooks.py --hook schema-sync
@@ -89,9 +101,9 @@ Available hooks:
     )
     parser.add_argument(
         "--provider", "-p",
-        choices=["claude", "kimi"],
-        default="claude",
-        help="LLM provider (default: claude)",
+        choices=["anthropic"],
+        default="anthropic",
+        help="LLM provider (Anthropic API with Claude Opus 4)",
     )
     parser.add_argument(
         "--sequential", "-s",
@@ -102,6 +114,27 @@ Available hooks:
         "--no-report",
         action="store_true",
         help="Don't save reports to disk",
+    )
+    parser.add_argument(
+        "--fix", "-f",
+        action="store_true",
+        help="Auto-fix findings after audit using Claude CLI",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview auto-fixes without modifying files (requires --fix)",
+    )
+    parser.add_argument(
+        "--min-severity",
+        choices=["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        default="MEDIUM",
+        help="Minimum severity to auto-fix (default: MEDIUM)",
+    )
+    parser.add_argument(
+        "--no-validate",
+        action="store_true",
+        help="Skip validation after applying fixes",
     )
 
     args = parser.parse_args()
@@ -142,6 +175,18 @@ Available hooks:
     # Save reports
     if not args.no_report and results:
         runner.save_reports()
+
+    # Auto-fix mode
+    if args.fix and results:
+        fix_report = runner.fix_findings(
+            min_severity=args.min_severity,
+            dry_run=args.dry_run,
+            validate=not args.no_validate,
+        )
+        if fix_report.files_fixed > 0:
+            print(f"\n🔧 {fix_report.files_fixed} file(s) fixed automatically.")
+            print("   Review changes with: git diff")
+            print("   Undo all with:       git checkout -- .")
 
     # Pre-commit check
     if args.pre_commit:

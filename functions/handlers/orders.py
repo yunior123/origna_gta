@@ -122,6 +122,16 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not order_id or not new_status:
         raise https_fn.HttpsError('invalid-argument', 'orderId and newStatus required')
 
+    # AUDIT FIX: Rate limit order status updates (after input validation)
+    from rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action='update_order_status',
+        max_requests=10, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
 
@@ -290,6 +300,16 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not order_id or not product_id or not new_status:
         raise https_fn.HttpsError('invalid-argument', 'orderId, productId, and newStatus required')
 
+    # AUDIT FIX: Rate limit item status updates (after input validation)
+    from rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action='update_item_status',
+        max_requests=10, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
     # Validate status value — sellers can only set PENDING or SHIPPED.
     # DELIVERED is set by buyer confirmation or auto-capture cron only.
     # REFUNDED is set by refund_order_item handler only.
@@ -411,6 +431,16 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
+    # AUDIT FIX: Rate limit order cancellations (security-critical)
+    from rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid, action='cancel_order',
+        max_requests=5, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
     user_id = req.auth.uid
     data = req.data
 
@@ -493,19 +523,6 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     payment_status = lock_for_cancel(transaction)
 
-    # Restore stock using batch write for atomicity (idempotency handled by stockRestored flag)
-    if not order_data.get(Fields.STOCK_RESTORED, False):
-        batch = get_db().batch()
-        for item in order_data[Fields.ITEMS]:
-            product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-            batch.update(product_ref, {
-                Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
-                Fields.UPDATED_AT: get_server_timestamp()
-            })
-        # Mark stockRestored first for idempotency
-        batch.update(order_ref, {Fields.STOCK_RESTORED: True})
-        batch.commit()
-
     # Handle payment based on current payment status
     refunded = False
     payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
@@ -536,8 +553,19 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         except stripe.error.StripeError as e:
             print(f'PaymentIntent cancel failed: {str(e)}')
 
-    # Update order
-    order_ref.update({
+    # AUDIT FIX: Atomic batch — stock restore + final cancel status in ONE commit
+    # Prevents double-restore if process crashes between stock restore and status update
+    cancel_batch = get_db().batch()
+
+    if not order_data.get(Fields.STOCK_RESTORED, False):
+        for item in order_data[Fields.ITEMS]:
+            product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
+            cancel_batch.update(product_ref, {
+                Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
+                Fields.UPDATED_AT: get_server_timestamp()
+            })
+
+    cancel_batch.update(order_ref, {
         Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
         Fields.PAYMENT_STATUS: new_payment_status,
         Fields.CANCELLED_BY: user_id,
@@ -546,6 +574,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.STOCK_RESTORED: True,
         Fields.UPDATED_AT: get_server_timestamp()
     })
+    cancel_batch.commit()
 
     return create_success_response({'refunded': refunded})
 
@@ -571,6 +600,16 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+
+    # AUDIT FIX: Rate limit refund requests (security-critical)
+    from rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid, action='refund_order_item',
+        max_requests=5, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
 
     user_id = req.auth.uid
     data = req.data
@@ -902,6 +941,16 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+
+    # AUDIT FIX: Rate limit shipping cost updates
+    from rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid, action='update_shipping_cost',
+        max_requests=10, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
 
     user_id = req.auth.uid
     data = req.data

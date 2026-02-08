@@ -192,6 +192,31 @@ class Order with _$Order {
     @Default('pending') String payoutStatus,
     // Ratings
     @Default([]) List<Ratings> ratings,
+    // === AUDIT FIX: 18 missing fields synced from Python/Firestore ===
+    // Payment capture tracking
+    String? stripePaymentIntentId,
+    @Default(0) int captureAttempts,
+    DateTime? capturedAt,
+    DateTime? expiresAt,
+    @Default(false) bool autoConfirmed,
+    @Default(false) bool autoCaptured,
+    // Refund tracking
+    @Default(0.0) double refundAmount,
+    DateTime? refundedAt,
+    // Cancellation tracking
+    @Default(false) bool stockRestored,
+    String? cancelledBy,
+    DateTime? cancelledAt,
+    String? cancellationReason,
+    // Shipping approval
+    DateTime? respondedAt,
+    double? actualCost,
+    // Admin review
+    @Default(false) bool requiresManualReview,
+    String? manualReviewReason,
+    @Default([]) List<String> payoutErrors,
+    // Timestamp
+    DateTime? updatedAt,
   }) = _Order;
 
   factory Order.fromFirestore(DocumentSnapshot doc) {
@@ -246,6 +271,10 @@ class Order with _$Order {
           return PaymentStatus.refunded;
         case 'session_expired':
           return PaymentStatus.sessionExpired;
+        case 'cancelled':
+          return PaymentStatus.cancelled;
+        case 'authorization_expired':
+          return PaymentStatus.authorizationExpired;
         default:
           return PaymentStatus.awaitingPayment;
       }
@@ -320,6 +349,25 @@ class Order with _$Order {
       platformFeeTotal: _safeDouble(data['platformFeeTotal']),
       payoutStatus: _safeString(data['payoutStatus'], 'pending'),
       ratings: ratings,
+      // === AUDIT FIX: Parse 18 missing fields ===
+      stripePaymentIntentId: data['stripePaymentIntentId'] != null ? _safeString(data['stripePaymentIntentId']) : null,
+      captureAttempts: _safeInt(data['captureAttempts']),
+      capturedAt: _parseDateTime(data['capturedAt']),
+      expiresAt: _parseDateTime(data['expiresAt']),
+      autoConfirmed: _safeBool(data['autoConfirmed']),
+      autoCaptured: _safeBool(data['autoCaptured']),
+      refundAmount: _safeDouble(data['refundAmount']),
+      refundedAt: _parseDateTime(data['refundedAt']),
+      stockRestored: _safeBool(data['stockRestored']),
+      cancelledBy: data['cancelledBy'] != null ? _safeString(data['cancelledBy']) : null,
+      cancelledAt: _parseDateTime(data['cancelledAt']),
+      cancellationReason: data['cancellationReason'] != null ? _safeString(data['cancellationReason']) : null,
+      respondedAt: _parseDateTime(data['respondedAt']),
+      actualCost: data['actualCost'] != null ? _safeDouble(data['actualCost']) : null,
+      requiresManualReview: _safeBool(data['requiresManualReview']),
+      manualReviewReason: data['manualReviewReason'] != null ? _safeString(data['manualReviewReason']) : null,
+      payoutErrors: _safeStringList(data['payoutErrors']),
+      updatedAt: _parseDateTime(data['updatedAt']),
     );
   }
 

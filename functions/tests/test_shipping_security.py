@@ -167,7 +167,8 @@ class TestPaymentSecurity(unittest.TestCase):
             create_checkout_session(req)
 
         # Verify the error message indicates price mismatch
-        self.assertIn("Price mismatch", str(context.exception.message))
+        msg = str(context.exception.message)
+        self.assertTrue("Price changed" in msg or "Price mismatch" in msg)
 
         # Verify Stripe was NOT called (transaction rejected before payment)
         mock_stripe.checkout.Session.create.assert_not_called()

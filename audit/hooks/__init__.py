@@ -1,25 +1,24 @@
 """
-Audit Hooks — Claude Pro powered, composable code audit system for OrignaGta.
+audit.hooks - Composable Audit Hook System for OrignaGta
+=========================================================
 
-Uses Claude Code CLI (claude -p) with your Claude Pro subscription.
-NO Anthropic API key or credits needed.
-Falls back to Kimi 2.5 (NVIDIA NIM) when Claude is rate-limited.
-
-Improvements over the Kimi-only audit system:
-  • Hook registry: each domain is a self-contained, composable hook
-  • Git-aware: can audit only changed files (fast mode for pre-commit)
-  • Structured JSON findings with severity levels (CRITICAL/HIGH/MEDIUM/LOW)
-  • Auto-fix suggestions with optional apply
-  • Pre-commit integration
-  • Parallel hook execution
-  • Claude Pro via CLI for better reasoning + automatic Kimi fallback
+Uses Anthropic API directly with Claude Opus 4 (claude-opus-4-20250514).
 
 Usage:
-  python audit/run_hooks.py                       # Run all hooks on full codebase
-  python audit/run_hooks.py --changed             # Run only on git-changed files
-  python audit/run_hooks.py --hook payment        # Run specific hook
-  python audit/run_hooks.py --hook payment,auth   # Run multiple hooks
-  python audit/run_hooks.py --pre-commit          # Pre-commit mode (fast, changed files only)
-  python audit/run_hooks.py --provider kimi       # Force Kimi instead of Claude
-  python audit/run_hooks.py --list                # List all available hooks
+  python audit/run_hooks.py --list                   # List all hooks
+  python audit/run_hooks.py --hook schema-sync       # Run one hook
+  python audit/run_hooks.py --all                    # Run all hooks
+  python audit/run_hooks.py --hook payment --fix     # Auto-fix findings
+  python audit/run_hooks.py --hook payment --fix --dry-run  # Preview fixes
+
+Architecture:
+  config.py        -> Anthropic model config + API key loading
+  base.py          -> BaseHook, Finding, HookResult, registry
+  prompts.py       -> Shared prompt fragments
+  hook_domains.py  -> Payment, Auth, Product hooks
+  hook_schema_sync.py -> Schema sync validation
+  hook_extended.py -> Security, Perf, State, Orders, Errors, Seller hooks
+  fixer.py         -> AutoFixer (generates code patches via Opus 4)
+  runner.py        -> HookRunner (orchestration + reports)
 """
+

@@ -990,7 +990,7 @@
           "type": "string",
           "required": true,
           "description": "Processing result",
-          "values": ["success", "failed", "skipped_duplicate", "unhandled"]
+          "values": ["processing", "completed", "failed"]
         },
         "orderId": {
           "type": "string",

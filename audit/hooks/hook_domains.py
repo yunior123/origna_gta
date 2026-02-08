@@ -21,20 +21,11 @@ class PaymentHook(BaseHook):
         "firestore.rules",
     ]
 
+    # Optimized: logic-critical files first, ~100K budget
+    # payment_stripe.py (94K) is THE core — fills most of context
     target_files = [
-        "functions/handlers/payment_stripe.py",
-        "functions/handlers/payment_airwallex.py",
-        "functions/handlers/payment_providers.py",
-        "functions/handlers/cron_jobs.py",
-        "functions/config.py",
-        "functions/schema_constants.py",
-        "functions/rate_limiter.py",
-        "functions/utils.py",
-        "functions/models/order.py",
-        "functions/models/product.py",
-        "origna_gta/lib/features/checkout/checkout_provider.dart",
-        "origna_gta/lib/features/checkout/checkout_state.dart",
-        "firestore.rules",
+        "functions/handlers/payment_stripe.py",    # 94K — core payment logic
+        "functions/models/order.py",                # 8K  — payment-related model
     ]
 
     def get_prompt(self) -> str:
@@ -84,21 +75,16 @@ class AuthHook(BaseHook):
         "firestore.rules",
     ]
 
+    # Optimized: logic-only, no screens (MVVM), no missing files
     target_files = [
-        "functions/handlers/admin.py",
-        "functions/handlers/payment_stripe.py",
-        "functions/rate_limiter.py",
-        "functions/utils.py",
-        "functions/config.py",
-        "functions/schema_constants.py",
-        "functions/models/user.py",
-        "origna_gta/lib/features/auth/auth_provider.dart",
-        "origna_gta/lib/features/auth/auth_state.dart",
-        "origna_gta/lib/features/profile/profile_provider.dart",
-        "origna_gta/lib/screens/login_screen.dart",
-        "origna_gta/lib/screens/register_screen.dart",
-        "origna_gta/lib/screens/admin_screen.dart",
-        "firestore.rules",
+        "functions/handlers/admin.py",              # 21K — admin/role logic
+        "firestore.rules",                          # 19K — access control rules
+        "functions/utils.py",                       # 12K — auth helpers
+        "origna_gta/lib/core/repositories/auth_repository.dart",  # 12K — auth repo
+        "functions/config.py",                      # 12K — auth config
+        "functions/models/user.py",                 # 5K  — user model
+        "functions/rate_limiter.py",                # 3K  — rate limiting
+        "origna_gta/lib/features/auth/auth_provider.dart",  # 0.6K — auth state
     ]
 
     def get_prompt(self) -> str:
@@ -147,22 +133,14 @@ class ProductHook(BaseHook):
         "origna_gta/lib/features/checkout/*",
     ]
 
+    # Optimized: backend logic + Dart logic only, no screens (MVVM)
     target_files = [
-        "functions/handlers/products.py",
-        "functions/handlers/orders.py",
-        "functions/handlers/cron_jobs.py",
-        "functions/shipping_service.py",
-        "functions/algolia_service.py",
-        "functions/email_service.py",
-        "functions/schema_constants.py",
-        "functions/models/product.py",
-        "functions/models/order.py",
-        "origna_gta/lib/screens/addproduct_screen.dart",
-        "origna_gta/lib/screens/editproduct_screen.dart",
-        "origna_gta/lib/features/checkout/checkout_provider.dart",
-        "origna_gta/lib/services/cart_service.dart",
-        "origna_gta/lib/models/generated/product_models.dart",
-        "firestore.rules",
+        "functions/handlers/products.py",            # 29K — product CRUD logic
+        "functions/models/product.py",               # 15K — product model
+        "functions/algolia_service.py",              # 12K — search sync
+        "origna_gta/lib/features/checkout/checkout_provider.dart",  # 11K — cart-to-checkout
+        "origna_gta/lib/features/cart/cart_provider.dart",          # 10K — cart logic
+        "functions/shipping_service.py",             # 17K — shipping validation
     ]
 
     def get_prompt(self) -> str:

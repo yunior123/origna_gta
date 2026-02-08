@@ -59,6 +59,40 @@ _$OrderImpl _$$OrderImplFromJson(Map<String, dynamic> json) => _$OrderImpl(
           ?.map((e) => Ratings.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],
+  stripePaymentIntentId: json['stripePaymentIntentId'] as String?,
+  captureAttempts: (json['captureAttempts'] as num?)?.toInt() ?? 0,
+  capturedAt: json['capturedAt'] == null
+      ? null
+      : DateTime.parse(json['capturedAt'] as String),
+  expiresAt: json['expiresAt'] == null
+      ? null
+      : DateTime.parse(json['expiresAt'] as String),
+  autoConfirmed: json['autoConfirmed'] as bool? ?? false,
+  autoCaptured: json['autoCaptured'] as bool? ?? false,
+  refundAmount: (json['refundAmount'] as num?)?.toDouble() ?? 0.0,
+  refundedAt: json['refundedAt'] == null
+      ? null
+      : DateTime.parse(json['refundedAt'] as String),
+  stockRestored: json['stockRestored'] as bool? ?? false,
+  cancelledBy: json['cancelledBy'] as String?,
+  cancelledAt: json['cancelledAt'] == null
+      ? null
+      : DateTime.parse(json['cancelledAt'] as String),
+  cancellationReason: json['cancellationReason'] as String?,
+  respondedAt: json['respondedAt'] == null
+      ? null
+      : DateTime.parse(json['respondedAt'] as String),
+  actualCost: (json['actualCost'] as num?)?.toDouble(),
+  requiresManualReview: json['requiresManualReview'] as bool? ?? false,
+  manualReviewReason: json['manualReviewReason'] as String?,
+  payoutErrors:
+      (json['payoutErrors'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
+  updatedAt: json['updatedAt'] == null
+      ? null
+      : DateTime.parse(json['updatedAt'] as String),
 );
 
 Map<String, dynamic> _$$OrderImplToJson(_$OrderImpl instance) =>
@@ -91,6 +125,24 @@ Map<String, dynamic> _$$OrderImplToJson(_$OrderImpl instance) =>
       'platformFeeTotal': instance.platformFeeTotal,
       'payoutStatus': instance.payoutStatus,
       'ratings': instance.ratings,
+      'stripePaymentIntentId': instance.stripePaymentIntentId,
+      'captureAttempts': instance.captureAttempts,
+      'capturedAt': instance.capturedAt?.toIso8601String(),
+      'expiresAt': instance.expiresAt?.toIso8601String(),
+      'autoConfirmed': instance.autoConfirmed,
+      'autoCaptured': instance.autoCaptured,
+      'refundAmount': instance.refundAmount,
+      'refundedAt': instance.refundedAt?.toIso8601String(),
+      'stockRestored': instance.stockRestored,
+      'cancelledBy': instance.cancelledBy,
+      'cancelledAt': instance.cancelledAt?.toIso8601String(),
+      'cancellationReason': instance.cancellationReason,
+      'respondedAt': instance.respondedAt?.toIso8601String(),
+      'actualCost': instance.actualCost,
+      'requiresManualReview': instance.requiresManualReview,
+      'manualReviewReason': instance.manualReviewReason,
+      'payoutErrors': instance.payoutErrors,
+      'updatedAt': instance.updatedAt?.toIso8601String(),
     };
 
 const _$OrderStatusEnumMap = {

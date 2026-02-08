@@ -134,6 +134,7 @@ from handlers.payment_stripe import (  # noqa: E402
     process_dispute_closed,
     process_dispute_created,
     stripe_webhook,
+    verify_cart_prices,
 )
 
 # ===============================================
@@ -158,6 +159,7 @@ __all__ = [
 
     # Stripe payments
     'create_checkout_session',
+    'verify_cart_prices',
     'stripe_webhook',
     'capture_payment',
     'create_connect_account',

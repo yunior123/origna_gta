@@ -117,21 +117,21 @@ class User(BaseModel):
         default=None,
         description="Airwallex account status"
     )
-    adminMfaEnabled: bool = Field(
+    mfaEnabled: bool = Field(
         default=False,
         description="Whether admin MFA is enabled"
     )
-    adminMfaSecret: str | None = Field(
+    mfaSecret: str | None = Field(
         default=None,
         description="Admin TOTP secret (server-only)"
     )
-    adminMfaVerifiedAt: datetime | None = Field(
+    lastMfaVerify: datetime | None = Field(
         default=None,
         description="Last successful admin MFA verification"
     )
-    adminMfaBackupCodes: list[str] | None = Field(
+    mfaBackupCodes: list[str] | None = Field(
         default=None,
-        description="One-time admin MFA backup codes"
+        description="One-time admin MFA backup codes (hashed)"
     )
     updatedAt: datetime | None = Field(
         default=None,

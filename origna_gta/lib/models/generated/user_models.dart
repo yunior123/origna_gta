@@ -46,6 +46,24 @@ class User with _$User {
     @Default(false) bool suspended,
     DateTime? suspendedAt,
     DateTime? updatedAt,
+    // === AUDIT FIX: 13 missing fields synced from Python/Firestore ===
+    // Payment provider
+    String? paymentProvider,
+    // Airwallex (alternative payment provider)
+    String? airwallexAccountId,
+    String? airwallexCustomerId,
+    String? airwallexStatus,
+    // Suspension details
+    DateTime? unsuspendedAt,
+    String? suspendedBy,
+    String? suspensionReason,
+    // Seller verification & commission
+    double? commissionRate,
+    @Default(false) bool verified,
+    String? verificationStatus,
+    String? platform,
+    String? businessName,
+    int? payoutHoldDays,
   }) = _User;
 
   factory User.fromFirestore(DocumentSnapshot doc) {
@@ -73,6 +91,20 @@ class User with _$User {
       suspended: data['suspended'] ?? false,
       suspendedAt: _parseDateTime(data['suspendedAt']),
       updatedAt: _parseDateTime(data['updatedAt']),
+      // === AUDIT FIX: Parse 13 missing fields ===
+      paymentProvider: data['paymentProvider'] as String?,
+      airwallexAccountId: data['airwallexAccountId'] as String?,
+      airwallexCustomerId: data['airwallexCustomerId'] as String?,
+      airwallexStatus: data['airwallexStatus'] as String?,
+      unsuspendedAt: _parseDateTime(data['unsuspendedAt']),
+      suspendedBy: data['suspendedBy'] as String?,
+      suspensionReason: data['suspensionReason'] as String?,
+      commissionRate: data['commissionRate'] != null ? (data['commissionRate'] as num).toDouble() : null,
+      verified: data['verified'] ?? false,
+      verificationStatus: data['verificationStatus'] as String?,
+      platform: data['platform'] as String?,
+      businessName: data['businessName'] as String?,
+      payoutHoldDays: data['payoutHoldDays'] != null ? (data['payoutHoldDays'] as num).toInt() : null,
     );
   }
 

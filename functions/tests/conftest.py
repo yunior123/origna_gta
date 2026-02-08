@@ -22,9 +22,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Create HttpsError mock class that is a real exception
 class MockHttpsError(Exception):
     """Mock Firebase HttpsError"""
-    def __init__(self, code, message):
+    def __init__(self, code, message, details=None):
         self.code = code
         self.message = message
+        self.details = details
         super().__init__(message)
 
 # Patch Firebase Functions decorators and utilities BEFORE any imports

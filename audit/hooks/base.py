@@ -7,16 +7,14 @@ Each hook declares:
   - the audit prompt
   - severity thresholds
 
-Primary provider: Claude Code CLI (claude --print) — uses Claude Pro subscription.
-Fallback: Kimi 2.5 via NVIDIA NIM API.
-No Anthropic API key or credits needed.
+Uses Anthropic API directly with Claude Opus 4.
 """
 from __future__ import annotations
 
 import json
 import re
 import subprocess
-import requests
+import anthropic
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -24,11 +22,11 @@ from pathlib import Path
 from typing import Optional
 
 from .config import (
-    PROJECT_ROOT, CLAUDE_CLI,
-    KIMI_API_URL, KIMI_MODEL, DEFAULT_PROVIDER, OUTPUT_DIR,
+    PROJECT_ROOT, ANTHROPIC_MODEL, MAX_OUTPUT_TOKENS,
+    OUTPUT_DIR,
     CRITICAL, HIGH, MEDIUM, LOW, SEVERITY_ORDER,
     MAX_CONTEXT_CHARS, EXCLUDE_PATTERNS,
-    load_kimi_api_key, check_claude_cli,
+    load_api_key,
 )
 
 # ─── Registry ─────────────────────────────────────────────────────────────────
@@ -142,8 +140,15 @@ class BaseHook(ABC):
     # Specific files to always include in this audit
     target_files: list[str] = []
 
-    def __init__(self, provider: str = DEFAULT_PROVIDER):
+    def __init__(self, provider: str = "anthropic"):
         self.provider = provider
+        self._client: anthropic.Anthropic | None = None
+
+    def _get_client(self) -> anthropic.Anthropic:
+        """Lazy-init Anthropic client."""
+        if self._client is None:
+            self._client = anthropic.Anthropic(api_key=load_api_key())
+        return self._client
 
     # ── Abstract ──────────────────────────────────────────────────────────
 
@@ -221,131 +226,41 @@ class BaseHook(ABC):
 
         return "".join(content)
 
-    # ── LLM Calls ─────────────────────────────────────────────────────────
-    # Primary: Claude Code CLI (claude -p --print) — uses Claude Pro subscription
-    # Fallback: Kimi 2.5 via NVIDIA NIM API
-
-    def call_claude_cli(self, prompt: str, context: str) -> str:
-        """
-        Call Claude via the Claude Code CLI (uses Claude Pro subscription).
-        
-        Pipes the full prompt+context via stdin to: claude -p --print --model sonnet
-        No API key needed — authenticated via Claude Pro login.
-        """
-        if not check_claude_cli():
-            raise RuntimeError(
-                "Claude Code CLI not found. Install: npm install -g @anthropic-ai/claude-code\n"
-                "Then login: claude login"
-            )
-
-        full_prompt = prompt + "\n\n" + context
-
-        print(f"  📡 Calling Claude Code CLI (Pro subscription)...")
-        print(f"  📦 Prompt size: {len(full_prompt):,} chars")
-
-        try:
-            result = subprocess.run(
-                [
-                    CLAUDE_CLI,
-                    "-p",           # Non-interactive, print mode
-                    "--model", "sonnet",  # Use latest Sonnet model
-                ],
-                input=full_prompt,
-                capture_output=True,
-                text=True,
-                cwd=str(PROJECT_ROOT),
-                timeout=600,  # 10 minute timeout
-            )
-
-            # Check for rate limit / quota
-            combined_output = (result.stdout + result.stderr).strip()
-            if "limit" in combined_output.lower() and "reset" in combined_output.lower():
-                raise RuntimeError(f"Claude Pro rate limit reached: {combined_output[:200]}")
-
-            if result.returncode != 0:
-                stderr = result.stderr.strip()
-                if "not logged in" in stderr.lower() or "auth" in stderr.lower():
-                    raise RuntimeError(
-                        f"Claude CLI auth error. Run: claude login\n{stderr[:200]}"
-                    )
-                if "limit" in stderr.lower():
-                    raise RuntimeError(f"Claude Pro rate limit: {stderr[:200]}")
-                raise RuntimeError(
-                    f"Claude CLI failed (exit {result.returncode}): {stderr[:300]}"
-                )
-
-            output = result.stdout.strip()
-            if not output:
-                raise RuntimeError("Claude CLI returned empty output")
-
-            print(f"  ✅ Received {len(output):,} chars from Claude Pro")
-            return output
-
-        except subprocess.TimeoutExpired:
-            raise RuntimeError("Claude CLI timed out after 600s")
-
-    def call_kimi(self, prompt: str, context: str) -> str:
-        """Send request to Kimi 2.5 API (fallback when Claude Pro is rate-limited)."""
-        api_key = load_kimi_api_key()
-
-        payload = {
-            "model": KIMI_MODEL,
-            "messages": [{"role": "user", "content": prompt + "\n\n" + context}],
-            "temperature": 0.3,
-            "max_tokens": 8192,
-            "stream": True,
-        }
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Accept": "text/event-stream",
-            "Content-Type": "application/json",
-        }
-
-        print(f"  📡 Sending to {KIMI_MODEL} (fallback)...")
-        res = requests.post(
-            KIMI_API_URL, headers=headers, json=payload,
-            timeout=(30, 600), stream=True,
-        )
-        res.raise_for_status()
-
-        chunks = []
-        for line in res.iter_lines(decode_unicode=True):
-            if not line or not line.startswith("data: "):
-                continue
-            data_str = line[len("data: "):]
-            if data_str.strip() == "[DONE]":
-                break
-            chunk = json.loads(data_str)
-            delta = chunk["choices"][0].get("delta", {})
-            text = delta.get("content", "")
-            if text:
-                chunks.append(text)
-                print(text, end="", flush=True)
-
-        print()  # newline after streaming
-        result = "".join(chunks)
-        print(f"  ✅ Received {len(result):,} chars from Kimi")
-        return result
+    # ── LLM Call ──────────────────────────────────────────────────────────
+    # Anthropic API with Claude Opus 4 — direct, no fallback needed
 
     def call_llm(self, prompt: str, context: str) -> str:
         """
-        Call the configured LLM provider, with automatic fallback.
-        
-        Claude Pro (CLI) → Kimi 2.5 (API) on rate-limit/error.
+        Call Claude Opus 4 via Anthropic API.
+
+        Budget-conscious: estimates cost before calling.
         """
-        if self.provider == "claude":
-            try:
-                return self.call_claude_cli(prompt, context)
-            except RuntimeError as e:
-                error_msg = str(e)
-                print(f"  ⚠️  Claude: {error_msg[:150]}")
-                if "not found" in error_msg.lower():
-                    raise  # Don't fallback if CLI isn't installed
-                print(f"  🔄 Falling back to Kimi 2.5...")
-                self.provider = "kimi"
-                return self.call_kimi(prompt, context)
-        else:
-            return self.call_kimi(prompt, context)
+        client = self._get_client()
+        full_content = prompt + "\n\n" + context
+
+        # Estimate tokens (~4 chars/token) and cost
+        est_input_tokens = len(full_content) // 4
+        est_cost = (est_input_tokens / 1_000_000) * 15 + (MAX_OUTPUT_TOKENS / 1_000_000) * 75
+
+        print(f"  📡 Calling {ANTHROPIC_MODEL}...")
+        print(f"  📦 Context: {len(full_content):,} chars (~{est_input_tokens:,} tokens)")
+        print(f"  💰 Est. cost: ~${est_cost:.3f}")
+
+        message = client.messages.create(
+            model=ANTHROPIC_MODEL,
+            max_tokens=MAX_OUTPUT_TOKENS,
+            temperature=0.3,
+            messages=[{"role": "user", "content": full_content}],
+        )
+
+        output = message.content[0].text
+        used_in = message.usage.input_tokens
+        used_out = message.usage.output_tokens
+        actual_cost = (used_in / 1_000_000) * 15 + (used_out / 1_000_000) * 75
+
+        print(f"  ✅ {len(output):,} chars | {used_in:,} in + {used_out:,} out tokens")
+        print(f"  💰 Actual cost: ${actual_cost:.4f}")
+        return output
 
     # ── Parsing ───────────────────────────────────────────────────────────
 
@@ -353,39 +268,70 @@ class BaseHook(ABC):
         """
         Parse structured findings from the LLM response.
 
-        The prompt instructs the LLM to output a JSON block with findings.
-        We extract it and parse it. Falls back to regex extraction.
+        Handles truncated JSON (when max_tokens cuts off the response).
+        Falls back to individual JSON object extraction, then regex.
         """
         findings = []
 
-        # Strategy 1: Look for ```json ... ``` block with findings array
+        def _parse_item(item: dict) -> Finding:
+            return Finding(
+                severity=item.get("severity", MEDIUM),
+                title=item.get("title", "Untitled"),
+                description=item.get("description", ""),
+                file=item.get("file", "unknown"),
+                line=item.get("line"),
+                fix_suggestion=item.get("fix_suggestion", ""),
+                category=item.get("category", ""),
+            )
+
+        # Strategy 1: Look for ```json ... ``` block (complete or truncated)
         json_match = re.search(
-            r'```json\s*\n(\[.*?\])\s*\n```',
+            r'```json\s*\n(\[.*?)(?:\]\s*\n```|$)',
             raw_response,
             re.DOTALL,
         )
         if json_match:
+            json_text = json_match.group(1)
+            # Ensure the array is properly closed
+            if not json_text.rstrip().endswith(']'):
+                # Truncated JSON — repair by closing open objects/array
+                json_text = json_text.rstrip().rstrip(',')
+                if json_text.count('"') % 2 != 0:
+                    json_text += '"'
+                open_braces = json_text.count('{') - json_text.count('}')
+                json_text += '}' * max(0, open_braces)
+                json_text += ']'
+            else:
+                json_text += ']'  # We captured without the ]
+
             try:
-                items = json.loads(json_match.group(1))
+                items = json.loads(json_text)
                 for item in items:
-                    findings.append(Finding(
-                        severity=item.get("severity", MEDIUM),
-                        title=item.get("title", "Untitled"),
-                        description=item.get("description", ""),
-                        file=item.get("file", "unknown"),
-                        line=item.get("line"),
-                        fix_suggestion=item.get("fix_suggestion", ""),
-                        category=item.get("category", ""),
-                    ))
-                return findings
-            except (json.JSONDecodeError, KeyError):
+                    findings.append(_parse_item(item))
+                if findings:
+                    return findings
+            except json.JSONDecodeError:
                 pass
 
-        # Strategy 2: Regex extraction from markdown
-        # Look for patterns like: **CRITICAL** | `file.py` | description
+        # Strategy 2: Extract individual JSON objects {...} with severity field
+        obj_pattern = re.compile(
+            r'\{[^{}]*"severity"\s*:\s*"(CRITICAL|HIGH|MEDIUM|LOW)"[^{}]*\}',
+            re.DOTALL | re.IGNORECASE,
+        )
+        for match in obj_pattern.finditer(raw_response):
+            try:
+                item = json.loads(match.group(0))
+                findings.append(_parse_item(item))
+            except json.JSONDecodeError:
+                continue
+
+        if findings:
+            return findings
+
+        # Strategy 3: Regex extraction from markdown
         pattern = re.compile(
-            r'\*\*?(CRITICAL|HIGH|MEDIUM|LOW)\*?\*?\s*[|:—–-]\s*'
-            r'[`"]?([^`"\n|]+?)[`"]?\s*[|:—–-]\s*'
+            r'\*\*?(CRITICAL|HIGH|MEDIUM|LOW)\*?\*?\s*[|:\u2014\u2013-]\s*'
+            r'[`"]?([^`"\n|]+?)[`"]?\s*[|:\u2014\u2013-]\s*'
             r'(.+?)(?=\n\*\*?(?:CRITICAL|HIGH|MEDIUM|LOW)|\n#{1,3}\s|\Z)',
             re.DOTALL | re.IGNORECASE,
         )

@@ -6,8 +6,11 @@ Admin & User Management Handlers
 - Account deletion
 """
 
+import hashlib
+import hmac
 import secrets
 import string
+import time
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -406,6 +409,16 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     user_id = req.auth.uid
 
+    # AUDIT FIX: Rate limit MFA enrollment
+    from rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action='mfa_enroll',
+        max_requests=3, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
     # Check admin role
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
@@ -428,10 +441,19 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
         for _ in range(8)
     ]
 
+    # SECURITY: Hash backup codes before storing (show plaintext only once)
+    hashed_backup_codes = [
+        hashlib.sha256(code.encode()).hexdigest() for code in backup_codes
+    ]
+
+    # AUDIT FIX: Encrypt MFA secret before storing in Firestore
+    from crypto_utils import encrypt_mfa_secret
+    encrypted_secret = encrypt_mfa_secret(secret)
+
     # Save to Firestore (temporary, until verified)
     user_ref.update({
-        Fields.MFA_SECRET_TEMP: secret,
-        'adminMfaBackupCodesTemp': backup_codes,
+        Fields.MFA_SECRET_TEMP: encrypted_secret,
+        'mfaBackupCodesTemp': hashed_backup_codes,
         Fields.UPDATED_AT: get_server_timestamp()
     })
 
@@ -478,30 +500,63 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('not-found', 'User not found')
 
     user_data = user_doc.to_dict()
-    secret = user_data.get(Fields.MFA_SECRET_TEMP) or user_data.get(Fields.MFA_SECRET)
+    raw_secret = user_data.get(Fields.MFA_SECRET_TEMP) or user_data.get(Fields.MFA_SECRET)
 
-    if not secret:
+    if not raw_secret:
         raise https_fn.HttpsError('failed-precondition', 'MFA not enrolled. Call admin_mfa_enroll first.')
 
-    # Verify code
-    totp = pyotp.TOTP(secret)
+    # AUDIT FIX: Decrypt MFA secret (handles legacy plaintext via fallback)
+    from crypto_utils import decrypt_mfa_secret, encrypt_mfa_secret
+    secret = decrypt_mfa_secret(raw_secret)
 
-    if not totp.verify(code, valid_window=1):
+    # SECURITY: Check MFA attempt limiting (max 5 attempts per 15 min)
+    mfa_attempts = user_data.get('mfaFailedAttempts', 0)
+    mfa_lockout_until = user_data.get('mfaLockoutUntil')
+    if mfa_lockout_until:
+        lockout_time = mfa_lockout_until.replace(tzinfo=None) if hasattr(mfa_lockout_until, 'replace') else mfa_lockout_until
+        if datetime.now() < lockout_time:
+            raise https_fn.HttpsError('permission-denied', 'Too many failed MFA attempts. Try again later.')
+
+    # Verify code with constant-time comparison protection
+    totp = pyotp.TOTP(secret)
+    start_time = time.monotonic()
+
+    code_valid = totp.verify(code, valid_window=1)
+
+    # SECURITY: Constant-time response to prevent timing attacks
+    elapsed = time.monotonic() - start_time
+    min_response_time = 0.1  # 100ms minimum
+    if elapsed < min_response_time:
+        time.sleep(min_response_time - elapsed)
+
+    if not code_valid:
+        # Increment failed attempts
+        attempt_update = {'mfaFailedAttempts': mfa_attempts + 1}
+        if mfa_attempts + 1 >= 5:
+            # Lock out for 15 minutes after 5 failures
+            attempt_update['mfaLockoutUntil'] = datetime.now() + timedelta(minutes=15)
+            attempt_update['mfaFailedAttempts'] = 0
+            print(f'SECURITY: MFA lockout triggered for user {user_id}')
+        user_ref.update(attempt_update)
         raise https_fn.HttpsError('invalid-argument', 'Invalid MFA code')
 
-    # Enable MFA
+    # Reset failed attempts on success
+    if mfa_attempts > 0:
+        user_ref.update({'mfaFailedAttempts': 0})
+
+    # Enable MFA — AUDIT FIX: re-encrypt secret for permanent storage
     update_data = {
         Fields.MFA_ENABLED: True,
-        Fields.MFA_SECRET: secret,
+        Fields.MFA_SECRET: encrypt_mfa_secret(secret),
         Fields.LAST_MFA_VERIFY: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp()
     }
 
     # Persist backup codes from temp storage
-    temp_backup_codes = user_data.get('adminMfaBackupCodesTemp')
+    temp_backup_codes = user_data.get('mfaBackupCodesTemp')
     if temp_backup_codes:
-        update_data['adminMfaBackupCodes'] = temp_backup_codes
-        update_data['adminMfaBackupCodesTemp'] = get_delete_field()
+        update_data['mfaBackupCodes'] = temp_backup_codes
+        update_data['mfaBackupCodesTemp'] = get_delete_field()
 
     # Remove temporary secret
     if Fields.MFA_SECRET_TEMP in user_data:
@@ -539,10 +594,14 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('not-found', 'User not found')
 
     user_data = user_doc.to_dict()
-    secret = user_data.get(Fields.MFA_SECRET)
+    raw_secret = user_data.get(Fields.MFA_SECRET)
 
-    if not secret:
+    if not raw_secret:
         raise https_fn.HttpsError('failed-precondition', 'MFA not enabled')
+
+    # AUDIT FIX: Decrypt MFA secret (handles legacy plaintext via fallback)
+    from crypto_utils import decrypt_mfa_secret
+    secret = decrypt_mfa_secret(raw_secret)
 
     # Verify code before disabling
     totp = pyotp.TOTP(secret)
@@ -578,6 +637,16 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
     user_id = req.auth.uid
+
+    # AUDIT FIX: Rate limit account deletion
+    from rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action='delete_account',
+        max_requests=1, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
 
     # Check if user has pending orders or payouts (with limit)
     pending_orders = get_db().collection(Collections.ORDERS)\

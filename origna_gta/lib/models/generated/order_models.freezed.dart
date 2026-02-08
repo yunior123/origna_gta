@@ -51,7 +51,31 @@ mixin _$Order {
   DateTime? get confirmedAt => throw _privateConstructorUsedError;
   double get platformFeeTotal => throw _privateConstructorUsedError;
   String get payoutStatus => throw _privateConstructorUsedError; // Ratings
-  List<Ratings> get ratings => throw _privateConstructorUsedError;
+  List<Ratings> get ratings =>
+      throw _privateConstructorUsedError; // === AUDIT FIX: 18 missing fields synced from Python/Firestore ===
+  // Payment capture tracking
+  String? get stripePaymentIntentId => throw _privateConstructorUsedError;
+  int get captureAttempts => throw _privateConstructorUsedError;
+  DateTime? get capturedAt => throw _privateConstructorUsedError;
+  DateTime? get expiresAt => throw _privateConstructorUsedError;
+  bool get autoConfirmed => throw _privateConstructorUsedError;
+  bool get autoCaptured =>
+      throw _privateConstructorUsedError; // Refund tracking
+  double get refundAmount => throw _privateConstructorUsedError;
+  DateTime? get refundedAt =>
+      throw _privateConstructorUsedError; // Cancellation tracking
+  bool get stockRestored => throw _privateConstructorUsedError;
+  String? get cancelledBy => throw _privateConstructorUsedError;
+  DateTime? get cancelledAt => throw _privateConstructorUsedError;
+  String? get cancellationReason =>
+      throw _privateConstructorUsedError; // Shipping approval
+  DateTime? get respondedAt => throw _privateConstructorUsedError;
+  double? get actualCost => throw _privateConstructorUsedError; // Admin review
+  bool get requiresManualReview => throw _privateConstructorUsedError;
+  String? get manualReviewReason => throw _privateConstructorUsedError;
+  List<String> get payoutErrors =>
+      throw _privateConstructorUsedError; // Timestamp
+  DateTime? get updatedAt => throw _privateConstructorUsedError;
 
   /// Serializes this Order to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -95,6 +119,24 @@ abstract class $OrderCopyWith<$Res> {
     double platformFeeTotal,
     String payoutStatus,
     List<Ratings> ratings,
+    String? stripePaymentIntentId,
+    int captureAttempts,
+    DateTime? capturedAt,
+    DateTime? expiresAt,
+    bool autoConfirmed,
+    bool autoCaptured,
+    double refundAmount,
+    DateTime? refundedAt,
+    bool stockRestored,
+    String? cancelledBy,
+    DateTime? cancelledAt,
+    String? cancellationReason,
+    DateTime? respondedAt,
+    double? actualCost,
+    bool requiresManualReview,
+    String? manualReviewReason,
+    List<String> payoutErrors,
+    DateTime? updatedAt,
   });
 
   $TaxesCopyWith<$Res> get taxes;
@@ -143,6 +185,24 @@ class _$OrderCopyWithImpl<$Res, $Val extends Order>
     Object? platformFeeTotal = null,
     Object? payoutStatus = null,
     Object? ratings = null,
+    Object? stripePaymentIntentId = freezed,
+    Object? captureAttempts = null,
+    Object? capturedAt = freezed,
+    Object? expiresAt = freezed,
+    Object? autoConfirmed = null,
+    Object? autoCaptured = null,
+    Object? refundAmount = null,
+    Object? refundedAt = freezed,
+    Object? stockRestored = null,
+    Object? cancelledBy = freezed,
+    Object? cancelledAt = freezed,
+    Object? cancellationReason = freezed,
+    Object? respondedAt = freezed,
+    Object? actualCost = freezed,
+    Object? requiresManualReview = null,
+    Object? manualReviewReason = freezed,
+    Object? payoutErrors = null,
+    Object? updatedAt = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -254,6 +314,78 @@ class _$OrderCopyWithImpl<$Res, $Val extends Order>
                 ? _value.ratings
                 : ratings // ignore: cast_nullable_to_non_nullable
                       as List<Ratings>,
+            stripePaymentIntentId: freezed == stripePaymentIntentId
+                ? _value.stripePaymentIntentId
+                : stripePaymentIntentId // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            captureAttempts: null == captureAttempts
+                ? _value.captureAttempts
+                : captureAttempts // ignore: cast_nullable_to_non_nullable
+                      as int,
+            capturedAt: freezed == capturedAt
+                ? _value.capturedAt
+                : capturedAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            expiresAt: freezed == expiresAt
+                ? _value.expiresAt
+                : expiresAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            autoConfirmed: null == autoConfirmed
+                ? _value.autoConfirmed
+                : autoConfirmed // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            autoCaptured: null == autoCaptured
+                ? _value.autoCaptured
+                : autoCaptured // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            refundAmount: null == refundAmount
+                ? _value.refundAmount
+                : refundAmount // ignore: cast_nullable_to_non_nullable
+                      as double,
+            refundedAt: freezed == refundedAt
+                ? _value.refundedAt
+                : refundedAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            stockRestored: null == stockRestored
+                ? _value.stockRestored
+                : stockRestored // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            cancelledBy: freezed == cancelledBy
+                ? _value.cancelledBy
+                : cancelledBy // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            cancelledAt: freezed == cancelledAt
+                ? _value.cancelledAt
+                : cancelledAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            cancellationReason: freezed == cancellationReason
+                ? _value.cancellationReason
+                : cancellationReason // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            respondedAt: freezed == respondedAt
+                ? _value.respondedAt
+                : respondedAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            actualCost: freezed == actualCost
+                ? _value.actualCost
+                : actualCost // ignore: cast_nullable_to_non_nullable
+                      as double?,
+            requiresManualReview: null == requiresManualReview
+                ? _value.requiresManualReview
+                : requiresManualReview // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            manualReviewReason: freezed == manualReviewReason
+                ? _value.manualReviewReason
+                : manualReviewReason // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            payoutErrors: null == payoutErrors
+                ? _value.payoutErrors
+                : payoutErrors // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
+            updatedAt: freezed == updatedAt
+                ? _value.updatedAt
+                : updatedAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
           )
           as $Val,
     );
@@ -316,6 +448,24 @@ abstract class _$$OrderImplCopyWith<$Res> implements $OrderCopyWith<$Res> {
     double platformFeeTotal,
     String payoutStatus,
     List<Ratings> ratings,
+    String? stripePaymentIntentId,
+    int captureAttempts,
+    DateTime? capturedAt,
+    DateTime? expiresAt,
+    bool autoConfirmed,
+    bool autoCaptured,
+    double refundAmount,
+    DateTime? refundedAt,
+    bool stockRestored,
+    String? cancelledBy,
+    DateTime? cancelledAt,
+    String? cancellationReason,
+    DateTime? respondedAt,
+    double? actualCost,
+    bool requiresManualReview,
+    String? manualReviewReason,
+    List<String> payoutErrors,
+    DateTime? updatedAt,
   });
 
   @override
@@ -365,6 +515,24 @@ class __$$OrderImplCopyWithImpl<$Res>
     Object? platformFeeTotal = null,
     Object? payoutStatus = null,
     Object? ratings = null,
+    Object? stripePaymentIntentId = freezed,
+    Object? captureAttempts = null,
+    Object? capturedAt = freezed,
+    Object? expiresAt = freezed,
+    Object? autoConfirmed = null,
+    Object? autoCaptured = null,
+    Object? refundAmount = null,
+    Object? refundedAt = freezed,
+    Object? stockRestored = null,
+    Object? cancelledBy = freezed,
+    Object? cancelledAt = freezed,
+    Object? cancellationReason = freezed,
+    Object? respondedAt = freezed,
+    Object? actualCost = freezed,
+    Object? requiresManualReview = null,
+    Object? manualReviewReason = freezed,
+    Object? payoutErrors = null,
+    Object? updatedAt = freezed,
   }) {
     return _then(
       _$OrderImpl(
@@ -476,6 +644,78 @@ class __$$OrderImplCopyWithImpl<$Res>
             ? _value._ratings
             : ratings // ignore: cast_nullable_to_non_nullable
                   as List<Ratings>,
+        stripePaymentIntentId: freezed == stripePaymentIntentId
+            ? _value.stripePaymentIntentId
+            : stripePaymentIntentId // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        captureAttempts: null == captureAttempts
+            ? _value.captureAttempts
+            : captureAttempts // ignore: cast_nullable_to_non_nullable
+                  as int,
+        capturedAt: freezed == capturedAt
+            ? _value.capturedAt
+            : capturedAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        expiresAt: freezed == expiresAt
+            ? _value.expiresAt
+            : expiresAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        autoConfirmed: null == autoConfirmed
+            ? _value.autoConfirmed
+            : autoConfirmed // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        autoCaptured: null == autoCaptured
+            ? _value.autoCaptured
+            : autoCaptured // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        refundAmount: null == refundAmount
+            ? _value.refundAmount
+            : refundAmount // ignore: cast_nullable_to_non_nullable
+                  as double,
+        refundedAt: freezed == refundedAt
+            ? _value.refundedAt
+            : refundedAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        stockRestored: null == stockRestored
+            ? _value.stockRestored
+            : stockRestored // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        cancelledBy: freezed == cancelledBy
+            ? _value.cancelledBy
+            : cancelledBy // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        cancelledAt: freezed == cancelledAt
+            ? _value.cancelledAt
+            : cancelledAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        cancellationReason: freezed == cancellationReason
+            ? _value.cancellationReason
+            : cancellationReason // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        respondedAt: freezed == respondedAt
+            ? _value.respondedAt
+            : respondedAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        actualCost: freezed == actualCost
+            ? _value.actualCost
+            : actualCost // ignore: cast_nullable_to_non_nullable
+                  as double?,
+        requiresManualReview: null == requiresManualReview
+            ? _value.requiresManualReview
+            : requiresManualReview // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        manualReviewReason: freezed == manualReviewReason
+            ? _value.manualReviewReason
+            : manualReviewReason // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        payoutErrors: null == payoutErrors
+            ? _value._payoutErrors
+            : payoutErrors // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
+        updatedAt: freezed == updatedAt
+            ? _value.updatedAt
+            : updatedAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
       ),
     );
   }
@@ -512,10 +752,29 @@ class _$OrderImpl extends _Order {
     this.platformFeeTotal = 0.0,
     this.payoutStatus = 'pending',
     final List<Ratings> ratings = const [],
+    this.stripePaymentIntentId,
+    this.captureAttempts = 0,
+    this.capturedAt,
+    this.expiresAt,
+    this.autoConfirmed = false,
+    this.autoCaptured = false,
+    this.refundAmount = 0.0,
+    this.refundedAt,
+    this.stockRestored = false,
+    this.cancelledBy,
+    this.cancelledAt,
+    this.cancellationReason,
+    this.respondedAt,
+    this.actualCost,
+    this.requiresManualReview = false,
+    this.manualReviewReason,
+    final List<String> payoutErrors = const [],
+    this.updatedAt,
   }) : _items = items,
        _sellerIds = sellerIds,
        _sellerPayouts = sellerPayouts,
        _ratings = ratings,
+       _payoutErrors = payoutErrors,
        super._();
 
   factory _$OrderImpl.fromJson(Map<String, dynamic> json) =>
@@ -620,9 +879,66 @@ class _$OrderImpl extends _Order {
     return EqualUnmodifiableListView(_ratings);
   }
 
+  // === AUDIT FIX: 18 missing fields synced from Python/Firestore ===
+  // Payment capture tracking
+  @override
+  final String? stripePaymentIntentId;
+  @override
+  @JsonKey()
+  final int captureAttempts;
+  @override
+  final DateTime? capturedAt;
+  @override
+  final DateTime? expiresAt;
+  @override
+  @JsonKey()
+  final bool autoConfirmed;
+  @override
+  @JsonKey()
+  final bool autoCaptured;
+  // Refund tracking
+  @override
+  @JsonKey()
+  final double refundAmount;
+  @override
+  final DateTime? refundedAt;
+  // Cancellation tracking
+  @override
+  @JsonKey()
+  final bool stockRestored;
+  @override
+  final String? cancelledBy;
+  @override
+  final DateTime? cancelledAt;
+  @override
+  final String? cancellationReason;
+  // Shipping approval
+  @override
+  final DateTime? respondedAt;
+  @override
+  final double? actualCost;
+  // Admin review
+  @override
+  @JsonKey()
+  final bool requiresManualReview;
+  @override
+  final String? manualReviewReason;
+  final List<String> _payoutErrors;
+  @override
+  @JsonKey()
+  List<String> get payoutErrors {
+    if (_payoutErrors is EqualUnmodifiableListView) return _payoutErrors;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_payoutErrors);
+  }
+
+  // Timestamp
+  @override
+  final DateTime? updatedAt;
+
   @override
   String toString() {
-    return 'Order(orderId: $orderId, userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, totalAmountCents: $totalAmountCents, subtotalCents: $subtotalCents, shippingCostCents: $shippingCostCents, taxAmountCents: $taxAmountCents, taxes: $taxes, orderStatus: $orderStatus, paymentStatus: $paymentStatus, shippingAddress: $shippingAddress, createdAt: $createdAt, currency: $currency, sellerIds: $sellerIds, stripeSessionId: $stripeSessionId, shippingApprovalStatus: $shippingApprovalStatus, shippingApprovalRequired: $shippingApprovalRequired, actualShipping: $actualShipping, pendingTotal: $pendingTotal, sellerPayouts: $sellerPayouts, confirmedByClient: $confirmedByClient, confirmedAt: $confirmedAt, platformFeeTotal: $platformFeeTotal, payoutStatus: $payoutStatus, ratings: $ratings)';
+    return 'Order(orderId: $orderId, userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, totalAmountCents: $totalAmountCents, subtotalCents: $subtotalCents, shippingCostCents: $shippingCostCents, taxAmountCents: $taxAmountCents, taxes: $taxes, orderStatus: $orderStatus, paymentStatus: $paymentStatus, shippingAddress: $shippingAddress, createdAt: $createdAt, currency: $currency, sellerIds: $sellerIds, stripeSessionId: $stripeSessionId, shippingApprovalStatus: $shippingApprovalStatus, shippingApprovalRequired: $shippingApprovalRequired, actualShipping: $actualShipping, pendingTotal: $pendingTotal, sellerPayouts: $sellerPayouts, confirmedByClient: $confirmedByClient, confirmedAt: $confirmedAt, platformFeeTotal: $platformFeeTotal, payoutStatus: $payoutStatus, ratings: $ratings, stripePaymentIntentId: $stripePaymentIntentId, captureAttempts: $captureAttempts, capturedAt: $capturedAt, expiresAt: $expiresAt, autoConfirmed: $autoConfirmed, autoCaptured: $autoCaptured, refundAmount: $refundAmount, refundedAt: $refundedAt, stockRestored: $stockRestored, cancelledBy: $cancelledBy, cancelledAt: $cancelledAt, cancellationReason: $cancellationReason, respondedAt: $respondedAt, actualCost: $actualCost, requiresManualReview: $requiresManualReview, manualReviewReason: $manualReviewReason, payoutErrors: $payoutErrors, updatedAt: $updatedAt)';
   }
 
   @override
@@ -685,7 +1001,45 @@ class _$OrderImpl extends _Order {
                 other.platformFeeTotal == platformFeeTotal) &&
             (identical(other.payoutStatus, payoutStatus) ||
                 other.payoutStatus == payoutStatus) &&
-            const DeepCollectionEquality().equals(other._ratings, _ratings));
+            const DeepCollectionEquality().equals(other._ratings, _ratings) &&
+            (identical(other.stripePaymentIntentId, stripePaymentIntentId) ||
+                other.stripePaymentIntentId == stripePaymentIntentId) &&
+            (identical(other.captureAttempts, captureAttempts) ||
+                other.captureAttempts == captureAttempts) &&
+            (identical(other.capturedAt, capturedAt) ||
+                other.capturedAt == capturedAt) &&
+            (identical(other.expiresAt, expiresAt) ||
+                other.expiresAt == expiresAt) &&
+            (identical(other.autoConfirmed, autoConfirmed) ||
+                other.autoConfirmed == autoConfirmed) &&
+            (identical(other.autoCaptured, autoCaptured) ||
+                other.autoCaptured == autoCaptured) &&
+            (identical(other.refundAmount, refundAmount) ||
+                other.refundAmount == refundAmount) &&
+            (identical(other.refundedAt, refundedAt) ||
+                other.refundedAt == refundedAt) &&
+            (identical(other.stockRestored, stockRestored) ||
+                other.stockRestored == stockRestored) &&
+            (identical(other.cancelledBy, cancelledBy) ||
+                other.cancelledBy == cancelledBy) &&
+            (identical(other.cancelledAt, cancelledAt) ||
+                other.cancelledAt == cancelledAt) &&
+            (identical(other.cancellationReason, cancellationReason) ||
+                other.cancellationReason == cancellationReason) &&
+            (identical(other.respondedAt, respondedAt) ||
+                other.respondedAt == respondedAt) &&
+            (identical(other.actualCost, actualCost) ||
+                other.actualCost == actualCost) &&
+            (identical(other.requiresManualReview, requiresManualReview) ||
+                other.requiresManualReview == requiresManualReview) &&
+            (identical(other.manualReviewReason, manualReviewReason) ||
+                other.manualReviewReason == manualReviewReason) &&
+            const DeepCollectionEquality().equals(
+              other._payoutErrors,
+              _payoutErrors,
+            ) &&
+            (identical(other.updatedAt, updatedAt) ||
+                other.updatedAt == updatedAt));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -719,6 +1073,24 @@ class _$OrderImpl extends _Order {
     platformFeeTotal,
     payoutStatus,
     const DeepCollectionEquality().hash(_ratings),
+    stripePaymentIntentId,
+    captureAttempts,
+    capturedAt,
+    expiresAt,
+    autoConfirmed,
+    autoCaptured,
+    refundAmount,
+    refundedAt,
+    stockRestored,
+    cancelledBy,
+    cancelledAt,
+    cancellationReason,
+    respondedAt,
+    actualCost,
+    requiresManualReview,
+    manualReviewReason,
+    const DeepCollectionEquality().hash(_payoutErrors),
+    updatedAt,
   ]);
 
   /// Create a copy of Order
@@ -764,6 +1136,24 @@ abstract class _Order extends Order {
     final double platformFeeTotal,
     final String payoutStatus,
     final List<Ratings> ratings,
+    final String? stripePaymentIntentId,
+    final int captureAttempts,
+    final DateTime? capturedAt,
+    final DateTime? expiresAt,
+    final bool autoConfirmed,
+    final bool autoCaptured,
+    final double refundAmount,
+    final DateTime? refundedAt,
+    final bool stockRestored,
+    final String? cancelledBy,
+    final DateTime? cancelledAt,
+    final String? cancellationReason,
+    final DateTime? respondedAt,
+    final double? actualCost,
+    final bool requiresManualReview,
+    final String? manualReviewReason,
+    final List<String> payoutErrors,
+    final DateTime? updatedAt,
   }) = _$OrderImpl;
   const _Order._() : super._();
 
@@ -822,7 +1212,44 @@ abstract class _Order extends Order {
   @override
   String get payoutStatus; // Ratings
   @override
-  List<Ratings> get ratings;
+  List<Ratings> get ratings; // === AUDIT FIX: 18 missing fields synced from Python/Firestore ===
+  // Payment capture tracking
+  @override
+  String? get stripePaymentIntentId;
+  @override
+  int get captureAttempts;
+  @override
+  DateTime? get capturedAt;
+  @override
+  DateTime? get expiresAt;
+  @override
+  bool get autoConfirmed;
+  @override
+  bool get autoCaptured; // Refund tracking
+  @override
+  double get refundAmount;
+  @override
+  DateTime? get refundedAt; // Cancellation tracking
+  @override
+  bool get stockRestored;
+  @override
+  String? get cancelledBy;
+  @override
+  DateTime? get cancelledAt;
+  @override
+  String? get cancellationReason; // Shipping approval
+  @override
+  DateTime? get respondedAt;
+  @override
+  double? get actualCost; // Admin review
+  @override
+  bool get requiresManualReview;
+  @override
+  String? get manualReviewReason;
+  @override
+  List<String> get payoutErrors; // Timestamp
+  @override
+  DateTime? get updatedAt;
 
   /// Create a copy of Order
   /// with the given fields replaced by the non-null parameter values.

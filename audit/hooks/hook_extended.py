@@ -20,20 +20,10 @@ class SecurityHook(BaseHook):
         "functions/config.py",
     ]
 
+    # Optimized: security-critical files, ~97K budget
     target_files = [
-        "firestore.rules",
-        "storage.rules",
-        "functions/handlers/admin.py",
-        "functions/handlers/products.py",
-        "functions/handlers/orders.py",
-        "functions/handlers/payment_stripe.py",
-        "functions/utils.py",
-        "functions/rate_limiter.py",
-        "functions/config.py",
-        "functions/schema_constants.py",
-        "functions/models/user.py",
-        "functions/models/order.py",
-        "functions/models/product.py",
+        "firestore.rules",                          # 19K — THE access control
+        "functions/handlers/payment_stripe.py",     # 94K — payment security
     ]
 
     def get_prompt(self) -> str:
@@ -80,17 +70,12 @@ class PerformanceHook(BaseHook):
         "origna_gta/lib/core/repositories/*.dart",
     ]
 
+    # Optimized: hot-path backend files, ~95K budget
     target_files = [
-        "functions/handlers/products.py",
-        "functions/handlers/orders.py",
-        "functions/handlers/payment_stripe.py",
-        "functions/handlers/cron_jobs.py",
-        "functions/algolia_service.py",
-        "functions/shipping_service.py",
-        "firestore.indexes.json",
-        "origna_gta/lib/core/repositories/product_repository.dart",
-        "origna_gta/lib/core/repositories/order_repository.dart",
-        "origna_gta/lib/features/home/home_viewmodel.dart",
+        "functions/handlers/products.py",            # 29K — product queries
+        "functions/handlers/orders.py",              # 43K — order queries
+        "functions/handlers/cron_jobs.py",            # 22K — batch jobs
+        "functions/algolia_service.py",              # 12K — search indexing
     ]
 
     def get_prompt(self) -> str:
@@ -132,20 +117,18 @@ class StateMgmtHook(BaseHook):
         "origna_gta/lib/services/*.dart",
     ]
 
+    # Optimized: Riverpod state files only, ~72K budget
     target_files = [
-        "origna_gta/lib/features/auth/auth_provider.dart",
-        "origna_gta/lib/features/auth/auth_state.dart",
-        "origna_gta/lib/features/checkout/checkout_provider.dart",
-        "origna_gta/lib/features/checkout/checkout_state.dart",
-        "origna_gta/lib/features/orders/seller_orders_viewmodel.dart",
-        "origna_gta/lib/features/orders/buyer_orders_viewmodel.dart",
-        "origna_gta/lib/features/products/products_provider.dart",
-        "origna_gta/lib/features/products/add_product_viewmodel.dart",
-        "origna_gta/lib/features/seller/seller_provider.dart",
-        "origna_gta/lib/features/cart/cart_provider.dart",
-        "origna_gta/lib/services/cart_service.dart",
-        "origna_gta/lib/core/repositories/auth_repository.dart",
-        "origna_gta/lib/core/repositories/order_repository.dart",
+        "origna_gta/lib/core/repositories/auth_repository.dart",   # 12K
+        "origna_gta/lib/features/checkout/checkout_provider.dart", # 11K
+        "origna_gta/lib/features/cart/cart_provider.dart",         # 10K
+        "origna_gta/lib/features/products/add_product_viewmodel.dart", # 11K
+        "origna_gta/lib/core/repositories/order_repository.dart", # 5K
+        "origna_gta/lib/features/products/products_provider.dart", # 4K
+        "origna_gta/lib/features/orders/seller_orders_viewmodel.dart", # 1.5K
+        "origna_gta/lib/features/orders/buyer_orders_viewmodel.dart", # 1.3K
+        "origna_gta/lib/features/auth/auth_provider.dart",        # 0.6K
+        "origna_gta/lib/features/checkout/checkout_state.dart",   # 3.8K
     ]
 
     def get_prompt(self) -> str:
@@ -191,17 +174,13 @@ class OrdersHook(BaseHook):
         "origna_gta/lib/features/orders/*",
     ]
 
+    # Optimized: order lifecycle logic only, ~95K budget
     target_files = [
-        "functions/handlers/orders.py",
-        "functions/handlers/payment_stripe.py",
-        "functions/handlers/cron_jobs.py",
-        "functions/shipping_service.py",
-        "functions/email_service.py",
-        "functions/schema_constants.py",
-        "functions/models/order.py",
-        "origna_gta/lib/features/orders/seller_orders_viewmodel.dart",
-        "origna_gta/lib/features/orders/buyer_orders_viewmodel.dart",
-        "firestore.rules",
+        "functions/handlers/orders.py",              # 43K — order state machine
+        "functions/handlers/cron_jobs.py",            # 22K — auto-capture, cleanup
+        "functions/shipping_service.py",             # 17K — shipping flow
+        "functions/schema_constants.py",             # 16K — status constants
+        "functions/models/order.py",                 # 8K  — order model
     ]
 
     def get_prompt(self) -> str:
@@ -242,20 +221,10 @@ class ErrorHandlingHook(BaseHook):
         "origna_gta/lib/core/repositories/*.dart",
     ]
 
+    # Optimized: backend error paths, ~97K budget
     target_files = [
-        "functions/handlers/payment_stripe.py",
-        "functions/handlers/orders.py",
-        "functions/handlers/products.py",
-        "functions/handlers/admin.py",
-        "functions/handlers/cron_jobs.py",
-        "functions/utils.py",
-        "functions/config.py",
-        "functions/email_service.py",
-        "functions/algolia_service.py",
-        "functions/shipping_service.py",
-        "origna_gta/lib/features/auth/auth_provider.dart",
-        "origna_gta/lib/features/checkout/checkout_provider.dart",
-        "origna_gta/lib/core/repositories/order_repository.dart",
+        "functions/handlers/payment_stripe.py",     # 94K — payment errors critical
+        "functions/utils.py",                       # 12K — error helpers
     ]
 
     def get_prompt(self) -> str:
@@ -293,17 +262,10 @@ class SellerHook(BaseHook):
         "origna_gta/lib/screens/seller_*.dart",
     ]
 
+    # Optimized: seller onboarding logic, ~93K budget
     target_files = [
-        "functions/handlers/admin.py",
-        "functions/handlers/payment_stripe.py",
-        "functions/handlers/products.py",
-        "functions/config.py",
-        "functions/schema_constants.py",
-        "functions/models/user.py",
-        "origna_gta/lib/features/seller/seller_provider.dart",
-        "origna_gta/lib/screens/seller_dashboard_screen.dart",
-        "docs/SELLER_TERMS_AND_POLICIES.md",
-        "firestore.rules",
+        "functions/handlers/admin.py",               # 21K — seller management
+        "functions/handlers/payment_stripe.py",     # 94K — Connect onboarding
     ]
 
     def get_prompt(self) -> str:

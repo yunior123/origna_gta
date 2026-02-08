@@ -553,6 +553,33 @@
 			"options": { "cwd": "${workspaceFolder}" },
 			"problemMatcher": [],
 			"presentation": { "reveal": "always", "panel": "shared" }
+		},
+		{
+			"label": "🪝🔧 Claude: Audit & Auto-Fix (All Hooks)",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --fix",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝🔧 Claude: Audit & Auto-Fix (Changed Files)",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --changed --fix",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝🔧 Claude: Auto-Fix Dry Run (Preview)",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --changed --fix --dry-run",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
 		}
 	]
 }

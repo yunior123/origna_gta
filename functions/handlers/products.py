@@ -18,7 +18,7 @@ from algolia_service import delete_product as algolia_delete_product
 from algolia_service import index_product
 from config import R2_ACCESS_KEY_NEW, R2_ACCOUNT_ID_NEW, R2_SECRET_KEY_NEW, Collections, R2Config, get_r2_credentials
 from function_options import DEFAULT_OPTIONS
-from schema_constants import Fields, OrderStatusValues, UserRoleValues
+from schema_constants import Fields, OrderStatusValues, UserRoleValues, CategoryIds
 from utils import create_success_response
 
 # Lazy loading constants
@@ -80,6 +80,16 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+
+    # AUDIT FIX: Rate limit image uploads
+    from rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid, action='upload_images',
+        max_requests=10, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
 
     data = req.data
     file_names_raw = data.get('fileNames', [])
@@ -264,6 +274,16 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
+    # AUDIT FIX: Rate limit rating submissions
+    from rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid, action='submit_rating',
+        max_requests=5, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
     user_id = req.auth.uid
     data = req.data
 
@@ -381,6 +401,67 @@ def on_product_created(event: firestore_fn.Event) -> None:
         print(f'Product {product_id} is not active, skipping indexing')
         return
 
+    # ── SECURITY: SERVER-SIDE VALIDATION (products written from Flutter) ──
+    from utils import sanitized_text
+
+    # CRITICAL: Validate price > 0 and <= 100000 CAD
+    price = product_data.get(Fields.PRICE)
+    if price is None or not isinstance(price, (int, float)) or price <= 0 or price > 100000:
+        print(f'SECURITY: Product {product_id} has invalid price ({price}) — deactivating')
+        get_db().collection('products').document(product_id).update({
+            Fields.IS_ACTIVE: False,
+            'deactivationReason': f'Invalid price: {price}',
+        })
+        return
+
+    # CRITICAL: Validate stock quantity >= 0
+    stock = product_data.get(Fields.STOCK_QUANTITY, 0)
+    if not isinstance(stock, (int, float)) or stock < 0:
+        print(f'SECURITY: Product {product_id} has invalid stock ({stock}) — deactivating')
+        get_db().collection('products').document(product_id).update({
+            Fields.IS_ACTIVE: False,
+            'deactivationReason': f'Invalid stock: {stock}',
+        })
+        return
+
+    # CRITICAL: Canada-only seller validation
+    seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
+    country = (seller_address.get('country') or '').lower()
+    if country not in ('canada', 'ca'):
+        print(f'SECURITY: Product {product_id} has non-Canadian seller ({country}) — deactivating')
+        get_db().collection('products').document(product_id).update({
+            Fields.IS_ACTIVE: False,
+            'deactivationReason': f'Non-Canadian seller: {country}',
+        })
+        return
+
+    # CRITICAL: Sanitize text fields to prevent stored XSS
+    xss_patches = {}
+    name = product_data.get(Fields.NAME, '')
+    description = product_data.get(Fields.DESCRIPTION, '')
+
+    # CRITICAL: Validate categoryId against allowed categories
+    category_id = product_data.get(Fields.CATEGORY_ID)
+    if category_id is not None:
+        if not isinstance(category_id, (int, float)) or int(category_id) < CategoryIds.MIN or int(category_id) > CategoryIds.MAX:
+            print(f'SECURITY: Product {product_id} has invalid categoryId ({category_id}) — deactivating')
+            get_db().collection('products').document(product_id).update({
+                Fields.IS_ACTIVE: False,
+                'deactivationReason': f'Invalid categoryId: {category_id}',
+            })
+            return
+    sanitized_name = sanitized_text(name)
+    sanitized_desc = sanitized_text(description)
+    if sanitized_name != name:
+        xss_patches[Fields.NAME] = sanitized_name
+        print(f'SECURITY: Sanitized XSS in product {product_id} name')
+    if sanitized_desc != description:
+        xss_patches[Fields.DESCRIPTION] = sanitized_desc
+        print(f'SECURITY: Sanitized XSS in product {product_id} description')
+    if xss_patches:
+        get_db().collection('products').document(product_id).update(xss_patches)
+        product_data.update(xss_patches)
+
     # ── DATA CONSISTENCY VALIDATION ──────────────────────────────────
     patches = {}
 
@@ -430,6 +511,11 @@ def on_product_created(event: firestore_fn.Event) -> None:
     try:
         # Add document ID to product data
         product_data['id'] = product_id
+        # Ensure sanitized data is sent to Algolia
+        if Fields.NAME in product_data:
+            product_data[Fields.NAME] = sanitized_text(product_data[Fields.NAME])
+        if Fields.DESCRIPTION in product_data:
+            product_data[Fields.DESCRIPTION] = sanitized_text(product_data[Fields.DESCRIPTION])
         index_product(product_data)
         print(f'Product {product_id} indexed to Algolia')
     except Exception as e:

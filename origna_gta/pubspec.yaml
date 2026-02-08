@@ -138,3 +138,14 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# ============================================================================
+# flutter_native_splash — simple white bg + centered logo
+# ============================================================================
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: web/splash/img/light-1x.png
+  android: true
+  ios: true
+  web: true
+  web_image_mode: center

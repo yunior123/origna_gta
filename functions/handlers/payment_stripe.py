@@ -185,6 +185,109 @@ def _rollback_checkout(validated_items: list, order_ref) -> None:
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS, cors=CORS_CONFIG)
+def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    AUDIT FIX: Pre-checkout cart price verification.
+
+    Checks if any cart item prices/stock/availability have changed since the
+    user added them. Frontend should call this BEFORE initiating checkout to
+    detect stale prices and update the cart UI.
+
+    This prevents the critical bug where a user proceeds to checkout with
+    outdated prices, only to get a hard error at payment time.
+
+    Request data:
+        items: List of {productId, price, quantity}
+
+    Returns:
+        {
+            success: True,
+            hasChanges: bool,
+            priceChanges: [{productId, name, oldPrice, newPrice}],
+            stockChanges: [{productId, name, requested, available}],
+            removedProducts: [{productId}]
+        }
+    """
+    if not req.auth:
+        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+
+    # Rate limit: 10/min (called before checkout)
+    allowed, message = get_rate_limiter().check_rate_limit(
+        identifier=req.auth.uid,
+        action='verify_cart_prices',
+        max_requests=10,
+        window_minutes=1,
+        fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', message)
+
+    items = req.data.get(Fields.ITEMS, [])
+    if not items:
+        raise https_fn.HttpsError('invalid-argument', 'No items to verify')
+
+    price_changes = []
+    stock_changes = []
+    removed_products = []
+
+    for item in items:
+        product_id = item.get(Fields.PRODUCT_ID)
+        client_price = item.get(Fields.PRICE, 0)
+        requested_qty = item.get(Fields.QUANTITY, 1)
+
+        if not product_id:
+            continue
+
+        product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+        product_doc = product_ref.get()
+
+        if not product_doc.exists:
+            removed_products.append({'productId': product_id})
+            continue
+
+        product_data = product_doc.to_dict()
+
+        # Check if product is still active
+        if not product_data.get(Fields.IS_ACTIVE, False):
+            removed_products.append({
+                'productId': product_id,
+                'name': product_data.get(Fields.NAME, ''),
+                'reason': 'deactivated',
+            })
+            continue
+
+        # Check price change (> 1 cent tolerance)
+        db_price = product_data.get(Fields.PRICE, 0)
+        if abs(db_price - client_price) > 0.01:
+            price_changes.append({
+                'productId': product_id,
+                'name': product_data.get(Fields.NAME, ''),
+                'oldPrice': client_price,
+                'newPrice': db_price,
+            })
+
+        # Check stock availability
+        stock_qty = product_data.get(Fields.STOCK_QUANTITY, 0)
+        if stock_qty < requested_qty:
+            stock_changes.append({
+                'productId': product_id,
+                'name': product_data.get(Fields.NAME, ''),
+                'requested': requested_qty,
+                'available': stock_qty,
+            })
+
+    has_changes = len(price_changes) > 0 or len(stock_changes) > 0 or len(removed_products) > 0
+
+    from utils import create_success_response
+    return create_success_response({
+        'hasChanges': has_changes,
+        'priceChanges': price_changes,
+        'stockChanges': stock_changes,
+        'removedProducts': removed_products,
+    })
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS, cors=CORS_CONFIG)
 def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Creates a Stripe Checkout session with server-side validation.
@@ -346,10 +449,19 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         client_price = item[Fields.PRICE]
 
         # Allow 1 cent tolerance for floating point errors
+        # AUDIT FIX: Return structured error with updated price so frontend can auto-refresh cart
         if abs(db_price - client_price) > 0.01:
             raise https_fn.HttpsError(
                 'invalid-argument',
-                f"Price mismatch for product {item[Fields.PRODUCT_ID]}: expected ${db_price:.2f}, got ${client_price:.2f}"
+                f"Price changed for {product_data.get(Fields.NAME, item[Fields.PRODUCT_ID])}: "
+                f"was ${client_price:.2f}, now ${db_price:.2f}. Please refresh your cart.",
+                details={
+                    'code': 'PRICE_CHANGED',
+                    'productId': item[Fields.PRODUCT_ID],
+                    'productName': product_data.get(Fields.NAME, ''),
+                    'oldPrice': client_price,
+                    'newPrice': db_price,
+                }
             )
 
         # Check stock availability

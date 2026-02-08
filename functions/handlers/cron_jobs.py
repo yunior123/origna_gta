@@ -231,6 +231,19 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
 
                     if stripe_account_id and seller_charges_ok:
                         try:
+                            # Create PENDING payout record BEFORE Stripe transfer
+                            payout_ref = get_db().collection(Collections.PAYOUTS).document()
+                            payout_ref.set({
+                                Fields.ORDER_ID: order_id,
+                                Fields.SELLER_ID: seller_id,
+                                Fields.AMOUNT_CENTS: amount_cents,
+                                Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
+                                Fields.NET_AMOUNT_CENTS: net_amount_cents,
+                                Fields.STATUS: PayoutStatusValues.PENDING,
+                                Fields.AUTO_CAPTURED: True,
+                                Fields.CREATED_AT: get_server_timestamp()
+                            })
+
                             transfer = stripe.Transfer.create(
                                 amount=net_amount_cents,
                                 currency='cad',
@@ -245,33 +258,35 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                                 idempotency_key=f'auto_transfer_{order_id}_{seller_id}',
                             )
 
-                            get_db().collection(Collections.PAYOUTS).add({
-                                Fields.ORDER_ID: order_id,
-                                Fields.SELLER_ID: seller_id,
-                                Fields.AMOUNT_CENTS: amount_cents,
-                                Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
-                                Fields.NET_AMOUNT_CENTS: net_amount_cents,
+                            # Update payout record with transfer details
+                            payout_ref.update({
                                 Fields.STATUS: PayoutStatusValues.COMPLETED,
                                 Fields.STRIPE_TRANSFER_ID: transfer.id,
                                 Fields.PAYOUT_DATE: get_server_timestamp(),
-                                Fields.AUTO_CAPTURED: True,
-                                Fields.CREATED_AT: get_server_timestamp()
                             })
 
                         except stripe.error.StripeError as e:
                             print(f'Payout failed for seller {seller_id}: {str(e)}')
 
-                            get_db().collection(Collections.PAYOUTS).add({
-                                Fields.ORDER_ID: order_id,
-                                Fields.SELLER_ID: seller_id,
-                                Fields.AMOUNT_CENTS: amount_cents,
-                                Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
-                                Fields.NET_AMOUNT_CENTS: net_amount_cents,
-                                Fields.STATUS: PayoutStatusValues.FAILED,
-                                Fields.FAILURE_REASON: str(e),
-                                Fields.AUTO_CAPTURED: True,
-                                Fields.CREATED_AT: get_server_timestamp()
-                            })
+                            # Update existing payout record to FAILED
+                            try:
+                                payout_ref.update({
+                                    Fields.STATUS: PayoutStatusValues.FAILED,
+                                    Fields.FAILURE_REASON: str(e),
+                                })
+                            except Exception:
+                                # Fallback: create a new failure record if payout_ref wasn't set
+                                get_db().collection(Collections.PAYOUTS).add({
+                                    Fields.ORDER_ID: order_id,
+                                    Fields.SELLER_ID: seller_id,
+                                    Fields.AMOUNT_CENTS: amount_cents,
+                                    Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
+                                    Fields.NET_AMOUNT_CENTS: net_amount_cents,
+                                    Fields.STATUS: PayoutStatusValues.FAILED,
+                                    Fields.FAILURE_REASON: str(e),
+                                    Fields.AUTO_CAPTURED: True,
+                                    Fields.CREATED_AT: get_server_timestamp()
+                                })
 
             captured_count += 1
             print(f'Auto-captured order {order_id}')

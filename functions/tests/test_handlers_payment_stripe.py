@@ -356,7 +356,7 @@ class TestCreateCheckoutSession:
             create_checkout_session(mock_request)
 
         assert exc.value.code == 'invalid-argument'
-        assert 'Price mismatch' in str(exc.value)
+        assert 'Price changed' in str(exc.value) or 'Price mismatch' in str(exc.value)
 
 
 class TestStripeWebhook:

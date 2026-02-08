@@ -40,7 +40,25 @@ mixin _$User {
       throw _privateConstructorUsedError; // Account status
   bool get suspended => throw _privateConstructorUsedError;
   DateTime? get suspendedAt => throw _privateConstructorUsedError;
-  DateTime? get updatedAt => throw _privateConstructorUsedError;
+  DateTime? get updatedAt =>
+      throw _privateConstructorUsedError; // === AUDIT FIX: 13 missing fields synced from Python/Firestore ===
+  // Payment provider
+  String? get paymentProvider =>
+      throw _privateConstructorUsedError; // Airwallex (alternative payment provider)
+  String? get airwallexAccountId => throw _privateConstructorUsedError;
+  String? get airwallexCustomerId => throw _privateConstructorUsedError;
+  String? get airwallexStatus =>
+      throw _privateConstructorUsedError; // Suspension details
+  DateTime? get unsuspendedAt => throw _privateConstructorUsedError;
+  String? get suspendedBy => throw _privateConstructorUsedError;
+  String? get suspensionReason =>
+      throw _privateConstructorUsedError; // Seller verification & commission
+  double? get commissionRate => throw _privateConstructorUsedError;
+  bool get verified => throw _privateConstructorUsedError;
+  String? get verificationStatus => throw _privateConstructorUsedError;
+  String? get platform => throw _privateConstructorUsedError;
+  String? get businessName => throw _privateConstructorUsedError;
+  int? get payoutHoldDays => throw _privateConstructorUsedError;
 
   /// Serializes this User to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -74,6 +92,19 @@ abstract class $UserCopyWith<$Res> {
     bool suspended,
     DateTime? suspendedAt,
     DateTime? updatedAt,
+    String? paymentProvider,
+    String? airwallexAccountId,
+    String? airwallexCustomerId,
+    String? airwallexStatus,
+    DateTime? unsuspendedAt,
+    String? suspendedBy,
+    String? suspensionReason,
+    double? commissionRate,
+    bool verified,
+    String? verificationStatus,
+    String? platform,
+    String? businessName,
+    int? payoutHoldDays,
   });
 
   $AddressCopyWith<$Res>? get address;
@@ -111,6 +142,19 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
     Object? suspended = null,
     Object? suspendedAt = freezed,
     Object? updatedAt = freezed,
+    Object? paymentProvider = freezed,
+    Object? airwallexAccountId = freezed,
+    Object? airwallexCustomerId = freezed,
+    Object? airwallexStatus = freezed,
+    Object? unsuspendedAt = freezed,
+    Object? suspendedBy = freezed,
+    Object? suspensionReason = freezed,
+    Object? commissionRate = freezed,
+    Object? verified = null,
+    Object? verificationStatus = freezed,
+    Object? platform = freezed,
+    Object? businessName = freezed,
+    Object? payoutHoldDays = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -182,6 +226,58 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
                 ? _value.updatedAt
                 : updatedAt // ignore: cast_nullable_to_non_nullable
                       as DateTime?,
+            paymentProvider: freezed == paymentProvider
+                ? _value.paymentProvider
+                : paymentProvider // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            airwallexAccountId: freezed == airwallexAccountId
+                ? _value.airwallexAccountId
+                : airwallexAccountId // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            airwallexCustomerId: freezed == airwallexCustomerId
+                ? _value.airwallexCustomerId
+                : airwallexCustomerId // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            airwallexStatus: freezed == airwallexStatus
+                ? _value.airwallexStatus
+                : airwallexStatus // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            unsuspendedAt: freezed == unsuspendedAt
+                ? _value.unsuspendedAt
+                : unsuspendedAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            suspendedBy: freezed == suspendedBy
+                ? _value.suspendedBy
+                : suspendedBy // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            suspensionReason: freezed == suspensionReason
+                ? _value.suspensionReason
+                : suspensionReason // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            commissionRate: freezed == commissionRate
+                ? _value.commissionRate
+                : commissionRate // ignore: cast_nullable_to_non_nullable
+                      as double?,
+            verified: null == verified
+                ? _value.verified
+                : verified // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            verificationStatus: freezed == verificationStatus
+                ? _value.verificationStatus
+                : verificationStatus // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            platform: freezed == platform
+                ? _value.platform
+                : platform // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            businessName: freezed == businessName
+                ? _value.businessName
+                : businessName // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            payoutHoldDays: freezed == payoutHoldDays
+                ? _value.payoutHoldDays
+                : payoutHoldDays // ignore: cast_nullable_to_non_nullable
+                      as int?,
           )
           as $Val,
     );
@@ -228,6 +324,19 @@ abstract class _$$UserImplCopyWith<$Res> implements $UserCopyWith<$Res> {
     bool suspended,
     DateTime? suspendedAt,
     DateTime? updatedAt,
+    String? paymentProvider,
+    String? airwallexAccountId,
+    String? airwallexCustomerId,
+    String? airwallexStatus,
+    DateTime? unsuspendedAt,
+    String? suspendedBy,
+    String? suspensionReason,
+    double? commissionRate,
+    bool verified,
+    String? verificationStatus,
+    String? platform,
+    String? businessName,
+    int? payoutHoldDays,
   });
 
   @override
@@ -263,6 +372,19 @@ class __$$UserImplCopyWithImpl<$Res>
     Object? suspended = null,
     Object? suspendedAt = freezed,
     Object? updatedAt = freezed,
+    Object? paymentProvider = freezed,
+    Object? airwallexAccountId = freezed,
+    Object? airwallexCustomerId = freezed,
+    Object? airwallexStatus = freezed,
+    Object? unsuspendedAt = freezed,
+    Object? suspendedBy = freezed,
+    Object? suspensionReason = freezed,
+    Object? commissionRate = freezed,
+    Object? verified = null,
+    Object? verificationStatus = freezed,
+    Object? platform = freezed,
+    Object? businessName = freezed,
+    Object? payoutHoldDays = freezed,
   }) {
     return _then(
       _$UserImpl(
@@ -334,6 +456,58 @@ class __$$UserImplCopyWithImpl<$Res>
             ? _value.updatedAt
             : updatedAt // ignore: cast_nullable_to_non_nullable
                   as DateTime?,
+        paymentProvider: freezed == paymentProvider
+            ? _value.paymentProvider
+            : paymentProvider // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        airwallexAccountId: freezed == airwallexAccountId
+            ? _value.airwallexAccountId
+            : airwallexAccountId // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        airwallexCustomerId: freezed == airwallexCustomerId
+            ? _value.airwallexCustomerId
+            : airwallexCustomerId // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        airwallexStatus: freezed == airwallexStatus
+            ? _value.airwallexStatus
+            : airwallexStatus // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        unsuspendedAt: freezed == unsuspendedAt
+            ? _value.unsuspendedAt
+            : unsuspendedAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        suspendedBy: freezed == suspendedBy
+            ? _value.suspendedBy
+            : suspendedBy // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        suspensionReason: freezed == suspensionReason
+            ? _value.suspensionReason
+            : suspensionReason // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        commissionRate: freezed == commissionRate
+            ? _value.commissionRate
+            : commissionRate // ignore: cast_nullable_to_non_nullable
+                  as double?,
+        verified: null == verified
+            ? _value.verified
+            : verified // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        verificationStatus: freezed == verificationStatus
+            ? _value.verificationStatus
+            : verificationStatus // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        platform: freezed == platform
+            ? _value.platform
+            : platform // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        businessName: freezed == businessName
+            ? _value.businessName
+            : businessName // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        payoutHoldDays: freezed == payoutHoldDays
+            ? _value.payoutHoldDays
+            : payoutHoldDays // ignore: cast_nullable_to_non_nullable
+                  as int?,
       ),
     );
   }
@@ -360,6 +534,19 @@ class _$UserImpl extends _User {
     this.suspended = false,
     this.suspendedAt,
     this.updatedAt,
+    this.paymentProvider,
+    this.airwallexAccountId,
+    this.airwallexCustomerId,
+    this.airwallexStatus,
+    this.unsuspendedAt,
+    this.suspendedBy,
+    this.suspensionReason,
+    this.commissionRate,
+    this.verified = false,
+    this.verificationStatus,
+    this.platform,
+    this.businessName,
+    this.payoutHoldDays,
   }) : _roles = roles,
        super._();
 
@@ -413,10 +600,42 @@ class _$UserImpl extends _User {
   final DateTime? suspendedAt;
   @override
   final DateTime? updatedAt;
+  // === AUDIT FIX: 13 missing fields synced from Python/Firestore ===
+  // Payment provider
+  @override
+  final String? paymentProvider;
+  // Airwallex (alternative payment provider)
+  @override
+  final String? airwallexAccountId;
+  @override
+  final String? airwallexCustomerId;
+  @override
+  final String? airwallexStatus;
+  // Suspension details
+  @override
+  final DateTime? unsuspendedAt;
+  @override
+  final String? suspendedBy;
+  @override
+  final String? suspensionReason;
+  // Seller verification & commission
+  @override
+  final double? commissionRate;
+  @override
+  @JsonKey()
+  final bool verified;
+  @override
+  final String? verificationStatus;
+  @override
+  final String? platform;
+  @override
+  final String? businessName;
+  @override
+  final int? payoutHoldDays;
 
   @override
   String toString() {
-    return 'User(uid: $uid, email: $email, name: $name, roles: $roles, address: $address, createdAt: $createdAt, customerId: $customerId, lastCheckoutSession: $lastCheckoutSession, lastOrderId: $lastOrderId, lastCheckoutTimestamp: $lastCheckoutTimestamp, stripeAccountId: $stripeAccountId, payoutsEnabled: $payoutsEnabled, chargesEnabled: $chargesEnabled, onboardingCompleted: $onboardingCompleted, suspended: $suspended, suspendedAt: $suspendedAt, updatedAt: $updatedAt)';
+    return 'User(uid: $uid, email: $email, name: $name, roles: $roles, address: $address, createdAt: $createdAt, customerId: $customerId, lastCheckoutSession: $lastCheckoutSession, lastOrderId: $lastOrderId, lastCheckoutTimestamp: $lastCheckoutTimestamp, stripeAccountId: $stripeAccountId, payoutsEnabled: $payoutsEnabled, chargesEnabled: $chargesEnabled, onboardingCompleted: $onboardingCompleted, suspended: $suspended, suspendedAt: $suspendedAt, updatedAt: $updatedAt, paymentProvider: $paymentProvider, airwallexAccountId: $airwallexAccountId, airwallexCustomerId: $airwallexCustomerId, airwallexStatus: $airwallexStatus, unsuspendedAt: $unsuspendedAt, suspendedBy: $suspendedBy, suspensionReason: $suspensionReason, commissionRate: $commissionRate, verified: $verified, verificationStatus: $verificationStatus, platform: $platform, businessName: $businessName, payoutHoldDays: $payoutHoldDays)';
   }
 
   @override
@@ -452,12 +671,38 @@ class _$UserImpl extends _User {
             (identical(other.suspendedAt, suspendedAt) ||
                 other.suspendedAt == suspendedAt) &&
             (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt));
+                other.updatedAt == updatedAt) &&
+            (identical(other.paymentProvider, paymentProvider) ||
+                other.paymentProvider == paymentProvider) &&
+            (identical(other.airwallexAccountId, airwallexAccountId) ||
+                other.airwallexAccountId == airwallexAccountId) &&
+            (identical(other.airwallexCustomerId, airwallexCustomerId) ||
+                other.airwallexCustomerId == airwallexCustomerId) &&
+            (identical(other.airwallexStatus, airwallexStatus) ||
+                other.airwallexStatus == airwallexStatus) &&
+            (identical(other.unsuspendedAt, unsuspendedAt) ||
+                other.unsuspendedAt == unsuspendedAt) &&
+            (identical(other.suspendedBy, suspendedBy) ||
+                other.suspendedBy == suspendedBy) &&
+            (identical(other.suspensionReason, suspensionReason) ||
+                other.suspensionReason == suspensionReason) &&
+            (identical(other.commissionRate, commissionRate) ||
+                other.commissionRate == commissionRate) &&
+            (identical(other.verified, verified) ||
+                other.verified == verified) &&
+            (identical(other.verificationStatus, verificationStatus) ||
+                other.verificationStatus == verificationStatus) &&
+            (identical(other.platform, platform) ||
+                other.platform == platform) &&
+            (identical(other.businessName, businessName) ||
+                other.businessName == businessName) &&
+            (identical(other.payoutHoldDays, payoutHoldDays) ||
+                other.payoutHoldDays == payoutHoldDays));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     runtimeType,
     uid,
     email,
@@ -476,7 +721,20 @@ class _$UserImpl extends _User {
     suspended,
     suspendedAt,
     updatedAt,
-  );
+    paymentProvider,
+    airwallexAccountId,
+    airwallexCustomerId,
+    airwallexStatus,
+    unsuspendedAt,
+    suspendedBy,
+    suspensionReason,
+    commissionRate,
+    verified,
+    verificationStatus,
+    platform,
+    businessName,
+    payoutHoldDays,
+  ]);
 
   /// Create a copy of User
   /// with the given fields replaced by the non-null parameter values.
@@ -511,6 +769,19 @@ abstract class _User extends User {
     final bool suspended,
     final DateTime? suspendedAt,
     final DateTime? updatedAt,
+    final String? paymentProvider,
+    final String? airwallexAccountId,
+    final String? airwallexCustomerId,
+    final String? airwallexStatus,
+    final DateTime? unsuspendedAt,
+    final String? suspendedBy,
+    final String? suspensionReason,
+    final double? commissionRate,
+    final bool verified,
+    final String? verificationStatus,
+    final String? platform,
+    final String? businessName,
+    final int? payoutHoldDays,
   }) = _$UserImpl;
   const _User._() : super._();
 
@@ -549,7 +820,34 @@ abstract class _User extends User {
   @override
   DateTime? get suspendedAt;
   @override
-  DateTime? get updatedAt;
+  DateTime? get updatedAt; // === AUDIT FIX: 13 missing fields synced from Python/Firestore ===
+  // Payment provider
+  @override
+  String? get paymentProvider; // Airwallex (alternative payment provider)
+  @override
+  String? get airwallexAccountId;
+  @override
+  String? get airwallexCustomerId;
+  @override
+  String? get airwallexStatus; // Suspension details
+  @override
+  DateTime? get unsuspendedAt;
+  @override
+  String? get suspendedBy;
+  @override
+  String? get suspensionReason; // Seller verification & commission
+  @override
+  double? get commissionRate;
+  @override
+  bool get verified;
+  @override
+  String? get verificationStatus;
+  @override
+  String? get platform;
+  @override
+  String? get businessName;
+  @override
+  int? get payoutHoldDays;
 
   /// Create a copy of User
   /// with the given fields replaced by the non-null parameter values.

@@ -34,6 +34,9 @@ cleanup() {
     pkill -f "firebase emulators" 2>/dev/null || true
     pkill -f "java.*firestore" 2>/dev/null || true
     
+    # Clean up temp files
+    rm -f /tmp/stripe-listen-*.log 2>/dev/null || true
+    
     echo -e "${GREEN}✓ All services stopped${NC}"
     exit 0
 }
@@ -84,13 +87,43 @@ if [ $WAITED -ge $MAX_WAIT ]; then
     exit 1
 fi
 
-# Start Stripe webhook forwarding
+# Start Stripe webhook forwarding and auto-inject webhook secret
 echo -e "${YELLOW}Starting Stripe webhook forwarding...${NC}"
-stripe listen --forward-to "$STRIPE_WEBHOOK_URL" 2>&1 &
+
+STRIPE_LOG="/tmp/stripe-listen-$$.log"
+stripe listen --forward-to "$STRIPE_WEBHOOK_URL" > "$STRIPE_LOG" 2>&1 &
 STRIPE_PID=$!
 
-# Wait for Stripe to be ready
-sleep 3
+# Wait for Stripe to output the webhook signing secret
+echo -e "${YELLOW}Waiting for Stripe CLI signing secret...${NC}"
+STRIPE_WAIT=0
+STRIPE_SECRET=""
+while [ $STRIPE_WAIT -lt 15 ]; do
+    if [ -f "$STRIPE_LOG" ]; then
+        STRIPE_SECRET=$(grep -o 'whsec_[a-zA-Z0-9_]*' "$STRIPE_LOG" 2>/dev/null | head -1)
+        if [ -n "$STRIPE_SECRET" ]; then
+            break
+        fi
+    fi
+    sleep 1
+    STRIPE_WAIT=$((STRIPE_WAIT + 1))
+done
+
+# Auto-update .env with the new webhook secret
+ENV_FILE="$PROJECT_DIR/functions/.env"
+if [ -n "$STRIPE_SECRET" ]; then
+    # Replace the webhook secret in .env
+    if grep -q "^STRIPE_WEBHOOK_SECRET=" "$ENV_FILE" 2>/dev/null; then
+        sed -i '' "s|^STRIPE_WEBHOOK_SECRET=.*|STRIPE_WEBHOOK_SECRET=$STRIPE_SECRET|" "$ENV_FILE"
+        echo -e "${GREEN}✓ Auto-updated STRIPE_WEBHOOK_SECRET in functions/.env${NC}"
+    else
+        echo "STRIPE_WEBHOOK_SECRET=$STRIPE_SECRET" >> "$ENV_FILE"
+        echo -e "${GREEN}✓ Added STRIPE_WEBHOOK_SECRET to functions/.env${NC}"
+    fi
+    echo -e "${GREEN}✓ Stripe webhook forwarding is active (secret: ${STRIPE_SECRET:0:15}...)${NC}"
+else
+    echo -e "${YELLOW}⚠️ Could not auto-detect webhook secret. Check $STRIPE_LOG${NC}"
+fi
 
 # Verify Stripe is running
 if pgrep -f "stripe listen" >/dev/null; then
@@ -118,8 +151,8 @@ echo ""
 echo -e "${BLUE}Stripe Webhook:${NC}"
 echo "  • Forwarding to:   $STRIPE_WEBHOOK_URL"
 echo ""
-echo -e "${YELLOW}⚠️  IMPORTANT: If Stripe webhook returns 400 errors, check that${NC}"
-echo -e "${YELLOW}   the webhook secret in functions/.env matches the one shown above.${NC}"
+echo -e "${YELLOW}⚠️  Webhook secret is auto-injected into functions/.env on each start.${NC}"
+echo -e "${YELLOW}   No manual secret update needed.${NC}"
 echo ""
 echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
 echo ""
