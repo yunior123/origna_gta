@@ -20,7 +20,7 @@ const BASE_URL = 'http://localhost:5005';
 const AUTH_EMULATOR = 'http://localhost:9099';
 const FIRESTORE_EMULATOR = 'http://localhost:8080';
 const FUNCTIONS_EMULATOR = 'http://localhost:5001';
-const PROJECT_ID = 'origna-gta';
+const PROJECT_ID = 'orignagta';
 
 // Test credentials from E2E_TEST_EXECUTION_GUIDE.md
 const SELLER = {

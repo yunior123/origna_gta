@@ -704,7 +704,7 @@ test.describe('Marketplace Smoke Tests', () => {
 // =============================================================================
 
 test.describe('Backend Integration', () => {
-    const FUNCTIONS_URL = 'http://127.0.0.1:5001/origna-gta/us-central1';
+    const FUNCTIONS_URL = 'http://127.0.0.1:5001/orignagta/us-central1';
     
     test('Health check - Functions emulator running', async ({ request }) => {
         try {

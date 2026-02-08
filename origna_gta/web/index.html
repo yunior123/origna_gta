@@ -1,10 +1,11 @@
-<!DOCTYPE html><html><head>
+<!DOCTYPE html>
+<html>
+<head>
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Origna GTA &ndash; Your marketplace for buying and selling across the Greater Toronto Area and all of Canada. Discover products, connect with sellers, and shop securely.">
+  <meta name="description" content="Origna GTA – Your marketplace for buying and selling across the Greater Toronto Area and all of Canada. Discover products, connect with sellers, and shop securely.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -13,51 +14,31 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png">
-
-  <!-- Stripe JS (defer to not block initial paint) -->
-  <script src="https://js.stripe.com/v3/" defer></script>
+  <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>Origna GTA</title>
   <link rel="manifest" href="manifest.json">
 
-  <style>
-    html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#FFFFFF; }
-    #splash-screen { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#FFFFFF; z-index:100; }
-    #splash-screen img { width:120px; height:120px; object-fit:contain; }
-    #splash-loader { margin-top:32px; width:160px; height:3px; background:#E8E8E8; border-radius:3px; overflow:hidden; }
-    #splash-loader::after { content:''; display:block; height:100%; width:40%; background:#1a1a2e; border-radius:3px; animation:load 1s ease-in-out infinite; }
-    @keyframes load { 0%{transform:translateX(-100%)} 100%{transform:translateX(400%)} }
-  </style>
-
-  <script>
-    function removeSplash() {
-      var s = document.getElementById('splash-screen');
-      if (!s) return;
-      s.style.transition = 'opacity 0.25s';
-      s.style.opacity = '0';
-      setTimeout(function() { s.remove(); }, 250);
-      var f = document.getElementById('site-footer');
-      if (f) f.style.display = 'none';
-    }
-    window.addEventListener('flutter-first-frame', removeSplash);
-    window.addEventListener('load', function() { setTimeout(removeSplash, 5000); });
-  </script>
+  <!-- Stripe JS (defer to not block initial paint) -->
+  <script src="https://js.stripe.com/v3/" defer></script>
 </head>
 <body>
-  <!-- Splash: white + centered logo + thin loading bar -->
-  <div id="splash-screen">
-    <img src="splash/img/light-1x.png" alt="Origna GTA" width="120" height="120">
-    <div id="splash-loader"></div>
+  <!-- Logo shown while Flutter loads — no fixed positioning, Flutter canvas paints over it -->
+  <div id="loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#fff;">
+    <img src="splash/img/light-1x.png" alt="Origna GTA" width="120" height="120" style="object-fit:contain;">
+    <div style="margin-top:24px;width:140px;height:3px;background:#e8e8e8;border-radius:3px;overflow:hidden;">
+      <div style="height:100%;width:40%;background:#1a1a2e;border-radius:3px;animation:l 1s ease-in-out infinite;"></div>
+    </div>
+    <style>@keyframes l{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}</style>
   </div>
 
-  <!-- Footer with legal links (visible to crawlers before Flutter loads) -->
-  <footer id="site-footer" style="position:fixed;bottom:0;left:0;right:0;z-index:9999;text-align:center;padding:12px 16px;background:rgba(15,15,40,0.85);backdrop-filter:blur(8px);border-top:1px solid rgba(92,225,230,0.2);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-    <a href="/privacy-policy" style="color:rgba(92,225,230,0.9);text-decoration:none;font-size:13px;margin:0 12px;">Privacy Policy</a>
-    <span style="color:rgba(255,255,255,0.3);font-size:13px;">|</span>
-    <a href="/terms-of-service" style="color:rgba(92,225,230,0.9);text-decoration:none;font-size:13px;margin:0 12px;">Terms of Service</a>
-    <span style="color:rgba(255,255,255,0.3);font-size:13px;">|</span>
-    <span style="color:rgba(255,255,255,0.5);font-size:12px;margin:0 12px;">&copy; 2026 Origna GTA</span>
-  </footer>
+  <!-- SEO: legal links visible to crawlers before Flutter canvas loads -->
+  <nav aria-label="Legal" style="position:absolute;bottom:0;left:0;right:0;text-align:center;padding:8px;font-family:sans-serif;font-size:12px;z-index:0;">
+    <a href="/privacy-policy" style="color:#555;margin:0 8px;">Privacy Policy</a>
+    <a href="/terms-of-service" style="color:#555;margin:0 8px;">Terms of Service</a>
+    <span style="color:#999;">&copy; 2026 Origna GTA</span>
+  </nav>
+
   <script src="flutter_bootstrap.js" async></script>
-</body></html>
+</body>
+</html>

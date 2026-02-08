@@ -8,7 +8,7 @@ Stripe Payment Handlers
 
 import contextlib
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import stripe
@@ -659,7 +659,10 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         # If same user created same-value order in last 60 seconds, return existing
         recent_created = recent_data.get(Fields.CREATED_AT)
         if recent_created and hasattr(recent_created, 'timestamp'):
-            age_seconds = (datetime.now() - recent_created).total_seconds()
+            # Ensure timezone-aware comparison (emulator may return naive datetimes)
+            if hasattr(recent_created, 'tzinfo') and recent_created.tzinfo is None:
+                recent_created = recent_created.replace(tzinfo=timezone.utc)
+            age_seconds = (datetime.now(timezone.utc) - recent_created).total_seconds()
             if age_seconds < 60 and recent_data.get(Fields.SUBTOTAL_CENTS) == actual_subtotal_cents:
                 existing_session_id = recent_data.get(Fields.STRIPE_SESSION_ID)
                 if existing_session_id:
@@ -695,7 +698,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CREATED_AT: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp(),
         Fields.CAPTURE_ATTEMPTS: 0,
-        Fields.EXPIRES_AT: datetime.now() + timedelta(days=AUTHORIZATION_VALID_DAYS),
+        Fields.EXPIRES_AT: datetime.now(timezone.utc) + timedelta(days=AUTHORIZATION_VALID_DAYS),
         Fields.CURRENCY: 'cad',
         Fields.PAYMENT_PROVIDER: 'stripe',
         Fields.DELIVERY_SPEED: delivery_speed,  # Bug #9: Persist chosen speed for audit trail
