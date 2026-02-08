@@ -325,12 +325,16 @@ def reset_handler_globals():
     to prevent state pollution between tests.
     """
     # Import handlers to reset their module-level globals
-    from handlers import payment_stripe, products
+    from handlers import payment_stripe, products, orders, admin
 
     # Reset module-level caches
     payment_stripe._db = None
     payment_stripe._rate_limiter = None
     payment_stripe._firestore = None
+    orders._db = None
+    orders._firestore = None
+    admin._db = None
+    admin._firestore = None
 
     yield
 
@@ -338,6 +342,10 @@ def reset_handler_globals():
     payment_stripe._db = None
     payment_stripe._rate_limiter = None
     payment_stripe._firestore = None
+    orders._db = None
+    orders._firestore = None
+    admin._db = None
+    admin._firestore = None
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -348,37 +356,30 @@ def mock_firestore_client(monkeypatch):
     """
     from unittest.mock import MagicMock, Mock
 
-    from handlers import payment_stripe, products
+    from handlers import payment_stripe, products, orders, admin
 
-    # Create a comprehensive mock Firestore client
+    # Create a simple MagicMock that tests can configure
     mock_db = MagicMock()
-
-    # Mock collection operations
+    
+    # Setup basic chainable mocks
     mock_collection = MagicMock()
-    mock_db.collection.return_value = mock_collection
-
-    # Mock document operations
+    mock_doc = MagicMock()
     mock_doc_ref = MagicMock()
+    
+    mock_db.collection.return_value = mock_collection
     mock_collection.document.return_value = mock_doc_ref
-
-    # Setup method chaining for where/limit/get patterns
+    mock_doc_ref.get.return_value = mock_doc
     mock_collection.where.return_value = mock_collection
     mock_collection.limit.return_value = mock_collection
     mock_collection.get.return_value = []
 
-    # Mock transaction support
-    mock_transaction = MagicMock()
-    mock_db.transaction.return_value = mock_transaction
-
-    # Patch get_db to return our mock
-    def mock_get_db():
-        return mock_db
-
-    monkeypatch.setattr(payment_stripe, 'get_db', mock_get_db)
-    monkeypatch.setattr(products, 'get_db', mock_get_db)
+    # Patch get_db to return our mock in all handlers
+    monkeypatch.setattr(payment_stripe, 'get_db', lambda: mock_db)
+    monkeypatch.setattr(products, 'get_db', lambda: mock_db)
+    monkeypatch.setattr(orders, 'get_db', lambda: mock_db)
+    monkeypatch.setattr(admin, 'get_db', lambda: mock_db)
 
     # Also mock stripe to prevent API calls
-    from unittest.mock import MagicMock
     mock_stripe = MagicMock()
     mock_stripe.api_key = "STRIPE_SECRET_KEY_REDACTED"
     monkeypatch.setattr(payment_stripe, 'stripe', mock_stripe)

@@ -129,14 +129,6 @@ Cancel/refund: restore stock + refund/void. Cron: 7-day auto-confirm, auth expir
 → **Full knowledge in `.claude/skills/add-product-flow/SKILL.md`**
 Sentinel `copyWith`, image sync callback, free shipping cascade, digital product guards, postal code normalization, stale coordinates, double-submit guard.
 
-**Fixed Issues (2026-02-08):**
-- Inventory config now ALWAYS created (was null when using defaults)
-- Apartment field UI added (controller existed but no TextField)
-- Discount tier validation: 5+ items discount must be ≥ 3+ items discount
-- Free shipping toggle hidden for digital products (forced true anyway)
-
-### Home Screen Shimmer Bug
-`_onScroll` → `loadProducts()` every pixel when empty → infinite loop. Fix: guard with `products.isNotEmpty` + `hasMore=false` on 0 results.
 
 ### Algolia Search Architecture
 - **`AlgoliaService.isAvailable`** — detects empty credentials at init. Emulator has no Algolia keys → `isAvailable=false` → all queries route to Firestore.
@@ -159,13 +151,6 @@ Sentinel `copyWith`, image sync callback, free shipping cascade, digital product
 
 ## TODO (Active)
 
-- Cart screen: plus button rebuilds unnecessary widgets
 - Ensure schema constants are widely used
 - Update json schema constants when database schema changes
 - ChromeDriver compatibility for Flutter web integration tests
-
-### ✅ Fixed 2026-02-08
-- ~~Add Product: `_inventoryManaged`, `_trackQuantity`, `_allowBackorder` now always persisted to Firestore~~
-- ~~Add Product: `_apartmentController` UI field added (Apartment/Unit optional)~~
-- ~~Add Product: Discount tiers now validate 5+ ≥ 3+ (shows error if invalid)~~
-- ~~Add Product: Free Shipping toggle hidden for digital products~~
