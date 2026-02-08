@@ -6,6 +6,8 @@ Admin & User Management Handlers
 - Account deletion
 """
 
+import secrets
+import string
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -304,8 +306,9 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
         batch.commit()
 
     # Cancel all pending/confirmed orders (with safety limit)
+    # NOTE: Use denormalized sellerIds field (not nested items.sellerId which Firestore doesn't support)
     orders = get_db().collection(Collections.ORDERS)\
-        .where(f'{Fields.ITEMS}.{Fields.SELLER_ID}', 'array_contains', seller_id)\
+        .where(Fields.SELLER_IDS, 'array_contains', seller_id)\
         .where(Fields.ORDER_STATUS, 'in', [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING])\
         .limit(200)\
         .stream()
@@ -418,9 +421,17 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Generate TOTP secret
     secret = pyotp.random_base32()
 
+    # Generate one-time backup codes (8 codes, 8 chars each)
+    alphabet = string.ascii_uppercase + string.digits
+    backup_codes = [
+        ''.join(secrets.choice(alphabet) for _ in range(8))
+        for _ in range(8)
+    ]
+
     # Save to Firestore (temporary, until verified)
     user_ref.update({
         Fields.MFA_SECRET_TEMP: secret,
+        'adminMfaBackupCodesTemp': backup_codes,
         Fields.UPDATED_AT: get_server_timestamp()
     })
 
@@ -434,7 +445,9 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     return create_success_response({
         ApiKeys.SECRET: secret,
-        ApiKeys.QR_CODE_URL: qr_code_url
+        ApiKeys.QR_CODE_URL: qr_code_url,
+        ApiKeys.PROVISIONING_URI: qr_code_url,
+        ApiKeys.BACKUP_CODES: backup_codes,
     })
 
 
@@ -483,6 +496,12 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.LAST_MFA_VERIFY: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp()
     }
+
+    # Persist backup codes from temp storage
+    temp_backup_codes = user_data.get('adminMfaBackupCodesTemp')
+    if temp_backup_codes:
+        update_data['adminMfaBackupCodes'] = temp_backup_codes
+        update_data['adminMfaBackupCodesTemp'] = get_delete_field()
 
     # Remove temporary secret
     if Fields.MFA_SECRET_TEMP in user_data:

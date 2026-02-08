@@ -85,6 +85,9 @@ functions/stripe.txt
 # Audit output
 audit/output/
 
+# Audit doc crawl cache
+audit/.doc_cache/
+
 # Telegram bot (contains secrets and local config)
 telegram_bot/
 telegram_bot.py

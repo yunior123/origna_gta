@@ -17,7 +17,7 @@ final favoritedProductsProvider = FutureProvider.autoDispose<List<Product>>((ref
 });
 
 /// Favorites controller
-final favoritesControllerProvider = Provider<FavoritesController>((ref) {
+final favoritesControllerProvider = Provider.autoDispose<FavoritesController>((ref) {
   return FavoritesController(ref);
 });
 

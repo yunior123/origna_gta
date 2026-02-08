@@ -337,6 +337,22 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
                 'Cannot disable all payment providers. At least one must remain enabled.'
             )
 
+        # AUDIT FIX (MEDIUM-030): Block disabling a provider with active authorized orders.
+        # Without this, orders paid but not yet captured would be stranded because
+        # capture_payment() checks require_provider_enabled() first.
+        from schema_constants import PaymentStatusValues as PSV
+        active_orders = get_db().collection('orders')\
+            .where('paymentProvider', '==', provider)\
+            .where('paymentStatus', 'in', [PSV.AUTHORIZED, 'capturing'])\
+            .limit(1).get()
+
+        if len(active_orders) > 0:
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                f'Cannot disable {provider}: there are orders with active authorizations. '
+                f'Wait for all pending orders to be captured or expired before disabling.'
+            )
+
     try:
         config_ref = get_db().collection(Collections.CONFIG).document('payment_providers')
 

@@ -5,11 +5,11 @@ import 'package:origna_gta/core/repositories/cart_repository.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
-final cartControllerProvider = Provider<CartController>((ref) {
+final cartControllerProvider = Provider.autoDispose<CartController>((ref) {
   return CartController(ref);
 });
 
-final cartItemCountProvider = Provider<int>((ref) {
+final cartItemCountProvider = Provider.autoDispose<int>((ref) {
   final cartItems = ref.watch(cartItemsProvider);
   return cartItems.maybeWhen(data: (items) => items.fold(0, (total, item) => total + item.quantity), orElse: () => 0);
 });
@@ -98,7 +98,7 @@ final cartItemsProvider = StreamProvider.autoDispose<List<CartItemModel>>((ref) 
 });
 
 /// Cart subtotal - computed from cartWithDetailsProvider
-final cartSubtotalProvider = Provider<double>((ref) {
+final cartSubtotalProvider = Provider.autoDispose<double>((ref) {
   final cartDetails = ref.watch(cartWithDetailsProvider);
   return cartDetails.maybeWhen(data: (items) => items.fold(0.0, (total, item) => total + (item.price * item.quantity)), orElse: () => 0.0);
 });
@@ -190,12 +190,8 @@ class CartController {
     if (userId == null) return false;
     
     try {
-      final firestore = _ref.read(firestoreProvider);
-      final productDoc = await firestore.collection(Collections.products).doc(productId).get();
-
-      if (!productDoc.exists) return false;
-
-      final sellerId = productDoc.data()?[Fields.sellerId] as String?;
+      final sellerId = await _repository.getProductSellerId(productId);
+      if (sellerId == null) return false;
       return sellerId != userId;
     } catch (e) {
       return false;
@@ -208,16 +204,9 @@ class CartController {
 
     try {
       // Check if user is trying to buy their own product
-      final firestore = _ref.read(firestoreProvider);
-      final productDoc = await firestore.collection(Collections.products).doc(productId).get();
-
-      if (!productDoc.exists) return false;
-
-      final sellerId = productDoc.data()?[Fields.sellerId] as String?;
-      if (sellerId == userId) {
-        // User is trying to buy their own product
-        return false;
-      }
+      final sellerId = await _repository.getProductSellerId(productId);
+      if (sellerId == null) return false;
+      if (sellerId == userId) return false;
       
       await _repository.addToCart(userId, productId, quantity);
       return true;

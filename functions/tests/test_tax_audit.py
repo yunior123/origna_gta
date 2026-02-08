@@ -134,7 +134,8 @@ class TestTaxAudit(unittest.TestCase):
             "categoryId": 17,
             "stockQuantity": 50,
             "sellerId": "seller_1",
-            "sellerAddress": {"state": "ON"}
+            "sellerAddress": {"state": "ON"},
+            "isActive": True
         }
 
         # Setup mock db to return different docs based on collection/document
@@ -228,7 +229,8 @@ class TestTaxAudit(unittest.TestCase):
             "categoryId": 19,
             "stockQuantity": 100,
             "sellerId": "seller_1",
-            "sellerAddress": {"state": "ON"}
+            "sellerAddress": {"state": "ON"},
+            "isActive": True
         }
 
         # Setup mock db to return different docs based on collection/document

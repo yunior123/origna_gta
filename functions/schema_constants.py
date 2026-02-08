@@ -512,6 +512,8 @@ class ApiKeys:
     URL = "url"
     SECRET = "secret"
     QR_CODE_URL = "qrCodeUrl"
+    PROVISIONING_URI = "provisioning_uri"
+    BACKUP_CODES = "backup_codes"
     DETAILS_SUBMITTED = "detailsSubmitted"
     REQUIREMENTS_CURRENTLY_DUE = "requirementsCurrentlyDue"
 

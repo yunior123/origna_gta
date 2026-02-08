@@ -414,7 +414,8 @@ def create_mock_product_doc(product_id='prod_123', price=50.00, stock_quantity=1
         "sellerId": seller_id,
         "imageUrls": ["http://example.com/image.jpg"],
         "categoryId": 1,
-        "description": "Test description"
+        "description": "Test description",
+        "isActive": True
     }
     return doc
 
@@ -482,7 +483,8 @@ def mock_product_doc():
         "sellerId": "seller_123",
         "imageUrls": ["http://example.com/image.jpg"],
         "categoryId": 1,
-        "description": "Test description"
+        "description": "Test description",
+        "isActive": True
     }
     return doc
 
@@ -556,7 +558,8 @@ def mock_product_data():
         'price': 50.00,
         'stockQuantity': 10,
         'sellerId': 'seller_123',
-        'imageUrls': ['https://example.com/image.jpg']
+        'imageUrls': ['https://example.com/image.jpg'],
+        'isActive': True
     }
 
 
@@ -630,6 +633,7 @@ def create_mock_product_doc(product_id='prod_123', name='Test Product', price=50
         'imageUrls': image_urls,
         'description': f'Description for {name}',
         'category': 'test_category',
+        'isActive': True,
         'deleted': deleted,
         'createdAt': MagicMock(),
         'updatedAt': MagicMock()
@@ -864,7 +868,8 @@ class FirestoreMockBuilder:
             "sellerId": seller_id,
             "imageUrls": ["http://example.com/image.jpg"],
             "categoryId": 1,
-            "description": "Test description"
+            "description": "Test description",
+            "isActive": True
         })
 
     def add_user(self, user_id='user_123', email='user@example.com', name='Test User'):

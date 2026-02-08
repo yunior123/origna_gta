@@ -171,7 +171,8 @@ class TestPaymentFlow(unittest.TestCase):
             "stockQuantity": 10,
             "sellerId": "seller_1",
             "imageUrls": ["http://img.com/1.jpg"],
-            "categoryId": 1
+            "categoryId": 1,
+            "isActive": True
         }
 
         # Mock transaction

@@ -132,7 +132,7 @@ class ShippingApprovalStatus:
 # ============================================================================
 
 PLATFORM_FEE_PERCENT = 0.025  # 2.5% platform fee
-AUTO_CONFIRM_DAYS = 14  # Auto-capture after 14 days post-delivery (matches Flutter BusinessRules.autoConfirmDays)
+AUTO_CONFIRM_DAYS = 5  # Auto-capture after 5 days post-delivery (must be < AUTHORIZATION_VALID_DAYS with 2-day safety margin)
 AUTHORIZATION_VALID_DAYS = 7  # Stripe authorization valid for 7 days
 SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20%
 

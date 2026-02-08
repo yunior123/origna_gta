@@ -227,6 +227,13 @@ service cloud.firestore {
         // request.resource.data.imageUrls.size() >= 1 && request.resource.data.imageUrls.size() <= 5 &&
         request.resource.data.keywords is list &&
         request.resource.data.keywords.size() <= 30 &&
+        // Validate categoryId is a valid integer (1-21)
+        request.resource.data.categoryId is int &&
+        request.resource.data.categoryId >= 1 &&
+        request.resource.data.categoryId <= 21 &&
+        // Validate product status if provided
+        (!request.resource.data.keys().hasAny(['status']) ||
+         request.resource.data.status in ['draft', 'active', 'paused', 'archived', 'out_of_stock']) &&
         // Client may include rating, but must start at 0
         (!request.resource.data.keys().hasAny(['rating']) || request.resource.data.rating == 0) &&
         request.resource.data.isActive == true &&
@@ -263,6 +270,13 @@ service cloud.firestore {
           request.resource.data.keywords is list &&
           request.resource.data.keywords.size() <= 30 &&
           request.resource.data.stockQuantity >= 0 &&
+          // Validate categoryId is a valid integer (1-21)
+          request.resource.data.categoryId is int &&
+          request.resource.data.categoryId >= 1 &&
+          request.resource.data.categoryId <= 21 &&
+          // Validate product status if changed
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
+           request.resource.data.status in ['draft', 'active', 'paused', 'archived', 'out_of_stock']) &&
           // FIX: Enforce positive price on update (prevents negative price attack)
           request.resource.data.price > 0 &&
           request.resource.data.price <= 100000 &&

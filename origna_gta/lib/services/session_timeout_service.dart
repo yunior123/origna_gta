@@ -40,6 +40,7 @@ class SessionTimeoutService {
 
   /// Start monitoring user activity
   void startMonitoring(BuildContext context) {
+    _timeoutTimer?.cancel(); // Prevent timer leak on repeated calls
     if (_auth.currentUser == null) return;
 
     _resetTimer(context);

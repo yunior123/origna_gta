@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Auth & security audit: login → sessions → roles → MFA → rate limiting → account deletion → rules."""
+"""Auth & security audit: login → sessions → roles → MFA → rate limiting → account deletion → rules.
+Enriched with Firebase Auth and Firestore rules documentation."""
 import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from common import PROJECT_ROOT, bundle_targeted_files, run_streaming_audit, save_report
+from common import run_enriched_audit
 from prompt_auth import AUTH_AUDIT_PROMPT
 
 AUTH_FILES = [
@@ -28,14 +29,14 @@ AUTH_FILES = [
 ]
 
 def main():
-    print("🔐 Auth & Security Audit (Kimi 2.5)")
-    print("=" * 50)
-    file_paths = [PROJECT_ROOT / f for f in AUTH_FILES]
-    print(f"Collecting {len(file_paths)} targeted files...")
-    project_text = bundle_targeted_files(file_paths)
-    print(f"Bundled {len(project_text):,} characters")
-    report = run_streaming_audit(AUTH_AUDIT_PROMPT, project_text)
-    save_report(report, "auth", "Auth & Security")
+    run_enriched_audit(
+        audit_type="auth",
+        prompt=AUTH_AUDIT_PROMPT,
+        file_paths=AUTH_FILES,
+        prefix="auth",
+        workflow_name="Auth & Security",
+        emoji="🔐",
+    )
 
 if __name__ == "__main__":
     main()

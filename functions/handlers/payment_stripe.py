@@ -265,6 +265,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     validated_items = []
     actual_subtotal = 0
     sellers = set()
+    seller_cache = {}  # Cache seller docs to avoid N+1 reads
 
     for item in items:
         # Check quantity limits
@@ -291,6 +292,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
 
         product_data = product_doc.to_dict()
+
+        # SECURITY: Reject inactive/deactivated products
+        if not product_data.get(Fields.IS_ACTIVE, False):
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                f"Product {item[Fields.PRODUCT_ID]} is not active and cannot be purchased"
+            )
 
         # SECURITY: Validate seller ID matches product owner
         # Prevents attack where buyer sends item.sellerId != product.sellerId
@@ -335,10 +343,12 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 f"You cannot purchase your own product: {product_data['name']}"
             )
 
-        # Fetch seller profile for shipping calculation
-        seller_ref = get_db().collection(Collections.USERS).document(seller_id)
-        seller_doc = seller_ref.get()
-        seller_data = seller_doc.to_dict() if seller_doc.exists else {}
+        # Fetch seller profile for shipping calculation (cached to avoid N+1)
+        if seller_id not in seller_cache:
+            seller_ref = get_db().collection(Collections.USERS).document(seller_id)
+            seller_doc = seller_ref.get()
+            seller_cache[seller_id] = seller_doc.to_dict() if seller_doc.exists else {}
+        seller_data = seller_cache[seller_id]
         seller_profile = seller_data.get('sellerProfile', {})
 
         image_urls = product_data.get('imageUrls', [])
@@ -385,6 +395,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.IS_PERISHABLE: product_data.get(Fields.IS_PERISHABLE, False),
             Fields.DELIVERY_OPTIONS: product_data.get(Fields.DELIVERY_OPTIONS, []),
             Fields.SELLER_ADDRESS: raw_seller_address,
+            # Weight & dimensions for accurate shipping calculation (volumetric surcharge)
+            Fields.WEIGHT_KG: product_data.get(Fields.WEIGHT_KG),
+            Fields.LENGTH_CM: product_data.get(Fields.LENGTH_CM),
+            Fields.WIDTH_CM: product_data.get(Fields.WIDTH_CM),
+            Fields.HEIGHT_CM: product_data.get(Fields.HEIGHT_CM),
+            # Supplier info for international shipping estimation (e.g., AliExpress/DHGate)
+            Fields.SUPPLIER: product_data.get(Fields.SUPPLIER),
         }
         validated_items.append(validated_item)
         actual_subtotal += db_price * item[Fields.QUANTITY]
@@ -480,7 +497,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # IDEMPOTENCY: Check if user already has a recent pending order with same subtotal
     # to prevent duplicate orders from client retries
     import hashlib
-    hashlib.md5(
+    idempotency_hash = hashlib.md5(
         f"{user_id}:{actual_subtotal_cents}:{len(validated_items)}:{sorted(list(sellers))}".encode()
     ).hexdigest()[:12]
 
@@ -537,9 +554,22 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CURRENCY: 'cad',
         Fields.PAYMENT_PROVIDER: 'stripe',
         Fields.DELIVERY_SPEED: delivery_speed,  # Bug #9: Persist chosen speed for audit trail
+        Fields.PLATFORM_FEE_CENTS: round(total_amount_cents * PLATFORM_FEE_PERCENT),  # AUDIT FIX: Immutable fee stored at checkout
         'archived': False,
         'stockRestored': False,
     }
+
+    # SECURITY FIX (CRITICAL-014): Snapshot seller Stripe account IDs at checkout.
+    # Prevents seller from swapping their Stripe account between checkout and capture.
+    seller_account_snapshot = {}
+    for sid in sellers:
+        if sid in seller_cache:
+            s_data = seller_cache[sid]
+            acct_id = s_data.get('stripeAccountId')
+            if acct_id:
+                seller_account_snapshot[sid] = acct_id
+    if seller_account_snapshot:
+        order_data['sellerStripeAccounts'] = seller_account_snapshot
 
     order_ref.set(order_data)
 
@@ -750,6 +780,17 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
 
     event_id = event['id']
     event_type = event['type']
+
+    # SECURITY FIX #3b: Reject stale webhooks (replay attack prevention)
+    # Stripe events have a 'created' timestamp (Unix epoch seconds).
+    # Reject events older than 5 minutes to prevent replay attacks.
+    import time as _time
+    event_created = event.get('created', 0)
+    current_time = int(_time.time())
+    event_age_seconds = current_time - event_created
+    if not IS_EMULATOR and event_age_seconds > 300:  # 5 minutes
+        print(f'⚠️ Rejecting stale webhook: {event_type} age={event_age_seconds}s (event: {event_id[:16]}...)')
+        return https_fn.Response('Event too old', status=400)
 
     # SECURITY FIX #4: Idempotency check (prevent duplicate processing)
     webhook_ref = get_db().collection(Collections.WEBHOOK_EVENTS).document(event_id)
@@ -990,19 +1031,46 @@ def process_session_expired(session: dict) -> str | None:
 
 
 def process_payment_intent_succeeded(payment_intent: dict) -> str | None:
-    """Handles successful payment intents"""
+    """Handles successful payment intents.
+
+    SECURITY FIX (CRITICAL-024): Only update if payment is in a state that
+    should transition to CAPTURED. Prevents overwriting 'authorized' set by
+    checkout.session.completed (which uses manual capture mode).
+    For manual capture mode orders, the capture_payment function handles the
+    AUTHORIZED → CAPTURING → CAPTURED transition. This webhook fires when
+    capture succeeds, so we only update if still in 'capturing' state.
+    """
     order_id = payment_intent.get('metadata', {}).get('orderId')
 
     if not order_id:
         return None
 
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
-    order_ref.update({
-        'paymentStatus': PaymentStatus.CAPTURED,
-        'updatedAt': get_server_timestamp()
-    })
+    order_doc = order_ref.get()
 
-    return f'Payment captured for order {order_id}'
+    if not order_doc.exists:
+        return None
+
+    order_data = order_doc.to_dict()
+    current_status = order_data.get(Fields.PAYMENT_STATUS)
+
+    # Only update to CAPTURED if order is in a transitional state.
+    # If already CAPTURED, REFUNDED, etc., do not overwrite.
+    capturable_states = {'capturing', PaymentStatus.AWAITING_PAYMENT}
+    if current_status in capturable_states:
+        order_ref.update({
+            'paymentStatus': PaymentStatus.CAPTURED,
+            'updatedAt': get_server_timestamp()
+        })
+        return f'Payment captured for order {order_id}'
+
+    if current_status == PaymentStatusValues.CAPTURED:
+        return f'Payment already captured for order {order_id} (idempotent)'
+
+    # For manual capture mode (authorized state), do NOT overwrite to captured.
+    # The capture_payment function handles this transition properly.
+    print(f'ℹ️ payment_intent.succeeded for order {order_id} skipped: current status={current_status}')
+    return f'Order {order_id} status unchanged (current: {current_status})'
 
 
 def process_payment_intent_failed(payment_intent: dict) -> str | None:
@@ -1022,7 +1090,11 @@ def process_payment_intent_failed(payment_intent: dict) -> str | None:
 
 
 def process_charge_refunded(charge: dict) -> str | None:
-    """Handles charge refunds - distinguishes full vs partial refunds"""
+    """
+    Handles charge refunds — distinguishes full vs partial refunds.
+    AUDIT FIX (CRITICAL-019): Automatically reverses transfers to sellers
+    when a refund is processed, preventing platform financial loss.
+    """
     payment_intent_id = charge.get('payment_intent')
 
     if not payment_intent_id:
@@ -1041,23 +1113,117 @@ def process_charge_refunded(charge: dict) -> str | None:
 
     for order_doc in orders:
         order_ref = order_doc.reference
+        order_id = order_doc.id
+        order_data = order_doc.to_dict()
+
+        # SECURITY FIX (CRITICAL-017): Idempotency — check if this refund amount
+        # was already processed to prevent duplicate reversals on webhook retry.
+        previously_refunded = order_data.get('cumulativeRefundedCents', 0)
+        if previously_refunded >= amount_refunded:
+            print(f'ℹ️ Refund for order {order_id} already processed (cumulative={previously_refunded}, current={amount_refunded})')
+            return f'Order {order_id} refund already processed (idempotent)'
+
+        # AUDIT FIX (CRITICAL-019): Reverse transfers to sellers on refund.
+        # Without this, the platform refunds the buyer but sellers keep their payout.
+        reversed_count = 0
+        reversal_errors = []
+
+        payouts = get_db().collection(Collections.PAYOUTS)\
+            .where(Fields.ORDER_ID, '==', order_id)\
+            .where(Fields.STATUS, 'in', [PayoutStatusValues.COMPLETED, 'partially_reversed'])\
+            .stream()
+
+        for payout_doc in payouts:
+            payout_data = payout_doc.to_dict()
+            transfer_id = payout_data.get(Fields.STRIPE_TRANSFER_ID)
+
+            if not transfer_id:
+                continue
+
+            # SECURITY FIX (HIGH-019): Calculate remaining reversible amount
+            # to prevent over-reversal on multiple partial refunds.
+            already_reversed_cents = payout_data.get('cumulativeReversedCents', 0)
+            payout_net = payout_data.get(Fields.NET_AMOUNT_CENTS, 0)
+            max_reversible = payout_net - already_reversed_cents
+
+            if max_reversible <= 0:
+                print(f'ℹ️ Payout {payout_doc.id} fully reversed already, skipping')
+                continue
+
+            try:
+                reversal_kwargs = {
+                    'metadata': {
+                        'reason': 'refund',
+                        'orderId': order_id,
+                        'refundType': 'full' if is_full_refund else 'partial',
+                    }
+                }
+                # For partial refunds, only reverse proportional amount
+                # but cap at max_reversible to prevent over-reversal
+                if not is_full_refund and amount_total > 0:
+                    reversal_amount = round(payout_net * amount_refunded / amount_total)
+                    reversal_amount = min(reversal_amount, max_reversible)
+                    if reversal_amount > 0:
+                        reversal_kwargs['amount'] = reversal_amount
+                else:
+                    # Full refund: reverse remaining (not already reversed)
+                    if already_reversed_cents > 0:
+                        reversal_kwargs['amount'] = max_reversible
+
+                reversal = stripe.Transfer.create_reversal(
+                    transfer_id,
+                    **reversal_kwargs
+                )
+
+                # Calculate actual reversed amount for tracking
+                actual_reversed = reversal_kwargs.get('amount', payout_net)
+                new_cumulative = already_reversed_cents + actual_reversed
+                new_status = PayoutStatusValues.REVERSED if new_cumulative >= payout_net else 'partially_reversed'
+
+                payout_doc.reference.update({
+                    Fields.STATUS: new_status,
+                    'reversalId': reversal.id,
+                    'reversedAt': get_server_timestamp(),
+                    'reversalReason': 'refund',
+                    'cumulativeReversedCents': new_cumulative,
+                })
+                reversed_count += 1
+                print(f'✓ Reversed transfer {transfer_id} for refund on order {order_id} (amount={actual_reversed})')
+
+            except Exception as e:
+                print(f'⚠️ Failed to reverse transfer {transfer_id} on refund: {str(e)}')
+                reversal_errors.append({'transferId': transfer_id, 'error': str(e)})
+
+        # Log security alert if any reversals failed
+        if reversal_errors:
+            get_db().collection(Collections.SECURITY_ALERTS).add({
+                Fields.TYPE: 'refund_reversal_failed',
+                Fields.SEVERITY: 'critical',
+                Fields.ORDER_ID: order_id,
+                'reversalErrors': reversal_errors,
+                Fields.TIMESTAMP: get_server_timestamp(),
+                Fields.RESOLVED: False,
+            })
 
         if is_full_refund:
             order_ref.update({
                 'orderStatus': OrderStatus.REFUNDED,
                 'paymentStatus': PaymentStatus.REFUNDED,
+                'transfersReversed': reversed_count,
+                'cumulativeRefundedCents': amount_refunded,
                 'updatedAt': get_server_timestamp()
             })
-            return f'Order {order_doc.id} fully refunded'
+            return f'Order {order_id} fully refunded, reversed {reversed_count} transfers'
         else:
-            # Partial refund - don't mark entire order as refunded
             order_ref.update({
                 'orderStatus': OrderStatus.PARTIALLY_REFUNDED,
                 'paymentStatus': PaymentStatus.REFUNDED,
                 'partialRefundAmountCents': amount_refunded,
+                'cumulativeRefundedCents': amount_refunded,
+                'transfersReversed': reversed_count,
                 'updatedAt': get_server_timestamp()
             })
-            return f'Order {order_doc.id} partially refunded ({amount_refunded} cents)'
+            return f'Order {order_id} partially refunded ({amount_refunded} cents), reversed {reversed_count} transfers'
 
     return None
 
@@ -1114,14 +1280,26 @@ def process_dispute_created(dispute: dict) -> str | None:
                 continue
 
             try:
-                # Create reversal (Stripe automatically handles this)
-                reversal = stripe.Transfer.create_reversal(
-                    transfer_id,
-                    metadata={
+                # AUDIT FIX (MEDIUM-025): For partial disputes, reverse proportional
+                # amount instead of full transfer to avoid penalizing uninvolved sellers.
+                reversal_kwargs = {
+                    'metadata': {
                         'reason': 'dispute',
                         'disputeId': dispute.get('id'),
                         'orderId': order_id
                     }
+                }
+                order_data_for_dispute = order_doc.to_dict()
+                order_total = order_data_for_dispute.get(Fields.TOTAL_AMOUNT_CENTS, 0)
+                payout_net = payout_data.get(Fields.NET_AMOUNT_CENTS, 0)
+                if dispute_amount and order_total and dispute_amount < order_total:
+                    proportional_reversal = round(payout_net * dispute_amount / order_total)
+                    if proportional_reversal > 0:
+                        reversal_kwargs['amount'] = proportional_reversal
+
+                reversal = stripe.Transfer.create_reversal(
+                    transfer_id,
+                    **reversal_kwargs
                 )
 
                 # Mark payout as reversed
@@ -1665,18 +1843,45 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Execute Transfers / Payouts
         transfer_errors = []
 
+        # AUDIT FIX (CRITICAL-001): Use fee rate stored at checkout, not current config.
+        # Prevents config manipulation between checkout and capture.
+        stored_fee_total = order_data.get(Fields.PLATFORM_FEE_CENTS)
+        stored_fee_rate = (stored_fee_total / order_data.get(Fields.TOTAL_AMOUNT_CENTS, 1)) if stored_fee_total else PLATFORM_FEE_PERCENT
+
         for seller_id, amount_cents in sellers_total_cents.items():
-            # Platform fee in cents (rounded)
-            platform_fee_cents = round(amount_cents * PLATFORM_FEE_PERCENT)
+            # Platform fee in cents — use stored rate from checkout, fallback to config
+            platform_fee_cents = round(amount_cents * stored_fee_rate)
             net_amount_cents = amount_cents - platform_fee_cents
 
-            # Get seller's Stripe account
+            # SECURITY FIX (CRITICAL-014): Use snapshotted stripeAccountId from checkout.
+            # Falls back to live lookup if snapshot not available (old orders).
+            seller_account_snapshot = order_data.get('sellerStripeAccounts', {})
+            snapshot_account_id = seller_account_snapshot.get(seller_id)
+
+            # Get seller's current data for suspension/charges checks
             seller_ref = get_db().collection(Collections.USERS).document(seller_id)
             seller_doc = seller_ref.get()
 
             if seller_doc.exists:
                 seller_data = seller_doc.to_dict()
-                stripe_account_id = seller_data.get('stripeAccountId')
+                # Prefer snapshot (immutable at checkout), fall back to live
+                stripe_account_id = snapshot_account_id or seller_data.get('stripeAccountId')
+
+                # SECURITY: Warn if account changed since checkout (potential fraud)
+                live_account_id = seller_data.get('stripeAccountId')
+                if snapshot_account_id and live_account_id and snapshot_account_id != live_account_id:
+                    print(f'🚨 SECURITY: Seller {seller_id} Stripe account changed since checkout! '
+                          f'Using snapshot: {snapshot_account_id[:12]}..., live: {live_account_id[:12]}...')
+                    get_db().collection(Collections.SECURITY_ALERTS).add({
+                        'type': 'seller_account_changed',
+                        'severity': 'high',
+                        Fields.ORDER_ID: order_id,
+                        Fields.SELLER_ID: seller_id,
+                        'snapshotAccountId': snapshot_account_id,
+                        'liveAccountId': live_account_id,
+                        'timestamp': get_server_timestamp(),
+                        'resolved': False,
+                    })
 
                 # CRITICAL SECURITY: Re-verify seller is not suspended at capture time
                 # Prevents race condition where seller suspended after checkout but before capture
@@ -1734,9 +1939,8 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
                             idempotency_key=f'transfer_{order_id}_{seller_id}',
                         )
 
-                        # Create payout record for transparency (all amounts in cents)
-                        payout_ref = get_db().collection(Collections.PAYOUTS).document()
-                        payout_ref.set({
+                        # Create payout record with retry (critical: must not lose record after successful transfer)
+                        payout_data = {
                             Fields.ORDER_ID: order_id,
                             Fields.SELLER_ID: seller_id,
                             Fields.AMOUNT_CENTS: amount_cents,
@@ -1747,7 +1951,35 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
                             Fields.STRIPE_ACCOUNT_ID: stripe_account_id,
                             Fields.STATUS: PayoutStatusValues.COMPLETED,
                             Fields.CREATED_AT: get_server_timestamp()
-                        })
+                        }
+                        payout_recorded = False
+                        for payout_attempt in range(3):
+                            try:
+                                payout_ref = get_db().collection(Collections.PAYOUTS).document()
+                                payout_ref.set(payout_data)
+                                payout_recorded = True
+                                break
+                            except Exception as fs_err:
+                                import time as _time
+                                print(f"⚠️ Payout record write attempt {payout_attempt + 1}/3 failed for order {order_id}, seller {seller_id}: {str(fs_err)}")
+                                if payout_attempt < 2:
+                                    _time.sleep(2 ** payout_attempt)
+                        if not payout_recorded:
+                            # CRITICAL: Transfer succeeded but Firestore record lost.
+                            # Log to security_alerts for manual reconciliation.
+                            # Transfer details are also in Stripe metadata.
+                            print(f"🚨 CRITICAL: Payout record LOST for order {order_id}, seller {seller_id}, transfer {transfer.id}")
+                            with contextlib.suppress(Exception):
+                                get_db().collection(Collections.SECURITY_ALERTS).add({
+                                    'type': 'payout_record_lost',
+                                    'severity': 'critical',
+                                    Fields.ORDER_ID: order_id,
+                                    Fields.SELLER_ID: seller_id,
+                                    'stripeTransferId': transfer.id,
+                                    'amountCents': net_amount_cents,
+                                    'timestamp': get_server_timestamp(),
+                                    'resolved': False
+                                })
                     except Exception as e:
                         print(f"Transfer error to seller {seller_id}: {str(e)}")
                         transfer_errors.append({'sellerId': seller_id, 'error': str(e)})
@@ -1780,8 +2012,20 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
 
 
     except https_fn.HttpsError:
+        # Rollback 'capturing' state to 'authorized' so the order isn't stuck
+        with contextlib.suppress(Exception):
+            order_ref.update({
+                Fields.PAYMENT_STATUS: PaymentStatus.AUTHORIZED,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
         raise
     except Exception as e:
+        # Rollback 'capturing' state to 'authorized' so the order isn't stuck
+        with contextlib.suppress(Exception):
+            order_ref.update({
+                Fields.PAYMENT_STATUS: PaymentStatus.AUTHORIZED,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
         raise https_fn.HttpsError('internal', f'Could not capture payment: {str(e)}') from e
 
 

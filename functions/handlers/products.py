@@ -97,6 +97,15 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     if len(file_names_raw) != len(content_types):
         raise https_fn.HttpsError('invalid-argument', 'File names and content types count mismatch')
 
+    # SECURITY: Validate MIME types against whitelist (prevent non-image uploads to CDN)
+    ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
+    for ct in content_types:
+        if ct not in ALLOWED_MIME_TYPES:
+            raise https_fn.HttpsError(
+                'invalid-argument',
+                f"Invalid content type '{ct}'. Allowed: {', '.join(sorted(ALLOWED_MIME_TYPES))}"
+            )
+
     # Sanitize file names to prevent path traversal
     file_names = [sanitize_path(fn) for fn in file_names_raw]
 
@@ -128,13 +137,15 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
             file_extension = file_name.split('.')[-1]
             unique_key = R2Config.get_image_path('products', f'{uuid.uuid4()}.{file_extension}')
 
-            # Generate presigned URL for upload
+            # Generate presigned URL for upload (10MB max enforced via ContentLength)
+            MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
             presigned_url = s3_client.generate_presigned_url(
                 'put_object',
                 Params={
                     'Bucket': bucket_name,
                     'Key': unique_key,
-                    'ContentType': content_type
+                    'ContentType': content_type,
+                    'ContentLength': MAX_IMAGE_SIZE_BYTES
                 },
                 ExpiresIn=3600  # 1 hour
             )

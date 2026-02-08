@@ -64,58 +64,11 @@ def validate_postal_code(postal_code, country="Canada"):
     return bool(re.match(pattern, postal_code.upper()))
 
 # ===============================================
-# SHIPPING CALCULATION HELPER
+# SHIPPING CALCULATION — Canonical source is shipping_service.py
+# This wrapper is kept for backward compatibility only (external HTTP callers).
+# The checkout flow (payment_stripe.py) imports directly from shipping_service.
 # ===============================================
-def calculate_shipping_cost(items, buyer_addr, speed="standard"):
-    """
-    Calculate shipping cost based on items and delivery address.
-
-    Rules:
-    1. If ALL items have freeShipping=True, return 0.0
-    2. For items with fixed delivery options, use those prices
-    3. For items without options, apply fallback rates based on province
-    4. Sum costs per seller and item quantity
-    """
-    if not items:
-        return 0.0
-
-    # Check if all items are free shipping
-    all_free_shipping = all(item.get('freeShipping', False) for item in items)
-    if all_free_shipping:
-        return 0.0
-
-    total_cost = 0.0
-    # Support both 'state' (Flutter convention) and 'province' (backend convention)
-    buyer_state = buyer_addr.get('state', '') or buyer_addr.get('province', '')
-
-    for item in items:
-        if item.get('freeShipping', False):
-            continue
-
-        quantity = item.get('quantity', 1)
-        seller_state = item.get('sellerAddress', {}).get('state', '') or item.get('sellerAddress', {}).get('province', '')
-
-        # Check for fixed delivery options
-        delivery_options = item.get('deliveryOptions', [])
-        fixed_price = None
-
-        for option in delivery_options:
-            if option.get('speed') == speed and option.get('isEnabled', False):
-                fixed_price = option.get('price', 0.0)
-                break
-
-        if fixed_price is not None:
-            total_cost += quantity * fixed_price
-        else:
-            # Apply fallback rates based on province
-            if buyer_state == seller_state:
-                # Same province fallback: 12.99
-                total_cost += quantity * 12.99
-            else:
-                # Different province fallback: 19.99
-                total_cost += quantity * 19.99
-
-    return round(total_cost, 2)
+from shipping_service import calculate_shipping_cost  # noqa: E402, F811
 
 # ===============================================
 # PAYMENT HANDLERS - STRIPE
@@ -154,6 +107,7 @@ from handlers.orders import (  # noqa: E402
     refund_order_item,
     update_item_status,
     update_order_status,
+    update_shipping_cost,
 )
 
 # ===============================================
@@ -234,6 +188,7 @@ __all__ = [
     'refund_order_item',
     'cancel_order',
     'approve_shipping_cost',
+    'update_shipping_cost',
     'on_order_status_changed',
 
     # Admin

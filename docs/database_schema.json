@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "lastUpdated": "2026-02-06",
+  "lastUpdated": "2025-07-17",
   "description": "Complete Firestore database schema for OrignaGTA e-commerce platform. CANADA-ONLY marketplace.",
 
   "collections": {
@@ -169,6 +169,46 @@
           "type": "timestamp",
           "required": false,
           "description": "Last update timestamp"
+        },
+        "suspendedBy": {
+          "type": "string",
+          "required": false,
+          "description": "Admin UID who suspended the account"
+        },
+        "suspensionReason": {
+          "type": "string",
+          "required": false,
+          "description": "Reason for account suspension"
+        },
+        "mfaEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether MFA is enabled (admin only)"
+        },
+        "mfaSecret": {
+          "type": "string",
+          "required": false,
+          "description": "TOTP MFA secret (admin only, encrypted)"
+        },
+        "mfaSecretTemp": {
+          "type": "string",
+          "required": false,
+          "description": "Temporary MFA secret during enrollment"
+        },
+        "lastMfaVerify": {
+          "type": "timestamp",
+          "required": false,
+          "description": "Last successful MFA verification"
+        },
+        "lastRoleUpdate": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When roles were last modified"
+        },
+        "lastRoleUpdateBy": {
+          "type": "string",
+          "required": false,
+          "description": "Admin UID who last changed roles"
         }
       },
       "subcollections": {
@@ -515,6 +555,12 @@
           "default": "active",
           "description": "Product status",
           "values": ["draft", "active", "paused", "archived", "out_of_stock"]
+        },
+        "deliverySpeed": {
+          "type": "string",
+          "required": false,
+          "description": "Delivery speed tier",
+          "values": ["standard", "express", "same_day", "economy"]
         }
       },
       "indexes": [
@@ -663,7 +709,7 @@
         "autoConfirmed": {
           "type": "boolean",
           "default": false,
-          "description": "Whether confirmation was automatic after 14 days"
+          "description": "Whether confirmation was automatic after 5 days"
         },
         "autoCaptured": {
           "type": "boolean",
@@ -722,6 +768,46 @@
           "type": "number",
           "default": 0,
           "description": "Pending total awaiting shipping approval"
+        },
+        "shippingApproval": {
+          "type": "map",
+          "required": false,
+          "description": "Shipping approval details (actualCost, respondedAt, etc.)"
+        },
+        "stockRestored": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether stock was restored after cancellation"
+        },
+        "cancelledBy": {
+          "type": "string",
+          "required": false,
+          "description": "Who cancelled the order (buyer, seller, system, admin)"
+        },
+        "cancelledAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When the order was cancelled"
+        },
+        "cancellationReason": {
+          "type": "string",
+          "required": false,
+          "description": "Reason for cancellation"
+        },
+        "requiresManualReview": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether order requires manual admin review"
+        },
+        "manualReviewReason": {
+          "type": "string",
+          "required": false,
+          "description": "Reason manual review is required"
+        },
+        "payoutErrors": {
+          "type": "array<string>",
+          "required": false,
+          "description": "List of payout error messages"
         }
       },
       "indexes": [
@@ -974,6 +1060,83 @@
           "description": "Whether event is from live mode"
         }
       }
+    },
+
+    "refunds": {
+      "description": "Refund records for order items",
+      "documentId": "{auto-generated}",
+      "fields": {
+        "orderId": { "type": "string", "required": true, "description": "Associated order ID" },
+        "productId": { "type": "string", "required": true, "description": "Refunded product ID" },
+        "sellerId": { "type": "string", "required": true, "description": "Seller user ID" },
+        "buyerId": { "type": "string", "required": true, "description": "Buyer user ID" },
+        "amountCents": { "type": "integer", "required": true, "description": "Refund amount in cents" },
+        "reason": { "type": "string", "required": false, "description": "Refund reason" },
+        "stripeRefundId": { "type": "string", "required": false, "description": "Stripe Refund ID" },
+        "status": { "type": "string", "required": true, "values": ["pending", "completed", "failed"], "description": "Refund status" },
+        "createdAt": { "type": "timestamp", "required": true, "description": "Refund creation time" }
+      }
+    },
+
+    "security_alerts": {
+      "description": "Security alert records for suspicious activity",
+      "documentId": "{auto-generated}",
+      "fields": {
+        "userId": { "type": "string", "required": true, "description": "Affected user ID" },
+        "alertType": { "type": "string", "required": true, "description": "Alert type: suspicious_login, rate_limit_exceeded, etc." },
+        "severity": { "type": "string", "required": true, "values": ["low", "medium", "high", "critical"], "description": "Alert severity" },
+        "details": { "type": "map", "required": false, "description": "Alert details" },
+        "resolved": { "type": "boolean", "default": false, "description": "Whether alert has been resolved" },
+        "createdAt": { "type": "timestamp", "required": true, "description": "Alert creation time" }
+      }
+    },
+
+    "rate_limits": {
+      "description": "Rate limiting records for API protection",
+      "documentId": "{identifier}",
+      "fields": {
+        "identifier": { "type": "string", "required": true, "description": "Rate limit key (IP, user ID, etc.)" },
+        "count": { "type": "integer", "required": true, "description": "Request count in current window" },
+        "windowStart": { "type": "timestamp", "required": true, "description": "Start of rate limit window" },
+        "blocked": { "type": "boolean", "default": false, "description": "Whether identifier is blocked" }
+      }
+    },
+
+    "config": {
+      "description": "Application configuration (feature flags, settings)",
+      "documentId": "{configKey}",
+      "fields": {
+        "key": { "type": "string", "required": true, "description": "Configuration key" },
+        "value": { "type": "any", "required": true, "description": "Configuration value" },
+        "updatedAt": { "type": "timestamp", "required": false, "description": "Last update time" },
+        "updatedBy": { "type": "string", "required": false, "description": "Admin who last updated" }
+      }
+    },
+
+    "admin_logs": {
+      "description": "Admin action audit trail",
+      "documentId": "{auto-generated}",
+      "fields": {
+        "adminId": { "type": "string", "required": true, "description": "Admin user ID" },
+        "action": { "type": "string", "required": true, "description": "Action performed" },
+        "targetId": { "type": "string", "required": false, "description": "Target entity ID" },
+        "targetType": { "type": "string", "required": false, "description": "Target type (user, order, product)" },
+        "details": { "type": "map", "required": false, "description": "Action details" },
+        "createdAt": { "type": "timestamp", "required": true, "description": "Action timestamp" }
+      }
+    },
+
+    "product_ratings": {
+      "description": "Individual product ratings and reviews",
+      "documentId": "{auto-generated}",
+      "fields": {
+        "productId": { "type": "string", "required": true, "description": "Rated product ID" },
+        "userId": { "type": "string", "required": true, "description": "Rating user ID" },
+        "orderId": { "type": "string", "required": true, "description": "Associated order ID" },
+        "rating": { "type": "number", "required": true, "description": "Rating value (1-5)" },
+        "comment": { "type": "string", "required": false, "description": "Review text" },
+        "createdAt": { "type": "timestamp", "required": true, "description": "Rating timestamp" }
+      }
     }
   },
 
@@ -1044,6 +1207,11 @@
           "type": "number",
           "required": false,
           "description": "GPS longitude for shipping calculation"
+        },
+        "formattedAddress": {
+          "type": "string",
+          "required": false,
+          "description": "Full formatted address string"
         }
       }
     },
@@ -1204,6 +1372,17 @@
           "type": "boolean",
           "default": false,
           "description": "Free shipping offered by seller"
+        },
+        "supplier": {
+          "type": "map",
+          "required": false,
+          "description": "Supplier info for international shipping estimates",
+          "schema": {
+            "type": {
+              "type": "string",
+              "description": "Supplier platform: aliexpress, alibaba, 1688, etc."
+            }
+          }
         }
       }
     },
@@ -1288,7 +1467,9 @@
         "captured": "Payment captured (funds transferred)",
         "payment_failed": "Payment failed",
         "refunded": "Payment refunded",
-        "session_expired": "Checkout session expired"
+        "session_expired": "Checkout session expired",
+        "cancelled": "Payment cancelled",
+        "authorization_expired": "Authorization expired (7-day window passed)"
       }
     },
     "DeliveryStatus": {
@@ -1296,7 +1477,8 @@
       "values": {
         "pending": "Awaiting shipment",
         "shipped": "Item shipped with tracking",
-        "delivered": "Item delivered"
+        "delivered": "Item delivered",
+        "refunded": "Item refunded"
       }
     },
     "PayoutStatus": {
@@ -1306,7 +1488,9 @@
         "processing": "Transfers being processed",
         "completed": "All sellers paid",
         "partial": "Some sellers paid",
-        "failed": "Transfer(s) failed"
+        "failed": "Transfer(s) failed",
+        "reversed": "Transfer reversed",
+        "reversed_dispute": "Transfer reversed due to dispute"
       }
     },
     "UserRoles": {
@@ -1352,7 +1536,7 @@
       "description": "Platform fee charged on seller payouts"
     },
     "autoConfirmDays": {
-      "days": 14,
+      "days": 5,
       "description": "Days after delivery before auto-confirming order"
     },
     "currency": {

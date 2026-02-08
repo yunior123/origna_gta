@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Payment system audit: checkout → authorization → webhooks → capture → transfers → refunds → disputes."""
+"""Payment system audit: checkout → authorization → webhooks → capture → transfers → refunds → disputes.
+Enriched with Stripe, Airwallex documentation crawling."""
 import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from common import PROJECT_ROOT, bundle_targeted_files, run_streaming_audit, save_report
+from common import run_enriched_audit
 from prompt_payment import PAYMENT_AUDIT_PROMPT
 
 PAYMENT_FILES = [
@@ -27,14 +28,14 @@ PAYMENT_FILES = [
 ]
 
 def main():
-    print("💳 Payment System Audit (Kimi 2.5)")
-    print("=" * 50)
-    file_paths = [PROJECT_ROOT / f for f in PAYMENT_FILES]
-    print(f"Collecting {len(file_paths)} targeted files...")
-    project_text = bundle_targeted_files(file_paths)
-    print(f"Bundled {len(project_text):,} characters")
-    report = run_streaming_audit(PAYMENT_AUDIT_PROMPT, project_text)
-    save_report(report, "payment", "Payment System")
+    run_enriched_audit(
+        audit_type="payment",
+        prompt=PAYMENT_AUDIT_PROMPT,
+        file_paths=PAYMENT_FILES,
+        prefix="payment",
+        workflow_name="Payment System",
+        emoji="💳",
+    )
 
 if __name__ == "__main__":
     main()

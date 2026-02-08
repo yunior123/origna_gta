@@ -378,6 +378,54 @@
 			"group": "build",
 			"presentation": { "reveal": "always", "panel": "shared" }
 		},
+		// =====================================================================
+		// NEW ENRICHED AUDITS (with doc crawling)
+		// =====================================================================
+		{
+			"label": "🔄 Audit: Data Flow & Schema",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_dataflow.py",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "shared" }
+		},
+		{
+			"label": "🛡️ Audit: Error Handling",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_error_handling.py",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "shared" }
+		},
+		{
+			"label": "⚡ Audit: Performance & Scaling",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_performance.py",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "shared" }
+		},
+		{
+			"label": "🧠 Audit: State Management",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_state_mgmt.py",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "shared" }
+		},
+		{
+			"label": "🔒 Audit: API Security",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_api_security.py",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "shared" }
+		},
 		{
 			"label": "Stop All Emulator Services",
 			"type": "shell",

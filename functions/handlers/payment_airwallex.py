@@ -234,6 +234,57 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not payment_intent_id:
         raise https_fn.HttpsError('failed-precondition', 'No Airwallex payment intent found')
 
+    # SECURITY FIX: Check order is in capturable state
+    Fields = get_fields()
+    payment_status = order_data.get(Fields.PAYMENT_STATUS)
+
+    # Idempotency: already captured
+    if payment_status == 'captured':
+        return get_utils().create_success_response({'captured': True, 'message': 'Already captured'})
+
+    if payment_status != 'authorized':
+        raise https_fn.HttpsError(
+            'failed-precondition',
+            f'Order payment not authorized (status: {payment_status})'
+        )
+
+    # SECURITY FIX: Check for active disputes before capturing
+    Collections = get_collections()
+    dispute_alerts = get_db().collection(Collections.SECURITY_ALERTS)\
+        .where(Fields.TYPE, '==', 'dispute_created')\
+        .where(Fields.RESOLVED, '==', False)\
+        .where(Fields.ORDER_ID, '==', order_id)\
+        .limit(1).get()
+
+    if len(dispute_alerts) > 0:
+        raise https_fn.HttpsError(
+            'failed-precondition',
+            'Cannot capture payment: active dispute on this order'
+        )
+
+    # SECURITY FIX: Atomically lock for capture (prevent concurrent captures)
+    from firebase_admin import firestore as _fs
+
+    @_fs.transactional
+    def lock_for_airwallex_capture(transaction):
+        fresh = order_ref.get(transaction=transaction)
+        if not fresh.exists:
+            raise https_fn.HttpsError('not-found', 'Order not found')
+        fresh_data = fresh.to_dict()
+        if fresh_data.get(Fields.PAYMENT_STATUS) == 'captured':
+            return 'already_captured'
+        if fresh_data.get(Fields.PAYMENT_STATUS) != 'authorized':
+            raise https_fn.HttpsError('failed-precondition', 'Order status changed concurrently')
+        transaction.update(order_ref, {
+            Fields.PAYMENT_STATUS: 'capturing',
+            Fields.UPDATED_AT: get_server_timestamp(),
+        })
+        return 'locked'
+
+    lock_result = lock_for_airwallex_capture(get_db().transaction())
+    if lock_result == 'already_captured':
+        return get_utils().create_success_response({'captured': True, 'message': 'Already captured'})
+
     try:
         airwallex_service = get_airwallex_service()
         airwallex_service.capture_payment(payment_intent_id)
@@ -241,6 +292,9 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields = get_fields()
         order_ref.update({
             Fields.PAYMENT_STATUS: 'captured',
+            Fields.CAPTURED_AT: get_server_timestamp(),
+            Fields.CONFIRMED_BY_CLIENT: True,
+            Fields.CONFIRMED_AT: get_server_timestamp(),
             Fields.UPDATED_AT: get_server_timestamp()
         })
 
@@ -248,6 +302,14 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         return utils.create_success_response({'captured': True})
 
     except Exception as e:
+        # Rollback 'capturing' state to 'authorized' so the order isn't stuck
+        import contextlib
+        with contextlib.suppress(Exception):
+            Fields = get_fields()
+            order_ref.update({
+                Fields.PAYMENT_STATUS: 'authorized',
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
         print(f'Airwallex capture_payment error: {type(e).__name__}: {str(e)}')
         raise https_fn.HttpsError('internal', 'Payment capture failed') from e
 

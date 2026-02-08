@@ -69,7 +69,13 @@ class FirebaseOrderRepository implements OrderRepository {
     return _firestore
         .collection(Collections.orders)
         .where(Fields.userId, isEqualTo: userId)
-        .where(Fields.paymentStatus, whereIn: [constants.PaymentStatus.paid.value, constants.PaymentStatus.authorized.value])
+        .where(Fields.paymentStatus, whereIn: [
+          constants.PaymentStatus.authorized.value,
+          constants.PaymentStatus.captured.value,
+          constants.PaymentStatus.refunded.value,
+          constants.PaymentStatus.cancelled.value,
+          constants.PaymentStatus.authorizationExpired.value,
+        ])
         .orderBy(Fields.createdAt, descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => models.Order.fromFirestore(doc)).toList());
@@ -94,7 +100,13 @@ class FirebaseOrderRepository implements OrderRepository {
     return _firestore
         .collection(Collections.orders)
         .where(Fields.sellerIds, arrayContains: userId)
-        .where(Fields.paymentStatus, whereIn: [constants.PaymentStatus.paid.value, constants.PaymentStatus.authorized.value])
+        .where(Fields.paymentStatus, whereIn: [
+          constants.PaymentStatus.authorized.value,
+          constants.PaymentStatus.captured.value,
+          constants.PaymentStatus.refunded.value,
+          constants.PaymentStatus.cancelled.value,
+          constants.PaymentStatus.authorizationExpired.value,
+        ])
         .orderBy(Fields.createdAt, descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => models.Order.fromFirestore(doc)).toList());

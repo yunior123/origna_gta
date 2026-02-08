@@ -231,7 +231,7 @@ def _calculate_tiered_shipping(distance_km: float, seller_items: list[dict], spe
         total_items += qty
 
         # Volumetric: (L * W * H) / 5000
-        actual_weight = item.get('weightKg', 0.5)
+        actual_weight = max(item.get('weightKg', 0.5), 0)  # Prevent negative weight
         length = max(item.get('lengthCm', 10), 1)  # Prevent zero dimensions
         width = max(item.get('widthCm', 10), 1)
         height = max(item.get('heightCm', 10), 1)
@@ -404,10 +404,18 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
             continue
 
         # Check Local/Perishable restrictions early
-        has_local_restriction = any(i.get(Fields.IS_LOCAL_DELIVERY_ONLY) or i.get(Fields.IS_PERISHABLE) for i in seller_items)
+        has_local_restriction = any(i.get(Fields.IS_LOCAL_DELIVERY_ONLY) for i in seller_items)
+        has_perishable = any(i.get(Fields.IS_PERISHABLE) for i in seller_items)
         if has_local_restriction and seller_state != buyer_state:
-            print(f"⚠️ Local-only item across province: {seller_state} -> {buyer_state}")
-            total_shipping += 50.0 # High penalty
+            # SECURITY FIX: Block local-only products entirely for out-of-province buyers
+            local_names = [i.get(Fields.NAME, 'Unknown') for i in seller_items if i.get(Fields.IS_LOCAL_DELIVERY_ONLY)]
+            raise ValueError(
+                f"Local delivery only: {', '.join(local_names)} cannot be shipped from {seller_state} to {buyer_state}. "
+                f"These products are only available for local delivery within {seller_state}."
+            )
+        if has_perishable and seller_state != buyer_state:
+            print(f"⚠️ Perishable item across province: {seller_state} -> {buyer_state}")
+            total_shipping += 50.0  # Perishable cross-province surcharge
 
         # Try to find seller fixed price for this speed
         has_seller_fixed_price = False
@@ -431,7 +439,7 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
             total_shipping += seller_fixed_total
             continue
 
-        should_call_geoapify = speed in ['express', 'same_day'] or has_local_restriction
+        should_call_geoapify = speed in ['express', 'same_day'] or has_perishable
 
         if should_call_geoapify and seller_lat and seller_lon and GEOAPIFY_API_KEY:
             try:
@@ -446,7 +454,7 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
                     data = response.json()
                     distance_km = max(0, data['sources_to_targets'][0][0]['distance'] / 1000.0)
 
-                    if has_local_restriction and distance_km > 100:
+                    if has_perishable and distance_km > 100:
                         total_shipping += 75.0
                         continue
 

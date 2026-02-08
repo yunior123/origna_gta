@@ -8,6 +8,10 @@ abstract class CartRepository {
   Future<void> updateQuantity(String userId, String productId, int quantity);
   Future<void> removeFromCart(String userId, String productId);
   Future<void> clearCart(String userId);
+
+  /// Fetch the seller ID for a product to prevent self-purchase.
+  /// Returns null if the product does not exist.
+  Future<String?> getProductSellerId(String productId);
 }
 
 class FirebaseCartRepository implements CartRepository {
@@ -72,5 +76,12 @@ class FirebaseCartRepository implements CartRepository {
       batch.delete(doc.reference);
     }
     await batch.commit();
+  }
+
+  @override
+  Future<String?> getProductSellerId(String productId) async {
+    final productDoc = await _firestore.collection(Collections.products).doc(productId).get();
+    if (!productDoc.exists) return null;
+    return productDoc.data()?[Fields.sellerId] as String?;
   }
 }

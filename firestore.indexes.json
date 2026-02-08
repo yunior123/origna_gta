@@ -248,6 +248,16 @@
         {"fieldPath": "timestamp", "order": "ASCENDING"}
       ],
       "comment": "AUDIT 2026-02-04: Index for failed webhook retry queries"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "sellerIds", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "paymentStatus", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ],
+      "comment": "AUDIT 2026-02-07: Index for seller orders filtered by paymentStatus (watchSellerOrders)"
     }
   ],
   "fieldOverrides": []

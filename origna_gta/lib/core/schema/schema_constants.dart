@@ -96,6 +96,14 @@ abstract final class Fields {
   static const businessName = 'businessName';
   static const payoutHoldDays = 'payoutHoldDays';
 
+  // === USER MFA FIELDS (admin only) ===
+  static const mfaEnabled = 'mfaEnabled';
+  static const mfaSecret = 'mfaSecret';
+  static const mfaSecretTemp = 'mfaSecretTemp';
+  static const lastMfaVerify = 'lastMfaVerify';
+  static const lastRoleUpdate = 'lastRoleUpdate';
+  static const lastRoleUpdateBy = 'lastRoleUpdateBy';
+
   // === PRODUCT FIELDS ===
   static const productId = 'productId';
   static const price = 'price';
@@ -167,6 +175,15 @@ abstract final class Fields {
   static const manualReviewReason = 'manualReviewReason';
   static const payoutErrors = 'payoutErrors';
 
+  // === ORDER FIELDS (missing from Dart, present in Python) ===
+  static const shippingApproval = 'shippingApproval';
+  static const stockRestored = 'stockRestored';
+  static const cancelledBy = 'cancelledBy';
+  static const cancelledAt = 'cancelledAt';
+  static const cancellationReason = 'cancellationReason';
+  static const respondedAt = 'respondedAt';
+  static const actualCost = 'actualCost';
+
   // === ORDER ITEM FIELDS ===
   static const quantity = 'quantity';
   static const trackingNumber = 'trackingNumber';
@@ -218,6 +235,31 @@ abstract final class Fields {
   static const label = 'label';
   static const latitude = 'latitude';
   static const longitude = 'longitude';
+
+  // === PAYOUT/REFUND COMMON FIELDS ===
+  static const provider = 'provider';
+  static const amount = 'amount';
+  static const completedAt = 'completedAt';
+  static const failedAt = 'failedAt';
+  static const error = 'error';
+  static const paymentId = 'paymentId';
+
+  // === SECURITY ALERT FIELDS ===
+  static const type = 'type';
+  static const severity = 'severity';
+  static const resolved = 'resolved';
+  static const resolvedAt = 'resolvedAt';
+  static const resolution = 'resolution';
+  static const timestamp = 'timestamp';
+  static const chargeId = 'chargeId';
+  static const accountId = 'accountId';
+  static const reason = 'reason';
+  static const destination = 'destination';
+  static const failureMessage = 'failureMessage';
+  static const adminId = 'adminId';
+
+  // === WEBHOOK EVENT FIELDS ===
+  static const clientIp = 'clientIp';
 
   // === CART FIELDS (subcollection uses dateCreated for legacy reasons) ===
   // NOTE: Cart items use [dateCreated], not [createdAt]
@@ -313,6 +355,15 @@ abstract final class PayoutStatusValues {
     reversed,
     reversedDispute,
   };
+}
+
+/// Valid values for webhook processing status
+abstract final class WebhookStatusValues {
+  static const processing = 'processing';
+  static const completed = 'completed';
+  static const failed = 'failed';
+
+  static const all = {processing, completed, failed};
 }
 
 /// Valid values for shippingApprovalStatus field
@@ -453,6 +504,7 @@ abstract final class ApiKeys {
   static const sessionId = 'sessionId';
   static const url = 'url';
   static const secret = 'secret';
+  static const qrCodeUrl = 'qrCodeUrl';
   static const provisioningUri = 'provisioning_uri';
   static const backupCodes = 'backup_codes';
   static const detailsSubmitted = 'detailsSubmitted';

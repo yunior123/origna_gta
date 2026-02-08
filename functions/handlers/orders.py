@@ -851,6 +851,115 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
     return create_success_response({'approved': approved})
 
 
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Seller updates actual shipping cost after dispatch.
+    Triggers buyer approval if increase > 20% of original estimate.
+
+    Migrated from main_old.py.backup to modular handler.
+
+    Request data:
+        orderId: Order ID
+        newShippingCost: Actual shipping cost in dollars
+        reason: Explanation for cost change
+
+    Returns:
+        {success: True, approvalRequired: bool}
+    """
+    if not req.auth:
+        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+
+    user_id = req.auth.uid
+    data = req.data
+
+    from config import SHIPPING_APPROVAL_THRESHOLD
+    from utils import sanitized_text
+
+    order_id = data.get(Fields.ORDER_ID)
+    new_shipping_cost = data.get('newShippingCost')
+    reason_raw = data.get(ApiKeys.REASON, 'Actual shipping cost differs from estimate')
+    reason = sanitized_text(reason_raw)[:500] if reason_raw else 'Actual shipping cost differs from estimate'
+
+    if not order_id:
+        raise https_fn.HttpsError('invalid-argument', 'orderId required')
+    if new_shipping_cost is None or not isinstance(new_shipping_cost, (int, float)) or new_shipping_cost < 0:
+        raise https_fn.HttpsError('invalid-argument', 'newShippingCost must be a non-negative number')
+
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    order_doc = order_ref.get()
+
+    if not order_doc.exists:
+        raise https_fn.HttpsError('not-found', 'Order not found')
+
+    order_data = order_doc.to_dict()
+
+    # Verify seller owns at least one item in the order
+    seller_items = [item for item in order_data.get(Fields.ITEMS, []) if item.get(Fields.SELLER_ID) == user_id]
+    if not seller_items:
+        raise https_fn.HttpsError('permission-denied', 'You do not have items in this order')
+
+    # Only allow update on confirmed/processing orders
+    if order_data.get(Fields.ORDER_STATUS) not in [OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING]:
+        raise https_fn.HttpsError('failed-precondition', 'Can only update shipping on confirmed/processing orders')
+
+    # Only allow update on authorized payment (not yet captured)
+    if order_data.get(Fields.PAYMENT_STATUS) != PaymentStatusValues.AUTHORIZED:
+        raise https_fn.HttpsError('failed-precondition', 'Payment must be in authorized state')
+
+    original_shipping_cents = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
+    new_shipping_cents = round(new_shipping_cost * 100)
+
+    # Check if increase exceeds threshold (20%)
+    approval_required = False
+    if original_shipping_cents > 0:
+        increase_ratio = (new_shipping_cents - original_shipping_cents) / original_shipping_cents
+        if increase_ratio > SHIPPING_APPROVAL_THRESHOLD:
+            approval_required = True
+
+    if approval_required:
+        # Set pending approval — buyer must approve before shipping can proceed
+        order_ref.update({
+            Fields.SHIPPING_APPROVAL: {
+                Fields.STATUS: ShippingApprovalStatusValues.PENDING,
+                Fields.ACTUAL_COST: new_shipping_cost,
+                'originalCostCents': original_shipping_cents,
+                'newCostCents': new_shipping_cents,
+                'reason': reason,
+                'requestedBy': user_id,
+                'requestedAt': get_server_timestamp(),
+            },
+            Fields.SHIPPING_APPROVAL_STATUS: ShippingApprovalStatusValues.PENDING,
+            Fields.SHIPPING_APPROVAL_REQUIRED: True,
+            Fields.UPDATED_AT: get_server_timestamp(),
+        })
+    else:
+        # Auto-approve small changes — update shipping cost directly
+        difference_cents = new_shipping_cents - original_shipping_cents
+        new_total_cents = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) + difference_cents
+
+        update_data = {
+            Fields.SHIPPING_COST_CENTS: new_shipping_cents,
+            Fields.TOTAL_AMOUNT_CENTS: new_total_cents,
+            Fields.ACTUAL_SHIPPING: new_shipping_cost,
+            Fields.UPDATED_AT: get_server_timestamp(),
+        }
+
+        # Update Stripe PaymentIntent amount if cost changed
+        if difference_cents != 0:
+            payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+            if payment_intent_id:
+                try:
+                    import stripe as _stripe
+                    _stripe.PaymentIntent.modify(payment_intent_id, amount=new_total_cents)
+                except Exception as e:
+                    print(f'Failed to update Stripe PI amount: {str(e)}')
+
+        order_ref.update(update_data)
+
+    return create_success_response({'approvalRequired': approval_required})
+
+
 @firestore_fn.on_document_updated(document="orders/{orderId}", **DEFAULT_OPTIONS)
 def on_order_status_changed(event: firestore_fn.Event) -> None:
     """

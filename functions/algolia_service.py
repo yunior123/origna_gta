@@ -193,6 +193,31 @@ def delete_product(product_id: str, max_retries: int = 3) -> bool:
     return False
 
 
+def get_index_stats() -> int:
+    """
+    Get the number of records in the Algolia index.
+    Used by monitor_algolia_sync cron job to detect Firestore↔Algolia drift.
+
+    Returns:
+        Number of records in the index, or 0 if unavailable.
+    """
+    if not products_index:
+        print("⚠️  Algolia not configured - cannot get index stats")
+        return 0
+
+    try:
+        index_name = _get_index_name()
+        # Use search with empty query and hitsPerPage=0 to get nbHits
+        search_result = products_index.search_single_index(
+            index_name=index_name,
+            search_params={'query': '', 'hitsPerPage': 0}
+        )
+        return search_result.nb_hits or 0
+    except Exception as e:
+        print(f"  ❌ Failed to get Algolia index stats: {str(e)}")
+        return 0
+
+
 def batch_index_products(products: list) -> tuple:
     """
     Index multiple products in batch

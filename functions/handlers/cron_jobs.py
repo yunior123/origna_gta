@@ -97,6 +97,23 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
             print(f'Order {order_id} has no payment intent, skipping')
             continue
 
+        # AUDIT FIX (HIGH-024): Check for active disputes before auto-capturing.
+        # Without this, cron could capture funds for disputed orders,
+        # causing the platform to pay both the dispute AND the seller.
+        try:
+            dispute_alerts = get_db().collection(Collections.SECURITY_ALERTS)\
+                .where(Fields.TYPE, '==', 'dispute_created')\
+                .where(Fields.RESOLVED, '==', False)\
+                .where(Fields.ORDER_ID, '==', order_id)\
+                .limit(1).get()
+
+            if len(dispute_alerts) > 0:
+                print(f'⚠️ Order {order_id} has active dispute, skipping auto-capture')
+                continue
+        except Exception as e:
+            print(f'⚠️ Failed to check disputes for order {order_id}: {str(e)}, skipping for safety')
+            continue
+
         # FIX S23: Verify actual delivery/ship time before capture.
         # updatedAt can be bumped by unrelated edits; use item-level timestamps.
         items = order_data.get(Fields.ITEMS, [])
@@ -130,6 +147,33 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
             print(f'Auto-marked order {order_id} as delivered (was shipped, {AUTO_CONFIRM_DAYS}+ days)')
 
         try:
+            # SECURITY FIX (HIGH-012): Atomically lock order for capture to prevent
+            # race condition with check_expired_authorizations and manual capture_payment.
+            @get_firestore().transactional
+            def lock_for_auto_capture(transaction):
+                fresh_doc = order_doc.reference.get(transaction=transaction)
+                if not fresh_doc.exists:
+                    return 'not_found'
+                fresh_data = fresh_doc.to_dict()
+                current_ps = fresh_data.get(Fields.PAYMENT_STATUS)
+                if current_ps == PaymentStatusValues.CAPTURED:
+                    return 'already_captured'
+                if current_ps != PaymentStatus.AUTHORIZED:
+                    return f'invalid_status:{current_ps}'
+                transaction.update(order_doc.reference, {
+                    Fields.PAYMENT_STATUS: 'capturing',
+                    Fields.UPDATED_AT: get_server_timestamp(),
+                })
+                return 'locked'
+
+            lock_result = lock_for_auto_capture(get_db().transaction())
+            if lock_result == 'already_captured':
+                print(f'Order {order_id} already captured, skipping')
+                continue
+            if lock_result != 'locked':
+                print(f'Order {order_id} cannot be captured: {lock_result}')
+                continue
+
             # Capture payment (with idempotency key)
             stripe.PaymentIntent.capture(
                 payment_intent_id,
@@ -156,8 +200,12 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                     item_total_cents = item_price_cents * item[Fields.QUANTITY]
                     sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
 
+            # AUDIT FIX (CRITICAL-001): Use stored fee rate from checkout, not current config
+            stored_fee_total = order_data.get(Fields.PLATFORM_FEE_CENTS)
+            stored_fee_rate = (stored_fee_total / order_data.get(Fields.TOTAL_AMOUNT_CENTS, 1)) if stored_fee_total else PLATFORM_FEE_PERCENT
+
             for seller_id, amount_cents in sellers_total_cents.items():
-                platform_fee_cents = round(amount_cents * PLATFORM_FEE_PERCENT)
+                platform_fee_cents = round(amount_cents * stored_fee_rate)
                 net_amount_cents = amount_cents - platform_fee_cents
 
                 # Get seller's Stripe account
@@ -168,7 +216,20 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                     seller_data = seller_doc.to_dict()
                     stripe_account_id = seller_data.get(Fields.STRIPE_ACCOUNT_ID)
 
-                    if stripe_account_id and seller_data.get(Fields.PAYOUTS_ENABLED, False):
+                    # SECURITY FIX: Check chargesEnabled (not payoutsEnabled) for consistency
+                    # with capture_payment. Also check seller is not suspended.
+                    seller_suspended = seller_data.get(Fields.SUSPENDED, False)
+                    seller_charges_ok = seller_data.get(Fields.CHARGES_ENABLED, False)
+
+                    if seller_suspended:
+                        print(f'⚠️ Skipping auto-payout to suspended seller {seller_id} for order {order_id}')
+                        order_doc.reference.update({
+                            Fields.REQUIRES_MANUAL_REVIEW: True,
+                            Fields.MANUAL_REVIEW_REASON: f'Seller {seller_id} suspended at auto-capture',
+                        })
+                        continue
+
+                    if stripe_account_id and seller_charges_ok:
                         try:
                             transfer = stripe.Transfer.create(
                                 amount=net_amount_cents,
@@ -219,6 +280,15 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
             failed_count += 1
             print(f'Failed to capture order {order_id}: {str(e)}')
 
+            # Rollback 'capturing' state to 'authorized' so the order isn't stuck
+            try:
+                order_doc.reference.update({
+                    Fields.PAYMENT_STATUS: PaymentStatus.AUTHORIZED,
+                    Fields.UPDATED_AT: get_server_timestamp(),
+                })
+            except Exception:
+                print(f'⚠️ Failed to rollback capturing state for order {order_id}')
+
             order_doc.reference.update({
                 Fields.CAPTURE_ATTEMPTS: order_data.get(Fields.CAPTURE_ATTEMPTS, 0) + 1,
                 'lastCaptureError': str(e),
@@ -258,6 +328,38 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     for order_doc in orders:
         order_data = order_doc.to_dict()
         order_id = order_doc.id
+
+        # SECURITY FIX (HIGH-012): Atomically verify and update status to prevent
+        # race condition with capture_payment running concurrently.
+        # If order is in 'capturing' state, skip it — capture is in progress.
+        @get_firestore().transactional
+        def try_expire_order(transaction):
+            fresh_doc = order_doc.reference.get(transaction=transaction)
+            if not fresh_doc.exists:
+                return 'not_found'
+            fresh_data = fresh_doc.to_dict()
+            current_ps = fresh_data.get(Fields.PAYMENT_STATUS)
+            if current_ps == 'capturing':
+                return 'capturing_in_progress'
+            if current_ps == PaymentStatusValues.CAPTURED:
+                return 'already_captured'
+            if current_ps != PaymentStatus.AUTHORIZED:
+                return f'invalid_status:{current_ps}'
+            transaction.update(order_doc.reference, {
+                Fields.PAYMENT_STATUS: 'expiring',
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
+            return 'locked'
+
+        try:
+            expire_result = try_expire_order(get_db().transaction())
+        except Exception as e:
+            print(f'⚠️ Failed to lock order {order_id} for expiry: {str(e)}')
+            continue
+
+        if expire_result != 'locked':
+            print(f'Order {order_id} cannot be expired: {expire_result}')
+            continue
 
         # Skip if stock already restored (idempotency)
         if order_data.get(Fields.STOCK_RESTORED, False):
@@ -444,18 +546,7 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
 
     print(f'Rate limit cleanup completed: {deleted_count} documents deleted')
 
-
-@scheduler_fn.on_schedule(schedule="0 2 * * *", **CRON_OPTIONS)  # Daily at 02:00 UTC
-def check_expired_authorizations_scheduled(event: scheduler_fn.ScheduledEvent) -> None:
-    """
-    Wrapper for check_expired_authorizations to run at specific time.
-    Uses helper function from check_expired_authorizations.py
-    """
-    print('Running scheduled check_expired_authorizations')
-
-    try:
-        from check_expired_authorizations import check_and_expire_orders
-        result = check_and_expire_orders()
-        print(f'Expired authorizations check completed: {result}')
-    except Exception as e:
-        print(f'Failed to check expired authorizations: {str(e)}')
+# NOTE: check_expired_authorizations_scheduled REMOVED — it was a duplicate
+# that tried to import a non-existent function (check_and_expire_orders)
+# from check_expired_authorizations.py. The actual logic lives in
+# check_expired_authorizations() above which runs "every 24 hours".

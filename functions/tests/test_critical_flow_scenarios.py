@@ -1180,8 +1180,8 @@ class TestShippingCalculation:
 
         assert cross_province > same_province
 
-    def test_shipping_local_delivery_cross_province_penalty(self):
-        """Scenario 80: Local-only items across provinces get penalty."""
+    def test_shipping_local_delivery_cross_province_blocked(self):
+        """Scenario 80: Local-only items across provinces are blocked entirely."""
         from shipping_service import calculate_shipping_cost
 
         items = [{
@@ -1194,8 +1194,8 @@ class TestShippingCalculation:
         buyer = {'state': 'BC', 'latitude': 49.3, 'longitude': -123.1}
 
         with patch('shipping_service.GEOAPIFY_API_KEY', ''):
-            cost = calculate_shipping_cost(items, buyer)
-            assert cost >= 50.0  # Penalty for local-only cross-province
+            with pytest.raises(ValueError, match="Local delivery only"):
+                calculate_shipping_cost(items, buyer)
 
 
 # ============================================================================
@@ -1253,14 +1253,17 @@ class TestCronJobs:
     """Tests scheduled cron job edge cases."""
 
     def test_expired_auth_field_name_is_created_at(self):
-        """Scenario 86: check_expired_authorizations queries 'authorizationExpiresAt' (FIX verification)."""
-        # Logic moved to check_expired_authorizations.py — cron_jobs.py only delegates
-        source_file = Path(__file__).parent.parent / 'check_expired_authorizations.py'
+        """Scenario 86: check_expired_authorizations uses correct field for expiry detection."""
+        # Logic lives in cron_jobs.py (standalone file was removed)
+        source_file = Path(__file__).parent.parent / 'handlers' / 'cron_jobs.py'
         source = source_file.read_text()
-        # The WHERE clause should use 'authorizationExpiresAt' to find expired orders
-        assert "'authorizationExpiresAt'" in source or '"authorizationExpiresAt"' in source, \
-            "check_expired_authorizations should query 'authorizationExpiresAt'"
-        # The WHERE clause should NOT use 'dateCreated'
+        # The WHERE clause should use Fields.CREATED_AT or 'createdAt' to compare with cutoff
+        assert "Fields.CREATED_AT" in source or "'createdAt'" in source or '"createdAt"' in source, \
+            "check_expired_authorizations should query by createdAt or expiresAt"
+        # Must filter by authorized payment status
+        assert "PaymentStatus.AUTHORIZED" in source, \
+            "check_expired_authorizations should filter by AUTHORIZED payment status"
+        # Should NOT use legacy 'dateCreated' field
         assert ".where('dateCreated'" not in source, \
             "check_expired_authorizations should NOT query 'dateCreated'"
 
