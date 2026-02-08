@@ -7,11 +7,22 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
+import 'package:origna_gta/utils/circuit_breaker.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 import 'checkout_state.dart';
 export 'checkout_state.dart';
+
+/// Circuit breakers for external service calls
+final _stripeCircuitBreaker = CircuitBreakerRegistry.get(
+  'stripe_checkout',
+  config: CircuitBreakerConfig.paymentDefault,
+);
+final _algoliaCircuitBreaker = CircuitBreakerRegistry.get(
+  'algolia_search',
+  config: CircuitBreakerConfig.searchDefault,
+);
 
 /// StateNotifierProvider for checkout
 final checkoutStateProvider = StateNotifierProvider.autoDispose<CheckoutNotifier, CheckoutState>((ref) {
@@ -46,6 +57,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   UserRepository get _userRepository => _ref.read(userRepositoryProvider);
 
   /// Calculate shipping cost for cart items and determine available delivery options
+  /// 
+  /// Uses circuit breaker pattern to handle Algolia/service outages gracefully
   Future<void> calculateShipping(List<CartItemDetailModel> items) async {
     if (items.isEmpty) {
       state = state.copyWith(shippingError: 'No items to ship');
@@ -83,7 +96,10 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     state = state.copyWith(isCalculatingShipping: true, clearShippingError: true);
 
     try {
-      final cost = await calculateShippingCost(items, state.address);
+      // Use circuit breaker for external service calls
+      final cost = await _algoliaCircuitBreaker.execute(
+        () => calculateShippingCost(items, state.address),
+      );
 
       // Determine if local delivery (check if any seller is within ~50km)
       final isLocal = await _checkLocalDelivery(items, state.address!);
@@ -101,6 +117,12 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         isLocalDelivery: isLocal,
         availableDeliverySpeeds: availableSpeeds,
         deliverySpeed: DeliverySpeed.standard,
+        isCalculatingShipping: false,
+      );
+    } on CircuitBreakerOpenException catch (_) {
+      // Algolia/service is temporarily unavailable
+      state = state.copyWith(
+        shippingError: 'Shipping calculation temporarily unavailable. Please try again.',
         isCalculatingShipping: false,
       );
     } catch (e) {
@@ -177,8 +199,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       if (!isEmailVerified) {
         return CheckoutError(message: 'Please verify your email before checkout', code: 'email-not-verified');
       }
-    } catch (e) {
-      debugPrint('⚠️  Error checking email verification: $e');
+    } catch (_) {
+      debugPrint('⚠️  Error checking email verification');
       // Don't block checkout if we can't verify, but log it
     }
 
@@ -222,7 +244,10 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
       debugPrint('Sending checkout request for user: $userId');
 
-      final result = await _orderRepository.createCheckoutSession(orderData);
+      // Use circuit breaker for Stripe checkout calls
+      final result = await _stripeCircuitBreaker.execute(
+        () => _orderRepository.createCheckoutSession(orderData),
+      );
 
       // Check if widget is still mounted after async operation
       if (!mounted) {
@@ -246,6 +271,20 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       _ref.invalidate(cartItemsProvider);
 
       return CheckoutSuccess(checkoutUrl: checkoutUrl, orderId: orderId, sessionId: sessionId);
+    } on CircuitBreakerOpenException catch (e) {
+      // Service is temporarily unavailable (circuit breaker open)
+      debugPrint('⚠️ Checkout service temporarily unavailable: $e');
+      if (!mounted) {
+        return CheckoutError(message: 'Operation cancelled');
+      }
+      state = state.copyWith(
+        isProcessing: false,
+        checkoutError: 'Payment service is temporarily unavailable. Please try again in a moment.',
+      );
+      return CheckoutError(
+        message: 'Payment service is temporarily unavailable. Please try again in a moment.',
+        code: 'service-unavailable',
+      );
     } catch (e) {
       debugPrint('Checkout error: $e');
       if (!mounted) {
