@@ -22,10 +22,11 @@ class AlgoliaProductRepository implements ProductRepository {
 
   @override
   Future<String> addProduct(Product product) async {
-    if (kDebugMode)
+    if (kDebugMode) {
       debugPrint(
         'REPO: [AlgoliaProductRepository] Attempting to add product...',
       );
+    }
     try {
       final docRef = await _firestore
           .collection(Collections.products)
@@ -39,10 +40,11 @@ class AlgoliaProductRepository implements ProductRepository {
       );
 
       if (!serverDoc.exists) {
-        if (kDebugMode)
+        if (kDebugMode) {
           debugPrint(
             'REPO: CRITICAL ERROR - Document not found on server immediately after write!',
           );
+        }
         // Throwing ensures the UI/Test treats this as a failure
         throw FirebaseException(
           plugin: 'cloud_firestore',
@@ -93,8 +95,9 @@ class AlgoliaProductRepository implements ProductRepository {
       try {
         return await _searchWithAlgolia(searchQuery, categoryId, pageSize);
       } catch (e) {
-        if (kDebugMode)
+        if (kDebugMode) {
           debugPrint('⚠️  Algolia error, falling back to Firestore: $e');
+        }
         // Fall through to Firestore
       }
     }
@@ -292,8 +295,9 @@ class AlgoliaProductRepository implements ProductRepository {
         });
       }).toList();
 
-      if (kDebugMode)
+      if (kDebugMode) {
         print('✅ Algolia search returned ${products.length} products');
+      }
 
       return ProductQueryResult(
         products: products,

@@ -434,6 +434,125 @@
 				"cwd": "${workspaceFolder}"
 			},
 			"problemMatcher": []
+		},
+		// =====================================================================
+		// CLAUDE AUDIT HOOKS (Improved — composable, git-aware, auto-fix)
+		// =====================================================================
+		{
+			"label": "🪝 Claude: Run All Audit Hooks",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝 Claude: Audit Changed Files Only",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --changed",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝 Claude: Pre-commit Check",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --pre-commit",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝💳 Claude: Payment Audit",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook payment",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝🔐 Claude: Auth & Security Audit",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook auth",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝📦 Claude: Product Lifecycle Audit",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook product",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝🔄 Claude: Schema Sync Check",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook schema-sync",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝🛡️ Claude: Security Audit",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook security",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝⚡ Claude: Performance Audit",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook performance",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝📋 Claude: Order Lifecycle Audit",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook orders",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝🧠 Claude: State Management Audit",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook state-mgmt",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝🏪 Claude: Seller Onboarding Audit",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook seller",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🪝 Claude: List Available Hooks",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --list",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "panel": "shared" }
 		}
 	]
 }

@@ -53,10 +53,11 @@ class AlgoliaService {
     required String searchApiKey,
   }) {
     if (appId.isEmpty || searchApiKey.isEmpty) {
-      if (kDebugMode)
+      if (kDebugMode) {
         debugPrint(
           '⚠️  Algolia credentials empty → search disabled, using Firestore only',
         );
+      }
       return AlgoliaService._(isAvailable: false);
     }
 

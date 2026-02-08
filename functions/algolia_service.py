@@ -3,9 +3,26 @@ Algolia indexing service for products
 Handles syncing Firestore products to Algolia search index
 """
 
+import asyncio
 from typing import Union
 
 from algoliasearch.search.client import SearchClient
+
+
+def _run_async(coro):
+    """Run an async coroutine synchronously. Handles event loop reuse."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        # Already in an async context — create a new loop in a thread
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return asyncio.run(coro)
 from pydantic import ValidationError
 
 from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY, AlgoliaConfig
@@ -141,7 +158,7 @@ def index_product(product_id: str, product_data: dict, max_retries: int = 3) -> 
 
     for attempt in range(max_retries):
         try:
-            products_index.save_object(index_name=_get_index_name(), body=algolia_object)
+            _run_async(products_index.save_object(index_name=_get_index_name(), body=algolia_object))
             print(f"  ✅ Indexed product {product_id} to Algolia (index={_get_index_name()})")
             return True
         except Exception as e:
@@ -178,7 +195,7 @@ def delete_product(product_id: str, max_retries: int = 3) -> bool:
 
     for attempt in range(max_retries):
         try:
-            products_index.delete_object(index_name=_get_index_name(), object_id=product_id)
+            _run_async(products_index.delete_object(index_name=_get_index_name(), object_id=product_id))
             print(f"  ✅ Deleted product {product_id} from Algolia (index={_get_index_name()})")
             return True
         except Exception as e:
@@ -208,10 +225,10 @@ def get_index_stats() -> int:
     try:
         index_name = _get_index_name()
         # Use search with empty query and hitsPerPage=0 to get nbHits
-        search_result = products_index.search_single_index(
+        search_result = _run_async(products_index.search_single_index(
             index_name=index_name,
             search_params={'query': '', 'hitsPerPage': 0}
-        )
+        ))
         return search_result.nb_hits or 0
     except Exception as e:
         print(f"  ❌ Failed to get Algolia index stats: {str(e)}")
@@ -240,7 +257,7 @@ def batch_index_products(products: list) -> tuple:
                 algolia_objects.append(format_product_for_algolia(product_id, product_data))
 
         if algolia_objects:
-            products_index.save_objects(index_name=_get_index_name(), objects=algolia_objects)
+            _run_async(products_index.save_objects(index_name=_get_index_name(), objects=algolia_objects))
             print(f"  ✅ Batch indexed {len(algolia_objects)} products to Algolia (index={_get_index_name()})")
             return (len(algolia_objects), len(products) - len(algolia_objects))
 
@@ -263,7 +280,7 @@ def configure_algolia_index():
         index_name = _get_index_name()
         print(f"  🔧 Configuring Algolia index: {index_name}")
         # Set searchable attributes with priority
-        products_index.set_settings(index_name=index_name, index_settings={
+        _run_async(products_index.set_settings(index_name=index_name, index_settings={
             'searchableAttributes': [
                 Fields.NAME,                    # Highest priority
                 Fields.DESCRIPTION,
@@ -310,7 +327,7 @@ def configure_algolia_index():
             'highlightPreTag': '<mark>',
             'highlightPostTag': '</mark>',
             'hitsPerPage': 20,
-        })
+        }))
         print(f"  ✅ Configured Algolia index settings for '{index_name}'")
         return True
     except Exception as e:

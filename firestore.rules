@@ -90,17 +90,18 @@ service cloud.firestore {
       // Define valid state transitions
       // This prevents data corruption from invalid status changes
       let validTransitions = {
-        'pending': ['confirmed', 'cancelled', 'failed'],           // Initial state -> completed states
-        'confirmed': ['processing', 'cancelled'],                  // After payment confirmed
+        'pending': ['confirmed', 'cancelled', 'failed', 'expired'], // Initial state -> completed states
+        'confirmed': ['processing', 'cancelled', 'expired'],       // After payment confirmed
         'processing': ['shipped', 'cancelled'],                    // Seller processing
-        'shipped': ['in_transit', 'delivered', 'cancelled'],       // Shipped / in transit
+        'shipped': ['in_transit', 'delivered'],                     // Shipped / in transit (cancel not allowed after ship)
         'in_transit': ['delivered', 'cancelled'],                  // Carrier in transit
-        'delivered': ['refunded', 'partially_refunded'],           // After delivery
+        'delivered': ['refunded', 'partially_refunded', 'disputed'], // After delivery
         'cancelled': [],                                            // Terminal state - no transitions
         'failed': ['pending'],                                      // Retry -> pending
         'expired': ['pending'],                                     // Retry -> pending
         'refunded': [],                                             // Terminal state
         'partially_refunded': ['refunded'],                         // Can become fully refunded
+        'disputed': ['refunded'],                                   // After dispute resolution
       };
       
       // Get valid next states for current status

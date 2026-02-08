@@ -455,10 +455,43 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # SECURITY FIX: Use proper state machine validation instead of blocklist
     current_status = order_data[Fields.ORDER_STATUS]
-    payment_status = order_data.get(Fields.PAYMENT_STATUS)
 
     if not is_valid_order_status_transition(current_status, OrderStatusValues.CANCELLED):
         raise https_fn.HttpsError('failed-precondition', f'Cannot cancel order with status: {current_status}')
+
+    # AUDIT FIX (RC1): Use Firestore transaction to atomically check payment_status
+    # and set a 'cancelling' lock — prevents race condition with capture_payment
+    from firebase_admin import firestore as fs
+    transaction = get_db().transaction()
+
+    @fs.transactional
+    def lock_for_cancel(txn):
+        fresh_doc = order_ref.get(transaction=txn)
+        fresh_data = fresh_doc.to_dict()
+        fresh_payment_status = fresh_data.get(Fields.PAYMENT_STATUS)
+
+        # Block cancel if capture is already in progress
+        if fresh_payment_status == 'capturing':
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                'Cannot cancel order — payment capture in progress'
+            )
+
+        # Re-validate order status hasn't changed concurrently
+        if fresh_data.get(Fields.ORDER_STATUS) != current_status:
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                f'Order status changed concurrently (now: {fresh_data.get(Fields.ORDER_STATUS)})'
+            )
+
+        # Set cancelling lock to block concurrent captures
+        txn.update(order_ref, {
+            Fields.PAYMENT_STATUS: 'cancelling',
+            Fields.UPDATED_AT: get_server_timestamp(),
+        })
+        return fresh_payment_status
+
+    payment_status = lock_for_cancel(transaction)
 
     # Restore stock using batch write for atomicity (idempotency handled by stockRestored flag)
     if not order_data.get(Fields.STOCK_RESTORED, False):

@@ -597,9 +597,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     viewModel.updateProduct(
       name: _nameController.text.trim(),
       description: _descriptionController.text.trim(),
-      price: double.parse(_priceController.text.trim()),
-      stock: int.parse(_stockController.text.trim()),
-      categoryId: int.parse(_categoryController.text.trim()),
+      price: double.tryParse(_priceController.text.trim()) ?? 0,
+      stock: int.tryParse(_stockController.text.trim()) ?? 0,
+      categoryId: int.tryParse(_categoryController.text.trim()) ?? 0,
       street: _streetController.text.trim(),
       apartment: _apartmentController.text.trim(),
       city: _cityController.text.trim(),

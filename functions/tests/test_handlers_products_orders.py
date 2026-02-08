@@ -327,6 +327,7 @@ class TestOrderHandlers:
     @patch('handlers.orders.create_success_response')
     @patch('handlers.orders.stripe')
     @patch('handlers.orders.get_db')
+    @patch('firebase_admin.firestore.transactional', lambda fn: fn)
     def test_cancel_order_refunds_and_restores_stock(self, mock_get_db, mock_stripe, mock_create_response):
         """Test order cancellation refunds payment and restores inventory"""
         from handlers.orders import cancel_order

@@ -2,7 +2,7 @@
 Rate Limiter for Cloud Functions
 Protects against abuse and DDoS
 """
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from firebase_admin import firestore
 
@@ -32,7 +32,7 @@ class RateLimiter:
         EDGE CASE FIX #4: Use Firestore transaction to prevent race conditions.
         Without transaction, concurrent requests could bypass rate limit.
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC).replace(tzinfo=None)
         window_start = now - timedelta(minutes=window_minutes)
 
         doc_id = f"{action}_{identifier}"

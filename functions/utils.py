@@ -296,12 +296,13 @@ def is_valid_order_status_transition(current_status: str, new_status: str) -> bo
     - confirmed -> [processing, cancelled, expired]
     - processing -> [shipped, cancelled]
     - shipped -> [delivered, cancelled]
-    - delivered -> [refunded, partially_refunded]
+    - delivered -> [refunded, partially_refunded, disputed]
     - cancelled -> [] (terminal)
     - failed -> [pending] (retry)
     - expired -> [pending] (retry)
     - refunded -> [] (terminal)
     - partially_refunded -> [refunded]
+    - disputed -> [refunded] (after dispute resolution)
     """
     valid_transitions = {
         'pending': ['confirmed', 'cancelled', 'failed', 'expired'],
@@ -309,12 +310,13 @@ def is_valid_order_status_transition(current_status: str, new_status: str) -> bo
         'processing': ['shipped', 'cancelled'],
         'shipped': ['in_transit', 'delivered'],
         'in_transit': ['delivered', 'cancelled'],
-        'delivered': ['refunded', 'partially_refunded'],
+        'delivered': ['refunded', 'partially_refunded', 'disputed'],
         'cancelled': [],
         'failed': ['pending'],
         'expired': ['pending'],
         'refunded': [],
         'partially_refunded': ['refunded'],
+        'disputed': ['refunded'],
     }
 
     allowed_next_states = valid_transitions.get(current_status, [])
