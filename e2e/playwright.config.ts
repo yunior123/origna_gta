@@ -6,21 +6,18 @@ const runAllProjects = process.env.E2E_PROJECTS === 'all' || process.env.E2E_ALL
 
 export default defineConfig({
   testDir: '.',
-  // The repository contains several audit/WIP specs under `tests/` that are not
-  // stable against Flutter Web (CanvasKit) semantics yet. Keep the default
-  // Playwright run focused on the staging smoke/infra suites.
+  // Ignore non-test files and seed scripts
   testIgnore: [
-    'tests/**',
-    'marketplace-e2e.spec.ts',
-    'tests.spec.ts',
     'seed-emulator.ts',
+    'mega-seed.ts',
+    '*.py',  // Python helper scripts
   ],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
   workers: Number.isFinite(envWorkers) ? Math.max(1, envWorkers as number) : (process.env.CI ? 1 : 2),
   reporter: process.env.CI ? 'list' : 'html',
-  timeout: 90 * 1000, // 90 seconds for Flutter Web
+  timeout: 120 * 1000, // 120 seconds for Flutter Web (CanvasKit needs 60-90s to init)
   expect: {
     timeout: 30 * 1000, // 30 seconds for Flutter rendering
   },

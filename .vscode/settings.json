@@ -3,5 +3,8 @@
 		"configurations": [],
 		"compounds": []
 	},
-	"debug.onTaskErrors": "debugAnyway"
+	"debug.onTaskErrors": "debugAnyway",
+	"playwright.reuseBrowser": false,
+	"playwright.showTrace": false,
+	"playwright.useTestServer": false
 }

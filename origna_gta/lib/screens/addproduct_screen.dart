@@ -309,17 +309,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                             onChanged: (v) => viewModel.setMinimumOrderQuantity(int.tryParse(v) ?? 1),
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: _buildGlassToggle(
-                                            label: 'Free Shipping',
-                                            icon: Icons.local_shipping_rounded,
-                                            value: state.freeShipping,
-                                            onChanged: viewModel.toggleFreeShipping,
-                                            infoTitle: 'Free Shipping',
-                                            infoBody: 'When enabled, the buyer pays \$0 for shipping — you absorb the cost.\n\nThis is great for increasing conversions, especially for lightweight or high-margin products.\n\nTip: You can also offer free shipping only for bulk orders (10+ items) in the Delivery section below.',
+                                        // FIX: Hide free shipping toggle for digital products (forced true anyway)
+                                        if (!state.isDigital)
+                                          Expanded(
+                                            child: _buildGlassToggle(
+                                              label: 'Free Shipping',
+                                              icon: Icons.local_shipping_rounded,
+                                              value: state.freeShipping,
+                                              onChanged: viewModel.toggleFreeShipping,
+                                              infoTitle: 'Free Shipping',
+                                              infoBody: 'When enabled, the buyer pays \$0 for shipping — you absorb the cost.\n\nThis is great for increasing conversions, especially for lightweight or high-margin products.\n\nTip: You can also offer free shipping only for bulk orders (10+ items) in the Delivery section below.',
+                                            ),
                                           ),
-                                        ),
                                       ],
                                     ),
                                     const SizedBox(height: 16),
@@ -508,6 +509,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       ),
                                       if (state.showSuggestions && state.addressSuggestions.isNotEmpty)
                                         _buildAddressSuggestions(state, viewModel),
+                                      const SizedBox(height: 12),
+                                      // FIX: Add apartment field UI (was declared but not rendered)
+                                      _buildGlassTextField(
+                                        controller: _apartmentController,
+                                        label: 'Apartment / Unit (Optional)',
+                                        icon: Icons.apartment_rounded,
+                                        hint: 'e.g., Suite 100, Unit 5B',
+                                      ),
                                       const SizedBox(height: 12),
                                       _buildGlassTextField(
                                         controller: _cityController,
@@ -1380,6 +1389,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             onTap: state.isLoading
                 ? null
                 : () {
+                    // FIX: Validate discount tiers before form validation
+                    final discount3 = double.tryParse(_shippingDiscount3Controller.text);
+                    final discount5 = double.tryParse(_shippingDiscount5Controller.text);
+                    if (discount3 != null && discount5 != null && discount5 < discount3) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('5+ items discount must be ≥ 3+ items discount'),
+                          backgroundColor: DesignTokens.error,
+                        ),
+                      );
+                      return;
+                    }
                     if (_formKey.currentState!.validate()) {
                       SupplierInfo? supplierInfo;
                       final hasCost = _costController.text.trim().isNotEmpty;
@@ -1399,15 +1420,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                         );
                       }
 
-                      InventoryConfig? inventoryConfig;
-                      if (!_inventoryManaged || !_trackQuantity || _allowBackorder || (int.tryParse(_lowStockThresholdController.text) ?? 5) != 5) {
-                        inventoryConfig = InventoryConfig(
-                          managed: _inventoryManaged,
-                          trackQuantity: _trackQuantity,
-                          allowBackorder: _allowBackorder,
-                          lowStockThreshold: int.tryParse(_lowStockThresholdController.text) ?? 5,
-                        );
-                      }
+                      // FIX: Always create inventory config to persist settings
+                      final inventoryConfig = InventoryConfig(
+                        managed: _inventoryManaged,
+                        trackQuantity: _trackQuantity,
+                        allowBackorder: _allowBackorder,
+                        lowStockThreshold: int.tryParse(_lowStockThresholdController.text) ?? 5,
+                      );
 
                       viewModel.addProduct(
                         name: _nameController.text.trim(),

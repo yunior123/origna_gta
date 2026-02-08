@@ -13,6 +13,27 @@
  */
 import { test, expect, Page, BrowserContext } from '@playwright/test';
 
+// Infrastructure availability cache
+let infraAvailable: {
+  webApp: boolean | null;
+} = {
+  webApp: null,
+};
+
+/** Check if infrastructure is available */
+async function checkInfrastructure(request: any): Promise<typeof infraAvailable> {
+  if (infraAvailable.webApp === null) {
+    const webRes = await request.get('http://localhost:5005/').catch(() => null);
+    infraAvailable = {
+      webApp: !!webRes && webRes.status() === 200,
+    };
+    if (!infraAvailable.webApp) {
+      console.log('⚠️  Web app not running on port 5005. Run `flutter run -d chrome --web-port=5005`');
+    }
+  }
+  return infraAvailable;
+}
+
 // Test Credentials (override via env vars in CI/local)
 const SELLER_EMAIL = process.env.E2E_SELLER_EMAIL ?? 'yr62813@gmail.com';
 const SELLER_PASSWORD = process.env.E2E_SELLER_PASSWORD ?? '960227Y#y';
@@ -40,7 +61,7 @@ let TEST_PRODUCT: {
 };
 
 // Timeouts
-const FLUTTER_INIT_TIMEOUT = 15000;
+const FLUTTER_INIT_TIMEOUT = 90000;
 const NAVIGATION_TIMEOUT = 8000;
 const ACTION_TIMEOUT = 5000;
 const PAGE_LOAD_TIMEOUT = 30000;
@@ -54,32 +75,43 @@ const PAGE_LOAD_TIMEOUT = 30000;
  * Flutter Web uses CanvasKit so we need to wait for it to be ready
  */
 async function waitForFlutterInit(page: Page) {
-    // Wait for Flutter engine to be ready
-    await page.waitForFunction(() => {
-        // Check if Flutter engine is loaded
-        const flutterReady = (window as any)._flutter?.loader?.didCreateEngineInitializer;
-        // Check if the canvas is rendered
-        const canvas = document.querySelector('canvas, flt-glass-pane');
-        // Check if splash screen is gone
-        const splash = document.querySelector('#splash, .splash-screen, [class*="splash"]');
-        const splashGone = !splash || 
-            (splash as HTMLElement).style.display === 'none' || 
-            (splash as HTMLElement).style.opacity === '0';
-        return canvas && splashGone;
-    }, { timeout: PAGE_LOAD_TIMEOUT }).catch(() => {
-        console.log('Flutter init check timed out, continuing...');
-    });
+    console.log(`⏳ Waiting for Flutter Web (timeout: ${FLUTTER_INIT_TIMEOUT}ms)...`);
+    const startTime = Date.now();
     
-    // Enable Flutter Web accessibility by triggering it.
-    // This makes Flutter expose the semantics tree.
+    // 1) Wait for Flutter canvas/host to appear
+    await page.waitForFunction(() => {
+        const glasspane = document.querySelector('flt-glass-pane');
+        const flutterView = document.querySelector('flutter-view');
+        const canvas = document.querySelector('canvas');
+        return !!glasspane || !!flutterView || (canvas instanceof HTMLCanvasElement && canvas.getBoundingClientRect().width > 0);
+    }, { timeout: FLUTTER_INIT_TIMEOUT });
+    console.log(`   ✅ Flutter host found (${Date.now() - startTime}ms)`);
+
+    // 2) Wait for splash screen to disappear
+    await page.waitForFunction(() => {
+        const splash = document.querySelector('#splash, .splash-screen, [class*="splash"]');
+        return !splash || (splash as HTMLElement).style.display === 'none' || (splash as HTMLElement).style.opacity === '0';
+    }, { timeout: FLUTTER_INIT_TIMEOUT }).catch(() => {});
+    console.log(`   ✅ Splash gone (${Date.now() - startTime}ms)`);
+
+    // 3) Wait for canvas to be rendered with size
+    await page.waitForFunction(() => {
+        const canvas = document.querySelector('canvas');
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        const rect = canvas.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+    }, { timeout: 30000 }).catch(() => {});
+    console.log(`   ✅ Canvas ready (${Date.now() - startTime}ms)`);
+    
+    // 4) Enable Flutter Web accessibility
     await page.evaluate(() => {
-        // Simulate accessibility activation
         const event = new KeyboardEvent('keydown', { key: 'Tab' });
         document.dispatchEvent(event);
     });
 
-    // Best-effort wait for semantics attachment (avoids arbitrary sleeps)
-    await page.locator('flt-semantics').first().waitFor({ state: 'attached', timeout: 8000 }).catch(() => {});
+    // 5) Wait for semantics attachment
+    await page.locator('flt-semantics').first().waitFor({ state: 'attached', timeout: 20000 }).catch(() => {});
+    console.log(`   ✅ Flutter ready in ${Date.now() - startTime}ms`);
 }
 
 /**
@@ -245,6 +277,10 @@ async function logout(page: Page) {
 // - patrol package for E2E testing
 // - Firebase Auth REST API for creating test sessions programmatically
 test.describe.serial('Full Marketplace E2E Flow', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.webApp, 'Web app not running. Run `flutter run -d chrome --web-port=5005`');
+  });
     test.skip(!process.env.RUN_FULL_E2E, 'Set RUN_FULL_E2E=1 to enable the full end-to-end flow (requires seeded emulator users + stable Flutter semantics locators).');
     test.setTimeout(180000); // 3 minutes per test
 
@@ -608,6 +644,10 @@ test.describe.serial('Full Marketplace E2E Flow', () => {
 // =============================================================================
 
 test.describe('Marketplace Smoke Tests', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.webApp, 'Web app not running. Run `flutter run -d chrome --web-port=5005`');
+  });
     test('Home page loads', async ({ page }) => {
         // Log network requests for debugging
         page.on('console', msg => {
@@ -704,6 +744,10 @@ test.describe('Marketplace Smoke Tests', () => {
 // =============================================================================
 
 test.describe('Backend Integration', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.webApp, 'Web app not running. Run `flutter run -d chrome --web-port=5005`');
+  });
     const FUNCTIONS_URL = 'http://127.0.0.1:5001/orignagta/us-central1';
     
     test('Health check - Functions emulator running', async ({ request }) => {

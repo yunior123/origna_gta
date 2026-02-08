@@ -21,6 +21,40 @@ const AUTH_EMULATOR = 'http://localhost:9099';
 const PROJECT_ID = 'orignagta';
 const BASE = `${FIRESTORE_EMULATOR}/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
+// Infrastructure availability cache
+let infraAvailable: {
+  auth: boolean | null;
+  firestore: boolean | null;
+  functions: boolean | null;
+} = {
+  auth: null,
+  firestore: null,
+  functions: null,
+};
+
+/** Check if infrastructure is available */
+async function checkInfrastructure(request: any): Promise<typeof infraAvailable> {
+  if (infraAvailable.auth === null) {
+    const [authRes, firestoreRes, functionsRes] = await Promise.all([
+      request.get(`${AUTH_EMULATOR}/`).catch(() => null),
+      request.get(`${FIRESTORE_EMULATOR}/`).catch(() => null),
+      request.get(`${FUNCTIONS_EMULATOR}/`).catch(() => null),
+    ]);
+    infraAvailable = {
+      auth: !!authRes,
+      firestore: !!firestoreRes,
+      functions: !!functionsRes,
+    };
+    if (Object.values(infraAvailable).some(v => !v)) {
+      console.log('⚠️  Some infrastructure is unavailable:');
+      console.log(`   Auth: ${infraAvailable.auth ? '✅' : '❌'}`);
+      console.log(`   Firestore: ${infraAvailable.firestore ? '✅' : '❌'}`);
+      console.log(`   Functions: ${infraAvailable.functions ? '✅' : '❌'}`);
+    }
+  }
+  return infraAvailable;
+}
+
 // ============================================================================
 // HELPERS
 // ============================================================================
@@ -122,6 +156,10 @@ async function callFunction(name: string, data: any, token: string) {
 // ============================================================================
 
 test.describe('A: Orders View — Status Display', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.firestore, 'Firestore emulator not running. Run `firebase emulators:start`');
+  });
   const ALL_STATUSES = [
     { orderId: 'order_test_001', expected: 'pending' },
     { orderId: 'order_test_002', expected: 'confirmed' },
@@ -187,6 +225,10 @@ test.describe('A: Orders View — Status Display', () => {
 // ============================================================================
 
 test.describe('B: Orders View — Timeline Stepper', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.firestore, 'Firestore emulator not running. Run `firebase emulators:start`');
+  });
   const TIMELINE_STATUSES = ['pending', 'confirmed', 'processing', 'shipped', 'in_transit', 'delivered'];
 
   test('B1: Each order has correct timeline position', async () => {
@@ -229,6 +271,10 @@ test.describe('B: Orders View — Timeline Stepper', () => {
 // ============================================================================
 
 test.describe('C: Confirm Receipt — Emulator Mode', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.firestore || !infra.functions, 'Emulators not running. Run `firebase emulators:start`');
+  });
   test('C1: confirm_order_receipt succeeds for delivered order with fake PI', async () => {
     // Ensure order_test_006 is in correct state for capture
     // It's delivered with payment_status=captured — so capture should be idempotent
@@ -269,6 +315,10 @@ test.describe('C: Confirm Receipt — Emulator Mode', () => {
 // ============================================================================
 
 test.describe('D: Checkout Data Validation', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.firestore, 'Firestore emulator not running. Run `firebase emulators:start`');
+  });
   test('D1: Seed products have valid price data for checkout', async () => {
     const doc = await readDoc('products', 'product_001');
     if (doc) {
@@ -318,6 +368,10 @@ test.describe('D: Checkout Data Validation', () => {
 // ============================================================================
 
 test.describe('E: Cart Quantity Operations', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore, 'Emulators not running. Run `firebase emulators:start`');
+  });
   let buyerAuth: any;
   let buyerUid: string;
 
@@ -380,6 +434,10 @@ test.describe('E: Cart Quantity Operations', () => {
 // ============================================================================
 
 test.describe('F: Order Item Status Validation', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.firestore, 'Firestore emulator not running. Run `firebase emulators:start`');
+  });
   test('F1: Each seed order has items with correct structure', async () => {
     for (let i = 1; i <= 8; i++) {
       const orderId = `order_test_00${i}`;
@@ -442,6 +500,10 @@ test.describe('F: Order Item Status Validation', () => {
 // ============================================================================
 
 test.describe('G: Payment Status Validation', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.firestore, 'Firestore emulator not running. Run `firebase emulators:start`');
+  });
   test('G1: Shipped/in_transit/delivered orders have "captured" payment status', async () => {
     for (const orderId of ['order_test_004', 'order_test_005', 'order_test_006']) {
       const doc = await readDoc('orders', orderId);
@@ -474,6 +536,10 @@ test.describe('G: Payment Status Validation', () => {
 // ============================================================================
 
 test.describe('H: Schema Consistency', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.firestore, 'Firestore emulator not running. Run `firebase emulators:start`');
+  });
   test('H1: Orders use "orderStatus" not "status"', async () => {
     const doc = await readDoc('orders', 'order_test_001');
     const raw = doc?.fields;
@@ -521,6 +587,10 @@ test.describe('H: Schema Consistency', () => {
 // ============================================================================
 
 test.describe('I: Rating Submission Formula', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.firestore, 'Firestore emulator not running. Run `firebase emulators:start`');
+  });
   test('I1: Running average formula produces correct results', () => {
     // Simulate the AlgoliaProductRepository formula:
     // newAverage = (currentRating * ratingCount + newRating) / newCount
@@ -560,6 +630,10 @@ test.describe('I: Rating Submission Formula', () => {
 // ============================================================================
 
 test.describe('J: Multi-seller Order Validation', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.firestore, 'Firestore emulator not running. Run `firebase emulators:start`');
+  });
   test('J1: Multi-seller order has correct sellerIds array', async () => {
     const doc = await readDoc('orders', 'order_test_008');
     const parsed = parseDoc(doc);

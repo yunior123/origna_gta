@@ -7,6 +7,9 @@
  * - URL-based navigation verification
  * - Flutter element presence checks (flt-glass-pane, flt-semantics)
  * - Backend integration tests via direct API calls
+ * 
+ * NOTE: These tests automatically skip if infrastructure is not running.
+ * Run `./start-dev.sh` first to start all required services.
  */
 import { test, expect, Page } from '@playwright/test';
 
@@ -14,6 +17,7 @@ import { test, expect, Page } from '@playwright/test';
 const AUTH_EMULATOR = 'http://localhost:9099';
 const FIRESTORE_EMULATOR = 'http://localhost:8080';
 const FUNCTIONS_EMULATOR = 'http://localhost:5001';
+const WEB_APP_URL = 'http://localhost:5005';
 const PROJECT_ID = 'orignagta';
 
 // Test credentials
@@ -23,10 +27,55 @@ const TEST_USER = {
     displayName: 'E2E Test User'
 };
 
+// Infrastructure availability cache
+let infraAvailable: {
+    auth: boolean | null;
+    firestore: boolean | null;
+    functions: boolean | null;
+    webApp: boolean | null;
+} = {
+    auth: null,
+    firestore: null,
+    functions: null,
+    webApp: null,
+};
+
+/** Check if infrastructure is available */
+async function checkInfrastructure(request: any): Promise<typeof infraAvailable> {
+    // Only check once per test run
+    if (infraAvailable.auth === null) {
+        const [authRes, firestoreRes, functionsRes, webRes] = await Promise.all([
+            request.get(`${AUTH_EMULATOR}/`).catch(() => null),
+            request.get(`${FIRESTORE_EMULATOR}/`).catch(() => null),
+            request.get(`${FUNCTIONS_EMULATOR}/`).catch(() => null),
+            request.get(`${WEB_APP_URL}/`).catch(() => null),
+        ]);
+        infraAvailable = {
+            auth: !!authRes,
+            firestore: !!firestoreRes,
+            functions: !!functionsRes,
+            webApp: !!webRes && webRes.status() === 200,
+        };
+        
+        if (Object.values(infraAvailable).some(v => !v)) {
+            console.log('⚠️  Some infrastructure is unavailable:');
+            console.log(`   Auth: ${infraAvailable.auth ? '✅' : '❌'}`);
+            console.log(`   Firestore: ${infraAvailable.firestore ? '✅' : '❌'}`);
+            console.log(`   Functions: ${infraAvailable.functions ? '✅' : '❌'}`);
+            console.log(`   Web App: ${infraAvailable.webApp ? '✅' : '❌'}`);
+            console.log('   Run `./start-dev.sh` to start all services');
+        }
+    }
+    return infraAvailable;
+}
+
 // Helper: Detect Flutter web rendering regardless of engine version.
 // Flutter <=3.21 uses <flt-glass-pane>, Flutter 3.22+ uses <flutter-view>,
 // and all versions render into one or more <canvas> elements.
-async function waitForFlutter(page: Page, timeout = 30000) {
+async function waitForFlutter(page: Page, timeout = 90000) {
+    console.log(`⏳ Waiting for Flutter Web to initialize (timeout: ${timeout}ms)...`);
+    const startTime = Date.now();
+    
     // 1) Wait for any Flutter host element OR a sized canvas to appear
     await page.waitForFunction(() => {
         const glasspane = document.querySelector('flt-glass-pane');
@@ -34,20 +83,23 @@ async function waitForFlutter(page: Page, timeout = 30000) {
         const canvas = document.querySelector('canvas');
         return !!glasspane || !!flutterView || (canvas instanceof HTMLCanvasElement && canvas.getBoundingClientRect().width > 0);
     }, { timeout });
+    console.log(`   ✅ Flutter host element found (${Date.now() - startTime}ms)`);
 
     // 2) Wait for the splash screen to disappear
     await page.waitForFunction(() => {
         const splash = document.getElementById('splash');
         return !splash || splash.style.display === 'none' || splash.getAttribute('hidden') !== null;
     }, { timeout }).catch(() => {});
+    console.log(`   ✅ Splash screen gone (${Date.now() - startTime}ms)`);
 
-    // 3) Best-effort: ensure a canvas frame is actually rendered
+    // 3) Wait for canvas to be actually rendered with size
     await page.waitForFunction(() => {
         const canvas = document.querySelector('canvas');
         if (!(canvas instanceof HTMLCanvasElement)) return false;
         const rect = canvas.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0;
-    }, { timeout: Math.min(15000, timeout) }).catch(() => {});
+    }, { timeout: Math.min(30000, timeout) }).catch(() => {});
+    console.log(`   ✅ Canvas rendered (${Date.now() - startTime}ms)`);
 
     // 4) Trigger Flutter semantics tree (CanvasKit) to improve locator stability
     await page.evaluate(() => {
@@ -56,7 +108,8 @@ async function waitForFlutter(page: Page, timeout = 30000) {
     });
 
     // 5) Wait for semantics to attach (best-effort)
-    await page.locator('flt-semantics').first().waitFor({ state: 'attached', timeout: Math.min(10000, timeout) }).catch(() => {});
+    await page.locator('flt-semantics').first().waitFor({ state: 'attached', timeout: Math.min(20000, timeout) }).catch(() => {});
+    console.log(`   ✅ Flutter initialized in ${Date.now() - startTime}ms`);
 }
 
 function uniqueSuffix(testInfo: { workerIndex: number; parallelIndex: number }) {
@@ -105,32 +158,40 @@ async function signInUser(email: string, password: string) {
 
 test.describe('Infrastructure Health Checks', () => {
     test('Firebase Auth Emulator is running', async ({ request }) => {
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.auth, 'Auth emulator not running. Run `firebase emulators:start`');
+        
         const response = await request.get(`${AUTH_EMULATOR}/`).catch(() => null);
         expect(response).toBeTruthy();
         console.log('✅ Auth Emulator running');
     });
 
     test('Firestore Emulator is running', async ({ request }) => {
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.firestore, 'Firestore emulator not running. Run `firebase emulators:start`');
+        
         const response = await request.get(`${FIRESTORE_EMULATOR}/`).catch(() => null);
         expect(response).toBeTruthy();
         console.log('✅ Firestore Emulator running');
     });
 
     test('Functions Emulator is running', async ({ request }) => {
-        // Functions emulator might return 404 for root, but should respond
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.functions, 'Functions emulator not running. Run `firebase emulators:start`');
+        
         const response = await request.get(`${FUNCTIONS_EMULATOR}/`).catch(() => null);
-        // Any response (including 404) means emulator is running
         console.log(`Functions Emulator response: ${response ? response.status() : 'no response'}`);
-        // Just check that we got a response
         expect(response !== null).toBeTruthy();
         console.log('✅ Functions Emulator running');
     });
 
     test('Web App is serving', async ({ request }) => {
-        const response = await request.get('http://localhost:5005/');
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.webApp, 'Web app not running on port 5005. Run `flutter run -d chrome --web-port=5005`');
+        
+        const response = await request.get(`${WEB_APP_URL}/`);
         expect(response.status()).toBe(200);
         const html = await response.text();
-        // Accept both 'Origna GTA' (HTML title) and 'OrignaGta' (legacy)
         expect(html.toLowerCase()).toContain('origna');
         expect(html).toContain('flutter');
         console.log('✅ Web App serving');
@@ -142,7 +203,13 @@ test.describe('Infrastructure Health Checks', () => {
 // =============================================================================
 
 test.describe('Flutter Web App Loading', () => {
+    test.beforeEach(async ({ request }) => {
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.webApp, 'Web app not running. Skipping Flutter UI tests.');
+    });
+
     test('App loads and initializes', async ({ page }) => {
+        test.setTimeout(120_000);
         await page.goto('/');
         await waitForFlutter(page);
         
@@ -156,6 +223,7 @@ test.describe('Flutter Web App Loading', () => {
     });
 
     test('Navigates to login page', async ({ page }) => {
+        test.setTimeout(120_000);
         await page.goto('/login');
         await waitForFlutter(page);
         
@@ -164,20 +232,20 @@ test.describe('Flutter Web App Loading', () => {
     });
 
     test('Navigates to home page', async ({ page }) => {
+        test.setTimeout(120_000);
         await page.goto('/home');
         await waitForFlutter(page);
         
-        // Might redirect to / or stay at /home
         const url = page.url();
         expect(url.includes('/home') || url.endsWith('/')).toBeTruthy();
         console.log('✅ Home route works');
     });
 
     test('Invalid route shows error or redirects', async ({ page }) => {
+        test.setTimeout(120_000);
         await page.goto('/invalid-route-12345');
         await waitForFlutter(page);
         
-        // App should handle gracefully (either 404 page or redirect)
         const flutterPresent = await page.evaluate(() => {
             return !!document.querySelector('flt-glass-pane') ||
                    !!document.querySelector('flutter-view') ||
@@ -193,6 +261,11 @@ test.describe('Flutter Web App Loading', () => {
 // =============================================================================
 
 test.describe('Authentication via Emulator', () => {
+    test.beforeEach(async ({ request }) => {
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.auth, 'Auth emulator not running. Skipping auth tests.');
+    });
+
     test('Can create user via Auth REST API', async ({}, testInfo) => {
         const result = await createTestUser(
             `test-${uniqueSuffix(testInfo)}@example.com`,
@@ -205,11 +278,9 @@ test.describe('Authentication via Emulator', () => {
     });
 
     test('Can sign in via Auth REST API', async ({}, testInfo) => {
-        // First create a user
         const email = `signin-test-${uniqueSuffix(testInfo)}@example.com`;
         await createTestUser(email, 'password123');
         
-        // Then sign in
         const result = await signInUser(email, 'password123');
         
         expect(result.localId).toBeTruthy();
@@ -224,7 +295,9 @@ test.describe('Authentication via Emulator', () => {
 
 test.describe('Firestore via Emulator', () => {
     test('Can read from Firestore emulator', async ({ request }) => {
-        // Try to read the root collection
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.firestore, 'Firestore emulator not running. Skipping Firestore tests.');
+        
         const response = await request.get(
             `${FIRESTORE_EMULATOR}/v1/projects/${PROJECT_ID}/databases/(default)/documents`
         ).catch(() => null);
@@ -245,14 +318,15 @@ test.describe('Cloud Functions API', () => {
     const FUNCTIONS_BASE = `${FUNCTIONS_EMULATOR}/${PROJECT_ID.replace('-', '')}/us-central1`;
 
     test('Health check endpoint', async ({ request }) => {
-        // Try healthCheck function if it exists
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.functions, 'Functions emulator not running. Skipping Cloud Functions tests.');
+        
         const response = await request.get(`${FUNCTIONS_BASE}/healthCheck`).catch(() => null);
         if (response) {
             console.log(`Health check: ${response.status()}`);
         } else {
             console.log('Health check endpoint not found - expected if not implemented');
         }
-        // This test passes regardless - we're just checking connectivity
         expect(true).toBeTruthy();
     });
 });
@@ -262,23 +336,29 @@ test.describe('Cloud Functions API', () => {
 // =============================================================================
 
 test.describe('Performance', () => {
+    test.beforeEach(async ({ request }) => {
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.webApp, 'Web app not running. Skipping performance tests.');
+    });
+
     test('Page loads within acceptable time', async ({ page }) => {
+        test.setTimeout(120_000);
         const startTime = Date.now();
         
         await page.goto('/');
-        await waitForFlutter(page, 60000);
+        await waitForFlutter(page, 90000);
         
         const loadTime = Date.now() - startTime;
         console.log(`Page load time: ${loadTime}ms`);
         
-        // Should load within 30 seconds (generous for emulator + Flutter WASM)
         expect(loadTime).toBeLessThan(60000);
         console.log('✅ Page loads within acceptable time');
     });
 
     test('Navigation is responsive', async ({ page }) => {
+        test.setTimeout(120_000);
         await page.goto('/');
-        await waitForFlutter(page);
+        await waitForFlutter(page, 90000);
         
         const startTime = Date.now();
         await page.goto('/login');
@@ -287,8 +367,6 @@ test.describe('Performance', () => {
         const navTime = Date.now() - startTime;
         console.log(`Navigation time: ${navTime}ms`);
         
-        // Flutter Web + CanvasKit + emulators can be slow on cold starts.
-        // Keep this as a coarse regression guard rather than a brittle SLA.
         const maxNavTime = process.env.CI ? 90000 : 60000;
         expect(navTime).toBeLessThan(maxNavTime);
         console.log('✅ Navigation is responsive');

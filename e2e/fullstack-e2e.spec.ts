@@ -28,6 +28,45 @@ const FIRESTORE_EMULATOR = 'http://localhost:8080';
 const FUNCTIONS_EMULATOR = 'http://localhost:5001';
 const PROJECT_ID = 'orignagta';
 
+// Infrastructure availability cache
+let infraAvailable: {
+  auth: boolean | null;
+  firestore: boolean | null;
+  functions: boolean | null;
+  webApp: boolean | null;
+} = {
+  auth: null,
+  firestore: null,
+  functions: null,
+  webApp: null,
+};
+
+/** Check if infrastructure is available */
+async function checkInfrastructure(request: any): Promise<typeof infraAvailable> {
+  if (infraAvailable.auth === null) {
+    const [authRes, firestoreRes, functionsRes, webRes] = await Promise.all([
+      request.get(`${AUTH_EMULATOR}/`).catch(() => null),
+      request.get(`${FIRESTORE_EMULATOR}/`).catch(() => null),
+      request.get(`${FUNCTIONS_EMULATOR}/`).catch(() => null),
+      request.get(`${BASE_URL}/`).catch(() => null),
+    ]);
+    infraAvailable = {
+      auth: !!authRes,
+      firestore: !!firestoreRes,
+      functions: !!functionsRes,
+      webApp: !!webRes && webRes.status() === 200,
+    };
+    if (Object.values(infraAvailable).some(v => !v)) {
+      console.log('⚠️  Some infrastructure is unavailable:');
+      console.log(`   Auth: ${infraAvailable.auth ? '✅' : '❌'}`);
+      console.log(`   Firestore: ${infraAvailable.firestore ? '✅' : '❌'}`);
+      console.log(`   Functions: ${infraAvailable.functions ? '✅' : '❌'}`);
+      console.log(`   Web App: ${infraAvailable.webApp ? '✅' : '❌'}`);
+    }
+  }
+  return infraAvailable;
+}
+
 // Stripe test card details
 const STRIPE_TEST_CARD = {
   number: '4242424242424242',
@@ -43,10 +82,10 @@ const ADMIN = { email: 'yr62813@gmail.com', password: '960227Y#y', name: 'Admin 
 const SELLER = { email: 'seller1@test.origna.ca', password: 'REDACTED_TEST_PASSWORD', name: 'Marie Tremblay' };
 const BUYER = { email: 'yuniorrodriguezo460@gmail.com', password: 'REDACTED_TEST_PASSWORD', name: 'David Brown' };
 
-// Timeouts
-const FLUTTER_INIT_TIMEOUT = 30_000;
-const NAVIGATION_TIMEOUT = 15_000;
-const ACTION_TIMEOUT = 10_000;
+// Timeouts - Flutter Web + CanvasKit needs 60-90s to initialize
+const FLUTTER_INIT_TIMEOUT = 90_000;
+const NAVIGATION_TIMEOUT = 30_000;
+const ACTION_TIMEOUT = 15_000;
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -54,23 +93,42 @@ const ACTION_TIMEOUT = 10_000;
 
 /** Wait for Flutter Web to fully initialize and enable semantics */
 async function waitForFlutter(page: Page, timeout = FLUTTER_INIT_TIMEOUT) {
+  console.log(`⏳ Waiting for Flutter Web (timeout: ${timeout}ms)...`);
+  const startTime = Date.now();
+  
+  // 1) Wait for Flutter canvas to appear
   await page.waitForFunction(() => {
-    const canvas = document.querySelector('canvas, flt-glass-pane');
-    const splash = document.getElementById('splash');
-    const splashGone = !splash || splash.style.display === 'none' || splash.style.opacity === '0';
-    return canvas && splashGone;
-  }, { timeout }).catch(() => {
-    console.log('⚠️ Flutter init timeout, continuing...');
-  });
+    const glasspane = document.querySelector('flt-glass-pane');
+    const flutterView = document.querySelector('flutter-view');
+    const canvas = document.querySelector('canvas');
+    return !!glasspane || !!flutterView || (canvas instanceof HTMLCanvasElement && canvas.getBoundingClientRect().width > 0);
+  }, { timeout });
+  console.log(`   ✅ Flutter host found (${Date.now() - startTime}ms)`);
 
-  // Enable Flutter Web semantics by simulating Tab keypress
+  // 2) Wait for splash screen to disappear
+  await page.waitForFunction(() => {
+    const splash = document.getElementById('splash');
+    return !splash || splash.style.display === 'none' || splash.getAttribute('hidden') !== null;
+  }, { timeout }).catch(() => {});
+  console.log(`   ✅ Splash gone (${Date.now() - startTime}ms)`);
+
+  // 3) Wait for canvas to be rendered
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('canvas');
+    if (!(canvas instanceof HTMLCanvasElement)) return false;
+    const rect = canvas.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }, { timeout: 30000 }).catch(() => {});
+  console.log(`   ✅ Canvas ready (${Date.now() - startTime}ms)`);
+
+  // 4) Enable Flutter Web semantics by simulating Tab keypress
   await page.evaluate(() => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
   });
 
-  // Wait for flt-semantics elements
-  await page.locator('flt-semantics').first().waitFor({ state: 'attached', timeout: 10_000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  // 5) Wait for flt-semantics elements
+  await page.locator('flt-semantics').first().waitFor({ state: 'attached', timeout: 20000 }).catch(() => {});
+  console.log(`   ✅ Flutter ready in ${Date.now() - startTime}ms`);
 }
 
 /** Find Flutter element by semantic label */
@@ -281,6 +339,9 @@ async function completeStripeCheckout(page: Page, context: BrowserContext): Prom
 // ============================================================================
 
 test.describe('1. Infrastructure Health', () => {
+  test.beforeEach(async ({ request }) => {
+    // These tests check infrastructure, so they should always run
+  });
   test('1.1 Auth Emulator is running', async ({ request }) => {
     const response = await request.get(`${AUTH_EMULATOR}/`);
     expect(response.ok()).toBeTruthy();
@@ -312,6 +373,12 @@ test.describe('1. Infrastructure Health', () => {
 // ============================================================================
 
 test.describe('2. Seed Data Verification', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth, 'Auth emulator not running. Run `firebase emulators:start`');
+    test.skip(!infra.firestore, 'Firestore emulator not running. Run `firebase emulators:start`');
+  });
+
   test('2.1 Admin user exists in Auth', async () => {
     const result = await signInUser(ADMIN.email, ADMIN.password);
     expect(result.localId).toBeTruthy();
@@ -378,7 +445,13 @@ test.describe('2. Seed Data Verification', () => {
 // ============================================================================
 
 test.describe('3. App Loading', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.webApp, 'Web app not running. Run `flutter run -d chrome --web-port=5005`');
+  });
+
   test('3.1 Flutter canvas renders', async ({ page }) => {
+    test.setTimeout(120_000);
     await page.goto(BASE_URL);
     await waitForFlutter(page);
     const canvas = await page.locator('canvas, flt-glass-pane').count();
@@ -386,6 +459,7 @@ test.describe('3. App Loading', () => {
   });
 
   test('3.2 No critical JS errors on load', async ({ page }) => {
+    test.setTimeout(120_000);
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
     await page.goto(BASE_URL);
@@ -419,6 +493,11 @@ test.describe('3. App Loading', () => {
 // ============================================================================
 
 test.describe('4. Authentication', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth, 'Auth emulator not running. Run `firebase emulators:start`');
+  });
+
   test('4.1 Buyer can authenticate via Auth Emulator', async () => {
     const result = await loginViaUI(null as any, BUYER.email, BUYER.password);
     expect(result.localId).toBeTruthy();
@@ -458,7 +537,13 @@ test.describe('4. Authentication', () => {
 // ============================================================================
 
 test.describe('5. Product Browsing', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.webApp, 'Web app not running. Skipping UI tests.');
+  });
+
   test('5.1 Home page loads', async ({ page }) => {
+    test.setTimeout(120_000);
     await page.goto(BASE_URL);
     await waitForFlutter(page);
     await page.waitForTimeout(5_000);
@@ -468,6 +553,7 @@ test.describe('5. Product Browsing', () => {
   });
 
   test('5.2 Search functionality exists', async ({ page }) => {
+    test.setTimeout(120_000);
     await page.goto(BASE_URL);
     await waitForFlutter(page);
     const searchBtn = await findFlutterElement(page, 'Search');
@@ -476,6 +562,7 @@ test.describe('5. Product Browsing', () => {
   });
 
   test('5.3 Cart page accessible', async ({ page }) => {
+    test.setTimeout(120_000);
     await page.goto(`${BASE_URL}/cart`);
     await waitForFlutter(page);
     await page.waitForTimeout(2_000);
@@ -512,9 +599,16 @@ let checkoutBuyerUid: string | null = null;
 let checkoutBuyerToken: string | null = null;
 
 test.describe('6. Cart & Checkout', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions, 
+      'Emulators not running. Run `firebase emulators:start`');
+  });
+
   test.describe.configure({ mode: 'serial' });
 
   test('6.1 Cart page loads without crash', async ({ page }) => {
+    test.setTimeout(120_000);
     await page.goto(BASE_URL);
     await waitForFlutter(page);
     await page.waitForTimeout(2_000);
@@ -737,6 +831,11 @@ test.describe('6. Cart & Checkout', () => {
 // ============================================================================
 
 test.describe('7. Database State', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore, 'Emulators not running. Run `firebase emulators:start`');
+  });
+
   test('7.1 User document has correct structure', async () => {
     const authResult = await signInUser(ADMIN.email, ADMIN.password);
     const doc = await readFirestoreDoc('users', authResult.localId);
@@ -818,6 +917,11 @@ test.describe('7. Database State', () => {
 // ============================================================================
 
 test.describe('8. Cloud Functions', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.functions, 'Functions emulator not running. Run `firebase emulators:start`');
+  });
+
   test('8.1 Functions emulator responds', async ({ request }) => {
     const response = await request.get(`${FUNCTIONS_EMULATOR}/`).catch(() => null);
     expect(response).toBeTruthy();
@@ -843,6 +947,11 @@ test.describe('8. Cloud Functions', () => {
 // ============================================================================
 
 test.describe('9. Email Notifications', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.functions, 'Functions emulator not running. Run `firebase emulators:start`');
+  });
+
   test('9.1 Order confirmation email is sent after checkout', async () => {
     test.setTimeout(30_000);
     // This test verifies that the email flow works end-to-end.

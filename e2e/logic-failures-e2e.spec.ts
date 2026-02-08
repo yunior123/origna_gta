@@ -39,6 +39,40 @@ const FIRESTORE_EMU  = 'http://localhost:8080';
 const FUNCTIONS_EMU  = 'http://localhost:5001';
 const PROJECT_ID     = 'orignagta';
 
+// Infrastructure availability cache
+let infraAvailable: {
+  auth: boolean | null;
+  firestore: boolean | null;
+  functions: boolean | null;
+} = {
+  auth: null,
+  firestore: null,
+  functions: null,
+};
+
+/** Check if infrastructure is available */
+async function checkInfrastructure(request: any): Promise<typeof infraAvailable> {
+  if (infraAvailable.auth === null) {
+    const [authRes, firestoreRes, functionsRes] = await Promise.all([
+      request.get(`${AUTH_EMULATOR}/`).catch(() => null),
+      request.get(`${FIRESTORE_EMU}/`).catch(() => null),
+      request.get(`${FUNCTIONS_EMU}/`).catch(() => null),
+    ]);
+    infraAvailable = {
+      auth: !!authRes,
+      firestore: !!firestoreRes,
+      functions: !!functionsRes,
+    };
+    if (Object.values(infraAvailable).some(v => !v)) {
+      console.log('⚠️  Some infrastructure is unavailable:');
+      console.log(`   Auth: ${infraAvailable.auth ? '✅' : '❌'}`);
+      console.log(`   Firestore: ${infraAvailable.firestore ? '✅' : '❌'}`);
+      console.log(`   Functions: ${infraAvailable.functions ? '✅' : '❌'}`);
+    }
+  }
+  return infraAvailable;
+}
+
 // Test accounts (from mega-seed.ts)
 const ADMIN_EMAIL    = 'yr62813@gmail.com';
 const ADMIN_PASS     = '960227Y#y';
@@ -175,6 +209,10 @@ async function buildCheckoutPayload(buyerUid: string, productId: string, quantit
   const product = parseDoc(prodDoc);
   const buyerDoc = await readDoc(`users/${buyerUid}`);
   const buyer = parseDoc(buyerDoc);
+  
+  // Use default address if buyer or buyer.address is null
+  const address = buyer?.address || {};
+  
   return {
     data: {
       userId: buyerUid,
@@ -185,13 +223,13 @@ async function buildCheckoutPayload(buyerUid: string, productId: string, quantit
       }],
       subtotal: +(product.price * quantity).toFixed(2),
       shippingAddress: {
-        street: buyer.address?.street || '100 King St W',
-        apartment: buyer.address?.apartment || '',
-        city: buyer.address?.city || 'Toronto',
-        state: buyer.address?.state || 'ON',
-        postalCode: buyer.address?.postalCode || 'M5X 1A9',
-        country: buyer.address?.country || 'CA',
-        phoneNumber: buyer.address?.phoneNumber || '+14165550000',
+        street: address.street || '100 King St W',
+        apartment: address.apartment || '',
+        city: address.city || 'Toronto',
+        state: address.state || 'ON',
+        postalCode: address.postalCode || 'M5X 1A9',
+        country: address.country || 'CA',
+        phoneNumber: address.phoneNumber || '+14165550000',
       },
     },
     product,
@@ -235,6 +273,11 @@ async function pollDocField(
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('A. Financial Integrity', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('A.1 Backend rejects client-side price tampering', async () => {
     // A malicious client sends a lower price than what's in Firestore
@@ -318,6 +361,11 @@ test.describe('A. Financial Integrity', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('B. State Machine Violations', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('B.1 Cannot skip from confirmed directly to delivered', async () => {
     // A seller tries to mark an order as delivered without shipping it first
@@ -415,6 +463,11 @@ test.describe('B. State Machine Violations', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('C. Cron Job & Auto-Action Logic', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('C.1 auto_confirm_deliveries captures orders shipped >7 days ago', async () => {
     // Create an order, force it to "shipped" with an old updatedAt, then run the cron
@@ -541,6 +594,11 @@ test.describe('C. Cron Job & Auto-Action Logic', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('D. Suspension Cascade Effects', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('D.1 Suspended seller products are deactivated and cannot be purchased', async () => {
     // Verify that a suspended seller's products have isActive=false
@@ -660,6 +718,11 @@ test.describe('D. Suspension Cascade Effects', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('E. Stock Integrity Under Pressure', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('E.1 Cancel restores exact stock (no phantom stock)', async () => {
     // Buy 2 units, cancel, verify stock goes back to exactly the original value
@@ -788,6 +851,11 @@ test.describe('E. Stock Integrity Under Pressure', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('F. Permission Boundary & Edge Cases', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('F.1 Buyer cannot initiate a refund (seller or admin only)', async () => {
     // Buyers should never be able to refund their own orders
@@ -884,6 +952,11 @@ test.describe('F. Permission Boundary & Edge Cases', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('G. Self-Purchase & Cross-Boundary Rules', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('G.1 Seller cannot buy their own product', async () => {
     // Self-purchase is a marketplace violation — must be blocked server-side

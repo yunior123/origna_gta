@@ -27,6 +27,40 @@ const FIRESTORE_EMU   = 'http://localhost:8080';
 const FUNCTIONS_EMU   = 'http://localhost:5001';
 const PROJECT_ID      = 'orignagta';
 
+// Infrastructure availability cache
+let infraAvailable: {
+  auth: boolean | null;
+  firestore: boolean | null;
+  functions: boolean | null;
+} = {
+  auth: null,
+  firestore: null,
+  functions: null,
+};
+
+/** Check if infrastructure is available */
+async function checkInfrastructure(request: any): Promise<typeof infraAvailable> {
+  if (infraAvailable.auth === null) {
+    const [authRes, firestoreRes, functionsRes] = await Promise.all([
+      request.get(`${AUTH_EMULATOR}/`).catch(() => null),
+      request.get(`${FIRESTORE_EMU}/`).catch(() => null),
+      request.get(`${FUNCTIONS_EMU}/`).catch(() => null),
+    ]);
+    infraAvailable = {
+      auth: !!authRes,
+      firestore: !!firestoreRes,
+      functions: !!functionsRes,
+    };
+    if (Object.values(infraAvailable).some(v => !v)) {
+      console.log('⚠️  Some infrastructure is unavailable:');
+      console.log(`   Auth: ${infraAvailable.auth ? '✅' : '❌'}`);
+      console.log(`   Firestore: ${infraAvailable.firestore ? '✅' : '❌'}`);
+      console.log(`   Functions: ${infraAvailable.functions ? '✅' : '❌'}`);
+    }
+  }
+  return infraAvailable;
+}
+
 const GMAIL_EMAIL    = 'yr62813@gmail.com';
 const GMAIL_PASSWORD = '960227Y#y';
 
@@ -189,6 +223,7 @@ async function fullCheckoutAndPay(
   const buyerDoc = await readDoc(`users/${buyerUid}`);
   const buyer = parseDoc(buyerDoc);
   expect(buyer).toBeTruthy();
+  const address = buyer?.address || {};
 
   // Build payload
   const payload = {
@@ -203,13 +238,13 @@ async function fullCheckoutAndPay(
     }],
     subtotal: product.price,
     shippingAddress: {
-      street: buyer.address.street,
-      apartment: buyer.address.apartment || '',
-      city: buyer.address.city,
-      state: buyer.address.state,
-      postalCode: buyer.address.postalCode,
-      country: buyer.address.country,
-      phoneNumber: buyer.address.phoneNumber || '+14165550000',
+      street: address.street || '100 King St W',
+      apartment: address.apartment || '',
+      city: address.city || 'Toronto',
+      state: address.state || 'ON',
+      postalCode: address.postalCode || 'M5X 1A9',
+      country: address.country || 'CA',
+      phoneNumber: address.phoneNumber || '+14165550000',
     },
   };
 
@@ -356,6 +391,11 @@ test.beforeAll(async () => {
 // ════════════════════════════════════════════════════════════════════
 
 test.describe.serial('Real Email Verification', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('1 · Gmail BUYER email — Admin buys Quebec Scarf → yr62813@gmail.com', async ({ page }) => {
     console.log('═══════════════════════════════════════════════════');

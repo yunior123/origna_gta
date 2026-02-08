@@ -32,6 +32,40 @@ const FIRESTORE_EMU     = 'http://localhost:8080';
 const FUNCTIONS_EMU     = 'http://localhost:5001';
 const PROJECT_ID        = 'orignagta';
 
+// Infrastructure availability cache
+let infraAvailable: {
+  auth: boolean | null;
+  firestore: boolean | null;
+  functions: boolean | null;
+} = {
+  auth: null,
+  firestore: null,
+  functions: null,
+};
+
+/** Check if infrastructure is available */
+async function checkInfrastructure(request: any): Promise<typeof infraAvailable> {
+  if (infraAvailable.auth === null) {
+    const [authRes, firestoreRes, functionsRes] = await Promise.all([
+      request.get(`${AUTH_EMULATOR}/`).catch(() => null),
+      request.get(`${FIRESTORE_EMU}/`).catch(() => null),
+      request.get(`${FUNCTIONS_EMU}/`).catch(() => null),
+    ]);
+    infraAvailable = {
+      auth: !!authRes,
+      firestore: !!firestoreRes,
+      functions: !!functionsRes,
+    };
+    if (Object.values(infraAvailable).some(v => !v)) {
+      console.log('⚠️  Some infrastructure is unavailable:');
+      console.log(`   Auth: ${infraAvailable.auth ? '✅' : '❌'}`);
+      console.log(`   Firestore: ${infraAvailable.firestore ? '✅' : '❌'}`);
+      console.log(`   Functions: ${infraAvailable.functions ? '✅' : '❌'}`);
+    }
+  }
+  return infraAvailable;
+}
+
 const STRIPE_CARD = {
   number: '4242424242424242', exp: '12/30', cvc: '123',
   name: 'Test Buyer', postalCode: 'M5V 3A8',
@@ -132,6 +166,7 @@ async function buildCheckoutPayload(buyerUid: string, productId: string, quantit
   const product = parseDoc(prodDoc);
   const buyerDoc = await readDoc(`users/${buyerUid}`);
   const buyer = parseDoc(buyerDoc);
+  const address = buyer?.address || {};
   const data = {
     userId: buyerUid,
     items: [{
@@ -141,10 +176,10 @@ async function buildCheckoutPayload(buyerUid: string, productId: string, quantit
     }],
     subtotal: +(product.price * quantity).toFixed(2),
     shippingAddress: {
-      street: buyer.address.street, apartment: buyer.address.apartment || '',
-      city: buyer.address.city, state: buyer.address.state,
-      postalCode: buyer.address.postalCode, country: buyer.address.country,
-      phoneNumber: buyer.address.phoneNumber || '+14165550000',
+      street: address.street || '100 King St W', apartment: address.apartment || '',
+      city: address.city || 'Toronto', state: address.state || 'ON',
+      postalCode: address.postalCode || 'M5X 1A9', country: address.country || 'CA',
+      phoneNumber: address.phoneNumber || '+14165550000',
     },
   };
   return { data, product, buyer };
@@ -154,6 +189,7 @@ async function buildCheckoutPayload(buyerUid: string, productId: string, quantit
 async function buildMultiSellerPayload(buyerUid: string, items: { productId: string; quantity: number }[]) {
   const buyerDoc = await readDoc(`users/${buyerUid}`);
   const buyer = parseDoc(buyerDoc);
+  const address = buyer?.address || {};
 
   const cartItems: any[] = [];
   let subtotal = 0;
@@ -173,10 +209,10 @@ async function buildMultiSellerPayload(buyerUid: string, items: { productId: str
     items: cartItems,
     subtotal: +subtotal.toFixed(2),
     shippingAddress: {
-      street: buyer.address.street, apartment: buyer.address.apartment || '',
-      city: buyer.address.city, state: buyer.address.state,
-      postalCode: buyer.address.postalCode, country: buyer.address.country,
-      phoneNumber: buyer.address.phoneNumber || '+14165550000',
+      street: address.street || '100 King St W', apartment: address.apartment || '',
+      city: address.city || 'Toronto', state: address.state || 'ON',
+      postalCode: address.postalCode || 'M5X 1A9', country: address.country || 'CA',
+      phoneNumber: address.phoneNumber || '+14165550000',
     },
   };
 }
@@ -288,6 +324,11 @@ async function getProductStock(productId: string): Promise<number> {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('A. Happy Path — Full Shipping Lifecycle', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
   test.describe.configure({ mode: 'serial' });
 
   // Shared state across serial tests
@@ -447,6 +488,11 @@ test.describe('A. Happy Path — Full Shipping Lifecycle', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('B. Multi-Seller Order Lifecycle', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
   test.describe.configure({ mode: 'serial' });
 
   let orderId: string;
@@ -536,6 +582,11 @@ test.describe('B. Multi-Seller Order Lifecycle', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('C. Per-Item Status Tracking', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
   test.describe.configure({ mode: 'serial' });
 
   let orderId: string;
@@ -641,6 +692,11 @@ test.describe('C. Per-Item Status Tracking', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('D. Order Cancellation Flow', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('D.1 Cancel pending order — stock restored', async ({ page }) => {
     test.setTimeout(90_000);
@@ -765,6 +821,11 @@ test.describe('D. Order Cancellation Flow', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('E. Shipping Approval Flow', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('E.1 Buyer approves shipping cost change', async ({ page }) => {
     test.setTimeout(90_000);
@@ -837,6 +898,11 @@ test.describe('E. Shipping Approval Flow', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('F. Tracking & Carrier Information', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
   test.describe.configure({ mode: 'serial' });
 
   let orderId: string;
@@ -885,6 +951,11 @@ test.describe('F. Tracking & Carrier Information', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('G. Permissions & Security', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
   test.describe.configure({ mode: 'serial' });
 
   let orderId: string;
@@ -989,6 +1060,11 @@ test.describe('G. Permissions & Security', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('H. Edge Cases', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('H.1 Invalid state transition blocked (confirmed → delivered)', async ({ page }) => {
     test.setTimeout(90_000);
@@ -1094,6 +1170,11 @@ test.describe('H. Edge Cases', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('I. Partial Refund After Delivery', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
   test.describe.configure({ mode: 'serial' });
 
   let orderId: string;
@@ -1171,6 +1252,11 @@ test.describe('I. Partial Refund After Delivery', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('J. Product Rating After Delivery', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
   test.describe.configure({ mode: 'serial' });
 
   let orderId: string;

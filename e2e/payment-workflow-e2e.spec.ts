@@ -33,6 +33,40 @@ const FIRESTORE_EMULATOR = 'http://localhost:8080';
 const FUNCTIONS_EMULATOR = 'http://localhost:5001';
 const PROJECT_ID = 'orignagta';
 
+// Infrastructure availability cache
+let infraAvailable: {
+  auth: boolean | null;
+  firestore: boolean | null;
+  functions: boolean | null;
+} = {
+  auth: null,
+  firestore: null,
+  functions: null,
+};
+
+/** Check if infrastructure is available */
+async function checkInfrastructure(request: any): Promise<typeof infraAvailable> {
+  if (infraAvailable.auth === null) {
+    const [authRes, firestoreRes, functionsRes] = await Promise.all([
+      request.get(`${AUTH_EMULATOR}/`).catch(() => null),
+      request.get(`${FIRESTORE_EMULATOR}/`).catch(() => null),
+      request.get(`${FUNCTIONS_EMULATOR}/`).catch(() => null),
+    ]);
+    infraAvailable = {
+      auth: !!authRes,
+      firestore: !!firestoreRes,
+      functions: !!functionsRes,
+    };
+    if (Object.values(infraAvailable).some(v => !v)) {
+      console.log('⚠️  Some infrastructure is unavailable:');
+      console.log(`   Auth: ${infraAvailable.auth ? '✅' : '❌'}`);
+      console.log(`   Firestore: ${infraAvailable.firestore ? '✅' : '❌'}`);
+      console.log(`   Functions: ${infraAvailable.functions ? '✅' : '❌'}`);
+    }
+  }
+  return infraAvailable;
+}
+
 const STRIPE_CARD = {
   number: '4242424242424242', exp: '12/30', cvc: '123',
   name: 'Test Buyer', postalCode: 'M5V 3A8',
@@ -143,6 +177,9 @@ async function buildCheckoutPayload(
   const buyerDoc = await readDoc(`users/${buyerUid}`);
   const buyer = parseDoc(buyerDoc);
 
+  // Use default address if buyer or buyer.address is null
+  const address = buyer?.address || {};
+  
   const data = {
     userId: buyerUid,
     items: [{
@@ -152,13 +189,13 @@ async function buildCheckoutPayload(
     }],
     subtotal: +(product.price * quantity).toFixed(2),
     shippingAddress: {
-      street: buyer.address.street,
-      apartment: buyer.address.apartment || '',
-      city: buyer.address.city,
-      state: buyer.address.state,
-      postalCode: buyer.address.postalCode,
-      country: buyer.address.country,
-      phoneNumber: buyer.address.phoneNumber || '+14165550000',
+      street: address.street || '100 King St W',
+      apartment: address.apartment || '',
+      city: address.city || 'Toronto',
+      state: address.state || 'ON',
+      postalCode: address.postalCode || 'M5X 1A9',
+      country: address.country || 'CA',
+      phoneNumber: address.phoneNumber || '+14165550000',
     },
   };
   return { data, product, buyer };
@@ -226,6 +263,11 @@ async function waitForOrderStatus(
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('A. Checkout Validation', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('A.1 Rejects unauthenticated request', async () => {
     const res = await fetch(`${FUNCTIONS_EMULATOR}/${PROJECT_ID}/us-central1/create_checkout_session`, {
@@ -381,6 +423,11 @@ test.describe('A. Checkout Validation', () => {
 let orderB: { orderId: string; buyerUid: string; buyerToken: string } | null = null;
 
 test.describe('B. Single-Seller Checkout', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
   test.describe.configure({ mode: 'serial' });
 
   test('B.1 Create checkout session for single product', async () => {
@@ -488,6 +535,11 @@ test.describe('B. Single-Seller Checkout', () => {
 let orderC: { orderId: string; buyerUid: string; buyerToken: string } | null = null;
 
 test.describe('C. Multi-Seller Checkout', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
   test.describe.configure({ mode: 'serial' });
 
   test('C.1 Create checkout with items from 2 different sellers', async () => {
@@ -501,6 +553,7 @@ test.describe('C. Multi-Seller Checkout', () => {
     const prod2 = parseDoc(prod2Doc);
     const buyerDoc = await readDoc(`users/${auth.localId}`);
     const buyer = parseDoc(buyerDoc);
+    const address = buyer?.address || {};
 
     const data = {
       userId: auth.localId,
@@ -510,10 +563,10 @@ test.describe('C. Multi-Seller Checkout', () => {
       ],
       subtotal: +(prod1.price + prod2.price).toFixed(2),
       shippingAddress: {
-        street: buyer.address.street, apartment: buyer.address.apartment || '',
-        city: buyer.address.city, state: buyer.address.state,
-        postalCode: buyer.address.postalCode, country: buyer.address.country,
-        phoneNumber: buyer.address.phoneNumber || '+14165550000',
+        street: address.street || '100 King St W', apartment: address.apartment || '',
+        city: address.city || 'Toronto', state: address.state || 'ON',
+        postalCode: address.postalCode || 'M5X 1A9', country: address.country || 'CA',
+        phoneNumber: address.phoneNumber || '+14165550000',
       },
     };
 
@@ -548,6 +601,7 @@ test.describe('C. Multi-Seller Checkout', () => {
     const prod2 = parseDoc(prod2Doc);
     const buyerDoc = await readDoc(`users/${auth.localId}`);
     const buyer = parseDoc(buyerDoc);
+    const address = buyer?.address || {};
 
     const data = {
       userId: auth.localId,
@@ -557,10 +611,10 @@ test.describe('C. Multi-Seller Checkout', () => {
       ],
       subtotal: +(prod1.price + prod2.price).toFixed(2),
       shippingAddress: {
-        street: buyer.address.street, apartment: buyer.address.apartment || '',
-        city: buyer.address.city, state: buyer.address.state,
-        postalCode: buyer.address.postalCode, country: buyer.address.country,
-        phoneNumber: buyer.address.phoneNumber || '+14165550000',
+        street: address.street || '100 King St W', apartment: address.apartment || '',
+        city: address.city || 'Toronto', state: address.state || 'ON',
+        postalCode: address.postalCode || 'M5X 1A9', country: address.country || 'CA',
+        phoneNumber: address.phoneNumber || '+14165550000',
       },
     };
 
@@ -620,6 +674,11 @@ test.describe('C. Multi-Seller Checkout', () => {
 let orderD: { orderId: string; sellerToken: string; sellerUid: string; buyerToken: string } | null = null;
 
 test.describe('D. Order Status Lifecycle', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
   test.describe.configure({ mode: 'serial' });
 
   test('D.1 Create and pay order for lifecycle testing', async ({ page }) => {
@@ -704,6 +763,11 @@ test.describe('D. Order Status Lifecycle', () => {
 let orderE: { orderId: string; buyerToken: string; buyerUid: string; sellerToken: string } | null = null;
 
 test.describe('E. Cancellation & Refund', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
   test.describe.configure({ mode: 'serial' });
 
   test('E.1 Create and pay an order for cancellation test', async ({ page }) => {
@@ -781,6 +845,11 @@ test.describe('E. Cancellation & Refund', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('F. Concurrent Checkouts', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('F.1 5 buyers checkout simultaneously (different products)', async () => {
     test.setTimeout(60_000);
@@ -880,6 +949,11 @@ test.describe('F. Concurrent Checkouts', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('G. Price Tiers & Tax', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('G.1 Budget item ($1.99) checkout succeeds', async () => {
     test.setTimeout(30_000);
@@ -954,6 +1028,11 @@ test.describe('G. Price Tiers & Tax', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('H. Digital & Free Shipping', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('H.1 Digital product has zero shipping cost', async () => {
     test.setTimeout(30_000);
@@ -999,6 +1078,11 @@ test.describe('H. Digital & Free Shipping', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('I. Security & Permissions', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('I.1 Buyer cannot update order status', async () => {
     // Use order from suite D if available, otherwise create quick test
@@ -1126,6 +1210,11 @@ test.describe('I. Security & Permissions', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test.describe('J. Email Notifications', () => {
+  test.beforeEach(async ({ request }) => {
+    const infra = await checkInfrastructure(request);
+    test.skip(!infra.auth || !infra.firestore || !infra.functions,
+      'Emulators not running. Run `firebase emulators:start`');
+  });
 
   test('J.1 Order document has customerEmail for email dispatch', async () => {
     // Use any recent order (from suite B)
