@@ -303,8 +303,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Pagination Loader
             const _PaginationLoader(),
 
-            // Bottom padding to account for persistent HTML footer
-            const SliverToBoxAdapter(child: SizedBox(height: 56)),
+            // Footer with legal links
+            SliverToBoxAdapter(
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                child: Column(
+                  children: [
+                    Divider(color: Colors.grey.withValues(alpha: 0.2)),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pushNamed(context, '/privacy-policy'),
+                          child: Text(
+                            'Privacy Policy',
+                            style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+                          ),
+                        ),
+                        Text('|', style: TextStyle(color: Colors.grey.withValues(alpha: 0.4), fontSize: 13)),
+                        TextButton(
+                          onPressed: () => Navigator.pushNamed(context, '/terms-of-service'),
+                          child: Text(
+                            'Terms of Service',
+                            style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '© 2026 Origna GTA. All rights reserved.',
+                      style: TextStyle(color: isDark ? Colors.grey[600] : Colors.grey[400], fontSize: 11),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),

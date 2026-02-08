@@ -576,9 +576,9 @@
     }
 
     // Remove splash exactly when Flutter signals its first frame
-    // window.addEventListener('flutter-first-frame', () => {
-    //   requestAnimationFrame(removeSplashFromWeb);
-    // });
+    window.addEventListener('flutter-first-frame', () => {
+      requestAnimationFrame(removeSplashFromWeb);
+    });
 
     // Fallback: only clear if significantly delayed/stuck (safety net)
     // Reduced from 15s to 8s for better UX - if app hasn't loaded by then, something is wrong
@@ -812,13 +812,20 @@
   </script>
   
   <!-- Footer with legal links (visible to crawlers before Flutter loads) -->
-  <footer id="site-footer" style="position:fixed;bottom:0;left:0;right:0;z-index:10;text-align:center;padding:12px 16px;background:rgba(15,15,40,0.95);backdrop-filter:blur(8px);border-top:1px solid rgba(92,225,230,0.2);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <footer id="site-footer" style="position:fixed;bottom:0;left:0;right:0;z-index:9999;text-align:center;padding:12px 16px;background:rgba(15,15,40,0.85);backdrop-filter:blur(8px);border-top:1px solid rgba(92,225,230,0.2);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
     <a href="/privacy-policy" style="color:rgba(92,225,230,0.9);text-decoration:none;font-size:13px;margin:0 12px;">Privacy Policy</a>
     <span style="color:rgba(255,255,255,0.3);font-size:13px;">|</span>
     <a href="/terms-of-service" style="color:rgba(92,225,230,0.9);text-decoration:none;font-size:13px;margin:0 12px;">Terms of Service</a>
     <span style="color:rgba(255,255,255,0.3);font-size:13px;">|</span>
     <span style="color:rgba(255,255,255,0.5);font-size:12px;margin:0 12px;">&copy; 2026 Origna GTA</span>
   </footer>
+  <script>
+    // Hide the HTML footer once Flutter app has loaded
+    window.addEventListener('flutter-first-frame', function() {
+      var footer = document.getElementById('site-footer');
+      if (footer) footer.style.display = 'none';
+    });
+  </script>
 
   <script src="flutter_bootstrap.js" async=""></script>
 
