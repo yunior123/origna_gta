@@ -7,6 +7,7 @@ import re
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from schema_constants import Fields
 
 # ============================================================================
 # ENUMERATIONS
@@ -76,15 +77,15 @@ class Address(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "street": "123 Main Street",
-                "apartment": "Apt 4B",
-                "city": "Toronto",
-                "state": "ON",
-                "postalCode": "M5V 3A8",
-                "country": "Canada",
-                "phoneNumber": "4165551234",
-                "isDefault": True,
-                "label": "Home"
+                Fields.STREET: "123 Main Street",
+                Fields.APARTMENT: "Apt 4B",
+                Fields.CITY: "Toronto",
+                Fields.STATE: "ON",
+                Fields.POSTAL_CODE: "M5V 3A8",
+                Fields.COUNTRY: "Canada",
+                Fields.PHONE_NUMBER: "4165551234",
+                Fields.IS_DEFAULT: True,
+                Fields.LABEL: "Home"
             }
         }
     )

@@ -8,7 +8,9 @@
     "captured",
     "payment_failed",
     "refunded",
-    "session_expired"
+    "session_expired",
+    "cancelled",
+    "authorization_expired"
   ],
   "description": "Payment status values"
 }

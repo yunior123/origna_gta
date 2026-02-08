@@ -534,7 +534,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
             stripe.Refund.create(
                 payment_intent=payment_intent_id,
                 reason='requested_by_customer',
-                metadata={'orderId': order_id},
+                metadata={Fields.ORDER_ID: order_id},
                 idempotency_key=f'refund_{order_id}'
             )
             refunded = True
@@ -703,7 +703,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     refund_amount_cents = item_subtotal_cents + proportional_tax_cents + proportional_shipping_cents
 
     # Create Stripe refund
-    payment_intent_id = order_data.get('stripePaymentIntentId')
+    payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
     if not payment_intent_id:
         raise https_fn.HttpsError('failed-precondition', 'No payment intent found')
 
@@ -713,8 +713,8 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
             amount=refund_amount_cents,
             reason='requested_by_customer',
             metadata={
-                'orderId': order_id,
-                'productId': product_id,
+                Fields.ORDER_ID: order_id,
+                Fields.PRODUCT_ID: product_id,
                 'itemSubtotal': item_subtotal_cents,
                 'proportionalTax': proportional_tax_cents,
                 'proportionalShipping': proportional_shipping_cents
@@ -767,9 +767,9 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
                         stripe_transfer_id,
                         amount=reversal_amount_cents,
                         metadata={
-                            'orderId': order_id,
-                            'productId': product_id,
-                            'reason': 'item_refund'
+                            Fields.ORDER_ID: order_id,
+                            Fields.PRODUCT_ID: product_id,
+                            Fields.REASON: 'item_refund'
                         }
                     )
 
@@ -794,8 +794,8 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     })
 
     return create_success_response({
-        'refundAmount': refund_amount_cents / 100,  # Return in dollars
-        'refundId': refund.id
+        Fields.REFUND_AMOUNT: refund_amount_cents / 100,  # Return in dollars
+        Fields.REFUND_ID: refund.id
     })
 
 
@@ -842,7 +842,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if approved:
         # Update order with new shipping cost (all amounts in cents)
-        new_shipping_cost_cents = round(shipping_approval.get('actualCost', 0) * 100)
+        new_shipping_cost_cents = round(shipping_approval.get(Fields.ACTUAL_COST, 0) * 100)
         old_shipping_cost_cents = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
 
         # SECURITY: Validate shipping cost bounds (max +20% of original estimate)
@@ -877,7 +877,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # Charge additional amount if needed
         if difference_cents > 0:
-            payment_intent_id = order_data.get('stripePaymentIntentId')
+            payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
             if payment_intent_id:
                 try:
                     # Update payment intent amount (already in cents)
@@ -1007,7 +1007,7 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                 Fields.ACTUAL_COST: new_shipping_cost,
                 'originalCostCents': original_shipping_cents,
                 'newCostCents': new_shipping_cents,
-                'reason': reason,
+                Fields.REASON: reason,
                 'requestedBy': user_id,
                 'requestedAt': get_server_timestamp(),
             },
@@ -1047,7 +1047,7 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Sends email notifications when order status changes.
     """
-    order_id = event.params['orderId']
+    order_id = event.params[Fields.ORDER_ID]
     before_data = event.data.before.to_dict()
     after_data = event.data.after.to_dict()
 

@@ -147,9 +147,9 @@ def estimate_delivery_date_range(
     Returns:
         Dict with 'min_days', 'max_days', 'display_text'
     """
-    if supplier_info and supplier_info.get('type'):
+    if supplier_info and supplier_info.get(Fields.TYPE):
         # Dropshipping product with supplier info
-        supplier_type = supplier_info.get('type', 'other')
+        supplier_type = supplier_info.get(Fields.TYPE, 'other')
         shipping_days = supplier_info.get('shippingDays', '')
 
         if shipping_days and '-' in shipping_days:
@@ -227,14 +227,14 @@ def _calculate_tiered_shipping(distance_km: float, seller_items: list[dict], spe
     weight_surcharge = 0
     total_items = 0
     for item in seller_items:
-        qty = item.get('quantity', 1)
+        qty = item.get(Fields.QUANTITY, 1)
         total_items += qty
 
         # Volumetric: (L * W * H) / 5000
-        actual_weight = max(item.get('weightKg', 0.5), 0)  # Prevent negative weight
-        length = max(item.get('lengthCm', 10), 1)  # Prevent zero dimensions
-        width = max(item.get('widthCm', 10), 1)
-        height = max(item.get('heightCm', 10), 1)
+        actual_weight = max(item.get(Fields.WEIGHT_KG, 0.5), 0)  # Prevent negative weight
+        length = max(item.get(Fields.LENGTH_CM, 10), 1)  # Prevent zero dimensions
+        width = max(item.get(Fields.WIDTH_CM, 10), 1)
+        height = max(item.get(Fields.HEIGHT_CM, 10), 1)
         vol_weight = (length * width * height) / 5000.0
         effective_weight = max(actual_weight, vol_weight)
 
@@ -344,7 +344,7 @@ def _calculate_delivery_option_cost(option: dict, quantity: int) -> float:
 
     # Legacy schema
     try:
-        price = float(option.get('price', 0) or 0)
+        price = float(option.get(Fields.PRICE, 0) or 0)
     except (TypeError, ValueError):
         price = 0.0
     return price * qty
@@ -360,7 +360,7 @@ def _find_matching_delivery_option(options: list[dict], speed: str) -> dict | No
         if not isinstance(o, dict):
             continue
 
-        if o.get('type') == speed:
+        if o.get(Fields.TYPE) == speed:
             return o
 
         if o.get('speed') == speed and o.get('isEnabled'):

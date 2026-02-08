@@ -91,7 +91,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
     for order_doc in all_orders:
         order_data = order_doc.to_dict()
         order_id = order_doc.id
-        payment_intent_id = order_data.get('stripePaymentIntentId')
+        payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
 
         if not payment_intent_id:
             print(f'Order {order_id} has no payment intent, skipping')
@@ -251,9 +251,9 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                                 source_transaction=payment_intent_id,
                                 transfer_group=order_id,
                                 metadata={
-                                    'orderId': order_id,
-                                    'sellerId': seller_id,
-                                    'autoCaptured': True
+                                    Fields.ORDER_ID: order_id,
+                                    Fields.SELLER_ID: seller_id,
+                                    Fields.AUTO_CAPTURED: True
                                 },
                                 idempotency_key=f'auto_transfer_{order_id}_{seller_id}',
                             )
@@ -505,13 +505,13 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
 
         if mismatch_percent > 0.05:  # > 5% mismatch
             get_db().collection(Collections.SECURITY_ALERTS).add({
-                'type': 'algolia_sync_issue',
-                'severity': 'medium',
+                Fields.TYPE: 'algolia_sync_issue',
+                Fields.SEVERITY: 'medium',
                 'firestoreCount': firestore_count,
                 'algoliaCount': algolia_count,
                 'mismatchPercent': mismatch_percent * 100,
-                'timestamp': get_server_timestamp(),
-                'resolved': False
+                Fields.TIMESTAMP: get_server_timestamp(),
+                Fields.RESOLVED: False
             })
 
             print(f'ALERT: Algolia sync mismatch: Firestore={firestore_count}, Algolia={algolia_count}')

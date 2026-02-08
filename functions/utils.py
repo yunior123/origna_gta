@@ -23,9 +23,9 @@ def create_error_response(error: str, status_code: int = 400, details: str | Non
     """Create standardized error response"""
     response_data = {
         "success": False,
-        "error": error,
+        Fields.ERROR: error,
         "details": details,
-        "timestamp": datetime.now().isoformat()
+        Fields.TIMESTAMP: datetime.now().isoformat()
     }
     return https_fn.Response(
         json.dumps(response_data),
@@ -270,9 +270,9 @@ def log_webhook_to_database(db, event_id: str, event_type: str, payload_size: in
         if raw_event_data:
             log_data["eventData"] = {
                 "id": raw_event_data.get("id"),
-                "type": raw_event_data.get("type"),
+                Fields.TYPE: raw_event_data.get("type"),
                 "created": raw_event_data.get("created"),
-                "livemode": raw_event_data.get("livemode"),
+                Fields.LIVEMODE: raw_event_data.get("livemode"),
                 "object_id": raw_event_data.get("data", {}).get("object", {}).get("id"),
             }
         db.collection(Collections.WEBHOOK_LOGS).document(event_id).set(log_data)

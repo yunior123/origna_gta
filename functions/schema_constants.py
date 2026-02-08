@@ -265,6 +265,14 @@ class Fields:
     DATE_FAVORITED = 'dateFavorited'
     # NOTE: Cart items use DATE_CREATED, not CREATED_AT
 
+    # === LEGACY/DEPRECATED FIELDS (for backward compatibility) ===
+    # These are old field names kept for parsing legacy documents
+    BUYER_CONFIRMED = "buyerConfirmed"  # Legacy: use CONFIRMED_BY_BUYER
+    LOCAL_DELIVERY_ONLY = "localDeliveryOnly"  # Legacy: use IS_LOCAL_DELIVERY_ONLY
+    PERISHABLE = "perishable"  # Legacy: use IS_PERISHABLE
+    SUPPLIER_SHIPPING_DAYS = "supplierShippingDays"  # Legacy: use ESTIMATED_SHIP_DAYS
+    MIN_ORDER_QUANTITY = "minOrderQuantity"  # Legacy: use MINIMUM_ORDER_QUANTITY
+
 
 # =============================================================================
 # ENUM VALUES - Valid values for enum fields

@@ -131,7 +131,8 @@
       "enum": [
         "pending",
         "shipped",
-        "delivered"
+        "delivered",
+        "refunded"
       ],
       "title": "DeliveryStatusEnum",
       "type": "string"
@@ -358,7 +359,9 @@
         "captured",
         "payment_failed",
         "refunded",
-        "session_expired"
+        "session_expired",
+        "cancelled",
+        "authorization_expired"
       ],
       "title": "PaymentStatusEnum",
       "type": "string"

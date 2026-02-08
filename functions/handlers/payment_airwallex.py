@@ -95,16 +95,18 @@ def airwallex_create_seller_account(req: https_fn.CallableRequest) -> dict[str, 
     data = req.data
 
     try:
+        # Load dependencies
+        Collections = get_collections()
+        Fields = get_fields()
+        
         airwallex_service = get_airwallex_service()
         account_id = airwallex_service.create_connected_account(
             user_id=user_id,
-            email=data.get('email'),
+            email=data.get(Fields.EMAIL),
             business_info=data.get('businessInfo', {})
         )
 
         # Save account ID to Firestore
-        Collections = get_collections()
-        Fields = get_fields()
         user_ref = get_db().collection(Collections.USERS).document(user_id)
         user_ref.update({
             Fields.AIRWALLEX_ACCOUNT_ID: account_id,
@@ -146,7 +148,7 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_id = req.auth.uid
     data = req.data
 
-    order_id = data.get('orderId')
+    order_id = data.get(Fields.ORDER_ID)
     return_url = data.get('returnUrl', 'https://origna.ca/order-success')
 
     if not order_id:
@@ -216,7 +218,7 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
-    order_id = req.data.get('orderId')
+    order_id = req.data.get(Fields.ORDER_ID)
 
     if not order_id:
         raise https_fn.HttpsError('invalid-argument', 'orderId required')
@@ -385,7 +387,7 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response('Invalid JSON', status=400)
 
     event_id = event.get('id')
-    event_type = event.get('name')
+    event_type = event.get(Fields.NAME)
 
     # SECURITY FIX #5: Validate event_id exists
     if not event_id or not event_type:
@@ -422,12 +424,12 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
         Collections = get_collections()
 
         def _extract_order_id(payload: dict[str, Any]) -> str:
-            val = payload.get('orderId') or payload.get('merchant_order_id', '')
+            val = payload.get(Fields.ORDER_ID) or payload.get('merchant_order_id', '')
             if isinstance(val, str) and val.strip():
                 return val.strip()
             metadata = payload.get('metadata', {})
             if isinstance(metadata, dict):
-                val = metadata.get('orderId') or metadata.get('merchant_order_id', '')
+                val = metadata.get(Fields.ORDER_ID) or metadata.get('merchant_order_id', '')
                 if isinstance(val, str) and val.strip():
                     return val.strip()
             return ""

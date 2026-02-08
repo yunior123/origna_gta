@@ -163,17 +163,17 @@ def _rollback_checkout(validated_items: list, order_ref) -> None:
             # Phase 1: Read ALL product snapshots first
             refs_and_snapshots = []
             for item in validated_items:
-                product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
+                product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
                 product_snapshot = product_ref.get(transaction=transaction)
-                refs_and_snapshots.append((product_ref, product_snapshot, item['quantity']))
+                refs_and_snapshots.append((product_ref, product_snapshot, item[Fields.QUANTITY]))
 
             # Phase 2: Write ALL updates after all reads
             for ref, snapshot, qty in refs_and_snapshots:
                 if snapshot.exists:
                     product_data = snapshot.to_dict()
-                    current_stock = product_data.get('stockQuantity', 0)
+                    current_stock = product_data.get(Fields.STOCK_QUANTITY, 0)
                     transaction.update(ref, {
-                        'stockQuantity': current_stock + qty
+                        Fields.STOCK_QUANTITY: current_stock + qty
                     })
 
         transaction = get_db().transaction()
@@ -242,7 +242,7 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
         product_doc = product_ref.get()
 
         if not product_doc.exists:
-            removed_products.append({'productId': product_id})
+            removed_products.append({Fields.PRODUCT_ID: product_id})
             continue
 
         product_data = product_doc.to_dict()
@@ -250,9 +250,9 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Check if product is still active
         if not product_data.get(Fields.IS_ACTIVE, False):
             removed_products.append({
-                'productId': product_id,
-                'name': product_data.get(Fields.NAME, ''),
-                'reason': 'deactivated',
+                Fields.PRODUCT_ID: product_id,
+                Fields.NAME: product_data.get(Fields.NAME, ''),
+                Fields.REASON: 'deactivated',
             })
             continue
 
@@ -260,8 +260,8 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
         db_price = product_data.get(Fields.PRICE, 0)
         if abs(db_price - client_price) > 0.01:
             price_changes.append({
-                'productId': product_id,
-                'name': product_data.get(Fields.NAME, ''),
+                Fields.PRODUCT_ID: product_id,
+                Fields.NAME: product_data.get(Fields.NAME, ''),
                 'oldPrice': client_price,
                 'newPrice': db_price,
             })
@@ -270,8 +270,8 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
         stock_qty = product_data.get(Fields.STOCK_QUANTITY, 0)
         if stock_qty < requested_qty:
             stock_changes.append({
-                'productId': product_id,
-                'name': product_data.get(Fields.NAME, ''),
+                Fields.PRODUCT_ID: product_id,
+                Fields.NAME: product_data.get(Fields.NAME, ''),
                 'requested': requested_qty,
                 'available': stock_qty,
             })
@@ -420,7 +420,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         if not product_doc.exists:
             raise https_fn.HttpsError(
                 'not-found',
-                f"Product {item['productId']} not found"
+                f"Product {item[Fields.PRODUCT_ID]} not found"
             )
 
         product_data = product_doc.to_dict()
@@ -457,7 +457,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 f"was ${client_price:.2f}, now ${db_price:.2f}. Please refresh your cart.",
                 details={
                     'code': 'PRICE_CHANGED',
-                    'productId': item[Fields.PRODUCT_ID],
+                    Fields.PRODUCT_ID: item[Fields.PRODUCT_ID],
                     'productName': product_data.get(Fields.NAME, ''),
                     'oldPrice': client_price,
                     'newPrice': db_price,
@@ -481,7 +481,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         if seller_id == user_id:
             raise https_fn.HttpsError(
                 'invalid-argument',
-                f"You cannot purchase your own product: {product_data['name']}"
+                f"You cannot purchase your own product: {product_data[Fields.NAME]}"
             )
 
         # Fetch seller profile for shipping calculation (cached to avoid N+1)
@@ -492,7 +492,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         seller_data = seller_cache[seller_id]
         seller_profile = seller_data.get('sellerProfile', {})
 
-        image_urls = product_data.get('imageUrls', [])
+        image_urls = product_data.get(Fields.IMAGE_URLS, [])
         if not isinstance(image_urls, list):
             image_urls = [str(image_urls)]
 
@@ -501,17 +501,17 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Bug #3: Use product's sellerAddress FIRST (set at product creation),
         # then fall back to seller profile businessAddress, then user address
         raw_seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
-        if not raw_seller_address or not isinstance(raw_seller_address, dict) or not raw_seller_address.get('street'):
+        if not raw_seller_address or not isinstance(raw_seller_address, dict) or not raw_seller_address.get(Fields.STREET):
             raw_seller_address = seller_profile.get('businessAddress', {})
-        if not raw_seller_address or not raw_seller_address.get('street'):
-            raw_seller_address = seller_data.get('address', {})
-        if not raw_seller_address or not raw_seller_address.get('street'):
+        if not raw_seller_address or not raw_seller_address.get(Fields.STREET):
+            raw_seller_address = seller_data.get(Fields.ADDRESS, {})
+        if not raw_seller_address or not raw_seller_address.get(Fields.STREET):
             raw_seller_address = {
-                'street': 'N/A',
-                'city': 'N/A',
-                'state': 'ON',
-                'postalCode': 'M5V 3A8',
-                'country': 'Canada',
+                Fields.STREET: 'N/A',
+                Fields.CITY: 'N/A',
+                Fields.STATE: 'ON',
+                Fields.POSTAL_CODE: 'M5V 3A8',
+                Fields.COUNTRY: 'Canada',
             }
 
         validated_item = {
@@ -679,7 +679,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Fetch buyer email for order record (avoids extra DB read in webhook)
     buyer_email = None
     if user_snapshot.exists:
-        buyer_email = user_snapshot.to_dict().get('email')
+        buyer_email = user_snapshot.to_dict().get(Fields.EMAIL)
 
     order_data = {
         Fields.ORDER_ID: order_id,
@@ -704,7 +704,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.DELIVERY_SPEED: delivery_speed,  # Bug #9: Persist chosen speed for audit trail
         Fields.PLATFORM_FEE_CENTS: round(total_amount_cents * PLATFORM_FEE_PERCENT),  # AUDIT FIX: Immutable fee stored at checkout
         'archived': False,
-        'stockRestored': False,
+        Fields.STOCK_RESTORED: False,
     }
 
     # SECURITY FIX (CRITICAL-014): Snapshot seller Stripe account IDs at checkout.
@@ -713,7 +713,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     for sid in sellers:
         if sid in seller_cache:
             s_data = seller_cache[sid]
-            acct_id = s_data.get('stripeAccountId')
+            acct_id = s_data.get(Fields.STRIPE_ACCOUNT_ID)
             if acct_id:
                 seller_account_snapshot[sid] = acct_id
     if seller_account_snapshot:
@@ -735,35 +735,35 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         line_items = []
         for item in validated_items:
             product_data = {
-                'name': item['name'],
-                'images': item.get('imageUrls', [])[:1]
+                Fields.NAME: item[Fields.NAME],
+                'images': item.get(Fields.IMAGE_URLS, [])[:1]
             }
 
             # Add tax code if available
-            tax_code = get_tax_code_for_category(item.get('categoryId', 0))
+            tax_code = get_tax_code_for_category(item.get(Fields.CATEGORY_ID, 0))
             if tax_code:
                 product_data['tax_code'] = tax_code
 
             line_items.append({
                 'price_data': {
-                    'currency': 'cad',
+                    Fields.CURRENCY: 'cad',
                     'product_data': product_data,
-                    'unit_amount': int(item['price'] * 100)  # Convert to cents
+                    'unit_amount': int(item[Fields.PRICE] * 100)  # Convert to cents
                 },
-                'quantity': item['quantity']
+                Fields.QUANTITY: item[Fields.QUANTITY]
             })
 
         # Add shipping as line item (already in cents)
         if shipping_cost_cents > 0:
             line_items.append({
                 'price_data': {
-                    'currency': 'cad',
+                    Fields.CURRENCY: 'cad',
                     'product_data': {
-                        'name': 'Shipping'
+                        Fields.NAME: 'Shipping'
                     },
                     'unit_amount': shipping_cost_cents
                 },
-                'quantity': 1
+                Fields.QUANTITY: 1
             })
 
         # Add tax as line item (already in cents)
@@ -772,13 +772,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         if tax_amount_cents > 0:
             line_items.append({
                 'price_data': {
-                    'currency': 'cad',
+                    Fields.CURRENCY: 'cad',
                     'product_data': {
-                        'name': f'Tax ({state_code})'
+                        Fields.NAME: f'Tax ({state_code})'
                     },
                     'unit_amount': tax_amount_cents
                 },
-                'quantity': 1
+                Fields.QUANTITY: 1
             })
 
         session = stripe.checkout.Session.create(
@@ -789,13 +789,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             cancel_url='https://orignagta.ca/cart',
             client_reference_id=user_id,
             metadata={
-                'orderId': order_id,
-                'userId': user_id
+                Fields.ORDER_ID: order_id,
+                Fields.USER_ID: user_id
             },
             payment_intent_data={
                 'capture_method': 'manual',  # Manual capture for order confirmation flow
                 'metadata': {
-                    'orderId': order_id
+                    Fields.ORDER_ID: order_id
                 }
             },
             # NOTE: automatic_tax disabled - we calculate tax server-side to avoid double taxation
@@ -805,8 +805,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # Update order with session ID
         order_ref.update({
-            'stripeSessionId': session.id,
-            'stripePaymentIntentId': session.payment_intent if hasattr(session, 'payment_intent') else None
+            Fields.STRIPE_SESSION_ID: session.id,
+            Fields.STRIPE_PAYMENT_INTENT_ID: session.payment_intent if hasattr(session, 'payment_intent') else None
         })
 
         # Return dict directly for on_call functions
@@ -923,7 +923,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response('Signature verification error', status=500)
 
     event_id = event['id']
-    event_type = event['type']
+    event_type = event[Fields.TYPE]
 
     # SECURITY FIX #3b: Reject stale webhooks (replay attack prevention)
     # Stripe events have a 'created' timestamp (Unix epoch seconds).
@@ -941,7 +941,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     webhook_doc = webhook_ref.get()
 
     if webhook_doc.exists:
-        existing_status = webhook_doc.to_dict().get('status', WebhookStatusValues.COMPLETED)
+        existing_status = webhook_doc.to_dict().get(Fields.STATUS, WebhookStatusValues.COMPLETED)
         if existing_status == WebhookStatusValues.COMPLETED:
             print(f'✓ Stripe webhook already processed: {event_type} (event: {event_id[:16]}...)')
             return https_fn.Response('Event already processed', status=200)
@@ -950,7 +950,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
 
     # SECURITY FIX #5: Log webhook event with audit trail (status: processing)
     try:
-        order_id = event.get('data', {}).get('object', {}).get('metadata', {}).get('orderId', 'N/A')
+        order_id = event.get('data', {}).get('object', {}).get('metadata', {}).get(Fields.ORDER_ID, 'N/A')
         webhook_ref.set({
             Fields.PROVIDER: 'stripe',
             Fields.TYPE: event_type,
@@ -997,7 +997,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
 
         # Mark as completed
         with contextlib.suppress(Exception):
-            webhook_ref.update({'status': WebhookStatusValues.COMPLETED})
+            webhook_ref.update({Fields.STATUS: WebhookStatusValues.COMPLETED})
 
         print(f'✓ Stripe webhook processed successfully: {event_type}')
         return https_fn.Response('Success', status=200)
@@ -1005,7 +1005,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     except Exception as e:
         # Mark as failed so Stripe can retry
         with contextlib.suppress(Exception):
-            webhook_ref.update({'status': WebhookStatusValues.FAILED, 'error': type(e).__name__})
+            webhook_ref.update({Fields.STATUS: WebhookStatusValues.FAILED, Fields.ERROR: type(e).__name__})
 
         # SECURITY FIX #6: Sanitized error logging (no sensitive data exposure)
         error_type = type(e).__name__
@@ -1019,7 +1019,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
     Processes checkout.session.completed event.
     Updates order status to confirmed and sends confirmation emails.
     """
-    order_id = session.get('metadata', {}).get('orderId')
+    order_id = session.get('metadata', {}).get(Fields.ORDER_ID)
 
     if not order_id:
         print('No orderId in session metadata')
@@ -1034,12 +1034,42 @@ def process_checkout_session_completed(session: dict) -> str | None:
 
     order_data = order_doc.to_dict()
 
+    # SECURITY FIX: Re-validate products before confirming order
+    # Products could be deactivated or sellers suspended between checkout and payment
+    items = order_data.get(Fields.ITEMS, [])
+    for item in items:
+        product_id = item.get(Fields.PRODUCT_ID)
+        seller_id = item.get(Fields.SELLER_ID)
+        
+        # Check product still exists and is active
+        product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+        product_doc = product_ref.get()
+        
+        if not product_doc.exists:
+            print(f'⚠️ Product {product_id} no longer exists, cancelling order {order_id}')
+            _restore_stock_and_cancel_order(order_id, order_data, f'Product {product_id} removed')
+            return f'Order {order_id} cancelled - product removed'
+        
+        product_data = product_doc.to_dict()
+        if not product_data.get(Fields.IS_ACTIVE, False):
+            print(f'⚠️ Product {product_id} deactivated, cancelling order {order_id}')
+            _restore_stock_and_cancel_order(order_id, order_data, f'Product {product_id} deactivated')
+            return f'Order {order_id} cancelled - product deactivated'
+        
+        # Check seller not suspended
+        seller_ref = get_db().collection(Collections.USERS).document(seller_id)
+        seller_doc = seller_ref.get()
+        if seller_doc.exists and seller_doc.to_dict().get(Fields.SUSPENDED, False):
+            print(f'⚠️ Seller {seller_id} suspended, cancelling order {order_id}')
+            _restore_stock_and_cancel_order(order_id, order_data, f'Seller {seller_id} suspended')
+            return f'Order {order_id} cancelled - seller suspended'
+
     # Update order status
     order_ref.update({
-        'orderStatus': OrderStatus.CONFIRMED,
-        'paymentStatus': PaymentStatus.AUTHORIZED,
-        'stripePaymentIntentId': session.get('payment_intent'),
-        'updatedAt': get_server_timestamp()
+        Fields.ORDER_STATUS: OrderStatus.CONFIRMED,
+        Fields.PAYMENT_STATUS: PaymentStatus.AUTHORIZED,
+        Fields.STRIPE_PAYMENT_INTENT_ID: session.get('payment_intent'),
+        Fields.UPDATED_AT: get_server_timestamp()
     })
 
     # Send confirmation emails
@@ -1047,9 +1077,9 @@ def process_checkout_session_completed(session: dict) -> str | None:
         # Get buyer email from order data or user document
         buyer_email = order_data.get('customerEmail')
         if not buyer_email:
-            buyer_doc = get_db().collection(Collections.USERS).document(order_data['userId']).get()
+            buyer_doc = get_db().collection(Collections.USERS).document(order_data[Fields.USER_ID]).get()
             if buyer_doc.exists:
-                buyer_email = buyer_doc.to_dict().get('email')
+                buyer_email = buyer_doc.to_dict().get(Fields.EMAIL)
 
         if buyer_email:
             buyer_email_html = get_order_confirmation_email(order_data, order_id)
@@ -1060,13 +1090,13 @@ def process_checkout_session_completed(session: dict) -> str | None:
             )
 
         # Email to sellers
-        sellers = set(item['sellerId'] for item in order_data['items'])
+        sellers = set(item[Fields.SELLER_ID] for item in order_data[Fields.ITEMS])
         for seller_id in sellers:
             # Get seller email from user document
             seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
             if seller_doc.exists:
                 seller_data = seller_doc.to_dict()
-                seller_email = seller_data.get('email')
+                seller_email = seller_data.get(Fields.EMAIL)
                 if seller_email:
                     seller_email_html = get_seller_notification_email(order_data, order_id, seller_id)
                     send_email(
@@ -1079,7 +1109,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
 
     # Clear user's cart
     try:
-        _clear_user_cart(order_data['userId'])
+        _clear_user_cart(order_data[Fields.USER_ID])
     except Exception as e:
         print(f'Failed to clear cart: {str(e)}')
 
@@ -1097,15 +1127,15 @@ def _clear_user_cart(user_id: str) -> None:
 
 def process_async_payment_succeeded(session: dict) -> str | None:
     """Handles async payment success (e.g., bank transfers)"""
-    order_id = session.get('metadata', {}).get('orderId')
+    order_id = session.get('metadata', {}).get(Fields.ORDER_ID)
 
     if not order_id:
         return None
 
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_ref.update({
-        'paymentStatus': PaymentStatus.CAPTURED,
-        'updatedAt': get_server_timestamp()
+        Fields.PAYMENT_STATUS: PaymentStatus.CAPTURED,
+        Fields.UPDATED_AT: get_server_timestamp()
     })
 
     return f'Order {order_id} payment captured'
@@ -1113,7 +1143,7 @@ def process_async_payment_succeeded(session: dict) -> str | None:
 
 def process_async_payment_failed(session: dict) -> str | None:
     """Handles async payment failure"""
-    order_id = session.get('metadata', {}).get('orderId')
+    order_id = session.get('metadata', {}).get(Fields.ORDER_ID)
 
     if not order_id:
         return None
@@ -1129,9 +1159,9 @@ def process_async_payment_failed(session: dict) -> str | None:
 
         # Update order
         order_ref.update({
-            'orderStatus': OrderStatus.CANCELLED,
-            'paymentStatus': PaymentStatus.PAYMENT_FAILED,
-            'updatedAt': get_server_timestamp()
+            Fields.ORDER_STATUS: OrderStatus.CANCELLED,
+            Fields.PAYMENT_STATUS: PaymentStatus.PAYMENT_FAILED,
+            Fields.UPDATED_AT: get_server_timestamp()
         })
 
     return f'Order {order_id} cancelled due to payment failure'
@@ -1144,16 +1174,49 @@ def _restore_stock_for_order(order_data: dict) -> None:
         from firebase_admin import firestore as fs
         _firestore = fs
 
-    for item in order_data.get('items', []):
-        product_ref = get_db().collection(Collections.PRODUCTS).document(item['productId'])
+    for item in order_data.get(Fields.ITEMS, []):
+        product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
         product_ref.update({
-            'stockQuantity': _firestore.Increment(item['quantity'])
+            Fields.STOCK_QUANTITY: _firestore.Increment(item[Fields.QUANTITY])
         })
+
+
+def _restore_stock_and_cancel_order(order_id: str, order_data: dict, reason: str) -> None:
+    """
+    Restores stock and cancels order when validation fails post-payment.
+    Used when products are deactivated or sellers suspended between checkout and payment.
+    """
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    
+    # Restore stock atomically
+    if not order_data.get(Fields.STOCK_RESTORED, False):
+        _restore_stock_for_order(order_data)
+    
+    # Cancel the order
+    order_ref.update({
+        Fields.ORDER_STATUS: OrderStatus.CANCELLED,
+        Fields.PAYMENT_STATUS: PaymentStatus.CANCELLED,
+        Fields.CANCELLATION_REASON: reason,
+        Fields.STOCK_RESTORED: True,
+        Fields.CANCELLED_AT: get_server_timestamp(),
+        Fields.UPDATED_AT: get_server_timestamp(),
+    })
+    
+    # Cancel the PaymentIntent to release buyer funds
+    payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+    if payment_intent_id:
+        try:
+            stripe.PaymentIntent.cancel(
+                payment_intent_id,
+                cancellation_reason='abandoned',
+            )
+        except stripe.error.StripeError as e:
+            print(f'Failed to cancel PI for invalidated order {order_id}: {str(e)}')
 
 
 def process_session_expired(session: dict) -> str | None:
     """Handles expired checkout sessions"""
-    order_id = session.get('metadata', {}).get('orderId')
+    order_id = session.get('metadata', {}).get(Fields.ORDER_ID)
 
     if not order_id:
         return None
@@ -1166,9 +1229,9 @@ def process_session_expired(session: dict) -> str | None:
         _restore_stock_for_order(order_data)
 
         order_ref.update({
-            'orderStatus': OrderStatus.EXPIRED,
-            'paymentStatus': PaymentStatus.SESSION_EXPIRED,
-            'updatedAt': get_server_timestamp()
+            Fields.ORDER_STATUS: OrderStatus.EXPIRED,
+            Fields.PAYMENT_STATUS: PaymentStatus.SESSION_EXPIRED,
+            Fields.UPDATED_AT: get_server_timestamp()
         })
 
     return f'Order {order_id} expired'
@@ -1184,7 +1247,7 @@ def process_payment_intent_succeeded(payment_intent: dict) -> str | None:
     AUTHORIZED → CAPTURING → CAPTURED transition. This webhook fires when
     capture succeeds, so we only update if still in 'capturing' state.
     """
-    order_id = payment_intent.get('metadata', {}).get('orderId')
+    order_id = payment_intent.get('metadata', {}).get(Fields.ORDER_ID)
 
     if not order_id:
         return None
@@ -1203,8 +1266,8 @@ def process_payment_intent_succeeded(payment_intent: dict) -> str | None:
     capturable_states = {'capturing', PaymentStatus.AWAITING_PAYMENT}
     if current_status in capturable_states:
         order_ref.update({
-            'paymentStatus': PaymentStatus.CAPTURED,
-            'updatedAt': get_server_timestamp()
+            Fields.PAYMENT_STATUS: PaymentStatus.CAPTURED,
+            Fields.UPDATED_AT: get_server_timestamp()
         })
         return f'Payment captured for order {order_id}'
 
@@ -1219,15 +1282,15 @@ def process_payment_intent_succeeded(payment_intent: dict) -> str | None:
 
 def process_payment_intent_failed(payment_intent: dict) -> str | None:
     """Handles failed payment intents"""
-    order_id = payment_intent.get('metadata', {}).get('orderId')
+    order_id = payment_intent.get('metadata', {}).get(Fields.ORDER_ID)
 
     if not order_id:
         return None
 
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_ref.update({
-        'paymentStatus': PaymentStatus.PAYMENT_FAILED,
-        'updatedAt': get_server_timestamp()
+        Fields.PAYMENT_STATUS: PaymentStatus.PAYMENT_FAILED,
+        Fields.UPDATED_AT: get_server_timestamp()
     })
 
     return f'Payment failed for order {order_id}'
@@ -1246,7 +1309,7 @@ def process_charge_refunded(charge: dict) -> str | None:
 
     # Determine if full or partial refund
     amount_refunded = charge.get('amount_refunded', 0)
-    amount_total = charge.get('amount', 0)
+    amount_total = charge.get(Fields.AMOUNT, 0)
     is_full_refund = (amount_refunded >= amount_total) if amount_total > 0 else True
 
     # Find order by payment intent
@@ -1305,8 +1368,8 @@ def process_charge_refunded(charge: dict) -> str | None:
             try:
                 reversal_kwargs = {
                     'metadata': {
-                        'reason': 'refund',
-                        'orderId': order_id,
+                        Fields.REASON: 'refund',
+                        Fields.ORDER_ID: order_id,
                         'refundType': 'full' if is_full_refund else 'partial',
                     }
                 }
@@ -1316,11 +1379,11 @@ def process_charge_refunded(charge: dict) -> str | None:
                     reversal_amount = round(payout_net * amount_refunded / amount_total)
                     reversal_amount = min(reversal_amount, max_reversible)
                     if reversal_amount > 0:
-                        reversal_kwargs['amount'] = reversal_amount
+                        reversal_kwargs[Fields.AMOUNT] = reversal_amount
                 else:
                     # Full refund: reverse remaining (not already reversed)
                     if already_reversed_cents > 0:
-                        reversal_kwargs['amount'] = max_reversible
+                        reversal_kwargs[Fields.AMOUNT] = max_reversible
 
                 reversal = stripe.Transfer.create_reversal(
                     transfer_id,
@@ -1328,14 +1391,14 @@ def process_charge_refunded(charge: dict) -> str | None:
                 )
 
                 # Calculate actual reversed amount for tracking
-                actual_reversed = reversal_kwargs.get('amount', payout_net)
+                actual_reversed = reversal_kwargs.get(Fields.AMOUNT, payout_net)
                 new_cumulative = already_reversed_cents + actual_reversed
                 new_status = PayoutStatusValues.REVERSED if new_cumulative >= payout_net else 'partially_reversed'
 
                 payout_doc.reference.update({
                     Fields.STATUS: new_status,
-                    'reversalId': reversal.id,
-                    'reversedAt': get_server_timestamp(),
+                    Fields.REVERSAL_ID: reversal.id,
+                    Fields.REVERSED_AT: get_server_timestamp(),
                     'reversalReason': 'refund',
                     'cumulativeReversedCents': new_cumulative,
                 })
@@ -1344,7 +1407,7 @@ def process_charge_refunded(charge: dict) -> str | None:
 
             except Exception as e:
                 print(f'⚠️ Failed to reverse transfer {transfer_id} on refund: {str(e)}')
-                reversal_errors.append({'transferId': transfer_id, 'error': str(e)})
+                reversal_errors.append({'transferId': transfer_id, Fields.ERROR: str(e)})
 
         # Log security alert and auto-suspend sellers if any reversals failed
         if reversal_errors:
@@ -1373,29 +1436,29 @@ def process_charge_refunded(charge: dict) -> str | None:
                     if fp_seller_id:
                         with contextlib.suppress(Exception):
                             get_db().collection(Collections.USERS).document(fp_seller_id).update({
-                                'suspended': True,
+                                Fields.SUSPENDED: True,
                                 'suspendedReason': f'Transfer reversal failed for order {order_id}. Manual review required.',
-                                'suspendedAt': get_server_timestamp(),
+                                Fields.SUSPENDED_AT: get_server_timestamp(),
                             })
                             print(f'🚫 Auto-suspended seller {fp_seller_id} due to failed transfer reversal')
 
         if is_full_refund:
             order_ref.update({
-                'orderStatus': OrderStatus.REFUNDED,
-                'paymentStatus': PaymentStatus.REFUNDED,
+                Fields.ORDER_STATUS: OrderStatus.REFUNDED,
+                Fields.PAYMENT_STATUS: PaymentStatus.REFUNDED,
                 'transfersReversed': reversed_count,
                 'cumulativeRefundedCents': amount_refunded,
-                'updatedAt': get_server_timestamp()
+                Fields.UPDATED_AT: get_server_timestamp()
             })
             return f'Order {order_id} fully refunded, reversed {reversed_count} transfers'
         else:
             order_ref.update({
-                'orderStatus': OrderStatus.PARTIALLY_REFUNDED,
-                'paymentStatus': PaymentStatus.REFUNDED,
+                Fields.ORDER_STATUS: OrderStatus.PARTIALLY_REFUNDED,
+                Fields.PAYMENT_STATUS: PaymentStatus.REFUNDED,
                 'partialRefundAmountCents': amount_refunded,
                 'cumulativeRefundedCents': amount_refunded,
                 'transfersReversed': reversed_count,
-                'updatedAt': get_server_timestamp()
+                Fields.UPDATED_AT: get_server_timestamp()
             })
             return f'Order {order_id} partially refunded ({amount_refunded} cents), reversed {reversed_count} transfers'
 
@@ -1412,7 +1475,7 @@ def process_dispute_created(dispute: dict) -> str | None:
     # CRITICAL FIX: Use payment_intent from dispute (not charge_id!)
     # charge_id is 'ch_xxx' but orders store 'pi_xxx' as stripePaymentIntentId
     payment_intent_id = dispute.get('payment_intent')
-    dispute_amount = dispute.get('amount', 0)
+    dispute_amount = dispute.get(Fields.AMOUNT, 0)
 
     # Log security alert
     alert_ref = get_db().collection(Collections.SECURITY_ALERTS).add({
@@ -1421,7 +1484,7 @@ def process_dispute_created(dispute: dict) -> str | None:
         Fields.CHARGE_ID: charge_id,
         'paymentIntentId': payment_intent_id,
         Fields.AMOUNT: dispute_amount,
-        Fields.REASON: dispute.get('reason'),
+        Fields.REASON: dispute.get(Fields.REASON),
         Fields.TIMESTAMP: get_server_timestamp(),
         Fields.RESOLVED: False
     })
@@ -1451,7 +1514,7 @@ def process_dispute_created(dispute: dict) -> str | None:
 
         for payout_doc in payouts:
             payout_data = payout_doc.to_dict()
-            transfer_id = payout_data.get('stripeTransferId')
+            transfer_id = payout_data.get(Fields.STRIPE_TRANSFER_ID)
 
             if not transfer_id:
                 # AUDIT FIX (D1-1): Alert on missing transfer ID instead of silent skip
@@ -1459,8 +1522,8 @@ def process_dispute_created(dispute: dict) -> str | None:
                 alert_ref[1].reference.update({
                     'reversalErrors': get_firestore().ArrayUnion([{
                         'payoutId': payout_doc.id,
-                        'error': 'Missing stripeTransferId — manual reversal required',
-                        'timestamp': get_server_timestamp()
+                        Fields.ERROR: 'Missing stripeTransferId — manual reversal required',
+                        Fields.TIMESTAMP: get_server_timestamp()
                     }])
                 })
                 continue
@@ -1470,9 +1533,9 @@ def process_dispute_created(dispute: dict) -> str | None:
                 # amount instead of full transfer to avoid penalizing uninvolved sellers.
                 reversal_kwargs = {
                     'metadata': {
-                        'reason': 'dispute',
-                        'disputeId': dispute.get('id'),
-                        'orderId': order_id
+                        Fields.REASON: 'dispute',
+                        Fields.DISPUTE_ID: dispute.get('id'),
+                        Fields.ORDER_ID: order_id
                     }
                 }
                 payout_net = payout_data.get(Fields.NET_AMOUNT_CENTS, 0)
@@ -1488,11 +1551,11 @@ def process_dispute_created(dispute: dict) -> str | None:
                     proportional_reversal = round(payout_net * dispute_amount / order_total)
                     proportional_reversal = min(proportional_reversal, max_reversible)
                     if proportional_reversal > 0:
-                        reversal_kwargs['amount'] = proportional_reversal
+                        reversal_kwargs[Fields.AMOUNT] = proportional_reversal
                 else:
                     # Full reversal — cap at max reversible
                     if max_reversible < payout_net:
-                        reversal_kwargs['amount'] = max_reversible
+                        reversal_kwargs[Fields.AMOUNT] = max_reversible
 
                 reversal = stripe.Transfer.create_reversal(
                     transfer_id,
@@ -1500,13 +1563,13 @@ def process_dispute_created(dispute: dict) -> str | None:
                 )
 
                 # Mark payout as reversed with cumulative tracking
-                reversal_amount = reversal_kwargs.get('amount', payout_net)
+                reversal_amount = reversal_kwargs.get(Fields.AMOUNT, payout_net)
                 new_cumulative = already_reversed_cents + reversal_amount
                 new_status = 'reversed' if new_cumulative >= payout_net else 'partially_reversed'
                 payout_doc.reference.update({
-                    'status': new_status,
-                    'reversalId': reversal.id,
-                    'reversedAt': get_server_timestamp(),
+                    Fields.STATUS: new_status,
+                    Fields.REVERSAL_ID: reversal.id,
+                    Fields.REVERSED_AT: get_server_timestamp(),
                     'reversalReason': 'dispute',
                     'cumulativeReversedCents': new_cumulative,
                 })
@@ -1521,10 +1584,10 @@ def process_dispute_created(dispute: dict) -> str | None:
                 alert_ref[1].reference.update({
                     'reversalErrors': get_firestore().ArrayUnion([{
                         'transferId': transfer_id,
-                        'error': str(e),
+                        Fields.ERROR: str(e),
                         'errorCode': error_code,
-                        'severity': 'critical' if 'insufficient' in str(e).lower() else 'high',
-                        'timestamp': get_server_timestamp()
+                        Fields.SEVERITY: 'critical' if 'insufficient' in str(e).lower() else 'high',
+                        Fields.TIMESTAMP: get_server_timestamp()
                     }])
                 })
 
@@ -1535,9 +1598,9 @@ def process_dispute_created(dispute: dict) -> str | None:
                     if seller_id_from_payout:
                         with contextlib.suppress(Exception):
                             get_db().collection(Collections.USERS).document(seller_id_from_payout).update({
-                                'suspended': True,
+                                Fields.SUSPENDED: True,
                                 'suspendedReason': f'Dispute reversal failed (insufficient funds) for dispute {dispute.get("id")}. Manual review required.',
-                                'suspendedAt': get_server_timestamp(),
+                                Fields.SUSPENDED_AT: get_server_timestamp(),
                             })
                             print(f'🚫 Auto-suspended seller {seller_id_from_payout} due to insufficient funds during dispute reversal')
 
@@ -1547,15 +1610,15 @@ def process_dispute_created(dispute: dict) -> str | None:
                 alert_ref[1].reference.update({
                     'reversalErrors': get_firestore().ArrayUnion([{
                         'transferId': transfer_id,
-                        'error': str(e),
-                        'timestamp': get_server_timestamp()
+                        Fields.ERROR: str(e),
+                        Fields.TIMESTAMP: get_server_timestamp()
                     }])
                 })
 
         # AUDIT FIX (D1-3): Update order status to reflect dispute
         order_doc.reference.update({
             Fields.ORDER_STATUS: 'disputed',
-            'disputeId': dispute.get('id'),
+            Fields.DISPUTE_ID: dispute.get('id'),
             'disputedAt': get_server_timestamp(),
             Fields.UPDATED_AT: get_server_timestamp(),
         })
@@ -1566,7 +1629,7 @@ def process_dispute_created(dispute: dict) -> str | None:
 def process_dispute_closed(dispute: dict) -> str | None:
     """Handles dispute resolution"""
     charge_id = dispute.get('charge')
-    status = dispute.get('status')
+    status = dispute.get(Fields.STATUS)
 
     # Update security alert
     alerts = get_db().collection(Collections.SECURITY_ALERTS)\
@@ -1597,8 +1660,8 @@ def process_transfer_reversed(transfer: dict) -> str | None:
 
     for payout_doc in payouts:
         payout_doc.reference.update({
-            'status': 'reversed',
-            'updatedAt': get_server_timestamp()
+            Fields.STATUS: 'reversed',
+            Fields.UPDATED_AT: get_server_timestamp()
         })
 
         return f'Payout {payout_doc.id} reversed'
@@ -1608,13 +1671,13 @@ def process_transfer_reversed(transfer: dict) -> str | None:
 
 def process_payout_failed(payout: dict) -> None:
     """Handles failed payouts"""
-    destination = payout.get('destination')
+    destination = payout.get(Fields.DESTINATION)
 
     get_db().collection(Collections.SECURITY_ALERTS).add({
         Fields.TYPE: 'payout_failed',
         Fields.SEVERITY: 'high',
         Fields.DESTINATION: destination,
-        Fields.AMOUNT: payout.get('amount'),
+        Fields.AMOUNT: payout.get(Fields.AMOUNT),
         Fields.FAILURE_MESSAGE: payout.get('failure_message'),
         Fields.TIMESTAMP: get_server_timestamp(),
         Fields.RESOLVED: False
@@ -1629,7 +1692,7 @@ def process_refund_failed(refund: dict) -> None:
         Fields.TYPE: 'refund_failed',
         Fields.SEVERITY: 'critical',
         Fields.CHARGE_ID: charge_id,
-        Fields.AMOUNT: refund.get('amount'),
+        Fields.AMOUNT: refund.get(Fields.AMOUNT),
         Fields.FAILURE_REASON: refund.get('failure_reason'),
         Fields.TIMESTAMP: get_server_timestamp(),
         Fields.RESOLVED: False
@@ -1679,11 +1742,11 @@ def process_account_updated(account: dict) -> None:
 
     # Update user document with current account status
     update_data = {
-        'chargesEnabled': account.get('charges_enabled', False),
-        'payoutsEnabled': account.get('payouts_enabled', False),
-        'onboardingCompleted': account.get('details_submitted', False),
-        'pendingRequirements': pending_requirements,
-        'updatedAt': get_server_timestamp(),
+        Fields.CHARGES_ENABLED: account.get('charges_enabled', False),
+        Fields.PAYOUTS_ENABLED: account.get('payouts_enabled', False),
+        Fields.ONBOARDING_COMPLETED: account.get('details_submitted', False),
+        Fields.PENDING_REQUIREMENTS: pending_requirements,
+        Fields.UPDATED_AT: get_server_timestamp(),
     }
 
     # If onboarding is completed, ensure seller role is set
@@ -1706,6 +1769,17 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_id = req.auth.uid
     data = req.data or {}
 
+    # AUDIT FIX: Rate limit account creation
+    allowed, message = get_rate_limiter().check_rate_limit(
+        identifier=user_id,
+        action='create_connect_account',
+        max_requests=3,
+        window_minutes=60,
+        fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', message)
+
     # Import validation functions
     from utils import sanitize_email
 
@@ -1719,7 +1793,7 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_data = user_doc.to_dict()
 
     # Check if user already has a Stripe account
-    existing_account_id = user_data.get('stripeAccountId')
+    existing_account_id = user_data.get(Fields.STRIPE_ACCOUNT_ID)
     if existing_account_id:
         # Return existing account instead of creating new one
         return {
@@ -1729,8 +1803,8 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
 
     # Get email from request or user profile
-    email_raw = data.get('email') or user_data.get('email')
-    country = data.get('country', 'CA')
+    email_raw = data.get(Fields.EMAIL) or user_data.get(Fields.EMAIL)
+    country = data.get(Fields.COUNTRY, 'CA')
 
     if not email_raw:
         raise https_fn.HttpsError('invalid-argument', 'Email is required. Please update your profile with a valid email.')
@@ -1756,15 +1830,15 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
                 'transfers': {'requested': True}
             },
             business_type='individual',
-            metadata={'userId': user_id}
+            metadata={Fields.USER_ID: user_id}
         )
 
         # Save account ID to Firestore and add seller role
         from firebase_admin import firestore as admin_firestore
         user_ref.update({
-            'stripeAccountId': account.id,
+            Fields.STRIPE_ACCOUNT_ID: account.id,
             Fields.ROLES: admin_firestore.ArrayUnion([UserRoleValues.SELLER]),
-            'updatedAt': get_server_timestamp()
+            Fields.UPDATED_AT: get_server_timestamp()
         })
 
         return {'success': True, 'accountId': account.id}
@@ -1801,7 +1875,7 @@ def create_account_link(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('not-found', 'User not found')
 
     user_data = user_doc.to_dict()
-    account_id = user_data.get('stripeAccountId')
+    account_id = user_data.get(Fields.STRIPE_ACCOUNT_ID)
 
     if not account_id:
         raise https_fn.HttpsError(
@@ -1845,7 +1919,7 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('not-found', 'User not found')
 
     user_data = user_doc.to_dict()
-    account_id = user_data.get('stripeAccountId')
+    account_id = user_data.get(Fields.STRIPE_ACCOUNT_ID)
 
     if not account_id:
         raise https_fn.HttpsError(
@@ -1859,10 +1933,10 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Update Firestore with latest status
         from firebase_admin import firestore as admin_firestore
         update_data = {
-            'chargesEnabled': account.charges_enabled,
-            'payoutsEnabled': account.payouts_enabled,
-            'onboardingCompleted': account.details_submitted,
-            'updatedAt': get_server_timestamp()
+            Fields.CHARGES_ENABLED: account.charges_enabled,
+            Fields.PAYOUTS_ENABLED: account.payouts_enabled,
+            Fields.ONBOARDING_COMPLETED: account.details_submitted,
+            Fields.UPDATED_AT: get_server_timestamp()
         }
 
         # If onboarding is complete, ensure seller role is added
@@ -1874,8 +1948,8 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Return dict directly for on_call functions
         return {
             'success': True,
-            'chargesEnabled': account.charges_enabled,
-            'payoutsEnabled': account.payouts_enabled,
+            Fields.CHARGES_ENABLED: account.charges_enabled,
+            Fields.PAYOUTS_ENABLED: account.payouts_enabled,
             'detailsSubmitted': account.details_submitted,
             'requirementsCurrentlyDue': account.requirements.currently_due
         }
@@ -1923,7 +1997,7 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # CRITICAL SECURITY CHECK: Only order owner or admin can capture
     order_user_id = order_data.get(Fields.USER_ID)
-    # FIX: Custom claims are set as {'admin': True/False}, not {'roles': [...]}
+    # FIX: Custom claims are set as {'admin': True/False}, not {Fields.ROLES: [...]}
     is_admin = req.auth.token.get(UserRoleValues.ADMIN, False)
 
     if caller_uid != order_user_id and not is_admin:
@@ -1979,13 +2053,13 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
             'Cannot capture payment: active dispute on this order. Contact support.'
         )
 
-    payment_intent_id = order_data.get('stripePaymentIntentId')
+    payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
 
     if not payment_intent_id:
         raise https_fn.HttpsError('failed-precondition', 'No payment intent found')
 
     # Track capture attempts to prevent infinite retries
-    capture_attempts = order_data.get('captureAttempts', 0)
+    capture_attempts = order_data.get(Fields.CAPTURE_ATTEMPTS, 0)
     if capture_attempts >= 3:
         raise https_fn.HttpsError(
             'failed-precondition',
@@ -2042,7 +2116,7 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
             'captured': True,
             'newStatus': OrderStatusValues.DELIVERED if all_items_delivered else order_status,
             'emulatorMode': True,
-            'payoutErrors': False,
+            Fields.PAYOUT_ERRORS: False,
         }
 
     try:
@@ -2056,7 +2130,7 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
 
         # Validate capture amount matches order total (both in cents)
-        expected_amount_cents = order_data.get('totalAmountCents', 0)
+        expected_amount_cents = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0)
 
         if payment_intent.amount != expected_amount_cents:
             raise https_fn.HttpsError(
@@ -2076,8 +2150,8 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
             if item_status == DeliveryStatusValues.DELIVERED:
                 seller_id = item[Fields.SELLER_ID]
                 # Price is in dollars, convert to cents
-                item_price_cents = round(item['price'] * 100)
-                item_total_cents = item_price_cents * item['quantity']
+                item_price_cents = round(item[Fields.PRICE] * 100)
+                item_total_cents = item_price_cents * item[Fields.QUANTITY]
                 sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
 
         # Capture the payment (with idempotency key to prevent duplicate captures)
@@ -2111,22 +2185,22 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
             if seller_doc.exists:
                 seller_data = seller_doc.to_dict()
                 # Prefer snapshot (immutable at checkout), fall back to live
-                stripe_account_id = snapshot_account_id or seller_data.get('stripeAccountId')
+                stripe_account_id = snapshot_account_id or seller_data.get(Fields.STRIPE_ACCOUNT_ID)
 
                 # SECURITY: Warn if account changed since checkout (potential fraud)
-                live_account_id = seller_data.get('stripeAccountId')
+                live_account_id = seller_data.get(Fields.STRIPE_ACCOUNT_ID)
                 if snapshot_account_id and live_account_id and snapshot_account_id != live_account_id:
                     print(f'🚨 SECURITY: Seller {seller_id} Stripe account changed since checkout! '
                           f'Using snapshot: {snapshot_account_id[:12]}..., live: {live_account_id[:12]}...')
                     get_db().collection(Collections.SECURITY_ALERTS).add({
-                        'type': 'seller_account_changed',
-                        'severity': 'high',
+                        Fields.TYPE: 'seller_account_changed',
+                        Fields.SEVERITY: 'high',
                         Fields.ORDER_ID: order_id,
                         Fields.SELLER_ID: seller_id,
                         'snapshotAccountId': snapshot_account_id,
                         'liveAccountId': live_account_id,
-                        'timestamp': get_server_timestamp(),
-                        'resolved': False,
+                        Fields.TIMESTAMP: get_server_timestamp(),
+                        Fields.RESOLVED: False,
                     })
 
                 # CRITICAL SECURITY: Re-verify seller is not suspended at capture time
@@ -2224,19 +2298,19 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
                             print(f"🚨 CRITICAL: Payout record stuck in PENDING for order {order_id}, seller {seller_id}, transfer {transfer.id}")
                             with contextlib.suppress(Exception):
                                 get_db().collection(Collections.SECURITY_ALERTS).add({
-                                    'type': 'payout_record_incomplete',
-                                    'severity': 'critical',
+                                    Fields.TYPE: 'payout_record_incomplete',
+                                    Fields.SEVERITY: 'critical',
                                     Fields.ORDER_ID: order_id,
                                     Fields.SELLER_ID: seller_id,
-                                    'stripeTransferId': transfer.id,
-                                    'amountCents': net_amount_cents,
+                                    Fields.STRIPE_TRANSFER_ID: transfer.id,
+                                    Fields.AMOUNT_CENTS: net_amount_cents,
                                     'note': 'PENDING payout record exists — update to COMPLETED manually',
-                                    'timestamp': get_server_timestamp(),
-                                    'resolved': False
+                                    Fields.TIMESTAMP: get_server_timestamp(),
+                                    Fields.RESOLVED: False
                                 })
                     except Exception as e:
                         print(f"Transfer error to seller {seller_id}: {str(e)}")
-                        transfer_errors.append({'sellerId': seller_id, 'error': str(e)})
+                        transfer_errors.append({Fields.SELLER_ID: seller_id, Fields.ERROR: str(e)})
 
         # Update order status AFTER transfers to ensure consistency
         update_data = {
@@ -2261,7 +2335,7 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
             'success': True,
             'captured': True,
             'newStatus': update_data[Fields.ORDER_STATUS],
-            'payoutErrors': len(transfer_errors) > 0
+            Fields.PAYOUT_ERRORS: len(transfer_errors) > 0
         }
 
 

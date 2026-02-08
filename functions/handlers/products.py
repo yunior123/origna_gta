@@ -377,7 +377,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     if new_average is not None:
         return create_success_response({
             'newRating': new_average,
-            'ratingCount': new_rating_count
+            Fields.RATING_COUNT: new_rating_count
         })
 
     raise https_fn.HttpsError('not-found', 'Product not found')
@@ -389,7 +389,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
     Firestore trigger: Indexes product to Algolia when created.
     Also validates product data consistency and fixes known issues.
     """
-    product_id = event.params['productId']
+    product_id = event.params[Fields.PRODUCT_ID]
     product_data = event.data.to_dict()
 
     if not product_data:
@@ -426,7 +426,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
 
     # CRITICAL: Canada-only seller validation
     seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
-    country = (seller_address.get('country') or '').lower()
+    country = (seller_address.get(Fields.COUNTRY) or '').lower()
     if country not in ('canada', 'ca'):
         print(f'SECURITY: Product {product_id} has non-Canadian seller ({country}) — deactivating')
         get_db().collection('products').document(product_id).update({
@@ -474,14 +474,14 @@ def on_product_created(event: firestore_fn.Event) -> None:
     # Bug #2: Local-only products should have a pickup delivery option
     is_local_only = product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False)
     delivery_options = product_data.get(Fields.DELIVERY_OPTIONS, [])
-    if is_local_only and not any(opt.get('type') == 'pickup' for opt in delivery_options if isinstance(opt, dict)):
-        pickup_option = {'type': 'pickup', 'description': 'Local Pickup', 'estimatedDays': 0, 'cost': 0.0}
+    if is_local_only and not any(opt.get(Fields.TYPE) == 'pickup' for opt in delivery_options if isinstance(opt, dict)):
+        pickup_option = {Fields.TYPE: 'pickup', Fields.DESCRIPTION: 'Local Pickup', 'estimatedDays': 0, 'cost': 0.0}
         patches[Fields.DELIVERY_OPTIONS] = [pickup_option] + delivery_options
         print(f'FIX: Product {product_id} is local-only but missing pickup option → patching')
 
     # Bug #4: Physical products with no delivery options (and not local-only) → add standard
     if not is_digital and not is_local_only and not delivery_options:
-        standard_option = {'type': 'standard', 'description': 'Standard Delivery', 'estimatedDays': 5, 'cost': 0.0}
+        standard_option = {Fields.TYPE: 'standard', Fields.DESCRIPTION: 'Standard Delivery', 'estimatedDays': 5, 'cost': 0.0}
         patches[Fields.DELIVERY_OPTIONS] = [standard_option]
         print(f'FIX: Product {product_id} has no delivery options → adding standard')
 
@@ -500,7 +500,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
     if is_perishable:
         delivery_options = product_data.get(Fields.DELIVERY_OPTIONS, [])
         has_local_or_same_day = any(
-            opt.get('type') in ['local_delivery', 'same_day', 'local', 'pickup'] or
+            opt.get(Fields.TYPE) in ['local_delivery', 'same_day', 'local', 'pickup'] or
             opt.get('estimatedDays', 99) <= 1
             for opt in delivery_options
         ) if delivery_options else product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False)
@@ -527,7 +527,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Updates product in Algolia when modified.
     """
-    product_id = event.params['productId']
+    product_id = event.params[Fields.PRODUCT_ID]
     product_data = event.data.after.to_dict()
 
     if not product_data:
@@ -556,7 +556,7 @@ def on_product_deleted(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Removes product from Algolia when deleted.
     """
-    product_id = event.params['productId']
+    product_id = event.params[Fields.PRODUCT_ID]
 
     try:
         algolia_delete_product(product_id)
@@ -899,7 +899,7 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
         next_cursor = docs[-1].id if has_more and docs else None
 
         return create_success_response({
-            'ratings': ratings,
+            Fields.RATINGS: ratings,
             'nextCursor': next_cursor,
             'hasMore': has_more,
             'totalFetched': len(ratings)

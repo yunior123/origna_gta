@@ -66,9 +66,9 @@ class AirwallexService:
         """Create Airwallex customer for seller"""
         payload = {
             "customer_name": seller_data.get('business_name', seller_data['full_name']),
-            "email": seller_data['email'],
+            Fields.EMAIL: seller_data[Fields.EMAIL],
             "customer_type": "corporate" if seller_data.get('is_corporate') else "individual",
-            "country": seller_data.get('country', 'CA'),
+            Fields.COUNTRY: seller_data.get(Fields.COUNTRY, 'CA'),
             "metadata": {"seller_id": seller_id}
         }
 
@@ -88,8 +88,8 @@ class AirwallexService:
         payload = {
             "customer_id": customer['id'],
             "account_type": "payout",
-            "country": seller_data.get('country', 'CA'),
-            "currency": "CAD",
+            Fields.COUNTRY: seller_data.get(Fields.COUNTRY, 'CA'),
+            Fields.CURRENCY: "CAD",
             "bank_details": seller_data.get('bank_details', {})
         }
 
@@ -125,8 +125,8 @@ class AirwallexService:
         payload = {
             # Idempotency-style request id
             "request_id": f"order_{order_id}_{uuid.uuid4().hex[:10]}",
-            "amount": int(amount_cents),
-            "currency": str(currency).upper(),
+            Fields.AMOUNT: int(amount_cents),
+            Fields.CURRENCY: str(currency).upper(),
             "merchant_order_id": str(order_id),
             "return_url": str(return_url),
             "capture": bool(capture),
@@ -154,8 +154,8 @@ class AirwallexService:
                             capture: bool = False) -> dict[str, Any]:
         """Create payment intent (authorize or capture)"""
         payload = {
-            "amount": amount_cents,
-            "currency": currency,
+            Fields.AMOUNT: amount_cents,
+            Fields.CURRENCY: currency,
             "merchant_id": seller_id,
             "order_id": order_id,
             "capture": capture,  # False = authorize only
@@ -185,7 +185,7 @@ class AirwallexService:
         """Capture previously authorized payment"""
         payload = {}
         if amount_cents:
-            payload['amount'] = amount_cents
+            payload[Fields.AMOUNT] = amount_cents
 
         resp = requests.post(
             f"{self.base_url}/payments/{payment_id}/capture",
@@ -199,8 +199,8 @@ class AirwallexService:
     def refund_payment(self, payment_id: str, amount_cents: int, reason: str = "") -> dict[str, Any]:
         """Refund payment (partial or full)"""
         payload = {
-            "amount": amount_cents,
-            "reason": reason
+            Fields.AMOUNT: amount_cents,
+            Fields.REASON: reason
         }
 
         resp = requests.post(
@@ -231,8 +231,8 @@ class AirwallexService:
         """Schedule payout to seller bank account"""
         payload = {
             "connected_account_id": connected_account_id,
-            "amount": amount_cents,
-            "currency": "CAD",
+            Fields.AMOUNT: amount_cents,
+            Fields.CURRENCY: "CAD",
             "reference": reference or f"Payout to {seller_id}",
             "metadata": {"seller_id": seller_id}
         }
@@ -327,7 +327,7 @@ class AirwallexService:
 
         handler = handlers.get(event_type)
         if not handler:
-            return {'status': 'ignored', 'event_type': event_type}
+            return {Fields.STATUS: 'ignored', 'event_type': event_type}
 
         return handler(event_data)
 
@@ -347,13 +347,13 @@ class AirwallexService:
                 'paymentCompletedAt': firestore.SERVER_TIMESTAMP
             })
 
-        return {'status': 'processed', 'order_id': order_id}
+        return {Fields.STATUS: 'processed', 'order_id': order_id}
 
     def _handle_payment_failure(self, data: dict[str, Any]) -> dict[str, Any]:
         """Handle failed payment"""
         payment_id = data['id']
         order_id = data.get('metadata', {}).get('order_id')
-        error_message = data.get('error', {}).get('message', 'Payment failed')
+        error_message = data.get(Fields.ERROR, {}).get('message', 'Payment failed')
 
         from google.cloud import firestore
         db = firestore.Client()
@@ -365,7 +365,7 @@ class AirwallexService:
                 'airwallexPaymentId': payment_id
             })
 
-        return {'status': 'processed', 'order_id': order_id, 'error': error_message}
+        return {Fields.STATUS: 'processed', 'order_id': order_id, Fields.ERROR: error_message}
 
     def _handle_payment_canceled(self, data: dict[str, Any]) -> dict[str, Any]:
         """Handle canceled payment"""
@@ -381,7 +381,7 @@ class AirwallexService:
                 'airwallexPaymentId': payment_id
             })
 
-        return {'status': 'processed', 'order_id': order_id}
+        return {Fields.STATUS: 'processed', 'order_id': order_id}
 
     def _handle_payout_success(self, data: dict[str, Any]) -> dict[str, Any]:
         """Handle successful payout"""
@@ -395,18 +395,18 @@ class AirwallexService:
         db.collection(Collections.PAYOUTS).document(payout_id).set({
             Fields.SELLER_ID: seller_id,
             Fields.STATUS: 'succeeded',
-            Fields.AMOUNT: data['amount'],
+            Fields.AMOUNT: data[Fields.AMOUNT],
             Fields.COMPLETED_AT: firestore.SERVER_TIMESTAMP,
             Fields.PROVIDER: 'airwallex'
         })
 
-        return {'status': 'processed', 'payout_id': payout_id}
+        return {Fields.STATUS: 'processed', 'payout_id': payout_id}
 
     def _handle_payout_failure(self, data: dict[str, Any]) -> dict[str, Any]:
         """Handle failed payout"""
         payout_id = data['id']
         seller_id = data.get('metadata', {}).get('seller_id')
-        error_message = data.get('error', {}).get('message', 'Payout failed')
+        error_message = data.get(Fields.ERROR, {}).get('message', 'Payout failed')
 
         from google.cloud import firestore
         db = firestore.Client()
@@ -420,7 +420,7 @@ class AirwallexService:
             Fields.PROVIDER: 'airwallex'
         })
 
-        return {'status': 'processed', 'payout_id': payout_id, 'error': error_message}
+        return {Fields.STATUS: 'processed', 'payout_id': payout_id, Fields.ERROR: error_message}
 
     def _handle_refund_success(self, data: dict[str, Any]) -> dict[str, Any]:
         """Handle successful refund"""
@@ -434,17 +434,17 @@ class AirwallexService:
         db.collection(Collections.REFUNDS).document(refund_id).set({
             Fields.PAYMENT_ID: payment_id,
             Fields.STATUS: 'succeeded',
-            Fields.AMOUNT: data['amount'],
+            Fields.AMOUNT: data[Fields.AMOUNT],
             Fields.COMPLETED_AT: firestore.SERVER_TIMESTAMP,
             Fields.PROVIDER: 'airwallex'
         })
 
-        return {'status': 'processed', 'refund_id': refund_id}
+        return {Fields.STATUS: 'processed', 'refund_id': refund_id}
 
     def _handle_refund_failure(self, data: dict[str, Any]) -> dict[str, Any]:
         """Handle failed refund"""
         refund_id = data['id']
-        error_message = data.get('error', {}).get('message', 'Refund failed')
+        error_message = data.get(Fields.ERROR, {}).get('message', 'Refund failed')
 
         from google.cloud import firestore
         db = firestore.Client()
@@ -456,7 +456,7 @@ class AirwallexService:
             Fields.PROVIDER: 'airwallex'
         })
 
-        return {'status': 'processed', 'refund_id': refund_id, 'error': error_message}
+        return {Fields.STATUS: 'processed', 'refund_id': refund_id, Fields.ERROR: error_message}
 
     def _handle_requires_action(self, data: dict[str, Any]) -> dict[str, Any]:
         """P2 FIX #6: Handle payment requiring 3DS authentication"""
@@ -467,9 +467,9 @@ class AirwallexService:
         # CRITICAL FIX: Validate next_action exists to prevent crash on malformed events
         if not next_action or not isinstance(next_action, dict):
             print(f"⚠️  Payment {payment_id} requires action but next_action missing")
-            return {'status': 'error', 'message': 'Missing next_action in event data'}
+            return {Fields.STATUS: 'error', 'message': 'Missing next_action in event data'}
 
-        action_type = next_action.get('type')  # Usually 'redirect_to_url' for 3DS
+        action_type = next_action.get(Fields.TYPE)  # Usually 'redirect_to_url' for 3DS
         action_url = next_action.get('url')
 
         from google.cloud import firestore
@@ -503,7 +503,7 @@ class AirwallexService:
             except Exception as email_error:
                 print(f"  ⚠️  Failed to send 3DS email: {str(email_error)}")
 
-        return {'status': 'processed', 'order_id': order_id, 'action_required': action_type, 'url': action_url}
+        return {Fields.STATUS: 'processed', 'order_id': order_id, 'action_required': action_type, 'url': action_url}
 
     def _handle_verification_failed(self, data: dict[str, Any]) -> dict[str, Any]:
         """P2 FIX #6: Handle connected account verification failure (KYC rejection)"""
@@ -538,7 +538,7 @@ class AirwallexService:
 
             print(f"  🔒 Seller {seller_id} payouts disabled due to failed verification")
 
-        return {'status': 'processed', 'seller_id': seller_id, 'error': failure_reason}
+        return {Fields.STATUS: 'processed', 'seller_id': seller_id, Fields.ERROR: failure_reason}
 
 
 # Singleton instance

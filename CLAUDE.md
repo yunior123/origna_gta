@@ -21,6 +21,7 @@
 7. **Cross-stack impact check** after every edit — Python ↔ Dart ↔ Schema
 8. **Use `/pause-work` before ending** a long task — saves state for resume
 9. **Delegate investigation** to subagents — preserve main context for action
+10. **Use constants instead of magic strings all over, strong json schema contract.
 
 ---
 
@@ -154,3 +155,7 @@ Sentinel `copyWith`, image sync callback, free shipping cascade, digital product
 - Ensure schema constants are widely used
 - Update json schema constants when database schema changes
 - ChromeDriver compatibility for Flutter web integration tests
+- check complience with https://fintrac-canafe.canada.ca/introduction/cpf/cpf-eng
+- Potential Minor Issues:
+Airwallex webhook secret is optional – if used, must enforce signature verification strictly (currently mirrors Stripe pattern but ensure it's not skipped when Airwallex enabled).
+Geoapify API key sent client-side? No – only backend. Safe.

@@ -1472,7 +1472,7 @@ class TestOrderCreationFields:
         from handlers.payment_stripe import create_checkout_session
 
         source = inspect.getsource(create_checkout_session)
-        assert "'stockRestored'" in source or '"stockRestored"' in source, \
+        assert "'stockRestored'" in source or '"stockRestored"' in source or "Fields.STOCK_RESTORED" in source, \
             "Order creation should include 'stockRestored' field"
 
 

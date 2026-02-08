@@ -199,9 +199,13 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       if (!isEmailVerified) {
         return CheckoutError(message: 'Please verify your email before checkout', code: 'email-not-verified');
       }
-    } catch (_) {
-      debugPrint('⚠️  Error checking email verification');
-      // Don't block checkout if we can't verify, but log it
+    } catch (e) {
+      debugPrint('⚠️  Error checking email verification: $e');
+      // SECURITY: Block checkout if we can't verify email status
+      return CheckoutError(
+        message: 'Unable to verify email status. Please try again.', 
+        code: 'verification-check-failed',
+      );
     }
 
     if (state.isProcessing) {

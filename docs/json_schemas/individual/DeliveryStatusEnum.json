@@ -3,7 +3,8 @@
   "enum": [
     "pending",
     "shipped",
-    "delivered"
+    "delivered",
+    "refunded"
   ],
   "description": "Delivery status values"
 }

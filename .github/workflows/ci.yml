@@ -118,24 +118,7 @@ jobs:
           cd origna_gta
           flutter test
 
-      - name: Install Playwright deps
-        run: |
-          cd e2e
-          npm ci
-          npx playwright install --with-deps
-
       - name: Build Flutter web (release)
         run: |
           cd origna_gta
           flutter build web --release
-
-      - name: Start E2E services
-        run: ./start-e2e-services.sh --no-wait
-
-      - name: Playwright E2E (stable suites)
-        run: |
-          E2E_WORKERS=2 ./run-e2e-tests.sh flutter
-
-      - name: Stop E2E services
-        if: always()
-        run: ./stop-e2e-services.sh

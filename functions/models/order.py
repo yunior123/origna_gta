@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .base import Address, DeliveryStatusEnum, OrderStatusEnum, PaymentStatusEnum, ShippingApprovalStatusEnum
 from .product import SellerDeliveryOption
+from schema_constants import Fields
 
 
 class OrderItem(BaseModel):
@@ -16,21 +17,21 @@ class OrderItem(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "productId": "prod_123",
-                "name": "Organic Apples",
-                "description": "Fresh organic apples",
-                "price": 4.99,
-                "quantity": 2,
-                "imageUrls": ["https://example.com/image.jpg"],
-                "sellerId": "seller_123",
-                "sellerAddress": {
-                    "street": "123 Farm Road",
-                    "city": "Toronto",
-                    "state": "ON",
-                    "postalCode": "M5V 3A8",
-                    "country": "Canada"
+                Fields.PRODUCT_ID: "prod_123",
+                Fields.NAME: "Organic Apples",
+                Fields.DESCRIPTION: "Fresh organic apples",
+                Fields.PRICE: 4.99,
+                Fields.QUANTITY: 2,
+                Fields.IMAGE_URLS: ["https://example.com/image.jpg"],
+                Fields.SELLER_ID: "seller_123",
+                Fields.SELLER_ADDRESS: {
+                    Fields.STREET: "123 Farm Road",
+                    Fields.CITY: "Toronto",
+                    Fields.STATE: "ON",
+                    Fields.POSTAL_CODE: "M5V 3A8",
+                    Fields.COUNTRY: "Canada"
                 },
-                "deliveryStatus": "pending"
+                Fields.DELIVERY_STATUS: "pending"
             }
         }
     )
@@ -90,12 +91,12 @@ class SellerPayout(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "sellerId": "seller_123",
-                "stripeAccountId": "acct_123",
-                "amountCents": 4750,
-                "platformFeeCents": 119,
-                "netAmountCents": 4631,
-                "status": "pending"
+                Fields.SELLER_ID: "seller_123",
+                Fields.STRIPE_ACCOUNT_ID: "acct_123",
+                Fields.AMOUNT_CENTS: 4750,
+                Fields.PLATFORM_FEE_CENTS: 119,
+                Fields.NET_AMOUNT_CENTS: 4631,
+                Fields.STATUS: "pending"
             }
         }
     )
@@ -124,20 +125,20 @@ class Order(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "orderId": "order_123abc",
-                "userId": "user_123",
-                "customerId": "cus_stripe123",
+                Fields.ORDER_ID: "order_123abc",
+                Fields.USER_ID: "user_123",
+                Fields.CUSTOMER_ID: "cus_stripe123",
                 "customerEmail": "buyer@example.com",
-                "items": [],
-                "subtotalCents": 4999,
-                "shippingCostCents": 500,
-                "taxAmountCents": 650,
-                "totalAmountCents": 6149,
-                "taxes": {"GST": 2.50, "PST": 3.50},
-                "orderStatus": "pending",
-                "paymentStatus": "awaiting_payment",
-                "shippingAddress": {},
-                "createdAt": "2026-02-01T10:00:00Z"
+                Fields.ITEMS: [],
+                Fields.SUBTOTAL_CENTS: 4999,
+                Fields.SHIPPING_COST_CENTS: 500,
+                Fields.TAX_AMOUNT_CENTS: 650,
+                Fields.TOTAL_AMOUNT_CENTS: 6149,
+                Fields.TAXES: {"GST": 2.50, "PST": 3.50},
+                Fields.ORDER_STATUS: "pending",
+                Fields.PAYMENT_STATUS: "awaiting_payment",
+                Fields.SHIPPING_ADDRESS: {},
+                Fields.CREATED_AT: "2026-02-01T10:00:00Z"
             }
         }
     )

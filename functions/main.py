@@ -30,7 +30,7 @@ def get_secret(secret_id: str) -> str:
     client = secretmanager.SecretManagerServiceClient()
     project_id = os.environ.get('GCP_PROJECT', 'origna-gta')
     name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-    response = client.access_secret_version(request={"name": name})
+    response = client.access_secret_version(request={Fields.NAME: name})
     return response.payload.data.decode('UTF-8')
 
 # Lazy initialization of Stripe API key
@@ -140,6 +140,7 @@ from handlers.payment_stripe import (  # noqa: E402
 # ===============================================
 # PRODUCT HANDLERS
 # ===============================================
+from schema_constants import Fields  # noqa: E402
 from handlers.products import (  # noqa: E402
     delete_product,
     on_product_created,

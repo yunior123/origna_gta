@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'base_models.dart';
+import '../../core/schema/schema_constants.dart';
 
 part 'user_models.freezed.dart';
 part 'user_models.g.dart';
@@ -70,41 +71,41 @@ class User with _$User {
     final data = doc.data() as Map<String, dynamic>;
 
     // Parse roles
-    final rolesData = data['roles'] as List<dynamic>? ?? ['buyer'];
+    final rolesData = data[Fields.roles] as List<dynamic>? ?? ['buyer'];
     final roles = rolesData.map((r) => UserRole.values.firstWhere((e) => e.name == r.toString(), orElse: () => UserRole.buyer)).toList();
 
     return User(
-      uid: data['uid'] ?? doc.id,
-      email: data['email'] ?? '',
-      name: data['name'] ?? '',
+      uid: data[Fields.uid] ?? doc.id,
+      email: data[Fields.email] ?? '',
+      name: data[Fields.name] ?? '',
       roles: roles,
-      address: data['address'] != null ? Address.fromJson(data['address'] as Map<String, dynamic>) : null,
-      createdAt: _parseDateTime(data['createdAt']) ?? DateTime.now(),
-      customerId: data['customerId'],
-      lastCheckoutSession: data['lastCheckoutSession'],
-      lastOrderId: data['lastOrderId'],
-      lastCheckoutTimestamp: _parseDateTime(data['lastCheckoutTimestamp']),
-      stripeAccountId: data['stripeAccountId'],
-      payoutsEnabled: data['payoutsEnabled'] ?? false,
-      chargesEnabled: data['chargesEnabled'] ?? false,
-      onboardingCompleted: data['onboardingCompleted'] ?? false,
-      suspended: data['suspended'] ?? false,
-      suspendedAt: _parseDateTime(data['suspendedAt']),
-      updatedAt: _parseDateTime(data['updatedAt']),
+      address: data[Fields.address] != null ? Address.fromJson(data[Fields.address] as Map<String, dynamic>) : null,
+      createdAt: _parseDateTime(data[Fields.createdAt]) ?? DateTime.now(),
+      customerId: data[Fields.customerId],
+      lastCheckoutSession: data[Fields.lastCheckoutSession],
+      lastOrderId: data[Fields.lastOrderId],
+      lastCheckoutTimestamp: _parseDateTime(data[Fields.lastCheckoutTimestamp]),
+      stripeAccountId: data[Fields.stripeAccountId],
+      payoutsEnabled: data[Fields.payoutsEnabled] ?? false,
+      chargesEnabled: data[Fields.chargesEnabled] ?? false,
+      onboardingCompleted: data[Fields.onboardingCompleted] ?? false,
+      suspended: data[Fields.suspended] ?? false,
+      suspendedAt: _parseDateTime(data[Fields.suspendedAt]),
+      updatedAt: _parseDateTime(data[Fields.updatedAt]),
       // === AUDIT FIX: Parse 13 missing fields ===
-      paymentProvider: data['paymentProvider'] as String?,
-      airwallexAccountId: data['airwallexAccountId'] as String?,
-      airwallexCustomerId: data['airwallexCustomerId'] as String?,
-      airwallexStatus: data['airwallexStatus'] as String?,
-      unsuspendedAt: _parseDateTime(data['unsuspendedAt']),
-      suspendedBy: data['suspendedBy'] as String?,
-      suspensionReason: data['suspensionReason'] as String?,
-      commissionRate: data['commissionRate'] != null ? (data['commissionRate'] as num).toDouble() : null,
-      verified: data['verified'] ?? false,
-      verificationStatus: data['verificationStatus'] as String?,
-      platform: data['platform'] as String?,
-      businessName: data['businessName'] as String?,
-      payoutHoldDays: data['payoutHoldDays'] != null ? (data['payoutHoldDays'] as num).toInt() : null,
+      paymentProvider: data[Fields.paymentProvider] as String?,
+      airwallexAccountId: data[Fields.airwallexAccountId] as String?,
+      airwallexCustomerId: data[Fields.airwallexCustomerId] as String?,
+      airwallexStatus: data[Fields.airwallexStatus] as String?,
+      unsuspendedAt: _parseDateTime(data[Fields.unsuspendedAt]),
+      suspendedBy: data[Fields.suspendedBy] as String?,
+      suspensionReason: data[Fields.suspensionReason] as String?,
+      commissionRate: data[Fields.commissionRate] != null ? (data[Fields.commissionRate] as num).toDouble() : null,
+      verified: data[Fields.verified] ?? false,
+      verificationStatus: data[Fields.verificationStatus] as String?,
+      platform: data[Fields.platform] as String?,
+      businessName: data[Fields.businessName] as String?,
+      payoutHoldDays: data[Fields.payoutHoldDays] != null ? (data[Fields.payoutHoldDays] as num).toInt() : null,
     );
   }
 

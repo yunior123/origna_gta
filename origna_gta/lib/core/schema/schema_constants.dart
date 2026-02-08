@@ -264,6 +264,49 @@ abstract final class Fields {
   // === CART FIELDS (subcollection uses dateCreated for legacy reasons) ===
   // NOTE: Cart items use [dateCreated], not [createdAt]
   static const dateFavorited = 'dateFavorited';
+
+  // === LEGACY/DEPRECATED FIELDS (for backward compatibility) ===
+  /// Legacy: use [confirmedByBuyer] instead
+  static const buyerConfirmed = 'buyerConfirmed';
+
+  /// Legacy: use [isLocalDeliveryOnly] instead
+  static const localDeliveryOnly = 'localDeliveryOnly';
+
+  /// Legacy: use [isPerishable] instead
+  static const perishable = 'perishable';
+
+  /// Legacy: use [estimatedShipDays] instead
+  static const supplierShippingDays = 'supplierShippingDays';
+
+  /// Legacy: use [minimumOrderQuantity] instead
+  static const minOrderQuantity = 'minOrderQuantity';
+
+  // === LEGACY JSON KEYS (lowercase variants for JSON API compatibility) ===
+  /// Legacy lowercase: use [GST] instead
+  static const gst = 'gst';
+
+  /// Legacy lowercase: use [PST] instead
+  static const pst = 'pst';
+
+  /// Legacy lowercase: use [HST] instead
+  static const hst = 'hst';
+
+  /// Legacy lowercase: use [QST] instead
+  static const qst = 'qst';
+
+  // === REVIEW/RATING FIELDS ===
+  static const review = 'review';
+  static const comment = 'comment';
+
+  // === TAX FIELDS ===
+  // ignore: constant_identifier_names
+  static const GST = 'GST';
+  // ignore: constant_identifier_names
+  static const PST = 'PST';
+  // ignore: constant_identifier_names
+  static const HST = 'HST';
+  // ignore: constant_identifier_names
+  static const QST = 'QST';
 }
 
 // =============================================================================
@@ -396,6 +439,43 @@ abstract final class ProductStatusValues {
   static const all = {draft, active, paused, archived, outOfStock};
 }
 
+/// Valid values for supplier platform types
+abstract final class SupplierTypeValues {
+  static const aliexpress = 'aliexpress';
+  static const dhgate = 'dhgate';
+  static const alibaba = 'alibaba';
+  static const s1688 = '1688'; // Can't start with number, so use 's1688' as const name
+  static const temu = 'temu';
+  static const cjdropshipping = 'cjdropshipping';
+  static const local = 'local';
+  static const other = 'other';
+
+  static const all = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping, local, other};
+
+  /// International suppliers (non-local)
+  static const international = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping};
+}
+
+/// Valid values for shipping discount types
+abstract final class DiscountTypeValues {
+  static const percent = 'percent';
+  static const fixed = 'fixed';
+  static const flatRate = 'flat_rate';
+
+  static const all = {percent, fixed, flatRate};
+}
+
+/// Valid values for seller delivery option types
+abstract final class DeliveryTypeValues {
+  static const pickup = 'pickup';
+  static const standard = 'standard';
+  static const express = 'express';
+  static const sameDay = 'same_day';
+  static const custom = 'custom';
+
+  static const all = {pickup, standard, express, sameDay, custom};
+}
+
 // =============================================================================
 // SCHEMA REGISTRY - For runtime validation
 // =============================================================================
@@ -516,3 +596,4 @@ abstract final class ApiKeys {
   static const missingKeys = 'missingKeys';
   static const enabledProviders = 'enabledProviders';
 }
+

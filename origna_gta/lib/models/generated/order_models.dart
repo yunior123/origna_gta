@@ -7,6 +7,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'base_models.dart';
 import 'product_models.dart';
+import '../../core/schema/schema_constants.dart';
 
 part 'order_models.freezed.dart';
 part 'order_models.g.dart';
@@ -73,17 +74,17 @@ Map<String, dynamic> _safeMap(dynamic value) {
 Address _safeAddress(dynamic value) {
   final map = _safeMap(value);
   return Address(
-    street: _safeString(map['street']),
-    apartment: _safeString(map['apartment']),
-    city: _safeString(map['city']),
-    state: _safeString(map['state']),
-    postalCode: _safeString(map['postalCode']),
-    country: _safeString(map['country'], 'Canada'),
-    phoneNumber: map['phoneNumber'] != null ? _safeString(map['phoneNumber']) : null,
-    isDefault: _safeBool(map['isDefault']),
-    label: map['label'] != null ? _safeString(map['label']) : null,
-    latitude: map['latitude'] != null ? _safeDouble(map['latitude']) : null,
-    longitude: map['longitude'] != null ? _safeDouble(map['longitude']) : null,
+    street: _safeString(map[Fields.street]),
+    apartment: _safeString(map[Fields.apartment]),
+    city: _safeString(map[Fields.city]),
+    state: _safeString(map[Fields.state]),
+    postalCode: _safeString(map[Fields.postalCode]),
+    country: _safeString(map[Fields.country], BusinessRules.allowedCountries.first),
+    phoneNumber: map[Fields.phoneNumber] != null ? _safeString(map[Fields.phoneNumber]) : null,
+    isDefault: _safeBool(map[Fields.isDefault]),
+    label: map[Fields.label] != null ? _safeString(map[Fields.label]) : null,
+    latitude: map[Fields.latitude] != null ? _safeDouble(map[Fields.latitude]) : null,
+    longitude: map[Fields.longitude] != null ? _safeDouble(map[Fields.longitude]) : null,
   );
 }
 
@@ -91,52 +92,52 @@ Address _safeAddress(dynamic value) {
 OrderItem _parseOrderItem(dynamic raw) {
   final map = _safeMap(raw);
   return OrderItem(
-    productId: _safeString(map['productId']),
-    name: _safeString(map['name']),
-    description: _safeString(map['description']),
-    price: _safeDouble(map['price']),
-    quantity: _safeInt(map['quantity'], 1),
-    imageUrls: _safeStringList(map['imageUrls']),
-    sellerId: _safeString(map['sellerId']),
-    sellerAddress: _safeAddress(map['sellerAddress']),
+    productId: _safeString(map[Fields.productId]),
+    name: _safeString(map[Fields.name]),
+    description: _safeString(map[Fields.description]),
+    price: _safeDouble(map[Fields.price]),
+    quantity: _safeInt(map[Fields.quantity], 1),
+    imageUrls: _safeStringList(map[Fields.imageUrls]),
+    sellerId: _safeString(map[Fields.sellerId]),
+    sellerAddress: _safeAddress(map[Fields.sellerAddress]),
     status: _safeString(
-      (map['status'] == null || map['status'].toString().isEmpty)
-          ? map['deliveryStatus']
-          : map['status'],
-      'pending',
+      (map[Fields.status] == null || map[Fields.status].toString().isEmpty)
+          ? map[Fields.deliveryStatus]
+          : map[Fields.status],
+      DeliveryStatusValues.pending,
     ),
-    deliveryStatus: _parseDeliveryStatus(map['deliveryStatus']),
-    trackingNumber: map['trackingNumber'] != null ? _safeString(map['trackingNumber']) : null,
-    carrier: map['carrier'] != null ? _safeString(map['carrier']) : null,
-    shippedAt: _parseDateTime(map['shippedAt']),
-    deliveredAt: _parseDateTime(map['deliveredAt']),
-    refundedAt: _parseDateTime(map['refundedAt']),
-    refundReason: map['refundReason'] != null ? _safeString(map['refundReason']) : null,
-    refundAmountCents: map['refundAmountCents'] != null ? _safeInt(map['refundAmountCents']) : null,
-    refundId: map['refundId'] != null ? _safeString(map['refundId']) : null,
-    confirmedByBuyer: _safeBool(map['confirmedByBuyer'] ?? map['buyerConfirmed']),
-    weightKg: map['weightKg'] != null ? _safeDouble(map['weightKg']) : null,
-    lengthCm: map['lengthCm'] != null ? _safeDouble(map['lengthCm']) : null,
-    widthCm: map['widthCm'] != null ? _safeDouble(map['widthCm']) : null,
-    heightCm: map['heightCm'] != null ? _safeDouble(map['heightCm']) : null,
-    isLocalDeliveryOnly: _safeBool(map['isLocalDeliveryOnly'] ?? map['localDeliveryOnly']),
-    isPerishable: _safeBool(map['isPerishable'] ?? map['perishable']),
-    estimatedShipDays: _safeInt(map['estimatedShipDays'] ?? map['supplierShippingDays'], 3),
-    minimumOrderQuantity: _safeInt(map['minimumOrderQuantity'] ?? map['minOrderQuantity'], 1),
-    freeShipping: _safeBool(map['freeShipping']),
-    isDigital: _safeBool(map['isDigital']),
+    deliveryStatus: _parseDeliveryStatus(map[Fields.deliveryStatus]),
+    trackingNumber: map[Fields.trackingNumber] != null ? _safeString(map[Fields.trackingNumber]) : null,
+    carrier: map[Fields.carrier] != null ? _safeString(map[Fields.carrier]) : null,
+    shippedAt: _parseDateTime(map[Fields.shippedAt]),
+    deliveredAt: _parseDateTime(map[Fields.deliveredAt]),
+    refundedAt: _parseDateTime(map[Fields.refundedAt]),
+    refundReason: map[Fields.refundReason] != null ? _safeString(map[Fields.refundReason]) : null,
+    refundAmountCents: map[Fields.refundAmountCents] != null ? _safeInt(map[Fields.refundAmountCents]) : null,
+    refundId: map[Fields.refundId] != null ? _safeString(map[Fields.refundId]) : null,
+    confirmedByBuyer: _safeBool(map[Fields.confirmedByBuyer] ?? map[Fields.buyerConfirmed]),
+    weightKg: map[Fields.weightKg] != null ? _safeDouble(map[Fields.weightKg]) : null,
+    lengthCm: map[Fields.lengthCm] != null ? _safeDouble(map[Fields.lengthCm]) : null,
+    widthCm: map[Fields.widthCm] != null ? _safeDouble(map[Fields.widthCm]) : null,
+    heightCm: map[Fields.heightCm] != null ? _safeDouble(map[Fields.heightCm]) : null,
+    isLocalDeliveryOnly: _safeBool(map[Fields.isLocalDeliveryOnly] ?? map[Fields.localDeliveryOnly]),
+    isPerishable: _safeBool(map[Fields.isPerishable] ?? map[Fields.perishable]),
+    estimatedShipDays: _safeInt(map[Fields.estimatedShipDays] ?? map[Fields.supplierShippingDays], 3),
+    minimumOrderQuantity: _safeInt(map[Fields.minimumOrderQuantity] ?? map[Fields.minOrderQuantity], 1),
+    freeShipping: _safeBool(map[Fields.freeShipping]),
+    isDigital: _safeBool(map[Fields.isDigital]),
   );
 }
 
 /// Parse DeliveryStatus from dynamic
 DeliveryStatus _parseDeliveryStatus(dynamic raw) {
-  final value = _safeString(raw, 'pending');
+  final value = _safeString(raw, DeliveryStatusValues.pending);
   switch (value) {
-    case 'shipped':
+    case DeliveryStatusValues.shipped:
       return DeliveryStatus.shipped;
-    case 'delivered':
+    case DeliveryStatusValues.delivered:
       return DeliveryStatus.delivered;
-    case 'refunded':
+    case DeliveryStatusValues.refunded:
       return DeliveryStatus.refunded;
     default:
       return DeliveryStatus.pending;
@@ -147,10 +148,10 @@ DeliveryStatus _parseDeliveryStatus(dynamic raw) {
 Ratings _parseRating(dynamic raw) {
   final map = _safeMap(raw);
   return Ratings(
-    productId: _safeString(map['productId']),
-    rating: _safeDouble(map['rating']),
-    review: map['review'] != null ? _safeString(map['review']) : null,
-    createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
+    productId: _safeString(map[Fields.productId]),
+    rating: _safeDouble(map[Fields.rating]),
+    review: map[Fields.review] != null ? _safeString(map[Fields.review]) : null,
+    createdAt: _parseDateTime(map[Fields.createdAt]) ?? DateTime.now(),
   );
 }
 
@@ -176,7 +177,7 @@ class Order with _$Order {
     @Default(PaymentStatus.awaitingPayment) PaymentStatus paymentStatus,
     required Address shippingAddress,
     required DateTime createdAt,
-    @Default('cad') String currency,
+    @Default(BusinessRules.defaultCurrency) String currency,
     @Default([]) List<String> sellerIds,
     required String stripeSessionId,
     // Shipping approval
@@ -189,7 +190,7 @@ class Order with _$Order {
     @Default(false) bool confirmedByClient,
     DateTime? confirmedAt,
     @Default(0.0) double platformFeeTotal,
-    @Default('pending') String payoutStatus,
+    @Default(PayoutStatusValues.pending) String payoutStatus,
     // Ratings
     @Default([]) List<Ratings> ratings,
     // === AUDIT FIX: 18 missing fields synced from Python/Firestore ===
@@ -225,27 +226,27 @@ class Order with _$Order {
     OrderStatus parseOrderStatus(dynamic raw) {
       final value = raw?.toString();
       switch (value) {
-        case 'pending':
+        case OrderStatusValues.pending:
           return OrderStatus.pending;
-        case 'confirmed':
+        case OrderStatusValues.confirmed:
           return OrderStatus.confirmed;
-        case 'processing':
+        case OrderStatusValues.processing:
           return OrderStatus.processing;
-        case 'shipped':
+        case OrderStatusValues.shipped:
           return OrderStatus.shipped;
-        case 'in_transit':
+        case OrderStatusValues.inTransit:
           return OrderStatus.inTransit;
-        case 'delivered':
+        case OrderStatusValues.delivered:
           return OrderStatus.delivered;
-        case 'cancelled':
+        case OrderStatusValues.cancelled:
           return OrderStatus.cancelled;
-        case 'failed':
+        case OrderStatusValues.failed:
           return OrderStatus.failed;
-        case 'expired':
+        case OrderStatusValues.expired:
           return OrderStatus.expired;
-        case 'refunded':
+        case OrderStatusValues.refunded:
           return OrderStatus.refunded;
-        case 'partially_refunded':
+        case OrderStatusValues.partiallyRefunded:
           return OrderStatus.partiallyRefunded;
         default:
           return OrderStatus.pending;
@@ -255,25 +256,25 @@ class Order with _$Order {
     PaymentStatus parsePaymentStatus(dynamic raw) {
       final value = raw?.toString();
       switch (value) {
-        case 'awaiting_payment':
+        case PaymentStatusValues.awaitingPayment:
           return PaymentStatus.awaitingPayment;
-        case 'processing':
+        case PaymentStatusValues.processing:
           return PaymentStatus.processing;
-        case 'paid':
+        case PaymentStatusValues.paid:
           return PaymentStatus.paid;
-        case 'authorized':
+        case PaymentStatusValues.authorized:
           return PaymentStatus.authorized;
-        case 'captured':
+        case PaymentStatusValues.captured:
           return PaymentStatus.captured;
-        case 'payment_failed':
+        case PaymentStatusValues.paymentFailed:
           return PaymentStatus.paymentFailed;
-        case 'refunded':
+        case PaymentStatusValues.refunded:
           return PaymentStatus.refunded;
-        case 'session_expired':
+        case PaymentStatusValues.sessionExpired:
           return PaymentStatus.sessionExpired;
-        case 'cancelled':
+        case PaymentStatusValues.cancelled:
           return PaymentStatus.cancelled;
-        case 'authorization_expired':
+        case PaymentStatusValues.authorizationExpired:
           return PaymentStatus.authorizationExpired;
         default:
           return PaymentStatus.awaitingPayment;
@@ -283,13 +284,13 @@ class Order with _$Order {
     ShippingApprovalStatus parseShippingApprovalStatus(dynamic raw) {
       final value = raw?.toString();
       switch (value) {
-        case 'not_required':
+        case ShippingApprovalStatusValues.notRequired:
           return ShippingApprovalStatus.notRequired;
-        case 'pending':
+        case ShippingApprovalStatusValues.pending:
           return ShippingApprovalStatus.pending;
-        case 'approved':
+        case ShippingApprovalStatusValues.approved:
           return ShippingApprovalStatus.approved;
-        case 'rejected':
+        case ShippingApprovalStatusValues.rejected:
           return ShippingApprovalStatus.rejected;
         default:
           return ShippingApprovalStatus.notRequired;
@@ -297,77 +298,77 @@ class Order with _$Order {
     }
 
     // Parse items — use safe parser, NOT generated fromJson (avoids hard casts)
-    final itemsData = data['items'] as List<dynamic>? ?? [];
+    final itemsData = data[Fields.items] as List<dynamic>? ?? [];
     final items = itemsData.map(_parseOrderItem).toList();
 
     // Parse taxes
-    final taxesData = data['taxes'];
+    final taxesData = data[Fields.taxes];
     final taxes = taxesData is Map ? Taxes.fromMap(Map<String, dynamic>.from(taxesData)) : const Taxes();
 
     // Parse seller payouts — use safe parser
-    final payoutsData = data['sellerPayouts'] as List<dynamic>? ?? [];
+    final payoutsData = data[Fields.sellerPayouts] as List<dynamic>? ?? [];
     final payouts = payoutsData.map((p) => SellerPayout.fromMap(_safeMap(p))).toList();
 
     // Parse ratings — use safe parser
-    final ratingsData = data['ratings'];
+    final ratingsData = data[Fields.ratings];
     final ratings = ratingsData is List ? ratingsData.map(_parseRating).toList() : <Ratings>[];
 
     // Money — all cents
-    final totalAmountCents = _safeInt(data['totalAmountCents']);
-    final subtotalCents = _safeInt(data['subtotalCents']);
-    final shippingCostCents = _safeInt(data['shippingCostCents']);
-    final taxAmountCents = _safeInt(data['taxAmountCents']);
+    final totalAmountCents = _safeInt(data[Fields.totalAmountCents]);
+    final subtotalCents = _safeInt(data[Fields.subtotalCents]);
+    final shippingCostCents = _safeInt(data[Fields.shippingCostCents]);
+    final taxAmountCents = _safeInt(data[Fields.taxAmountCents]);
 
     // Address
-    final rawAddress = _safeMap(data['shippingAddress']);
+    final rawAddress = _safeMap(data[Fields.shippingAddress]);
 
     return Order(
-      orderId: _safeString(data['orderId'], doc.id),
-      userId: _safeString(data['userId']),
-      customerId: _safeString(data['customerId']),
-      customerEmail: _safeString(data['customerEmail']),
+      orderId: _safeString(data[Fields.orderId], doc.id),
+      userId: _safeString(data[Fields.userId]),
+      customerId: _safeString(data[Fields.customerId]),
+      customerEmail: _safeString(data[Fields.customerEmail]),
       items: items,
       totalAmountCents: totalAmountCents,
       subtotalCents: subtotalCents,
       shippingCostCents: shippingCostCents,
       taxAmountCents: taxAmountCents,
       taxes: taxes,
-      orderStatus: parseOrderStatus(data['orderStatus']),
-      paymentStatus: parsePaymentStatus(data['paymentStatus']),
+      orderStatus: parseOrderStatus(data[Fields.orderStatus]),
+      paymentStatus: parsePaymentStatus(data[Fields.paymentStatus]),
       shippingAddress: _safeAddress(rawAddress),
-      createdAt: _parseDateTime(data['createdAt']) ?? DateTime.now(),
-      currency: _safeString(data['currency'], 'cad'),
-      sellerIds: _safeStringList(data['sellerIds']),
-      stripeSessionId: _safeString(data['stripeSessionId']),
-      shippingApprovalStatus: parseShippingApprovalStatus(data['shippingApprovalStatus']),
-      shippingApprovalRequired: _safeBool(data['shippingApprovalRequired']),
-      actualShipping: _safeDouble(data['actualShipping']),
-      pendingTotal: _safeDouble(data['pendingTotal']),
+      createdAt: _parseDateTime(data[Fields.createdAt]) ?? DateTime.now(),
+      currency: _safeString(data[Fields.currency], BusinessRules.defaultCurrency),
+      sellerIds: _safeStringList(data[Fields.sellerIds]),
+      stripeSessionId: _safeString(data[Fields.stripeSessionId]),
+      shippingApprovalStatus: parseShippingApprovalStatus(data[Fields.shippingApprovalStatus]),
+      shippingApprovalRequired: _safeBool(data[Fields.shippingApprovalRequired]),
+      actualShipping: _safeDouble(data[Fields.actualShipping]),
+      pendingTotal: _safeDouble(data[Fields.pendingTotal]),
       sellerPayouts: payouts,
-      confirmedByClient: _safeBool(data['confirmedByClient']),
-      confirmedAt: _parseDateTime(data['confirmedAt']),
-      platformFeeTotal: _safeDouble(data['platformFeeTotal']),
-      payoutStatus: _safeString(data['payoutStatus'], 'pending'),
+      confirmedByClient: _safeBool(data[Fields.confirmedByClient]),
+      confirmedAt: _parseDateTime(data[Fields.confirmedAt]),
+      platformFeeTotal: _safeDouble(data[Fields.platformFeeTotal]),
+      payoutStatus: _safeString(data[Fields.payoutStatus], PayoutStatusValues.pending),
       ratings: ratings,
       // === AUDIT FIX: Parse 18 missing fields ===
-      stripePaymentIntentId: data['stripePaymentIntentId'] != null ? _safeString(data['stripePaymentIntentId']) : null,
-      captureAttempts: _safeInt(data['captureAttempts']),
-      capturedAt: _parseDateTime(data['capturedAt']),
-      expiresAt: _parseDateTime(data['expiresAt']),
-      autoConfirmed: _safeBool(data['autoConfirmed']),
-      autoCaptured: _safeBool(data['autoCaptured']),
-      refundAmount: _safeDouble(data['refundAmount']),
-      refundedAt: _parseDateTime(data['refundedAt']),
-      stockRestored: _safeBool(data['stockRestored']),
-      cancelledBy: data['cancelledBy'] != null ? _safeString(data['cancelledBy']) : null,
-      cancelledAt: _parseDateTime(data['cancelledAt']),
-      cancellationReason: data['cancellationReason'] != null ? _safeString(data['cancellationReason']) : null,
-      respondedAt: _parseDateTime(data['respondedAt']),
-      actualCost: data['actualCost'] != null ? _safeDouble(data['actualCost']) : null,
-      requiresManualReview: _safeBool(data['requiresManualReview']),
-      manualReviewReason: data['manualReviewReason'] != null ? _safeString(data['manualReviewReason']) : null,
-      payoutErrors: _safeStringList(data['payoutErrors']),
-      updatedAt: _parseDateTime(data['updatedAt']),
+      stripePaymentIntentId: data[Fields.stripePaymentIntentId] != null ? _safeString(data[Fields.stripePaymentIntentId]) : null,
+      captureAttempts: _safeInt(data[Fields.captureAttempts]),
+      capturedAt: _parseDateTime(data[Fields.capturedAt]),
+      expiresAt: _parseDateTime(data[Fields.expiresAt]),
+      autoConfirmed: _safeBool(data[Fields.autoConfirmed]),
+      autoCaptured: _safeBool(data[Fields.autoCaptured]),
+      refundAmount: _safeDouble(data[Fields.refundAmount]),
+      refundedAt: _parseDateTime(data[Fields.refundedAt]),
+      stockRestored: _safeBool(data[Fields.stockRestored]),
+      cancelledBy: data[Fields.cancelledBy] != null ? _safeString(data[Fields.cancelledBy]) : null,
+      cancelledAt: _parseDateTime(data[Fields.cancelledAt]),
+      cancellationReason: data[Fields.cancellationReason] != null ? _safeString(data[Fields.cancellationReason]) : null,
+      respondedAt: _parseDateTime(data[Fields.respondedAt]),
+      actualCost: data[Fields.actualCost] != null ? _safeDouble(data[Fields.actualCost]) : null,
+      requiresManualReview: _safeBool(data[Fields.requiresManualReview]),
+      manualReviewReason: data[Fields.manualReviewReason] != null ? _safeString(data[Fields.manualReviewReason]) : null,
+      payoutErrors: _safeStringList(data[Fields.payoutErrors]),
+      updatedAt: _parseDateTime(data[Fields.updatedAt]),
     );
   }
 
@@ -401,7 +402,7 @@ class OrderCreate with _$OrderCreate {
     required List<OrderItem> items,
     required Address shippingAddress,
     @Default(0.0) double shippingCost,
-    @Default('cad') String currency,
+    @Default(BusinessRules.defaultCurrency) String currency,
     @Default(false) bool shippingApprovalRequired,
   }) = _OrderCreate;
 
@@ -424,7 +425,7 @@ class OrderItem with _$OrderItem {
     required String sellerId,
     required Address sellerAddress,
     // Per-item status tracking (NEW)
-    @Default('pending') String status, // 'pending' | 'shipped' | 'delivered' | 'refunded'
+    @Default(DeliveryStatusValues.pending) String status, // 'pending' | 'shipped' | 'delivered' | 'refunded'
     @Default(DeliveryStatus.pending) DeliveryStatus deliveryStatus, // DEPRECATED: backwards compatibility
     String? trackingNumber,
     String? carrier,
@@ -480,7 +481,7 @@ class SellerPayout with _$SellerPayout {
     required int amountCents,
     required int platformFeeCents,
     required int netAmountCents,
-    @Default('pending') String status,
+    @Default(PayoutStatusValues.pending) String status,
     DateTime? payoutDate,
     String? stripeTransferId,
     String? failureReason,
@@ -490,15 +491,15 @@ class SellerPayout with _$SellerPayout {
 
   factory SellerPayout.fromMap(Map<String, dynamic> map) {
     return SellerPayout(
-      sellerId: _safeString(map['sellerId']),
-      stripeAccountId: map['stripeAccountId'] != null ? _safeString(map['stripeAccountId']) : null,
-      amountCents: _safeInt(map['amountCents']),
-      platformFeeCents: _safeInt(map['platformFeeCents']),
-      netAmountCents: _safeInt(map['netAmountCents']),
-      status: _safeString(map['status'], 'pending'),
-      payoutDate: _parseDateTime(map['payoutDate']),
-      stripeTransferId: map['stripeTransferId'] != null ? _safeString(map['stripeTransferId']) : null,
-      failureReason: map['failureReason'] != null ? _safeString(map['failureReason']) : null,
+      sellerId: _safeString(map[Fields.sellerId]),
+      stripeAccountId: map[Fields.stripeAccountId] != null ? _safeString(map[Fields.stripeAccountId]) : null,
+      amountCents: _safeInt(map[Fields.amountCents]),
+      platformFeeCents: _safeInt(map[Fields.platformFeeCents]),
+      netAmountCents: _safeInt(map[Fields.netAmountCents]),
+      status: _safeString(map[Fields.status], PayoutStatusValues.pending),
+      payoutDate: _parseDateTime(map[Fields.payoutDate]),
+      stripeTransferId: map[Fields.stripeTransferId] != null ? _safeString(map[Fields.stripeTransferId]) : null,
+      failureReason: map[Fields.failureReason] != null ? _safeString(map[Fields.failureReason]) : null,
     );
   }
 
@@ -524,15 +525,15 @@ class Taxes with _$Taxes {
 
   factory Taxes.fromJson(Map<String, dynamic> json) {
     return Taxes(
-      gst: (json['gst'] ?? json['GST'] ?? 0.0).toDouble(),
-      pst: (json['pst'] ?? json['PST'] ?? 0.0).toDouble(),
-      hst: (json['hst'] ?? json['HST'] ?? 0.0).toDouble(),
-      qst: (json['qst'] ?? json['QST'] ?? 0.0).toDouble(),
+      gst: (json[Fields.gst] ?? json[Fields.GST] ?? 0.0).toDouble(),
+      pst: (json[Fields.pst] ?? json[Fields.PST] ?? 0.0).toDouble(),
+      hst: (json[Fields.hst] ?? json[Fields.HST] ?? 0.0).toDouble(),
+      qst: (json[Fields.qst] ?? json[Fields.QST] ?? 0.0).toDouble(),
     );
   }
 
   factory Taxes.fromMap(Map<String, dynamic> map) =>
-      Taxes(gst: (map['GST'] ?? 0.0).toDouble(), pst: (map['PST'] ?? 0.0).toDouble(), hst: (map['HST'] ?? 0.0).toDouble(), qst: (map['QST'] ?? 0.0).toDouble());
+      Taxes(gst: (map[Fields.GST] ?? 0.0).toDouble(), pst: (map[Fields.PST] ?? 0.0).toDouble(), hst: (map[Fields.HST] ?? 0.0).toDouble(), qst: (map[Fields.QST] ?? 0.0).toDouble());
 
   const Taxes._();
 
@@ -540,8 +541,8 @@ class Taxes with _$Taxes {
   double get total => gst + pst + hst + qst;
 
   /// Convert to JSON
-  Map<String, dynamic> toJson() => {'GST': gst, 'PST': pst, 'HST': hst, 'QST': qst};
+  Map<String, dynamic> toJson() => {Fields.GST: gst, Fields.PST: pst, Fields.HST: hst, Fields.QST: qst};
 
   /// Convert to Map
-  Map<String, double> toMap() => {'GST': gst, 'PST': pst, 'HST': hst, 'QST': qst};
+  Map<String, double> toMap() => {Fields.GST: gst, Fields.PST: pst, Fields.HST: hst, Fields.QST: qst};
 }

@@ -168,7 +168,7 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('not-found', 'Target user not found')
 
     target_user_data = target_user_doc.to_dict()
-    old_roles = target_user_data.get('roles', [])
+    old_roles = target_user_data.get(Fields.ROLES, [])
 
     # Update roles
     target_user_ref.update({
@@ -191,14 +191,14 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Log security alert
     get_db().collection(Collections.SECURITY_ALERTS).add({
-        'type': 'role_change',
-        'severity': 'medium',
-        'adminId': admin_id,
+        Fields.TYPE: 'role_change',
+        Fields.SEVERITY: 'medium',
+        Fields.ADMIN_ID: admin_id,
         'targetUserId': target_user_id,
         'oldRoles': old_roles,
         'newRoles': new_roles,
-        'timestamp': get_server_timestamp(),
-        'resolved': True
+        Fields.TIMESTAMP: get_server_timestamp(),
+        Fields.RESOLVED: True
     })
 
     return create_success_response({'newRoles': new_roles})
@@ -227,6 +227,16 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     admin_id = req.auth.uid
     data = req.data
+
+    # AUDIT FIX: Rate limit seller suspension
+    from rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=admin_id, action='suspend_seller',
+        max_requests=10, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
 
     # Import validation functions
     from utils import sanitized_text
@@ -374,15 +384,15 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Log security alert
     get_db().collection(Collections.SECURITY_ALERTS).add({
-        'type': 'seller_suspended',
-        'severity': 'critical',
-        'adminId': admin_id,
+        Fields.TYPE: 'seller_suspended',
+        Fields.SEVERITY: 'critical',
+        Fields.ADMIN_ID: admin_id,
         Fields.SELLER_ID: seller_id,
-        'reason': reason,
+        Fields.REASON: reason,
         'productsDeactivated': product_count,
         'ordersCancelled': order_count,
-        'timestamp': get_server_timestamp(),
-        'resolved': True
+        Fields.TIMESTAMP: get_server_timestamp(),
+        Fields.RESOLVED: True
     })
 
     return create_success_response({
@@ -564,7 +574,7 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     user_ref.update(update_data)
 
-    return create_success_response({'mfaEnabled': True})
+    return create_success_response({Fields.MFA_ENABLED: True})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -617,7 +627,7 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.UPDATED_AT: get_server_timestamp()
     })
 
-    return create_success_response({'mfaEnabled': False})
+    return create_success_response({Fields.MFA_ENABLED: False})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)

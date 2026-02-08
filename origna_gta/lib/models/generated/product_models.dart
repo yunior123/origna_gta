@@ -6,23 +6,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'base_models.dart';
+import '../../core/schema/schema_constants.dart';
 
 part 'product_models.freezed.dart';
 part 'product_models.g.dart';
 
 /// International supplier platform types
-const _internationalSupplierTypes = {'aliexpress', 'dhgate', 'alibaba', '1688', 'temu', 'cjdropshipping'};
+const _internationalSupplierTypes = SupplierTypeValues.international;
 
 /// Default delivery ranges by supplier type
 ({int minDays, int maxDays}) _getDeliveryRangeForSupplier(String? supplierType) {
   return switch (supplierType) {
-    'aliexpress' => (minDays: 15, maxDays: 30),
-    'dhgate' => (minDays: 20, maxDays: 40),
-    'alibaba' => (minDays: 25, maxDays: 45),
-    '1688' => (minDays: 25, maxDays: 45),
-    'temu' => (minDays: 7, maxDays: 15),
-    'cjdropshipping' => (minDays: 10, maxDays: 20),
-    'local' => (minDays: 1, maxDays: 5),
+    SupplierTypeValues.aliexpress => (minDays: 15, maxDays: 30),
+    SupplierTypeValues.dhgate => (minDays: 20, maxDays: 40),
+    SupplierTypeValues.alibaba => (minDays: 25, maxDays: 45),
+    SupplierTypeValues.s1688 => (minDays: 25, maxDays: 45),
+    SupplierTypeValues.temu => (minDays: 7, maxDays: 15),
+    SupplierTypeValues.cjdropshipping => (minDays: 10, maxDays: 20),
+    SupplierTypeValues.local => (minDays: 1, maxDays: 5),
     _ => (minDays: 3, maxDays: 7), // Default for local/other
   };
 }
@@ -30,10 +31,10 @@ const _internationalSupplierTypes = {'aliexpress', 'dhgate', 'alibaba', '1688', 
 /// Get supplier region for display
 String? _getSupplierRegion(String? supplierType) {
   return switch (supplierType) {
-    'aliexpress' || 'alibaba' || '1688' || 'temu' => 'China',
-    'dhgate' => 'China/Asia',
-    'cjdropshipping' => 'Various (dropship)',
-    'local' => 'Canada',
+    SupplierTypeValues.aliexpress || SupplierTypeValues.alibaba || SupplierTypeValues.s1688 || SupplierTypeValues.temu => 'China',
+    SupplierTypeValues.dhgate => 'China/Asia',
+    SupplierTypeValues.cjdropshipping => 'Various (dropship)',
+    SupplierTypeValues.local => 'Canada',
     _ => null,
   };
 }
@@ -131,13 +132,13 @@ class Product with _$Product {
     InventoryConfig? inventory,
 
     /// Product status: draft, active, paused, archived, out_of_stock
-    @Default('active') String status,
+    @Default(ProductStatusValues.active) String status,
   }) = _Product;
 
   factory Product.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
-    final rawDateCreated = data['dateCreated'];
+    final rawDateCreated = data[Fields.dateCreated];
     final DateTime parsedDateCreated = switch (rawDateCreated) {
       Timestamp t => t.toDate(),
       DateTime d => d,
@@ -188,7 +189,7 @@ class ProductCreate with _$ProductCreate {
     // NEW: Structured objects
     SupplierInfo? supplier,
     InventoryConfig? inventory,
-    @Default('active') String status,
+    @Default(ProductStatusValues.active) String status,
   }) = _ProductCreate;
 
   factory ProductCreate.fromJson(Map<String, dynamic> json) => _$ProductCreateFromJson(json);
@@ -202,7 +203,7 @@ class ProductCreate with _$ProductCreate {
 class SellerDeliveryOption with _$SellerDeliveryOption {
   const factory SellerDeliveryOption({
     /// Delivery type: 'standard', 'express', 'same_day', etc.
-    @Default('standard') String type,
+    @Default(DeliveryTypeValues.standard) String type,
 
     /// Human-readable description
     @Default('') String description,
@@ -241,7 +242,7 @@ class ShippingQuantityDiscount with _$ShippingQuantityDiscount {
     required int minQuantity,
 
     /// Discount type: 'percent' (e.g., 10% off), 'fixed' (e.g., $2 off), 'flat_rate' (e.g., $5 flat)
-    @Default('percent') String discountType,
+    @Default(DiscountTypeValues.percent) String discountType,
 
     /// Discount value (interpretation depends on discountType)
     required double discountValue,
@@ -405,11 +406,11 @@ extension SellerDeliveryOptionExtension on SellerDeliveryOption {
     // Apply quantity discount
     if (bestDiscount != null) {
       switch (bestDiscount.discountType) {
-        case 'percent':
+        case DiscountTypeValues.percent:
           return baseCost * (1 - bestDiscount.discountValue / 100);
-        case 'fixed':
+        case DiscountTypeValues.fixed:
           return (baseCost - bestDiscount.discountValue).clamp(0, double.infinity);
-        case 'flat_rate':
+        case DiscountTypeValues.flatRate:
           return bestDiscount.discountValue;
         default:
           return baseCost;
@@ -425,11 +426,11 @@ extension SellerDeliveryOptionExtension on SellerDeliveryOption {
       if (quantity >= discount.minQuantity) {
         if (discount.label != null) return discount.label;
         switch (discount.discountType) {
-          case 'percent':
+          case DiscountTypeValues.percent:
             return '${discount.discountValue.toStringAsFixed(0)}% off shipping for ${discount.minQuantity}+ items';
-          case 'fixed':
+          case DiscountTypeValues.fixed:
             return '\$${discount.discountValue.toStringAsFixed(2)} off shipping for ${discount.minQuantity}+ items';
-          case 'flat_rate':
+          case DiscountTypeValues.flatRate:
             return 'Flat \$${discount.discountValue.toStringAsFixed(2)} shipping for ${discount.minQuantity}+ items';
         }
       }

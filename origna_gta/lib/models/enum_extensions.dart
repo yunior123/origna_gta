@@ -1,5 +1,6 @@
 // Extensions for Freezed enums — provides displayText, value, fromValue
 import 'package:origna_gta/models/generated/models.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 
 // ============================================================================
 // DELIVERY STATUS EXTENSIONS
@@ -34,13 +35,13 @@ extension DeliveryStatusExtension on DeliveryStatus {
 
   static DeliveryStatus fromValue(String? value) {
     switch (value?.toLowerCase()) {
-      case 'pending':
+      case DeliveryStatusValues.pending:
         return DeliveryStatus.pending;
-      case 'shipped':
+      case DeliveryStatusValues.shipped:
         return DeliveryStatus.shipped;
-      case 'delivered':
+      case DeliveryStatusValues.delivered:
         return DeliveryStatus.delivered;
-      case 'refunded':
+      case DeliveryStatusValues.refunded:
         return DeliveryStatus.refunded;
       default:
         return DeliveryStatus.pending;
@@ -109,27 +110,27 @@ extension OrderStatusExtension on OrderStatus {
 
   static OrderStatus fromValue(String? value) {
     switch (value?.toLowerCase()) {
-      case 'pending':
+      case OrderStatusValues.pending:
         return OrderStatus.pending;
-      case 'confirmed':
+      case OrderStatusValues.confirmed:
         return OrderStatus.confirmed;
-      case 'processing':
+      case OrderStatusValues.processing:
         return OrderStatus.processing;
-      case 'shipped':
+      case OrderStatusValues.shipped:
         return OrderStatus.shipped;
-      case 'in_transit':
+      case OrderStatusValues.inTransit:
         return OrderStatus.inTransit;
-      case 'delivered':
+      case OrderStatusValues.delivered:
         return OrderStatus.delivered;
-      case 'cancelled':
+      case OrderStatusValues.cancelled:
         return OrderStatus.cancelled;
-      case 'failed':
+      case OrderStatusValues.failed:
         return OrderStatus.failed;
-      case 'expired':
+      case OrderStatusValues.expired:
         return OrderStatus.expired;
-      case 'refunded':
+      case OrderStatusValues.refunded:
         return OrderStatus.refunded;
-      case 'partially_refunded':
+      case OrderStatusValues.partiallyRefunded:
         return OrderStatus.partiallyRefunded;
       default:
         return OrderStatus.pending;
@@ -194,25 +195,25 @@ extension PaymentStatusExtension on PaymentStatus {
 
   static PaymentStatus fromValue(String? value) {
     switch (value?.toLowerCase()) {
-      case 'awaiting_payment':
+      case PaymentStatusValues.awaitingPayment:
         return PaymentStatus.awaitingPayment;
-      case 'processing':
+      case PaymentStatusValues.processing:
         return PaymentStatus.processing;
-      case 'paid':
+      case PaymentStatusValues.paid:
         return PaymentStatus.paid;
-      case 'authorized':
+      case PaymentStatusValues.authorized:
         return PaymentStatus.authorized;
-      case 'captured':
+      case PaymentStatusValues.captured:
         return PaymentStatus.captured;
-      case 'payment_failed':
+      case PaymentStatusValues.paymentFailed:
         return PaymentStatus.paymentFailed;
-      case 'refunded':
+      case PaymentStatusValues.refunded:
         return PaymentStatus.refunded;
-      case 'session_expired':
+      case PaymentStatusValues.sessionExpired:
         return PaymentStatus.sessionExpired;
-      case 'cancelled':
+      case PaymentStatusValues.cancelled:
         return PaymentStatus.cancelled;
-      case 'authorization_expired':
+      case PaymentStatusValues.authorizationExpired:
         return PaymentStatus.authorizationExpired;
       default:
         return PaymentStatus.awaitingPayment;
@@ -253,13 +254,13 @@ extension ShippingApprovalStatusExtension on ShippingApprovalStatus {
 
   static ShippingApprovalStatus fromValue(String? value) {
     switch (value?.toLowerCase()) {
-      case 'not_required':
+      case ShippingApprovalStatusValues.notRequired:
         return ShippingApprovalStatus.notRequired;
-      case 'pending':
+      case ShippingApprovalStatusValues.pending:
         return ShippingApprovalStatus.pending;
-      case 'approved':
+      case ShippingApprovalStatusValues.approved:
         return ShippingApprovalStatus.approved;
-      case 'rejected':
+      case ShippingApprovalStatusValues.rejected:
         return ShippingApprovalStatus.rejected;
       default:
         return ShippingApprovalStatus.notRequired;

@@ -7,6 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .base import Address, UserRole
+from schema_constants import Fields
 
 
 class User(BaseModel):
@@ -17,11 +18,11 @@ class User(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "uid": "user_123abc",
-                "email": "user@example.com",
-                "name": "John Doe",
-                "roles": ["buyer"],
-                "createdAt": "2026-02-01T10:00:00Z"
+                Fields.UID: "user_123abc",
+                Fields.EMAIL: "user@example.com",
+                Fields.NAME: "John Doe",
+                Fields.ROLES: ["buyer"],
+                Fields.CREATED_AT: "2026-02-01T10:00:00Z"
             }
         }
     )

@@ -7,6 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .base import Address
+from schema_constants import Fields
 
 # ============================================================================
 # SHIPPING QUANTITY DISCOUNT - Volume-based shipping discounts
@@ -20,7 +21,7 @@ class ShippingQuantityDiscount(BaseModel):
                 "minQuantity": 5,
                 "discountType": "percent",
                 "discountValue": 10.0,
-                "label": "10% off shipping for 5+ items"
+                Fields.LABEL: "10% off shipping for 5+ items"
             }
         }
     )
@@ -59,8 +60,8 @@ class SellerDeliveryOption(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "type": "standard",
-                "description": "Standard shipping",
+                Fields.TYPE: "standard",
+                Fields.DESCRIPTION: "Standard shipping",
                 "cost": 5.99,
                 "estimatedDays": 5,
                 "quantityDiscounts": [],
@@ -136,11 +137,11 @@ class SupplierInfo(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "type": "aliexpress",
+                Fields.TYPE: "aliexpress",
                 "supplierSku": "ABC123456",
                 "supplierUrl": "https://aliexpress.com/item/123.html",
                 "cost": 15.99,
-                "currency": "USD",  # What you pay supplier (selling price is always CAD)
+                Fields.CURRENCY: "USD",  # What you pay supplier (selling price is always CAD)
                 "shippingDays": "15-30",
                 "hasTracking": True,
                 "notes": "Good quality supplier"
@@ -252,24 +253,24 @@ class Product(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "productId": "prod_123abc",
-                "name": "Organic Apples",
-                "price": 4.99,
-                "description": "Fresh organic apples from local farm",
-                "imageUrls": ["https://example.com/image1.jpg"],
-                "sellerId": "seller_123",
-                "sellerAddress": {
-                    "street": "123 Farm Road",
-                    "city": "Toronto",
-                    "state": "ON",
-                    "postalCode": "M5V 3A8",
-                    "country": "Canada"
+                Fields.PRODUCT_ID: "prod_123abc",
+                Fields.NAME: "Organic Apples",
+                Fields.PRICE: 4.99,
+                Fields.DESCRIPTION: "Fresh organic apples from local farm",
+                Fields.IMAGE_URLS: ["https://example.com/image1.jpg"],
+                Fields.SELLER_ID: "seller_123",
+                Fields.SELLER_ADDRESS: {
+                    Fields.STREET: "123 Farm Road",
+                    Fields.CITY: "Toronto",
+                    Fields.STATE: "ON",
+                    Fields.POSTAL_CODE: "M5V 3A8",
+                    Fields.COUNTRY: "Canada"
                 },
-                "categoryId": 1,
-                "stockQuantity": 100,
-                "rating": 4.5,
-                "dateCreated": "2026-02-01T10:00:00Z",
-                "isActive": True
+                Fields.CATEGORY_ID: 1,
+                Fields.STOCK_QUANTITY: 100,
+                Fields.RATING: 4.5,
+                Fields.DATE_CREATED: "2026-02-01T10:00:00Z",
+                Fields.IS_ACTIVE: True
             }
         }
     )

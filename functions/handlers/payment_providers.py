@@ -89,16 +89,16 @@ class PaymentProvider:
 DEFAULT_PROVIDER_CONFIG = {
     PaymentProvider.STRIPE: {
         'enabled': True,
-        'name': 'Stripe',
-        'description': 'Primary payment processor',
+        Fields.NAME: 'Stripe',
+        Fields.DESCRIPTION: 'Primary payment processor',
         'supportedCurrencies': ['CAD', 'USD'],
         'supportedCountries': ['CA', 'US'],
         'features': ['cards', 'apple_pay', 'google_pay'],
     },
     PaymentProvider.AIRWALLEX: {
         'enabled': False,  # Disabled by default, requires full KYC setup
-        'name': 'Airwallex',
-        'description': 'International payment processor',
+        Fields.NAME: 'Airwallex',
+        Fields.DESCRIPTION: 'International payment processor',
         'supportedCurrencies': ['CAD', 'USD', 'EUR', 'GBP', 'CNY'],
         'supportedCountries': ['CA', 'US', 'CN', 'GB', 'EU'],
         'features': ['cards', 'alipay', 'wechat_pay'],
@@ -195,7 +195,7 @@ def require_provider_enabled(provider: str) -> None:
         https_fn.HttpsError: If provider is disabled
     """
     if not is_provider_enabled(provider):
-        provider_name = DEFAULT_PROVIDER_CONFIG.get(provider, {}).get('name', provider)
+        provider_name = DEFAULT_PROVIDER_CONFIG.get(provider, {}).get(Fields.NAME, provider)
         raise https_fn.HttpsError(
             'failed-precondition',
             f'{provider_name} payments are currently disabled by administrator'
@@ -319,7 +319,7 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
     if enabled:
         is_configured, missing_keys = _is_provider_configured(provider)
         if not is_configured:
-            provider_name = DEFAULT_PROVIDER_CONFIG.get(provider, {}).get('name', provider)
+            provider_name = DEFAULT_PROVIDER_CONFIG.get(provider, {}).get(Fields.NAME, provider)
             raise https_fn.HttpsError(
                 'failed-precondition',
                 f'{provider_name} is not configured. Missing API keys: {", ".join(missing_keys)}. '
@@ -367,7 +367,7 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         old_enabled = config_data[provider].get('enabled', False)
         config_data[provider]['enabled'] = enabled
-        config_data[provider]['updatedAt'] = get_server_timestamp()
+        config_data[provider][Fields.UPDATED_AT] = get_server_timestamp()
         config_data[provider]['updatedBy'] = admin_id
 
         # Save config
@@ -376,24 +376,24 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Log the change
         get_db().collection(Collections.ADMIN_LOGS).add({
             'action': 'payment_provider_update',
-            'adminId': admin_id,
-            'provider': provider,
+            Fields.ADMIN_ID: admin_id,
+            Fields.PROVIDER: provider,
             'oldEnabled': old_enabled,
             'newEnabled': enabled,
-            'reason': reason[:500] if reason else '',  # Limit reason length
-            'timestamp': get_server_timestamp()
+            Fields.REASON: reason[:500] if reason else '',  # Limit reason length
+            Fields.TIMESTAMP: get_server_timestamp()
         })
 
         # Log security alert if disabling
         if old_enabled and not enabled:
             get_db().collection(Collections.SECURITY_ALERTS).add({
-                'type': 'payment_provider_disabled',
-                'severity': 'high',
-                'adminId': admin_id,
-                'provider': provider,
-                'reason': reason[:500] if reason else '',
-                'timestamp': get_server_timestamp(),
-                'resolved': True
+                Fields.TYPE: 'payment_provider_disabled',
+                Fields.SEVERITY: 'high',
+                Fields.ADMIN_ID: admin_id,
+                Fields.PROVIDER: provider,
+                Fields.REASON: reason[:500] if reason else '',
+                Fields.TIMESTAMP: get_server_timestamp(),
+                Fields.RESOLVED: True
             })
 
         # Return dict directly for on_call functions (not Response object)
@@ -401,7 +401,7 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
             'success': True,
             ApiKeys.PROVIDER: provider,
             ApiKeys.ENABLED: enabled,
-            'providerName': DEFAULT_PROVIDER_CONFIG.get(provider, {}).get('name', provider)
+            'providerName': DEFAULT_PROVIDER_CONFIG.get(provider, {}).get(Fields.NAME, provider)
         }
 
     except https_fn.HttpsError:
@@ -439,7 +439,7 @@ def get_provider_status(req: https_fn.CallableRequest) -> dict[str, Any]:
             providers[provider] = {
                 ApiKeys.ENABLED: is_provider_enabled(provider),
                 ApiKeys.CONFIGURED: is_configured,
-                'name': default.get('name', provider),
+                Fields.NAME: default.get(Fields.NAME, provider),
                 'features': default.get('features', [])
             }
 

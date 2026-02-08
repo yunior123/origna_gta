@@ -5,6 +5,7 @@ from datetime import datetime
 from mailjet_rest import Client
 
 from config import IS_EMULATOR, MAILJET_API_KEY, MAILJET_SECRET_KEY
+from schema_constants import Fields
 
 # Allow real email sending in emulator mode for E2E testing
 FORCE_REAL_EMAIL = os.environ.get('FORCE_REAL_EMAIL', 'false').lower() == 'true'
@@ -17,16 +18,16 @@ def get_order_confirmation_email(order_data, order_id=None):
 
     Args:
         order_data: Dict containing order information
-        order_id: Optional order ID (can be in order_data['orderId'] instead)
+        order_id: Optional order ID (can be in order_data[Fields.ORDER_ID] instead)
     """
-    oid = order_data.get('orderId', order_id or 'N/A')
+    oid = order_data.get(Fields.ORDER_ID, order_id or 'N/A')
     short_oid = oid[:8] if len(oid) > 8 else oid
 
     items_html = ""
-    for i, item in enumerate(order_data.get('items', [])):
-        safe_name = html.escape(str(item.get('name', 'Product')))
-        qty = item.get('quantity', 1)
-        price = item.get('price', 0)
+    for i, item in enumerate(order_data.get(Fields.ITEMS, [])):
+        safe_name = html.escape(str(item.get(Fields.NAME, 'Product')))
+        qty = item.get(Fields.QUANTITY, 1)
+        price = item.get(Fields.PRICE, 0)
         line_total = price * qty
         bg = '#f8f9ff' if i % 2 == 0 else '#ffffff'
         items_html += f"""
@@ -43,20 +44,20 @@ def get_order_confirmation_email(order_data, order_id=None):
         </tr>
         """
 
-    subtotal = order_data.get('subtotalCents', 0) / 100
-    shipping = order_data.get('shippingCostCents', 0) / 100
-    taxes = sum(order_data.get('taxes', {}).values())
-    total = order_data.get('totalAmountCents', 0) / 100
+    subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 0) / 100
+    shipping = order_data.get(Fields.SHIPPING_COST_CENTS, 0) / 100
+    taxes = sum(order_data.get(Fields.TAXES, {}).values())
+    total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
 
-    delivery_info = order_data.get('shippingAddress', {})
+    delivery_info = order_data.get(Fields.SHIPPING_ADDRESS, {})
     address_parts = [
-        delivery_info.get('street', ''),
-        delivery_info.get('apartment', ''),
-        f"{delivery_info.get('city', '')}, {delivery_info.get('state', '')} {delivery_info.get('postalCode', '')}",
-        delivery_info.get('country', 'Canada'),
+        delivery_info.get(Fields.STREET, ''),
+        delivery_info.get(Fields.APARTMENT, ''),
+        f"{delivery_info.get(Fields.CITY, '')}, {delivery_info.get(Fields.STATE, '')} {delivery_info.get(Fields.POSTAL_CODE, '')}",
+        delivery_info.get(Fields.COUNTRY, 'Canada'),
     ]
     formatted_address = '<br>'.join(p for p in address_parts if p and p.strip())
-    phone_html = f"<br>📱 {delivery_info['phoneNumber']}" if delivery_info.get('phoneNumber') else ''
+    phone_html = f"<br>📱 {delivery_info[Fields.PHONE_NUMBER]}" if delivery_info.get(Fields.PHONE_NUMBER) else ''
 
     order_date = datetime.now().strftime('%B %d, %Y at %I:%M %p')
 
@@ -232,19 +233,19 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
 
     Args:
         order_data: Dict containing order information
-        order_id: Optional order ID (can be in order_data['orderId'])
+        order_id: Optional order ID (can be in order_data[Fields.ORDER_ID])
         seller_id: Optional seller ID to filter items
 
     Note: seller_id is currently unused but kept for API compatibility
     """
-    oid = order_data.get('orderId', order_id or 'N/A')
+    oid = order_data.get(Fields.ORDER_ID, order_id or 'N/A')
     short_oid = oid[:8] if len(oid) > 8 else oid
 
     items_html = ""
-    for i, item in enumerate(order_data.get('items', [])):
-        safe_name = html.escape(str(item.get('name', 'Product')))
-        qty = item.get('quantity', 1)
-        price = item.get('price', 0)
+    for i, item in enumerate(order_data.get(Fields.ITEMS, [])):
+        safe_name = html.escape(str(item.get(Fields.NAME, 'Product')))
+        qty = item.get(Fields.QUANTITY, 1)
+        price = item.get(Fields.PRICE, 0)
         line_total = price * qty
         bg = '#f8f9ff' if i % 2 == 0 else '#ffffff'
         items_html += f"""
@@ -261,21 +262,21 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
         </tr>
         """
 
-    subtotal = order_data.get('subtotalCents', 0) / 100
-    shipping = order_data.get('shippingCostCents', 0) / 100
-    taxes = sum(order_data.get('taxes', {}).values())
-    total = order_data.get('totalAmountCents', 0) / 100
-    num_items = sum(item.get('quantity', 1) for item in order_data.get('items', []))
+    subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 0) / 100
+    shipping = order_data.get(Fields.SHIPPING_COST_CENTS, 0) / 100
+    taxes = sum(order_data.get(Fields.TAXES, {}).values())
+    total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
+    num_items = sum(item.get(Fields.QUANTITY, 1) for item in order_data.get(Fields.ITEMS, []))
 
-    delivery_info = order_data.get('shippingAddress', {})
+    delivery_info = order_data.get(Fields.SHIPPING_ADDRESS, {})
     addr_parts = [
-        delivery_info.get('street', ''),
-        delivery_info.get('apartment', ''),
-        f"{delivery_info.get('city', '')}, {delivery_info.get('state', '')} {delivery_info.get('postalCode', '')}",
-        delivery_info.get('country', 'Canada'),
+        delivery_info.get(Fields.STREET, ''),
+        delivery_info.get(Fields.APARTMENT, ''),
+        f"{delivery_info.get(Fields.CITY, '')}, {delivery_info.get(Fields.STATE, '')} {delivery_info.get(Fields.POSTAL_CODE, '')}",
+        delivery_info.get(Fields.COUNTRY, 'Canada'),
     ]
     address_html = '<br>'.join(p for p in addr_parts if p and p.strip())
-    phone_html = f"<br>📱 {delivery_info['phoneNumber']}" if delivery_info.get('phoneNumber') else ''
+    phone_html = f"<br>📱 {delivery_info[Fields.PHONE_NUMBER]}" if delivery_info.get(Fields.PHONE_NUMBER) else ''
 
     order_date = datetime.now().strftime('%B %d, %Y at %I:%M %p')
     customer_email = html.escape(order_data.get('customerEmail', 'N/A'))
@@ -506,9 +507,9 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
         mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
 
         customer_email = order_data.get('customerEmail')
-        total = order_data.get('totalAmountCents', 0) / 100
-        items_summary = ', '.join([f"{item.get('name')} x{item.get('quantity', 1)}"
-                                   for item in order_data.get('items', [])[:3]])
+        total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
+        items_summary = ', '.join([f"{item.get(Fields.NAME)} x{item.get(Fields.QUANTITY, 1)}"
+                                   for item in order_data.get(Fields.ITEMS, [])[:3]])
 
         # Email to buyer
         buyer_message = {
