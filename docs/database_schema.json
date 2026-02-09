@@ -808,6 +808,36 @@
           "type": "array<string>",
           "required": false,
           "description": "List of payout error messages"
+        },
+        "taxExemption": {
+          "type": "map",
+          "required": false,
+          "description": "B2B tax exemption details (GST number)",
+          "schema": {
+            "gstNumber": {
+              "type": "string",
+              "description": "Canadian GST/HST number (e.g., 123456789RT0001)"
+            },
+            "updatedAt": {
+              "type": "timestamp",
+              "description": "When GST number was added"
+            }
+          }
+        },
+        "taxExempt": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether order is tax exempt (B2B reverse charge applied)"
+        },
+        "itemTaxes": {
+          "type": "array<map>",
+          "required": false,
+          "description": "Per-item tax breakdown",
+          "schema": {
+            "productId": "string",
+            "taxCents": "integer",
+            "taxRate": "number"
+          }
         }
       },
       "indexes": [

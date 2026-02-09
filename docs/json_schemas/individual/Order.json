@@ -911,6 +911,65 @@
       },
       "title": "Ratings",
       "type": "array"
+    },
+    "taxExemption": {
+      "anyOf": [
+        {
+          "description": "Tax exemption details for B2B customers",
+          "properties": {
+            "gstNumber": {
+              "description": "Canadian GST/HST number",
+              "pattern": "^\\d{9}[A-Z]{2}\\d{4}$",
+              "type": "string"
+            },
+            "updatedAt": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": ["gstNumber"],
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "B2B tax exemption details (GST number)",
+      "title": "Taxexemption"
+    },
+    "taxExempt": {
+      "default": false,
+      "description": "Whether order is tax exempt (B2B reverse charge)",
+      "title": "Taxexempt",
+      "type": "boolean"
+    },
+    "itemTaxes": {
+      "items": {
+        "description": "Per-item tax breakdown",
+        "properties": {
+          "productId": {
+            "type": "string"
+          },
+          "taxCents": {
+            "description": "Tax amount in cents for this item",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "taxRate": {
+            "description": "Tax rate applied (0.0 to 1.0)",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": ["productId", "taxCents", "taxRate"],
+        "type": "object"
+      },
+      "default": [],
+      "description": "Per-item tax breakdown for detailed reporting",
+      "title": "Itemtaxes",
+      "type": "array"
     }
   },
   "required": [

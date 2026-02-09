@@ -72,14 +72,14 @@ def update_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
     }
     
     # Handle tax exemption update
-    if 'taxExemption' in data:
-        tax_exemption = data['taxExemption']
+    if Fields.TAX_EXEMPTION in data:
+        tax_exemption = data[Fields.TAX_EXEMPTION]
         
         if tax_exemption is None:
             # Remove tax exemption
             update_data[Fields.TAX_EXEMPTION] = None
         else:
-            gst_number = tax_exemption.get('gstNumber', '').strip().upper()
+            gst_number = tax_exemption.get(Fields.GST_NUMBER, '').strip().upper()
             
             # Basic format validation only
             # Stripe Tax will do full validation during checkout
@@ -97,7 +97,7 @@ def update_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
             }
     
     # Handle address update
-    if 'address' in data:
+    if Fields.ADDRESS in data:
         from models.base import Address
         try:
             address = Address(**data['address'])
@@ -106,7 +106,7 @@ def update_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError('invalid-argument', f'Invalid address: {str(e)}')
     
     # Handle name update
-    if 'name' in data:
+    if Fields.NAME in data:
         name = data['name'].strip()
         if len(name) < 2 or len(name) > 60:
             raise https_fn.HttpsError(

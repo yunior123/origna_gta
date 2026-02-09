@@ -20,6 +20,9 @@ from config import (
     PLATFORM_FEE_PERCENT,
     STRIPE_SECRET_KEY,
     STRIPE_TAX_ENABLED,
+    STRIPE_TAX_CODE_SHIPPING,
+    STRIPE_TAX_TYPE_CA_GST_HST,
+    STRIPE_TAX_EXEMPT_NONE,
     STRIPE_WEBHOOK_SECRET,
     Collections,
 )
@@ -345,7 +348,7 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
             line_items.append({
                 'amount': shipping_cost_cents,
                 'reference': 'shipping',
-                'tax_code': 'txcd_92010001',  # Shipping tax code
+                'tax_code': STRIPE_TAX_CODE_SHIPPING,  # Shipping tax code
             })
         
         # Build customer details
@@ -363,10 +366,10 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
         # Add GST number for B2B validation (Stripe will validate and apply reverse charge if valid)
         if gst_number:
             customer_details['tax_id'] = {
-                'type': 'ca_gst_hst',  # Canadian GST/HST
+                'type': STRIPE_TAX_TYPE_CA_GST_HST,  # Canadian GST/HST
                 'value': gst_number,
             }
-            customer_details['tax_exempt'] = 'none'  # Let Stripe determine based on tax_id
+            customer_details['tax_exempt'] = STRIPE_TAX_EXEMPT_NONE  # Let Stripe determine based on tax_id
         
         # Call Stripe Tax API
         calculation = stripe.tax.Calculation.create(

@@ -358,6 +358,11 @@ CATEGORY_TAX_CODE_MAP = {
     21: "txcd_10000000",  # Digital Products → Digital Services
 }
 
+# Stripe Tax Constants
+STRIPE_TAX_CODE_SHIPPING = "txcd_92010001"  # Shipping/Handling
+STRIPE_TAX_TYPE_CA_GST_HST = "ca_gst_hst"   # Canadian GST/HST tax ID type
+STRIPE_TAX_EXEMPT_NONE = "none"             # Let Stripe determine exemption
+
 # ============================================================================
 # DEBUG & LOGGING
 # ============================================================================
