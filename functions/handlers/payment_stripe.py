@@ -19,10 +19,10 @@ from config import (
     CATEGORY_TAX_CODE_MAP,
     PLATFORM_FEE_PERCENT,
     STRIPE_SECRET_KEY,
-    STRIPE_TAX_ENABLED,
     STRIPE_TAX_CODE_SHIPPING,
-    STRIPE_TAX_TYPE_CA_GST_HST,
+    STRIPE_TAX_ENABLED,
     STRIPE_TAX_EXEMPT_NONE,
+    STRIPE_TAX_TYPE_CA_GST_HST,
     STRIPE_WEBHOOK_SECRET,
     Collections,
 )
@@ -39,8 +39,8 @@ from schema_constants import (
     Fields,
     OrderStatusValues,
     PaymentStatusValues,
-    PlaceholderAddressValues,
     PayoutStatusValues,
+    PlaceholderAddressValues,
     SecurityAlertTypes,
     SeverityLevels,
     UserRoleValues,
@@ -307,16 +307,15 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
 def get_item_tax_rate(item, province):
     """Get tax rate for an item based on category and province"""
     tax_code = item.get(Fields.TAX_CODE)
-    
+
     # Children's clothing exempt in some provinces
-    if tax_code == "txcd_20030002":  # Children's clothing
-        if province in ['ON', 'BC', 'MB', 'SK']:  # Exempt provinces
-            return 0.0
-    
+    if tax_code == "txcd_20030002" and province in ['ON', 'BC', 'MB', 'SK']:  # Children's clothing in exempt provinces
+        return 0.0
+
     # Basic groceries exempt in most provinces
     if tax_code == "txcd_30060005":  # Basic groceries
         return 0.0  # Exempt in all provinces
-    
+
     # Default province tax rate
     return get_tax_rate(province)
 
@@ -324,10 +323,10 @@ def get_item_tax_rate(item, province):
 def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_cents, gst_number=None):
     """
     Calculate tax using Stripe Tax API.
-    
+
     Args:
         gst_number: Canadian GST/HST number for B2B exemption (e.g., '123456789RT0001')
-    
+
     Returns (tax_amount_cents, tax_breakdown, line_items_with_tax, is_reverse_charge)
     """
     try:
@@ -336,13 +335,13 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
             # Get tax code from category mapping
             category_id = item.get(Fields.CATEGORY_ID, 0)
             tax_code = CATEGORY_TAX_CODE_MAP.get(category_id, 'txcd_99999999')
-            
+
             line_items.append({
                 'amount': int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY],
                 'reference': item[Fields.PRODUCT_ID],
                 'tax_code': tax_code,
             })
-        
+
         # Add shipping as line item
         if shipping_cost_cents > 0:
             line_items.append({
@@ -350,7 +349,7 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
                 'reference': 'shipping',
                 'tax_code': STRIPE_TAX_CODE_SHIPPING,  # Shipping tax code
             })
-        
+
         # Build customer details
         customer_details = {
             'address': {
@@ -362,7 +361,7 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
             },
             'address_source': 'shipping',
         }
-        
+
         # Add GST number for B2B validation (Stripe will validate and apply reverse charge if valid)
         if gst_number:
             customer_details['tax_id'] = {
@@ -370,20 +369,20 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
                 'value': gst_number,
             }
             customer_details['tax_exempt'] = STRIPE_TAX_EXEMPT_NONE  # Let Stripe determine based on tax_id
-        
+
         # Call Stripe Tax API
         calculation = stripe.tax.Calculation.create(
             currency='cad',
             customer_details=customer_details,
             line_items=line_items,
         )
-        
+
         tax_amount_cents = calculation.tax_amount_exclusive
         tax_breakdown = {
-            detail.tax_type: detail.amount 
+            detail.tax_type: detail.amount
             for detail in calculation.tax_breakdown
         }
-        
+
         # Build item_taxes from Stripe calculation for consistency
         item_taxes = []
         for line_item in calculation.line_items.data:
@@ -393,12 +392,12 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
                     'taxCents': line_item.amount_tax,
                     'taxRate': (line_item.amount_tax / line_item.amount) if line_item.amount > 0 else 0,
                 })
-        
+
         # Check if Stripe applied reverse charge (B2B exemption)
         is_reverse_charge = calculation.shipping_cost.get('tax_breakdown', {}).get('reverse_charge', False) if hasattr(calculation, 'shipping_cost') else False
-        
+
         return tax_amount_cents, tax_breakdown, item_taxes, is_reverse_charge
-        
+
     except Exception as e:
         print(f'Stripe Tax API error: {e}')
         # Fall back to manual calculation
@@ -700,7 +699,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         tax_result = calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_cents, gst_number)
         if tax_result[0] is not None:
             tax_amount_cents, taxes_breakdown, item_taxes, is_reverse_charge = tax_result
-            
+
             # Log if Stripe applied reverse charge (B2B exemption)
             if is_reverse_charge:
                 print(f'✅ Stripe applied B2B reverse charge for user {user_id} with GST {gst_number[:6]}****')
@@ -709,7 +708,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             # IMPORTANT: Do NOT apply B2B exemption (GST-based) in fallback mode
             # because we cannot validate the GST number without Stripe
             print(f'⚠️ Stripe Tax API failed, falling back to manual calculation for user {user_id}')
-            
+
             tax_amount_cents = 0
             item_taxes = []
             for item in validated_items:
@@ -737,7 +736,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 name: round(actual_subtotal * rate, 2)
                 for name, rate in province_rates.items()
             }
-            
+
             # SECURITY: Force is_reverse_charge to False in fallback mode
             is_reverse_charge = False
     else:
@@ -2537,14 +2536,14 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
             })
         error_msg = str(e).lower()
         print(f'Capture payment error: {str(e)}')
-        
+
         # Handle Stripe-specific errors by checking exception type name
         exc_type_name = type(e).__name__
-        
+
         # Handle expired authorization (InvalidRequestError with 'expired' in message)
         if 'expired' in error_msg:
             raise https_fn.HttpsError('failed-precondition', 'Payment authorization has expired. Please create a new order.') from e
-        
+
         # Handle card errors (3DS required, card declined, etc.)
         if exc_type_name == 'CardError':
             # Handle 3DS required at capture time (rare edge case for manual captures)
@@ -2555,11 +2554,11 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
                 ) from e
             user_message = getattr(e, 'user_message', None) or 'Your card was declined. Please try a different payment method.'
             raise https_fn.HttpsError('failed-precondition', user_message) from e
-        
+
         # Handle other Stripe API errors
         if exc_type_name in ('InvalidRequestError', 'StripeError'):
             raise https_fn.HttpsError('failed-precondition', f'Payment capture failed: {str(e)}') from e
-        
+
         raise https_fn.HttpsError('internal', 'Could not capture payment. Please try again.') from e
 
 

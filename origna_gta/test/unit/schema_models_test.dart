@@ -312,13 +312,13 @@ void main() {
     test('OrderStatus values', () {
       expect(OrderStatus.pending.name, 'pending');
       expect(OrderStatus.delivered.name, 'delivered');
-      expect(OrderStatus.values.length, 11);
+      expect(OrderStatus.values.length, 12);
     });
 
     test('PaymentStatus values', () {
       expect(PaymentStatus.awaitingPayment.name, 'awaitingPayment');
       expect(PaymentStatus.paid.name, 'paid');
-      expect(PaymentStatus.values.length, 10);
+      expect(PaymentStatus.values.length, 13);
     });
 
     test('DeliveryStatus values', () {

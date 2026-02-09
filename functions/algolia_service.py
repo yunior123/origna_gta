@@ -10,7 +10,7 @@ from typing import Union
 from algoliasearch.search.client import SearchClient
 from pydantic import ValidationError
 
-from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY, AlgoliaConfig
+from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY, AlgoliaConfig, Collections
 from models.product import Product
 from schema_constants import Fields
 
