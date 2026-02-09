@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:html' as html;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/screens/login_screen.dart';
+import 'package:origna_gta/screens/privacy_policy_screen.dart';
+import 'package:origna_gta/screens/terms_screen.dart';
 import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/env_config.dart';
@@ -894,4 +897,36 @@ class _FixedPriceResult {
   final double total;
 
   const _FixedPriceResult({required this.isEnabled, required this.total});
+}
+
+// ============================================================================
+// LEGAL PAGE NAVIGATION - OAuth Compliance
+// ============================================================================
+
+/// Opens Privacy Policy page
+/// On web: navigates to static HTML file (required for OAuth verification)
+/// On mobile: navigates to in-app screen
+void openPrivacyPolicy(BuildContext context) {
+  if (kIsWeb) {
+    html.window.location.href = '/privacy-policy';
+  } else {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+    );
+  }
+}
+
+/// Opens Terms of Service page
+/// On web: navigates to static HTML file (required for OAuth verification)
+/// On mobile: navigates to in-app screen
+void openTermsOfService(BuildContext context) {
+  if (kIsWeb) {
+    html.window.location.href = '/terms-of-service';
+  } else {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const TermsScreen()),
+    );
+  }
 }

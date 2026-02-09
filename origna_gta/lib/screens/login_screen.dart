@@ -1,9 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/screens/privacy_policy_screen.dart';
-import 'package:origna_gta/screens/terms_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_textfield.dart';
 
@@ -189,9 +188,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                                     decoration: TextDecoration.underline,
                                                   ),
                                                   recognizer: TapGestureRecognizer()
-                                                    ..onTap = () {
-                                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
-                                                    },
+                                                    ..onTap = () => openTermsOfService(context),
                                                 ),
                                                 const TextSpan(text: ' and '),
                                                 TextSpan(
@@ -202,9 +199,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                                     decoration: TextDecoration.underline,
                                                   ),
                                                   recognizer: TapGestureRecognizer()
-                                                    ..onTap = () {
-                                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()));
-                                                    },
+                                                    ..onTap = () => openPrivacyPolicy(context),
                                                 ),
                                               ],
                                             ),

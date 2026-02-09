@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/checkout/checkout_provider.dart';
 import 'package:origna_gta/screens/editaddress_screen.dart';
-import 'package:origna_gta/screens/terms_screen.dart';
+
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
@@ -808,9 +808,7 @@ class _TermsText extends ConsumerWidget {
                     const TextSpan(text: 'I agree to the '),
                     WidgetSpan(
                       child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
-                        },
+                        onTap: () => openTermsOfService(context),
                         child: Text(
                           'Terms & Conditions',
                           style: TextStyle(
@@ -826,9 +824,7 @@ class _TermsText extends ConsumerWidget {
                     const TextSpan(text: ' and '),
                     WidgetSpan(
                       child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
-                        },
+                        onTap: () => openPrivacyPolicy(context),
                         child: Text(
                           'Privacy Policy',
                           style: TextStyle(

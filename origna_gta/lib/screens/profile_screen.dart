@@ -10,8 +10,8 @@ import 'package:origna_gta/screens/login_screen.dart';
 import 'package:origna_gta/screens/orders_screen.dart';
 import 'package:origna_gta/screens/seller_orders_screen.dart';
 import 'package:origna_gta/screens/seller_registration_screen.dart';
-import 'package:origna_gta/screens/privacy_policy_screen.dart';
-import 'package:origna_gta/screens/terms_screen.dart';
+
+
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
@@ -295,24 +295,14 @@ class ProfileScreen extends ConsumerWidget {
                               icon: Icons.description_outlined,
                               title: 'Terms & Conditions',
                               subtitle: 'Legal agreements',
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const TermsScreen(),
-                                ),
-                              ),
+                              onTap: () => openTermsOfService(context),
                             ),
                             _buildMenuItem(
                               context,
                               icon: Icons.lock_outline,
                               title: 'Privacy Policy',
                               subtitle: 'How we protect your data',
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const PrivacyPolicyScreen(),
-                                ),
-                              ),
+                              onTap: () => openPrivacyPolicy(context),
                             ),
                             _buildMenuItem(
                               context,

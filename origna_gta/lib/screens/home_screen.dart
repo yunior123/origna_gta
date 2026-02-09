@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:html' as html;
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/app/seller_account_status_viewmodel.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
@@ -333,7 +335,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           spacing: 8,
                           children: [
                             TextButton(
-                              onPressed: () => Navigator.pushNamed(context, '/privacy-policy'),
+                              onPressed: () {
+                                // On web, navigate to static HTML file for OAuth verification
+                                // On mobile, show in-app screen
+                                if (kIsWeb) {
+                                  html.window.location.href = '/privacy-policy';
+                                } else {
+                                  Navigator.pushNamed(context, '/privacy-policy');
+                                }
+                              },
                               child: Text(
                                 'Privacy Policy',
                                 style: TextStyle(color: DesignTokens.primary, fontSize: 13),
@@ -341,7 +351,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             Text('|', style: TextStyle(color: Colors.grey.withValues(alpha: 0.4), fontSize: 13)),
                             TextButton(
-                              onPressed: () => Navigator.pushNamed(context, '/terms-of-service'),
+                              onPressed: () {
+                                // On web, navigate to static HTML file for OAuth verification
+                                // On mobile, show in-app screen
+                                if (kIsWeb) {
+                                  html.window.location.href = '/terms-of-service';
+                                } else {
+                                  Navigator.pushNamed(context, '/terms-of-service');
+                                }
+                              },
                               child: Text(
                                 'Terms of Service',
                                 style: TextStyle(color: DesignTokens.primary, fontSize: 13),
