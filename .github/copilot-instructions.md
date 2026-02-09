@@ -1,7 +1,21 @@
 # GitHub Copilot Instructions — OrignaGta
 
 > These instructions are automatically loaded by GitHub Copilot in VS Code.
-> They provide project-wide context for all AI-assisted code generation.
+
+## ⚠️ READ FIRST: Source of Truth
+
+**ALL AI agents (Copilot, Gemini, Claude, etc.) MUST read [`CLAUDE.md`](../CLAUDE.md) in the project root before making any changes.**
+
+`CLAUDE.md` contains:
+- Full project context and architecture rules
+- Tech stack and conventions
+- Critical patterns and anti-patterns
+- Workflow commands and learned knowledge
+- Cross-stack mapping (Frontend ↔ Backend ↔ Schema)
+
+This file provides a quick reference only. For complete context, always consult `CLAUDE.md`.
+
+---
 
 ## Project Overview
 
@@ -28,6 +42,8 @@ Solo founder-developer project. Production-grade quality required.
 
 ## Architecture — MVVM (Non-Negotiable)
 
+**CRITICAL:** Screens contain ZERO business logic — only UI rendering.
+
 ```
 Frontend (Flutter)           Backend (Python)
 ┌─────────────────┐         ┌──────────────────┐
@@ -38,19 +54,15 @@ Frontend (Flutter)           Backend (Python)
 └─────────────────┘         └──────────────────┘
 ```
 
-- **Screens** contain ZERO business logic — only UI rendering
-- **ViewModels** (in `features/`) handle state and orchestration
-- **Repositories** (in `core/repositories/`) handle data access
-- **Providers** wire everything together via Riverpod
+See `CLAUDE.md` for full architecture rules and cross-stack mapping.
 
 ## Folder Structure
 
 ```
 origna_gta/lib/
-├── core/           → repositories/ (auth, cart, order, product, user, location, algolia)
-│                   → schema/schema_constants.dart
-├── features/       → MVVM ViewModels: auth, cart, checkout, home, orders, products, seller, profile, terms
-├── models/         → generated/ (Freezed: base_models, order_models, product_models, user_models)
+├── core/           → repositories/, schema/schema_constants.dart
+├── features/       → MVVM ViewModels (auth, cart, checkout, orders, products, etc.)
+├── models/         → generated/ (Freezed models)
 ├── screens/        → 28 screens (UI only, no logic)
 ├── services/       → algolia, analytics, session, splash
 ├── utils/          → design_tokens, glassmorphism, responsive, animations
@@ -61,9 +73,10 @@ functions/
 ├── models/         → base, order, product, user (Pydantic)
 ├── main.py         → Entry point + route registration
 ├── schema_constants.py → Single source of schema truth (backend)
-├── shipping_service.py, email_service.py, algolia_service.py, rate_limiter.py
 └── tests/          → 288+ unit tests
 ```
+
+See `docs/REPO_MAP.md` for complete file inventory.
 
 ## Critical Patterns (MUST Follow)
 
@@ -72,6 +85,8 @@ functions/
 3. **Canada-only** — Backend-first postal code/province validation. Never trust frontend.
 4. **Eventual consistency** — Minimize Firestore reads/writes. Assume data may be stale.
 5. **Error handling** — Always handle: network errors, auth expiry, permission denied, not found, rate limits
+
+**See `CLAUDE.md` RULES and ARCHITECTURE sections for complete patterns.**
 
 ## Anti-Patterns (NEVER Do)
 
@@ -84,6 +99,8 @@ functions/
 - ❌ Never use `IconButton` without a tooltip
 - ❌ Never edit one side of a cross-stack pair without updating the other
 
+**See `CLAUDE.md` for complete anti-patterns list.**
+
 ## Testing
 
 ```bash
@@ -94,10 +111,54 @@ cd e2e && npx playwright test                          # 161+ E2E tests
 ruff check functions/                                  # Python linting
 ```
 
+**See `CLAUDE.md` WORKFLOW COMMANDS for full test automation.**
+
 ## Key References
 
+- **`CLAUDE.md`** — **PRIMARY SOURCE OF TRUTH** for all AI agents
 - `docs/WORKFLOW_INDEX.md` — All workflows with file groups to read together
 - `docs/REPO_MAP.md` — Complete file inventory with responsibilities
 - `docs/database_schema.json` — Firestore schema definition
 - `docs/SYMBOL_MAP.md` — AST-extracted class/function signatures by domain
 - `docs/SELLER_TERMS_AND_POLICIES.md` — Business rules for sellers
+- `.github/copilot-skills.md` — Learned patterns, gotchas, and decision tables
+- `.github/claude.md` — Minimal context for GitHub-based workflows
+
+---
+
+## Quick Reference: Most Common Patterns
+
+### State Management (Riverpod)
+```dart
+// Provider definition
+final myProvider = StateNotifierProvider<MyNotifier, MyState>((ref) {
+  return MyNotifier(ref);
+});
+
+// ViewModel pattern
+class MyNotifier extends StateNotifier<MyState> {
+  MyNotifier(this._ref) : super(MyState.initial());
+  final Ref _ref;
+  // Business logic here
+}
+```
+
+### Design Tokens (Never hardcode colors)
+```dart
+import 'package:origna_gta/utils/design_tokens.dart';
+
+DesignTokens.primaryColor
+DesignTokens.backgroundColor
+DesignTokens.textPrimary
+```
+
+### Schema Constants
+```dart
+// Frontend
+import 'package:origna_gta/core/schema/schema_constants.dart';
+
+// Backend
+from schema_constants import ORDER_STATUSES, PRODUCT_CONDITION
+```
+
+**For complete patterns, workflows, and learned knowledge, see `CLAUDE.md`.**
