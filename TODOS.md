@@ -127,3 +127,6 @@ That’s the best option. Period. -->
         # NOTE: We calculate tax manually server-side
         # Stripe automatic_tax is DISABLED to avoid double taxation
         # TODO consider this automatic_tax
+
+
+        # TODO add integration with cra database for tax eemption verification, m aybe for taxes calculation as well

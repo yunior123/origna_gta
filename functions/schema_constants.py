@@ -481,6 +481,12 @@ class SecurityAlertTypes:
     SELLER_ACCOUNT_CHANGED = "seller_account_changed"
     PAYOUT_RECORD_INCOMPLETE = "payout_record_incomplete"
     MFA_LOW_BACKUP_CODES = "mfa_low_backup_codes"
+    # Tax exemption fraud prevention
+    INVALID_GST_ATTEMPT = "invalid_gst_attempt"
+    BLOCKED_GST_ATTEMPT = "blocked_gst_attempt"
+    SHARED_GST_NUMBER = "shared_gst_number"
+    TAX_EXEMPTION_PENDING_REVIEW = "tax_exemption_pending_review"
+    SUSPICIOUS_TAX_EXEMPTION = "suspicious_tax_exemption"
 
 
 class SeverityLevels:

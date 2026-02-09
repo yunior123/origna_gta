@@ -318,10 +318,14 @@ def get_item_tax_rate(item, province):
     return get_tax_rate(province)
 
 
-def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_cents):
+def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_cents, gst_number=None):
     """
     Calculate tax using Stripe Tax API.
-    Returns (tax_amount_cents, tax_breakdown, line_items_with_tax)
+    
+    Args:
+        gst_number: Canadian GST/HST number for B2B exemption (e.g., '123456789RT0001')
+    
+    Returns (tax_amount_cents, tax_breakdown, line_items_with_tax, is_reverse_charge)
     """
     try:
         line_items = []
@@ -344,19 +348,30 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
                 'tax_code': 'txcd_92010001',  # Shipping tax code
             })
         
+        # Build customer details
+        customer_details = {
+            'address': {
+                'line1': shipping_address.get(Fields.STREET, ''),
+                'city': shipping_address.get(Fields.CITY, ''),
+                'state': shipping_address.get(Fields.STATE, ''),
+                'postal_code': shipping_address.get(Fields.POSTAL_CODE, ''),
+                'country': 'CA',
+            },
+            'address_source': 'shipping',
+        }
+        
+        # Add GST number for B2B validation (Stripe will validate and apply reverse charge if valid)
+        if gst_number:
+            customer_details['tax_id'] = {
+                'type': 'ca_gst_hst',  # Canadian GST/HST
+                'value': gst_number,
+            }
+            customer_details['tax_exempt'] = 'none'  # Let Stripe determine based on tax_id
+        
         # Call Stripe Tax API
         calculation = stripe.tax.Calculation.create(
             currency='cad',
-            customer_details={
-                'address': {
-                    'line1': shipping_address.get(Fields.STREET, ''),
-                    'city': shipping_address.get(Fields.CITY, ''),
-                    'state': shipping_address.get(Fields.STATE, ''),
-                    'postal_code': shipping_address.get(Fields.POSTAL_CODE, ''),
-                    'country': 'CA',
-                },
-                'address_source': 'shipping',
-            },
+            customer_details=customer_details,
             line_items=line_items,
         )
         
@@ -376,12 +391,15 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
                     'taxRate': (line_item.amount_tax / line_item.amount) if line_item.amount > 0 else 0,
                 })
         
-        return tax_amount_cents, tax_breakdown, item_taxes
+        # Check if Stripe applied reverse charge (B2B exemption)
+        is_reverse_charge = calculation.shipping_cost.get('tax_breakdown', {}).get('reverse_charge', False) if hasattr(calculation, 'shipping_cost') else False
+        
+        return tax_amount_cents, tax_breakdown, item_taxes, is_reverse_charge
         
     except Exception as e:
         print(f'Stripe Tax API error: {e}')
         # Fall back to manual calculation
-        return None, None, None
+        return None, None, None, False
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS, cors=CORS_CONFIG)
@@ -428,9 +446,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     if user_data.get(Fields.SUSPENDED, False):
         raise https_fn.HttpsError('permission-denied', 'Account suspended. Cannot proceed with checkout.')
 
-    # Check for tax exemption
+    # Get GST number for B2B validation (Stripe Tax will validate it)
     tax_exemption = user_data.get(Fields.TAX_EXEMPTION)
-    is_tax_exempt = bool(tax_exemption and tax_exemption.get('gstNumber'))
+    gst_number = tax_exemption.get('gstNumber') if tax_exemption else None
 
     # Rate limiting: 5 requests per minute per user
     allowed, message = get_rate_limiter().check_rate_limit(
@@ -673,15 +691,16 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Calculate taxes per-item (server-side) - all in cents to avoid rounding errors
     state_code = shipping_address.get(Fields.STATE, 'ON')
 
-    if is_tax_exempt:
-        tax_amount_cents = 0
-        taxes_breakdown = {}
-        item_taxes = []
-    elif STRIPE_TAX_ENABLED:
+    if STRIPE_TAX_ENABLED:
         # Use Stripe Tax API for automatic tax calculation
-        tax_result = calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_cents)
+        # Stripe will validate GST number and apply B2B exemption if valid
+        tax_result = calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_cents, gst_number)
         if tax_result[0] is not None:
-            tax_amount_cents, taxes_breakdown, item_taxes = tax_result
+            tax_amount_cents, taxes_breakdown, item_taxes, is_reverse_charge = tax_result
+            
+            # Log if Stripe applied reverse charge (B2B exemption)
+            if is_reverse_charge:
+                print(f'✅ Stripe applied B2B reverse charge for user {user_id} with GST {gst_number[:6]}****')
         else:
             # Fall back to manual calculation on Stripe Tax API error
             tax_amount_cents = 0
@@ -831,6 +850,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     from handlers.payment_providers import PaymentProvider
 
+    # Determine if B2B exemption was applied (Stripe validated GST and applied reverse charge)
+    is_tax_exempt = is_reverse_charge if 'is_reverse_charge' in locals() else False
+
     order_data = {
         Fields.ORDER_ID: order_id,
         Fields.USER_ID: user_id,
@@ -851,11 +873,11 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.EXPIRES_AT: datetime.now(UTC) + timedelta(days=AUTHORIZATION_VALID_DAYS),
         Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
         Fields.PAYMENT_PROVIDER: PaymentProvider.STRIPE,
-        Fields.DELIVERY_SPEED: delivery_speed,  # Bug #9: Persist chosen speed for audit trail
-        Fields.PLATFORM_FEE_CENTS: round(total_amount_cents * PLATFORM_FEE_PERCENT),  # AUDIT FIX: Immutable fee stored at checkout
+        Fields.DELIVERY_SPEED: delivery_speed,
+        Fields.PLATFORM_FEE_CENTS: round(total_amount_cents * PLATFORM_FEE_PERCENT),
         Fields.ARCHIVED: False,
         Fields.STOCK_RESTORED: False,
-        Fields.TAX_EXEMPTION: tax_exemption if is_tax_exempt else None,
+        Fields.TAX_EXEMPTION: tax_exemption if gst_number else None,
         Fields.TAX_EXEMPT: is_tax_exempt,
         Fields.ITEM_TAXES: item_taxes,
     }

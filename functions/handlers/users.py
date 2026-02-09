@@ -2,6 +2,9 @@
 User Management Handlers
 - User profile updates
 - Tax exemption management
+
+NOTE: Stripe Tax handles GST validation and B2B exemption automatically.
+We only store the GST number - Stripe validates it during checkout.
 """
 
 from typing import Any
@@ -35,20 +38,33 @@ def update_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Update user profile fields including tax exemption.
     
+    NOTE: Stripe Tax will validate the GST number during checkout.
+    We only do basic format validation here.
+    
     Request data:
         - taxExemption: {gstNumber: "123456789RT0001"} | null (optional)
         - address: Address object (optional)
         - name: string (optional)
-        
-    Security:
-        - User can only update their own profile
-        - GST number validation (basic format check)
     """
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
     
     user_id = req.auth.uid
     data = req.data
+    
+    # Rate limiting: 3 tax exemption changes per day per user
+    from rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=f"{user_id}_tax_exemption",
+        action='update_tax_exemption',
+        max_requests=3,
+        window_minutes=1440,  # 24 hours
+        fail_closed=True
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', 
+            'Too many tax exemption updates. Please try again tomorrow.')
     
     # Build update data
     update_data = {
@@ -65,21 +81,20 @@ def update_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
         else:
             gst_number = tax_exemption.get('gstNumber', '').strip().upper()
             
-            # Basic GST number validation (Canadian format: 123456789RT0001)
-            if gst_number:
-                import re
-                # Canadian GST/HST/QST numbers: 9 digits + RT/QST + 4 digits
-                if not re.match(r'^\d{9}[A-Z]{2}\d{4}$', gst_number):
-                    raise https_fn.HttpsError(
-                        'invalid-argument',
-                        'Invalid GST number format. Expected: 123456789RT0001'
-                    )
-                
-                update_data[Fields.TAX_EXEMPTION] = {
-                    'gstNumber': gst_number,
-                    'verified': False,  # Could add CRA verification in future
-                    'updatedAt': get_server_timestamp(),
-                }
+            # Basic format validation only
+            # Stripe Tax will do full validation during checkout
+            import re
+            if gst_number and not re.match(r'^\d{9}[A-Z]{2}\d{4}$', gst_number):
+                raise https_fn.HttpsError(
+                    'invalid-argument',
+                    'Invalid GST number format. Expected: 123456789RT0001'
+                )
+            
+            # Store the GST number - Stripe will validate it
+            update_data[Fields.TAX_EXEMPTION] = {
+                'gstNumber': gst_number,
+                'updatedAt': get_server_timestamp(),
+            }
     
     # Handle address update
     if 'address' in data:
@@ -117,12 +132,7 @@ def update_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def get_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
-    """
-    Get current user's profile including tax exemption status.
-    
-    Returns:
-        User profile data with tax exemption info
-    """
+    """Get current user's profile including tax exemption status."""
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
     
@@ -135,7 +145,6 @@ def get_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
     
     user_data = user_doc.to_dict()
     
-    # Return safe profile data
     return create_success_response({
         'uid': user_id,
         'email': user_data.get(Fields.EMAIL),
