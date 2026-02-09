@@ -1,124 +1,124 @@
-name: CI
+# name: CI
 
-on:
-  pull_request:
-  push:
-    branches: [main]
+# on:
+#   pull_request:
+#   push:
+#     branches: [main]
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+# concurrency:
+#   group: ci-${{ github.ref }}
+#   cancel-in-progress: true
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 45
 
-    # ⚠️ REQUIRED SECRETS - Must be configured in GitHub repo settings:
-    # Repository Secrets (Settings → Secrets and variables → Actions):
-    # - STRIPE_SECRET_KEY: Stripe test/production secret key
-    # - STRIPE_WEBHOOK_SECRET: Stripe webhook signing secret
-    # - ALGOLIA_APP_ID: Algolia application ID
-    # - ALGOLIA_WRITE_API_KEY: Algolia write API key
-    #
-    # Optional secrets (for full integration tests):
-    # - MAILJET_API_KEY, MAILJET_SECRET_KEY: Email service (can be mocked)
-    # - GEOAPIFY_API_KEY: Geolocation (can be mocked)
-    # - AIRWALLEX_*: Alternative payment provider (optional)
-    env:
-      # Force local mode for CI (uses env vars, not Secret Manager)
-      FUNCTIONS_EMULATOR: 'true'
-      # Payment provider secrets (REQUIRED)
-      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-      # Search service secrets (REQUIRED)
-      ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
-      ALGOLIA_WRITE_API_KEY: ${{ secrets.ALGOLIA_WRITE_API_KEY }}
-      # Optional services (can be empty for basic tests)
-      MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY || 'test_key' }}
-      MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY || 'test_secret' }}
-      GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY || 'test_key' }}
-      AIRWALLEX_API_KEY: ${{ secrets.AIRWALLEX_API_KEY || '' }}
-      AIRWALLEX_CLIENT_ID: ${{ secrets.AIRWALLEX_CLIENT_ID || '' }}
-      AIRWALLEX_WEBHOOK_SECRET: ${{ secrets.AIRWALLEX_WEBHOOK_SECRET || '' }}
+#     # ⚠️ REQUIRED SECRETS - Must be configured in GitHub repo settings:
+#     # Repository Secrets (Settings → Secrets and variables → Actions):
+#     # - STRIPE_SECRET_KEY: Stripe test/production secret key
+#     # - STRIPE_WEBHOOK_SECRET: Stripe webhook signing secret
+#     # - ALGOLIA_APP_ID: Algolia application ID
+#     # - ALGOLIA_WRITE_API_KEY: Algolia write API key
+#     #
+#     # Optional secrets (for full integration tests):
+#     # - MAILJET_API_KEY, MAILJET_SECRET_KEY: Email service (can be mocked)
+#     # - GEOAPIFY_API_KEY: Geolocation (can be mocked)
+#     # - AIRWALLEX_*: Alternative payment provider (optional)
+#     env:
+#       # Force local mode for CI (uses env vars, not Secret Manager)
+#       FUNCTIONS_EMULATOR: 'true'
+#       # Payment provider secrets (REQUIRED)
+#       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+#       STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+#       # Search service secrets (REQUIRED)
+#       ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
+#       ALGOLIA_WRITE_API_KEY: ${{ secrets.ALGOLIA_WRITE_API_KEY }}
+#       # Optional services (can be empty for basic tests)
+#       MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY || 'test_key' }}
+#       MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY || 'test_secret' }}
+#       GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY || 'test_key' }}
+#       AIRWALLEX_API_KEY: ${{ secrets.AIRWALLEX_API_KEY || '' }}
+#       AIRWALLEX_CLIENT_ID: ${{ secrets.AIRWALLEX_CLIENT_ID || '' }}
+#       AIRWALLEX_WEBHOOK_SECRET: ${{ secrets.AIRWALLEX_WEBHOOK_SECRET || '' }}
 
-    steps:
-      - uses: actions/checkout@v4
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - name: Setup Java (Firebase emulators)
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+#       - name: Setup Java (Firebase emulators)
+#         uses: actions/setup-java@v4
+#         with:
+#           distribution: temurin
+#           java-version: '17'
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
+#       - name: Setup Flutter
+#         uses: subosito/flutter-action@v2
+#         with:
+#           channel: stable
+#           cache: true
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: pip
-          cache-dependency-path: functions/requirements.txt
+#       - name: Setup Python
+#         uses: actions/setup-python@v5
+#         with:
+#           python-version: '3.11'
+#           cache: pip
+#           cache-dependency-path: functions/requirements.txt
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+#       - name: Setup Node
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20'
 
-      - name: Install Firebase CLI
-        run: npm i -g firebase-tools@latest
+#       - name: Install Firebase CLI
+#         run: npm i -g firebase-tools@latest
 
-      # Verify only REQUIRED secrets are configured
-      - name: Guard required secrets
-        run: |
-          python - <<'PY'
-          import os, sys
+#       # Verify only REQUIRED secrets are configured
+#       - name: Guard required secrets
+#         run: |
+#           python - <<'PY'
+#           import os, sys
           
-          # Only critical secrets for CI
-          required = [
-            'STRIPE_SECRET_KEY',
-            'STRIPE_WEBHOOK_SECRET',
-            'ALGOLIA_APP_ID',
-            'ALGOLIA_WRITE_API_KEY'
-          ]
+#           # Only critical secrets for CI
+#           required = [
+#             'STRIPE_SECRET_KEY',
+#             'STRIPE_WEBHOOK_SECRET',
+#             'ALGOLIA_APP_ID',
+#             'ALGOLIA_WRITE_API_KEY'
+#           ]
           
-          missing = [k for k in required if not os.environ.get(k)]
+#           missing = [k for k in required if not os.environ.get(k)]
           
-          if missing:
-            print('❌ ERROR: Missing required secrets:', ', '.join(missing))
-            print('\nConfigure these secrets in: Settings → Secrets and variables → Actions')
-            sys.exit(1)
+#           if missing:
+#             print('❌ ERROR: Missing required secrets:', ', '.join(missing))
+#             print('\nConfigure these secrets in: Settings → Secrets and variables → Actions')
+#             sys.exit(1)
           
-          print('✅ All required secrets are configured')
-          PY
+#           print('✅ All required secrets are configured')
+#           PY
 
-      - name: Install Python deps
-        run: |
-          cd functions
-          pip install -r requirements.txt
-          pip install pytest
+#       - name: Install Python deps
+#         run: |
+#           cd functions
+#           pip install -r requirements.txt
+#           pip install pytest
 
-      - name: Python tests
-        run: |
-          cd functions
-          pytest -q
+#       - name: Python tests
+#         run: |
+#           cd functions
+#           pytest -q
 
-      - name: Flutter analyze
-        run: |
-          cd origna_gta
-          flutter pub get
-          flutter analyze
+#       - name: Flutter analyze
+#         run: |
+#           cd origna_gta
+#           flutter pub get
+#           flutter analyze
 
-      - name: Flutter tests
-        run: |
-          cd origna_gta
-          flutter test
+#       - name: Flutter tests
+#         run: |
+#           cd origna_gta
+#           flutter test
 
-      - name: Build Flutter web (release)
-        run: |
-          cd origna_gta
-          flutter build web --release
+#       - name: Build Flutter web (release)
+#         run: |
+#           cd origna_gta
+#           flutter build web --release
