@@ -10,6 +10,10 @@ import 'package:origna_gta/screens/cart_screen.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
 import 'package:origna_gta/screens/profile_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
+import 'package:origna_gta/widgets/mascot/mascot_provider.dart';
+import 'package:origna_gta/widgets/mascot/canadian_moose.dart';
+import 'package:origna_gta/widgets/mascot/moose_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -258,89 +262,133 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final homeNotifier = ref.read(homeViewModelProvider.notifier);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Choix de la mascotte selon la parité du jour
+    final day = DateTime.now().day;
+    final showSparky = day % 2 == 0;
+    final mascotController = showSparky
+      ? ref.watch(mascotControllerProvider)
+      : null;
+    final mooseController = !showSparky
+      ? ref.watch(mooseControllerProvider)
+      : null;
+
     return Scaffold(
       appBar: _buildModernAppBar(),
       body: Container(
         decoration: BoxDecoration(
           gradient: DesignTokens.surfaceGradient(isDark: isDark),
         ),
-        child: CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            // App Purpose Tagline
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Text(
-                  'Your marketplace for buying and selling across the Greater Toronto Area and all of Canada.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
-                    fontWeight: FontWeight.w400,
-                    height: 1.3,
+        child: Stack(
+          children: [
+            // Main scrollable content
+            CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                // App Purpose Tagline
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Text(
+                      'Your marketplace for buying and selling across the Greater Toronto Area and all of Canada.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        fontWeight: FontWeight.w400,
+                        height: 1.3,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
 
-            // Animated Search Bar
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(ResponsiveBreakpoints.getSpacing(context, SpacingSize.md)),
-                child: _buildModernSearchBar(homeNotifier),
-              ),
-            ),
+                // Animated Search Bar
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(ResponsiveBreakpoints.getSpacing(context, SpacingSize.md)),
+                    child: _buildModernSearchBar(homeNotifier),
+                  ),
+                ),
 
-            // Category Chips
-            SliverToBoxAdapter(child: _CategoryChips(homeNotifier: homeNotifier)),
+                // Category Chips
+                SliverToBoxAdapter(child: _CategoryChips(homeNotifier: homeNotifier)),
 
-            const SliverToBoxAdapter(child: SizedBox(height: DesignTokens.spacing20)),
+                const SliverToBoxAdapter(child: SizedBox(height: DesignTokens.spacing20)),
 
-            // Product Grid
-            _ProductGrid(cardAspectRatio: _getCardAspectRatio(context), fallbackUserModel: widget.userModel),
+                // Product Grid
+                _ProductGrid(cardAspectRatio: _getCardAspectRatio(context), fallbackUserModel: widget.userModel),
 
-            // Pagination Loader
-            const _PaginationLoader(),
+                // Pagination Loader
+                const _PaginationLoader(),
 
-            // Footer with legal links
-            SliverToBoxAdapter(
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                child: Column(
-                  children: [
-                    Divider(color: Colors.grey.withValues(alpha: 0.2)),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 8,
+                // Footer with legal links
+                SliverToBoxAdapter(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                    child: Column(
                       children: [
-                        TextButton(
-                          onPressed: () => Navigator.pushNamed(context, '/privacy-policy'),
-                          child: Text(
-                            'Privacy Policy',
-                            style: TextStyle(color: DesignTokens.primary, fontSize: 13),
-                          ),
+                        Divider(color: Colors.grey.withValues(alpha: 0.2)),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 8,
+                          children: [
+                            TextButton(
+                              onPressed: () => Navigator.pushNamed(context, '/privacy-policy'),
+                              child: Text(
+                                'Privacy Policy',
+                                style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+                              ),
+                            ),
+                            Text('|', style: TextStyle(color: Colors.grey.withValues(alpha: 0.4), fontSize: 13)),
+                            TextButton(
+                              onPressed: () => Navigator.pushNamed(context, '/terms-of-service'),
+                              child: Text(
+                                'Terms of Service',
+                                style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+                              ),
+                            ),
+                          ],
                         ),
-                        Text('|', style: TextStyle(color: Colors.grey.withValues(alpha: 0.4), fontSize: 13)),
-                        TextButton(
-                          onPressed: () => Navigator.pushNamed(context, '/terms-of-service'),
-                          child: Text(
-                            'Terms of Service',
-                            style: TextStyle(color: DesignTokens.primary, fontSize: 13),
-                          ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '© 2026 Origna GTA. All rights reserved.',
+                          style: TextStyle(color: isDark ? Colors.grey[600] : Colors.grey[400], fontSize: 11),
                         ),
+                        const SizedBox(height: 16),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '© 2026 Origna GTA. All rights reserved.',
-                      style: TextStyle(color: isDark ? Colors.grey[600] : Colors.grey[400], fontSize: 11),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                  ),
                 ),
-              ),
+              ],
+            ),
+
+            // --- MASCOTTE CANADIENNE ---
+            Positioned(
+              bottom: 24,
+              right: 24,
+              child: showSparky
+                  ? MouseRegion(
+                      onHover: (event) {
+                        final dx = (event.localPosition.dx - 90) / 90;
+                        final dy = (event.localPosition.dy - 90) / 90;
+                        mascotController.lookAt(Offset(dx.clamp(-1, 1), dy.clamp(-1, 1)));
+                      },
+                      child: ShopMascot(
+                        controller: mascotController!,
+                        size: 180,
+                      ),
+                    )
+                  : MouseRegion(
+                      onHover: (event) {
+                        final dx = (event.localPosition.dx - 125) / 125;
+                        final dy = (event.localPosition.dy - 125) / 125;
+                        mooseController.lookAt(Offset(dx.clamp(-1, 1), dy.clamp(-1, 1)));
+                      },
+                      child: CanadianMoose(
+                        controller: mooseController!,
+                        size: 220,
+                      ),
+                    ),
             ),
           ],
         ),

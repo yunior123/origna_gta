@@ -27,6 +27,7 @@ class OrderStatusEnum(StrEnum):
     EXPIRED = "expired"
     REFUNDED = "refunded"
     PARTIALLY_REFUNDED = "partially_refunded"
+    DISPUTED = "disputed"
 
 
 class PaymentStatusEnum(StrEnum):

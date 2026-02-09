@@ -12,7 +12,7 @@ from config import IS_EMULATOR
 # Import Pydantic models
 from models.base import Address
 from models.order import OrderItem
-from schema_constants import Collections, Fields
+from schema_constants import Collections, Fields, OrderStatusValues
 
 
 def create_success_response(data: dict[str, Any], status_code: int = 200) -> dict[str, Any]:
@@ -305,18 +305,18 @@ def is_valid_order_status_transition(current_status: str, new_status: str) -> bo
     - disputed -> [refunded] (after dispute resolution)
     """
     valid_transitions = {
-        'pending': ['confirmed', 'cancelled', 'failed', 'expired'],
-        'confirmed': ['processing', 'cancelled', 'expired'],
-        'processing': ['shipped', 'cancelled'],
-        'shipped': ['in_transit', 'delivered'],
-        'in_transit': ['delivered', 'cancelled'],
-        'delivered': ['refunded', 'partially_refunded', 'disputed'],
-        'cancelled': [],
-        'failed': ['pending'],
-        'expired': ['pending'],
-        'refunded': [],
-        'partially_refunded': ['refunded'],
-        'disputed': ['refunded'],
+        OrderStatusValues.PENDING: [OrderStatusValues.CONFIRMED, OrderStatusValues.CANCELLED, OrderStatusValues.FAILED, OrderStatusValues.EXPIRED],
+        OrderStatusValues.CONFIRMED: [OrderStatusValues.PROCESSING, OrderStatusValues.CANCELLED, OrderStatusValues.EXPIRED],
+        OrderStatusValues.PROCESSING: [OrderStatusValues.SHIPPED, OrderStatusValues.CANCELLED],
+        OrderStatusValues.SHIPPED: [OrderStatusValues.IN_TRANSIT, OrderStatusValues.DELIVERED],
+        OrderStatusValues.IN_TRANSIT: [OrderStatusValues.DELIVERED, OrderStatusValues.CANCELLED],
+        OrderStatusValues.DELIVERED: [OrderStatusValues.REFUNDED, OrderStatusValues.PARTIALLY_REFUNDED, OrderStatusValues.DISPUTED],
+        OrderStatusValues.CANCELLED: [],
+        OrderStatusValues.FAILED: [OrderStatusValues.PENDING],
+        OrderStatusValues.EXPIRED: [OrderStatusValues.PENDING],
+        OrderStatusValues.REFUNDED: [],
+        OrderStatusValues.PARTIALLY_REFUNDED: [OrderStatusValues.REFUNDED],
+        OrderStatusValues.DISPUTED: [OrderStatusValues.REFUNDED],
     }
 
     allowed_next_states = valid_transitions.get(current_status, [])

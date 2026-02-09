@@ -86,6 +86,8 @@ class Fields:
     NAME = "name"
     ROLES = "roles"
     ADDRESS = "address"
+    SELLER_PROFILE = "sellerProfile"
+    BUSINESS_ADDRESS = "businessAddress"
     CUSTOMER_ID = "customerId"
     LAST_CHECKOUT_SESSION = "lastCheckoutSession"
     LAST_ORDER_ID = "lastOrderId"
@@ -182,11 +184,17 @@ class Fields:
     AUTO_CONFIRMED = "autoConfirmed"
     AUTO_CAPTURED = "autoCaptured"
     SELLER_PAYOUTS = "sellerPayouts"
+    SELLER_STRIPE_ACCOUNTS = "sellerStripeAccounts"
     PLATFORM_FEE_TOTAL = "platformFeeTotal"
     PAYOUT_STATUS = "payoutStatus"
     RATINGS = "ratings"
     REFUND_AMOUNT = "refundAmount"
     REFUNDED_AT = "refundedAt"
+    # Refund/dispute tracking (cents-based for idempotency & audit)
+    CUMULATIVE_REFUNDED_CENTS = "cumulativeRefundedCents"
+    PARTIAL_REFUND_AMOUNT_CENTS = "partialRefundAmountCents"
+    TRANSFERS_REVERSED = "transfersReversed"
+    DISPUTED_AT = "disputedAt"
     SHIPPING_APPROVAL_STATUS = "shippingApprovalStatus"
     SHIPPING_APPROVAL_REQUIRED = "shippingApprovalRequired"
     ACTUAL_SHIPPING = "actualShipping"
@@ -242,6 +250,8 @@ class Fields:
     FAILURE_REASON = "failureReason"
     PAYOUT_DATE = "payoutDate"
     REVERSED_AT = "reversedAt"
+    CUMULATIVE_REVERSED_CENTS = "cumulativeReversedCents"
+    REVERSAL_REASON = "reversalReason"
 
     # === WEBHOOK FIELDS ===
     EVENT_ID = "eventId"
@@ -288,6 +298,7 @@ class Fields:
     CHARGE_ID = "chargeId"
     ACCOUNT_ID = "accountId"
     REASON = "reason"
+    PAYMENT_INTENT_ID = "paymentIntentId"
     DESTINATION = "destination"
     FAILURE_MESSAGE = "failureMessage"
     ADMIN_ID = "adminId"
@@ -297,6 +308,7 @@ class Fields:
     MISMATCH_PERCENT = "mismatchPercent"
     REVERSAL_ERRORS = "reversalErrors"
     PAYOUT_ID = "payoutId"
+    TRANSFER_ID = "transferId"
     ERROR_CODE = "errorCode"
     TARGET_USER_ID = "targetUserId"
     OLD_ROLES = "oldRoles"
@@ -342,10 +354,11 @@ class OrderStatusValues:
     EXPIRED = "expired"
     REFUNDED = "refunded"
     PARTIALLY_REFUNDED = "partially_refunded"
+    DISPUTED = "disputed"
 
     ALL: frozenset[str] = frozenset({
         PENDING, CONFIRMED, PROCESSING, SHIPPED, IN_TRANSIT,
-        DELIVERED, CANCELLED, FAILED, EXPIRED, REFUNDED, PARTIALLY_REFUNDED
+        DELIVERED, CANCELLED, FAILED, EXPIRED, REFUNDED, PARTIALLY_REFUNDED, DISPUTED
     })
 
 
@@ -391,10 +404,11 @@ class PayoutStatusValues:
     PARTIAL = "partial"
     FAILED = "failed"
     REVERSED = "reversed"
+    PARTIALLY_REVERSED = "partially_reversed"
     REVERSED_DISPUTE = "reversed_dispute"
 
     ALL: frozenset[str] = frozenset({
-        PENDING, PROCESSING, COMPLETED, PARTIAL, FAILED, REVERSED, REVERSED_DISPUTE
+        PENDING, PROCESSING, COMPLETED, PARTIAL, FAILED, REVERSED, PARTIALLY_REVERSED, REVERSED_DISPUTE
     })
 
 
@@ -467,6 +481,11 @@ class SeverityLevels:
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
+
+
+class AdminActionValues:
+    """Valid values for admin log action field."""
+    PAYMENT_PROVIDER_UPDATE = "payment_provider_update"
 
 
 # =============================================================================
@@ -603,6 +622,8 @@ class ApiKeys:
     NEW_STATUS = "newStatus"
     APPROVED = "approved"
     NEW_SHIPPING_COST = "newShippingCost"
+    SUBTOTAL = "subtotal"
+    ITEM_IDS = "itemIds"
 
     # === RESPONSE KEYS (returned from Cloud Functions) ===
     SUCCESS = "success"
@@ -618,6 +639,22 @@ class ApiKeys:
     BACKUP_CODES = "backup_codes"
     DETAILS_SUBMITTED = "detailsSubmitted"
     REQUIREMENTS_CURRENTLY_DUE = "requirementsCurrentlyDue"
+    DUPLICATE = "duplicate"
+    EMULATOR_MODE = "emulatorMode"
+    CAPTURED = "captured"
+    MESSAGE = "message"
+    PAYMENT_INTENT_ID = "paymentIntentId"
+    ACCOUNT_ID = "accountId"
+    EXISTING = "existing"
+    HAS_CHANGES = "hasChanges"
+    PRICE_CHANGES = "priceChanges"
+    STOCK_CHANGES = "stockChanges"
+    REMOVED_PRODUCTS = "removedProducts"
+    OLD_PRICE = "oldPrice"
+    NEW_PRICE = "newPrice"
+    REQUESTED = "requested"
+    AVAILABLE = "available"
+    PRODUCT_NAME = "productName"
 
     # === PAYMENT PROVIDER RESPONSE KEYS ===
     SUPPORTED_CURRENCIES = "supportedCurrencies"
