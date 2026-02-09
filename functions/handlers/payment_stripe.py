@@ -702,7 +702,11 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             if is_reverse_charge:
                 print(f'✅ Stripe applied B2B reverse charge for user {user_id} with GST {gst_number[:6]}****')
         else:
-            # Fall back to manual calculation on Stripe Tax API error
+            # SECURITY FIX: Fall back to manual calculation on Stripe Tax API error
+            # IMPORTANT: Do NOT apply B2B exemption (GST-based) in fallback mode
+            # because we cannot validate the GST number without Stripe
+            print(f'⚠️ Stripe Tax API failed, falling back to manual calculation for user {user_id}')
+            
             tax_amount_cents = 0
             item_taxes = []
             for item in validated_items:
@@ -730,6 +734,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 name: round(actual_subtotal * rate, 2)
                 for name, rate in province_rates.items()
             }
+            
+            # SECURITY: Force is_reverse_charge to False in fallback mode
+            is_reverse_charge = False
     else:
         # Calculate per-item tax (manual calculation)
         tax_amount_cents = 0

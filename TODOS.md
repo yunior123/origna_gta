@@ -129,4 +129,4 @@ That’s the best option. Period. -->
         # TODO consider this automatic_tax
 
 
-        # TODO add integration with cra database for tax eemption verification, m aybe for taxes calculation as well
+       
