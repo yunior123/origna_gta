@@ -467,8 +467,8 @@ AddressDetails parseAddressSuggestion(Map<String, dynamic> suggestion) {
   final houseNumber = props['housenumber'];
   final streetName = props['street'];
   final addressLine1 = [
-    if (houseNumber != null) houseNumber,
-    if (streetName != null) streetName,
+    ?houseNumber,
+    ?streetName,
   ].join(' ');
 
   return AddressDetails(

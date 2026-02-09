@@ -16,6 +16,8 @@ jobs:
   schema-sync:
     name: Sync Schema Constants
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout
