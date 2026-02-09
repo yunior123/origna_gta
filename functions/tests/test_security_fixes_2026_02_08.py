@@ -8,10 +8,10 @@ Tests for:
 Run: cd functions && python -m pytest tests/test_security_fixes_2026_02_08.py -v
 """
 
-import pytest
 from datetime import datetime
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
+import pytest
 
 # =============================================================================
 # TEST FIX 1: Stock Re-validation in process_checkout_session_completed
@@ -23,9 +23,9 @@ class TestStockRevalidation:
     def test_product_deactivated_cancels_order(self, mock_firestore_client):
         """FIX-002: If product deactivated between checkout and payment, order cancelled."""
         from handlers.payment_stripe import process_checkout_session_completed
-        
+
         mock_db = mock_firestore_client
-        
+
         # Setup: Order with one item
         order_data = {
             'userId': 'buyer_123',
@@ -38,60 +38,64 @@ class TestStockRevalidation:
             'stripePaymentIntentId': 'pi_test_123',
             'stockRestored': False,
         }
-        
+
         # Mock order reference that will be updated
         mock_order_ref = Mock()
         mock_order_ref.update = Mock()
-        
+
         # Mock order exists
         mock_order_doc = Mock()
         mock_order_doc.exists = True
         mock_order_doc.to_dict.return_value = order_data
         mock_order_doc.reference = mock_order_ref
-        
+
         # Mock product is DEACTIVATED
         mock_product_doc = Mock()
         mock_product_doc.exists = True
         mock_product_doc.to_dict.return_value = {'isActive': False, 'name': 'Test Product'}
-        
+
         # Mock seller is active
         mock_seller_doc = Mock()
         mock_seller_doc.exists = True
         mock_seller_doc.to_dict.return_value = {'suspended': False}
-        
+
         def collection_side_effect(name):
             coll = Mock()
             if name == 'orders':
-                coll.document.return_value.get.return_value = mock_order_doc
-                coll.document.return_value = mock_order_ref  # Return same ref
+                # document() should return order_ref which has .get() and .update()
+                order_ref_mock = Mock()
+                order_ref_mock.get.return_value = mock_order_doc
+                # When order_ref.update() is called, record it on mock_order_ref
+                order_ref_mock.update = mock_order_ref.update
+                coll.document.return_value = order_ref_mock
             elif name == 'products':
                 coll.document.return_value.get.return_value = mock_product_doc
             elif name == 'users':
                 coll.document.return_value.get.return_value = mock_seller_doc
             return coll
-        
+
         mock_db.collection.side_effect = collection_side_effect
-        
+
         # Mock Stripe PaymentIntent.cancel
         with patch('handlers.payment_stripe.stripe.PaymentIntent.cancel') as mock_cancel:
             session = {
                 'metadata': {'orderId': 'order_123'},
                 'payment_intent': 'pi_test_123'
             }
-            
+
             result = process_checkout_session_completed(session)
-            
+
             # Order should be cancelled, not confirmed
             assert 'cancelled' in result.lower()
             mock_order_ref.update.assert_called()
             mock_cancel.assert_called_once()
-    
+
     def test_seller_suspended_cancels_order(self, mock_firestore_client):
         """FIX-002: If seller suspended between checkout and payment, order cancelled."""
         from handlers.payment_stripe import process_checkout_session_completed
-        
+
         mock_db = mock_firestore_client
-        
+
         order_data = {
             'userId': 'buyer_123',
             'items': [{
@@ -103,22 +107,22 @@ class TestStockRevalidation:
             'stripePaymentIntentId': 'pi_test_123',
             'stockRestored': False,
         }
-        
+
         mock_order_doc = Mock()
         mock_order_doc.exists = True
         mock_order_doc.to_dict.return_value = order_data
         mock_order_doc.reference = Mock()
-        
+
         # Product is active
         mock_product_doc = Mock()
         mock_product_doc.exists = True
         mock_product_doc.to_dict.return_value = {'isActive': True}
-        
+
         # But SELLER IS SUSPENDED
         mock_seller_doc = Mock()
         mock_seller_doc.exists = True
         mock_seller_doc.to_dict.return_value = {'suspended': True}
-        
+
         def collection_side_effect(name):
             coll = Mock()
             if name == 'orders':
@@ -128,27 +132,27 @@ class TestStockRevalidation:
             elif name == 'users':
                 coll.document.return_value.get.return_value = mock_seller_doc
             return coll
-        
+
         mock_db.collection.side_effect = collection_side_effect
-        
+
         with patch('handlers.payment_stripe.stripe.PaymentIntent.cancel') as mock_cancel:
             session = {
                 'metadata': {'orderId': 'order_123'},
                 'payment_intent': 'pi_test_123'
             }
-            
+
             result = process_checkout_session_completed(session)
-            
+
             assert 'cancelled' in result.lower()
             assert 'seller suspended' in result.lower()
             mock_cancel.assert_called_once()
-    
+
     def test_product_removed_cancels_order(self, mock_firestore_client):
         """FIX-002: If product deleted between checkout and payment, order cancelled."""
         from handlers.payment_stripe import process_checkout_session_completed
-        
+
         mock_db = mock_firestore_client
-        
+
         order_data = {
             'userId': 'buyer_123',
             'items': [{
@@ -160,16 +164,16 @@ class TestStockRevalidation:
             'stripePaymentIntentId': 'pi_test_123',
             'stockRestored': False,
         }
-        
+
         mock_order_doc = Mock()
         mock_order_doc.exists = True
         mock_order_doc.to_dict.return_value = order_data
         mock_order_doc.reference = Mock()
-        
+
         # Product NO LONGER EXISTS
         mock_product_doc = Mock()
         mock_product_doc.exists = False
-        
+
         def collection_side_effect(name):
             coll = Mock()
             if name == 'orders':
@@ -177,26 +181,26 @@ class TestStockRevalidation:
             elif name == 'products':
                 coll.document.return_value.get.return_value = mock_product_doc
             return coll
-        
+
         mock_db.collection.side_effect = collection_side_effect
-        
-        with patch('handlers.payment_stripe.stripe.PaymentIntent.cancel') as mock_cancel:
+
+        with patch('handlers.payment_stripe.stripe.PaymentIntent.cancel'):
             session = {
                 'metadata': {'orderId': 'order_123'},
                 'payment_intent': 'pi_test_123'
             }
-            
+
             result = process_checkout_session_completed(session)
-            
+
             assert 'cancelled' in result.lower()
             assert 'product removed' in result.lower()
-    
+
     def test_valid_product_confirms_order(self, mock_firestore_client):
         """FIX-002: Valid active product with non-suspended seller confirms order."""
         from handlers.payment_stripe import process_checkout_session_completed
-        
+
         mock_db = mock_firestore_client
-        
+
         order_data = {
             'userId': 'buyer_123',
             'customerEmail': 'buyer@example.com',
@@ -209,52 +213,56 @@ class TestStockRevalidation:
             'stripePaymentIntentId': 'pi_test_123',
             'stockRestored': False,
         }
-        
+
         # Mock order reference that will be updated
         mock_order_ref = Mock()
         mock_order_ref.update = Mock()
-        
+
         mock_order_doc = Mock()
         mock_order_doc.exists = True
         mock_order_doc.to_dict.return_value = order_data
         mock_order_doc.reference = mock_order_ref
-        
+
         # Product active
         mock_product_doc = Mock()
         mock_product_doc.exists = True
         mock_product_doc.to_dict.return_value = {'isActive': True}
-        
+
         # Seller active
         mock_seller_doc = Mock()
         mock_seller_doc.exists = True
         mock_seller_doc.to_dict.return_value = {'suspended': False}
-        
+
         def collection_side_effect(name):
             coll = Mock()
             if name == 'orders':
-                coll.document.return_value.get.return_value = mock_order_doc
-                coll.document.return_value = mock_order_ref  # Return same ref
+                # document() should return order_ref which has .get() and .update()
+                order_ref_mock = Mock()
+                order_ref_mock.get.return_value = mock_order_doc
+                # When order_ref.update() is called, record it on mock_order_ref
+                order_ref_mock.update = mock_order_ref.update
+                coll.document.return_value = order_ref_mock
             elif name == 'products':
                 coll.document.return_value.get.return_value = mock_product_doc
             elif name == 'users':
                 coll.document.return_value.get.return_value = mock_seller_doc
             return coll
-        
+
         mock_db.collection.side_effect = collection_side_effect
-        
+
         # Mock email functions
         with patch('handlers.payment_stripe.get_order_confirmation_email', return_value='html'), \
              patch('handlers.payment_stripe.get_seller_notification_email', return_value='html'), \
-             patch('handlers.payment_stripe.send_email') as mock_send, \
+             patch('handlers.payment_stripe.send_email'), \
              patch('handlers.payment_stripe._clear_user_cart'):
-            
+
             session = {
                 'metadata': {'orderId': 'order_123'},
                 'payment_intent': 'pi_test_123'
             }
-            
+
             result = process_checkout_session_completed(session)
-            
+
             # Order should be confirmed
             assert 'confirmed' in result.lower()
             mock_order_ref.update.assert_called()
@@ -267,29 +275,29 @@ class TestStockRevalidation:
 class TestSuspendSellerRateLimit:
     """Tests rate limiting on seller suspension."""
 
-    @patch('handlers.admin.RateLimiter')
-    def test_suspend_seller_rate_limited(self, mock_limiter_class):
+    @patch('handlers.admin.get_db')
+    def test_suspend_seller_rate_limited(self, mock_get_db):
         """FIX-003: suspend_seller respects rate limiting."""
-        from handlers.admin import suspend_seller
         from firebase_functions import https_fn
-        
-        # Mock rate limiter to reject
-        mock_limiter = Mock()
-        mock_limiter.check_rate_limit.return_value = (False, "Rate limit exceeded: 10 requests per 1 minutes")
-        mock_limiter_class.return_value = mock_limiter
-        
-        # Mock get_db inside the function
-        with patch('handlers.admin.get_db') as mock_get_db:
+
+        from handlers.admin import suspend_seller
+
+        # Mock rate limiter to reject - patch inside the function
+        with patch('handlers.admin.RateLimiter') as mock_limiter_class:
+            mock_limiter = Mock()
+            mock_limiter.check_rate_limit.return_value = (False, "Rate limit exceeded: 10 requests per 1 minutes")
+            mock_limiter_class.return_value = mock_limiter
+
             mock_db = Mock()
             mock_get_db.return_value = mock_db
-            
+
             req = Mock()
             req.auth.uid = 'admin_123'
             req.data = {'sellerId': 'seller_456', 'reason': 'Test'}
-            
+
             with pytest.raises(https_fn.HttpsError) as exc_info:
                 suspend_seller(req)
-            
+
             assert exc_info.value.code == 'resource-exhausted'
             assert 'Rate limit exceeded' in exc_info.value.message
 
@@ -305,59 +313,60 @@ class TestCreateConnectAccountRateLimit:
     @patch('handlers.payment_stripe.get_rate_limiter')
     def test_create_connect_account_rate_limited(self, mock_get_limiter, mock_db):
         """FIX-003: create_connect_account respects rate limiting."""
-        from handlers.payment_stripe import create_connect_account
         from firebase_functions import https_fn
-        
+
+        from handlers.payment_stripe import create_connect_account
+
         # Mock rate limiter to reject
         mock_limiter = Mock()
         mock_limiter.check_rate_limit.return_value = (False, "Rate limit exceeded: 3 requests per 60 minutes")
         mock_get_limiter.return_value = mock_limiter
-        
+
         # Mock user exists but no stripe account
         mock_user_doc = Mock()
         mock_user_doc.exists = True
         mock_user_doc.to_dict.return_value = {'email': 'test@example.com', 'roles': ['buyer']}
-        
+
         mock_db.return_value.collection.return_value.document.return_value.get.return_value = mock_user_doc
-        
+
         req = Mock()
         req.auth.uid = 'user_123'
         req.data = {}
-        
+
         with pytest.raises(https_fn.HttpsError) as exc_info:
             create_connect_account(req)
-        
+
         assert exc_info.value.code == 'resource-exhausted'
         assert 'Rate limit exceeded' in exc_info.value.message
-    
+
     @patch('handlers.payment_stripe.get_db')
     @patch('handlers.payment_stripe.get_rate_limiter')
     def test_create_connect_account_allowed(self, mock_get_limiter, mock_db):
         """FIX-003: create_connect_account works when under rate limit."""
         from handlers.payment_stripe import create_connect_account
-        
+
         # Mock rate limiter to allow
         mock_limiter = Mock()
         mock_limiter.check_rate_limit.return_value = (True, "OK")
         mock_get_limiter.return_value = mock_limiter
-        
+
         # Mock user with EXISTING stripe account (idempotent)
         mock_user_doc = Mock()
         mock_user_doc.exists = True
         mock_user_doc.to_dict.return_value = {
-            'email': 'test@example.com', 
+            'email': 'test@example.com',
             'roles': ['buyer'],
             'stripeAccountId': 'acct_existing'
         }
-        
+
         mock_db.return_value.collection.return_value.document.return_value.get.return_value = mock_user_doc
-        
+
         req = Mock()
         req.auth.uid = 'user_123'
         req.data = {}
-        
+
         result = create_connect_account(req)
-        
+
         # Should return existing account
         assert result['success'] is True
         assert result['existing'] is True

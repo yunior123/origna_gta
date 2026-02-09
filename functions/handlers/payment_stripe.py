@@ -8,7 +8,7 @@ Stripe Payment Handlers
 
 import contextlib
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import stripe
@@ -641,11 +641,6 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Create order in Firestore — all amounts in cents
     # IDEMPOTENCY: Check if user already has a recent pending order with same subtotal
     # to prevent duplicate orders from client retries
-    import hashlib
-    idempotency_hash = hashlib.md5(
-        f"{user_id}:{actual_subtotal_cents}:{len(validated_items)}:{sorted(list(sellers))}".encode()
-    ).hexdigest()[:12]
-
     recent_orders = get_db().collection(Collections.ORDERS)\
         .where(Fields.USER_ID, '==', user_id)\
         .where(Fields.ORDER_STATUS, '==', OrderStatus.PENDING)\
@@ -661,8 +656,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         if recent_created and hasattr(recent_created, 'timestamp'):
             # Ensure timezone-aware comparison (emulator may return naive datetimes)
             if hasattr(recent_created, 'tzinfo') and recent_created.tzinfo is None:
-                recent_created = recent_created.replace(tzinfo=timezone.utc)
-            age_seconds = (datetime.now(timezone.utc) - recent_created).total_seconds()
+                recent_created = recent_created.replace(tzinfo=UTC)
+            age_seconds = (datetime.now(UTC) - recent_created).total_seconds()
             if age_seconds < 60 and recent_data.get(Fields.SUBTOTAL_CENTS) == actual_subtotal_cents:
                 existing_session_id = recent_data.get(Fields.STRIPE_SESSION_ID)
                 if existing_session_id:
@@ -698,7 +693,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CREATED_AT: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp(),
         Fields.CAPTURE_ATTEMPTS: 0,
-        Fields.EXPIRES_AT: datetime.now(timezone.utc) + timedelta(days=AUTHORIZATION_VALID_DAYS),
+        Fields.EXPIRES_AT: datetime.now(UTC) + timedelta(days=AUTHORIZATION_VALID_DAYS),
         Fields.CURRENCY: 'cad',
         Fields.PAYMENT_PROVIDER: 'stripe',
         Fields.DELIVERY_SPEED: delivery_speed,  # Bug #9: Persist chosen speed for audit trail
@@ -823,10 +818,10 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('failed-precondition', e.user_message or 'Your card was declined. Please try a different payment method.') from e
     except stripe.error.RateLimitError:
         _rollback_checkout(validated_items, order_ref)
-        raise https_fn.HttpsError('unavailable', 'Payment service is busy. Please try again in a moment.')
+        raise https_fn.HttpsError('unavailable', 'Payment service is busy. Please try again in a moment.') from None
     except stripe.error.APIConnectionError:
         _rollback_checkout(validated_items, order_ref)
-        raise https_fn.HttpsError('unavailable', 'Could not connect to payment service. Please check your connection and try again.')
+        raise https_fn.HttpsError('unavailable', 'Could not connect to payment service. Please check your connection and try again.') from None
     except stripe.error.StripeError as e:
         _rollback_checkout(validated_items, order_ref)
         print(f'Stripe error in checkout: {str(e)}')
@@ -1040,22 +1035,22 @@ def process_checkout_session_completed(session: dict) -> str | None:
     for item in items:
         product_id = item.get(Fields.PRODUCT_ID)
         seller_id = item.get(Fields.SELLER_ID)
-        
+
         # Check product still exists and is active
         product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
         product_doc = product_ref.get()
-        
+
         if not product_doc.exists:
             print(f'⚠️ Product {product_id} no longer exists, cancelling order {order_id}')
             _restore_stock_and_cancel_order(order_id, order_data, f'Product {product_id} removed')
             return f'Order {order_id} cancelled - product removed'
-        
+
         product_data = product_doc.to_dict()
         if not product_data.get(Fields.IS_ACTIVE, False):
             print(f'⚠️ Product {product_id} deactivated, cancelling order {order_id}')
             _restore_stock_and_cancel_order(order_id, order_data, f'Product {product_id} deactivated')
             return f'Order {order_id} cancelled - product deactivated'
-        
+
         # Check seller not suspended
         seller_ref = get_db().collection(Collections.USERS).document(seller_id)
         seller_doc = seller_ref.get()
@@ -1187,11 +1182,11 @@ def _restore_stock_and_cancel_order(order_id: str, order_data: dict, reason: str
     Used when products are deactivated or sellers suspended between checkout and payment.
     """
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
-    
+
     # Restore stock atomically
     if not order_data.get(Fields.STOCK_RESTORED, False):
         _restore_stock_for_order(order_data)
-    
+
     # Cancel the order
     order_ref.update({
         Fields.ORDER_STATUS: OrderStatus.CANCELLED,
@@ -1201,7 +1196,7 @@ def _restore_stock_and_cancel_order(order_id: str, order_data: dict, reason: str
         Fields.CANCELLED_AT: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp(),
     })
-    
+
     # Cancel the PaymentIntent to release buyer funds
     payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
     if payment_intent_id:
@@ -1898,7 +1893,7 @@ def create_account_link(req: https_fn.CallableRequest) -> dict[str, Any]:
     except stripe.error.InvalidRequestError as e:
         raise https_fn.HttpsError('invalid-argument', 'Invalid account configuration. Please contact support.') from e
     except stripe.error.APIConnectionError:
-        raise https_fn.HttpsError('unavailable', 'Could not connect to payment service. Please try again later.')
+        raise https_fn.HttpsError('unavailable', 'Could not connect to payment service. Please try again later.') from None
     except Exception as e:
         print(f'Account link creation error: {str(e)}')
         raise https_fn.HttpsError('internal', 'Could not create onboarding link. Please try again later.') from e
@@ -1957,7 +1952,7 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     except stripe.error.InvalidRequestError as e:
         raise https_fn.HttpsError('invalid-argument', 'Invalid account. Please contact support.') from e
     except stripe.error.APIConnectionError:
-        raise https_fn.HttpsError('unavailable', 'Could not connect to payment service. Please try again later.')
+        raise https_fn.HttpsError('unavailable', 'Could not connect to payment service. Please try again later.') from None
     except Exception as e:
         print(f'Account status error: {str(e)}')
         raise https_fn.HttpsError('internal', 'Could not retrieve account status. Please try again later.') from e

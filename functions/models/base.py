@@ -7,6 +7,7 @@ import re
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 from schema_constants import Fields
 
 # ============================================================================

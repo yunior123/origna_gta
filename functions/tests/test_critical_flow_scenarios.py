@@ -1193,9 +1193,9 @@ class TestShippingCalculation:
         }]
         buyer = {'state': 'BC', 'latitude': 49.3, 'longitude': -123.1}
 
-        with patch('shipping_service.GEOAPIFY_API_KEY', ''):
-            with pytest.raises(ValueError, match="Local delivery only"):
-                calculate_shipping_cost(items, buyer)
+        with patch('shipping_service.GEOAPIFY_API_KEY', ''), \
+             pytest.raises(ValueError, match="Local delivery only"):
+            calculate_shipping_cost(items, buyer)
 
 
 # ============================================================================

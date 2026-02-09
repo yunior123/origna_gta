@@ -11,6 +11,7 @@ them at rest using a key from Google Secret Manager (or .env in emulator mode).
 
 import base64
 import os
+
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
@@ -24,9 +25,11 @@ def _get_encryption_key() -> bytes:
     The key must be a 32-byte value, base64-encoded in the secret store.
     If no key is configured, raises RuntimeError to prevent plaintext storage.
     """
-    from config import IS_EMULATOR
+    # Check environment variable directly to handle test environments correctly
+    # where IS_EMULATOR may be patched or the env var is set after module load
+    _is_emulator = os.environ.get('FUNCTIONS_EMULATOR', 'false').lower() == 'true'
 
-    if IS_EMULATOR:
+    if _is_emulator:
         key_b64 = os.environ.get('MFA_ENCRYPTION_KEY', '')
         if not key_b64:
             # In emulator, generate a deterministic dev key for testing
@@ -110,7 +113,7 @@ def decrypt_mfa_secret(encrypted_secret: str) -> str:
     try:
         nonce = base64.b64decode(nonce_b64)
         ciphertext = base64.b64decode(ct_b64)
-    except Exception as e:
+    except Exception:
         # Could be a legacy plaintext secret containing ':'
         # Return as-is for backward compatibility
         return encrypted_secret

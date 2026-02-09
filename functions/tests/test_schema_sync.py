@@ -5,23 +5,23 @@ Tests the Python-to-Dart schema generation to ensure consistency
 across the Flutter frontend and Python backend.
 """
 
+# Import the sync script functions
+import sys
 import tempfile
 from pathlib import Path
 
 import pytest
 
-# Import the sync script functions
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
 from sync_schema import (
-    extract_python_class_constants,
+    CLASS_MAPPING,
+    compare_values,
     extract_business_rules,
-    generate_enum_class,
+    extract_python_class_constants,
     generate_business_rules_class,
+    generate_enum_class,
     to_dart_camel_case,
     update_class_in_dart,
-    compare_values,
-    CLASS_MAPPING,
 )
 
 
@@ -355,8 +355,6 @@ abstract final class BusinessRules {
 ''')
 
         # Extract from Python
-        order_status = extract_python_class_constants(python_source, 'OrderStatus')
-        payment_status = extract_python_class_constants(python_source, 'PaymentStatus')
         business_rules = extract_business_rules(python_source)
 
         # Read Dart content
@@ -368,7 +366,7 @@ abstract final class BusinessRules {
 
         # Verify BusinessRules was updated
         assert 'static const platformFeePercent = 2.5;' in updated_content
-        
+
         # Verify other classes are preserved
         assert 'OrderStatusValues' in updated_content
         assert 'PaymentStatusValues' in updated_content

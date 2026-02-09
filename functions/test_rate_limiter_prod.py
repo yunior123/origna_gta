@@ -68,7 +68,7 @@ def test_webhook_uses_fail_closed():
     print('-' * 40)
 
     # Read the payment_stripe.py file to verify
-    with open('handlers/payment_stripe.py') as f:
+    with open('functions/handlers/payment_stripe.py') as f:
         content = f.read()
 
     # Check IS_EMULATOR is defined

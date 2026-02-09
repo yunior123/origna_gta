@@ -12,63 +12,12 @@ All Firebase Cloud Functions are organized by domain:
 """
 
 # Firebase Admin SDK initialization
-import firebase_admin
-
-# Only initialize if not already initialized (for testing)
-if not firebase_admin._apps:
-    firebase_admin.initialize_app()
-
 # Stripe API key setup
 import os
 
+import firebase_admin
 import stripe
 from google.cloud import secretmanager
-
-
-def get_secret(secret_id: str) -> str:
-    """Retrieve secret from GCP Secret Manager"""
-    client = secretmanager.SecretManagerServiceClient()
-    project_id = os.environ.get('GCP_PROJECT', 'origna-gta')
-    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-    response = client.access_secret_version(request={Fields.NAME: name})
-    return response.payload.data.decode('UTF-8')
-
-# Lazy initialization of Stripe API key
-def _init_stripe():
-    """Initialize Stripe API key lazily"""
-    if not stripe.api_key:
-        stripe.api_key = get_secret('stripe-secret-key')
-
-# Only initialize in production (not in test environment)
-if os.environ.get('TESTING') != 'true':
-    import contextlib
-    with contextlib.suppress(Exception):
-        _init_stripe()
-
-# ===============================================
-# VALIDATION HELPERS
-# ===============================================
-def validate_postal_code(postal_code, country="Canada"):
-    """
-    Validate postal code format.
-
-    Canadian postal code format: A1A 1A1 (letter-digit-letter space digit-letter-digit)
-    """
-    import re
-
-    if country.lower() != "canada":
-        return False
-
-    # Canadian postal code pattern: A1A 1A1
-    pattern = r'^[A-Z]\d[A-Z]\s?\d[A-Z]\d$'
-    return bool(re.match(pattern, postal_code.upper()))
-
-# ===============================================
-# SHIPPING CALCULATION — Canonical source is shipping_service.py
-# This wrapper is kept for backward compatibility only (external HTTP callers).
-# The checkout flow (payment_stripe.py) imports directly from shipping_service.
-# ===============================================
-from shipping_service import calculate_shipping_cost  # noqa: E402, F811
 
 # ===============================================
 # PAYMENT HANDLERS - STRIPE
@@ -136,11 +85,6 @@ from handlers.payment_stripe import (  # noqa: E402
     stripe_webhook,
     verify_cart_prices,
 )
-
-# ===============================================
-# PRODUCT HANDLERS
-# ===============================================
-from schema_constants import Fields  # noqa: E402
 from handlers.products import (  # noqa: E402
     delete_product,
     on_product_created,
@@ -149,6 +93,62 @@ from handlers.products import (  # noqa: E402
     submit_product_rating,
     upload_product_images,
 )
+
+# ===============================================
+# PRODUCT HANDLERS
+# ===============================================
+from schema_constants import Fields  # noqa: E402
+
+# ===============================================
+# SHIPPING CALCULATION — Canonical source is shipping_service.py
+# This wrapper is kept for backward compatibility only (external HTTP callers).
+# The checkout flow (payment_stripe.py) imports directly from shipping_service.
+# ===============================================
+from shipping_service import calculate_shipping_cost  # noqa: E402, F811
+
+# Only initialize if not already initialized (for testing)
+if not firebase_admin._apps:
+    firebase_admin.initialize_app()
+
+
+def get_secret(secret_id: str) -> str:
+    """Retrieve secret from GCP Secret Manager"""
+    client = secretmanager.SecretManagerServiceClient()
+    project_id = os.environ.get('GCP_PROJECT', 'origna-gta')
+    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
+    response = client.access_secret_version(request={Fields.NAME: name})
+    return response.payload.data.decode('UTF-8')
+
+# Lazy initialization of Stripe API key
+def _init_stripe():
+    """Initialize Stripe API key lazily"""
+    if not stripe.api_key:
+        stripe.api_key = get_secret('stripe-secret-key')
+
+# Only initialize in production (not in test environment)
+if os.environ.get('TESTING') != 'true':
+    import contextlib
+    with contextlib.suppress(Exception):
+        _init_stripe()
+
+# ===============================================
+# VALIDATION HELPERS
+# ===============================================
+def validate_postal_code(postal_code, country="Canada"):
+    """
+    Validate postal code format.
+
+    Canadian postal code format: A1A 1A1 (letter-digit-letter space digit-letter-digit)
+    """
+    import re
+
+    if country.lower() != "canada":
+        return False
+
+    # Canadian postal code pattern: A1A 1A1
+    pattern = r'^[A-Z]\d[A-Z]\s?\d[A-Z]\d$'
+    return bool(re.match(pattern, postal_code.upper()))
+
 
 # Export all functions for Firebase deployment
 __all__ = [

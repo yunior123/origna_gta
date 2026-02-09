@@ -7,7 +7,6 @@ Admin & User Management Handlers
 """
 
 import hashlib
-import hmac
 import secrets
 import string
 import time
@@ -20,6 +19,7 @@ from firebase_functions import https_fn
 
 from config import Collections
 from function_options import DEFAULT_OPTIONS
+from rate_limiter import RateLimiter
 from schema_constants import ApiKeys, Fields, OrderStatusValues, PayoutStatusValues, UserRoleValues
 from utils import create_success_response
 
@@ -229,7 +229,6 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
     data = req.data
 
     # AUDIT FIX: Rate limit seller suspension
-    from rate_limiter import RateLimiter
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=admin_id, action='suspend_seller',

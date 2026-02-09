@@ -150,7 +150,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
             # SECURITY FIX (HIGH-012): Atomically lock order for capture to prevent
             # race condition with check_expired_authorizations and manual capture_payment.
             @get_firestore().transactional
-            def lock_for_auto_capture(transaction):
+            def lock_for_auto_capture(transaction, order_doc=order_doc):
                 fresh_doc = order_doc.reference.get(transaction=transaction)
                 if not fresh_doc.exists:
                     return 'not_found'
@@ -348,7 +348,7 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
         # race condition with capture_payment running concurrently.
         # If order is in 'capturing' state, skip it — capture is in progress.
         @get_firestore().transactional
-        def try_expire_order(transaction):
+        def try_expire_order(transaction, order_doc=order_doc):
             fresh_doc = order_doc.reference.get(transaction=transaction)
             if not fresh_doc.exists:
                 return 'not_found'

@@ -6,8 +6,9 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from .base import Address, UserRole
 from schema_constants import Fields
+
+from .base import Address, UserRole
 
 
 class User(BaseModel):

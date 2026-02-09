@@ -98,7 +98,7 @@ def airwallex_create_seller_account(req: https_fn.CallableRequest) -> dict[str, 
         # Load dependencies
         Collections = get_collections()
         Fields = get_fields()
-        
+
         airwallex_service = get_airwallex_service()
         account_id = airwallex_service.create_connected_account(
             user_id=user_id,
@@ -148,15 +148,15 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_id = req.auth.uid
     data = req.data
 
+    # Get order
+    Collections = get_collections()
+    Fields = get_fields()
+
     order_id = data.get(Fields.ORDER_ID)
     return_url = data.get('returnUrl', 'https://origna.ca/order-success')
 
     if not order_id:
         raise https_fn.HttpsError('invalid-argument', 'orderId required')
-
-    # Get order
-    Collections = get_collections()
-    Fields = get_fields()
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
 
@@ -218,12 +218,14 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
+    Collections = get_collections()
+    Fields = get_fields()
+
     order_id = req.data.get(Fields.ORDER_ID)
 
     if not order_id:
         raise https_fn.HttpsError('invalid-argument', 'orderId required')
 
-    Collections = get_collections()
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
 
@@ -387,15 +389,17 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response('Invalid JSON', status=400)
 
     event_id = event.get('id')
-    event_type = event.get(Fields.NAME)
 
     # SECURITY FIX #5: Validate event_id exists
+    Collections = get_collections()
+    Fields = get_fields()
+
+    event_type = event.get(Fields.NAME)
     if not event_id or not event_type:
         print('⚠️ Airwallex webhook missing event_id or event_type')
         return https_fn.Response('Invalid event format', status=400)
 
     # SECURITY FIX #6: Idempotency check (prevent duplicate processing)
-    Collections = get_collections()
     webhook_ref = get_db().collection(Collections.WEBHOOK_EVENTS).document(event_id)
     webhook_doc = webhook_ref.get()
 

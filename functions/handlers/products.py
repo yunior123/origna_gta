@@ -18,7 +18,7 @@ from algolia_service import delete_product as algolia_delete_product
 from algolia_service import index_product
 from config import R2_ACCESS_KEY_NEW, R2_ACCOUNT_ID_NEW, R2_SECRET_KEY_NEW, Collections, R2Config, get_r2_credentials
 from function_options import DEFAULT_OPTIONS
-from schema_constants import Fields, OrderStatusValues, UserRoleValues, CategoryIds
+from schema_constants import CategoryIds, Fields, OrderStatusValues, UserRoleValues
 from utils import create_success_response
 
 # Lazy loading constants
@@ -442,14 +442,13 @@ def on_product_created(event: firestore_fn.Event) -> None:
 
     # CRITICAL: Validate categoryId against allowed categories
     category_id = product_data.get(Fields.CATEGORY_ID)
-    if category_id is not None:
-        if not isinstance(category_id, (int, float)) or int(category_id) < CategoryIds.MIN or int(category_id) > CategoryIds.MAX:
-            print(f'SECURITY: Product {product_id} has invalid categoryId ({category_id}) — deactivating')
-            get_db().collection('products').document(product_id).update({
-                Fields.IS_ACTIVE: False,
-                'deactivationReason': f'Invalid categoryId: {category_id}',
-            })
-            return
+    if category_id is not None and (not isinstance(category_id, (int, float)) or int(category_id) < CategoryIds.MIN or int(category_id) > CategoryIds.MAX):
+        print(f'SECURITY: Product {product_id} has invalid categoryId ({category_id}) — deactivating')
+        get_db().collection('products').document(product_id).update({
+            Fields.IS_ACTIVE: False,
+            'deactivationReason': f'Invalid categoryId: {category_id}',
+        })
+        return
     sanitized_name = sanitized_text(name)
     sanitized_desc = sanitized_text(description)
     if sanitized_name != name:

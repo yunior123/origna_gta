@@ -7,9 +7,10 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from schema_constants import Fields
+
 from .base import Address, DeliveryStatusEnum, OrderStatusEnum, PaymentStatusEnum, ShippingApprovalStatusEnum
 from .product import SellerDeliveryOption
-from schema_constants import Fields
 
 
 class OrderItem(BaseModel):

@@ -6,8 +6,9 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .base import Address
 from schema_constants import Fields
+
+from .base import Address
 
 # ============================================================================
 # SHIPPING QUANTITY DISCOUNT - Volume-based shipping discounts

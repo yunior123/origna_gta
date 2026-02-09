@@ -4,9 +4,15 @@ Handles syncing Firestore products to Algolia search index
 """
 
 import asyncio
+import concurrent.futures
 from typing import Union
 
 from algoliasearch.search.client import SearchClient
+from pydantic import ValidationError
+
+from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY, AlgoliaConfig
+from models.product import Product
+from schema_constants import Fields
 
 
 def _run_async(coro):
@@ -18,18 +24,10 @@ def _run_async(coro):
 
     if loop and loop.is_running():
         # Already in an async context — create a new loop in a thread
-        import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor() as pool:
             return pool.submit(asyncio.run, coro).result()
     else:
         return asyncio.run(coro)
-from pydantic import ValidationError
-
-from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY, AlgoliaConfig
-
-# Import Pydantic Product model for type-safe operations
-from models.product import Product
-from schema_constants import Fields
 
 # Initialize Algolia client (v4 API)
 algolia_client = SearchClient(ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY) if ALGOLIA_APP_ID and ALGOLIA_WRITE_API_KEY else None

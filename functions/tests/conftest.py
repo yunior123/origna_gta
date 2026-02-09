@@ -325,7 +325,7 @@ def reset_handler_globals():
     to prevent state pollution between tests.
     """
     # Import handlers to reset their module-level globals
-    from handlers import payment_stripe, products, orders, admin
+    from handlers import admin, orders, payment_stripe, products
 
     # Reset module-level caches
     payment_stripe._db = None
@@ -356,16 +356,16 @@ def mock_firestore_client(monkeypatch):
     """
     from unittest.mock import MagicMock, Mock
 
-    from handlers import payment_stripe, products, orders, admin
+    from handlers import admin, orders, payment_stripe, products
 
     # Create a simple MagicMock that tests can configure
     mock_db = MagicMock()
-    
+
     # Setup basic chainable mocks
     mock_collection = MagicMock()
     mock_doc = MagicMock()
     mock_doc_ref = MagicMock()
-    
+
     mock_db.collection.return_value = mock_collection
     mock_collection.document.return_value = mock_doc_ref
     mock_doc_ref.get.return_value = mock_doc
