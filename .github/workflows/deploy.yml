@@ -91,7 +91,7 @@ jobs:
       - name: Deploy Firebase Functions
         uses: w9jds/firebase-action@master
         with:
-          args: deploy --only functions --force
+          args: deploy --only functions 
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}  # Required: Firebase service account JSON
 
