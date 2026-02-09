@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:web/web.dart' as web;
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:origna_gta/models/models.dart';
@@ -16,6 +16,9 @@ import 'package:origna_gta/utils/env_config.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 export 'package:origna_gta/models/models.dart';
+
+import 'package:url_launcher/url_launcher.dart';
+
 
 // ============================================================================
 // ERROR HANDLING UTILITIES
@@ -903,13 +906,21 @@ class _FixedPriceResult {
 // LEGAL PAGE NAVIGATION - OAuth Compliance
 // ============================================================================
 
+Future<void> _launchPath(String path) async {
+  // Ensure you use https://
+  final Uri url = Uri.parse('https://orignagta.ca$path');
+  
+  if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+    throw Exception('Could not launch $url');
+  }
+}
 /// Opens Privacy Policy page
 /// On web: navigates to /privacy-policy URL (required for OAuth verification)
 /// On mobile: shows in-app screen
 void openPrivacyPolicy(BuildContext context) {
   if (kIsWeb) {
     // Navigate to actual URL for OAuth compliance
-    web.window.location.href = '/privacy-policy';
+    _launchPath('/privacy-policy');
   } else {
     Navigator.push(
       context,
@@ -924,7 +935,8 @@ void openPrivacyPolicy(BuildContext context) {
 void openTermsOfService(BuildContext context) {
   if (kIsWeb) {
     // Navigate to actual URL for OAuth compliance
-    web.window.location.href = '/terms-of-service';
+    _launchPath('/terms-of-service');
+   
   } else {
     Navigator.push(
       context,
