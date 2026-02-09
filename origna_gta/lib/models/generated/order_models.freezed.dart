@@ -75,7 +75,12 @@ mixin _$Order {
   String? get manualReviewReason => throw _privateConstructorUsedError;
   List<String> get payoutErrors =>
       throw _privateConstructorUsedError; // Timestamp
-  DateTime? get updatedAt => throw _privateConstructorUsedError;
+  DateTime? get updatedAt =>
+      throw _privateConstructorUsedError; // Tax fields (new)
+  List<Map<String, dynamic>> get itemTaxes =>
+      throw _privateConstructorUsedError;
+  bool get taxExempt => throw _privateConstructorUsedError;
+  Map<String, dynamic>? get taxExemption => throw _privateConstructorUsedError;
 
   /// Serializes this Order to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -137,6 +142,9 @@ abstract class $OrderCopyWith<$Res> {
     String? manualReviewReason,
     List<String> payoutErrors,
     DateTime? updatedAt,
+    List<Map<String, dynamic>> itemTaxes,
+    bool taxExempt,
+    Map<String, dynamic>? taxExemption,
   });
 
   $TaxesCopyWith<$Res> get taxes;
@@ -203,6 +211,9 @@ class _$OrderCopyWithImpl<$Res, $Val extends Order>
     Object? manualReviewReason = freezed,
     Object? payoutErrors = null,
     Object? updatedAt = freezed,
+    Object? itemTaxes = null,
+    Object? taxExempt = null,
+    Object? taxExemption = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -386,6 +397,18 @@ class _$OrderCopyWithImpl<$Res, $Val extends Order>
                 ? _value.updatedAt
                 : updatedAt // ignore: cast_nullable_to_non_nullable
                       as DateTime?,
+            itemTaxes: null == itemTaxes
+                ? _value.itemTaxes
+                : itemTaxes // ignore: cast_nullable_to_non_nullable
+                      as List<Map<String, dynamic>>,
+            taxExempt: null == taxExempt
+                ? _value.taxExempt
+                : taxExempt // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            taxExemption: freezed == taxExemption
+                ? _value.taxExemption
+                : taxExemption // ignore: cast_nullable_to_non_nullable
+                      as Map<String, dynamic>?,
           )
           as $Val,
     );
@@ -466,6 +489,9 @@ abstract class _$$OrderImplCopyWith<$Res> implements $OrderCopyWith<$Res> {
     String? manualReviewReason,
     List<String> payoutErrors,
     DateTime? updatedAt,
+    List<Map<String, dynamic>> itemTaxes,
+    bool taxExempt,
+    Map<String, dynamic>? taxExemption,
   });
 
   @override
@@ -533,6 +559,9 @@ class __$$OrderImplCopyWithImpl<$Res>
     Object? manualReviewReason = freezed,
     Object? payoutErrors = null,
     Object? updatedAt = freezed,
+    Object? itemTaxes = null,
+    Object? taxExempt = null,
+    Object? taxExemption = freezed,
   }) {
     return _then(
       _$OrderImpl(
@@ -716,6 +745,18 @@ class __$$OrderImplCopyWithImpl<$Res>
             ? _value.updatedAt
             : updatedAt // ignore: cast_nullable_to_non_nullable
                   as DateTime?,
+        itemTaxes: null == itemTaxes
+            ? _value._itemTaxes
+            : itemTaxes // ignore: cast_nullable_to_non_nullable
+                  as List<Map<String, dynamic>>,
+        taxExempt: null == taxExempt
+            ? _value.taxExempt
+            : taxExempt // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        taxExemption: freezed == taxExemption
+            ? _value._taxExemption
+            : taxExemption // ignore: cast_nullable_to_non_nullable
+                  as Map<String, dynamic>?,
       ),
     );
   }
@@ -739,7 +780,7 @@ class _$OrderImpl extends _Order {
     this.paymentStatus = PaymentStatus.awaitingPayment,
     required this.shippingAddress,
     required this.createdAt,
-    this.currency = 'cad',
+    this.currency = BusinessRules.defaultCurrency,
     final List<String> sellerIds = const [],
     required this.stripeSessionId,
     this.shippingApprovalStatus = ShippingApprovalStatus.notRequired,
@@ -750,7 +791,7 @@ class _$OrderImpl extends _Order {
     this.confirmedByClient = false,
     this.confirmedAt,
     this.platformFeeTotal = 0.0,
-    this.payoutStatus = 'pending',
+    this.payoutStatus = PayoutStatusValues.pending,
     final List<Ratings> ratings = const [],
     this.stripePaymentIntentId,
     this.captureAttempts = 0,
@@ -770,11 +811,16 @@ class _$OrderImpl extends _Order {
     this.manualReviewReason,
     final List<String> payoutErrors = const [],
     this.updatedAt,
+    final List<Map<String, dynamic>> itemTaxes = const [],
+    this.taxExempt = false,
+    final Map<String, dynamic>? taxExemption,
   }) : _items = items,
        _sellerIds = sellerIds,
        _sellerPayouts = sellerPayouts,
        _ratings = ratings,
        _payoutErrors = payoutErrors,
+       _itemTaxes = itemTaxes,
+       _taxExemption = taxExemption,
        super._();
 
   factory _$OrderImpl.fromJson(Map<String, dynamic> json) =>
@@ -935,10 +981,33 @@ class _$OrderImpl extends _Order {
   // Timestamp
   @override
   final DateTime? updatedAt;
+  // Tax fields (new)
+  final List<Map<String, dynamic>> _itemTaxes;
+  // Tax fields (new)
+  @override
+  @JsonKey()
+  List<Map<String, dynamic>> get itemTaxes {
+    if (_itemTaxes is EqualUnmodifiableListView) return _itemTaxes;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_itemTaxes);
+  }
+
+  @override
+  @JsonKey()
+  final bool taxExempt;
+  final Map<String, dynamic>? _taxExemption;
+  @override
+  Map<String, dynamic>? get taxExemption {
+    final value = _taxExemption;
+    if (value == null) return null;
+    if (_taxExemption is EqualUnmodifiableMapView) return _taxExemption;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(value);
+  }
 
   @override
   String toString() {
-    return 'Order(orderId: $orderId, userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, totalAmountCents: $totalAmountCents, subtotalCents: $subtotalCents, shippingCostCents: $shippingCostCents, taxAmountCents: $taxAmountCents, taxes: $taxes, orderStatus: $orderStatus, paymentStatus: $paymentStatus, shippingAddress: $shippingAddress, createdAt: $createdAt, currency: $currency, sellerIds: $sellerIds, stripeSessionId: $stripeSessionId, shippingApprovalStatus: $shippingApprovalStatus, shippingApprovalRequired: $shippingApprovalRequired, actualShipping: $actualShipping, pendingTotal: $pendingTotal, sellerPayouts: $sellerPayouts, confirmedByClient: $confirmedByClient, confirmedAt: $confirmedAt, platformFeeTotal: $platformFeeTotal, payoutStatus: $payoutStatus, ratings: $ratings, stripePaymentIntentId: $stripePaymentIntentId, captureAttempts: $captureAttempts, capturedAt: $capturedAt, expiresAt: $expiresAt, autoConfirmed: $autoConfirmed, autoCaptured: $autoCaptured, refundAmount: $refundAmount, refundedAt: $refundedAt, stockRestored: $stockRestored, cancelledBy: $cancelledBy, cancelledAt: $cancelledAt, cancellationReason: $cancellationReason, respondedAt: $respondedAt, actualCost: $actualCost, requiresManualReview: $requiresManualReview, manualReviewReason: $manualReviewReason, payoutErrors: $payoutErrors, updatedAt: $updatedAt)';
+    return 'Order(orderId: $orderId, userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, totalAmountCents: $totalAmountCents, subtotalCents: $subtotalCents, shippingCostCents: $shippingCostCents, taxAmountCents: $taxAmountCents, taxes: $taxes, orderStatus: $orderStatus, paymentStatus: $paymentStatus, shippingAddress: $shippingAddress, createdAt: $createdAt, currency: $currency, sellerIds: $sellerIds, stripeSessionId: $stripeSessionId, shippingApprovalStatus: $shippingApprovalStatus, shippingApprovalRequired: $shippingApprovalRequired, actualShipping: $actualShipping, pendingTotal: $pendingTotal, sellerPayouts: $sellerPayouts, confirmedByClient: $confirmedByClient, confirmedAt: $confirmedAt, platformFeeTotal: $platformFeeTotal, payoutStatus: $payoutStatus, ratings: $ratings, stripePaymentIntentId: $stripePaymentIntentId, captureAttempts: $captureAttempts, capturedAt: $capturedAt, expiresAt: $expiresAt, autoConfirmed: $autoConfirmed, autoCaptured: $autoCaptured, refundAmount: $refundAmount, refundedAt: $refundedAt, stockRestored: $stockRestored, cancelledBy: $cancelledBy, cancelledAt: $cancelledAt, cancellationReason: $cancellationReason, respondedAt: $respondedAt, actualCost: $actualCost, requiresManualReview: $requiresManualReview, manualReviewReason: $manualReviewReason, payoutErrors: $payoutErrors, updatedAt: $updatedAt, itemTaxes: $itemTaxes, taxExempt: $taxExempt, taxExemption: $taxExemption)';
   }
 
   @override
@@ -1039,7 +1108,17 @@ class _$OrderImpl extends _Order {
               _payoutErrors,
             ) &&
             (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt));
+                other.updatedAt == updatedAt) &&
+            const DeepCollectionEquality().equals(
+              other._itemTaxes,
+              _itemTaxes,
+            ) &&
+            (identical(other.taxExempt, taxExempt) ||
+                other.taxExempt == taxExempt) &&
+            const DeepCollectionEquality().equals(
+              other._taxExemption,
+              _taxExemption,
+            ));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1091,6 +1170,9 @@ class _$OrderImpl extends _Order {
     manualReviewReason,
     const DeepCollectionEquality().hash(_payoutErrors),
     updatedAt,
+    const DeepCollectionEquality().hash(_itemTaxes),
+    taxExempt,
+    const DeepCollectionEquality().hash(_taxExemption),
   ]);
 
   /// Create a copy of Order
@@ -1154,6 +1236,9 @@ abstract class _Order extends Order {
     final String? manualReviewReason,
     final List<String> payoutErrors,
     final DateTime? updatedAt,
+    final List<Map<String, dynamic>> itemTaxes,
+    final bool taxExempt,
+    final Map<String, dynamic>? taxExemption,
   }) = _$OrderImpl;
   const _Order._() : super._();
 
@@ -1249,7 +1334,13 @@ abstract class _Order extends Order {
   @override
   List<String> get payoutErrors; // Timestamp
   @override
-  DateTime? get updatedAt;
+  DateTime? get updatedAt; // Tax fields (new)
+  @override
+  List<Map<String, dynamic>> get itemTaxes;
+  @override
+  bool get taxExempt;
+  @override
+  Map<String, dynamic>? get taxExemption;
 
   /// Create a copy of Order
   /// with the given fields replaced by the non-null parameter values.
@@ -1475,7 +1566,7 @@ class _$OrderCreateImpl implements _OrderCreate {
     required final List<OrderItem> items,
     required this.shippingAddress,
     this.shippingCost = 0.0,
-    this.currency = 'cad',
+    this.currency = BusinessRules.defaultCurrency,
     this.shippingApprovalRequired = false,
   }) : _items = items;
 
@@ -1645,7 +1736,8 @@ mixin _$OrderItem {
       throw _privateConstructorUsedError;
   int get minimumOrderQuantity => throw _privateConstructorUsedError;
   bool get freeShipping => throw _privateConstructorUsedError;
-  bool get isDigital => throw _privateConstructorUsedError;
+  bool get isDigital => throw _privateConstructorUsedError; // Tax field (new)
+  String? get taxCode => throw _privateConstructorUsedError;
 
   /// Serializes this OrderItem to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -1693,6 +1785,7 @@ abstract class $OrderItemCopyWith<$Res> {
     int minimumOrderQuantity,
     bool freeShipping,
     bool isDigital,
+    String? taxCode,
   });
 
   $AddressCopyWith<$Res> get sellerAddress;
@@ -1743,6 +1836,7 @@ class _$OrderItemCopyWithImpl<$Res, $Val extends OrderItem>
     Object? minimumOrderQuantity = null,
     Object? freeShipping = null,
     Object? isDigital = null,
+    Object? taxCode = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -1866,6 +1960,10 @@ class _$OrderItemCopyWithImpl<$Res, $Val extends OrderItem>
                 ? _value.isDigital
                 : isDigital // ignore: cast_nullable_to_non_nullable
                       as bool,
+            taxCode: freezed == taxCode
+                ? _value.taxCode
+                : taxCode // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -1922,6 +2020,7 @@ abstract class _$$OrderItemImplCopyWith<$Res>
     int minimumOrderQuantity,
     bool freeShipping,
     bool isDigital,
+    String? taxCode,
   });
 
   @override
@@ -1972,6 +2071,7 @@ class __$$OrderItemImplCopyWithImpl<$Res>
     Object? minimumOrderQuantity = null,
     Object? freeShipping = null,
     Object? isDigital = null,
+    Object? taxCode = freezed,
   }) {
     return _then(
       _$OrderItemImpl(
@@ -2095,6 +2195,10 @@ class __$$OrderItemImplCopyWithImpl<$Res>
             ? _value.isDigital
             : isDigital // ignore: cast_nullable_to_non_nullable
                   as bool,
+        taxCode: freezed == taxCode
+            ? _value.taxCode
+            : taxCode // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -2112,7 +2216,7 @@ class _$OrderItemImpl extends _OrderItem {
     required final List<String> imageUrls,
     required this.sellerId,
     required this.sellerAddress,
-    this.status = 'pending',
+    this.status = DeliveryStatusValues.pending,
     this.deliveryStatus = DeliveryStatus.pending,
     this.trackingNumber,
     this.carrier,
@@ -2134,6 +2238,7 @@ class _$OrderItemImpl extends _OrderItem {
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
     this.isDigital = false,
+    this.taxCode,
   }) : _imageUrls = imageUrls,
        _deliveryOptions = deliveryOptions,
        super._();
@@ -2227,10 +2332,13 @@ class _$OrderItemImpl extends _OrderItem {
   @override
   @JsonKey()
   final bool isDigital;
+  // Tax field (new)
+  @override
+  final String? taxCode;
 
   @override
   String toString() {
-    return 'OrderItem(productId: $productId, name: $name, description: $description, price: $price, quantity: $quantity, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, status: $status, deliveryStatus: $deliveryStatus, trackingNumber: $trackingNumber, carrier: $carrier, shippedAt: $shippedAt, deliveredAt: $deliveredAt, refundedAt: $refundedAt, refundReason: $refundReason, refundAmountCents: $refundAmountCents, refundId: $refundId, confirmedByBuyer: $confirmedByBuyer, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital)';
+    return 'OrderItem(productId: $productId, name: $name, description: $description, price: $price, quantity: $quantity, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, status: $status, deliveryStatus: $deliveryStatus, trackingNumber: $trackingNumber, carrier: $carrier, shippedAt: $shippedAt, deliveredAt: $deliveredAt, refundedAt: $refundedAt, refundReason: $refundReason, refundAmountCents: $refundAmountCents, refundId: $refundId, confirmedByBuyer: $confirmedByBuyer, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, taxCode: $taxCode)';
   }
 
   @override
@@ -2296,7 +2404,8 @@ class _$OrderItemImpl extends _OrderItem {
             (identical(other.freeShipping, freeShipping) ||
                 other.freeShipping == freeShipping) &&
             (identical(other.isDigital, isDigital) ||
-                other.isDigital == isDigital));
+                other.isDigital == isDigital) &&
+            (identical(other.taxCode, taxCode) || other.taxCode == taxCode));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2333,6 +2442,7 @@ class _$OrderItemImpl extends _OrderItem {
     minimumOrderQuantity,
     freeShipping,
     isDigital,
+    taxCode,
   ]);
 
   /// Create a copy of OrderItem
@@ -2381,6 +2491,7 @@ abstract class _OrderItem extends OrderItem {
     final int minimumOrderQuantity,
     final bool freeShipping,
     final bool isDigital,
+    final String? taxCode,
   }) = _$OrderItemImpl;
   const _OrderItem._() : super._();
 
@@ -2446,7 +2557,9 @@ abstract class _OrderItem extends OrderItem {
   @override
   bool get freeShipping;
   @override
-  bool get isDigital;
+  bool get isDigital; // Tax field (new)
+  @override
+  String? get taxCode;
 
   /// Create a copy of OrderItem
   /// with the given fields replaced by the non-null parameter values.
@@ -2890,7 +3003,7 @@ class _$SellerPayoutImpl extends _SellerPayout {
     required this.amountCents,
     required this.platformFeeCents,
     required this.netAmountCents,
-    this.status = 'pending',
+    this.status = PayoutStatusValues.pending,
     this.payoutDate,
     this.stripeTransferId,
     this.failureReason,

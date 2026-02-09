@@ -450,9 +450,11 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
         for _ in range(8)
     ]
 
-    # SECURITY: Hash backup codes before storing (show plaintext only once)
+    # SECURITY: Hash backup codes with salt before storing (show plaintext only once)
+    # Generate unique salt for this user's backup codes
+    backup_codes_salt = secrets.token_hex(32)
     hashed_backup_codes = [
-        hashlib.sha256(code.encode()).hexdigest() for code in backup_codes
+        hashlib.sha256((code + backup_codes_salt).encode()).hexdigest() for code in backup_codes
     ]
 
     # AUDIT FIX: Encrypt MFA secret before storing in Firestore
@@ -463,6 +465,7 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_ref.update({
         Fields.MFA_SECRET_TEMP: encrypted_secret,
         'mfaBackupCodesTemp': hashed_backup_codes,
+        'mfaBackupCodesSalt': backup_codes_salt,
         Fields.UPDATED_AT: get_server_timestamp()
     })
 
@@ -563,9 +566,12 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Persist backup codes from temp storage
     temp_backup_codes = user_data.get('mfaBackupCodesTemp')
+    backup_codes_salt = user_data.get('mfaBackupCodesSalt')
     if temp_backup_codes:
         update_data['mfaBackupCodes'] = temp_backup_codes
         update_data['mfaBackupCodesTemp'] = get_delete_field()
+        if backup_codes_salt:
+            update_data['mfaBackupCodesSalt'] = backup_codes_salt
 
     # Remove temporary secret
     if Fields.MFA_SECRET_TEMP in user_data:
@@ -627,6 +633,91 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> dict[str, Any]:
     })
 
     return create_success_response({Fields.MFA_ENABLED: False})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def admin_mfa_verify_backup(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Verifies MFA backup code (one-time use).
+    Used when admin loses access to TOTP device.
+
+    Request data:
+        code: 8-character backup code
+
+    Returns:
+        {success: True, mfaVerified: True, remainingCodes: 7}
+    """
+    if not req.auth:
+        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+
+    user_id = req.auth.uid
+    code = req.data.get(ApiKeys.CODE)
+
+    if not code:
+        raise https_fn.HttpsError('invalid-argument', 'code required')
+
+    # AUDIT FIX: Rate limit backup code verification attempts
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action='mfa_backup_verify',
+        max_requests=3, window_minutes=60, fail_closed=True
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
+    user_doc = user_ref.get()
+
+    if not user_doc.exists:
+        raise https_fn.HttpsError('not-found', 'User not found')
+
+    user_data = user_doc.to_dict()
+
+    # Check if MFA is enabled
+    if not user_data.get(Fields.MFA_ENABLED, False):
+        raise https_fn.HttpsError('failed-precondition', 'MFA not enabled')
+
+    # Get stored backup codes and salt
+    stored_hashed_codes = user_data.get('mfaBackupCodes', [])
+    backup_codes_salt = user_data.get('mfaBackupCodesSalt', '')
+
+    if not stored_hashed_codes:
+        raise https_fn.HttpsError('failed-precondition', 'No backup codes available')
+
+    # Hash the provided code with salt
+    hashed_input = hashlib.sha256((code + backup_codes_salt).encode()).hexdigest()
+
+    # Check if code matches (constant-time comparison not needed here as hash is deterministic)
+    if hashed_input not in stored_hashed_codes:
+        # Log failed attempt
+        print(f'SECURITY: Invalid backup code attempt for user {user_id}')
+        raise https_fn.HttpsError('invalid-argument', 'Invalid backup code')
+
+    # Remove used code (one-time use)
+    remaining_codes = [c for c in stored_hashed_codes if c != hashed_input]
+
+    # Update last MFA verify time
+    user_ref.update({
+        Fields.LAST_MFA_VERIFY: get_server_timestamp(),
+        'mfaBackupCodes': remaining_codes,
+        Fields.UPDATED_AT: get_server_timestamp()
+    })
+
+    # Log security alert if low on codes
+    if len(remaining_codes) <= 2:
+        get_db().collection(Collections.SECURITY_ALERTS).add({
+            Fields.TYPE: SecurityAlertTypes.MFA_LOW_BACKUP_CODES,
+            Fields.SEVERITY: SeverityLevels.MEDIUM,
+            Fields.USER_ID: user_id,
+            'remainingCodes': len(remaining_codes),
+            Fields.TIMESTAMP: get_server_timestamp(),
+            Fields.RESOLVED: False
+        })
+
+    return create_success_response({
+        Fields.MFA_VERIFIED: True,
+        'remainingCodes': len(remaining_codes)
+    })
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -707,6 +798,42 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
         'deleted': True,
         Fields.DELETED_AT: get_server_timestamp()
     })
+
+    # GDPR FIX: Anonymize orders collection (unlink from user but keep for accounting)
+    # Create anonymized identifier that can't be reversed
+    anonymized_id = f'deleted_{hashlib.sha256(user_id.encode()).hexdigest()[:16]}'
+
+    user_orders = get_db().collection(Collections.ORDERS)\
+        .where(Fields.USER_ID, '==', user_id)\
+        .limit(500)\
+        .stream()
+
+    orders_batch = get_db().batch()
+    orders_count = 0
+    batch_size = 0
+
+    for order_doc in user_orders:
+        # Anonymize PII in order while keeping financial records
+        orders_batch.update(order_doc.reference, {
+            Fields.USER_ID: anonymized_id,
+            Fields.CUSTOMER_EMAIL: None,  # Remove email
+            Fields.SHIPPING_ADDRESS: None,  # Remove address PII
+            'anonymizedAt': get_server_timestamp(),
+            'originalUserDeleted': True
+        })
+        orders_count += 1
+        batch_size += 1
+
+        if batch_size >= 500:
+            orders_batch.commit()
+            orders_batch = get_db().batch()
+            batch_size = 0
+
+    if batch_size > 0:
+        orders_batch.commit()
+
+    if orders_count > 0:
+        print(f'GDPR: Anonymized {orders_count} orders for deleted user {user_id}')
 
     # Deactivate products (with limit and batch)
     products = get_db().collection(Collections.PRODUCTS)\

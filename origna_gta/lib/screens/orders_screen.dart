@@ -58,6 +58,8 @@ _StatusConfig _orderStatusConfig(OrderStatus status) {
       return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'Refunded', description: 'Full refund issued');
     case OrderStatus.partiallyRefunded:
       return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'Partial Refund', description: 'Partial refund issued');
+    case OrderStatus.disputed:
+      return _StatusConfig(color: DesignTokens.error, icon: Icons.gavel, label: 'Disputed', description: 'Payment dispute opened');
   }
 }
 
@@ -77,6 +79,8 @@ _StatusConfig _itemStatusConfig(String status) {
     return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'Refunded', description: 'Refund issued');
   } else if (status == OrderStatusValues.cancelled) {
     return _StatusConfig(color: DesignTokens.error, icon: Icons.cancel_outlined, label: 'Cancelled', description: 'Cancelled');
+  } else if (status == OrderStatusValues.disputed) {
+    return _StatusConfig(color: DesignTokens.error, icon: Icons.gavel, label: 'Disputed', description: 'Payment dispute opened');
   } else {
     // 'pending' or unknown
     return const _StatusConfig(color: Color(0xFF764BA2), icon: Icons.hourglass_empty, label: 'Pending', description: 'Awaiting preparation');

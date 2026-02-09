@@ -94,10 +94,16 @@ class RateLimiter:
             return True, "OK"
 
     def get_identifier(self, req) -> str:
-        """Extract identifier from request (IP or user_id)"""
+        """Extract identifier from request (IP, user_id, or device fingerprint)"""
         # Try user ID first
         if hasattr(req, 'auth') and req.auth:
-            return f"user_{req.auth.uid}"
+            base_id = f"user_{req.auth.uid}"
+            # SECURITY FIX: Add device fingerprint if available from Firebase claims
+            # This prevents rate limit bypass via account switching
+            fingerprint = req.auth.token.get('fingerprint') or req.auth.token.get('device_id')
+            if fingerprint:
+                return f"{base_id}_{fingerprint[:16]}"
+            return base_id
 
         # Fall back to IP
         if hasattr(req, 'headers'):

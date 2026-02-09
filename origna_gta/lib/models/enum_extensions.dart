@@ -78,6 +78,8 @@ extension OrderStatusExtension on OrderStatus {
         return 'Refunded';
       case OrderStatus.partiallyRefunded:
         return 'Partially Refunded';
+      case OrderStatus.disputed:
+        return 'Disputed';
     }
   }
 
@@ -105,6 +107,8 @@ extension OrderStatusExtension on OrderStatus {
         return 'refunded';
       case OrderStatus.partiallyRefunded:
         return 'partially_refunded';
+      case OrderStatus.disputed:
+        return 'disputed';
     }
   }
 
@@ -132,6 +136,8 @@ extension OrderStatusExtension on OrderStatus {
         return OrderStatus.refunded;
       case OrderStatusValues.partiallyRefunded:
         return OrderStatus.partiallyRefunded;
+      case OrderStatusValues.disputed:
+        return OrderStatus.disputed;
       default:
         return OrderStatus.pending;
     }
@@ -165,6 +171,12 @@ extension PaymentStatusExtension on PaymentStatus {
         return 'Cancelled';
       case PaymentStatus.authorizationExpired:
         return 'Authorization Expired';
+      case PaymentStatus.capturing:
+        return 'Capturing';
+      case PaymentStatus.cancelling:
+        return 'Cancelling';
+      case PaymentStatus.expiring:
+        return 'Expiring';
     }
   }
 
@@ -190,6 +202,12 @@ extension PaymentStatusExtension on PaymentStatus {
         return 'cancelled';
       case PaymentStatus.authorizationExpired:
         return 'authorization_expired';
+      case PaymentStatus.capturing:
+        return 'capturing';
+      case PaymentStatus.cancelling:
+        return 'cancelling';
+      case PaymentStatus.expiring:
+        return 'expiring';
     }
   }
 
@@ -215,6 +233,12 @@ extension PaymentStatusExtension on PaymentStatus {
         return PaymentStatus.cancelled;
       case PaymentStatusValues.authorizationExpired:
         return PaymentStatus.authorizationExpired;
+      case PaymentStatusValues.capturing:
+        return PaymentStatus.capturing;
+      case PaymentStatusValues.cancelling:
+        return PaymentStatus.cancelling;
+      case PaymentStatusValues.expiring:
+        return PaymentStatus.expiring;
       default:
         return PaymentStatus.awaitingPayment;
     }

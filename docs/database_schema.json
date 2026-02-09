@@ -647,13 +647,13 @@
           "type": "string",
           "required": true,
           "description": "Order fulfillment status",
-          "values": ["pending", "confirmed", "processing", "shipped", "in_transit", "delivered", "cancelled", "failed", "expired", "refunded", "partially_refunded"]
+          "values": ["pending", "confirmed", "processing", "shipped", "in_transit", "delivered", "cancelled", "failed", "expired", "refunded", "partially_refunded", "disputed"]
         },
         "paymentStatus": {
           "type": "string",
           "required": true,
           "description": "Payment status",
-          "values": ["awaiting_payment", "processing", "paid", "payment_failed", "refunded", "session_expired", "authorized", "captured", "cancelled", "authorization_expired"]
+          "values": ["awaiting_payment", "processing", "paid", "payment_failed", "refunded", "session_expired", "authorized", "captured", "cancelled", "authorization_expired", "capturing", "cancelling", "expiring"]
         },
         "shippingAddress": {
           "type": "map",
@@ -887,7 +887,7 @@
           "type": "string",
           "required": true,
           "description": "Payout status",
-          "values": ["completed", "failed", "reversed", "reversed_dispute"]
+          "values": ["pending", "processing", "completed", "partial", "failed", "reversed", "partially_reversed", "reversed_dispute"]
         },
         "stripeTransferId": {
           "type": "string",
@@ -1454,7 +1454,8 @@
         "failed": "Payment failed",
         "expired": "Checkout session expired",
         "refunded": "Full refund issued",
-        "partially_refunded": "Partial refund issued"
+        "partially_refunded": "Partial refund issued",
+        "disputed": "Order disputed (active chargeback/dispute)"
       }
     },
     "PaymentStatus": {
@@ -1469,7 +1470,10 @@
         "refunded": "Payment refunded",
         "session_expired": "Checkout session expired",
         "cancelled": "Payment cancelled",
-        "authorization_expired": "Authorization expired (7-day window passed)"
+        "authorization_expired": "Authorization expired (7-day window passed)",
+        "capturing": "Capture in progress (idempotency lock)",
+        "cancelling": "Cancellation in progress (idempotency lock)",
+        "expiring": "Expiry in progress (idempotency lock)"
       }
     },
     "DeliveryStatus": {
@@ -1490,6 +1494,7 @@
         "partial": "Some sellers paid",
         "failed": "Transfer(s) failed",
         "reversed": "Transfer reversed",
+        "partially_reversed": "Transfer partially reversed (partial refund)",
         "reversed_dispute": "Transfer reversed due to dispute"
       }
     },

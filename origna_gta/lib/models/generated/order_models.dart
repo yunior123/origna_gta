@@ -126,6 +126,7 @@ OrderItem _parseOrderItem(dynamic raw) {
     minimumOrderQuantity: _safeInt(map[Fields.minimumOrderQuantity] ?? map[Fields.minOrderQuantity], 1),
     freeShipping: _safeBool(map[Fields.freeShipping]),
     isDigital: _safeBool(map[Fields.isDigital]),
+    taxCode: map[Fields.taxCode] != null ? _safeString(map[Fields.taxCode]) : null,
   );
 }
 
@@ -218,6 +219,10 @@ class Order with _$Order {
     @Default([]) List<String> payoutErrors,
     // Timestamp
     DateTime? updatedAt,
+    // Tax fields (new)
+    @Default([]) List<Map<String, dynamic>> itemTaxes,
+    @Default(false) bool taxExempt,
+    Map<String, dynamic>? taxExemption,
   }) = _Order;
 
   factory Order.fromFirestore(DocumentSnapshot doc) {
@@ -369,6 +374,10 @@ class Order with _$Order {
       manualReviewReason: data[Fields.manualReviewReason] != null ? _safeString(data[Fields.manualReviewReason]) : null,
       payoutErrors: _safeStringList(data[Fields.payoutErrors]),
       updatedAt: _parseDateTime(data[Fields.updatedAt]),
+      // Parse tax fields
+      itemTaxes: (data[Fields.itemTaxes] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [],
+      taxExempt: _safeBool(data[Fields.taxExempt]),
+      taxExemption: data[Fields.taxExemption] != null ? _safeMap(data[Fields.taxExemption]) : null,
     );
   }
 
@@ -448,6 +457,8 @@ class OrderItem with _$OrderItem {
     @Default(1) int minimumOrderQuantity,
     @Default(false) bool freeShipping,
     @Default(false) bool isDigital,
+    // Tax field (new)
+    String? taxCode,
   }) = _OrderItem;
 
   factory OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);

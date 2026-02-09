@@ -11,7 +11,8 @@
     "failed",
     "expired",
     "refunded",
-    "partially_refunded"
+    "partially_refunded",
+    "disputed"
   ],
   "description": "Order status values"
 }

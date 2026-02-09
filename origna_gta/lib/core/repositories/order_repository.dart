@@ -12,7 +12,10 @@ class FirebaseOrderRepository implements OrderRepository {
 
   @override
   Future<void> approveShippingCost(String orderId, bool approved) async {
-    await _functions.httpsCallable('approve_shipping_cost').call({Fields.orderId: orderId, 'approved': approved});
+    await _functions.httpsCallable('approve_shipping_cost').call({
+      Fields.orderId: orderId,
+      ApiKeys.approved: approved,
+    });
   }
 
   @override
@@ -22,7 +25,10 @@ class FirebaseOrderRepository implements OrderRepository {
 
   @override
   Future<void> confirmReceipt(String orderId, List<String> itemIds) async {
-    await _functions.httpsCallable('confirm_order_receipt').call({Fields.orderId: orderId, 'itemIds': itemIds});
+    await _functions.httpsCallable('confirm_order_receipt').call({
+      Fields.orderId: orderId,
+      ApiKeys.itemIds: itemIds,
+    });
   }
 
   @override
@@ -61,7 +67,11 @@ class FirebaseOrderRepository implements OrderRepository {
 
   @override
   Future<void> updateShippingCost(String orderId, double newShippingCost, String reason) async {
-    await _functions.httpsCallable('update_shipping_cost').call({Fields.orderId: orderId, 'newShippingCost': newShippingCost, 'reason': reason});
+    await _functions.httpsCallable('update_shipping_cost').call({
+      Fields.orderId: orderId,
+      ApiKeys.newShippingCost: newShippingCost,
+      ApiKeys.reason: reason,
+    });
   }
 
   @override

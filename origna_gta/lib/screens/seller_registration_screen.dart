@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart'; // For UserModel
 import 'package:origna_gta/widgets/custom_app_bar.dart'; // Assuming this exists based on your code
@@ -17,8 +18,8 @@ final paymentProviderStatusProvider = FutureProvider<Map<String, dynamic>>((ref)
     final callable = FirebaseFunctions.instance.httpsCallable('get_provider_status');
     final result = await callable.call();
     final data = Map<String, dynamic>.from(result.data as Map);
-    if (data['success'] == true && data['providers'] != null) {
-      return Map<String, dynamic>.from(data['providers'] as Map);
+    if (data[ApiKeys.success] == true && data[ApiKeys.providers] != null) {
+      return Map<String, dynamic>.from(data[ApiKeys.providers] as Map);
     }
     return {};
   } catch (e) {
@@ -511,7 +512,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       data: (statusMap) {
         final providerStatus = statusMap[config.id];
         if (providerStatus == null) return true;
-        return providerStatus['configured'] == true;
+        return providerStatus[ApiKeys.configured] == true;
       },
       loading: () => true,
       error: (_, _) => true,
@@ -595,7 +596,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                 data: (statusMap) {
                   final providerStatus = statusMap[config.id];
                   if (providerStatus == null) return true; // Unknown = assume available
-                  return providerStatus['configured'] == true;
+                  return providerStatus[ApiKeys.configured] == true;
                 },
                 loading: () => true, // While loading, show as available
                 error: (_, _) => true, // On error, show as available

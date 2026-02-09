@@ -74,7 +74,7 @@ _$ProductImpl _$$ProductImplFromJson(
   inventory: json['inventory'] == null
       ? null
       : InventoryConfig.fromJson(json['inventory'] as Map<String, dynamic>),
-  status: json['status'] as String? ?? 'active',
+  status: json['status'] as String? ?? ProductStatusValues.active,
 );
 
 Map<String, dynamic> _$$ProductImplToJson(_$ProductImpl instance) =>
@@ -157,7 +157,7 @@ _$ProductCreateImpl _$$ProductCreateImplFromJson(
   inventory: json['inventory'] == null
       ? null
       : InventoryConfig.fromJson(json['inventory'] as Map<String, dynamic>),
-  status: json['status'] as String? ?? 'active',
+  status: json['status'] as String? ?? ProductStatusValues.active,
 );
 
 Map<String, dynamic> _$$ProductCreateImplToJson(_$ProductCreateImpl instance) =>
@@ -196,7 +196,7 @@ Map<String, dynamic> _$$ProductCreateImplToJson(_$ProductCreateImpl instance) =>
 _$SellerDeliveryOptionImpl _$$SellerDeliveryOptionImplFromJson(
   Map<String, dynamic> json,
 ) => _$SellerDeliveryOptionImpl(
-  type: json['type'] as String? ?? 'standard',
+  type: json['type'] as String? ?? DeliveryTypeValues.standard,
   description: json['description'] as String? ?? '',
   cost: (json['cost'] as num?)?.toDouble() ?? 0.0,
   estimatedDays: (json['estimatedDays'] as num?)?.toInt() ?? 3,
@@ -229,7 +229,7 @@ _$ShippingQuantityDiscountImpl _$$ShippingQuantityDiscountImplFromJson(
   Map<String, dynamic> json,
 ) => _$ShippingQuantityDiscountImpl(
   minQuantity: (json['minQuantity'] as num).toInt(),
-  discountType: json['discountType'] as String? ?? 'percent',
+  discountType: json['discountType'] as String? ?? DiscountTypeValues.percent,
   discountValue: (json['discountValue'] as num).toDouble(),
   label: json['label'] as String?,
 );

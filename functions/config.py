@@ -330,12 +330,32 @@ AIRWALLEX_BASE_URL = os.environ.get("AIRWALLEX_BASE_URL", "https://api.airwallex
 
 SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "support@orignaventures.ca")
 
+# Stripe Tax Feature Flag
+STRIPE_TAX_ENABLED = os.environ.get('STRIPE_TAX_ENABLED', 'false').lower() == 'true'
+
 # Stripe Tax Code Mapping
 CATEGORY_TAX_CODE_MAP = {
-    14: "txcd_10000000",
-    17: "txcd_20030002",
-    19: "txcd_30060005",
-    21: "txcd_10000001",
+    1: "txcd_99999999",   # Electronics → General Tangible Goods
+    2: "txcd_99999999",   # Computers → General Tangible Goods
+    3: "txcd_10201000",   # Gaming → Video Games
+    4: "txcd_99999999",   # Home/Kitchen → General Tangible Goods
+    5: "txcd_99999999",   # Fashion → General Tangible Goods
+    6: "txcd_99999999",   # Shoes/Accessories → General Tangible Goods
+    7: "txcd_99999999",   # Jewelry/Watches → General Tangible Goods
+    8: "txcd_99999999",   # Beauty/Personal Care → General Tangible Goods
+    9: "txcd_99999999",   # Health/Wellness → General Tangible Goods
+    10: "txcd_99999999",  # Sports/Fitness → General Tangible Goods
+    11: "txcd_99999999",  # Automotive → General Tangible Goods
+    12: "txcd_99999999",  # Tools/Hardware → General Tangible Goods
+    13: "txcd_99999999",  # Office Supplies → General Tangible Goods
+    14: "txcd_10302000",  # Books → Digital Books (physical)
+    15: "txcd_99999999",  # Music/Instruments → General Tangible Goods
+    16: "txcd_99999999",  # Toys/Games → General Tangible Goods
+    17: "txcd_20030002",  # Baby/Kids → Children's Clothing
+    18: "txcd_99999999",  # Pet Supplies → General Tangible Goods
+    19: "txcd_30060005",  # Groceries → Basic Groceries
+    20: "txcd_99999999",  # Art/Collectibles → General Tangible Goods
+    21: "txcd_10000000",  # Digital Products → Digital Services
 }
 
 # ============================================================================

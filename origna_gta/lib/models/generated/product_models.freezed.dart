@@ -884,7 +884,7 @@ class _$ProductImpl implements _Product {
     this.supplierUrl,
     this.supplier,
     this.inventory,
-    this.status = 'active',
+    this.status = ProductStatusValues.active,
   }) : _imageUrls = imageUrls,
        _deliveryOptions = deliveryOptions,
        _keywords = keywords;
@@ -1777,7 +1777,7 @@ class _$ProductCreateImpl implements _ProductCreate {
     this.supplierUrl,
     this.supplier,
     this.inventory,
-    this.status = 'active',
+    this.status = ProductStatusValues.active,
   }) : _imageUrls = imageUrls,
        _deliveryOptions = deliveryOptions,
        _keywords = keywords;
@@ -2307,7 +2307,7 @@ class __$$SellerDeliveryOptionImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$SellerDeliveryOptionImpl implements _SellerDeliveryOption {
   const _$SellerDeliveryOptionImpl({
-    this.type = 'standard',
+    this.type = DeliveryTypeValues.standard,
     this.description = '',
     this.cost = 0.0,
     this.estimatedDays = 3,
@@ -2643,7 +2643,7 @@ class __$$ShippingQuantityDiscountImplCopyWithImpl<$Res>
 class _$ShippingQuantityDiscountImpl implements _ShippingQuantityDiscount {
   const _$ShippingQuantityDiscountImpl({
     required this.minQuantity,
-    this.discountType = 'percent',
+    this.discountType = DiscountTypeValues.percent,
     required this.discountValue,
     this.label,
   });

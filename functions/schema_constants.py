@@ -153,6 +153,13 @@ class Fields:
     MINIMUM_ORDER_QUANTITY = "minimumOrderQuantity"
     FREE_SHIPPING = "freeShipping"
     TAX_CODE = "taxCode"
+
+    # === TAX FIELDS (new) ===
+    ITEM_TAXES = "itemTaxes"
+    TAX_EXEMPT = "taxExempt"
+    TAX_EXEMPTION = "taxExemption"
+    GST_NUMBER = "gstNumber"
+
     SUPPLIER = "supplier"
     INVENTORY = "inventory"
     STATUS = "status"
@@ -473,6 +480,7 @@ class SecurityAlertTypes:
     REFUND_FAILED = "refund_failed"
     SELLER_ACCOUNT_CHANGED = "seller_account_changed"
     PAYOUT_RECORD_INCOMPLETE = "payout_record_incomplete"
+    MFA_LOW_BACKUP_CODES = "mfa_low_backup_codes"
 
 
 class SeverityLevels:
@@ -637,6 +645,7 @@ class ApiKeys:
     QR_CODE_URL = "qrCodeUrl"
     PROVISIONING_URI = "provisioning_uri"
     BACKUP_CODES = "backup_codes"
+    MFA_VERIFIED = "mfaVerified"
     DETAILS_SUBMITTED = "detailsSubmitted"
     REQUIREMENTS_CURRENTLY_DUE = "requirementsCurrentlyDue"
     DUPLICATE = "duplicate"
@@ -665,3 +674,21 @@ class ApiKeys:
     CONFIGURED = "configured"
     MISSING_KEYS = "missingKeys"
     ENABLED_PROVIDERS = "enabledProviders"
+
+
+class ErrorCodeValues:
+    """Standardized error code values returned in HttpsError `details`."""
+    PRICE_CHANGED = "PRICE_CHANGED"
+
+
+class CartVerificationReasonValues:
+    """Reason values returned by verify_cart_prices()."""
+    DEACTIVATED = "deactivated"
+
+
+class PlaceholderAddressValues:
+    """Placeholder values used ONLY as last-resort fallbacks to prevent crashes."""
+    UNKNOWN_TEXT = "N/A"
+    DEFAULT_STATE = "ON"
+    DEFAULT_POSTAL_CODE = "M5V 3A8"
+    DEFAULT_COUNTRY = "Canada"

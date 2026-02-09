@@ -16,8 +16,10 @@ from firebase_functions import https_fn, options
 
 from config import (
     AUTHORIZATION_VALID_DAYS,
+    CATEGORY_TAX_CODE_MAP,
     PLATFORM_FEE_PERCENT,
     STRIPE_SECRET_KEY,
+    STRIPE_TAX_ENABLED,
     STRIPE_WEBHOOK_SECRET,
     Collections,
 )
@@ -27,11 +29,14 @@ from rate_limiter import RateLimiter
 from schema_constants import (
     ApiKeys,
     BusinessRules,
+    CartVerificationReasonValues,
     DeliveryStatusValues,
     DeliveryTypeValues,
+    ErrorCodeValues,
     Fields,
     OrderStatusValues,
     PaymentStatusValues,
+    PlaceholderAddressValues,
     PayoutStatusValues,
     SecurityAlertTypes,
     SeverityLevels,
@@ -45,6 +50,11 @@ OrderStatus = OrderStatusValues
 PaymentStatus = PaymentStatusValues
 
 stripe.api_key = STRIPE_SECRET_KEY
+
+
+def get_tax_code_for_category(category_id):
+    """Map product categories to Stripe tax codes"""
+    return CATEGORY_TAX_CODE_MAP.get(category_id)
 # CRITICAL: Set timeout to 30s to prevent Cloud Function timeout (default is 80s)
 # Cloud Functions timeout at 60s, so we need Stripe to timeout before that
 stripe.max_network_retries = 2
@@ -256,7 +266,7 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
             removed_products.append({
                 Fields.PRODUCT_ID: product_id,
                 Fields.NAME: product_data.get(Fields.NAME, ''),
-                Fields.REASON: 'deactivated',
+                Fields.REASON: CartVerificationReasonValues.DEACTIVATED,
             })
             continue
 
@@ -289,6 +299,89 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
         ApiKeys.STOCK_CHANGES: stock_changes,
         ApiKeys.REMOVED_PRODUCTS: removed_products,
     })
+
+
+def get_item_tax_rate(item, province):
+    """Get tax rate for an item based on category and province"""
+    tax_code = item.get(Fields.TAX_CODE)
+    
+    # Children's clothing exempt in some provinces
+    if tax_code == "txcd_20030002":  # Children's clothing
+        if province in ['ON', 'BC', 'MB', 'SK']:  # Exempt provinces
+            return 0.0
+    
+    # Basic groceries exempt in most provinces
+    if tax_code == "txcd_30060005":  # Basic groceries
+        return 0.0  # Exempt in all provinces
+    
+    # Default province tax rate
+    return get_tax_rate(province)
+
+
+def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_cents):
+    """
+    Calculate tax using Stripe Tax API.
+    Returns (tax_amount_cents, tax_breakdown, line_items_with_tax)
+    """
+    try:
+        line_items = []
+        for item in validated_items:
+            # Get tax code from category mapping
+            category_id = item.get(Fields.CATEGORY_ID, 0)
+            tax_code = CATEGORY_TAX_CODE_MAP.get(category_id, 'txcd_99999999')
+            
+            line_items.append({
+                'amount': int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY],
+                'reference': item[Fields.PRODUCT_ID],
+                'tax_code': tax_code,
+            })
+        
+        # Add shipping as line item
+        if shipping_cost_cents > 0:
+            line_items.append({
+                'amount': shipping_cost_cents,
+                'reference': 'shipping',
+                'tax_code': 'txcd_92010001',  # Shipping tax code
+            })
+        
+        # Call Stripe Tax API
+        calculation = stripe.tax.Calculation.create(
+            currency='cad',
+            customer_details={
+                'address': {
+                    'line1': shipping_address.get(Fields.STREET, ''),
+                    'city': shipping_address.get(Fields.CITY, ''),
+                    'state': shipping_address.get(Fields.STATE, ''),
+                    'postal_code': shipping_address.get(Fields.POSTAL_CODE, ''),
+                    'country': 'CA',
+                },
+                'address_source': 'shipping',
+            },
+            line_items=line_items,
+        )
+        
+        tax_amount_cents = calculation.tax_amount_exclusive
+        tax_breakdown = {
+            detail.tax_type: detail.amount 
+            for detail in calculation.tax_breakdown
+        }
+        
+        # Build item_taxes from Stripe calculation for consistency
+        item_taxes = []
+        for line_item in calculation.line_items.data:
+            if line_item.reference != 'shipping':
+                item_taxes.append({
+                    'productId': line_item.reference,
+                    'taxCents': line_item.amount_tax,
+                    'taxRate': (line_item.amount_tax / line_item.amount) if line_item.amount > 0 else 0,
+                })
+        
+        return tax_amount_cents, tax_breakdown, item_taxes
+        
+    except Exception as e:
+        print(f'Stripe Tax API error: {e}')
+        # Fall back to manual calculation
+        return None, None, None
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS, cors=CORS_CONFIG)
@@ -331,10 +424,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Security: Check if user is suspended
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_snapshot = user_ref.get()
-    if user_snapshot.exists:
-        user_data = user_snapshot.to_dict()
-        if user_data.get(Fields.SUSPENDED, False):
-            raise https_fn.HttpsError('permission-denied', 'Account suspended. Cannot proceed with checkout.')
+    user_data = user_snapshot.to_dict() if user_snapshot.exists else {}
+    if user_data.get(Fields.SUSPENDED, False):
+        raise https_fn.HttpsError('permission-denied', 'Account suspended. Cannot proceed with checkout.')
+
+    # Check for tax exemption
+    tax_exemption = user_data.get(Fields.TAX_EXEMPTION)
+    is_tax_exempt = bool(tax_exemption and tax_exemption.get('gstNumber'))
 
     # Rate limiting: 5 requests per minute per user
     allowed, message = get_rate_limiter().check_rate_limit(
@@ -460,7 +556,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 f"Price changed for {product_data.get(Fields.NAME, item[Fields.PRODUCT_ID])}: "
                 f"was ${client_price:.2f}, now ${db_price:.2f}. Please refresh your cart.",
                 details={
-                    ApiKeys.CODE: 'PRICE_CHANGED',
+                    ApiKeys.CODE: ErrorCodeValues.PRICE_CHANGED,
                     Fields.PRODUCT_ID: item[Fields.PRODUCT_ID],
                     ApiKeys.PRODUCT_NAME: product_data.get(Fields.NAME, ''),
                     ApiKeys.OLD_PRICE: client_price,
@@ -511,11 +607,11 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             raw_seller_address = seller_data.get(Fields.ADDRESS, {})
         if not raw_seller_address or not raw_seller_address.get(Fields.STREET):
             raw_seller_address = {
-                Fields.STREET: 'N/A',
-                Fields.CITY: 'N/A',
-                Fields.STATE: 'ON',
-                Fields.POSTAL_CODE: 'M5V 3A8',
-                Fields.COUNTRY: 'Canada',
+                Fields.STREET: PlaceholderAddressValues.UNKNOWN_TEXT,
+                Fields.CITY: PlaceholderAddressValues.UNKNOWN_TEXT,
+                Fields.STATE: PlaceholderAddressValues.DEFAULT_STATE,
+                Fields.POSTAL_CODE: PlaceholderAddressValues.DEFAULT_POSTAL_CODE,
+                Fields.COUNTRY: PlaceholderAddressValues.DEFAULT_COUNTRY,
             }
 
         validated_item = {
@@ -528,6 +624,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.IMAGE_URLS: image_urls if image_urls else [''],
             Fields.IS_DIGITAL: product_data.get(Fields.IS_DIGITAL, False),
             Fields.CATEGORY_ID: product_data.get(Fields.CATEGORY_ID, 0),
+            Fields.TAX_CODE: get_tax_code_for_category(product_data.get(Fields.CATEGORY_ID, 0)),
             Fields.STATUS: DeliveryStatusValues.PENDING,  # Per-item status: pending | shipped | delivered | refunded
             Fields.DELIVERY_STATUS: DeliveryStatusValues.PENDING,  # Legacy field (kept for backwards compatibility)
             Fields.TRACKING_NUMBER: None,
@@ -573,25 +670,77 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         print(f'Shipping calculation error: {str(e)}')
         raise https_fn.HttpsError('internal', 'Shipping calculation failed. Please try again.') from e
 
-    # Calculate taxes (server-side) - all in cents to avoid rounding errors
+    # Calculate taxes per-item (server-side) - all in cents to avoid rounding errors
     state_code = shipping_address.get(Fields.STATE, 'ON')
-    tax_rate = get_tax_rate(state_code)
-    tax_amount_cents = round(actual_subtotal_cents * tax_rate)
 
-    # Build tax breakdown dict (matches Flutter provinceTaxRates)
-    _PROVINCE_TAX_BREAKDOWN = {
-        'AB': {'GST': 0.05}, 'BC': {'GST': 0.05, 'PST': 0.07},
-        'MB': {'GST': 0.05, 'PST': 0.07}, 'NB': {'HST': 0.15},
-        'NL': {'HST': 0.15}, 'NS': {'HST': 0.15}, 'NT': {'GST': 0.05},
-        'NU': {'GST': 0.05}, 'ON': {'HST': 0.13}, 'PE': {'HST': 0.15},
-        'QC': {'GST': 0.05, 'QST': 0.09975}, 'SK': {'GST': 0.05, 'PST': 0.06},
-        'YT': {'GST': 0.05},
-    }
-    province_rates = _PROVINCE_TAX_BREAKDOWN.get(state_code, {'GST': 0.05})
-    taxes_breakdown = {
-        name: round(actual_subtotal * rate, 2)
-        for name, rate in province_rates.items()
-    }
+    if is_tax_exempt:
+        tax_amount_cents = 0
+        taxes_breakdown = {}
+        item_taxes = []
+    elif STRIPE_TAX_ENABLED:
+        # Use Stripe Tax API for automatic tax calculation
+        tax_result = calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_cents)
+        if tax_result[0] is not None:
+            tax_amount_cents, taxes_breakdown, item_taxes = tax_result
+        else:
+            # Fall back to manual calculation on Stripe Tax API error
+            tax_amount_cents = 0
+            item_taxes = []
+            for item in validated_items:
+                item_subtotal_cents = int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY]
+                item_tax_rate = get_item_tax_rate(item, state_code)
+                item_tax_cents = round(item_subtotal_cents * item_tax_rate)
+                tax_amount_cents += item_tax_cents
+                item_taxes.append({
+                    'productId': item[Fields.PRODUCT_ID],
+                    'taxCents': item_tax_cents,
+                    'taxRate': item_tax_rate
+                })
+
+            # Build tax breakdown dict (matches Flutter provinceTaxRates)
+            _PROVINCE_TAX_BREAKDOWN = {
+                'AB': {'GST': 0.05}, 'BC': {'GST': 0.05, 'PST': 0.07},
+                'MB': {'GST': 0.05, 'PST': 0.07}, 'NB': {'HST': 0.15},
+                'NL': {'HST': 0.15}, 'NS': {'HST': 0.15}, 'NT': {'GST': 0.05},
+                'NU': {'GST': 0.05}, 'ON': {'HST': 0.13}, 'PE': {'HST': 0.15},
+                'QC': {'GST': 0.05, 'QST': 0.09975}, 'SK': {'GST': 0.05, 'PST': 0.06},
+                'YT': {'GST': 0.05},
+            }
+            province_rates = _PROVINCE_TAX_BREAKDOWN.get(state_code, {'GST': 0.05})
+            taxes_breakdown = {
+                name: round(actual_subtotal * rate, 2)
+                for name, rate in province_rates.items()
+            }
+    else:
+        # Calculate per-item tax (manual calculation)
+        tax_amount_cents = 0
+        item_taxes = []  # Store for breakdown
+
+        for item in validated_items:
+            item_subtotal_cents = int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY]
+            item_tax_rate = get_item_tax_rate(item, state_code)
+            item_tax_cents = round(item_subtotal_cents * item_tax_rate)
+            tax_amount_cents += item_tax_cents
+            item_taxes.append({
+                'productId': item[Fields.PRODUCT_ID],
+                'taxCents': item_tax_cents,
+                'taxRate': item_tax_rate
+            })
+
+        # Build tax breakdown dict (matches Flutter provinceTaxRates)
+        _PROVINCE_TAX_BREAKDOWN = {
+            'AB': {'GST': 0.05}, 'BC': {'GST': 0.05, 'PST': 0.07},
+            'MB': {'GST': 0.05, 'PST': 0.07}, 'NB': {'HST': 0.15},
+            'NL': {'HST': 0.15}, 'NS': {'HST': 0.15}, 'NT': {'GST': 0.05},
+            'NU': {'GST': 0.05}, 'ON': {'HST': 0.13}, 'PE': {'HST': 0.15},
+            'QC': {'GST': 0.05, 'QST': 0.09975}, 'SK': {'GST': 0.05, 'PST': 0.06},
+            'YT': {'GST': 0.05},
+        }
+        province_rates = _PROVINCE_TAX_BREAKDOWN.get(state_code, {'GST': 0.05})
+        taxes_breakdown = {
+            name: round(actual_subtotal * rate, 2)
+            for name, rate in province_rates.items()
+        }
 
     # Total in cents
     total_amount_cents = actual_subtotal_cents + shipping_cost_cents + tax_amount_cents
@@ -706,6 +855,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.PLATFORM_FEE_CENTS: round(total_amount_cents * PLATFORM_FEE_PERCENT),  # AUDIT FIX: Immutable fee stored at checkout
         Fields.ARCHIVED: False,
         Fields.STOCK_RESTORED: False,
+        Fields.TAX_EXEMPTION: tax_exemption if is_tax_exempt else None,
+        Fields.TAX_EXEMPT: is_tax_exempt,
+        Fields.ITEM_TAXES: item_taxes,
     }
 
     # SECURITY FIX (CRITICAL-014): Snapshot seller Stripe account IDs at checkout.
@@ -724,15 +876,6 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Create Stripe Checkout Session
     try:
-        # Helper function to get tax code based on category
-        def get_tax_code_for_category(category_id):
-            """Map product categories to Stripe tax codes"""
-            tax_code_map = {
-                17: "txcd_20030002",  # Children's Clothing
-                19: "txcd_30060005",  # Basic Groceries
-            }
-            return tax_code_map.get(category_id)
-
         line_items = []
         for item in validated_items:
             product_data = {
@@ -741,7 +884,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             }
 
             # Add tax code if available
-            tax_code = get_tax_code_for_category(item.get(Fields.CATEGORY_ID, 0))
+            tax_code = CATEGORY_TAX_CODE_MAP.get(item.get(Fields.CATEGORY_ID, 0))
             if tax_code:
                 product_data['tax_code'] = tax_code
 
@@ -770,6 +913,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Add tax as line item (already in cents)
         # NOTE: We calculate tax manually server-side
         # Stripe automatic_tax is DISABLED to avoid double taxation
+        # TODO consider this automatic_tax
         if tax_amount_cents > 0:
             line_items.append({
                 'price_data': {
@@ -1076,7 +1220,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
     # Send confirmation emails
     try:
         # Get buyer email from order data or user document
-        buyer_email = order_data.get('customerEmail')
+        buyer_email = order_data.get(Fields.CUSTOMER_EMAIL)
         if not buyer_email:
             buyer_doc = get_db().collection(Collections.USERS).document(order_data[Fields.USER_ID]).get()
             if buyer_doc.exists:
@@ -2361,8 +2505,29 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
             })
         error_msg = str(e).lower()
         print(f'Capture payment error: {str(e)}')
+        
+        # Handle Stripe-specific errors by checking exception type name
+        exc_type_name = type(e).__name__
+        
+        # Handle expired authorization (InvalidRequestError with 'expired' in message)
         if 'expired' in error_msg:
             raise https_fn.HttpsError('failed-precondition', 'Payment authorization has expired. Please create a new order.') from e
+        
+        # Handle card errors (3DS required, card declined, etc.)
+        if exc_type_name == 'CardError':
+            # Handle 3DS required at capture time (rare edge case for manual captures)
+            if getattr(e, 'code', None) == 'authentication_required':
+                raise https_fn.HttpsError(
+                    'failed-precondition',
+                    'Payment requires additional verification. Please contact support to complete this payment.'
+                ) from e
+            user_message = getattr(e, 'user_message', None) or 'Your card was declined. Please try a different payment method.'
+            raise https_fn.HttpsError('failed-precondition', user_message) from e
+        
+        # Handle other Stripe API errors
+        if exc_type_name in ('InvalidRequestError', 'StripeError'):
+            raise https_fn.HttpsError('failed-precondition', f'Payment capture failed: {str(e)}') from e
+        
         raise https_fn.HttpsError('internal', 'Could not capture payment. Please try again.') from e
 
 

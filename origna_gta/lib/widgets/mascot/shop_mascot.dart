@@ -184,7 +184,7 @@ class MascotPainter extends CustomPainter {
 
   void _drawShadow(Canvas canvas, Size size, double jumpHeight) {
     final shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.15 * (1 - jumpHeight))
+      ..color = Colors.black.withValues(alpha: 0.15 * (1 - jumpHeight))
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
 
     // Shadow shrinks as he jumps
@@ -193,7 +193,7 @@ class MascotPainter extends CustomPainter {
     // Draw shadow decoupled from the body translation (so it stays on the floor)
     canvas.drawOval(
       Rect.fromCenter(
-        center: Offset(0, size.height * 0.45 - (jumpOffset_reference_hack(jumpHeight, size))), 
+        center: Offset(0, size.height * 0.45 - (jumpOffsetReferenceHack(jumpHeight, size))), 
         width: shadowSize, 
         height: shadowSize * 0.25
       ),
@@ -202,7 +202,7 @@ class MascotPainter extends CustomPainter {
   }
   
   // Helper to reverse the translate calculation for shadow specifically
-  double jumpOffset_reference_hack(double val, Size size) => 
+  double jumpOffsetReferenceHack(double val, Size size) => 
       -math.sin(val * math.pi) * (size.height * 0.3);
 
   void _drawBody(Canvas canvas, Size size) {
@@ -224,7 +224,7 @@ class MascotPainter extends CustomPainter {
     canvas.drawRRect(rrect, bodyPaint);
     
     // Highlight (Reflective shine)
-    final shinePaint = Paint()..color = Colors.white.withOpacity(0.2);
+    final shinePaint = Paint()..color = Colors.white.withValues(alpha: 0.2);
     canvas.drawOval(
       Rect.fromCenter(center: const Offset(-30, -30), width: 30, height: 20), 
       shinePaint
@@ -287,7 +287,7 @@ class MascotPainter extends CustomPainter {
     
     // Glow effect
     final glowPaint = Paint()
-      ..color = ballPaint.color.withOpacity(0.4)
+      ..color = ballPaint.color.withValues(alpha: 0.4)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
     canvas.drawCircle(Offset(bobble, -75), 12, glowPaint);
   }

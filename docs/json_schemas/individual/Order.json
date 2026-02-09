@@ -344,7 +344,8 @@
         "failed",
         "expired",
         "refunded",
-        "partially_refunded"
+        "partially_refunded",
+        "disputed"
       ],
       "title": "OrderStatusEnum",
       "type": "string"
@@ -361,7 +362,10 @@
         "refunded",
         "session_expired",
         "cancelled",
-        "authorization_expired"
+        "authorization_expired",
+        "capturing",
+        "cancelling",
+        "expiring"
       ],
       "title": "PaymentStatusEnum",
       "type": "string"

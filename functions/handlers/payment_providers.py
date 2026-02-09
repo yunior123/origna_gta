@@ -18,7 +18,15 @@ from firebase_functions import https_fn
 
 from config import Collections
 from function_options import DEFAULT_OPTIONS
-from schema_constants import ApiKeys, Documents, Fields, SecurityAlertTypes, SeverityLevels, UserRoleValues
+from schema_constants import (
+    AdminActionValues,
+    ApiKeys,
+    Documents,
+    Fields,
+    SecurityAlertTypes,
+    SeverityLevels,
+    UserRoleValues,
+)
 
 # ============================================================================
 # LAZY INITIALIZATION
@@ -375,7 +383,7 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # Log the change
         get_db().collection(Collections.ADMIN_LOGS).add({
-            Fields.ACTION: "payment_provider_update",
+            Fields.ACTION: AdminActionValues.PAYMENT_PROVIDER_UPDATE,
             Fields.ADMIN_ID: admin_id,
             Fields.PROVIDER: provider,
             Fields.OLD_ENABLED: old_enabled,

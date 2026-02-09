@@ -42,6 +42,10 @@ class PaymentStatusEnum(StrEnum):
     SESSION_EXPIRED = "session_expired"
     CANCELLED = "cancelled"
     AUTHORIZATION_EXPIRED = "authorization_expired"
+    # Transitional states (persisted briefly for idempotency/race-condition guards)
+    CAPTURING = "capturing"
+    CANCELLING = "cancelling"
+    EXPIRING = "expiring"
 
 
 class DeliveryStatusEnum(StrEnum):

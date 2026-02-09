@@ -151,7 +151,7 @@ class MoosePainter extends CustomPainter {
   }
 
   void _drawShadow(Canvas canvas, Size size, double jumpHeight) {
-    final shadowPaint = Paint()..color = Colors.black.withOpacity(0.2 * (1 - jumpHeight));
+    final shadowPaint = Paint()..color = Colors.black.withValues(alpha: 0.2 * (1 - jumpHeight));
     final shadowSize = (size.width * 0.5) * (1 - (jumpHeight * 0.3));
     canvas.drawOval(
       Rect.fromCenter(
@@ -177,7 +177,7 @@ class MoosePainter extends CustomPainter {
     final scarfPaint = Paint()..color = const Color(0xFFD32F2F);
     final scarfRect = Rect.fromCenter(center: const Offset(0, 10), width: size.width * 0.38, height: 30);
     canvas.drawRRect(RRect.fromRectAndRadius(scarfRect, const Radius.circular(10)), scarfPaint);
-    final stripePaint = Paint()..color = Colors.black.withOpacity(0.3)..strokeWidth = 3;
+    final stripePaint = Paint()..color = Colors.black.withValues(alpha: 0.3)..strokeWidth = 3;
     canvas.drawLine(Offset(-40, 5), Offset(40, 5), stripePaint);
     canvas.drawLine(Offset(-40, 15), Offset(40, 15), stripePaint);
     for(double i = -30; i <= 30; i+= 15) {

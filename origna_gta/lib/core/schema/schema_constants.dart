@@ -195,6 +195,15 @@ abstract final class Fields {
   static const respondedAt = 'respondedAt';
   static const actualCost = 'actualCost';
 
+  // === TAX FIELDS (new) ===
+  static const itemTaxes = 'itemTaxes';
+  static const taxExempt = 'taxExempt';
+  static const taxExemption = 'taxExemption';
+  static const gstNumber = 'gstNumber';
+
+  // === FIELDS missing from Dart (present in Python) ===
+  static const archived = 'archived';
+
   // === ORDER ITEM FIELDS ===
   static const quantity = 'quantity';
   static const trackingNumber = 'trackingNumber';
@@ -354,6 +363,7 @@ abstract final class OrderStatusValues {
   static const expired = 'expired';
   static const refunded = 'refunded';
   static const partiallyRefunded = 'partially_refunded';
+  static const disputed = 'disputed';
 
   static const all = {
     pending,
@@ -367,6 +377,7 @@ abstract final class OrderStatusValues {
     expired,
     refunded,
     partiallyRefunded,
+    disputed,
   };
 }
 
@@ -422,6 +433,7 @@ abstract final class PayoutStatusValues {
   static const partial = 'partial';
   static const failed = 'failed';
   static const reversed = 'reversed';
+  static const partiallyReversed = 'partially_reversed';
   static const reversedDispute = 'reversed_dispute';
 
   static const all = {
@@ -431,6 +443,7 @@ abstract final class PayoutStatusValues {
     partial,
     failed,
     reversed,
+    partiallyReversed,
     reversedDispute,
   };
 }
@@ -530,17 +543,6 @@ abstract final class DiscountTypeValues {
   static const flatRate = 'flat_rate';
 
   static const all = {percent, fixed, flatRate};
-}
-
-/// Valid values for seller delivery option types
-abstract final class DeliveryTypeValues {
-  static const pickup = 'pickup';
-  static const standard = 'standard';
-  static const express = 'express';
-  static const sameDay = 'same_day';
-  static const custom = 'custom';
-
-  static const all = {pickup, standard, express, sameDay, custom};
 }
 
 // =============================================================================
@@ -645,8 +647,17 @@ abstract final class ApiKeys {
   static const enabled = 'enabled';
   static const refreshUrl = 'refreshUrl';
   static const returnUrl = 'returnUrl';
+  static const newStatus = 'newStatus';
+  static const approved = 'approved';
+  static const newShippingCost = 'newShippingCost';
+  static const subtotal = 'subtotal';
+  static const itemIds = 'itemIds';
 
   // === RESPONSE KEYS (returned from Cloud Functions) ===
+  static const success = 'success';
+  static const itemStatus = 'itemStatus';
+  static const allItemsDelivered = 'allItemsDelivered';
+  static const providerName = 'providerName';
   static const checkoutUrl = 'checkoutUrl';
   static const sessionId = 'sessionId';
   static const url = 'url';
@@ -656,11 +667,30 @@ abstract final class ApiKeys {
   static const backupCodes = 'backup_codes';
   static const detailsSubmitted = 'detailsSubmitted';
   static const requirementsCurrentlyDue = 'requirementsCurrentlyDue';
+  static const duplicate = 'duplicate';
+  static const emulatorMode = 'emulatorMode';
+  static const captured = 'captured';
+  static const message = 'message';
+  static const paymentIntentId = 'paymentIntentId';
+  static const accountId = 'accountId';
+  static const existing = 'existing';
+  static const hasChanges = 'hasChanges';
+  static const priceChanges = 'priceChanges';
+  static const stockChanges = 'stockChanges';
+  static const removedProducts = 'removedProducts';
+  static const oldPrice = 'oldPrice';
+  static const newPrice = 'newPrice';
+  static const requested = 'requested';
+  static const available = 'available';
+  static const productName = 'productName';
 
   // === PAYMENT PROVIDER RESPONSE KEYS ===
+  static const supportedCurrencies = 'supportedCurrencies';
+  static const supportedCountries = 'supportedCountries';
+  static const features = 'features';
   static const providers = 'providers';
+  static const providerStatus = 'providerStatus';
   static const configured = 'configured';
   static const missingKeys = 'missingKeys';
   static const enabledProviders = 'enabledProviders';
 }
-

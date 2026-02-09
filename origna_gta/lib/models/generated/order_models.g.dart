@@ -29,7 +29,7 @@ _$OrderImpl _$$OrderImplFromJson(Map<String, dynamic> json) => _$OrderImpl(
     json['shippingAddress'] as Map<String, dynamic>,
   ),
   createdAt: DateTime.parse(json['createdAt'] as String),
-  currency: json['currency'] as String? ?? 'cad',
+  currency: json['currency'] as String? ?? BusinessRules.defaultCurrency,
   sellerIds:
       (json['sellerIds'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
@@ -53,7 +53,7 @@ _$OrderImpl _$$OrderImplFromJson(Map<String, dynamic> json) => _$OrderImpl(
       ? null
       : DateTime.parse(json['confirmedAt'] as String),
   platformFeeTotal: (json['platformFeeTotal'] as num?)?.toDouble() ?? 0.0,
-  payoutStatus: json['payoutStatus'] as String? ?? 'pending',
+  payoutStatus: json['payoutStatus'] as String? ?? PayoutStatusValues.pending,
   ratings:
       (json['ratings'] as List<dynamic>?)
           ?.map((e) => Ratings.fromJson(e as Map<String, dynamic>))
@@ -93,6 +93,13 @@ _$OrderImpl _$$OrderImplFromJson(Map<String, dynamic> json) => _$OrderImpl(
   updatedAt: json['updatedAt'] == null
       ? null
       : DateTime.parse(json['updatedAt'] as String),
+  itemTaxes:
+      (json['itemTaxes'] as List<dynamic>?)
+          ?.map((e) => e as Map<String, dynamic>)
+          .toList() ??
+      const [],
+  taxExempt: json['taxExempt'] as bool? ?? false,
+  taxExemption: json['taxExemption'] as Map<String, dynamic>?,
 );
 
 Map<String, dynamic> _$$OrderImplToJson(_$OrderImpl instance) =>
@@ -143,6 +150,9 @@ Map<String, dynamic> _$$OrderImplToJson(_$OrderImpl instance) =>
       'manualReviewReason': instance.manualReviewReason,
       'payoutErrors': instance.payoutErrors,
       'updatedAt': instance.updatedAt?.toIso8601String(),
+      'itemTaxes': instance.itemTaxes,
+      'taxExempt': instance.taxExempt,
+      'taxExemption': instance.taxExemption,
     };
 
 const _$OrderStatusEnumMap = {
@@ -157,6 +167,7 @@ const _$OrderStatusEnumMap = {
   OrderStatus.expired: 'expired',
   OrderStatus.refunded: 'refunded',
   OrderStatus.partiallyRefunded: 'partially_refunded',
+  OrderStatus.disputed: 'disputed',
 };
 
 const _$PaymentStatusEnumMap = {
@@ -170,6 +181,9 @@ const _$PaymentStatusEnumMap = {
   PaymentStatus.sessionExpired: 'session_expired',
   PaymentStatus.cancelled: 'cancelled',
   PaymentStatus.authorizationExpired: 'authorization_expired',
+  PaymentStatus.capturing: 'capturing',
+  PaymentStatus.cancelling: 'cancelling',
+  PaymentStatus.expiring: 'expiring',
 };
 
 const _$ShippingApprovalStatusEnumMap = {
@@ -191,7 +205,7 @@ _$OrderCreateImpl _$$OrderCreateImplFromJson(Map<String, dynamic> json) =>
         json['shippingAddress'] as Map<String, dynamic>,
       ),
       shippingCost: (json['shippingCost'] as num?)?.toDouble() ?? 0.0,
-      currency: json['currency'] as String? ?? 'cad',
+      currency: json['currency'] as String? ?? BusinessRules.defaultCurrency,
       shippingApprovalRequired:
           json['shippingApprovalRequired'] as bool? ?? false,
     );
@@ -223,7 +237,7 @@ _$OrderItemImpl _$$OrderItemImplFromJson(
   sellerAddress: Address.fromJson(
     json['sellerAddress'] as Map<String, dynamic>,
   ),
-  status: json['status'] as String? ?? 'pending',
+  status: json['status'] as String? ?? DeliveryStatusValues.pending,
   deliveryStatus:
       $enumDecodeNullable(_$DeliveryStatusEnumMap, json['deliveryStatus']) ??
       DeliveryStatus.pending,
@@ -257,6 +271,7 @@ _$OrderItemImpl _$$OrderItemImplFromJson(
   minimumOrderQuantity: (json['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
   freeShipping: json['freeShipping'] as bool? ?? false,
   isDigital: json['isDigital'] as bool? ?? false,
+  taxCode: json['taxCode'] as String?,
 );
 
 Map<String, dynamic> _$$OrderItemImplToJson(_$OrderItemImpl instance) =>
@@ -291,6 +306,7 @@ Map<String, dynamic> _$$OrderItemImplToJson(_$OrderItemImpl instance) =>
       'minimumOrderQuantity': instance.minimumOrderQuantity,
       'freeShipping': instance.freeShipping,
       'isDigital': instance.isDigital,
+      'taxCode': instance.taxCode,
     };
 
 const _$DeliveryStatusEnumMap = {
@@ -323,7 +339,7 @@ _$SellerPayoutImpl _$$SellerPayoutImplFromJson(Map<String, dynamic> json) =>
       amountCents: (json['amountCents'] as num).toInt(),
       platformFeeCents: (json['platformFeeCents'] as num).toInt(),
       netAmountCents: (json['netAmountCents'] as num).toInt(),
-      status: json['status'] as String? ?? 'pending',
+      status: json['status'] as String? ?? PayoutStatusValues.pending,
       payoutDate: json['payoutDate'] == null
           ? null
           : DateTime.parse(json['payoutDate'] as String),

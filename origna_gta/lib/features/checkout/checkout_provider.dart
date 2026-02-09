@@ -240,10 +240,10 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
               },
             )
             .toList(),
-        'subtotal': subtotal,
+        ApiKeys.subtotal: subtotal,
         Fields.shippingAddress: state.address?.toMap() ?? {},
         // Bug #9: Send delivery speed so backend applies correct multiplier
-        'deliverySpeed': state.deliverySpeed.value,
+        Fields.deliverySpeed: state.deliverySpeed.value,
       };
 
       debugPrint('Sending checkout request for user: $userId');
@@ -354,5 +354,4 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
   double _toRadians(double deg) => deg * pi / 180;
 }
-
 
