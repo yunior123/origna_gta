@@ -1,215 +1,124 @@
-# name: Deploy to Firebase
+name: Deploy to Firebase
 
-# on:
-#   push:
-#     branches: [main]
+on:
+  push:
+    branches: [main]
 
-# jobs:
-#   test-and-deploy:
-#     runs-on: ubuntu-latest
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
 
-#     # ⚠️ REQUIRED SECRETS - Must be configured in GitHub repo settings:
-#     # Repository Secrets (Settings → Secrets and variables → Actions):
-#     # TESTING SECRETS:
-#     # - STRIPE_SECRET_KEY: Stripe production secret key
-#     # - STRIPE_WEBHOOK_SECRET: Stripe webhook signing secret
-#     # - MAILJET_API_KEY: Mailjet API key for email services
-#     # - MAILJET_SECRET_KEY: Mailjet secret key
-#     # - GEOAPIFY_API_KEY: Geoapify API key for geolocation
-#     # - ALGOLIA_APP_ID: Algolia application ID
-#     # - ALGOLIA_WRITE_API_KEY: Algolia write API key
-#     # - AIRWALLEX_API_KEY: Airwallex production API key
-#     # - AIRWALLEX_CLIENT_ID: Airwallex client ID
-#     # - AIRWALLEX_WEBHOOK_SECRET: Airwallex webhook secret
-#     # DEPLOYMENT SECRETS:
-#     # - FIREBASE_SERVICE_ACCOUNT: Firebase service account JSON (for deployment)
-#     # - GITHUB_TOKEN: Automatically provided by GitHub Actions
-#     env:
-#       # Force config.py to load from env vars (not Secret Manager)
-#       FUNCTIONS_EMULATOR: 'true'
-#       # Payment provider secrets
-#       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-#       STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-#       # Email service secrets
-#       MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY }}
-#       MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY }}
-#       # Geolocation service secret
-#       GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}
-#       # Search service secrets
-#       ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
-#       ALGOLIA_WRITE_API_KEY: ${{ secrets.ALGOLIA_WRITE_API_KEY }}
-#       # Payment provider secrets (Airwallex) - Optional: not yet in production
-#       AIRWALLEX_API_KEY: ${{ secrets.AIRWALLEX_API_KEY || 'not_configured' }}
-#       AIRWALLEX_CLIENT_ID: ${{ secrets.AIRWALLEX_CLIENT_ID || 'not_configured' }}
-#       AIRWALLEX_WEBHOOK_SECRET: ${{ secrets.AIRWALLEX_WEBHOOK_SECRET || 'not_configured' }}
+    steps:
+      - uses: actions/checkout@v4
 
-#     steps:
-#       - uses: actions/checkout@v4
+      - name: Setup Java (Firebase emulators)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-#       - name: Setup Java (Firebase emulators)
-#         uses: actions/setup-java@v4
-#         with:
-#           distribution: temurin
-#           java-version: '17'
+      # Flutter setup
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
 
-#       # Flutter setup
-#       - uses: subosito/flutter-action@v2
-#         with:
-#           channel: 'stable'
-#           cache: true
+      # Python setup
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: functions/requirements.txt
 
-#       # Python setup
-#       - uses: actions/setup-python@v5
-#         with:
-#           python-version: '3.11'
-#           cache: 'pip'
-#           cache-dependency-path: functions/requirements.txt
+      # Node.js setup (for Playwright)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-#       # Node.js setup (for Playwright)
-#       - uses: actions/setup-node@v4
-#         with:
-#           node-version: '20'
+      - name: Install Firebase CLI
+        run: npm i -g firebase-tools@latest
 
-#       - name: Install Firebase CLI
-#         run: npm i -g firebase-tools@latest
+    
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-#       # Verify all required secrets are configured
-#       - name: Guard required secrets
-#         run: |
-#           python - <<'PY'
-#           import os, sys
-          
-#           # Critical secrets required for deployment
-#           required = [
-#             'STRIPE_SECRET_KEY',
-#             'STRIPE_WEBHOOK_SECRET',
-#             'MAILJET_API_KEY',
-#             'MAILJET_SECRET_KEY',
-#             'GEOAPIFY_API_KEY',
-#             'ALGOLIA_APP_ID',
-#             'ALGOLIA_WRITE_API_KEY',
-#             'FIREBASE_SERVICE_ACCOUNT'
-#           ]
-          
-#           # Optional secrets (Airwallex not yet in production)
-#           optional = [
-#             'AIRWALLEX_API_KEY',
-#             'AIRWALLEX_CLIENT_ID',
-#             'AIRWALLEX_WEBHOOK_SECRET',
-#           ]
-          
-#           missing = [k for k in required if not os.environ.get(k)]
-          
-#           if missing:
-#             print('❌ ERROR: Missing required secrets for deployment:', ', '.join(missing))
-#             print('\nConfigure these secrets in: Settings → Secrets and variables → Actions')
-#             print('\nDeployment cannot proceed without all required secrets.')
-#             sys.exit(1)
-          
-#           # Warn about optional secrets
-#           missing_opt = [k for k in optional if not os.environ.get(k) or os.environ.get(k) == 'not_configured']
-#           if missing_opt:
-#             print('⚠️  Optional secrets not configured (non-blocking):', ', '.join(missing_opt))
-          
-#           print('✅ All required secrets are configured for deployment')
-#           PY
-#         env:
-#           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      # Install Python dependencies
+      - name: Install Python dependencies
+        run: |
+          cd functions
+          pip install -r requirements.txt
+          pip install pytest
 
-#       # Install Python dependencies
-#       - name: Install Python dependencies
-#         run: |
-#           cd functions
-#           pip install -r requirements.txt
-#           pip install pytest
 
-#       # Install Playwright dependencies
-#       - name: Install Playwright dependencies
-#         run: |
-#           cd e2e
-#           npm ci
-#           npx playwright install --with-deps
+      # Flutter analyze
+      - name: Flutter analyze
+        run: |
+          cd origna_gta
+          flutter pub get
+          flutter analyze
 
-#       # Flutter analyze
-#       - name: Flutter analyze
-#         run: |
-#           cd origna_gta
-#           flutter pub get
-#           flutter analyze
+      # Flutter tests
+      - name: Flutter tests
+        run: |
+          cd origna_gta
+          flutter test
 
-#       # Flutter tests
-#       - name: Flutter tests
-#         run: |
-#           cd origna_gta
-#           flutter test
+      # Dart unit tests
+      - name: Dart unit tests
+        run: |
+          cd origna_gta
+          flutter test test/unit/
 
-#       # Dart unit tests
-#       - name: Dart unit tests
-#         run: |
-#           cd origna_gta
-#           flutter test test/unit/
+      # Python tests
+      - name: Python tests
+        run: |
+          cd functions
+          python -m pytest tests/ -v --tb=short
 
-#       # Python tests
-#       - name: Python tests
-#         run: |
-#           cd functions
-#           python -m pytest tests/ -v --tb=short
+      # Build Flutter web (Required for E2E)
+      - name: Build Flutter web
+        run: |
+          cd origna_gta
+          flutter build web --release
 
-#       # Build Flutter web (Required for E2E)
-#       - name: Build Flutter web
-#         run: |
-#           cd origna_gta
-#           flutter build web --release
 
-#       - name: Start E2E services
-#         run: ./start-e2e-services.sh --no-wait
+      # Deploy to Firebase (Hosting + Functions + Firestore)
+      # Uses GITHUB_TOKEN (auto-provided) and FIREBASE_SERVICE_ACCOUNT (must be configured)
+      - name: Deploy Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}  # Auto-provided by GitHub
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}  # Required: Firebase service account JSON
+          channelId: live
+          projectId: orignagta
 
-#       # Playwright E2E tests (stable suites only)
-#       - name: Playwright E2E tests
-#         run: |
-#           E2E_WORKERS=2 ./run-e2e-tests.sh flutter
+      # Deploy Cloud Functions (requires FIREBASE_SERVICE_ACCOUNT)
+      - name: Deploy Firebase Functions
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only functions --force
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}  # Required: Firebase service account JSON
 
-#       - name: Stop E2E services
-#         if: always()
-#         run: ./stop-e2e-services.sh
+      # Deploy Firestore Rules (requires FIREBASE_SERVICE_ACCOUNT)
+      - name: Deploy Firestore Rules
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only firestore:rules
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}  # Required: Firebase service account JSON
 
-#       # Deploy to Firebase (Hosting + Functions + Firestore)
-#       # Uses GITHUB_TOKEN (auto-provided) and FIREBASE_SERVICE_ACCOUNT (must be configured)
-#       - name: Deploy Firebase Hosting
-#         uses: FirebaseExtended/action-hosting-deploy@v0
-#         with:
-#           repoToken: ${{ secrets.GITHUB_TOKEN }}  # Auto-provided by GitHub
-#           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}  # Required: Firebase service account JSON
-#           channelId: live
-#           projectId: orignagta
+      # Deploy Firestore Indexes (requires FIREBASE_SERVICE_ACCOUNT)
+      - name: Deploy Firestore Indexes
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only firestore:indexes
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}  # Required: Firebase service account JSON
 
-#       # Deploy Cloud Functions (requires FIREBASE_SERVICE_ACCOUNT)
-#       - name: Deploy Firebase Functions
-#         uses: w9jds/firebase-action@master
-#         with:
-#           args: deploy --only functions --force
-#         env:
-#           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}  # Required: Firebase service account JSON
-
-#       # Deploy Firestore Rules (requires FIREBASE_SERVICE_ACCOUNT)
-#       - name: Deploy Firestore Rules
-#         uses: w9jds/firebase-action@master
-#         with:
-#           args: deploy --only firestore:rules
-#         env:
-#           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}  # Required: Firebase service account JSON
-
-#       # Deploy Firestore Indexes (requires FIREBASE_SERVICE_ACCOUNT)
-#       - name: Deploy Firestore Indexes
-#         uses: w9jds/firebase-action@master
-#         with:
-#           args: deploy --only firestore:indexes
-#         env:
-#           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}  # Required: Firebase service account JSON
-
-#       - name: Deployment Summary
-#         run: |
-#           echo "✅ Firebase Hosting deployed"
-#           echo "✅ Cloud Functions deployed"
-#           echo "✅ Firestore Rules deployed"
-#           echo "✅ Firestore Indexes deployed"
+      - name: Deployment Summary
+        run: |
+          echo "✅ Firebase Hosting deployed"
+          echo "✅ Cloud Functions deployed"
+          echo "✅ Firestore Rules deployed"
+          echo "✅ Firestore Indexes deployed"
