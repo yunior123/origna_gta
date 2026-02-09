@@ -63,11 +63,11 @@ dependencies:
   algolia_helper_flutter: ^1.6.0
   algoliasearch: ^1.1.1
 
-  # Web DOM access (preferred over deprecated dart:html)
-  web: ^1.1.0
+  # Web DOM access (compatible with sentry_flutter's web dependency)
+  web: ^1.1.1
   
   # JSON serialization with immutable models
-  freezed_annotation: ^2.4.4
+  freezed_annotation: ^3.1.0
   json_annotation: ^4.9.0
 
 
@@ -81,7 +81,7 @@ dev_dependencies:
   fake_cloud_firestore: ^4.0.1
   
   # Code generation for freezed and json_serializable
-  freezed: ^2.5.7
+  freezed: ^3.2.5
   json_serializable: ^6.9.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
