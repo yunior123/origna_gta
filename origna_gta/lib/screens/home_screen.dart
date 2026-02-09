@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:html' as html;
+
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/app/seller_account_status_viewmodel.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
@@ -336,13 +336,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           children: [
                             TextButton(
                               onPressed: () {
-                                // On web, navigate to static HTML file for OAuth verification
-                                // On mobile, show in-app screen
-                                if (kIsWeb) {
-                                  html.window.location.href = '/privacy-policy';
-                                } else {
-                                  Navigator.pushNamed(context, '/privacy-policy');
-                                }
+                                // Navigate to privacy policy URL
+                                // On web: goes to /privacy-policy (OAuth compliance)
+                                // On mobile: shows in-app screen
+                                openPrivacyPolicy(context);
                               },
                               child: Text(
                                 'Privacy Policy',
@@ -352,13 +349,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             Text('|', style: TextStyle(color: Colors.grey.withValues(alpha: 0.4), fontSize: 13)),
                             TextButton(
                               onPressed: () {
-                                // On web, navigate to static HTML file for OAuth verification
-                                // On mobile, show in-app screen
-                                if (kIsWeb) {
-                                  html.window.location.href = '/terms-of-service';
-                                } else {
-                                  Navigator.pushNamed(context, '/terms-of-service');
-                                }
+                                // Navigate to terms URL
+                                // On web: goes to /terms-of-service (OAuth compliance)
+                                // On mobile: shows in-app screen
+                                openTermsOfService(context);
                               },
                               child: Text(
                                 'Terms of Service',
@@ -382,30 +376,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             // --- MASCOTTE CANADIENNE ---
             Positioned(
-              bottom: 24,
-              right: 24,
+              bottom: 12,
+              right: 8,
               child: showSparky
-                  ? MouseRegion(
-                      onHover: (event) {
-                        final dx = (event.localPosition.dx - 90) / 90;
-                        final dy = (event.localPosition.dy - 90) / 90;
-                        mascotController.lookAt(Offset(dx.clamp(-1, 1), dy.clamp(-1, 1)));
-                      },
-                      child: ShopMascot(
-                        controller: mascotController!,
-                        size: 180,
-                      ),
+                  ? ShopMascot(
+                      controller: mascotController!,
+                      size: 80,
+                      showSpeechBubble: true,
                     )
-                  : MouseRegion(
-                      onHover: (event) {
-                        final dx = (event.localPosition.dx - 125) / 125;
-                        final dy = (event.localPosition.dy - 125) / 125;
-                        mooseController.lookAt(Offset(dx.clamp(-1, 1), dy.clamp(-1, 1)));
-                      },
-                      child: CanadianMoose(
-                        controller: mooseController!,
-                        size: 220,
-                      ),
+                  : CanadianMoose(
+                      controller: mooseController!,
+                      size: 90,
+                      showSpeechBubble: true,
                     ),
             ),
           ],

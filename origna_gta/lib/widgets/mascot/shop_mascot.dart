@@ -1,9 +1,9 @@
 import 'dart:math' as math;
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-// -----------------------------------------------------------------------------
-// 1. THE CONTROLLER - "The Remote Control"
-// -----------------------------------------------------------------------------
 class MascotController extends ChangeNotifier {
   Offset _lookTarget = Offset.zero;
   bool _isJumping = false;
@@ -13,41 +13,51 @@ class MascotController extends ChangeNotifier {
   bool get isJumping => _isJumping;
   double get excitementLevel => _excitementLevel;
 
-  /// Make the mascot look at a specific normalized coordinate (-1.0 to 1.0)
   void lookAt(Offset target) {
     _lookTarget = target;
     notifyListeners();
   }
 
-  /// Trigger a jump animation
   Future<void> jump() async {
     if (_isJumping) return;
     _isJumping = true;
     notifyListeners();
-    // The widget listens to this bool, triggers animation, then resets it.
-    await Future.delayed(const Duration(milliseconds: 600)); 
+    await Future.delayed(const Duration(milliseconds: 600));
     _isJumping = false;
     notifyListeners();
   }
 
-  /// Set excitement (0.0 to 1.0) - e.g., when adding to cart
   void setExcitement(double level) {
     _excitementLevel = level.clamp(0.0, 1.0);
     notifyListeners();
   }
 }
 
-// -----------------------------------------------------------------------------
-// 2. THE WIDGET - "The Stage"
-// -----------------------------------------------------------------------------
+class MascotTips {
+  static final List<String> _tips = [
+    '🛍️ Browse local GTA sellers!',
+    '💳 Secure checkout with Stripe',
+    '🚚 Ships across Canada!',
+    '⭐ Rate your sellers',
+    '🔍 Find what you need',
+    '🏷️ Filter by category',
+    '💬 Questions? Tap below!',
+    '🍁 Proudly Canadian',
+  ];
+
+  static String getTipForIndex(int index) => _tips[index % _tips.length];
+}
+
 class ShopMascot extends StatefulWidget {
   final MascotController controller;
   final double size;
+  final bool showSpeechBubble;
 
   const ShopMascot({
-    super.key, 
-    required this.controller, 
-    this.size = 200,
+    super.key,
+    required this.controller,
+    this.size = 80,
+    this.showSpeechBubble = true,
   });
 
   @override
@@ -58,32 +68,44 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
   late AnimationController _idleController;
   late AnimationController _jumpController;
   late AnimationController _blinkController;
+  late AnimationController _bubbleController;
+  late AnimationController _breathingController;
+  Timer? _blinkTimer;
+  Timer? _tipTimer;
+  int _currentTipIndex = 0;
+  bool _isBubbleVisible = false;
 
   @override
   void initState() {
     super.initState();
+    _idleController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
+    _jumpController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _blinkController = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
+    _scheduleNextBlink();
+    _bubbleController = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _breathingController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat(reverse: true);
 
-    // 1. Idle Loop (Breathing/Hovering)
-    _idleController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
+    if (widget.showSpeechBubble) {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() => _isBubbleVisible = true);
+          _bubbleController.forward();
+          _startTipRotation();
+        }
+      });
+    }
 
-    // 2. Jump Animation
-    _jumpController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-
-    // 3. Blinking Loop (Randomized)
-    _blinkController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-    _startBlinkLoop();
-
-    // Listen to controller commands
     widget.controller.addListener(_handleCommand);
+  }
+
+  void _startTipRotation() {
+    _tipTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
+      if (mounted) {
+        setState(() => _currentTipIndex++);
+      } else {
+        timer.cancel();
+      }
+    });
   }
 
   void _handleCommand() {
@@ -92,89 +114,286 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
     }
   }
 
-  void _startBlinkLoop() async {
-    while (mounted) {
-      await Future.delayed(Duration(milliseconds: 2000 + math.Random().nextInt(2000)));
+  void _scheduleNextBlink() {
+    _blinkTimer?.cancel();
+    _blinkTimer = Timer(Duration(milliseconds: 2000 + math.Random().nextInt(2000)), () async {
       if (!mounted) return;
       await _blinkController.forward();
+      if (!mounted) return;
       await _blinkController.reverse();
+      _scheduleNextBlink();
+    });
+  }
+
+  Future<void> _launchSupportEmail() async {
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: 'support@orignaventures.ca',
+      queryParameters: {
+        'subject': 'Support Request - Origna GTA App',
+        'body': 'Hello Origna GTA Support Team,\n\n',
+      },
+    );
+    try {
+      if (await canLaunchUrl(emailUri)) {
+        await launchUrl(emailUri);
+      } else {
+        await launchUrl(Uri.parse('mailto:support@orignaventures.ca'));
+      }
+    } catch (e) {
+      debugPrint('Could not launch email: $e');
     }
   }
 
   @override
   void dispose() {
+    _blinkTimer?.cancel();
+    _tipTimer?.cancel();
     _idleController.dispose();
     _jumpController.dispose();
     _blinkController.dispose();
+    _bubbleController.dispose();
+    _breathingController.dispose();
     widget.controller.removeListener(_handleCommand);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: Listenable.merge([
-        _idleController, 
-        _jumpController, 
-        _blinkController, 
-        widget.controller
-      ]),
-      builder: (context, child) {
-        return CustomPaint(
-          size: Size(widget.size, widget.size),
-          painter: MascotPainter(
-            idleValue: _idleController.value,
-            jumpValue: _jumpController.value,
-            blinkValue: _blinkController.value,
-            lookTarget: widget.controller.lookTarget,
-            excitement: widget.controller.excitementLevel,
+    return SizedBox(
+      width: widget.size,
+      height: widget.size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Speech Bubble - more robust positioning
+          if (widget.showSpeechBubble && _isBubbleVisible)
+            Positioned(
+              right: widget.size * 0.4, // Adjusted for better alignment
+              bottom: widget.size * 0.8, // Raised slightly for breathing room
+              child: AnimatedBuilder(
+                animation: _bubbleController,
+                builder: (context, child) {
+                  return Opacity(
+                    opacity: _bubbleController.value,
+                    child: Transform.scale(
+                      scale: 0.8 + (_bubbleController.value * 0.2),
+                      alignment: Alignment.bottomRight,
+                      child: _buildSpeechBubble(),
+                    ),
+                  );
+                },
+              ),
+            ),
+          // Mascot
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: MouseRegion(
+              onHover: (event) {
+                final dx = (event.localPosition.dx - widget.size / 2) / (widget.size / 2);
+                final dy = (event.localPosition.dy - widget.size / 2) / (widget.size / 2);
+                widget.controller.lookAt(Offset(dx.clamp(-1, 1), dy.clamp(-1, 1)));
+              },
+              child: GestureDetector(
+                onTap: () {
+                  widget.controller.jump();
+                  if (!_isBubbleVisible) {
+                    setState(() => _isBubbleVisible = true);
+                    _bubbleController.forward();
+                  }
+                },
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([
+                    _idleController,
+                    _jumpController,
+                    _blinkController,
+                    _breathingController,
+                    widget.controller,
+                  ]),
+                  builder: (context, child) {
+                    return CustomPaint(
+                      size: Size(widget.size, widget.size),
+                      painter: MascotPainter(
+                        idleValue: _idleController.value,
+                        jumpValue: _jumpController.value,
+                        blinkValue: _blinkController.value,
+                        breathingValue: _breathingController.value,
+                        lookTarget: widget.controller.lookTarget,
+                        excitement: widget.controller.excitementLevel,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
           ),
-        );
-      },
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpeechBubble() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Container(
+          constraints: const BoxConstraints(maxWidth: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              topRight: Radius.circular(16),
+              bottomLeft: Radius.circular(16),
+              bottomRight: Radius.circular(4),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: DesignTokens.primary.withValues(alpha: 0.1),
+                blurRadius: 20,
+                spreadRadius: -2,
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 500),
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.2),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: Text(
+                  MascotTips.getTipForIndex(_currentTipIndex),
+                  key: ValueKey<int>(_currentTipIndex),
+                  style: TextStyle(
+                    color: DesignTokens.textPrimary,
+                    fontSize: 11,
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _launchSupportEmail,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: DesignTokens.primaryGradient.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        color: DesignTokens.primary,
+                        size: 12,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Get Help',
+                        style: TextStyle(
+                          color: DesignTokens.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Modern tail
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: CustomPaint(
+            size: const Size(16, 12),
+            painter: _ModernBubbleTail(color: Colors.white),
+          ),
+        ),
+      ],
     );
   }
 }
 
-// -----------------------------------------------------------------------------
-// 3. THE PAINTER - "The Artist"
-// -----------------------------------------------------------------------------
+class _ModernBubbleTail extends CustomPainter {
+  final Color color;
+  _ModernBubbleTail({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..quadraticBezierTo(size.width * 0.2, size.height * 0.2, 0, size.height)
+      ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class MascotPainter extends CustomPainter {
-  final double idleValue; // 0.0 to 1.0 (Sinewave basis)
-  final double jumpValue; // 0.0 to 1.0 (Impulse)
-  final double blinkValue; // 0.0 to 1.0 (Closed eyes)
-  final Offset lookTarget; // x,y from -1 to 1
-  final double excitement; // 0.0 to 1.0
+  final double idleValue;
+  final double jumpValue;
+  final double blinkValue;
+  final double breathingValue;
+  final Offset lookTarget;
+  final double excitement;
 
   MascotPainter({
     required this.idleValue,
     required this.jumpValue,
     required this.blinkValue,
+    required this.breathingValue,
     required this.lookTarget,
     required this.excitement,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
+    final centerX = size.width / 2;
+    final centerY = size.height * 0.55;
     
-    // --- Physics Calculation ---
-    // Hover effect: Smooth sine wave
-    final hoverOffset = math.sin(idleValue * math.pi * 2) * 8.0;
-    
-    // Jump effect: Parabolic arc
-    final jumpOffset = -math.sin(jumpValue * math.pi) * (size.height * 0.3);
-    
-    // Squash & Stretch: Stretch Y when jumping up, Squash Y when landing
-    final stretch = 1.0 + (jumpValue * 0.1) - (jumpValue > 0.8 ? 0.15 : 0.0);
-    final squash = 1.0 - (jumpValue * 0.05) + (jumpValue > 0.8 ? 0.1 : 0.0);
+    final hoverOffset = math.sin(idleValue * math.pi * 2) * 2;
+    final jumpOffset = -math.sin(jumpValue * math.pi) * (size.height * 0.25);
+    final breathingScale = 1.0 + (math.sin(breathingValue * math.pi) * 0.03);
 
-    // Apply Transformations
     canvas.save();
-    canvas.translate(center.dx, center.dy + hoverOffset + jumpOffset);
-    canvas.scale(squash, stretch); // Apply Squash & Stretch
+    canvas.translate(centerX, centerY + hoverOffset + jumpOffset);
+    canvas.scale(breathingScale, 2.0 - breathingScale); // Squish and stretch for breathing
 
     _drawShadow(canvas, size, jumpValue);
     _drawBody(canvas, size);
+    _drawScarf(canvas, size);
     _drawFace(canvas, size);
     _drawAntenna(canvas, size);
     _drawHands(canvas, size);
@@ -184,124 +403,192 @@ class MascotPainter extends CustomPainter {
 
   void _drawShadow(Canvas canvas, Size size, double jumpHeight) {
     final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.15 * (1 - jumpHeight))
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+      ..color = Colors.black.withValues(alpha: 0.1 * (1 - jumpHeight))
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
-    // Shadow shrinks as he jumps
-    final shadowSize = (size.width * 0.6) * (1 - (jumpHeight * 0.4));
-    
-    // Draw shadow decoupled from the body translation (so it stays on the floor)
+    final jumpOffset = -math.sin(jumpHeight * math.pi) * (size.height * 0.25);
+    final shadowScale = 1 - (jumpHeight * 0.4);
+
     canvas.drawOval(
       Rect.fromCenter(
-        center: Offset(0, size.height * 0.45 - (jumpOffsetReferenceHack(jumpHeight, size))), 
-        width: shadowSize, 
-        height: shadowSize * 0.25
+        center: Offset(0, size.height * 0.45 - jumpOffset),
+        width: size.width * 0.6 * shadowScale,
+        height: size.height * 0.12 * shadowScale,
       ),
       shadowPaint,
     );
   }
-  
-  // Helper to reverse the translate calculation for shadow specifically
-  double jumpOffsetReferenceHack(double val, Size size) => 
-      -math.sin(val * math.pi) * (size.height * 0.3);
 
   void _drawBody(Canvas canvas, Size size) {
+    // Body gradient for depth
     final bodyPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          DesignTokens.primary,
+          DesignTokens.secondary,
+        ],
+      ).createShader(Rect.fromCenter(
+        center: const Offset(0, 0),
+        width: size.width * 0.6,
+        height: size.height * 0.5,
+      ));
+
+    final bodyRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: const Offset(0, 0),
+        width: size.width * 0.65,
+        height: size.height * 0.55,
+      ),
+      Radius.circular(size.width * 0.25), // More rounded/cute
+    );
+    canvas.drawRRect(bodyRect, bodyPaint);
+
+    // Cute blush markers
+    final blushPaint = Paint()..color = DesignTokens.tertiary.withValues(alpha: 0.3)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    canvas.drawCircle(Offset(-size.width * 0.2, size.height * 0.1), size.width * 0.05, blushPaint);
+    canvas.drawCircle(Offset(size.width * 0.2, size.height * 0.1), size.width * 0.05, blushPaint);
+
+    // High quality shine
+    final shinePaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          Color.lerp(Colors.cyan.shade300, Colors.pink.shade300, excitement)!,
-          Color.lerp(Colors.blue.shade600, Colors.purple.shade600, excitement)!,
-        ],
-      ).createShader(Rect.fromLTWH(-100, -100, 200, 200));
-
-    // A nice "Squircle" shape
-    final rrect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset.zero, width: size.width * 0.5, height: size.height * 0.45),
-      const Radius.circular(40),
-    );
-    canvas.drawRRect(rrect, bodyPaint);
+        colors: [Colors.white.withValues(alpha: 0.4), Colors.white.withValues(alpha: 0)],
+      ).createShader(Rect.fromLTWH(-size.width * 0.25, -size.height * 0.2, size.width * 0.4, size.height * 0.2));
     
-    // Highlight (Reflective shine)
-    final shinePaint = Paint()..color = Colors.white.withValues(alpha: 0.2);
-    canvas.drawOval(
-      Rect.fromCenter(center: const Offset(-30, -30), width: 30, height: 20), 
-      shinePaint
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(-size.width * 0.25, -size.height * 0.2, size.width * 0.3, size.height * 0.1),
+        Radius.circular(size.width * 0.1),
+      ),
+      shinePaint,
     );
+  }
+
+  void _drawScarf(Canvas canvas, Size size) {
+    final scarfPaint = Paint()
+      ..color = DesignTokens.accent;
+
+    final scarfRect = Rect.fromCenter(
+      center: Offset(0, size.height * 0.22),
+      width: size.width * 0.6,
+      height: size.height * 0.12,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(scarfRect, Radius.circular(size.height * 0.04)),
+      scarfPaint,
+    );
+
+    // Scarf tail
+    canvas.save();
+    canvas.translate(size.width * 0.28, size.height * 0.25);
+    canvas.rotate(-0.1 + (math.sin(idleValue * math.pi * 2) * 0.2));
+
+    final tailPath = Path()
+      ..moveTo(-size.width * 0.08, 0)
+      ..lineTo(size.width * 0.06, 0)
+      ..quadraticBezierTo(size.width * 0.1, size.height * 0.1, size.width * 0.08, size.height * 0.25)
+      ..lineTo(-size.width * 0.05, size.height * 0.25)
+      ..close();
+    canvas.drawPath(tailPath, scarfPaint);
+    canvas.restore();
   }
 
   void _drawFace(Canvas canvas, Size size) {
-    // Screen/Face background
-    final facePaint = Paint()..color = const Color(0xFF1A1A1A);
+    final facePaint = Paint()..color = const Color(0xFF1A1A2A);
     final faceRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: const Offset(0, -10), width: size.width * 0.35, height: size.height * 0.25),
-      const Radius.circular(20),
+      Rect.fromCenter(
+        center: Offset(0, -size.height * 0.05),
+        width: size.width * 0.45,
+        height: size.height * 0.28,
+      ),
+      Radius.circular(size.width * 0.1),
     );
     canvas.drawRRect(faceRect, facePaint);
 
-    // Eyes Logic
-    final eyeColor = Color.lerp(Colors.cyanAccent, Colors.amberAccent, excitement)!;
-    final eyePaint = Paint()..color = eyeColor;
-    
-    // Eye Movement Clamping (Move pupils based on lookTarget)
-    final lookX = lookTarget.dx * 10;
-    final lookY = lookTarget.dy * 5;
+    final eyePaint = Paint()
+      ..color = DesignTokens.accent
+      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 2);
 
-    // Left Eye
-    _drawEye(canvas, Offset(-25 + lookX, -10 + lookY), eyePaint);
-    // Right Eye
-    _drawEye(canvas, Offset(25 + lookX, -10 + lookY), eyePaint);
+    final lookX = lookTarget.dx * 4;
+    final lookY = lookTarget.dy * 3;
+
+    _drawEye(
+      canvas,
+      Offset(-size.width * 0.1 + lookX, -size.height * 0.05 + lookY),
+      eyePaint,
+      size.width * 0.06, // Larger eyes
+    );
+    _drawEye(
+      canvas,
+      Offset(size.width * 0.1 + lookX, -size.height * 0.05 + lookY),
+      eyePaint,
+      size.width * 0.06,
+    );
   }
 
-  void _drawEye(Canvas canvas, Offset center, Paint paint) {
+  void _drawEye(Canvas canvas, Offset center, Paint paint, double radius) {
     if (blinkValue > 0.1) {
-      // Blink: Draw a line
-      final stroke = Paint()
-        ..color = paint.color
-        ..strokeWidth = 4
-        ..strokeCap = StrokeCap.round;
-      canvas.drawLine(center - const Offset(10, 0), center + const Offset(10, 0), stroke);
+      final strokePaint = Paint()
+        ..color = DesignTokens.accent
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..style = PaintingStyle.stroke;
+      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), 0.2, math.pi - 0.4, false, strokePaint);
     } else {
-      // Open: Draw circle
-      // Add slight scale vibration if excited
-      final radius = 8.0 + (excitement * math.sin(DateTime.now().millisecondsSinceEpoch / 50) * 1.5);
-      canvas.drawCircle(center, radius, paint);
+      // Glow
+      canvas.drawCircle(center, radius * 1.2, Paint()..color = DesignTokens.accent.withValues(alpha: 0.2)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+      canvas.drawCircle(center, radius, Paint()..color = DesignTokens.accent);
+      // Pupil highlight
+      canvas.drawCircle(center - Offset(radius * 0.3, radius * 0.3), radius * 0.2, Paint()..color = Colors.white);
     }
   }
 
   void _drawAntenna(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.grey.shade700
-      ..strokeWidth = 4;
-    
-    // The stick
-    canvas.drawLine(const Offset(0, -50), const Offset(0, -70), paint);
+    final linePaint = Paint()
+      ..color = DesignTokens.outline
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
 
-    // The glow ball
-    final ballPaint = Paint()..color = Color.lerp(Colors.redAccent, Colors.greenAccent, excitement)!;
+    final wobble = math.sin(idleValue * math.pi * 2) * 2;
     
-    // Bobble effect for antenna
-    final bobble = math.sin(idleValue * math.pi * 4) * 2;
-    canvas.drawCircle(Offset(bobble, -75), 6, ballPaint);
-    
-    // Glow effect
-    final glowPaint = Paint()
-      ..color = ballPaint.color.withValues(alpha: 0.4)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
-    canvas.drawCircle(Offset(bobble, -75), 12, glowPaint);
+    canvas.drawLine(
+      Offset(0, -size.height * 0.3),
+      Offset(wobble, -size.height * 0.45),
+      linePaint,
+    );
+
+    final ballPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [DesignTokens.tertiary, DesignTokens.tertiary.withValues(alpha: 0.8)],
+      ).createShader(Rect.fromCircle(center: Offset(wobble, -size.height * 0.48), radius: size.width * 0.08));
+
+    // Antenna glow
+    canvas.drawCircle(Offset(wobble, -size.height * 0.48), size.width * 0.12, Paint()..color = DesignTokens.tertiary.withValues(alpha: 0.3)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+    canvas.drawCircle(Offset(wobble, -size.height * 0.48), size.width * 0.08, ballPaint);
   }
 
   void _drawHands(Canvas canvas, Size size) {
     final handPaint = Paint()..color = Colors.white;
-    
-    // Hands float independent of body somewhat
-    final handY = 20.0 + (math.sin(idleValue * math.pi * 2 + 1) * 5.0); // Phase shifted hover
+    final handY = size.height * 0.08 + (math.sin(idleValue * math.pi * 2 + 1) * 3);
 
-    // Left Hand
-    canvas.drawCircle(Offset(-size.width * 0.3, handY), 12, handPaint);
-    // Right Hand
-    canvas.drawCircle(Offset(size.width * 0.3, handY), 12, handPaint);
+    // Rounded paws
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(-size.width * 0.32, handY), width: size.width * 0.12, height: size.width * 0.12),
+        Radius.circular(size.width * 0.04),
+      ),
+      handPaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(size.width * 0.32, handY), width: size.width * 0.12, height: size.width * 0.12),
+        Radius.circular(size.width * 0.04),
+      ),
+      handPaint,
+    );
   }
 
   @override

@@ -20,7 +20,7 @@ DateTime? _parseDateTime(dynamic value) {
   return null;
 }
 
-/// Safely convert dynamic value to Map<String, dynamic>
+/// Safely convert dynamic value to `Map<String, dynamic>`
 Map<String, dynamic> _safeMap(dynamic value) {
   if (value == null) return {};
   if (value is Map<String, dynamic>) return value;
