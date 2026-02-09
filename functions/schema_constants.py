@@ -44,10 +44,17 @@ class Collections:
     CONFIG = "config"
     ADMIN_LOGS = "admin_logs"
     PRODUCT_RATINGS = "product_ratings"
+    ALGOLIA_SYNC_FAILURES = "algolia_sync_failures"
+
 
     # Subcollections
     CART = "cart"  # users/{userId}/cart
     FAVORITES = "favorites"  # users/{userId}/favorites
+
+
+class Documents:
+    """Singleton document IDs within collections"""
+    PAYMENT_PROVIDERS = "payment_providers"
 
 
 # =============================================================================
@@ -102,10 +109,15 @@ class Fields:
     VERIFICATION_STATUS = "verificationStatus"
     PLATFORM = "platform"
     BUSINESS_NAME = "businessName"
+    FULL_NAME = "fullName"
+    IS_CORPORATE = "isCorporate"
+    BANK_DETAILS = "bankDetails"
     PAYOUT_HOLD_DAYS = "payoutHoldDays"
     MFA_ENABLED = "mfaEnabled"
     MFA_SECRET = "mfaSecret"
     MFA_SECRET_TEMP = "mfaSecretTemp"
+    MFA_FAILED_ATTEMPTS = "mfaFailedAttempts"
+    MFA_LOCKOUT_UNTIL = "mfaLockoutUntil"
     LAST_MFA_VERIFY = "lastMfaVerify"
     LAST_ROLE_UPDATE = "lastRoleUpdate"
     LAST_ROLE_UPDATE_BY = "lastRoleUpdateBy"
@@ -122,6 +134,7 @@ class Fields:
     RATING = "rating"
     RATING_COUNT = "ratingCount"
     KEYWORDS = "keywords"
+    SEARCH_KEYWORDS = "searchKeywords"
     IS_ACTIVE = "isActive"
     DATE_CREATED = "dateCreated"  # NOTE: Products use dateCreated (legacy)
     IS_DIGITAL = "isDigital"
@@ -133,6 +146,8 @@ class Fields:
     IS_PERISHABLE = "isPerishable"
     ESTIMATED_SHIP_DAYS = "estimatedShipDays"
     DELIVERY_OPTIONS = "deliveryOptions"
+    ESTIMATED_DAYS = "estimatedDays"
+    COST = "cost"
     MINIMUM_ORDER_QUANTITY = "minimumOrderQuantity"
     FREE_SHIPPING = "freeShipping"
     TAX_CODE = "taxCode"
@@ -159,6 +174,7 @@ class Fields:
     STRIPE_SESSION_ID = "stripeSessionId"
     STRIPE_PAYMENT_INTENT_ID = "stripePaymentIntentId"
     CAPTURE_ATTEMPTS = "captureAttempts"
+    LAST_CAPTURE_ERROR = "lastCaptureError"
     CAPTURED_AT = "capturedAt"
     EXPIRES_AT = "expiresAt"
     CONFIRMED_BY_CLIENT = "confirmedByClient"
@@ -177,14 +193,31 @@ class Fields:
     PENDING_TOTAL = "pendingTotal"
     SHIPPING_APPROVAL = "shippingApproval"
     STOCK_RESTORED = "stockRestored"
+    ARCHIVED = "archived"
+    ARCHIVED_AT = "archivedAt"
     CANCELLED_BY = "cancelledBy"
     CANCELLED_AT = "cancelledAt"
+    UPDATED_BY = "updatedBy"
     CANCELLATION_REASON = "cancellationReason"
     RESPONDED_AT = "respondedAt"
     ACTUAL_COST = "actualCost"
+    ORIGINAL_COST_CENTS = "originalCostCents"
+    NEW_COST_CENTS = "newCostCents"
+    REQUESTED_BY = "requestedBy"
+    REQUESTED_AT = "requestedAt"
     REQUIRES_MANUAL_REVIEW = "requiresManualReview"
     MANUAL_REVIEW_REASON = "manualReviewReason"
     PAYOUT_ERRORS = "payoutErrors"
+    ACTION = "action"
+    OLD_ENABLED = "oldEnabled"
+    NEW_ENABLED = "newEnabled"
+
+    # === AIRWALLEX-SPECIFIC FIELDS ===
+    AIRWALLEX_PAYMENT_ID = "airwallexPaymentId"
+    PAYMENT_COMPLETED_AT = "paymentCompletedAt"
+    PAYMENT_ERROR = "paymentError"
+    REQUIRES_3DS = "requires3ds"
+    AUTHENTICATION_URL = "authenticationUrl"
 
     # === ORDER ITEM FIELDS ===
     QUANTITY = "quantity"
@@ -242,6 +275,7 @@ class Fields:
     COMPLETED_AT = "completedAt"
     FAILED_AT = "failedAt"
     ERROR = "error"
+    RETRIES = "retries"
     PAYMENT_ID = "paymentId"
 
     # === SECURITY ALERT FIELDS ===
@@ -257,9 +291,26 @@ class Fields:
     DESTINATION = "destination"
     FAILURE_MESSAGE = "failureMessage"
     ADMIN_ID = "adminId"
+    # Alert data fields
+    FIRESTORE_COUNT = "firestoreCount"
+    ALGOLIA_COUNT = "algoliaCount"
+    MISMATCH_PERCENT = "mismatchPercent"
+    REVERSAL_ERRORS = "reversalErrors"
+    PAYOUT_ID = "payoutId"
+    ERROR_CODE = "errorCode"
+    TARGET_USER_ID = "targetUserId"
+    OLD_ROLES = "oldRoles"
+    NEW_ROLES = "newRoles"
+    PRODUCTS_DEACTIVATED = "productsDeactivated"
+    ORDERS_CANCELLED = "ordersCancelled"
 
     # === WEBHOOK EVENT FIELDS ===
     CLIENT_IP = "clientIp"
+
+    # === RATE LIMIT FIELDS ===
+    COUNT = "count"
+    FIRST_REQUEST = "first_request"
+    LAST_REQUEST = "last_request"
 
     # === FAVORITES FIELDS ===
     DATE_FAVORITED = 'dateFavorited'
@@ -310,11 +361,15 @@ class PaymentStatusValues:
     CAPTURED = "captured"
     CANCELLED = "cancelled"
     AUTHORIZATION_EXPIRED = "authorization_expired"
+    # Transitional states (internal use, not stored long-term)
+    CAPTURING = "capturing"
+    CANCELLING = "cancelling"
+    EXPIRING = "expiring"
 
     ALL: frozenset[str] = frozenset({
         AWAITING_PAYMENT, PROCESSING, PAID, PAYMENT_FAILED,
         REFUNDED, SESSION_EXPIRED, AUTHORIZED, CAPTURED,
-        CANCELLED, AUTHORIZATION_EXPIRED
+        CANCELLED, AUTHORIZATION_EXPIRED, CAPTURING, CANCELLING, EXPIRING
     })
 
 
@@ -373,6 +428,16 @@ class ShippingApprovalStatusValues:
     ALL: frozenset[str] = frozenset({NOT_REQUIRED, PENDING, APPROVED, REJECTED})
 
 
+class DeliveryTypeValues:
+    """Valid values for delivery option types"""
+    PICKUP = "pickup"
+    STANDARD = "standard"
+    EXPRESS = "express"
+    SAME_DAY = "same_day"
+    LOCAL_DELIVERY = "local_delivery"
+    CUSTOM = "custom"
+
+
 class WebhookStatusValues:
     """Valid values for webhook processing status"""
     PROCESSING = "processing"
@@ -380,6 +445,28 @@ class WebhookStatusValues:
     FAILED = "failed"
 
     ALL: frozenset[str] = frozenset({PROCESSING, COMPLETED, FAILED})
+
+
+class SecurityAlertTypes:
+    """Security alert type values"""
+    ALGOLIA_SYNC_ISSUE = "algolia_sync_issue"
+    DISPUTE_CREATED = "dispute_created"
+    ROLE_CHANGE = "role_change"
+    SELLER_SUSPENDED = "seller_suspended"
+    PAYMENT_PROVIDER_DISABLED = "payment_provider_disabled"
+    REFUND_REVERSAL_FAILED = "refund_reversal_failed"
+    PAYOUT_FAILED = "payout_failed"
+    REFUND_FAILED = "refund_failed"
+    SELLER_ACCOUNT_CHANGED = "seller_account_changed"
+    PAYOUT_RECORD_INCOMPLETE = "payout_record_incomplete"
+
+
+class SeverityLevels:
+    """Security alert severity levels"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 
 # =============================================================================
@@ -513,8 +600,15 @@ class ApiKeys:
     ENABLED = "enabled"
     REFRESH_URL = "refreshUrl"
     RETURN_URL = "returnUrl"
+    NEW_STATUS = "newStatus"
+    APPROVED = "approved"
+    NEW_SHIPPING_COST = "newShippingCost"
 
     # === RESPONSE KEYS (returned from Cloud Functions) ===
+    SUCCESS = "success"
+    ITEM_STATUS = "itemStatus"
+    ALL_ITEMS_DELIVERED = "allItemsDelivered"
+    PROVIDER_NAME = "providerName"
     CHECKOUT_URL = "checkoutUrl"
     SESSION_ID = "sessionId"
     URL = "url"
@@ -526,7 +620,11 @@ class ApiKeys:
     REQUIREMENTS_CURRENTLY_DUE = "requirementsCurrentlyDue"
 
     # === PAYMENT PROVIDER RESPONSE KEYS ===
+    SUPPORTED_CURRENCIES = "supportedCurrencies"
+    SUPPORTED_COUNTRIES = "supportedCountries"
+    FEATURES = "features"
     PROVIDERS = "providers"
+    PROVIDER_STATUS = "providerStatus"
     CONFIGURED = "configured"
     MISSING_KEYS = "missingKeys"
     ENABLED_PROVIDERS = "enabledProviders"

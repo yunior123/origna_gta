@@ -17,7 +17,7 @@ from config import (
     AIRWALLEX_CLIENT_ID,
     AIRWALLEX_WEBHOOK_SECRET,
 )
-from schema_constants import Collections, Fields
+from schema_constants import Collections, Fields, PaymentStatusValues
 
 
 class AirwallexService:
@@ -65,9 +65,9 @@ class AirwallexService:
     def create_customer(self, seller_id: str, seller_data: dict[str, Any]) -> dict[str, Any]:
         """Create Airwallex customer for seller"""
         payload = {
-            "customer_name": seller_data.get('business_name', seller_data['full_name']),
+            "customer_name": seller_data.get(Fields.BUSINESS_NAME, seller_data[Fields.FULL_NAME]),
             Fields.EMAIL: seller_data[Fields.EMAIL],
-            "customer_type": "corporate" if seller_data.get('is_corporate') else "individual",
+            "customer_type": "corporate" if seller_data.get(Fields.IS_CORPORATE) else "individual",
             Fields.COUNTRY: seller_data.get(Fields.COUNTRY, 'CA'),
             "metadata": {"seller_id": seller_id}
         }
@@ -90,7 +90,7 @@ class AirwallexService:
             "account_type": "payout",
             Fields.COUNTRY: seller_data.get(Fields.COUNTRY, 'CA'),
             Fields.CURRENCY: "CAD",
-            "bank_details": seller_data.get('bank_details', {})
+            "bank_details": seller_data.get(Fields.BANK_DETAILS, {})
         }
 
         resp = requests.post(
@@ -342,9 +342,9 @@ class AirwallexService:
 
         if order_id:
             db.collection(Collections.ORDERS).document(order_id).update({
-                Fields.PAYMENT_STATUS: 'succeeded',
-                'airwallexPaymentId': payment_id,
-                'paymentCompletedAt': firestore.SERVER_TIMESTAMP
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+                Fields.AIRWALLEX_PAYMENT_ID: payment_id,
+                Fields.PAYMENT_COMPLETED_AT: firestore.SERVER_TIMESTAMP
             })
 
         return {Fields.STATUS: 'processed', 'order_id': order_id}
@@ -360,9 +360,9 @@ class AirwallexService:
 
         if order_id:
             db.collection(Collections.ORDERS).document(order_id).update({
-                Fields.PAYMENT_STATUS: 'failed',
-                'paymentError': error_message,
-                'airwallexPaymentId': payment_id
+                Fields.PAYMENT_STATUS: PaymentStatusValues.PAYMENT_FAILED,
+                Fields.PAYMENT_ERROR: error_message,
+                Fields.AIRWALLEX_PAYMENT_ID: payment_id
             })
 
         return {Fields.STATUS: 'processed', 'order_id': order_id, Fields.ERROR: error_message}
@@ -377,8 +377,8 @@ class AirwallexService:
 
         if order_id:
             db.collection(Collections.ORDERS).document(order_id).update({
-                Fields.PAYMENT_STATUS: 'canceled',
-                'airwallexPaymentId': payment_id
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CANCELLED,
+                Fields.AIRWALLEX_PAYMENT_ID: payment_id
             })
 
         return {Fields.STATUS: 'processed', 'order_id': order_id}
@@ -479,10 +479,10 @@ class AirwallexService:
 
         if order_id:
             db.collection(Collections.ORDERS).document(order_id).update({
-                Fields.PAYMENT_STATUS: 'requires_action',
-                'airwallexPaymentId': payment_id,
-                'requires3ds': True,
-                'authenticationUrl': action_url,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.PROCESSING,
+                Fields.AIRWALLEX_PAYMENT_ID: payment_id,
+                Fields.REQUIRES_3DS: True,
+                Fields.AUTHENTICATION_URL: action_url,
                 Fields.UPDATED_AT: firestore.SERVER_TIMESTAMP
             })
 

@@ -1272,8 +1272,8 @@ class TestCronJobs:
         source_file = Path(__file__).parent.parent / 'handlers' / 'cron_jobs.py'
         source = source_file.read_text()
         # Should skip already-archived orders by checking field
-        assert "get('archived', False)" in source, \
-            "auto_archive should check 'archived' field before archiving"
+        assert "Fields.ARCHIVED" in source, \
+            "auto_archive should check ARCHIVED field before archiving"
 
     def test_expired_auth_uses_atomic_increment(self):
         """Scenario 88: Expired auth stock restore uses atomic Increment (FIX verification)."""
@@ -1462,8 +1462,8 @@ class TestOrderCreationFields:
         from handlers.payment_stripe import create_checkout_session
 
         source = inspect.getsource(create_checkout_session)
-        assert "'archived'" in source or '"archived"' in source, \
-            "Order creation should include 'archived' field"
+        assert "Fields.ARCHIVED" in source, \
+            "Order creation should include ARCHIVED field"
 
     def test_order_includes_stock_restored_field(self):
         """Scenario 105: Order creation includes 'stockRestored: False' for idempotency."""

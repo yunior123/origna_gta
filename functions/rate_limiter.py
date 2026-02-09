@@ -6,13 +6,15 @@ from datetime import UTC, datetime, timedelta
 
 from firebase_admin import firestore
 
+from schema_constants import Collections, Fields
+
 
 class RateLimiter:
     """Simple in-memory + Firestore rate limiter"""
 
     def __init__(self, db):
         self.db = db
-        self.collection = 'rate_limits'
+        self.collection = Collections.RATE_LIMITS
 
     def check_rate_limit(
         self,
@@ -46,15 +48,15 @@ class RateLimiter:
 
                 if doc.exists:
                     data = doc.to_dict()
-                    count = data.get('count', 0)
-                    first_request = data.get('first_request').replace(tzinfo=None)
+                    count = data.get(Fields.COUNT, 0)
+                    first_request = data.get(Fields.FIRST_REQUEST).replace(tzinfo=None)
 
                     # Window expired, reset
                     if first_request < window_start:
                         transaction.set(ref, {
-                            'count': 1,
-                            'first_request': now,
-                            'last_request': now
+                            Fields.COUNT: 1,
+                            Fields.FIRST_REQUEST: now,
+                            Fields.LAST_REQUEST: now
                         })
                         return True, "OK"
 
@@ -64,16 +66,16 @@ class RateLimiter:
 
                     # Increment atomically
                     transaction.update(ref, {
-                        'count': count + 1,
-                        'last_request': now
+                        Fields.COUNT: count + 1,
+                        Fields.LAST_REQUEST: now
                     })
                     return True, "OK"
                 else:
                     # First request
                     transaction.set(ref, {
-                        'count': 1,
-                        'first_request': now,
-                        'last_request': now
+                        Fields.COUNT: 1,
+                        Fields.FIRST_REQUEST: now,
+                        Fields.LAST_REQUEST: now
                     })
                     return True, "OK"
 

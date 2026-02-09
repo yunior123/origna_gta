@@ -111,7 +111,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     from utils import sanitized_text
 
     order_id = data.get(Fields.ORDER_ID)
-    new_status = data.get('newStatus')
+    new_status = data.get(ApiKeys.NEW_STATUS)
     tracking_number_raw = data.get(Fields.TRACKING_NUMBER)
     carrier_raw = data.get(Fields.CARRIER)
 
@@ -142,7 +142,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     old_status = order_data[Fields.ORDER_STATUS]
 
     # Block updates on archived orders
-    if order_data.get('archived', False):
+    if order_data.get(Fields.ARCHIVED, False):
         raise https_fn.HttpsError('failed-precondition', 'Cannot update archived order')
 
     # Check permissions
@@ -241,7 +241,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         order_ref.update(update_data)
 
         return create_success_response({
-            'newStatus': OrderStatusValues.SHIPPED if all_items_shipped else old_status,
+            ApiKeys.NEW_STATUS: OrderStatusValues.SHIPPED if all_items_shipped else old_status,
             'allItemsShipped': all_items_shipped
         })
 
@@ -259,7 +259,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     order_ref.update(update_data)
 
-    return create_success_response({'newStatus': new_status})
+    return create_success_response({ApiKeys.NEW_STATUS: new_status})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -289,7 +289,7 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     order_id = data.get(Fields.ORDER_ID)
     product_id = data.get(Fields.PRODUCT_ID)
-    new_status = data.get('newStatus')
+    new_status = data.get(ApiKeys.NEW_STATUS)
     tracking_number_raw = data.get(Fields.TRACKING_NUMBER)
     carrier_raw = data.get(Fields.CARRIER)
 
@@ -326,7 +326,7 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     order_data = order_doc.to_dict()
 
     # Block updates on archived orders
-    if order_data.get('archived', False):
+    if order_data.get(Fields.ARCHIVED, False):
         raise https_fn.HttpsError('failed-precondition', 'Cannot update archived order')
 
     items = order_data.get(Fields.ITEMS, [])
@@ -411,8 +411,8 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     order_ref.update(update_data)
 
     return create_success_response({
-        'itemStatus': new_status,
-        'allItemsDelivered': all_items_delivered
+        ApiKeys.ITEM_STATUS: new_status,
+        ApiKeys.ALL_ITEMS_DELIVERED: all_items_delivered
     })
 
 
@@ -464,7 +464,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     order_data = order_doc.to_dict()
 
-    # Block updates on archived orders\n    if order_data.get('archived', False):\n        raise https_fn.HttpsError('failed-precondition', 'Cannot cancel archived order')
+    # Block updates on archived orders\n    if order_data.get(Fields.ARCHIVED, False):\n        raise https_fn.HttpsError('failed-precondition', 'Cannot cancel archived order')
 
     # Check permissions
     user_ref = get_db().collection(Collections.USERS).document(user_id)
@@ -501,7 +501,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         fresh_payment_status = fresh_data.get(Fields.PAYMENT_STATUS)
 
         # Block cancel if capture is already in progress
-        if fresh_payment_status == 'capturing':
+        if fresh_payment_status == PaymentStatusValues.CAPTURING:
             raise https_fn.HttpsError(
                 'failed-precondition',
                 'Cannot cancel order — payment capture in progress'
@@ -516,7 +516,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # Set cancelling lock to block concurrent captures
         txn.update(order_ref, {
-            Fields.PAYMENT_STATUS: 'cancelling',
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CANCELLING,
             Fields.UPDATED_AT: get_server_timestamp(),
         })
         return fresh_payment_status
@@ -818,7 +818,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
     data = req.data
 
     order_id = data.get(Fields.ORDER_ID)
-    approved = data.get('approved', False)
+    approved = data.get(ApiKeys.APPROVED, False)
 
     if not order_id:
         raise https_fn.HttpsError('invalid-argument', 'orderId required')
@@ -920,7 +920,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                 Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY])
             })
 
-    return create_success_response({'approved': approved})
+    return create_success_response({ApiKeys.APPROVED: approved})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -959,7 +959,7 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
     from utils import sanitized_text
 
     order_id = data.get(Fields.ORDER_ID)
-    new_shipping_cost = data.get('newShippingCost')
+    new_shipping_cost = data.get(ApiKeys.NEW_SHIPPING_COST)
     reason_raw = data.get(ApiKeys.REASON, 'Actual shipping cost differs from estimate')
     reason = sanitized_text(reason_raw)[:500] if reason_raw else 'Actual shipping cost differs from estimate'
 
@@ -1005,11 +1005,11 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.SHIPPING_APPROVAL: {
                 Fields.STATUS: ShippingApprovalStatusValues.PENDING,
                 Fields.ACTUAL_COST: new_shipping_cost,
-                'originalCostCents': original_shipping_cents,
-                'newCostCents': new_shipping_cents,
+                Fields.ORIGINAL_COST_CENTS: original_shipping_cents,
+                Fields.NEW_COST_CENTS: new_shipping_cents,
                 Fields.REASON: reason,
-                'requestedBy': user_id,
-                'requestedAt': get_server_timestamp(),
+                Fields.REQUESTED_BY: user_id,
+                Fields.REQUESTED_AT: get_server_timestamp(),
             },
             Fields.SHIPPING_APPROVAL_STATUS: ShippingApprovalStatusValues.PENDING,
             Fields.SHIPPING_APPROVAL_REQUIRED: True,

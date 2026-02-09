@@ -18,7 +18,7 @@ from algolia_service import delete_product as algolia_delete_product
 from algolia_service import index_product
 from config import R2_ACCESS_KEY_NEW, R2_ACCOUNT_ID_NEW, R2_SECRET_KEY_NEW, Collections, R2Config, get_r2_credentials
 from function_options import DEFAULT_OPTIONS
-from schema_constants import CategoryIds, Fields, OrderStatusValues, UserRoleValues
+from schema_constants import CategoryIds, DeliveryTypeValues, Fields, OrderStatusValues, UserRoleValues
 from utils import create_success_response
 
 # Lazy loading constants
@@ -408,7 +408,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
     price = product_data.get(Fields.PRICE)
     if price is None or not isinstance(price, (int, float)) or price <= 0 or price > 100000:
         print(f'SECURITY: Product {product_id} has invalid price ({price}) — deactivating')
-        get_db().collection('products').document(product_id).update({
+        get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
             'deactivationReason': f'Invalid price: {price}',
         })
@@ -418,7 +418,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
     stock = product_data.get(Fields.STOCK_QUANTITY, 0)
     if not isinstance(stock, (int, float)) or stock < 0:
         print(f'SECURITY: Product {product_id} has invalid stock ({stock}) — deactivating')
-        get_db().collection('products').document(product_id).update({
+        get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
             'deactivationReason': f'Invalid stock: {stock}',
         })
@@ -429,7 +429,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
     country = (seller_address.get(Fields.COUNTRY) or '').lower()
     if country not in ('canada', 'ca'):
         print(f'SECURITY: Product {product_id} has non-Canadian seller ({country}) — deactivating')
-        get_db().collection('products').document(product_id).update({
+        get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
             'deactivationReason': f'Non-Canadian seller: {country}',
         })
@@ -444,7 +444,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
     category_id = product_data.get(Fields.CATEGORY_ID)
     if category_id is not None and (not isinstance(category_id, (int, float)) or int(category_id) < CategoryIds.MIN or int(category_id) > CategoryIds.MAX):
         print(f'SECURITY: Product {product_id} has invalid categoryId ({category_id}) — deactivating')
-        get_db().collection('products').document(product_id).update({
+        get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
             'deactivationReason': f'Invalid categoryId: {category_id}',
         })
@@ -458,7 +458,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         xss_patches[Fields.DESCRIPTION] = sanitized_desc
         print(f'SECURITY: Sanitized XSS in product {product_id} description')
     if xss_patches:
-        get_db().collection('products').document(product_id).update(xss_patches)
+        get_db().collection(Collections.PRODUCTS).document(product_id).update(xss_patches)
         product_data.update(xss_patches)
 
     # ── DATA CONSISTENCY VALIDATION ──────────────────────────────────
@@ -473,21 +473,21 @@ def on_product_created(event: firestore_fn.Event) -> None:
     # Bug #2: Local-only products should have a pickup delivery option
     is_local_only = product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False)
     delivery_options = product_data.get(Fields.DELIVERY_OPTIONS, [])
-    if is_local_only and not any(opt.get(Fields.TYPE) == 'pickup' for opt in delivery_options if isinstance(opt, dict)):
-        pickup_option = {Fields.TYPE: 'pickup', Fields.DESCRIPTION: 'Local Pickup', 'estimatedDays': 0, 'cost': 0.0}
+    if is_local_only and not any(opt.get(Fields.TYPE) == DeliveryTypeValues.PICKUP for opt in delivery_options if isinstance(opt, dict)):
+        pickup_option = {Fields.TYPE: DeliveryTypeValues.PICKUP, Fields.DESCRIPTION: 'Local Pickup', Fields.ESTIMATED_DAYS: 0, Fields.COST: 0.0}
         patches[Fields.DELIVERY_OPTIONS] = [pickup_option] + delivery_options
         print(f'FIX: Product {product_id} is local-only but missing pickup option → patching')
 
     # Bug #4: Physical products with no delivery options (and not local-only) → add standard
     if not is_digital and not is_local_only and not delivery_options:
-        standard_option = {Fields.TYPE: 'standard', Fields.DESCRIPTION: 'Standard Delivery', 'estimatedDays': 5, 'cost': 0.0}
+        standard_option = {Fields.TYPE: DeliveryTypeValues.STANDARD, Fields.DESCRIPTION: 'Standard Delivery', Fields.ESTIMATED_DAYS: 5, Fields.COST: 0.0}
         patches[Fields.DELIVERY_OPTIONS] = [standard_option]
         print(f'FIX: Product {product_id} has no delivery options → adding standard')
 
     # Apply patches if any
     if patches:
         try:
-            get_db().collection('products').document(product_id).update(patches)
+            get_db().collection(Collections.PRODUCTS).document(product_id).update(patches)
             print(f'Applied {len(patches)} fix(es) to product {product_id}')
             # Update local copy for indexing
             product_data.update(patches)
@@ -644,7 +644,7 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
             query = query.where(Fields.IS_ACTIVE, '==', is_active)
 
         if category:
-            query = query.where('category', '==', category)
+            query = query.where(Fields.CATEGORY_ID, '==', category)
 
         if seller_id:
             query = query.where(Fields.SELLER_ID, '==', seller_id)

@@ -31,6 +31,8 @@ from schema_constants import (
     OrderStatusValues,
     PaymentStatusValues,
     PayoutStatusValues,
+    SecurityAlertTypes,
+    SeverityLevels,
     UserRoleValues,
     WebhookStatusValues,
 )
@@ -698,7 +700,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.PAYMENT_PROVIDER: 'stripe',
         Fields.DELIVERY_SPEED: delivery_speed,  # Bug #9: Persist chosen speed for audit trail
         Fields.PLATFORM_FEE_CENTS: round(total_amount_cents * PLATFORM_FEE_PERCENT),  # AUDIT FIX: Immutable fee stored at checkout
-        'archived': False,
+        Fields.ARCHIVED: False,
         Fields.STOCK_RESTORED: False,
     }
 
@@ -1309,7 +1311,7 @@ def process_charge_refunded(charge: dict) -> str | None:
 
     # Find order by payment intent
     orders = get_db().collection(Collections.ORDERS)\
-        .where('stripePaymentIntentId', '==', payment_intent_id)\
+        .where(Fields.STRIPE_PAYMENT_INTENT_ID, '==', payment_intent_id)\
         .limit(1)\
         .stream()
 
@@ -1321,7 +1323,7 @@ def process_charge_refunded(charge: dict) -> str | None:
         # AUDIT FIX (CRITICAL-018): Block refund processing if capture or cancel is in progress.
         # This prevents the race condition where refund + capture execute simultaneously.
         current_payment_status = order_data.get(Fields.PAYMENT_STATUS, '')
-        if current_payment_status in ('capturing', 'cancelling'):
+        if current_payment_status in (PaymentStatusValues.CAPTURING, PaymentStatusValues.CANCELLING):
             print(f'⚠️ Refund webhook for order {order_id} blocked — payment status is {current_payment_status}')
             # Return 500-equivalent to trigger Stripe retry (status will resolve by then)
             raise Exception(f'Order {order_id} has transitional payment status: {current_payment_status}. Retry later.')
@@ -1407,10 +1409,10 @@ def process_charge_refunded(charge: dict) -> str | None:
         # Log security alert and auto-suspend sellers if any reversals failed
         if reversal_errors:
             get_db().collection(Collections.SECURITY_ALERTS).add({
-                Fields.TYPE: 'refund_reversal_failed',
-                Fields.SEVERITY: 'critical',
+                Fields.TYPE: SecurityAlertTypes.REFUND_REVERSAL_FAILED,
+                Fields.SEVERITY: SeverityLevels.CRITICAL,
                 Fields.ORDER_ID: order_id,
-                'reversalErrors': reversal_errors,
+                Fields.REVERSAL_ERRORS: reversal_errors,
                 Fields.TIMESTAMP: get_server_timestamp(),
                 Fields.RESOLVED: False,
             })
@@ -1474,8 +1476,8 @@ def process_dispute_created(dispute: dict) -> str | None:
 
     # Log security alert
     alert_ref = get_db().collection(Collections.SECURITY_ALERTS).add({
-        Fields.TYPE: 'dispute_created',
-        Fields.SEVERITY: 'high',
+        Fields.TYPE: SecurityAlertTypes.DISPUTE_CREATED,
+        Fields.SEVERITY: SeverityLevels.HIGH,
         Fields.CHARGE_ID: charge_id,
         'paymentIntentId': payment_intent_id,
         Fields.AMOUNT: dispute_amount,
@@ -1490,7 +1492,7 @@ def process_dispute_created(dispute: dict) -> str | None:
 
     # CRITICAL: Auto-reverse all transfers linked to this payment intent
     orders = get_db().collection(Collections.ORDERS)\
-        .where('stripePaymentIntentId', '==', payment_intent_id)\
+        .where(Fields.STRIPE_PAYMENT_INTENT_ID, '==', payment_intent_id)\
         .limit(1)\
         .stream()
 
@@ -1500,8 +1502,8 @@ def process_dispute_created(dispute: dict) -> str | None:
 
         # Find all completed payouts for this order
         payouts = get_db().collection(Collections.PAYOUTS)\
-            .where('orderId', '==', order_id)\
-            .where('status', '==', 'completed')\
+            .where(Fields.ORDER_ID, '==', order_id)\
+            .where(Fields.STATUS, '==', PayoutStatusValues.COMPLETED)\
             .stream()
 
         order_data_for_dispute = order_doc.to_dict()
@@ -1581,7 +1583,7 @@ def process_dispute_created(dispute: dict) -> str | None:
                         'transferId': transfer_id,
                         Fields.ERROR: str(e),
                         'errorCode': error_code,
-                        Fields.SEVERITY: 'critical' if 'insufficient' in str(e).lower() else 'high',
+                        Fields.SEVERITY: SeverityLevels.CRITICAL if 'insufficient' in str(e).lower() else SeverityLevels.HIGH,
                         Fields.TIMESTAMP: get_server_timestamp()
                     }])
                 })
@@ -1628,8 +1630,8 @@ def process_dispute_closed(dispute: dict) -> str | None:
 
     # Update security alert
     alerts = get_db().collection(Collections.SECURITY_ALERTS)\
-        .where('chargeId', '==', charge_id)\
-        .where('type', '==', 'dispute_created')\
+        .where(Fields.CHARGE_ID, '==', charge_id)\
+        .where(Fields.TYPE, '==', 'dispute_created')\
         .limit(1)\
         .stream()
 
@@ -1649,13 +1651,13 @@ def process_transfer_reversed(transfer: dict) -> str | None:
 
     # Find payout by transfer ID
     payouts = get_db().collection(Collections.PAYOUTS)\
-        .where('stripeTransferId', '==', transfer_id)\
+        .where(Fields.STRIPE_TRANSFER_ID, '==', transfer_id)\
         .limit(1)\
         .stream()
 
     for payout_doc in payouts:
         payout_doc.reference.update({
-            Fields.STATUS: 'reversed',
+            Fields.STATUS: PayoutStatusValues.REVERSED,
             Fields.UPDATED_AT: get_server_timestamp()
         })
 
@@ -1669,8 +1671,8 @@ def process_payout_failed(payout: dict) -> None:
     destination = payout.get(Fields.DESTINATION)
 
     get_db().collection(Collections.SECURITY_ALERTS).add({
-        Fields.TYPE: 'payout_failed',
-        Fields.SEVERITY: 'high',
+        Fields.TYPE: SecurityAlertTypes.PAYOUT_FAILED,
+        Fields.SEVERITY: SeverityLevels.HIGH,
         Fields.DESTINATION: destination,
         Fields.AMOUNT: payout.get(Fields.AMOUNT),
         Fields.FAILURE_MESSAGE: payout.get('failure_message'),
@@ -1684,8 +1686,8 @@ def process_refund_failed(refund: dict) -> None:
     charge_id = refund.get('charge')
 
     get_db().collection(Collections.SECURITY_ALERTS).add({
-        Fields.TYPE: 'refund_failed',
-        Fields.SEVERITY: 'critical',
+        Fields.TYPE: SecurityAlertTypes.REFUND_FAILED,
+        Fields.SEVERITY: SeverityLevels.CRITICAL,
         Fields.CHARGE_ID: charge_id,
         Fields.AMOUNT: refund.get(Fields.AMOUNT),
         Fields.FAILURE_REASON: refund.get('failure_reason'),
@@ -2078,7 +2080,7 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
         # Mark as "capturing" to block concurrent calls
         transaction.update(order_ref, {
-            Fields.PAYMENT_STATUS: 'capturing',
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURING,
             Fields.CAPTURE_ATTEMPTS: fresh_data.get(Fields.CAPTURE_ATTEMPTS, 0) + 1,
             Fields.UPDATED_AT: get_server_timestamp(),
         })
@@ -2109,7 +2111,7 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         return {
             'success': True,
             'captured': True,
-            'newStatus': OrderStatusValues.DELIVERED if all_items_delivered else order_status,
+            ApiKeys.NEW_STATUS: OrderStatusValues.DELIVERED if all_items_delivered else order_status,
             'emulatorMode': True,
             Fields.PAYOUT_ERRORS: False,
         }
@@ -2188,8 +2190,8 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
                     print(f'🚨 SECURITY: Seller {seller_id} Stripe account changed since checkout! '
                           f'Using snapshot: {snapshot_account_id[:12]}..., live: {live_account_id[:12]}...')
                     get_db().collection(Collections.SECURITY_ALERTS).add({
-                        Fields.TYPE: 'seller_account_changed',
-                        Fields.SEVERITY: 'high',
+                        Fields.TYPE: SecurityAlertTypes.SELLER_ACCOUNT_CHANGED,
+                        Fields.SEVERITY: SeverityLevels.HIGH,
                         Fields.ORDER_ID: order_id,
                         Fields.SELLER_ID: seller_id,
                         'snapshotAccountId': snapshot_account_id,
@@ -2293,8 +2295,8 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
                             print(f"🚨 CRITICAL: Payout record stuck in PENDING for order {order_id}, seller {seller_id}, transfer {transfer.id}")
                             with contextlib.suppress(Exception):
                                 get_db().collection(Collections.SECURITY_ALERTS).add({
-                                    Fields.TYPE: 'payout_record_incomplete',
-                                    Fields.SEVERITY: 'critical',
+                                    Fields.TYPE: SecurityAlertTypes.PAYOUT_RECORD_INCOMPLETE,
+                                    Fields.SEVERITY: SeverityLevels.CRITICAL,
                                     Fields.ORDER_ID: order_id,
                                     Fields.SELLER_ID: seller_id,
                                     Fields.STRIPE_TRANSFER_ID: transfer.id,
@@ -2329,7 +2331,7 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         return {
             'success': True,
             'captured': True,
-            'newStatus': update_data[Fields.ORDER_STATUS],
+            ApiKeys.NEW_STATUS: update_data[Fields.ORDER_STATUS],
             Fields.PAYOUT_ERRORS: len(transfer_errors) > 0
         }
 

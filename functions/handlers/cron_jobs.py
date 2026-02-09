@@ -14,7 +14,7 @@ from firebase_functions import scheduler_fn
 
 from config import AUTHORIZATION_VALID_DAYS, AUTO_CONFIRM_DAYS, PLATFORM_FEE_PERCENT, STRIPE_SECRET_KEY, Collections
 from function_options import CRON_OPTIONS
-from schema_constants import DeliveryStatusValues, Fields, OrderStatusValues, PaymentStatusValues, PayoutStatusValues
+from schema_constants import DeliveryStatusValues, Fields, OrderStatusValues, PaymentStatusValues, PayoutStatusValues, SecurityAlertTypes, SeverityLevels
 
 # Aliases for backward compatibility — canonical source is schema_constants
 OrderStatus = OrderStatusValues
@@ -102,7 +102,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
         # causing the platform to pay both the dispute AND the seller.
         try:
             dispute_alerts = get_db().collection(Collections.SECURITY_ALERTS)\
-                .where(Fields.TYPE, '==', 'dispute_created')\
+                .where(Fields.TYPE, '==', SecurityAlertTypes.DISPUTE_CREATED)\
                 .where(Fields.RESOLVED, '==', False)\
                 .where(Fields.ORDER_ID, '==', order_id)\
                 .limit(1).get()
@@ -161,7 +161,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                 if current_ps != PaymentStatus.AUTHORIZED:
                     return f'invalid_status:{current_ps}'
                 transaction.update(order_doc.reference, {
-                    Fields.PAYMENT_STATUS: 'capturing',
+                    Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURING,
                     Fields.UPDATED_AT: get_server_timestamp(),
                 })
                 return 'locked'
@@ -306,7 +306,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
 
             order_doc.reference.update({
                 Fields.CAPTURE_ATTEMPTS: order_data.get(Fields.CAPTURE_ATTEMPTS, 0) + 1,
-                'lastCaptureError': str(e),
+                Fields.LAST_CAPTURE_ERROR: str(e),
                 Fields.UPDATED_AT: get_server_timestamp()
             })
 
@@ -354,14 +354,14 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
                 return 'not_found'
             fresh_data = fresh_doc.to_dict()
             current_ps = fresh_data.get(Fields.PAYMENT_STATUS)
-            if current_ps == 'capturing':
+            if current_ps == PaymentStatusValues.CAPTURING:
                 return 'capturing_in_progress'
             if current_ps == PaymentStatusValues.CAPTURED:
                 return 'already_captured'
             if current_ps != PaymentStatus.AUTHORIZED:
                 return f'invalid_status:{current_ps}'
             transaction.update(order_doc.reference, {
-                Fields.PAYMENT_STATUS: 'expiring',
+                Fields.PAYMENT_STATUS: PaymentStatusValues.EXPIRING,
                 Fields.UPDATED_AT: get_server_timestamp(),
             })
             return 'locked'
@@ -447,12 +447,12 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
 
     for order_doc in orders:
         # Skip already-archived orders (field may not exist on old orders)
-        if order_doc.to_dict().get('archived', False):
+        if order_doc.to_dict().get(Fields.ARCHIVED, False):
             continue
 
         batch.update(order_doc.reference, {
-            'archived': True,
-            'archivedAt': get_server_timestamp()
+            Fields.ARCHIVED: True,
+            Fields.ARCHIVED_AT: get_server_timestamp()
         })
         archived_count += 1
 
@@ -505,11 +505,11 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
 
         if mismatch_percent > 0.05:  # > 5% mismatch
             get_db().collection(Collections.SECURITY_ALERTS).add({
-                Fields.TYPE: 'algolia_sync_issue',
-                Fields.SEVERITY: 'medium',
-                'firestoreCount': firestore_count,
-                'algoliaCount': algolia_count,
-                'mismatchPercent': mismatch_percent * 100,
+                Fields.TYPE: SecurityAlertTypes.ALGOLIA_SYNC_ISSUE,
+                Fields.SEVERITY: SeverityLevels.MEDIUM,
+                Fields.FIRESTORE_COUNT: firestore_count,
+                Fields.ALGOLIA_COUNT: algolia_count,
+                Fields.MISMATCH_PERCENT: mismatch_percent * 100,
                 Fields.TIMESTAMP: get_server_timestamp(),
                 Fields.RESOLVED: False
             })
@@ -530,7 +530,7 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
     Runs: Every 30 minutes
 
     Logic:
-    - Find rate_limits with lastRequest > 1 hour ago
+    - Find rate_limits with last_request > 1 hour ago
     - Delete documents
     """
     print('Running cleanup_stale_rate_limits cron job')
@@ -539,7 +539,7 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
 
     # Limit and batch delete
     rate_limits = get_db().collection(Collections.RATE_LIMITS)\
-        .where('lastRequest', '<=', cutoff_time)\
+        .where(Fields.LAST_REQUEST, '<=', cutoff_time)\
         .limit(500)\
         .stream()
 

@@ -279,7 +279,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
     phone_html = f"<br>📱 {delivery_info[Fields.PHONE_NUMBER]}" if delivery_info.get(Fields.PHONE_NUMBER) else ''
 
     order_date = datetime.now().strftime('%B %d, %Y at %I:%M %p')
-    customer_email = html.escape(order_data.get('customerEmail', 'N/A'))
+    customer_email = html.escape(order_data.get(Fields.CUSTOMER_EMAIL, 'N/A'))
 
     return f"""
     <!DOCTYPE html>
@@ -506,7 +506,7 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
     try:
         mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
 
-        customer_email = order_data.get('customerEmail')
+        customer_email = order_data.get(Fields.CUSTOMER_EMAIL)
         total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
         items_summary = ', '.join([f"{item.get(Fields.NAME)} x{item.get(Fields.QUANTITY, 1)}"
                                    for item in order_data.get(Fields.ITEMS, [])[:3]])

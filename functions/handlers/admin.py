@@ -20,7 +20,7 @@ from firebase_functions import https_fn
 from config import Collections
 from function_options import DEFAULT_OPTIONS
 from rate_limiter import RateLimiter
-from schema_constants import ApiKeys, Fields, OrderStatusValues, PayoutStatusValues, UserRoleValues
+from schema_constants import ApiKeys, Fields, OrderStatusValues, PayoutStatusValues, SecurityAlertTypes, SeverityLevels, UserRoleValues
 from utils import create_success_response
 
 _db = None
@@ -191,12 +191,12 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Log security alert
     get_db().collection(Collections.SECURITY_ALERTS).add({
-        Fields.TYPE: 'role_change',
-        Fields.SEVERITY: 'medium',
+        Fields.TYPE: SecurityAlertTypes.ROLE_CHANGE,
+        Fields.SEVERITY: SeverityLevels.MEDIUM,
         Fields.ADMIN_ID: admin_id,
-        'targetUserId': target_user_id,
-        'oldRoles': old_roles,
-        'newRoles': new_roles,
+        Fields.TARGET_USER_ID: target_user_id,
+        Fields.OLD_ROLES: old_roles,
+        Fields.NEW_ROLES: new_roles,
         Fields.TIMESTAMP: get_server_timestamp(),
         Fields.RESOLVED: True
     })
@@ -383,13 +383,13 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Log security alert
     get_db().collection(Collections.SECURITY_ALERTS).add({
-        Fields.TYPE: 'seller_suspended',
-        Fields.SEVERITY: 'critical',
+        Fields.TYPE: SecurityAlertTypes.SELLER_SUSPENDED,
+        Fields.SEVERITY: SeverityLevels.CRITICAL,
         Fields.ADMIN_ID: admin_id,
         Fields.SELLER_ID: seller_id,
         Fields.REASON: reason,
-        'productsDeactivated': product_count,
-        'ordersCancelled': order_count,
+        Fields.PRODUCTS_DEACTIVATED: product_count,
+        Fields.ORDERS_CANCELLED: order_count,
         Fields.TIMESTAMP: get_server_timestamp(),
         Fields.RESOLVED: True
     })
@@ -519,8 +519,8 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
     secret = decrypt_mfa_secret(raw_secret)
 
     # SECURITY: Check MFA attempt limiting (max 5 attempts per 15 min)
-    mfa_attempts = user_data.get('mfaFailedAttempts', 0)
-    mfa_lockout_until = user_data.get('mfaLockoutUntil')
+    mfa_attempts = user_data.get(Fields.MFA_FAILED_ATTEMPTS, 0)
+    mfa_lockout_until = user_data.get(Fields.MFA_LOCKOUT_UNTIL)
     if mfa_lockout_until:
         lockout_time = mfa_lockout_until.replace(tzinfo=None) if hasattr(mfa_lockout_until, 'replace') else mfa_lockout_until
         if datetime.now() < lockout_time:
@@ -540,18 +540,18 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if not code_valid:
         # Increment failed attempts
-        attempt_update = {'mfaFailedAttempts': mfa_attempts + 1}
+        attempt_update = {Fields.MFA_FAILED_ATTEMPTS: mfa_attempts + 1}
         if mfa_attempts + 1 >= 5:
             # Lock out for 15 minutes after 5 failures
-            attempt_update['mfaLockoutUntil'] = datetime.now() + timedelta(minutes=15)
-            attempt_update['mfaFailedAttempts'] = 0
+            attempt_update[Fields.MFA_LOCKOUT_UNTIL] = datetime.now() + timedelta(minutes=15)
+            attempt_update[Fields.MFA_FAILED_ATTEMPTS] = 0
             print(f'SECURITY: MFA lockout triggered for user {user_id}')
         user_ref.update(attempt_update)
         raise https_fn.HttpsError('invalid-argument', 'Invalid MFA code')
 
     # Reset failed attempts on success
     if mfa_attempts > 0:
-        user_ref.update({'mfaFailedAttempts': 0})
+        user_ref.update({Fields.MFA_FAILED_ATTEMPTS: 0})
 
     # Enable MFA — AUDIT FIX: re-encrypt secret for permanent storage
     update_data = {

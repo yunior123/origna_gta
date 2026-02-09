@@ -100,6 +100,8 @@ abstract final class Fields {
   static const mfaEnabled = 'mfaEnabled';
   static const mfaSecret = 'mfaSecret';
   static const mfaSecretTemp = 'mfaSecretTemp';
+  static const mfaFailedAttempts = 'mfaFailedAttempts';
+  static const mfaLockoutUntil = 'mfaLockoutUntil';
   static const lastMfaVerify = 'lastMfaVerify';
   static const lastRoleUpdate = 'lastRoleUpdate';
   static const lastRoleUpdateBy = 'lastRoleUpdateBy';
@@ -129,6 +131,8 @@ abstract final class Fields {
   static const isPerishable = 'isPerishable';
   static const estimatedShipDays = 'estimatedShipDays';
   static const deliveryOptions = 'deliveryOptions';
+  static const estimatedDays = 'estimatedDays';
+  static const cost = 'cost';
   static const minimumOrderQuantity = 'minimumOrderQuantity';
   static const freeShipping = 'freeShipping';
   static const taxCode = 'taxCode';
@@ -174,6 +178,13 @@ abstract final class Fields {
   static const requiresManualReview = 'requiresManualReview';
   static const manualReviewReason = 'manualReviewReason';
   static const payoutErrors = 'payoutErrors';
+
+  // === AIRWALLEX-SPECIFIC FIELDS ===
+  static const airwallexPaymentId = 'airwallexPaymentId';
+  static const paymentCompletedAt = 'paymentCompletedAt';
+  static const paymentError = 'paymentError';
+  static const requires3ds = 'requires3ds';
+  static const authenticationUrl = 'authenticationUrl';
 
   // === ORDER FIELDS (missing from Dart, present in Python) ===
   static const shippingApproval = 'shippingApproval';
@@ -257,6 +268,23 @@ abstract final class Fields {
   static const destination = 'destination';
   static const failureMessage = 'failureMessage';
   static const adminId = 'adminId';
+  // Alert data fields
+  static const firestoreCount = 'firestoreCount';
+  static const algoliaCount = 'algoliaCount';
+  static const mismatchPercent = 'mismatchPercent';
+  static const reversalErrors = 'reversalErrors';
+  static const payoutId = 'payoutId';
+  static const errorCode = 'errorCode';
+  static const targetUserId = 'targetUserId';
+  static const oldRoles = 'oldRoles';
+  static const newRoles = 'newRoles';
+  static const productsDeactivated = 'productsDeactivated';
+  static const ordersCancelled = 'ordersCancelled';
+
+  // === RATE LIMIT FIELDS ===
+  static const count = 'count';
+  static const firstRequest = 'first_request';
+  static const lastRequest = 'last_request';
 
   // === WEBHOOK EVENT FIELDS ===
   static const clientIp = 'clientIp';
@@ -354,6 +382,10 @@ abstract final class PaymentStatusValues {
   static const captured = 'captured';
   static const cancelled = 'cancelled';
   static const authorizationExpired = 'authorization_expired';
+  // Transitional states (internal use, not stored long-term)
+  static const capturing = 'capturing';
+  static const cancelling = 'cancelling';
+  static const expiring = 'expiring';
 
   static const all = {
     awaitingPayment,
@@ -366,6 +398,9 @@ abstract final class PaymentStatusValues {
     captured,
     cancelled,
     authorizationExpired,
+    capturing,
+    cancelling,
+    expiring,
   };
 }
 
@@ -417,6 +452,38 @@ abstract final class ShippingApprovalStatusValues {
   static const rejected = 'rejected';
 
   static const all = {notRequired, pending, approved, rejected};
+}
+
+/// Valid values for delivery option types
+abstract final class DeliveryTypeValues {
+  static const pickup = 'pickup';
+  static const standard = 'standard';
+  static const express = 'express';
+  static const sameDay = 'same_day';
+  static const localDelivery = 'local_delivery';
+  static const custom = 'custom';
+}
+
+/// Security alert type values
+abstract final class SecurityAlertTypes {
+  static const algoliaSyncIssue = 'algolia_sync_issue';
+  static const disputeCreated = 'dispute_created';
+  static const roleChange = 'role_change';
+  static const sellerSuspended = 'seller_suspended';
+  static const paymentProviderDisabled = 'payment_provider_disabled';
+  static const refundReversalFailed = 'refund_reversal_failed';
+  static const payoutFailed = 'payout_failed';
+  static const refundFailed = 'refund_failed';
+  static const sellerAccountChanged = 'seller_account_changed';
+  static const payoutRecordIncomplete = 'payout_record_incomplete';
+}
+
+/// Security alert severity levels
+abstract final class SeverityLevels {
+  static const low = 'low';
+  static const medium = 'medium';
+  static const high = 'high';
+  static const critical = 'critical';
 }
 
 /// Valid values for roles array

@@ -79,7 +79,7 @@ def format_product_for_algolia(product_id: str, product_data: Union[dict, Produc
         Fields.RATING: data.get(Fields.RATING, 0.0),
         Fields.RATING_COUNT: data.get(Fields.RATING_COUNT, 0),
         Fields.IS_ACTIVE: data.get(Fields.IS_ACTIVE, True),
-        Fields.KEYWORDS: data.get(Fields.KEYWORDS, []) or data.get('searchKeywords', []),
+        Fields.KEYWORDS: data.get(Fields.KEYWORDS, []) or data.get(Fields.SEARCH_KEYWORDS, []),
         Fields.FREE_SHIPPING: data.get(Fields.FREE_SHIPPING, False),
         Fields.IS_PERISHABLE: data.get(Fields.IS_PERISHABLE, False),
         Fields.IS_LOCAL_DELIVERY_ONLY: data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False),
@@ -113,13 +113,13 @@ def _log_sync_failure(product_id: str, action: str, error: str, retries: int):
     try:
         from firebase_admin import firestore as fs
         db = fs.client()
-        db.collection('algolia_sync_failures').add({
-            'productId': product_id,
-            'action': action,
-            'error': error,
-            'timestamp': fs.SERVER_TIMESTAMP,
-            'retries': retries,
-            'resolved': False,
+        db.collection(Collections.ALGOLIA_SYNC_FAILURES).add({
+            Fields.PRODUCT_ID: product_id,
+            Fields.ACTION: action,
+            Fields.ERROR: error,
+            Fields.CREATED_AT: fs.SERVER_TIMESTAMP,
+            Fields.RETRIES: retries,
+            Fields.RESOLVED: False,
         })
         print(f"  📝 Logged sync failure for {product_id} to dead letter queue")
     except Exception as dlq_err:

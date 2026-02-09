@@ -159,3 +159,15 @@ Sentinel `copyWith`, image sync callback, free shipping cascade, digital product
 - Potential Minor Issues:
 Airwallex webhook secret is optional – if used, must enforce signature verification strictly (currently mirrors Stripe pattern but ensure it's not skipped when Airwallex enabled).
 Geoapify API key sent client-side? No – only backend. Safe.
+- audit tax codes,             tax_code_map = {
+                17: "txcd_20030002",  # Children's Clothing
+                19: "txcd_30060005",  # Basic Groceries
+            }
+Incomplete tax codes?
+- make sure to convert to bool     update_data = {
+        Fields.CHARGES_ENABLED: account.get('charges_enabled', False),
+        Fields.PAYOUTS_ENABLED: account.get('payouts_enabled', False),
+        Fields.ONBOARDING_COMPLETED: account.get('details_submitted', False),
+        Fields.PENDING_REQUIREMENTS: pending_requirements,
+        Fields.UPDATED_AT: get_server_timestamp(),
+    }

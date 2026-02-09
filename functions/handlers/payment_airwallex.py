@@ -59,6 +59,16 @@ def get_order_status_values():
     from schema_constants import OrderStatusValues
     return OrderStatusValues
 
+def get_payment_status_values():
+    """Get PaymentStatusValues config (lazy initialization)."""
+    from schema_constants import PaymentStatusValues
+    return PaymentStatusValues
+
+def get_security_alert_types():
+    """Get SecurityAlertTypes config (lazy initialization)."""
+    from schema_constants import SecurityAlertTypes
+    return SecurityAlertTypes
+
 def get_fields():
     """Get Fields config (lazy initialization)."""
     global _fields
@@ -240,13 +250,14 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # SECURITY FIX: Check order is in capturable state
     Fields = get_fields()
+    PaymentStatusValues = get_payment_status_values()
     payment_status = order_data.get(Fields.PAYMENT_STATUS)
 
     # Idempotency: already captured
-    if payment_status == 'captured':
+    if payment_status == PaymentStatusValues.CAPTURED:
         return get_utils().create_success_response({'captured': True, 'message': 'Already captured'})
 
-    if payment_status != 'authorized':
+    if payment_status != PaymentStatusValues.AUTHORIZED:
         raise https_fn.HttpsError(
             'failed-precondition',
             f'Order payment not authorized (status: {payment_status})'
@@ -254,8 +265,10 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # SECURITY FIX: Check for active disputes before capturing
     Collections = get_collections()
+    PaymentStatusValues = get_payment_status_values()
+    SecurityAlertTypes = get_security_alert_types()
     dispute_alerts = get_db().collection(Collections.SECURITY_ALERTS)\
-        .where(Fields.TYPE, '==', 'dispute_created')\
+        .where(Fields.TYPE, '==', SecurityAlertTypes.DISPUTE_CREATED)\
         .where(Fields.RESOLVED, '==', False)\
         .where(Fields.ORDER_ID, '==', order_id)\
         .limit(1).get()
@@ -275,12 +288,13 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         if not fresh.exists:
             raise https_fn.HttpsError('not-found', 'Order not found')
         fresh_data = fresh.to_dict()
-        if fresh_data.get(Fields.PAYMENT_STATUS) == 'captured':
+        PaymentStatusValues = get_payment_status_values()
+        if fresh_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.CAPTURED:
             return 'already_captured'
-        if fresh_data.get(Fields.PAYMENT_STATUS) != 'authorized':
+        if fresh_data.get(Fields.PAYMENT_STATUS) != PaymentStatusValues.AUTHORIZED:
             raise https_fn.HttpsError('failed-precondition', 'Order status changed concurrently')
         transaction.update(order_ref, {
-            Fields.PAYMENT_STATUS: 'capturing',
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURING,
             Fields.UPDATED_AT: get_server_timestamp(),
         })
         return 'locked'
@@ -294,8 +308,9 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         airwallex_service.capture_payment(payment_intent_id)
 
         Fields = get_fields()
+        PaymentStatusValues = get_payment_status_values()
         order_ref.update({
-            Fields.PAYMENT_STATUS: 'captured',
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
             Fields.CAPTURED_AT: get_server_timestamp(),
             Fields.CONFIRMED_BY_CLIENT: True,
             Fields.CONFIRMED_AT: get_server_timestamp(),
@@ -310,8 +325,9 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         import contextlib
         with contextlib.suppress(Exception):
             Fields = get_fields()
+            PaymentStatusValues = get_payment_status_values()
             order_ref.update({
-                Fields.PAYMENT_STATUS: 'authorized',
+                Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
                 Fields.UPDATED_AT: get_server_timestamp(),
             })
         print(f'Airwallex capture_payment error: {type(e).__name__}: {str(e)}')
@@ -443,9 +459,10 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
             order_id = _extract_order_id(data)
             if order_id:
                 Fields = get_fields()
+                PaymentStatusValues = get_payment_status_values()
                 order_ref = get_db().collection(Collections.ORDERS).document(order_id)
                 order_ref.update({
-                    Fields.PAYMENT_STATUS: 'authorized',
+                    Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
                     Fields.ORDER_STATUS: get_order_status_values().CONFIRMED,
                     Fields.UPDATED_AT: get_server_timestamp()
                 })
@@ -455,9 +472,10 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
             order_id = _extract_order_id(data)
             if order_id:
                 Fields = get_fields()
+                PaymentStatusValues = get_payment_status_values()
                 order_ref = get_db().collection(Collections.ORDERS).document(order_id)
                 order_ref.update({
-                    Fields.PAYMENT_STATUS: 'captured',
+                    Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
                     Fields.UPDATED_AT: get_server_timestamp()
                 })
 
@@ -465,9 +483,10 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
             order_id = _extract_order_id(data)
             if order_id:
                 Fields = get_fields()
+                PaymentStatusValues = get_payment_status_values()
                 order_ref = get_db().collection(Collections.ORDERS).document(order_id)
                 order_ref.update({
-                    Fields.PAYMENT_STATUS: 'payment_failed',
+                    Fields.PAYMENT_STATUS: PaymentStatusValues.PAYMENT_FAILED,
                     Fields.ORDER_STATUS: get_order_status_values().FAILED,
                     Fields.UPDATED_AT: get_server_timestamp()
                 })
