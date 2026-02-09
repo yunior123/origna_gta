@@ -20,6 +20,14 @@ DateTime? _parseDateTime(dynamic value) {
   return null;
 }
 
+/// Safely convert dynamic value to Map<String, dynamic>
+Map<String, dynamic> _safeMap(dynamic value) {
+  if (value == null) return {};
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  return {};
+}
+
 // ============================================================================
 // USER MODEL
 // ============================================================================
@@ -65,6 +73,8 @@ class User with _$User {
     String? platform,
     String? businessName,
     int? payoutHoldDays,
+    // Tax exemption for businesses
+    Map<String, dynamic>? taxExemption,
   }) = _User;
 
   factory User.fromFirestore(DocumentSnapshot doc) {
@@ -106,6 +116,7 @@ class User with _$User {
       platform: data[Fields.platform] as String?,
       businessName: data[Fields.businessName] as String?,
       payoutHoldDays: data[Fields.payoutHoldDays] != null ? (data[Fields.payoutHoldDays] as num).toInt() : null,
+      taxExemption: data[Fields.taxExemption] != null ? _safeMap(data[Fields.taxExemption]) : null,
     );
   }
 

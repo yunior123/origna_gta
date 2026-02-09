@@ -93,6 +93,10 @@ from handlers.products import (  # noqa: E402
     submit_product_rating,
     upload_product_images,
 )
+from handlers.users import (  # noqa: E402
+    get_user_profile,
+    update_user_profile,
+)
 
 # ===============================================
 # PRODUCT HANDLERS
@@ -201,6 +205,10 @@ __all__ = [
     'admin_mfa_verify',
     'admin_mfa_disable',
     'delete_account',
+    
+    # User Profile
+    'update_user_profile',
+    'get_user_profile',
 
     # Payment Provider Management
     'get_payment_providers',

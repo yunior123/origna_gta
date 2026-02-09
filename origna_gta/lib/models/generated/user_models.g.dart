@@ -49,6 +49,7 @@ _$UserImpl _$$UserImplFromJson(Map<String, dynamic> json) => _$UserImpl(
   platform: json['platform'] as String?,
   businessName: json['businessName'] as String?,
   payoutHoldDays: (json['payoutHoldDays'] as num?)?.toInt(),
+  taxExemption: json['taxExemption'] as Map<String, dynamic>?,
 );
 
 Map<String, dynamic> _$$UserImplToJson(
@@ -84,6 +85,7 @@ Map<String, dynamic> _$$UserImplToJson(
   'platform': instance.platform,
   'businessName': instance.businessName,
   'payoutHoldDays': instance.payoutHoldDays,
+  'taxExemption': instance.taxExemption,
 };
 
 const _$UserRoleEnumMap = {

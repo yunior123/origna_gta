@@ -58,7 +58,9 @@ mixin _$User {
   String? get verificationStatus => throw _privateConstructorUsedError;
   String? get platform => throw _privateConstructorUsedError;
   String? get businessName => throw _privateConstructorUsedError;
-  int? get payoutHoldDays => throw _privateConstructorUsedError;
+  int? get payoutHoldDays =>
+      throw _privateConstructorUsedError; // Tax exemption for businesses
+  Map<String, dynamic>? get taxExemption => throw _privateConstructorUsedError;
 
   /// Serializes this User to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -105,6 +107,7 @@ abstract class $UserCopyWith<$Res> {
     String? platform,
     String? businessName,
     int? payoutHoldDays,
+    Map<String, dynamic>? taxExemption,
   });
 
   $AddressCopyWith<$Res>? get address;
@@ -155,6 +158,7 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
     Object? platform = freezed,
     Object? businessName = freezed,
     Object? payoutHoldDays = freezed,
+    Object? taxExemption = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -278,6 +282,10 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
                 ? _value.payoutHoldDays
                 : payoutHoldDays // ignore: cast_nullable_to_non_nullable
                       as int?,
+            taxExemption: freezed == taxExemption
+                ? _value.taxExemption
+                : taxExemption // ignore: cast_nullable_to_non_nullable
+                      as Map<String, dynamic>?,
           )
           as $Val,
     );
@@ -337,6 +345,7 @@ abstract class _$$UserImplCopyWith<$Res> implements $UserCopyWith<$Res> {
     String? platform,
     String? businessName,
     int? payoutHoldDays,
+    Map<String, dynamic>? taxExemption,
   });
 
   @override
@@ -385,6 +394,7 @@ class __$$UserImplCopyWithImpl<$Res>
     Object? platform = freezed,
     Object? businessName = freezed,
     Object? payoutHoldDays = freezed,
+    Object? taxExemption = freezed,
   }) {
     return _then(
       _$UserImpl(
@@ -508,6 +518,10 @@ class __$$UserImplCopyWithImpl<$Res>
             ? _value.payoutHoldDays
             : payoutHoldDays // ignore: cast_nullable_to_non_nullable
                   as int?,
+        taxExemption: freezed == taxExemption
+            ? _value._taxExemption
+            : taxExemption // ignore: cast_nullable_to_non_nullable
+                  as Map<String, dynamic>?,
       ),
     );
   }
@@ -547,7 +561,9 @@ class _$UserImpl extends _User {
     this.platform,
     this.businessName,
     this.payoutHoldDays,
+    final Map<String, dynamic>? taxExemption,
   }) : _roles = roles,
+       _taxExemption = taxExemption,
        super._();
 
   factory _$UserImpl.fromJson(Map<String, dynamic> json) =>
@@ -632,10 +648,21 @@ class _$UserImpl extends _User {
   final String? businessName;
   @override
   final int? payoutHoldDays;
+  // Tax exemption for businesses
+  final Map<String, dynamic>? _taxExemption;
+  // Tax exemption for businesses
+  @override
+  Map<String, dynamic>? get taxExemption {
+    final value = _taxExemption;
+    if (value == null) return null;
+    if (_taxExemption is EqualUnmodifiableMapView) return _taxExemption;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(value);
+  }
 
   @override
   String toString() {
-    return 'User(uid: $uid, email: $email, name: $name, roles: $roles, address: $address, createdAt: $createdAt, customerId: $customerId, lastCheckoutSession: $lastCheckoutSession, lastOrderId: $lastOrderId, lastCheckoutTimestamp: $lastCheckoutTimestamp, stripeAccountId: $stripeAccountId, payoutsEnabled: $payoutsEnabled, chargesEnabled: $chargesEnabled, onboardingCompleted: $onboardingCompleted, suspended: $suspended, suspendedAt: $suspendedAt, updatedAt: $updatedAt, paymentProvider: $paymentProvider, airwallexAccountId: $airwallexAccountId, airwallexCustomerId: $airwallexCustomerId, airwallexStatus: $airwallexStatus, unsuspendedAt: $unsuspendedAt, suspendedBy: $suspendedBy, suspensionReason: $suspensionReason, commissionRate: $commissionRate, verified: $verified, verificationStatus: $verificationStatus, platform: $platform, businessName: $businessName, payoutHoldDays: $payoutHoldDays)';
+    return 'User(uid: $uid, email: $email, name: $name, roles: $roles, address: $address, createdAt: $createdAt, customerId: $customerId, lastCheckoutSession: $lastCheckoutSession, lastOrderId: $lastOrderId, lastCheckoutTimestamp: $lastCheckoutTimestamp, stripeAccountId: $stripeAccountId, payoutsEnabled: $payoutsEnabled, chargesEnabled: $chargesEnabled, onboardingCompleted: $onboardingCompleted, suspended: $suspended, suspendedAt: $suspendedAt, updatedAt: $updatedAt, paymentProvider: $paymentProvider, airwallexAccountId: $airwallexAccountId, airwallexCustomerId: $airwallexCustomerId, airwallexStatus: $airwallexStatus, unsuspendedAt: $unsuspendedAt, suspendedBy: $suspendedBy, suspensionReason: $suspensionReason, commissionRate: $commissionRate, verified: $verified, verificationStatus: $verificationStatus, platform: $platform, businessName: $businessName, payoutHoldDays: $payoutHoldDays, taxExemption: $taxExemption)';
   }
 
   @override
@@ -697,7 +724,11 @@ class _$UserImpl extends _User {
             (identical(other.businessName, businessName) ||
                 other.businessName == businessName) &&
             (identical(other.payoutHoldDays, payoutHoldDays) ||
-                other.payoutHoldDays == payoutHoldDays));
+                other.payoutHoldDays == payoutHoldDays) &&
+            const DeepCollectionEquality().equals(
+              other._taxExemption,
+              _taxExemption,
+            ));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -734,6 +765,7 @@ class _$UserImpl extends _User {
     platform,
     businessName,
     payoutHoldDays,
+    const DeepCollectionEquality().hash(_taxExemption),
   ]);
 
   /// Create a copy of User
@@ -782,6 +814,7 @@ abstract class _User extends User {
     final String? platform,
     final String? businessName,
     final int? payoutHoldDays,
+    final Map<String, dynamic>? taxExemption,
   }) = _$UserImpl;
   const _User._() : super._();
 
@@ -847,7 +880,9 @@ abstract class _User extends User {
   @override
   String? get businessName;
   @override
-  int? get payoutHoldDays;
+  int? get payoutHoldDays; // Tax exemption for businesses
+  @override
+  Map<String, dynamic>? get taxExemption;
 
   /// Create a copy of User
   /// with the given fields replaced by the non-null parameter values.

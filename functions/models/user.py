@@ -139,6 +139,12 @@ class User(BaseModel):
         default=None,
         description="Last update timestamp"
     )
+    
+    # Tax exemption for businesses (GST/HST number)
+    taxExemption: dict[str, str] | None = Field(
+        default=None,
+        description="Tax exemption details: {gstNumber: '123456789RT0001'}"
+    )
 
     @field_validator("name")
     @classmethod
