@@ -64,7 +64,7 @@ class DeliveryInfo {
 // ============================================================================
 
 @freezed
-class InventoryConfig with _$InventoryConfig {
+abstract class InventoryConfig with _$InventoryConfig {
   const factory InventoryConfig({
     /// Whether inventory is actively managed (false for dropship products)
     @Default(true) bool managed,
@@ -90,7 +90,7 @@ class InventoryConfig with _$InventoryConfig {
 // ============================================================================
 
 @Freezed(toJson: true, fromJson: true)
-class Product with _$Product {
+abstract class Product with _$Product {
   const factory Product({
     required String productId,
     required String name,
@@ -158,7 +158,7 @@ class Product with _$Product {
 // ============================================================================
 
 @freezed
-class ProductCreate with _$ProductCreate {
+abstract class ProductCreate with _$ProductCreate {
   const factory ProductCreate({
     required String name,
     required double price,
@@ -201,7 +201,7 @@ class ProductCreate with _$ProductCreate {
 // ============================================================================
 
 @freezed
-class SellerDeliveryOption with _$SellerDeliveryOption {
+abstract class SellerDeliveryOption with _$SellerDeliveryOption {
   const factory SellerDeliveryOption({
     /// Delivery type: 'standard', 'express', 'same_day', etc.
     @Default(DeliveryTypeValues.standard) String type,
@@ -237,7 +237,7 @@ class SellerDeliveryOption with _$SellerDeliveryOption {
 // ============================================================================
 
 @freezed
-class ShippingQuantityDiscount with _$ShippingQuantityDiscount {
+abstract class ShippingQuantityDiscount with _$ShippingQuantityDiscount {
   const factory ShippingQuantityDiscount({
     /// Minimum quantity to qualify for this discount
     required int minQuantity,
@@ -260,7 +260,7 @@ class ShippingQuantityDiscount with _$ShippingQuantityDiscount {
 // ============================================================================
 
 @freezed
-class SupplierInfo with _$SupplierInfo {
+abstract class SupplierInfo with _$SupplierInfo {
   const factory SupplierInfo({
     /// Supplier platform type: aliexpress, dhgate, alibaba, 1688, temu, cjdropshipping, other
     required String type,

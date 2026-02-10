@@ -162,7 +162,7 @@ Ratings _parseRating(dynamic raw) {
 // ============================================================================
 
 @Freezed(toJson: true, fromJson: true)
-class Order with _$Order {
+abstract class Order with _$Order {
   const factory Order({
     required String orderId,
     required String userId,
@@ -408,7 +408,7 @@ class Order with _$Order {
 // ============================================================================
 
 @freezed
-class OrderCreate with _$OrderCreate {
+abstract class OrderCreate with _$OrderCreate {
   const factory OrderCreate({
     required String userId,
     required String customerId,
@@ -428,7 +428,7 @@ class OrderCreate with _$OrderCreate {
 // ============================================================================
 
 @Freezed(toJson: true, fromJson: true)
-class OrderItem with _$OrderItem {
+abstract class OrderItem with _$OrderItem {
   const factory OrderItem({
     required String productId,
     required String name,
@@ -479,7 +479,7 @@ class OrderItem with _$OrderItem {
 // ============================================================================
 
 @freezed
-class Ratings with _$Ratings {
+abstract class Ratings with _$Ratings {
   const factory Ratings({required String productId, required double rating, String? review, required DateTime createdAt}) = _Ratings;
 
   factory Ratings.fromJson(Map<String, dynamic> json) => _$RatingsFromJson(json);
@@ -490,7 +490,7 @@ class Ratings with _$Ratings {
 // ============================================================================
 
 @freezed
-class SellerPayout with _$SellerPayout {
+abstract class SellerPayout with _$SellerPayout {
   const factory SellerPayout({
     required String sellerId,
     String? stripeAccountId,
@@ -536,7 +536,7 @@ class SellerPayout with _$SellerPayout {
 // ============================================================================
 
 @freezed
-class Taxes with _$Taxes {
+abstract class Taxes with _$Taxes {
   const factory Taxes({@Default(0.0) double gst, @Default(0.0) double pst, @Default(0.0) double hst, @Default(0.0) double qst}) = _Taxes;
 
   factory Taxes.fromJson(Map<String, dynamic> json) {

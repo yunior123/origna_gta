@@ -34,7 +34,7 @@ Map<String, dynamic> _safeMap(dynamic value) {
 // ============================================================================
 
 @freezed
-class User with _$User {
+abstract class User with _$User {
   const factory User({
     required String uid,
     required String email,
@@ -164,7 +164,7 @@ class User with _$User {
 // ============================================================================
 
 @freezed
-class UserCreate with _$UserCreate {
+abstract class UserCreate with _$UserCreate {
   const factory UserCreate({required String email, required String name, @Default([UserRole.buyer]) List<UserRole> roles, Address? address}) = _UserCreate;
 
   factory UserCreate.fromJson(Map<String, dynamic> json) => _$UserCreateFromJson(json);

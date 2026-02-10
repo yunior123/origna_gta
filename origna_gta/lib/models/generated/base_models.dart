@@ -13,7 +13,7 @@ part 'base_models.g.dart';
 // ============================================================================
 
 @freezed
-class Address with _$Address {
+abstract class Address with _$Address {
   const factory Address({
     required String street,
     @Default('') String apartment,
@@ -46,7 +46,7 @@ class Address with _$Address {
 }
 
 @freezed
-class AddressDetails with _$AddressDetails {
+abstract class AddressDetails with _$AddressDetails {
   const factory AddressDetails({
     required String street,
     required String city,
