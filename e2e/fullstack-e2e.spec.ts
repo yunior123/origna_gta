@@ -567,7 +567,7 @@ test.describe('6. Cart & Checkout', () => {
   });
 
   test('6.5 Webhook updates order after Stripe payment', async () => {
-    test.setTimeout(45_000);
+    test.setTimeout(90_000);
     expect(stripeOrderId).toBeTruthy();
 
     // Wait for Stripe webhook to be processed (stripe listen forwards to emulator)

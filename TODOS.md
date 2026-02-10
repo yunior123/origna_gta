@@ -129,4 +129,9 @@ That’s the best option. Period. -->
         # TODO consider this automatic_tax
 
 
-       
+TODO setup policy for refund and return similar to new amazon policy, no return or rfund after 7 days post delivery
+
+
+TODO this looks good in mail box for yahoo, mail apple but not gmail google, the letters look white, and the background is white so u cannot see the numbers clearly, small ux ui bug, Subtotal	$1.99
+Shipping	Free
+Taxes	$0.26

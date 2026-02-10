@@ -91,7 +91,7 @@ test.describe('A. Happy Path — Full Shipping Lifecycle', () => {
   });
 
   test('A.2 Webhook fires — order becomes confirmed/authorized', async () => {
-    test.setTimeout(45_000);
+    test.setTimeout(90_000);
     console.log('📡 A.2 — Waiting for Stripe webhook');
 
     const order = await waitForOrderStatus(orderId, ['confirmed'], 'orderStatus', 60_000);
@@ -256,7 +256,7 @@ test.describe('B. Multi-Seller Order Lifecycle', () => {
   });
 
   test('B.2 Webhook confirms order', async () => {
-    test.setTimeout(45_000);
+    test.setTimeout(90_000);
     const order = await waitForOrderStatus(orderId, ['confirmed'], 'orderStatus', 60_000);
     expect(order.orderStatus).toBe('confirmed');
     expect(order.paymentStatus).toBe('authorized');
@@ -348,7 +348,7 @@ test.describe('C. Per-Item Status Tracking', () => {
   });
 
   test('C.2 Wait for confirmation', async () => {
-    test.setTimeout(45_000);
+    test.setTimeout(90_000);
     const order = await waitForOrderStatus(orderId, ['confirmed'], 'orderStatus', 60_000);
     expect(order.orderStatus).toBe('confirmed');
   });

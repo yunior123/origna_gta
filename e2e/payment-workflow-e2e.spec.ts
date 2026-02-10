@@ -269,7 +269,7 @@ test.describe('B. Single-Seller Checkout', () => {
   });
 
   test('B.4 Webhook updates order to confirmed/authorized', async () => {
-    test.setTimeout(45_000);
+    test.setTimeout(90_000);
     expect(orderB).toBeTruthy();
     const order = await waitForOrderStatus(orderB!.orderId, ['confirmed'], 'orderStatus', 60_000);
     expect(order).toBeTruthy();
@@ -391,7 +391,7 @@ test.describe('C. Multi-Seller Checkout', () => {
   });
 
   test('C.4 Webhook confirms multi-seller order', async () => {
-    test.setTimeout(45_000);
+    test.setTimeout(90_000);
     expect(orderC).toBeTruthy();
     const order = await waitForOrderStatus(orderC!.orderId, ['confirmed'], 'orderStatus', 60_000);
     expect(order).toBeTruthy();
