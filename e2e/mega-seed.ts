@@ -1,6 +1,6 @@
 /**
- * Mega Seed Script — 75 Users, 30 Products, Multi-Seller Carts
- * =============================================================
+ * Mega Seed Script — 76 Users, 30 Products, Multi-Seller Carts, 8 Orders
+ * ======================================================================
  * Extends the original seed with 50 additional randomized users.
  * Run AFTER emulators are started: cd e2e && npx ts-node mega-seed.ts
  *
@@ -9,12 +9,12 @@
  *  - 10 sellers (with Stripe accounts, various onboarding states)
  *  - 50 buyers (random provinces, some with carts)
  *  - 10 buyer+seller combos
- *  - 4 edge-case users (suspended, unverified, no address, etc.)
- *  = 75 total
+ *  - 5 edge-case users (suspended, unverified, no address, etc.)
+ *  = 76 total
  *
  * Products: 30 across 15+ categories, various price tiers & shipping configs.
  * Cart items: ~20 buyers get cart items (some multi-seller carts).
- * Pre-created orders: 5 orders at various statuses for lifecycle tests.
+ * Pre-created orders: 8 orders at various statuses for lifecycle/regression tests.
  */
 
 const AUTH_EMULATOR = 'http://localhost:9099';
@@ -230,6 +230,11 @@ USERS.push({
 USERS.push({
   email: 'buyer-only-fresh@test.origna.ca', password: 'REDACTED_TEST_PASSWORD', displayName: 'Fresh Buyer',
   roles: ['buyer'], address: makeAddress('AB'),
+});
+// Real email used in regression + payment tests
+USERS.push({
+  email: 'yuniorrodriguezo460@gmail.com', password: 'REDACTED_TEST_PASSWORD', displayName: 'Yunior Buyer',
+  roles: ['buyer'], address: makeAddress('ON'),
 });
 
 // ════════════════════════════════════════════════════════════════════
@@ -513,6 +518,138 @@ async function seedCartItems(uidMap: Map<string, string>) {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// SEED ORDERS — 8 orders for regression-e2e tests
+// ════════════════════════════════════════════════════════════════════
+
+async function seedOrders(uidMap: Map<string, string>) {
+  console.log('\n📋 Creating 8 test orders for regression tests...');
+  let count = 0;
+
+  const buyerUid = uidMap.get('buyer1@test.origna.ca') || 'buyer1_uid';
+  const seller1Uid = uidMap.get('seller1@test.origna.ca') || 'seller1_uid';
+  const seller2Uid = uidMap.get('seller2@test.origna.ca') || 'seller2_uid';
+  const seller3Uid = uidMap.get('seller3@test.origna.ca') || 'seller3_uid';
+  const buyerAddress = {
+    street: '123 Test Street', apartment: '', city: 'Toronto',
+    state: 'ON', postalCode: 'M5V 3A8', country: 'Canada',
+  };
+  const seller1Address = {
+    street: '456 Seller St', city: 'Montreal', state: 'QC',
+    postalCode: 'H2X 1Y4', country: 'Canada',
+  };
+  const seller2Address = {
+    street: '789 Pacific Rd', city: 'Vancouver', state: 'BC',
+    postalCode: 'V6B 1H7', country: 'Canada',
+  };
+  const seller3Address = {
+    street: '321 Prairie Ave', city: 'Calgary', state: 'AB',
+    postalCode: 'T2P 1J9', country: 'Canada',
+  };
+
+  const makeItem = (productId: string, name: string, price: number, qty: number, sellerId: string, status: string, sellerAddr?: any, tracking?: boolean) => {
+    const item: any = {
+      productId, name, price, quantity: qty, sellerId, status,
+      imageUrls: [`https://picsum.photos/seed/${productId}/400/400`],
+    };
+    if (sellerAddr) item.sellerAddress = sellerAddr;
+    if (tracking) { item.trackingNumber = `TRK${Date.now()}`; item.carrier = 'Canada Post'; }
+    return item;
+  };
+
+  const now = new Date();
+
+  const orders = [
+    // order_test_001 — pending
+    {
+      id: 'order_test_001', orderStatus: 'pending', paymentStatus: 'awaiting_payment', paymentProvider: 'stripe',
+      buyerUid, customerEmail: 'buyer1@test.origna.ca', sellerIds: [seller1Uid],
+      subtotalCents: 4599, shippingCostCents: 999, taxAmountCents: 728, totalAmountCents: 4599 + 999 + 728,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_001', 'Handmade Quebec Scarf', 4599, 1, seller1Uid, 'pending')],
+    },
+    // order_test_002 — confirmed
+    {
+      id: 'order_test_002', orderStatus: 'confirmed', paymentStatus: 'authorized', paymentProvider: 'stripe',
+      buyerUid, customerEmail: 'buyer1@test.origna.ca', sellerIds: [seller1Uid],
+      stripePaymentIntentId: 'pi_test_confirmed_002',
+      subtotalCents: 18999, shippingCostCents: 1500, taxAmountCents: 2665, totalAmountCents: 18999 + 1500 + 2665,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_002', 'Montreal Artisan Leather Bag', 18999, 1, seller1Uid, 'confirmed')],
+    },
+    // order_test_003 — processing
+    {
+      id: 'order_test_003', orderStatus: 'processing', paymentStatus: 'authorized', paymentProvider: 'stripe',
+      buyerUid, customerEmail: 'buyer1@test.origna.ca', sellerIds: [seller2Uid],
+      stripePaymentIntentId: 'pi_test_processing_003',
+      subtotalCents: 12999, shippingCostCents: 1200, taxAmountCents: 1846, totalAmountCents: 12999 + 1200 + 1846,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_005', 'Pacific Coast Trail Running Shoes', 12999, 1, seller2Uid, 'processing')],
+    },
+    // order_test_004 — shipped (with tracking, captured payment, pi_test_ prefix)
+    {
+      id: 'order_test_004', orderStatus: 'shipped', paymentStatus: 'captured', paymentProvider: 'stripe',
+      buyerUid, customerEmail: 'buyer1@test.origna.ca', sellerIds: [seller1Uid],
+      stripePaymentIntentId: 'pi_test_shipped_004',
+      subtotalCents: 4599, shippingCostCents: 999, taxAmountCents: 728, totalAmountCents: 4599 + 999 + 728,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_001', 'Handmade Quebec Scarf', 4599, 1, seller1Uid, 'shipped', undefined, true)],
+    },
+    // order_test_005 — in_transit (captured)
+    {
+      id: 'order_test_005', orderStatus: 'in_transit', paymentStatus: 'captured', paymentProvider: 'stripe',
+      buyerUid, customerEmail: 'buyer1@test.origna.ca', sellerIds: [seller2Uid],
+      stripePaymentIntentId: 'pi_test_intransit_005',
+      subtotalCents: 12999, shippingCostCents: 1200, taxAmountCents: 1846, totalAmountCents: 12999 + 1200 + 1846,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_005', 'Running Shoes', 12999, 1, seller2Uid, 'in_transit', undefined, true)],
+    },
+    // order_test_006 — delivered (captured, pi_test_ prefix)
+    {
+      id: 'order_test_006', orderStatus: 'delivered', paymentStatus: 'captured', paymentProvider: 'stripe',
+      buyerUid, customerEmail: 'buyer1@test.origna.ca', sellerIds: [seller1Uid],
+      stripePaymentIntentId: 'pi_test_delivered_006',
+      subtotalCents: 1299, shippingCostCents: 599, taxAmountCents: 247, totalAmountCents: 1299 + 599 + 247,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_003', 'Quebec Tourtière Spice Kit', 1299, 1, seller1Uid, 'delivered', undefined, true)],
+    },
+    // order_test_007 — cancelled
+    {
+      id: 'order_test_007', orderStatus: 'cancelled', paymentStatus: 'awaiting_payment', paymentProvider: 'stripe',
+      buyerUid, customerEmail: 'buyer1@test.origna.ca', sellerIds: [seller1Uid],
+      subtotalCents: 4599, shippingCostCents: 999, taxAmountCents: 728, totalAmountCents: 4599 + 999 + 728,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_001', 'Handmade Quebec Scarf', 4599, 1, seller1Uid, 'cancelled')],
+    },
+    // order_test_008 — multi-seller (3 sellers)
+    {
+      id: 'order_test_008', orderStatus: 'confirmed', paymentStatus: 'authorized', paymentProvider: 'stripe',
+      buyerUid, customerEmail: 'buyer1@test.origna.ca', sellerIds: [seller1Uid, seller2Uid, seller3Uid],
+      stripePaymentIntentId: 'pi_test_multiseller_008',
+      subtotalCents: 4599 + 12999 + 4200, shippingCostCents: 2500, taxAmountCents: 2834,
+      totalAmountCents: 4599 + 12999 + 4200 + 2500 + 2834,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [
+        makeItem('product_001', 'Handmade Quebec Scarf', 4599, 1, seller1Uid, 'confirmed', seller1Address),
+        makeItem('product_005', 'Pacific Coast Trail Running Shoes', 12999, 1, seller2Uid, 'confirmed', seller2Address),
+        makeItem('product_008', 'Alberta Wildflower Honey', 4200, 1, seller3Uid, 'confirmed', seller3Address),
+      ],
+    },
+  ];
+
+  for (const order of orders) {
+    const { id, ...data } = order;
+    if (await writeFirestoreDoc(`orders/${id}`, data)) {
+      count++;
+      console.log(`  ✅ ${id} (${data.orderStatus})`);
+    } else {
+      console.error(`  ❌ ${id} FAILED`);
+    }
+  }
+
+  console.log(`  📊 ${count}/${orders.length} orders created`);
+}
+
+// ════════════════════════════════════════════════════════════════════
 // MAIN
 // ════════════════════════════════════════════════════════════════════
 
@@ -532,6 +669,7 @@ async function main() {
   const uidMap = await seedUsers();
   await seedProducts(uidMap);
   await seedCartItems(uidMap);
+  await seedOrders(uidMap);
 
   // Export the UID map as a JSON for the test suite to consume
   const mapObj: Record<string, string> = {};
@@ -544,7 +682,8 @@ async function main() {
   console.log(`  👤 Users: ${uidMap.size} (of ${USERS.length})`);
   console.log(`  📦 Products: ${PRODUCTS.length}`);
   console.log(`  🛒 Carts populated: ~20 buyers`);
-  console.log(`  📧 Admin: yr62813@gmail.com`);
+  console.log(`  � Orders: 8 (for regression tests)`);
+  console.log(`  �📧 Admin: yr62813@gmail.com`);
   console.log(`  📁 UID map exported to seed-uid-map.json`);
   console.log('═══════════════════════════════════════════════');
 }

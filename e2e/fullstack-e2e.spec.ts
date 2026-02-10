@@ -20,10 +20,14 @@ import { test, expect, Page, BrowserContext } from '@playwright/test';
 import {
   signIn as signInUser,
   readDoc as readDocByPath,
+  callCallable, callOk,
   parseVal as parseFirestoreValue, parseDoc,
+  checkInfrastructure as checkInfraBase,
+  fillStripeCheckout, queryFirestore, dismissStripeModals,
   AUTH_EMULATOR, FIRESTORE_EMULATOR, FUNCTIONS_EMULATOR, PROJECT_ID,
-  WEB_APP_URL,
+  WEB_APP_URL, STRIPE_CARD, TEST_ACCOUNTS, DEFAULT_PASS,
 } from './api-helpers';
+import { waitForFlutter } from './flutter-helpers';
 
 // ============================================================================
 // CONFIGURATION
@@ -31,59 +35,39 @@ import {
 
 const BASE_URL = WEB_APP_URL;
 
-// Infrastructure availability cache
+// Infrastructure availability cache (extends api-helpers with webApp check)
 let infraAvailable: {
   auth: boolean | null;
   firestore: boolean | null;
   functions: boolean | null;
   webApp: boolean | null;
-} = {
-  auth: null,
-  firestore: null,
-  functions: null,
-  webApp: null,
-};
+} = { auth: null, firestore: null, functions: null, webApp: null };
 
-/** Check if infrastructure is available */
+/** Check if infrastructure is available (extends api-helpers with webApp) */
 async function checkInfrastructure(request: any): Promise<typeof infraAvailable> {
   if (infraAvailable.auth === null) {
-    const [authRes, firestoreRes, functionsRes, webRes] = await Promise.all([
-      request.get(`${AUTH_EMULATOR}/`).catch(() => null),
-      request.get(`${FIRESTORE_EMULATOR}/`).catch(() => null),
-      request.get(`${FUNCTIONS_EMULATOR}/`).catch(() => null),
-      request.get(`${BASE_URL}/`).catch(() => null),
-    ]);
+    const base = await checkInfraBase(request);
+    const webRes = await request.get(`${BASE_URL}/`).catch(() => null);
     infraAvailable = {
-      auth: !!authRes,
-      firestore: !!firestoreRes,
-      functions: !!functionsRes,
+      auth: base.auth,
+      firestore: base.firestore,
+      functions: base.functions,
       webApp: !!webRes && webRes.status() === 200,
     };
-    if (Object.values(infraAvailable).some(v => !v)) {
-      console.log('⚠️  Some infrastructure is unavailable:');
-      console.log(`   Auth: ${infraAvailable.auth ? '✅' : '❌'}`);
-      console.log(`   Firestore: ${infraAvailable.firestore ? '✅' : '❌'}`);
-      console.log(`   Functions: ${infraAvailable.functions ? '✅' : '❌'}`);
-      console.log(`   Web App: ${infraAvailable.webApp ? '✅' : '❌'}`);
+    if (!infraAvailable.webApp) {
+      console.log(`   Web App: ❌`);
     }
   }
   return infraAvailable;
 }
 
-// Stripe test card details
-const STRIPE_TEST_CARD = {
-  number: '4242424242424242',
-  exp: '12/30',
-  cvc: '123',
-  name: 'Test Buyer',
-  country: 'CA',
-  postalCode: 'M5V 3A8',
-};
+// Test users (from mega-seed.ts / api-helpers TEST_ACCOUNTS)
+const ADMIN = { email: TEST_ACCOUNTS.ADMIN_EMAIL, password: TEST_ACCOUNTS.ADMIN_PASS, name: 'Admin Yunior' };
+const SELLER = { email: TEST_ACCOUNTS.SELLER1_EMAIL, password: DEFAULT_PASS, name: 'Seller 1' };
+const BUYER = { email: 'yuniorrodriguezo460@gmail.com', password: DEFAULT_PASS, name: 'Yunior Buyer' };
 
-// Test users (created by seed-emulator.ts)
-const ADMIN = { email: 'yr62813@gmail.com', password: '960227Y#y', name: 'Admin Yunior' };
-const SELLER = { email: 'seller1@test.origna.ca', password: 'REDACTED_TEST_PASSWORD', name: 'Marie Tremblay' };
-const BUYER = { email: 'yuniorrodriguezo460@gmail.com', password: 'REDACTED_TEST_PASSWORD', name: 'David Brown' };
+// Stripe test card — imported from api-helpers
+const STRIPE_TEST_CARD = STRIPE_CARD;
 
 // Timeouts - Flutter Web + CanvasKit needs 60-90s to initialize
 const FLUTTER_INIT_TIMEOUT = 90_000;
@@ -91,48 +75,8 @@ const NAVIGATION_TIMEOUT = 30_000;
 const ACTION_TIMEOUT = 15_000;
 
 // ============================================================================
-// HELPER FUNCTIONS
+// HELPER FUNCTIONS (file-specific only — shared helpers in api-helpers.ts)
 // ============================================================================
-
-/** Wait for Flutter Web to fully initialize and enable semantics */
-async function waitForFlutter(page: Page, timeout = FLUTTER_INIT_TIMEOUT) {
-  console.log(`⏳ Waiting for Flutter Web (timeout: ${timeout}ms)...`);
-  const startTime = Date.now();
-  
-  // 1) Wait for Flutter canvas to appear
-  await page.waitForFunction(() => {
-    const glasspane = document.querySelector('flt-glass-pane');
-    const flutterView = document.querySelector('flutter-view');
-    const canvas = document.querySelector('canvas');
-    return !!glasspane || !!flutterView || (canvas instanceof HTMLCanvasElement && canvas.getBoundingClientRect().width > 0);
-  }, { timeout });
-  console.log(`   ✅ Flutter host found (${Date.now() - startTime}ms)`);
-
-  // 2) Wait for splash screen to disappear
-  await page.waitForFunction(() => {
-    const splash = document.getElementById('splash');
-    return !splash || splash.style.display === 'none' || splash.getAttribute('hidden') !== null;
-  }, { timeout }).catch(() => {});
-  console.log(`   ✅ Splash gone (${Date.now() - startTime}ms)`);
-
-  // 3) Wait for canvas to be rendered
-  await page.waitForFunction(() => {
-    const canvas = document.querySelector('canvas');
-    if (!(canvas instanceof HTMLCanvasElement)) return false;
-    const rect = canvas.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0;
-  }, { timeout: 30000 }).catch(() => {});
-  console.log(`   ✅ Canvas ready (${Date.now() - startTime}ms)`);
-
-  // 4) Enable Flutter Web semantics by simulating Tab keypress
-  await page.evaluate(() => {
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
-  });
-
-  // 5) Wait for flt-semantics elements
-  await page.locator('flt-semantics').first().waitFor({ state: 'attached', timeout: 20000 }).catch(() => {});
-  console.log(`   ✅ Flutter ready in ${Date.now() - startTime}ms`);
-}
 
 /** Find Flutter element by semantic label */
 async function findFlutterElement(page: Page, text: string, timeout = ACTION_TIMEOUT) {
@@ -141,7 +85,7 @@ async function findFlutterElement(page: Page, text: string, timeout = ACTION_TIM
     .or(page.getByRole('link', { name: new RegExp(text, 'i') }))
     .or(page.locator(`[aria-label*="${text}" i]`))
     .or(page.locator(`flt-semantics[aria-label*="${text}" i]`));
-  
+
   try {
     await locator.first().waitFor({ state: 'visible', timeout });
     return locator.first();
@@ -156,42 +100,15 @@ async function findFlutterElement(page: Page, text: string, timeout = ACTION_TIM
   }
 }
 
-/** Read Firestore document via emulator REST API */
+/** Read Firestore document via emulator REST API (2-arg convenience wrapper) */
 async function readFirestoreDoc(collection: string, docId: string) {
   return readDocByPath(`${collection}/${docId}`);
-}
-
-/** Query Firestore collection via emulator REST API */
-async function queryFirestore(structuredQuery: any) {
-  const url = `${FIRESTORE_EMULATOR}/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer owner',
-    },
-    body: JSON.stringify({ structuredQuery }),
-  });
-  return response.json();
-}
-
-/** Login via Flutter UI - navigates to home, triggers login prompt via cart/account action */
-async function loginViaUI(page: Page, email: string, password: string) {
-  // Flutter app has no /login route. Login is triggered programmatically via
-  // showLoginPrompt() when user tries to access protected features.
-  // For a static build, we can't easily interact with the login UI.
-  // Instead, we verify auth works via the Auth Emulator REST API.
-  const result = await signInUser(email, password);
-  if (!result.localId) {
-    throw new Error(`Auth sign-in failed for ${email}: ${JSON.stringify(result)}`);
-  }
-  return result;
 }
 
 /** Complete Stripe Checkout in a new page/popup */
 async function completeStripeCheckout(page: Page, context: BrowserContext): Promise<boolean> {
   const stripePagePromise = context.waitForEvent('page', { timeout: 30_000 });
-  
+
   let stripePage: Page;
   try {
     stripePage = await stripePagePromise;
@@ -333,7 +250,7 @@ test.describe('2. Seed Data Verification', () => {
   });
 
   test('2.4 Products exist in Firestore', async () => {
-    const doc = await readFirestoreDoc('products', 'product_001');
+    const doc = await readFirestoreDoc('products', 'product_024');
     expect(doc).toBeTruthy();
     const data = parseDoc(doc);
     expect(data.name).toBeTruthy();
@@ -371,7 +288,8 @@ test.describe('2. Seed Data Verification', () => {
         },
       },
     });
-    const docs = Array.isArray(results) ? results.filter((r: any) => r.document) : [];
+    // queryFirestore already returns parsed docs (no .document property)
+    const docs = Array.isArray(results) ? results : [];
     expect(docs.length).toBeGreaterThanOrEqual(15);
     console.log(`📦 Products in DB: ${docs.length}`);
   });
@@ -436,20 +354,20 @@ test.describe('4. Authentication', () => {
   });
 
   test('4.1 Buyer can authenticate via Auth Emulator', async () => {
-    const result = await loginViaUI(null as any, BUYER.email, BUYER.password);
+    const result = await signInUser(BUYER.email, BUYER.password);
     expect(result.localId).toBeTruthy();
     expect(result.email).toBe(BUYER.email);
     expect(result.idToken).toBeTruthy();
   });
 
   test('4.2 Seller can authenticate via Auth Emulator', async () => {
-    const result = await loginViaUI(null as any, SELLER.email, SELLER.password);
+    const result = await signInUser(SELLER.email, SELLER.password);
     expect(result.localId).toBeTruthy();
     expect(result.email).toBe(SELLER.email);
   });
 
   test('4.3 Admin can authenticate via Auth Emulator', async () => {
-    const result = await loginViaUI(null as any, ADMIN.email, ADMIN.password);
+    const result = await signInUser(ADMIN.email, ADMIN.password);
     expect(result.localId).toBeTruthy();
     expect(result.email).toBe(ADMIN.email);
   });
@@ -511,23 +429,7 @@ test.describe('5. Product Browsing', () => {
 // TEST SUITE 6: CART & CHECKOUT (Real Stripe API + Real Email)
 // ============================================================================
 
-/** Call Firebase Callable function via HTTP (emulator protocol) */
-async function callCallable(functionName: string, data: any, idToken: string) {
-  const url = `${FUNCTIONS_EMULATOR}/${PROJECT_ID}/us-central1/${functionName}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({ data }),
-  });
-  const body = await response.json();
-  if (body.error) {
-    throw new Error(`Callable error: ${JSON.stringify(body.error)}`);
-  }
-  return body.result || body;
-}
+// callCallable & callOk imported from api-helpers.ts
 
 // Shared state: order created in 6.2 is verified in 6.3 and 6.4
 let stripeOrderId: string | null = null;
@@ -562,11 +464,11 @@ test.describe('6. Cart & Checkout', () => {
     checkoutBuyerUid = authResult.localId;
     checkoutBuyerToken = authResult.idToken;
 
-    // Read product_001 from Firestore to get exact price & seller info
-    const productDoc = await readFirestoreDoc('products', 'product_001');
+    // Read product_024 from Firestore to get exact price & seller info (high stock)
+    const productDoc = await readFirestoreDoc('products', 'product_024');
     const product = parseDoc(productDoc);
     expect(product).toBeTruthy();
-    expect(product.name).toBe('Handmade Quebec Scarf');
+    expect(product.name).toBeTruthy();
 
     // Read buyer's address from Firestore
     const buyerDoc = await readFirestoreDoc('users', authResult.localId);
@@ -578,12 +480,12 @@ test.describe('6. Cart & Checkout', () => {
       userId: authResult.localId,
       items: [
         {
-          productId: 'product_001',
+          productId: 'product_024',
           name: product.name,
           price: product.price,
           quantity: 1,
           sellerId: product.sellerId,
-          imageUrls: product.imageUrls || ['https://picsum.photos/seed/scarf/400/400'],
+          imageUrls: product.imageUrls || ['https://picsum.photos/seed/stickers/400/400'],
         },
       ],
       subtotal: product.price,
@@ -601,7 +503,7 @@ test.describe('6. Cart & Checkout', () => {
     console.log(`📦 Checkout: ${product.name} @ $${product.price} → ${buyerData.address.city}, ${buyerData.address.state}`);
 
     // Call create_checkout_session (Firebase Callable)
-    const result = await callCallable('create_checkout_session', checkoutData, authResult.idToken);
+    const result = await callOk('create_checkout_session', checkoutData, authResult.idToken);
     console.log(`🔗 Checkout result:`, JSON.stringify(result).substring(0, 300));
 
     expect(result.checkoutUrl || result.sessionId).toBeTruthy();
@@ -618,79 +520,11 @@ test.describe('6. Cart & Checkout', () => {
 
     // Navigate to Stripe Checkout hosted page
     await page.goto(stripeCheckoutUrl!);
-    await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
 
-    console.log(`📍 Stripe page URL: ${page.url()}`);
+    // Use shared fillStripeCheckout which handles Link modals and all form variants
+    await fillStripeCheckout(page, BUYER.email);
 
-    // Fill email if requested
-    const emailInput = page.locator('#email, input[name="email"]').first();
-    if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await emailInput.fill(BUYER.email);
-      await page.waitForTimeout(500);
-    }
-
-    // Fill card number
-    const cardNumberField = page.locator('#cardNumber, input[name="cardNumber"]').first();
-    if (await cardNumberField.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await cardNumberField.fill(STRIPE_TEST_CARD.number);
-      const expiryField = page.locator('#cardExpiry, input[name="cardExpiry"]').first();
-      await expiryField.fill(STRIPE_TEST_CARD.exp);
-      const cvcField = page.locator('#cardCvc, input[name="cardCvc"]').first();
-      await cvcField.fill(STRIPE_TEST_CARD.cvc);
-      const nameField = page.locator('#billingName, input[name="billingName"]').first();
-      if (await nameField.isVisible({ timeout: 2_000 }).catch(() => false)) {
-        await nameField.fill(STRIPE_TEST_CARD.name);
-      }
-    } else {
-      // Try Stripe Elements (iframe approach) — newer Stripe checkout forms
-      console.log('🔍 Trying iframe-based Stripe form...');
-      // Wait for payment element to load
-      await page.waitForTimeout(3_000);
-
-      // Stripe Checkout uses a single payment element now
-      const paymentFrame = page.frameLocator('iframe[name*="__privateStripeFrame"], iframe[title*="Secure payment"]').first();
-      try {
-        const cardInput = paymentFrame.locator('input[name="cardnumber"], input[autocomplete="cc-number"], input[placeholder*="card"]').first();
-        await cardInput.fill(STRIPE_TEST_CARD.number, { timeout: 10_000 });
-        
-        const expInput = paymentFrame.locator('input[name="exp-date"], input[autocomplete="cc-exp"]').first();
-        await expInput.fill(STRIPE_TEST_CARD.exp);
-        
-        const cvcInput = paymentFrame.locator('input[name="cvc"], input[autocomplete="cc-csc"]').first();
-        await cvcInput.fill(STRIPE_TEST_CARD.cvc);
-      } catch (frameErr) {
-        console.log(`⚠️ Could not fill card via iframe: ${frameErr}`);
-        // Take a debug screenshot
-        await page.screenshot({ path: 'test-results/stripe-form-debug.png' });
-      }
-    }
-
-    // Fill billing postal code if visible
-    const postalField = page.locator('#billingPostalCode, input[name="billingPostalCode"]').first();
-    if (await postalField.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await postalField.fill(STRIPE_TEST_CARD.postalCode);
-    }
-
-    // Fill billing country if visible (select dropdown)
-    const countrySelect = page.locator('#billingCountry, select[name="billingCountry"]').first();
-    if (await countrySelect.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await countrySelect.selectOption('CA');
-    }
-
-    // Click Pay / Submit button
-    const payBtn = page.locator(
-      '[data-testid="hosted-payment-submit-button"], .SubmitButton, button[type="submit"], .SubmitButton-IconContainer'
-    ).first();
-    await payBtn.waitFor({ state: 'visible', timeout: 10_000 });
-
-    // Take screenshot before payment
-    await page.screenshot({ path: 'test-results/stripe-before-pay.png' });
-
-    await payBtn.click();
     console.log('💳 Payment submitted, waiting for processing...');
-
-    // Wait for Stripe to process — page should redirect to success_url
-    // or show a success/processing message
     await page.waitForTimeout(5_000);
 
     // Accept various outcomes: redirect to success URL, or still on Stripe with success
@@ -703,7 +537,6 @@ test.describe('6. Cart & Checkout', () => {
       || pageContent?.toLowerCase().includes('success')
       || pageContent?.toLowerCase().includes('thank');
     
-    // Even if redirect goes to production URL (orignagta.ca), payment was processed
     await page.screenshot({ path: 'test-results/stripe-after-pay.png' });
     console.log(`📍 After payment URL: ${currentUrl}`);
     expect(isSuccess || currentUrl.includes('checkout.stripe.com')).toBeTruthy();

@@ -175,8 +175,8 @@ cd functions && source venv/bin/activate && pytest tests/ -v --tb=short
 # Flutter
 cd origna_gta && flutter test && flutter analyze
 
-# E2E (267+ tests across 8 files)
-cd e2e && npx playwright test
+# E2E (267+ tests across 8 files) — MUST seed first!
+cd e2e && npx ts-node mega-seed.ts && npx playwright test
 
 # Run a specific E2E file
 cd e2e && npx playwright test comprehensive-flows-e2e.spec.ts
@@ -185,24 +185,56 @@ cd e2e && npx playwright test comprehensive-flows-e2e.spec.ts
 ruff check functions/
 ```
 
+### E2E Architecture: api-helpers.ts (Canonical Module)
+**ALL 7 spec files import from `e2e/api-helpers.ts`** (~830 lines, 40+ exports).
+Never duplicate utilities — always import from api-helpers.ts.
+
+Key patterns:
+- `signIn(email)` → fail-fast (throws if no idToken returned)
+- `callOk(fn, data, token)` → calls callable, throws on error
+- `callExpectError(fn, data, token, code)` → expects specific error code
+- `readDoc(collection, id)` / `writeDoc()` / `patchDoc()` → Firestore REST with `Bearer owner`
+- `patchDoc()` automatically uses `updateMask.fieldPaths` (prevents full-doc replace!)
+- `toFirestoreFields(obj)` / `parseDoc(doc)` → encode/decode Firestore REST format
+- `fillStripeCheckout(page)` → handles Stripe Link popup + card fill + pay
+- `checkInfrastructure()` → verify emulators running before tests
+- `ensureSeedData()` → verify seed data exists
+
+### E2E Startup (CRITICAL — Auth Emulator starts with 0 users!)
+```bash
+# 1. Start emulators
+firebase emulators:start --import=./emulator-data
+# 2. Seed (REQUIRED before ANY test)
+cd e2e && npx ts-node mega-seed.ts   # → 76 users, 30 products, 8 orders
+# 3. (Optional) Stripe webhooks
+stripe listen --forward-to localhost:5001/orignagta/us-central1/stripeWebhook
+# 4. Run tests
+npx playwright test
+```
+
 ### E2E Test Suite Inventory (267+ tests)
 
-| File | Tests | Status |
-|------|-------|--------|
-| comprehensive-flows-e2e.spec.ts | 32 | ✅ All pass |
-| regression-e2e.spec.ts | 42 | ✅ All pass |
-| flutter-web-e2e.spec.ts | 14 | ✅ All pass |
-| fullstack-e2e.spec.ts | 37 | 🔶 34/37 (Stripe headless issue) |
-| logic-failures-e2e.spec.ts | 29 | 🔴 13/29 (Unauthenticated) |
-| payment-workflow-e2e.spec.ts | 62 | 🔴 9/62 (Unauthenticated) |
-| shipping-lifecycle-e2e.spec.ts | 48 | 🔴 2/48 (Unauthenticated) |
-| admin-email-test.spec.ts | 3 | 🔴 0/3 (Stripe UI + real email) |
+| File | Tests | Passing | Status |
+|------|-------|---------|--------|
+| regression-e2e.spec.ts | 42 | 41/42 | ✅ E1 flaky (passes on retry) |
+| comprehensive-flows-e2e.spec.ts | 32 | 31/32 | ✅ G.2 seller delete perm bug |
+| payment-workflow-e2e.spec.ts | 54 | 34/54 | 🔶 4 need Stripe CLI, 2 bugs |
+| logic-failures-e2e.spec.ts | 29 | 22/29 | 🔶 7 backend bugs |
+| flutter-web-e2e.spec.ts | 14 | 14/14 | ✅ All pass |
+| fullstack-e2e.spec.ts | 37 | 34/37 | 🔶 3 Stripe headless issue |
+| shipping-lifecycle-e2e.spec.ts | 48 | ~41/48 | 🔶 Some need Stripe CLI |
+| admin-email-test.spec.ts | 3 | 0/3 | 🔴 Needs real Stripe + Mailjet |
 
-### Firestore REST API — E2E Critical Knowledge
-- **PATCH without `updateMask`** replaces entire document — ALWAYS use `updateMask.fieldPaths`
-- **`seed-uid-map.json`** must match current emulator seed (mega-seed.ts=75 users vs seed-emulator.ts=25 users)
-- **Rate limits**: `create_checkout_session` = 5 req/min — add delays between test suites
-- **Test ordering matters**: shared Firestore data modified by earlier tests must be restored
+**Total: ~128/259 passing (was ~3 before migration)**
+
+### Rate Limiter Emulator Bypass
+`functions/services/rate_limiter.py` detects `FIRESTORE_EMULATOR_HOST` env var and applies 100x multiplier to `max_requests`. This prevents E2E tests from being throttled by the 5 req/min `create_checkout_session` limit.
+
+### Remaining Backend Bugs (7 tests)
+1. B.2 skip_status_transition — accepts invalid status skip (should reject)
+2. B.4 refund_uncaptured — allows refund on uncaptured payment
+3. C.1-C.4 cron jobs — `auto_confirm_deliveries`, `expire_pending_authorizations`, `archive_old_orders`, `cleanup_rate_limits` not deployed
+4. G.2 seller_delete_product — permission check bug
 
 ---
 
@@ -213,11 +245,12 @@ ruff check functions/
 3. **AlgoliaProductRepository.uploadImages / getUploadUrl** — throw `UnimplementedError`. Image upload goes through `FirebaseProductRepository` path.
 4. **Firestore eventual consistency** — reads after writes may return stale data. Use `Source.server` for critical verifications.
 5. **Canada-only validation (buyer/shipping addresses)** — NEVER trust frontend. Backend validates postal code + province on every buyer/shipping address write. Sellers can be from any country worldwide.
-6. **Firestore REST PATCH** — MUST use `updateMask.fieldPaths` query params for partial updates. Without it, PATCH replaces the ENTIRE document, wiping all fields not in the body.
-7. **Auth Emulator** — does NOT support GET `/emulator/v1/projects/{id}/accounts`. To list users, query Firestore `/users` collection via REST with `Bearer owner`.
-8. **`seed-uid-map.json`** — stale UIDs from wrong seed script cause cascading E2E failures. Must match current emulator Auth UIDs.
-9. **E2E rate limits** — `create_checkout_session` has 5 req/min limit. Add ≥65s delays between test suites that call it.
-10. **Stripe Checkout in headless Playwright** — `VerificationModal` overlay blocks Pay button. No known workaround in headless Chromium.
+6. **Firestore REST PATCH** — MUST use `updateMask.fieldPaths` query params for partial updates. Without it, PATCH replaces the ENTIRE document, wiping all fields not in the body. `api-helpers.ts patchDoc()` handles this correctly.
+7. **Auth Emulator starts with 0 users** — MUST run `npx ts-node mega-seed.ts` before E2E tests. Without seeding, `signIn()` silently fails → `Bearer undefined` → all callables return UNAUTHENTICATED.
+8. **E2E seed data is ephemeral** — Auth Emulator does NOT persist users across restarts. Re-seed after every `firebase emulators:start`.
+9. **Rate limiter emulator bypass** — `functions/services/rate_limiter.py` applies 100x multiplier when `FIRESTORE_EMULATOR_HOST` is set. Don't add manual delays for rate limits in E2E tests.
+10. **Stripe Checkout in headless Playwright** — "VerificationModal" is Stripe's Link login popup, not 3DS. Dismiss with close button on `[data-testid="VerificationModal"]`. Card: `4242424242424242` (not enrolled in 3DS).
+11. **Cron Cloud Functions not deployed** — `auto_confirm_deliveries`, `expire_pending_authorizations`, `archive_old_orders`, `cleanup_rate_limits` return HTML instead of JSON. Need deployment fix.
 
 ---
 
@@ -231,8 +264,8 @@ ruff check functions/
 | Orders | `order_repository.dart`, `orders_viewmodel.dart`, `orders_screen.dart`, `handlers/orders.py` |
 | Auth | `auth_repository.dart`, `auth_viewmodel.dart`, `login_screen.dart`, `handlers/admin.py` |
 | Seller | `seller_viewmodel.dart`, `seller_dashboard_screen.dart`, `seller_products_screen.dart` |
-| E2E Helpers | `e2e/flutter-helpers.ts` (Playwright selectors for Flutter Web Semantics) |
+| E2E Helpers | `e2e/api-helpers.ts` (canonical 40+ exports), `e2e/flutter-helpers.ts` (Playwright selectors for Flutter Web Semantics) |
 
 ---
 
-*Last updated: 2026-02-10 — Copilot session with Yunior (Flutter Semantics enrichment + Playwright helpers)*
+*Last updated: 2026-02-11 — E2E migration to api-helpers.ts, rate limiter bypass, mega-seed with orders*

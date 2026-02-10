@@ -32,8 +32,11 @@ import {
   callCallable, callOk, callExpectError,
   readDoc, writeDoc, deleteDoc, listDocs, listSubcollection, parseDoc,
   buildCheckoutPayload, createOrder, forceOrderStatus, pollDocField,
+  FUNCTIONS_EMULATOR, PROJECT_ID,
   DEFAULT_PASS, TEST_ACCOUNTS, TEST_PRODUCTS,
 } from './api-helpers';
+
+const FUNCTIONS_EMU = FUNCTIONS_EMULATOR;
 
 // ════════════════════════════════════════════════════════════════════
 // CONFIGURATION — Re-exported from api-helpers.ts

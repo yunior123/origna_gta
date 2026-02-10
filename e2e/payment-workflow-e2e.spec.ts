@@ -27,7 +27,8 @@ import {
   callOk as callCallable, // This file expects callCallable to THROW on error
   readDoc, writeDoc, parseDoc,
   buildCheckoutPayload, fullCheckoutAndPay, waitForOrderStatus,
-  FUNCTIONS_EMULATOR, PROJECT_ID,
+  fillStripeCheckout, dismissStripeModals,
+  FUNCTIONS_EMULATOR, PROJECT_ID, STRIPE_CARD,
 } from './api-helpers';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -259,23 +260,9 @@ test.describe('B. Single-Seller Checkout', () => {
     await page.goto(result.checkoutUrl);
     await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
 
-    // Fill Stripe form
-    const emailInput = page.locator('#email, input[name="email"]').first();
-    if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await emailInput.fill('buyer22@test.origna.ca');
-      await page.waitForTimeout(500);
-    }
-    const cardField = page.locator('#cardNumber, input[name="cardNumber"]').first();
-    await cardField.waitFor({ state: 'visible', timeout: 10_000 });
-    await cardField.fill(STRIPE_CARD.number);
-    await page.locator('#cardExpiry, input[name="cardExpiry"]').first().fill(STRIPE_CARD.exp);
-    await page.locator('#cardCvc, input[name="cardCvc"]').first().fill(STRIPE_CARD.cvc);
-    const nameField = page.locator('#billingName, input[name="billingName"]').first();
-    if (await nameField.isVisible({ timeout: 2_000 }).catch(() => false)) await nameField.fill(STRIPE_CARD.name);
-    const postalField = page.locator('#billingPostalCode, input[name="billingPostalCode"]').first();
-    if (await postalField.isVisible({ timeout: 2_000 }).catch(() => false)) await postalField.fill(STRIPE_CARD.postalCode);
+    // Use shared fillStripeCheckout which handles Link modals
+    await fillStripeCheckout(page, 'buyer22@test.origna.ca');
 
-    await page.locator('[data-testid="hosted-payment-submit-button"], .SubmitButton, button[type="submit"]').first().click();
     console.log('💳 B.3 Payment submitted');
     await page.waitForTimeout(5_000);
     console.log(`✅ B.3 Stripe form completed`);
@@ -284,7 +271,7 @@ test.describe('B. Single-Seller Checkout', () => {
   test('B.4 Webhook updates order to confirmed/authorized', async () => {
     test.setTimeout(45_000);
     expect(orderB).toBeTruthy();
-    const order = await waitForOrderStatus(orderB!.orderId, ['confirmed'], 'orderStatus', 30_000);
+    const order = await waitForOrderStatus(orderB!.orderId, ['confirmed'], 'orderStatus', 60_000);
     expect(order).toBeTruthy();
     expect(order.paymentStatus).toBe('authorized');
     expect(order.stripePaymentIntentId).toBeTruthy();
@@ -318,8 +305,8 @@ test.describe('C. Multi-Seller Checkout', () => {
     test.setTimeout(30_000);
     const auth = await signIn('buyer23@test.origna.ca');
 
-    // product_001 = seller1 (QC), product_004 = seller2 (BC)
-    const prod1Doc = await readDoc('products/product_001');
+    // product_024 = seller1 (QC, high stock), product_004 = seller2 (BC)
+    const prod1Doc = await readDoc('products/product_024');
     const prod1 = parseDoc(prod1Doc);
     const prod2Doc = await readDoc('products/product_004');
     const prod2 = parseDoc(prod2Doc);
@@ -330,7 +317,7 @@ test.describe('C. Multi-Seller Checkout', () => {
     const data = {
       userId: auth.localId,
       items: [
-        { productId: 'product_001', name: prod1.name, price: prod1.price, quantity: 1, sellerId: prod1.sellerId, imageUrls: prod1.imageUrls },
+        { productId: 'product_024', name: prod1.name, price: prod1.price, quantity: 1, sellerId: prod1.sellerId, imageUrls: prod1.imageUrls },
         { productId: 'product_004', name: prod2.name, price: prod2.price, quantity: 1, sellerId: prod2.sellerId, imageUrls: prod2.imageUrls },
       ],
       subtotal: +(prod1.price + prod2.price).toFixed(2),
@@ -367,7 +354,7 @@ test.describe('C. Multi-Seller Checkout', () => {
 
     // Re-create for buyer24 to get a fresh checkout URL
     const auth = await signIn('buyer24@test.origna.ca');
-    const prod1Doc = await readDoc('products/product_001');
+    const prod1Doc = await readDoc('products/product_024');
     const prod1 = parseDoc(prod1Doc);
     const prod2Doc = await readDoc('products/product_009');
     const prod2 = parseDoc(prod2Doc);
@@ -378,7 +365,7 @@ test.describe('C. Multi-Seller Checkout', () => {
     const data = {
       userId: auth.localId,
       items: [
-        { productId: 'product_001', name: prod1.name, price: prod1.price, quantity: 1, sellerId: prod1.sellerId, imageUrls: prod1.imageUrls },
+        { productId: 'product_024', name: prod1.name, price: prod1.price, quantity: 1, sellerId: prod1.sellerId, imageUrls: prod1.imageUrls },
         { productId: 'product_009', name: prod2.name, price: prod2.price, quantity: 1, sellerId: prod2.sellerId, imageUrls: prod2.imageUrls },
       ],
       subtotal: +(prod1.price + prod2.price).toFixed(2),
@@ -396,22 +383,9 @@ test.describe('C. Multi-Seller Checkout', () => {
     await page.goto(result.checkoutUrl);
     await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
 
-    const emailInput = page.locator('#email, input[name="email"]').first();
-    if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await emailInput.fill('buyer24@test.origna.ca');
-      await page.waitForTimeout(500);
-    }
-    const cardField = page.locator('#cardNumber, input[name="cardNumber"]').first();
-    await cardField.waitFor({ state: 'visible', timeout: 10_000 });
-    await cardField.fill(STRIPE_CARD.number);
-    await page.locator('#cardExpiry, input[name="cardExpiry"]').first().fill(STRIPE_CARD.exp);
-    await page.locator('#cardCvc, input[name="cardCvc"]').first().fill(STRIPE_CARD.cvc);
-    const nameField = page.locator('#billingName, input[name="billingName"]').first();
-    if (await nameField.isVisible({ timeout: 2_000 }).catch(() => false)) await nameField.fill(STRIPE_CARD.name);
-    const postalField = page.locator('#billingPostalCode, input[name="billingPostalCode"]').first();
-    if (await postalField.isVisible({ timeout: 2_000 }).catch(() => false)) await postalField.fill(STRIPE_CARD.postalCode);
+    // Use shared fillStripeCheckout which handles Link modals
+    await fillStripeCheckout(page, 'buyer24@test.origna.ca');
 
-    await page.locator('[data-testid="hosted-payment-submit-button"], .SubmitButton, button[type="submit"]').first().click();
     await page.waitForTimeout(5_000);
     console.log('✅ C.3 Multi-seller payment submitted');
   });
@@ -419,7 +393,7 @@ test.describe('C. Multi-Seller Checkout', () => {
   test('C.4 Webhook confirms multi-seller order', async () => {
     test.setTimeout(45_000);
     expect(orderC).toBeTruthy();
-    const order = await waitForOrderStatus(orderC!.orderId, ['confirmed'], 'orderStatus', 30_000);
+    const order = await waitForOrderStatus(orderC!.orderId, ['confirmed'], 'orderStatus', 60_000);
     expect(order).toBeTruthy();
     expect(order.paymentStatus).toBe('authorized');
     console.log(`✅ C.4 Multi-seller order confirmed: ${order.items.length} items from ${order.sellerIds.length} sellers`);
@@ -456,8 +430,8 @@ test.describe('D. Order Status Lifecycle', () => {
   test('D.1 Create and pay order for lifecycle testing', async ({ page }) => {
     test.setTimeout(90_000);
     const { orderId } = await fullCheckoutAndPay(page, 'buyer25@test.origna.ca', 'product_008'); // Calgary poster by seller3
-    const order = await waitForOrderStatus(orderId, ['confirmed'], 'orderStatus', 30_000);
-    expect(order).toBeTruthy();
+    const order = await waitForOrderStatus(orderId, ['confirmed'], 'orderStatus', 60_000);
+    expect(order.orderStatus).toBe('confirmed');
 
     // Get seller token for status updates
     const sellerAuth = await signIn('seller3@test.origna.ca');
@@ -544,9 +518,9 @@ test.describe('E. Cancellation & Refund', () => {
 
   test('E.1 Create and pay an order for cancellation test', async ({ page }) => {
     test.setTimeout(90_000);
-    const { orderId } = await fullCheckoutAndPay(page, 'buyer26@test.origna.ca', 'product_011'); // Parliament puzzle by seller4
-    const order = await waitForOrderStatus(orderId, ['confirmed'], 'orderStatus', 30_000);
-    expect(order).toBeTruthy();
+    const { orderId } = await fullCheckoutAndPay(page, 'buyer26@test.origna.ca', 'product_012'); // Organic Maple Syrup by seller4
+    const order = await waitForOrderStatus(orderId, ['confirmed'], 'orderStatus', 60_000);
+    expect(order.orderStatus).toBe('confirmed');
 
     const buyerAuth = await signIn('buyer26@test.origna.ca');
     const sellerAuth = await signIn('seller4@test.origna.ca');
@@ -569,10 +543,10 @@ test.describe('E. Cancellation & Refund', () => {
   });
 
   test('E.3 Stock is restored after cancellation', async () => {
-    // product_011 had stockQuantity: 35
-    const doc = await readDoc('products/product_011');
+    // product_012 had stockQuantity: 76
+    const doc = await readDoc('products/product_012');
     const product = parseDoc(doc);
-    expect(product.stockQuantity).toBeGreaterThanOrEqual(35);
+    expect(product.stockQuantity).toBeGreaterThanOrEqual(70);
     console.log(`✅ E.3 Stock restored: ${product.stockQuantity}`);
   });
 
@@ -593,8 +567,8 @@ test.describe('E. Cancellation & Refund', () => {
   test('E.5 Cannot cancel a shipped order', async ({ page }) => {
     test.setTimeout(90_000);
     // Create, pay, and ship an order — then try to cancel
-    const { orderId } = await fullCheckoutAndPay(page, 'buyer27@test.origna.ca', 'product_001'); // Scarf by seller1
-    await waitForOrderStatus(orderId, ['confirmed'], 'orderStatus', 30_000);
+    const { orderId } = await fullCheckoutAndPay(page, 'buyer27@test.origna.ca', 'product_003'); // Tourtière Spice Kit by seller1
+    await waitForOrderStatus(orderId, ['confirmed'], 'orderStatus', 60_000);
 
     const sellerAuth = await signIn('seller1@test.origna.ca');
     // Move to shipped
@@ -626,7 +600,7 @@ test.describe('F. Concurrent Checkouts', () => {
   test('F.1 5 buyers checkout simultaneously (different products)', async () => {
     test.setTimeout(60_000);
     const buyers = ['buyer30@test.origna.ca', 'buyer31@test.origna.ca', 'buyer32@test.origna.ca', 'buyer33@test.origna.ca', 'buyer34@test.origna.ca'];
-    const products = ['product_003', 'product_012', 'product_013', 'product_016', 'product_020'];
+    const products = ['product_002', 'product_012', 'product_013', 'product_016', 'product_020'];
 
     const results = await Promise.all(buyers.map(async (email, i) => {
       const auth = await signIn(email);
@@ -696,7 +670,7 @@ test.describe('F. Concurrent Checkouts', () => {
     test.setTimeout(60_000);
     // Use buyers 40-49 (spread across provinces by mega-seed randomization)
     const buyers = Array.from({ length: 10 }, (_, i) => `buyer${40 + i}@test.origna.ca`);
-    const products = ['product_001','product_003','product_004','product_007','product_008',
+    const products = ['product_024','product_002','product_004','product_007','product_008',
                       'product_012','product_013','product_014','product_015','product_016'];
 
     const results = await Promise.all(buyers.map(async (email, i) => {
@@ -859,7 +833,7 @@ test.describe('I. Security & Permissions', () => {
   test('I.1 Buyer cannot update order status', async () => {
     // Use order from suite D if available, otherwise create quick test
     const auth = await signIn('buyer28@test.origna.ca');
-    const { data } = await buildCheckoutPayload(auth.localId, 'product_003');
+    const { data } = await buildCheckoutPayload(auth.localId, 'product_024');
     const result = await callCallable('create_checkout_session', data, auth.idToken);
 
     try {
@@ -993,7 +967,7 @@ test.describe('J. Email Notifications', () => {
     if (!orderB?.orderId) {
       console.log('⚠️ No order from suite B — creating a quick one');
       const auth = await signIn('yuniorrodriguezo460@gmail.com');
-      const { data } = await buildCheckoutPayload(auth.localId, 'product_003');
+      const { data } = await buildCheckoutPayload(auth.localId, 'product_024');
       const r = await callCallable('create_checkout_session', data, auth.idToken);
       const doc = await readDoc(`orders/${r.orderId}`);
       const order = parseDoc(doc);

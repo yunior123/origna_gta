@@ -57,9 +57,9 @@ export const TEST_ACCOUNTS = {
 
 // Products with good stock for parallel tests
 export const TEST_PRODUCTS = {
-  HIGH_STOCK: 'product_001',   // Quebec Scarf, ~25 stock
+  HIGH_STOCK: 'product_024',   // Budget Sticker Pack, ~500 stock, seller1
   DIGITAL: 'product_010',      // Digital product (if seeded)
-  SELLER2: 'product_003',      // Product from seller2
+  SELLER2: 'product_004',      // BC Cedar Incense Set, seller2
 };
 
 // ════════════════════════════════════════════════════════════════════
@@ -256,7 +256,7 @@ export async function createTestUser(
     // User already exists — just sign in
     if (signUpData.error.message?.includes('EMAIL_EXISTS')) {
       const authData = await signIn(email, password);
-      return { uid: authData.localId, idToken: authData.idToken, ...authData };
+      return { ...authData, uid: authData.localId };
     }
     throw new Error(`createTestUser: ${signUpData.error.message}`);
   }
@@ -334,8 +334,35 @@ export async function callOk(fn: string, data: any, token: string): Promise<any>
 }
 
 /**
+ * Normalize a Firebase/gRPC error status to a Firebase callable error code.
+ * Firebase Functions Emulator returns { status: "PERMISSION_DENIED" } (gRPC style)
+ * but tests expect { code: "permission-denied" } (Firebase SDK style).
+ */
+function normalizeErrorCode(error: any): { code: string; message: string } {
+  const STATUS_TO_CODE: Record<string, string> = {
+    'PERMISSION_DENIED': 'permission-denied',
+    'FAILED_PRECONDITION': 'failed-precondition',
+    'NOT_FOUND': 'not-found',
+    'UNAUTHENTICATED': 'unauthenticated',
+    'INVALID_ARGUMENT': 'invalid-argument',
+    'ALREADY_EXISTS': 'already-exists',
+    'RESOURCE_EXHAUSTED': 'resource-exhausted',
+    'CANCELLED': 'cancelled',
+    'UNAVAILABLE': 'unavailable',
+    'INTERNAL': 'internal',
+    'DEADLINE_EXCEEDED': 'deadline-exceeded',
+    'UNIMPLEMENTED': 'unimplemented',
+    'OUT_OF_RANGE': 'out-of-range',
+    'DATA_LOSS': 'data-loss',
+    'ABORTED': 'aborted',
+  };
+  const code = error.code || STATUS_TO_CODE[error.status] || error.status?.toLowerCase()?.replace(/_/g, '-') || 'unknown';
+  return { code, message: error.message || error.details || '' };
+}
+
+/**
  * Call a callable function expecting it to fail.
- * @returns The error object { code, message }
+ * @returns The error object { code, message } — code is always Firebase-style (e.g. "permission-denied")
  */
 export async function callExpectError(
   fn: string,
@@ -343,8 +370,8 @@ export async function callExpectError(
   token: string
 ): Promise<{ code: string; message: string }> {
   const body = await callCallable(fn, data, token);
-  if (body.error) return body.error;
-  if (body.result?.error) return body.result.error;
+  if (body.error) return normalizeErrorCode(body.error);
+  if (body.result?.error) return normalizeErrorCode(body.result.error);
   return {
     code: 'unexpected-success',
     message: `Expected ${fn} to fail but it succeeded: ${JSON.stringify(body)}`,
@@ -636,23 +663,27 @@ export async function waitForOrderStatus(
   orderId: string,
   targetStatuses: string[],
   fieldOrMaxMs: string | number = 'orderStatus',
-  maxWaitMs = 30_000
+  maxWaitMs = 60_000
 ): Promise<any> {
   const field = typeof fieldOrMaxMs === 'string' ? fieldOrMaxMs : 'orderStatus';
   const timeout = typeof fieldOrMaxMs === 'number' ? fieldOrMaxMs : maxWaitMs;
 
   const start = Date.now();
+  let lastOrder: any = null;
   while (Date.now() - start < timeout) {
     const doc = await readDoc(`orders/${orderId}`);
     if (doc) {
       const order = parseDoc(doc);
+      lastOrder = order;
       if (order && targetStatuses.includes(order[field])) return order;
     }
     await new Promise(r => setTimeout(r, 2_000));
   }
-  // Return last state even if target not reached
-  const doc = await readDoc(`orders/${orderId}`);
-  return doc ? parseDoc(doc) : null;
+  // Throw on timeout — callers must handle this explicitly
+  const currentStatus = lastOrder ? lastOrder[field] : 'unknown';
+  throw new Error(
+    `waitForOrderStatus timeout: order ${orderId} expected ${field} in [${targetStatuses}] but got "${currentStatus}" after ${timeout}ms`
+  );
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -686,16 +717,133 @@ export async function fillStripeCheckout(
   // Fill email if visible (Stripe Checkout may or may not show this)
   const emailInput = page.locator('#email, input[name="email"]').first();
   if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await emailInput.fill(email);
-    await page.waitForTimeout(500);
+    // Use a random email that Stripe Link won't recognize
+    // Stripe Link intercepts known emails and shows SMS verification, blocking the form
+    const safeEmail = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@origna-test.ca`;
+    await emailInput.fill(safeEmail);
+    await page.waitForTimeout(1_500);
+    
+    // Check if Stripe Link SMS verification appeared — if so, dismiss it
+    const smsInput = page.locator('[data-testid="sms-code-input-0"]').first();
+    const smsVisible = await smsInput.isVisible({ timeout: 3_000 }).catch(() => false);
+    if (smsVisible) {
+      console.log('⚠️ Stripe Link SMS verification detected — dismissing...');
+      // Try dismiss buttons for Stripe Link
+      const dismissSelectors = [
+        'button:has-text("Pay another way")',
+        'button:has-text("Not now")',
+        'button:has-text("Cancel")',
+        '[data-testid="link-dismiss"]',
+        '[aria-label="Close"]',
+        'button:has-text("Send code to email instead")',
+      ];
+      for (const sel of dismissSelectors) {
+        const el = page.locator(sel).first();
+        if (await el.isVisible({ timeout: 1_000 }).catch(() => false)) {
+          console.log(`   → Clicking: ${sel}`);
+          await el.click().catch(() => {});
+          await page.waitForTimeout(1_500);
+          break;
+        }
+      }
+      // If still on SMS screen, navigate back
+      const stillSms = await page.locator('[data-testid="sms-code-input-0"]').first().isVisible({ timeout: 2_000 }).catch(() => false);
+      if (stillSms) {
+        console.log('   → SMS screen persists — pressing Escape and going back');
+        await page.keyboard.press('Escape').catch(() => {});
+        await page.waitForTimeout(1_000);
+        await page.goBack().catch(() => {});
+        await page.waitForTimeout(2_000);
+        // Re-navigate to checkout URL
+        const url = page.url();
+        if (url.includes('checkout.stripe.com')) {
+          await page.reload();
+          await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
+        }
+        // Re-fill with safe email
+        const emailField2 = page.locator('#email, input[name="email"]').first();
+        if (await emailField2.isVisible({ timeout: 5_000 }).catch(() => false)) {
+          await emailField2.fill(safeEmail);
+          await page.waitForTimeout(1_500);
+        }
+      }
+    }
+    
     // After filling email, Stripe may show a Link modal — dismiss it
     await dismissStripeModals(page);
   }
 
-  // Fill card number
+  // Stripe's new checkout UI may require selecting "Card" payment method
+  // The card fields are hidden behind a radio/tab/accordion until "Card" is clicked
   const cardField = page.locator('#cardNumber, input[name="cardNumber"]').first();
-  await cardField.waitFor({ state: 'visible', timeout: 15_000 });
-  await cardField.fill(card.number);
+  const cardVisible = await cardField.isVisible({ timeout: 3_000 }).catch(() => false);
+  if (!cardVisible) {
+    // Click the Card radio/accordion to expand card form
+    // Stripe 2025+ uses radio button: #payment-method-accordion-item-title-card
+    const cardRadio = page.locator('#payment-method-accordion-item-title-card').first();
+    if (await cardRadio.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      console.log('   → Clicking Card radio accordion item');
+      // Click the label/parent rather than the radio itself for better interaction
+      const cardLabel = page.locator('label[for="payment-method-accordion-item-title-card"], #payment-method-accordion-item-title-card').first();
+      await cardLabel.click({ force: true }).catch(() => {});
+      await page.waitForTimeout(3_000);
+    } else {
+      // Fallback to other selectors
+      const cardSelectors = [
+        '[data-testid="card-accordion-item-button"]',
+        'button:has-text("Card")',
+        'button:has-text("Pay with card")',
+        '[data-testid="card-tab"]',
+        'input[value="card"]',
+        'div[data-testid="card-accordion-item"]',
+        'text=Card >> nth=0',
+      ];
+      for (const sel of cardSelectors) {
+        const el = page.locator(sel).first();
+        if (await el.isVisible({ timeout: 1_500 }).catch(() => false)) {
+          console.log(`   → Clicking Card payment method: ${sel}`);
+          await el.click().catch(() => {});
+          await page.waitForTimeout(2_000);
+          break;
+        }
+      }
+    }
+    // Try dismiss modals again after clicking
+    await dismissStripeModals(page);
+  }
+
+  // Wait for card number field to become visible (with extended timeout)
+  const cardReady = await cardField.isVisible({ timeout: 20_000 }).catch(() => false);
+  if (!cardReady) {
+    // Fallback: try iframe-based Stripe Elements (PCI compliance iframes)
+    const allFrames = page.frames();
+    let foundInFrame = false;
+    for (let i = 0; i < allFrames.length; i++) {
+      const f = allFrames[i];
+      try {
+        const cardInput = f.locator('input[name="cardnumber"], input[autocomplete="cc-number"], input[name="number"], input[data-elements-stable-field-name="cardNumber"]').first();
+        if (await cardInput.isVisible({ timeout: 2_000 }).catch(() => false)) {
+          await cardInput.fill(card.number);
+          // Find expiry and CVC in sibling frames
+          for (let j = 0; j < allFrames.length; j++) {
+            if (j === i) continue;
+            const expInput = allFrames[j].locator('input[name="exp-date"], input[autocomplete="cc-exp"]').first();
+            if (await expInput.isVisible({ timeout: 1_000 }).catch(() => false)) await expInput.fill(card.exp);
+            const cvcInput = allFrames[j].locator('input[name="cvc"], input[autocomplete="cc-csc"]').first();
+            if (await cvcInput.isVisible({ timeout: 1_000 }).catch(() => false)) await cvcInput.fill(card.cvc);
+          }
+          foundInFrame = true;
+          return await submitStripePayment(page, card);
+        }
+      } catch { /* frame not accessible */ }
+    }
+    if (!foundInFrame) {
+      await page.screenshot({ path: '/tmp/stripe-checkout-debug.png', fullPage: true }).catch(() => {});
+      throw new Error(`Stripe card field not found. URL: ${page.url()}`);
+    }
+  } else {
+    await cardField.fill(card.number);
+  }
 
   // Fill expiry
   await page.locator('#cardExpiry, input[name="cardExpiry"]').first().fill(card.exp);
@@ -724,7 +872,46 @@ export async function fillStripeCheckout(
   // Dismiss any modals that appeared during form fill
   await dismissStripeModals(page);
 
-  // Click Pay button
+  // Click Pay button and wait for Stripe to process the payment
+  const payBtn = page.locator(
+    '[data-testid="hosted-payment-submit-button"], .SubmitButton, button[type="submit"]'
+  ).first();
+  await payBtn.waitFor({ state: 'visible', timeout: 10_000 });
+  await payBtn.click();
+
+  // Wait for navigation away from Stripe Checkout (payment processed + redirect)
+  // This is CRITICAL — without this, the webhook may never fire
+  try {
+    await page.waitForURL(
+      (url: URL) => !url.hostname.includes('checkout.stripe.com'),
+      { timeout: 45_000 }
+    );
+  } catch {
+    // Check if there's an error on the Stripe page
+    const errorEl = page.locator('.FieldError, [data-testid="error-message"], .p-Alert, [role="alert"]').first();
+    const hasError = await errorEl.isVisible({ timeout: 2_000 }).catch(() => false);
+    if (hasError) {
+      const text = await errorEl.textContent().catch(() => 'unknown');
+      throw new Error(`Stripe payment failed on checkout page: ${text}`);
+    }
+    console.log('⚠️ Still on Stripe Checkout after 45s — payment may still be processing');
+  }
+}
+
+/**
+ * Submit Stripe payment — fill name, postal, and click Pay.
+ * Used when card details were filled through iframe path.
+ */
+async function submitStripePayment(page: any, card: any): Promise<void> {
+  const nameField = page.locator('#billingName, input[name="billingName"]').first();
+  if (await nameField.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await nameField.fill(card.name);
+  }
+  const postalField = page.locator('#billingPostalCode, input[name="billingPostalCode"]').first();
+  if (await postalField.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await postalField.fill(card.postalCode);
+  }
+  await dismissStripeModals(page);
   const payBtn = page.locator(
     '[data-testid="hosted-payment-submit-button"], .SubmitButton, button[type="submit"]'
   ).first();
@@ -740,7 +927,7 @@ export async function fillStripeCheckout(
  * - 3DS authentication iframe (approve automatically)
  * - CAPTCHA / phone verification
  */
-async function dismissStripeModals(page: any): Promise<void> {
+export async function dismissStripeModals(page: any): Promise<void> {
   // 1. Dismiss "Link" login popup — click "Not now" or close button
   const linkDismiss = page.locator(
     'button:has-text("Not now"), ' +
@@ -826,4 +1013,49 @@ export async function fullMultiSellerCheckoutAndPay(
   await page.waitForTimeout(5_000);
 
   return { orderId: result.orderId };
+}
+
+// ════════════════════════════════════════════════════════════════════
+// CONVENIENCE HELPERS — Common patterns used across spec files
+// ════════════════════════════════════════════════════════════════════
+
+/** Read and parse an order document. Returns null if not found. */
+export async function getOrder(orderId: string): Promise<any> {
+  const doc = await readDoc(`orders/${orderId}`);
+  return doc ? parseDoc(doc) : null;
+}
+
+/** Read product stock quantity. Returns 0 if product not found. */
+export async function getProductStock(productId: string): Promise<number> {
+  const doc = await readDoc(`products/${productId}`);
+  return doc ? (parseDoc(doc)?.stockQuantity ?? 0) : 0;
+}
+
+/** Generate a unique suffix for parallel test isolation */
+export function uid(): string {
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * Run a Firestore structured query (REST API).
+ * @param structuredQuery — Firestore REST structured query object
+ * @returns Array of parsed documents
+ */
+export async function queryFirestore(structuredQuery: any): Promise<any[]> {
+  const res = await fetch(
+    `${FIRESTORE_EMULATOR}/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer owner' },
+      body: JSON.stringify({ structuredQuery }),
+    }
+  );
+  if (!res.ok) return [];
+  const results = await res.json();
+  return (Array.isArray(results) ? results : [])
+    .filter((r: any) => r.document)
+    .map((r: any) => ({
+      id: r.document.name?.split('/').pop(),
+      ...parseDoc(r.document),
+    }));
 }

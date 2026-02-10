@@ -21,6 +21,7 @@ import {
   checkInfrastructure, signIn,
   callOk as callCallable, // This file expects callCallable to THROW on error
   readDoc, writeDoc, parseDoc, waitForOrderStatus,
+  dismissStripeModals,
   AUTH_EMULATOR, PROJECT_ID, STRIPE_CARD,
 } from './api-helpers';
 
@@ -114,13 +115,62 @@ async function fullCheckoutAndPay(
   await page.goto(result.checkoutUrl);
   await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
 
+  // Dismiss Stripe Link modal that may block the form
+  await dismissStripeModals(page);
+
   const emailInput = page.locator('#email, input[name="email"]').first();
   if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await emailInput.fill(buyerEmail);
-    await page.waitForTimeout(500);
+    // Use a random email to avoid Stripe Link SMS verification
+    const safeEmail = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@origna-test.ca`;
+    await emailInput.fill(safeEmail);
+    await page.waitForTimeout(1_500);
+    // Check if Stripe Link SMS verification appeared — if so, dismiss it
+    const smsInput = page.locator('[data-testid="sms-code-input-0"]').first();
+    if (await smsInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      console.log('⚠️ Stripe Link SMS verification on admin-email checkout — escaping');
+      await page.keyboard.press('Escape').catch(() => {});
+      await page.waitForTimeout(1_000);
+      const paBtn = page.locator('button:has-text("Pay another way")').first();
+      if (await paBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+        await paBtn.click().catch(() => {});
+        await page.waitForTimeout(1_500);
+      }
+    }
+    // Dismiss modal that may appear after entering email
+    await dismissStripeModals(page);
   }
+
+  // Stripe's new checkout UI may require selecting "Card" payment method
   const cardField = page.locator('#cardNumber, input[name="cardNumber"]').first();
-  await cardField.waitFor({ state: 'visible', timeout: 15_000 });
+  const cardVisible = await cardField.isVisible({ timeout: 3_000 }).catch(() => false);
+  if (!cardVisible) {
+    // Click the Card radio/accordion to expand card form
+    const cardRadio = page.locator('#payment-method-accordion-item-title-card').first();
+    if (await cardRadio.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      console.log('   → Clicking Card radio accordion item');
+      await cardRadio.click({ force: true }).catch(() => {});
+      await page.waitForTimeout(3_000);
+    } else {
+      const cardSelectors = [
+        '[data-testid="card-accordion-item-button"]',
+        'button:has-text("Card")',
+        'button:has-text("Pay with card")',
+        '[data-testid="card-tab"]',
+        'text=Card >> nth=0',
+      ];
+      for (const sel of cardSelectors) {
+        const el = page.locator(sel).first();
+        if (await el.isVisible({ timeout: 1_500 }).catch(() => false)) {
+          await el.click().catch(() => {});
+          await page.waitForTimeout(2_000);
+          break;
+        }
+      }
+    }
+    await dismissStripeModals(page);
+  }
+
+  await cardField.waitFor({ state: 'visible', timeout: 30_000 });
   await cardField.fill(STRIPE_CARD.number);
   await page.locator('#cardExpiry, input[name="cardExpiry"]').first().fill(STRIPE_CARD.exp);
   await page.locator('#cardCvc, input[name="cardCvc"]').first().fill(STRIPE_CARD.cvc);
@@ -135,8 +185,19 @@ async function fullCheckoutAndPay(
     '[data-testid="hosted-payment-submit-button"], .SubmitButton, button[type="submit"]'
   ).first();
   await payBtn.click();
-  console.log('      ⏳ Payment submitted — waiting for webhook…');
-  await page.waitForTimeout(8_000);
+  console.log('      ⏳ Payment submitted — waiting for redirect…');
+
+  // Wait for navigation away from Stripe Checkout (payment processed)
+  try {
+    await page.waitForURL(
+      (url: URL) => !url.hostname.includes('checkout.stripe.com'),
+      { timeout: 45_000 }
+    );
+    console.log('      ✅ Stripe redirect completed');
+  } catch {
+    console.log('      ⚠️ Still on Stripe after 45s — continuing anyway');
+  }
+  await page.waitForTimeout(3_000);
 
   // Wait for confirmation (use 4-arg form: orderId, targets, field, maxMs)
   const order = await waitForOrderStatus(
@@ -253,6 +314,7 @@ test.describe.serial('Real Email Verification', () => {
   });
 
   test('1 · Gmail BUYER email — Admin buys Quebec Scarf → yr62813@gmail.com', async ({ page }) => {
+    test.setTimeout(180_000);
     console.log('═══════════════════════════════════════════════════');
     console.log('📧 TEST 1: BUYER confirmation → Gmail');
     console.log('═══════════════════════════════════════════════════');
@@ -262,7 +324,7 @@ test.describe.serial('Real Email Verification', () => {
 
     const { orderId, product } = await fullCheckoutAndPay(
       page, GMAIL_EMAIL, auth.localId, auth.idToken,
-      'product_001', // Handmade Quebec Scarf ($45.99, seller1 QC)
+      'product_024', // Artisanal Maple Syrup ($34.99, seller1 QC, high stock)
       'Admin Yunior'
     );
 
@@ -279,6 +341,7 @@ test.describe.serial('Real Email Verification', () => {
   // ════════════════════════════════════════════════════════════════════
 
   test('2 · Yahoo BUYER email — Yahoo buys Beef Jerky → yuniorrodriguezo4601@yahoo.com', async ({ page }) => {
+    test.setTimeout(180_000);
     console.log('═══════════════════════════════════════════════════');
     console.log('📧 TEST 2: BUYER confirmation → Yahoo');
     console.log('═══════════════════════════════════════════════════');

@@ -409,6 +409,20 @@ def on_product_created(event: firestore_fn.Event) -> None:
     # ── SECURITY: SERVER-SIDE VALIDATION (products written from Flutter) ──
     from utils.helpers import sanitized_text
 
+    # CRITICAL: Check if seller is suspended — deactivate product immediately
+    seller_id = product_data.get(Fields.SELLER_ID)
+    if seller_id:
+        seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
+        if seller_doc.exists:
+            seller_data = seller_doc.to_dict()
+            if seller_data.get(Fields.SUSPENDED, False):
+                print(f'SECURITY: Product {product_id} from suspended seller {seller_id} — deactivating')
+                get_db().collection(Collections.PRODUCTS).document(product_id).update({
+                    Fields.IS_ACTIVE: False,
+                    Fields.DEACTIVATION_REASON: 'Seller is suspended',
+                })
+                return
+
     # CRITICAL: Validate price > 0 and <= 100000 CAD
     price = product_data.get(Fields.PRICE)
     if price is None or not isinstance(price, (int, float)) or price <= 0 or price > 100000:
@@ -554,6 +568,20 @@ def on_product_updated(event: firestore_fn.Event) -> None:
 
     # ── SERVER-SIDE VALIDATION on update (same as on_product_created) ──
     from utils.helpers import sanitized_text
+
+    # CRITICAL: Check if seller is suspended — deactivate product immediately
+    seller_id = product_data.get(Fields.SELLER_ID)
+    if seller_id:
+        seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
+        if seller_doc.exists:
+            seller_data = seller_doc.to_dict()
+            if seller_data.get(Fields.SUSPENDED, False):
+                print(f'SECURITY: Product {product_id} from suspended seller {seller_id} — deactivating')
+                get_db().collection(Collections.PRODUCTS).document(product_id).update({
+                    Fields.IS_ACTIVE: False,
+                    Fields.DEACTIVATION_REASON: 'Seller is suspended',
+                })
+                return
 
     # Validate price > 0 and <= 100000 CAD
     price = product_data.get(Fields.PRICE)

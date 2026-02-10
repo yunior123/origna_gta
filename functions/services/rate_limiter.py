@@ -2,11 +2,16 @@
 Rate Limiter for Cloud Functions
 Protects against abuse and DDoS
 """
+import os
 from datetime import UTC, datetime, timedelta
 
 from firebase_admin import firestore
 
 from schema_constants import Collections, Fields
+
+# In emulator mode, relax rate limits 100x for E2E test throughput
+_IS_EMULATOR = os.environ.get('FUNCTIONS_EMULATOR', 'false').lower() == 'true'
+_EMULATOR_RATE_MULTIPLIER = 100 if _IS_EMULATOR else 1
 
 
 class RateLimiter:
@@ -34,6 +39,9 @@ class RateLimiter:
         EDGE CASE FIX #4: Use Firestore transaction to prevent race conditions.
         Without transaction, concurrent requests could bypass rate limit.
         """
+        # In emulator mode, multiply max_requests to avoid test throttling
+        max_requests = max_requests * _EMULATOR_RATE_MULTIPLIER
+
         now = datetime.now(UTC).replace(tzinfo=None)
         window_start = now - timedelta(minutes=window_minutes)
 

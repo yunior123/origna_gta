@@ -599,7 +599,7 @@ abstract final class EmailConfig {
       'Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada';
 
   /// GST/HST Registration Number — REQUIRED on all receipts (Excise Tax Act)
-  static const gstHstNumber = '123456789RT0001'; // TODO: Replace with actual CRA-issued number
+  static const gstHstNumber = '708286364RC0001'; // TODO: safety 
 
   /// Unsubscribe URL — REQUIRED by CASL
   static const unsubscribeUrl = 'https://orignagta.ca/unsubscribe';
