@@ -112,7 +112,11 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                       spacing: 10,
                       children: ['Home', 'Work', 'Other'].map((label) {
                         final isSelected = state.selectedLabel == label;
-                        return ChoiceChip(
+                        return Semantics(
+                          button: true,
+                          label: 'chip-address-label-${label.toLowerCase()}',
+                          selected: isSelected,
+                          child: ChoiceChip(
                           label: Text(label),
                           selected: isSelected,
                           onSelected: (selected) => viewModel.setLabel(label),
@@ -130,6 +134,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                           ),
                           elevation: isSelected ? 2 : 0,
                           shadowColor: DesignTokens.primary.withValues(alpha: 0.3),
+                        ),
                         );
                       }).toList(),
                     ),
@@ -241,7 +246,10 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
 
                     const SizedBox(height: DesignTokens.spacing32),
 
-                    ModernButton(
+                    Semantics(
+                      button: true,
+                      label: 'btn-save-address',
+                      child: ModernButton(
                       label: state.isLoading ? 'Saving...' : 'Save Address',
                       icon: Icons.save_outlined,
                       isLoading: state.isLoading,
@@ -258,6 +266,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                                 );
                               }
                             },
+                    ),
                     ),
 
                     const SizedBox(height: DesignTokens.spacing32),

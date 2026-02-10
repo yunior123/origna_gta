@@ -59,7 +59,10 @@ class _AddressSection extends StatelessWidget {
                 ),
               ),
             ),
-            Material(
+            Semantics(
+              button: true,
+              label: 'btn-edit-address',
+              child: Material(
               color: Colors.transparent,
               child: InkWell(
                 onTap: () {
@@ -101,6 +104,7 @@ class _AddressSection extends StatelessWidget {
                   ),
                 ),
               ),
+            ),
             ),
           ],
         ),
@@ -219,11 +223,15 @@ class _CheckoutButton extends ConsumerWidget {
           ),
         ],
       ),
-      child: ModernButton(
+      child: Semantics(
+        button: true,
+        label: 'btn-place-order',
+        child: ModernButton(
         label: isProcessing ? 'Processing...' : 'Place Order',
         onPressed: isDisabled ? null : () => _startCheckout(context, ref),
         isLoading: isProcessing,
         icon: Icons.payment,
+      ),
       ),
     );
   }
@@ -581,7 +589,10 @@ class _DeliveryOptionsSection extends ConsumerWidget {
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: GestureDetector(
+            child: Semantics(
+              button: true,
+              label: 'btn-delivery-speed-${speed.name}',
+              child: GestureDetector(
               onTap: isAvailable
                   ? () => ref
                         .read(checkoutStateProvider.notifier)
@@ -719,6 +730,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                 ),
               ),
             ),
+            ),
           );
         }),
       ],
@@ -847,7 +859,10 @@ class _NoAddressView extends StatelessWidget {
               style: TextStyle(color: Colors.grey[600]),
             ),
             const SizedBox(height: 32),
-            ElevatedButton.icon(
+            Semantics(
+              button: true,
+              label: 'btn-add-address',
+              child: ElevatedButton.icon(
               onPressed: () {
                 Navigator.push(
                   context,
@@ -866,6 +881,7 @@ class _NoAddressView extends StatelessWidget {
                   vertical: 16,
                 ),
               ),
+            ),
             ),
           ],
         ),
@@ -1163,7 +1179,10 @@ class _TermsText extends ConsumerWidget {
             SizedBox(
               height: 20,
               width: 20,
-              child: Checkbox(
+              child: Semantics(
+                label: 'chk-terms-accepted',
+                checked: termsAccepted,
+                child: Checkbox(
                 value: termsAccepted,
                 onChanged: (value) =>
                     ref.read(_termsAcceptedProvider.notifier).state =
@@ -1173,6 +1192,7 @@ class _TermsText extends ConsumerWidget {
                       ? Colors.grey.shade400
                       : Colors.red.shade300,
                 ),
+              ),
               ),
             ),
             const SizedBox(width: 12),
@@ -1187,7 +1207,10 @@ class _TermsText extends ConsumerWidget {
                   children: [
                     const TextSpan(text: 'I agree to the '),
                     WidgetSpan(
-                      child: GestureDetector(
+                      child: Semantics(
+                        link: true,
+                        label: 'link-terms-conditions',
+                        child: GestureDetector(
                         onTap: () => openTermsOfService(context),
                         child: Text(
                           'Terms & Conditions',
@@ -1200,10 +1223,14 @@ class _TermsText extends ConsumerWidget {
                           ),
                         ),
                       ),
+                      ),
                     ),
                     const TextSpan(text: ' and '),
                     WidgetSpan(
-                      child: GestureDetector(
+                      child: Semantics(
+                        link: true,
+                        label: 'link-privacy-policy',
+                        child: GestureDetector(
                         onTap: () => openPrivacyPolicy(context),
                         child: Text(
                           'Privacy Policy',
@@ -1215,6 +1242,7 @@ class _TermsText extends ConsumerWidget {
                             decorationColor: const Color(0xFF667EEA),
                           ),
                         ),
+                      ),
                       ),
                     ),
                   ],

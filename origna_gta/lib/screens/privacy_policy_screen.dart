@@ -128,6 +128,44 @@ For privacy-related questions, data requests, or concerns:
 - Website: orignaventures.ca
 - Response time: Within 24 business hours (Mon-Fri, 9 AM - 6 PM EST).
 
+17. Privacy Officer (Quebec Law 25 Compliance)
+As required by Quebec's Law 25 (Act respecting the protection of personal information in the private sector), Origna Ventures Inc. has designated a Privacy Officer responsible for ensuring compliance with all applicable Canadian privacy legislation:
+- Privacy Officer: Yunior Rodriguez Osorio
+- Email: privacy@orignaventures.ca
+- Mailing Address: Origna Ventures Inc., 200 University Ave W, Suite 300, Waterloo, ON N2L 3G1, Canada
+The Privacy Officer is responsible for:
+- Overseeing compliance with PIPEDA, Quebec Law 25, and all provincial privacy legislation.
+- Conducting Privacy Impact Assessments (PIAs) for new features and data processing activities.
+- Responding to data access, correction, and deletion requests within 30 days.
+- Managing data breach notifications and reporting to the Office of the Privacy Commissioner of Canada.
+- Maintaining a register of personal information incidents (as required by Law 25 since September 2023).
+
+18. Cross-Border Data Transfers
+Origna GTA uses cloud services that may process or store data outside of Canada:
+- Firebase (Google Cloud): Data is stored in Google Cloud's northamerica-northeast1 (Montreal) region where available. Some processing may occur in other Google data centers globally.
+- Stripe: Payment data is processed by Stripe, Inc. (USA) under their PIPEDA-compliant data processing agreement.
+- Algolia: Search indexing may occur on servers located in the United States and Europe.
+- Cloudflare R2: Image storage may be distributed across Cloudflare's global network.
+- Mailjet: Email delivery is processed by Mailjet SAS (France/EU).
+By using Origna GTA, you consent to the transfer of your personal information to these third-party processors. All transfers are governed by contractual data protection agreements that provide a level of protection equivalent to Canadian privacy law. You may withdraw this consent at any time by contacting privacy@orignaventures.ca, though this may limit your ability to use certain platform features.
+
+19. Data Breach Response Plan (PIPEDA Compliance)
+In accordance with PIPEDA's mandatory data breach notification requirements (in effect since November 1, 2018), Origna Ventures Inc. maintains a Data Breach Response Plan:
+- Detection & Containment: We monitor for security incidents 24/7 via Sentry and Firebase security alerts. Upon detection, the breach is immediately contained and assessed.
+- Risk Assessment: Within 24 hours of detection, we assess whether the breach creates a "real risk of significant harm" (RROSH) to any individual, considering sensitivity of data, probability of misuse, and potential impact.
+- Notification to Commissioner: If RROSH is determined, we notify the Office of the Privacy Commissioner of Canada (OPC) as soon as feasible, including: description of the breach, affected data types, estimated number of individuals, steps taken, and contact information.
+- Notification to Affected Individuals: If RROSH is determined, we notify affected individuals as soon as feasible via email and in-app notification, including: description of the breach, data types involved, steps we are taking, steps the individual can take, and our Privacy Officer's contact information.
+- Record Keeping: We maintain a record of every breach of security safeguards (regardless of whether RROSH exists) for a minimum of 24 months, as required by PIPEDA.
+- Quebec Law 25: For Quebec residents, we additionally report to the Commission d'accès à l'information du Québec (CAI) and maintain an incident register accessible upon request.
+
+20. Consent Tracking
+We maintain detailed records of consent as required by CASL and Quebec Law 25:
+- The date and time consent was given.
+- The method by which consent was obtained (e.g., account signup, checkbox, double opt-in).
+- The version of the privacy policy and terms of service that was accepted.
+- Your marketing communication preferences and any changes to them.
+You may withdraw consent at any time by updating your notification preferences in your account settings or contacting support@orignaventures.ca.
+
 Origna GTA's use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements.
 ''';
 

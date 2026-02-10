@@ -439,7 +439,7 @@ double getTaxRate(String province) {
   final rates = provinceTaxRates[province];
   if (rates == null) return 0.13; // Default: Ontario HST
   // Round to 5 decimals to avoid IEEE 754 floating-point artifacts while preserving QC's 14.975%
-  final total = rates.values.fold(0.0, (sum, rate) => sum + rate);
+  final total = rates.values.fold(0.0, (acc, rate) => acc + rate);
   return double.parse(total.toStringAsFixed(5));
 }
 

@@ -17,49 +17,16 @@
  *   5. npx playwright test admin-email-test.spec.ts --reporter=list
  */
 import { test, expect } from '@playwright/test';
+import {
+  checkInfrastructure, signIn,
+  callOk as callCallable, // This file expects callCallable to THROW on error
+  readDoc, writeDoc, parseDoc, waitForOrderStatus,
+  AUTH_EMULATOR, PROJECT_ID, STRIPE_CARD,
+} from './api-helpers';
 
 // ════════════════════════════════════════════════════════════════════
-// CONFIG
+// CONFIG — File-specific accounts (these are REAL emails, not test accounts)
 // ════════════════════════════════════════════════════════════════════
-
-const AUTH_EMULATOR   = 'http://localhost:9099';
-const FIRESTORE_EMU   = 'http://localhost:8080';
-const FUNCTIONS_EMU   = 'http://localhost:5001';
-const PROJECT_ID      = 'orignagta';
-
-// Infrastructure availability cache
-let infraAvailable: {
-  auth: boolean | null;
-  firestore: boolean | null;
-  functions: boolean | null;
-} = {
-  auth: null,
-  firestore: null,
-  functions: null,
-};
-
-/** Check if infrastructure is available */
-async function checkInfrastructure(request: any): Promise<typeof infraAvailable> {
-  if (infraAvailable.auth === null) {
-    const [authRes, firestoreRes, functionsRes] = await Promise.all([
-      request.get(`${AUTH_EMULATOR}/`).catch(() => null),
-      request.get(`${FIRESTORE_EMU}/`).catch(() => null),
-      request.get(`${FUNCTIONS_EMU}/`).catch(() => null),
-    ]);
-    infraAvailable = {
-      auth: !!authRes,
-      firestore: !!firestoreRes,
-      functions: !!functionsRes,
-    };
-    if (Object.values(infraAvailable).some(v => !v)) {
-      console.log('⚠️  Some infrastructure is unavailable:');
-      console.log(`   Auth: ${infraAvailable.auth ? '✅' : '❌'}`);
-      console.log(`   Firestore: ${infraAvailable.firestore ? '✅' : '❌'}`);
-      console.log(`   Functions: ${infraAvailable.functions ? '✅' : '❌'}`);
-    }
-  }
-  return infraAvailable;
-}
 
 const GMAIL_EMAIL    = 'yr62813@gmail.com';
 const GMAIL_PASSWORD = '960227Y#y';
@@ -67,30 +34,9 @@ const GMAIL_PASSWORD = '960227Y#y';
 const YAHOO_EMAIL    = 'yuniorrodriguezo4601@yahoo.com';
 const YAHOO_PASSWORD = 'TestYahoo123!';
 
-const STRIPE_CARD = {
-  number: '4242424242424242', exp: '12/30', cvc: '123',
-  name: 'Test Buyer', postalCode: 'M5V 3A8',
-};
-
 // ════════════════════════════════════════════════════════════════════
-// HELPERS
+// FILE-SPECIFIC HELPERS (unique to admin-email tests)
 // ════════════════════════════════════════════════════════════════════
-
-function toFirestoreFields(obj: any): any {
-  const f: any = {};
-  for (const [k, v] of Object.entries(obj)) f[k] = toFsVal(v);
-  return f;
-}
-function toFsVal(v: any): any {
-  if (v === null || v === undefined) return { nullValue: null };
-  if (typeof v === 'string') return { stringValue: v };
-  if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
-  if (typeof v === 'boolean') return { booleanValue: v };
-  if (v instanceof Date) return { timestampValue: v.toISOString() };
-  if (Array.isArray(v)) return { arrayValue: { values: v.map(toFsVal) } };
-  if (typeof v === 'object') return { mapValue: { fields: toFirestoreFields(v) } };
-  return { stringValue: String(v) };
-}
 
 /** Create a user in the Auth emulator and return the UID */
 async function createAuthUser(email: string, password: string, displayName: string): Promise<string> {
@@ -115,98 +61,6 @@ async function createAuthUser(email: string, password: string, displayName: stri
     body: JSON.stringify({ localId: uid, emailVerified: true }),
   });
   return uid;
-}
-
-/** Write / merge a Firestore document */
-async function writeDoc(path: string, data: any): Promise<boolean> {
-  const fields = toFirestoreFields(data);
-  const fieldPaths = Object.keys(data).map(k => `updateMask.fieldPaths=${k}`).join('&');
-  const res = await fetch(
-    `${FIRESTORE_EMU}/v1/projects/${PROJECT_ID}/databases/(default)/documents/${path}?${fieldPaths}`,
-    { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer owner' },
-      body: JSON.stringify({ fields }) }
-  );
-  return res.ok;
-}
-
-async function signIn(email: string, password: string) {
-  const res = await fetch(
-    `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, returnSecureToken: true }) }
-  );
-  const data = await res.json();
-  if (data.error) throw new Error(`Sign-in failed: ${data.error.message}`);
-  // Force email verified
-  if (data.idToken) {
-    const upd = await fetch(
-      `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:update?key=fake-api-key`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: data.idToken, emailVerified: true, returnSecureToken: true }) }
-    );
-    const u = await upd.json();
-    if (u.idToken) { data.idToken = u.idToken; data.refreshToken = u.refreshToken || data.refreshToken; }
-  }
-  return data;
-}
-
-async function callCallable(fn: string, payload: any, token: string) {
-  const res = await fetch(`${FUNCTIONS_EMU}/${PROJECT_ID}/us-central1/${fn}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ data: payload }),
-  });
-  const body = await res.json();
-  if (body.error) throw new Error(`${fn}: ${body.error.message || JSON.stringify(body.error)}`);
-  return body.result || body;
-}
-
-async function readDoc(path: string) {
-  const res = await fetch(
-    `${FIRESTORE_EMU}/v1/projects/${PROJECT_ID}/databases/(default)/documents/${path}`,
-    { headers: { Authorization: 'Bearer owner' } }
-  );
-  if (!res.ok) return null;
-  return res.json();
-}
-
-function parseVal(v: any): any {
-  if (v.stringValue !== undefined) return v.stringValue;
-  if (v.integerValue !== undefined) return parseInt(v.integerValue);
-  if (v.doubleValue !== undefined) return v.doubleValue;
-  if (v.booleanValue !== undefined) return v.booleanValue;
-  if (v.nullValue !== undefined) return null;
-  if (v.timestampValue) return v.timestampValue;
-  if (v.arrayValue) return (v.arrayValue.values || []).map(parseVal);
-  if (v.mapValue) {
-    const o: any = {};
-    for (const [k, val] of Object.entries(v.mapValue.fields || {})) o[k] = parseVal(val);
-    return o;
-  }
-  return v;
-}
-
-function parseDoc(doc: any): any {
-  if (!doc?.fields) return null;
-  const r: any = {};
-  for (const [k, v] of Object.entries(doc.fields)) r[k] = parseVal(v);
-  return r;
-}
-
-async function waitForOrderStatus(
-  orderId: string, targetStatuses: string[], maxWaitMs = 45_000
-): Promise<any> {
-  const start = Date.now();
-  while (Date.now() - start < maxWaitMs) {
-    const doc = await readDoc(`orders/${orderId}`);
-    if (doc) {
-      const order = parseDoc(doc);
-      if (targetStatuses.includes(order.orderStatus)) return order;
-    }
-    await new Promise(r => setTimeout(r, 2_000));
-  }
-  const doc = await readDoc(`orders/${orderId}`);
-  return doc ? parseDoc(doc) : null;
 }
 
 /** Reusable: checkout + pay on Stripe + wait for webhook confirmation */
@@ -284,10 +138,11 @@ async function fullCheckoutAndPay(
   console.log('      ⏳ Payment submitted — waiting for webhook…');
   await page.waitForTimeout(8_000);
 
-  // Wait for confirmation
+  // Wait for confirmation (use 4-arg form: orderId, targets, field, maxMs)
   const order = await waitForOrderStatus(
     result.orderId,
     ['confirmed', 'processing', 'payment_authorized'],
+    'orderStatus',
     45_000
   );
   expect(order).toBeTruthy();

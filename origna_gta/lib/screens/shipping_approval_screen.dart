@@ -367,7 +367,10 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                         borderRadius: BorderRadius.circular(DesignTokens.radius12),
                         border: Border.all(color: Colors.red[400]!.withValues(alpha: 0.4)),
                       ),
-                      child: Material(
+                      child: Semantics(
+                        button: true,
+                        label: 'btn-reject-cancel',
+                        child: Material(
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: () => _showRejectConfirmation(context),
@@ -383,11 +386,16 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                           ),
                         ),
                       ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ModernButton(onPressed: () => _handleApproval(true), label: 'Approve', icon: Icons.check_circle),
+                    child: Semantics(
+                      button: true,
+                      label: 'btn-approve-shipping',
+                      child: ModernButton(onPressed: () => _handleApproval(true), label: 'Approve', icon: Icons.check_circle),
+                    ),
                   ),
                 ],
               ),
@@ -451,7 +459,10 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             ),
             child: Material(
               color: Colors.transparent,
-              child: InkWell(
+              child: Semantics(
+                button: true,
+                label: 'btn-confirm-cancel-order',
+                child: InkWell(
                 onTap: () {
                   Navigator.pop(dialogContext);
                   _handleApproval(false);
@@ -465,6 +476,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   ),
                 ),
               ),
+            ),
             ),
           ),
         ],

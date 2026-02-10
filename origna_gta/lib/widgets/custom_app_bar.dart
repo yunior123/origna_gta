@@ -32,9 +32,9 @@ class AppBarFactory {
 class AppBarIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
-  final String? tooltip;
+  final String tooltip; // WCAG 4.1.2: Required — every IconButton needs a tooltip
 
-  const AppBarIconButton({super.key, required this.icon, required this.onPressed, this.tooltip});
+  const AppBarIconButton({super.key, required this.icon, required this.onPressed, required this.tooltip});
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +88,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               if (leading != null)
                 leading!
               else if (showBackButton)
-                _buildIconButton(icon: Icons.arrow_back, onPressed: onBackPressed ?? () => Navigator.of(context).pop()),
+                _buildIconButton(icon: Icons.arrow_back, tooltip: 'Back', onPressed: onBackPressed ?? () => Navigator.of(context).pop()),
 
               // Title
               Expanded(
@@ -114,10 +114,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  static Widget _buildIconButton({required IconData icon, required VoidCallback onPressed}) {
+  static Widget _buildIconButton({required IconData icon, required VoidCallback onPressed, String? tooltip}) {
     return IconButton(
       icon: Icon(icon, color: Colors.white),
       onPressed: onPressed,
+      tooltip: tooltip,
     );
   }
 }
@@ -135,6 +136,7 @@ class _CartBadge extends ConsumerWidget {
       children: [
         CustomAppBar._buildIconButton(
           icon: Icons.shopping_cart_outlined,
+          tooltip: 'Cart',
           onPressed: () {
             if (!isLoggedIn) {
               showLoginPrompt(context);

@@ -60,7 +60,10 @@ class _ProductAddImagesState extends State<ProductAddImages> {
               }),
               // Add button
               if (_imageModels.length < 5)
-                GestureDetector(
+                Semantics(
+                  button: true,
+                  label: 'btn-add-photo',
+                  child: GestureDetector(
                   onTap: _pickImage,
                   child: AnimatedContainer(
                     duration: DesignTokens.durationFast,
@@ -94,6 +97,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
                       ],
                     ),
                   ),
+                ),
                 ),
             ],
           ),
@@ -207,7 +211,10 @@ class _ImageTile extends StatelessWidget {
         Positioned(
           top: 4,
           right: 4,
-          child: GestureDetector(
+          child: Semantics(
+            button: true,
+            label: 'btn-remove-image',
+            child: GestureDetector(
             onTap: onRemove,
             child: Container(
               padding: const EdgeInsets.all(4),
@@ -218,6 +225,7 @@ class _ImageTile extends StatelessWidget {
               ),
               child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
             ),
+          ),
           ),
         ),
       ],

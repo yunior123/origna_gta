@@ -389,6 +389,7 @@ class _SellerOrderCard extends ConsumerWidget {
                     color: DesignTokens.primary,
                     size: 22,
                   ),
+                  tooltip: statusStr == DeliveryStatusValues.pending ? 'Mark as shipped' : 'Mark as delivered',
                   onPressed: () {
                     HapticFeedback.lightImpact();
                     if (statusStr == DeliveryStatusValues.pending) {
@@ -456,7 +457,10 @@ class _SellerOrderCard extends ConsumerWidget {
             const Text('Mark as Shipped', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
           ],
         ),
-        content: TextField(
+        content: Semantics(
+          textField: true,
+          label: 'input-tracking-number',
+          child: TextField(
           controller: trackingController,
           decoration: InputDecoration(
             labelText: 'Tracking Number',
@@ -467,6 +471,7 @@ class _SellerOrderCard extends ConsumerWidget {
               borderSide: BorderSide(color: DesignTokens.primary, width: 2),
             ),
           ),
+        ),
         ),
         actions: [
           TextButton(
@@ -518,7 +523,10 @@ class _SellerOrderCard extends ConsumerWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            Semantics(
+              textField: true,
+              label: 'input-actual-cost',
+              child: TextField(
               controller: shippingController,
               decoration: InputDecoration(
                 labelText: 'Actual Cost',
@@ -531,8 +539,12 @@ class _SellerOrderCard extends ConsumerWidget {
               ),
               keyboardType: TextInputType.number,
             ),
+            ),
             const SizedBox(height: 14),
-            TextField(
+            Semantics(
+              textField: true,
+              label: 'input-tracking-number-update',
+              child: TextField(
               controller: trackingController,
               decoration: InputDecoration(
                 labelText: 'Tracking Number',
@@ -543,6 +555,7 @@ class _SellerOrderCard extends ConsumerWidget {
                   borderSide: BorderSide(color: DesignTokens.primary, width: 2),
                 ),
               ),
+            ),
             ),
           ],
         ),

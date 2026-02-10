@@ -76,6 +76,18 @@ class User with _$User {
     int? payoutHoldDays,
     // Tax exemption for businesses
     Map<String, dynamic>? taxExemption,
+    // === CONSENT & COMPLIANCE (CASL + PIPEDA + Quebec Law 25) ===
+    @Default(true) bool emailConsent,
+    @Default(false) bool marketingOptIn,
+    DateTime? consentTimestamp,
+    String? consentMethod,
+    DateTime? privacyAcceptedAt,
+    DateTime? termsAcceptedAt,
+    String? privacyPolicyVersion,
+    String? termsVersion,
+    @Default('en') String preferredLanguage,
+    DateTime? unsubscribedAt,
+    @Default(false) bool dataProcessingConsent,
   }) = _User;
 
   factory User.fromFirestore(DocumentSnapshot doc) {
@@ -118,6 +130,18 @@ class User with _$User {
       businessName: data[Fields.businessName] as String?,
       payoutHoldDays: data[Fields.payoutHoldDays] != null ? (data[Fields.payoutHoldDays] as num).toInt() : null,
       taxExemption: data[Fields.taxExemption] != null ? _safeMap(data[Fields.taxExemption]) : null,
+      // === CONSENT & COMPLIANCE ===
+      emailConsent: data[Fields.emailConsent] ?? true,
+      marketingOptIn: data[Fields.marketingOptIn] ?? false,
+      consentTimestamp: _parseDateTime(data[Fields.consentTimestamp]),
+      consentMethod: data[Fields.consentMethod] as String?,
+      privacyAcceptedAt: _parseDateTime(data[Fields.privacyAcceptedAt]),
+      termsAcceptedAt: _parseDateTime(data[Fields.termsAcceptedAt]),
+      privacyPolicyVersion: data[Fields.privacyPolicyVersion] as String?,
+      termsVersion: data[Fields.termsVersion] as String?,
+      preferredLanguage: data[Fields.preferredLanguage] as String? ?? 'en',
+      unsubscribedAt: _parseDateTime(data[Fields.unsubscribedAt]),
+      dataProcessingConsent: data[Fields.dataProcessingConsent] ?? false,
     );
   }
 

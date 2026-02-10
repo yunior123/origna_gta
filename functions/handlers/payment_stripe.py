@@ -693,7 +693,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     delivery_speed = data.get(Fields.DELIVERY_SPEED, DeliveryTypeValues.STANDARD)
     if delivery_speed not in (DeliveryTypeValues.STANDARD, DeliveryTypeValues.EXPRESS, DeliveryTypeValues.SAME_DAY):
         delivery_speed = DeliveryTypeValues.STANDARD  # Sanitize to prevent injection
-    
+
     # Get delivery instructions from client (optional)
     delivery_instructions = data.get(Fields.DELIVERY_INSTRUCTIONS, '')
     if delivery_instructions and len(delivery_instructions) > BusinessRules.MAX_DELIVERY_INSTRUCTIONS_LENGTH:

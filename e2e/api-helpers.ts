@@ -1,0 +1,829 @@
+/**
+ * OrignaGTA — Shared E2E API Helpers
+ * ===================================
+ * Single source of truth for all E2E test utilities.
+ * Every spec file MUST import from here — no copy-paste allowed.
+ *
+ * Covers:
+ *   - Firebase Auth Emulator sign-in (with fail-fast on missing seeds)
+ *   - Firebase Functions Emulator callable invocation
+ *   - Firestore Emulator REST API (read, write, patch, delete, list)
+ *   - Firestore value conversion (toFsVal / parseVal / parseDoc)
+ *   - Checkout payload builders
+ *   - Order lifecycle helpers
+ *   - Infrastructure & seed validation
+ *   - Stripe Checkout page helpers (headless-safe)
+ *
+ * @module api-helpers
+ */
+
+// ════════════════════════════════════════════════════════════════════
+// CONFIGURATION — Single source of truth for all emulator URLs
+// ════════════════════════════════════════════════════════════════════
+
+export const AUTH_EMULATOR = 'http://localhost:9099';
+export const FIRESTORE_EMULATOR = 'http://localhost:8080';
+export const FUNCTIONS_EMULATOR = 'http://localhost:5001';
+export const WEB_APP_URL = 'http://localhost:5005';
+export const PROJECT_ID = 'orignagta';
+
+/** Firestore REST API base path */
+export const FIRESTORE_BASE = `${FIRESTORE_EMULATOR}/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+
+/** Default test password used by mega-seed.ts / seed-emulator.ts */
+export const DEFAULT_PASS = 'REDACTED_TEST_PASSWORD';
+
+/** Stripe test card that does NOT trigger 3DS */
+export const STRIPE_CARD = {
+  number: '4242424242424242',
+  exp: '12/30',
+  cvc: '123',
+  name: 'Test Buyer',
+  postalCode: 'M5V 3A8',
+};
+
+// Test accounts (from mega-seed.ts)
+export const TEST_ACCOUNTS = {
+  ADMIN_EMAIL: 'yr62813@gmail.com',
+  ADMIN_PASS: '960227Y#y',
+  SELLER1_EMAIL: 'seller1@test.origna.ca',
+  SELLER2_EMAIL: 'seller2@test.origna.ca',
+  BUYER1_EMAIL: 'buyer1@test.origna.ca',
+  BUYER2_EMAIL: 'buyer2@test.origna.ca',
+  BUYER3_EMAIL: 'buyer3@test.origna.ca',
+  SUSPENDED_EMAIL: 'suspended@test.origna.ca',
+  NON_ONBOARDED_SELLER: 'seller9@test.origna.ca',
+};
+
+// Products with good stock for parallel tests
+export const TEST_PRODUCTS = {
+  HIGH_STOCK: 'product_001',   // Quebec Scarf, ~25 stock
+  DIGITAL: 'product_010',      // Digital product (if seeded)
+  SELLER2: 'product_003',      // Product from seller2
+};
+
+// ════════════════════════════════════════════════════════════════════
+// INFRASTRUCTURE CHECK
+// ════════════════════════════════════════════════════════════════════
+
+export interface InfraStatus {
+  auth: boolean | null;
+  firestore: boolean | null;
+  functions: boolean | null;
+}
+
+let infraCache: InfraStatus = { auth: null, firestore: null, functions: null };
+
+/** Check if emulator infrastructure is available. Caches result. */
+export async function checkInfrastructure(request: any): Promise<InfraStatus> {
+  if (infraCache.auth === null) {
+    const [authRes, firestoreRes, functionsRes] = await Promise.all([
+      request.get(`${AUTH_EMULATOR}/`).catch(() => null),
+      request.get(`${FIRESTORE_EMULATOR}/`).catch(() => null),
+      request.get(`${FUNCTIONS_EMULATOR}/`).catch(() => null),
+    ]);
+    infraCache = {
+      auth: !!authRes,
+      firestore: !!firestoreRes,
+      functions: !!functionsRes,
+    };
+    if (Object.values(infraCache).some(v => !v)) {
+      console.log('⚠️  Some infrastructure is unavailable:');
+      console.log(`   Auth: ${infraCache.auth ? '✅' : '❌'}`);
+      console.log(`   Firestore: ${infraCache.firestore ? '✅' : '❌'}`);
+      console.log(`   Functions: ${infraCache.functions ? '✅' : '❌'}`);
+    }
+  }
+  return infraCache;
+}
+
+/** Reset infra cache (useful for test isolation) */
+export function resetInfraCache() {
+  infraCache = { auth: null, firestore: null, functions: null };
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SEED VALIDATION
+// ════════════════════════════════════════════════════════════════════
+
+let seedValidated = false;
+
+/**
+ * Verify that seed data exists in the Auth Emulator.
+ * Call in beforeAll to fail-fast if seeds are missing.
+ * @throws Error if no users found in Auth Emulator
+ */
+export async function ensureSeedData(): Promise<void> {
+  if (seedValidated) return;
+
+  // Try to sign in with a known seed account to verify users exist
+  try {
+    const res = await fetch(
+      `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: TEST_ACCOUNTS.BUYER1_EMAIL,
+          password: DEFAULT_PASS,
+          returnSecureToken: true,
+        }),
+      }
+    );
+    const data = await res.json();
+    if (!data.idToken) {
+      // Try seller1 as fallback (different seed scripts create different users)
+      const res2 = await fetch(
+        `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: TEST_ACCOUNTS.SELLER1_EMAIL,
+            password: DEFAULT_PASS,
+            returnSecureToken: true,
+          }),
+        }
+      );
+      const data2 = await res2.json();
+      if (!data2.idToken) {
+        throw new Error(
+          'NO SEED DATA: Auth Emulator has no test users.\n' +
+          'Run: cd e2e && npx ts-node mega-seed.ts\n' +
+          'Or:  cd e2e && npx ts-node seed-emulator.ts'
+        );
+      }
+    }
+    seedValidated = true;
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('NO SEED DATA')) throw e;
+    throw new Error(`Auth Emulator unreachable at ${AUTH_EMULATOR}: ${e}`);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// FIREBASE AUTH — Sign In (with fail-fast)
+// ════════════════════════════════════════════════════════════════════
+
+export interface AuthData {
+  idToken: string;
+  refreshToken: string;
+  localId: string;
+  email: string;
+  [key: string]: any;
+}
+
+/**
+ * Sign in to Firebase Auth Emulator and return auth data with idToken.
+ *
+ * FAIL-FAST: Throws immediately if sign-in fails (no token returned).
+ * This prevents the cascade of "Unauthenticated" errors that happen when
+ * `Bearer undefined` is sent to the Functions Emulator.
+ *
+ * @param email - User email
+ * @param password - User password (defaults to DEFAULT_PASS)
+ * @returns Auth data including idToken, localId, refreshToken
+ * @throws Error if sign-in fails (user doesn't exist, wrong password, etc.)
+ */
+export async function signIn(email: string, password: string = DEFAULT_PASS): Promise<AuthData> {
+  const res = await fetch(
+    `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, returnSecureToken: true }),
+    }
+  );
+  const data = await res.json();
+
+  // ═══ FAIL-FAST: No silent failures ═══
+  if (!data.idToken) {
+    const errMsg = data.error?.message || 'Unknown error';
+    throw new Error(
+      `signIn FAILED for ${email}: ${errMsg}.\n` +
+      `Ensure seed data exists. Run: cd e2e && npx ts-node mega-seed.ts`
+    );
+  }
+
+  // Force emailVerified=true (emulator tokens may not have it)
+  try {
+    const upd = await fetch(
+      `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:update?key=fake-api-key`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: data.idToken, emailVerified: true, returnSecureToken: true }),
+      }
+    );
+    const u = await upd.json();
+    if (u.idToken) {
+      data.idToken = u.idToken;
+      data.refreshToken = u.refreshToken || data.refreshToken;
+    }
+  } catch {
+    // emailVerified update failed — non-critical, continue with original token
+  }
+
+  return data as AuthData;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// FIREBASE AUTH — Create User
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Create a new user in the Auth Emulator and optionally write a Firestore user doc.
+ * If user already exists (EMAIL_EXISTS), signs in instead.
+ */
+export async function createTestUser(
+  email: string,
+  password: string,
+  displayName: string,
+  roles: string[] = ['buyer'],
+  writeFirestoreDoc = true
+): Promise<{ uid: string; idToken: string; [key: string]: any }> {
+  const signUpRes = await fetch(
+    `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, displayName, returnSecureToken: true }),
+    }
+  );
+  const signUpData = await signUpRes.json();
+
+  if (signUpData.error) {
+    // User already exists — just sign in
+    if (signUpData.error.message?.includes('EMAIL_EXISTS')) {
+      const authData = await signIn(email, password);
+      return { uid: authData.localId, idToken: authData.idToken, ...authData };
+    }
+    throw new Error(`createTestUser: ${signUpData.error.message}`);
+  }
+
+  const uid = signUpData.localId;
+
+  // Mark email verified
+  if (signUpData.idToken) {
+    await fetch(
+      `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:update?key=fake-api-key`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: signUpData.idToken, emailVerified: true, returnSecureToken: true }),
+      }
+    );
+  }
+
+  // Write Firestore user doc
+  if (writeFirestoreDoc) {
+    await writeDoc(`users/${uid}`, {
+      uid,
+      email,
+      name: displayName,
+      roles,
+      address: {
+        street: '100 Test St',
+        apartment: '',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V 3A8',
+        country: 'Canada',
+        phoneNumber: '+14165550099',
+        isDefault: true,
+        label: 'Home',
+      },
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  return { uid, idToken: signUpData.idToken, ...signUpData };
+}
+
+// ════════════════════════════════════════════════════════════════════
+// FIREBASE FUNCTIONS — Callable Invocation
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Call a Firebase Callable Function via the Functions Emulator.
+ * Returns the raw response body (may contain .error or .result).
+ */
+export async function callCallable(fn: string, data: any, token: string): Promise<any> {
+  const res = await fetch(`${FUNCTIONS_EMULATOR}/${PROJECT_ID}/us-central1/${fn}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ data }),
+  });
+  return res.json();
+}
+
+/**
+ * Call a callable function and throw if it returns an error.
+ * @returns The result (unwrapped from body.result)
+ * @throws Error with function name and error message
+ */
+export async function callOk(fn: string, data: any, token: string): Promise<any> {
+  const body = await callCallable(fn, data, token);
+  if (body.error) {
+    throw new Error(`${fn} failed: ${body.error.message || JSON.stringify(body.error)}`);
+  }
+  return body.result || body;
+}
+
+/**
+ * Call a callable function expecting it to fail.
+ * @returns The error object { code, message }
+ */
+export async function callExpectError(
+  fn: string,
+  data: any,
+  token: string
+): Promise<{ code: string; message: string }> {
+  const body = await callCallable(fn, data, token);
+  if (body.error) return body.error;
+  if (body.result?.error) return body.result.error;
+  return {
+    code: 'unexpected-success',
+    message: `Expected ${fn} to fail but it succeeded: ${JSON.stringify(body)}`,
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════
+// FIRESTORE REST API — CRUD Operations
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Read a Firestore document by its full path (e.g. "orders/order123").
+ * Returns raw Firestore REST response, or null if not found.
+ */
+export async function readDoc(path: string): Promise<any> {
+  const res = await fetch(`${FIRESTORE_BASE}/${path}`, {
+    headers: { 'Authorization': 'Bearer owner' },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+/**
+ * Write/merge fields into a Firestore document.
+ * Uses updateMask to perform partial updates (not replace).
+ * Values are auto-converted to Firestore format via toFirestoreFields.
+ */
+export async function writeDoc(path: string, fields: Record<string, any>): Promise<boolean> {
+  const fieldPaths = Object.keys(fields).map(k => `updateMask.fieldPaths=${k}`).join('&');
+  const res = await fetch(`${FIRESTORE_BASE}/${path}?${fieldPaths}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer owner' },
+    body: JSON.stringify({ fields: toFirestoreFields(fields) }),
+  });
+  return res.ok;
+}
+
+/**
+ * Patch a Firestore document with RAW Firestore-format fields.
+ * Use this when you already have fields in { stringValue: "x" } format.
+ * For auto-conversion, use writeDoc() instead.
+ */
+export async function patchDoc(
+  collectionOrPath: string,
+  docIdOrFields: string | any,
+  fieldsOrUndefined?: any
+): Promise<boolean> {
+  let path: string;
+  let fields: any;
+
+  if (fieldsOrUndefined !== undefined) {
+    // patchDoc(collection, docId, fields) — 3-arg form
+    path = `${collectionOrPath}/${docIdOrFields}`;
+    fields = fieldsOrUndefined;
+  } else {
+    // patchDoc(path, fields) — 2-arg form
+    path = collectionOrPath;
+    fields = docIdOrFields;
+  }
+
+  const fieldPaths = Object.keys(fields).map(f => `updateMask.fieldPaths=${f}`).join('&');
+  const res = await fetch(`${FIRESTORE_BASE}/${path}?${fieldPaths}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer owner' },
+    body: JSON.stringify({ fields }),
+  });
+  return res.ok;
+}
+
+/** Delete a Firestore document by path */
+export async function deleteDoc(path: string): Promise<boolean> {
+  const res = await fetch(`${FIRESTORE_BASE}/${path}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer owner' },
+  });
+  return res.ok;
+}
+
+/** List documents in a collection */
+export async function listDocs(collectionPath: string, pageSize = 100): Promise<any[]> {
+  const res = await fetch(`${FIRESTORE_BASE}/${collectionPath}?pageSize=${pageSize}`, {
+    headers: { 'Authorization': 'Bearer owner' },
+  });
+  if (!res.ok) return [];
+  const body = await res.json();
+  return (body.documents || []).map(parseDoc);
+}
+
+/** List subcollection documents */
+export async function listSubcollection(
+  parentPath: string,
+  subcollection: string
+): Promise<Array<{ id: string; [key: string]: any }>> {
+  const res = await fetch(`${FIRESTORE_BASE}/${parentPath}/${subcollection}?pageSize=100`, {
+    headers: { 'Authorization': 'Bearer owner' },
+  });
+  if (!res.ok) return [];
+  const body = await res.json();
+  return (body.documents || []).map((doc: any) => ({
+    id: doc.name?.split('/').pop(),
+    ...parseDoc(doc),
+  }));
+}
+
+// ════════════════════════════════════════════════════════════════════
+// FIRESTORE VALUE CONVERSION
+// ════════════════════════════════════════════════════════════════════
+
+/** Convert a JS object to Firestore REST fields format */
+export function toFirestoreFields(obj: any): any {
+  const f: any = {};
+  for (const [k, v] of Object.entries(obj)) f[k] = toFsVal(v);
+  return f;
+}
+
+/** Convert a single JS value to Firestore REST value format */
+export function toFsVal(v: any): any {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === 'string') return { stringValue: v };
+  if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (v instanceof Date) return { timestampValue: v.toISOString() };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(toFsVal) } };
+  if (typeof v === 'object') return { mapValue: { fields: toFirestoreFields(v) } };
+  return { stringValue: String(v) };
+}
+
+/** Shorthand: create a Firestore stringValue */
+export function sv(val: string) { return { stringValue: val }; }
+/** Shorthand: create a Firestore integerValue */
+export function iv(val: number) { return { integerValue: String(val) }; }
+/** Shorthand: create a Firestore booleanValue */
+export function bv(val: boolean) { return { booleanValue: val }; }
+
+/** Parse a single Firestore REST value back to JS */
+export function parseVal(v: any): any {
+  if (!v) return null;
+  if (v.stringValue !== undefined) return v.stringValue;
+  if (v.integerValue !== undefined) return parseInt(v.integerValue);
+  if (v.doubleValue !== undefined) return v.doubleValue;
+  if (v.booleanValue !== undefined) return v.booleanValue;
+  if (v.nullValue !== undefined) return null;
+  if (v.timestampValue) return v.timestampValue;
+  if (v.arrayValue) return (v.arrayValue.values || []).map(parseVal);
+  if (v.mapValue) {
+    const o: any = {};
+    for (const [k, val] of Object.entries(v.mapValue.fields || {})) o[k] = parseVal(val);
+    return o;
+  }
+  return v;
+}
+
+/** Parse a full Firestore REST document to a plain JS object */
+export function parseDoc(doc: any): any {
+  if (!doc?.fields) return null;
+  const r: any = {};
+  for (const [k, v] of Object.entries(doc.fields)) r[k] = parseVal(v);
+  return r;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// CHECKOUT & ORDER HELPERS
+// ════════════════════════════════════════════════════════════════════
+
+/** Build a valid checkout payload from live Firestore product + buyer data */
+export async function buildCheckoutPayload(
+  buyerUid: string,
+  productId: string,
+  quantity = 1
+): Promise<{ data: any; product: any; buyer: any }> {
+  const prodDoc = await readDoc(`products/${productId}`);
+  const product = parseDoc(prodDoc);
+  if (!product) throw new Error(`Product ${productId} not found in Firestore. Ensure seed data exists.`);
+
+  const buyerDoc = await readDoc(`users/${buyerUid}`);
+  const buyer = parseDoc(buyerDoc);
+  const address = buyer?.address || {};
+
+  const data = {
+    userId: buyerUid,
+    items: [{
+      productId,
+      name: product.name,
+      price: product.price,
+      quantity,
+      sellerId: product.sellerId,
+      imageUrls: product.imageUrls || ['https://picsum.photos/400'],
+    }],
+    subtotal: +(product.price * quantity).toFixed(2),
+    shippingAddress: {
+      street: address.street || '100 King St W',
+      apartment: address.apartment || '',
+      city: address.city || 'Toronto',
+      state: address.state || 'ON',
+      postalCode: address.postalCode || 'M5X 1A9',
+      country: address.country || 'CA',
+      phoneNumber: address.phoneNumber || '+14165550000',
+    },
+  };
+  return { data, product, buyer };
+}
+
+/** Build multi-seller checkout payload */
+export async function buildMultiSellerPayload(
+  buyerUid: string,
+  items: { productId: string; quantity: number }[]
+): Promise<any> {
+  const buyerDoc = await readDoc(`users/${buyerUid}`);
+  const buyer = parseDoc(buyerDoc);
+  const address = buyer?.address || {};
+
+  const cartItems: any[] = [];
+  let subtotal = 0;
+  for (const { productId, quantity } of items) {
+    const prodDoc = await readDoc(`products/${productId}`);
+    const product = parseDoc(prodDoc);
+    if (!product) throw new Error(`Product ${productId} not found in Firestore.`);
+    cartItems.push({
+      productId,
+      name: product.name,
+      price: product.price,
+      quantity,
+      sellerId: product.sellerId,
+      imageUrls: product.imageUrls || ['https://picsum.photos/400'],
+    });
+    subtotal += product.price * quantity;
+  }
+
+  return {
+    userId: buyerUid,
+    items: cartItems,
+    subtotal: +subtotal.toFixed(2),
+    shippingAddress: {
+      street: address.street || '100 King St W',
+      apartment: address.apartment || '',
+      city: address.city || 'Toronto',
+      state: address.state || 'ON',
+      postalCode: address.postalCode || 'M5X 1A9',
+      country: address.country || 'CA',
+      phoneNumber: address.phoneNumber || '+14165550000',
+    },
+  };
+}
+
+/** Create an order via checkout (API only, no Stripe payment) */
+export async function createOrder(
+  buyerEmail: string,
+  productId: string,
+  quantity = 1,
+  password = DEFAULT_PASS
+): Promise<{ orderId: string; auth: AuthData; checkoutUrl: string }> {
+  const auth = await signIn(buyerEmail, password);
+  const { data } = await buildCheckoutPayload(auth.localId, productId, quantity);
+  const result = await callOk('create_checkout_session', data, auth.idToken);
+  return { orderId: result.orderId as string, auth, checkoutUrl: result.checkoutUrl };
+}
+
+/** Force an order to a specific status via direct Firestore write (test setup only) */
+export async function forceOrderStatus(
+  orderId: string,
+  status: string,
+  extraFields: Record<string, any> = {}
+): Promise<void> {
+  await writeDoc(`orders/${orderId}`, { orderStatus: status, ...extraFields });
+}
+
+/** Poll until a Firestore doc field matches expected value */
+export async function pollDocField(
+  path: string,
+  field: string,
+  expected: any,
+  maxMs = 15_000
+): Promise<any> {
+  const start = Date.now();
+  while (Date.now() - start < maxMs) {
+    const doc = await readDoc(path);
+    if (doc) {
+      const parsed = parseDoc(doc);
+      if (parsed?.[field] === expected) return parsed;
+    }
+    await new Promise(r => setTimeout(r, 1_000));
+  }
+  const doc = await readDoc(path);
+  return doc ? parseDoc(doc) : null;
+}
+
+/** Wait for order to reach a target status — polls Firestore */
+export async function waitForOrderStatus(
+  orderId: string,
+  targetStatuses: string[],
+  fieldOrMaxMs: string | number = 'orderStatus',
+  maxWaitMs = 30_000
+): Promise<any> {
+  const field = typeof fieldOrMaxMs === 'string' ? fieldOrMaxMs : 'orderStatus';
+  const timeout = typeof fieldOrMaxMs === 'number' ? fieldOrMaxMs : maxWaitMs;
+
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    const doc = await readDoc(`orders/${orderId}`);
+    if (doc) {
+      const order = parseDoc(doc);
+      if (order && targetStatuses.includes(order[field])) return order;
+    }
+    await new Promise(r => setTimeout(r, 2_000));
+  }
+  // Return last state even if target not reached
+  const doc = await readDoc(`orders/${orderId}`);
+  return doc ? parseDoc(doc) : null;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// STRIPE CHECKOUT — Headless-safe page interaction
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Fill and submit Stripe Checkout hosted page.
+ * Handles:
+ * - Email field (if visible)
+ * - Card number, expiry, CVC
+ * - Billing name and postal code (if visible)
+ * - Link / verification modal dismissal (headless-safe)
+ * - Pay button click
+ *
+ * @param page - Playwright Page object
+ * @param email - Buyer email for Stripe Checkout
+ * @param card - Card details (defaults to STRIPE_CARD)
+ */
+export async function fillStripeCheckout(
+  page: any,
+  email: string,
+  card = STRIPE_CARD
+): Promise<void> {
+  await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
+
+  // Dismiss any Link login / verification modal overlay
+  // Stripe sometimes shows a "Log in to Link" popup that blocks the form
+  await dismissStripeModals(page);
+
+  // Fill email if visible (Stripe Checkout may or may not show this)
+  const emailInput = page.locator('#email, input[name="email"]').first();
+  if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await emailInput.fill(email);
+    await page.waitForTimeout(500);
+    // After filling email, Stripe may show a Link modal — dismiss it
+    await dismissStripeModals(page);
+  }
+
+  // Fill card number
+  const cardField = page.locator('#cardNumber, input[name="cardNumber"]').first();
+  await cardField.waitFor({ state: 'visible', timeout: 15_000 });
+  await cardField.fill(card.number);
+
+  // Fill expiry
+  await page.locator('#cardExpiry, input[name="cardExpiry"]').first().fill(card.exp);
+
+  // Fill CVC
+  await page.locator('#cardCvc, input[name="cardCvc"]').first().fill(card.cvc);
+
+  // Fill billing name if visible
+  const nameField = page.locator('#billingName, input[name="billingName"]').first();
+  if (await nameField.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await nameField.fill(card.name);
+  }
+
+  // Fill phone number if visible (Stripe sometimes requires it)
+  const phoneField = page.locator('#phoneNumber, input[name="phoneNumber"]').first();
+  if (await phoneField.isVisible({ timeout: 1_000 }).catch(() => false)) {
+    await phoneField.fill('+14165550000');
+  }
+
+  // Fill postal code if visible
+  const postalField = page.locator('#billingPostalCode, input[name="billingPostalCode"]').first();
+  if (await postalField.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await postalField.fill(card.postalCode);
+  }
+
+  // Dismiss any modals that appeared during form fill
+  await dismissStripeModals(page);
+
+  // Click Pay button
+  const payBtn = page.locator(
+    '[data-testid="hosted-payment-submit-button"], .SubmitButton, button[type="submit"]'
+  ).first();
+  await payBtn.waitFor({ state: 'visible', timeout: 10_000 });
+  await payBtn.click();
+}
+
+/**
+ * Dismiss Stripe modals that may block the checkout form in headless mode.
+ * Handles:
+ * - Link login modal ("Log in to Link")
+ * - Verification modal (VerificationModal)
+ * - 3DS authentication iframe (approve automatically)
+ * - CAPTCHA / phone verification
+ */
+async function dismissStripeModals(page: any): Promise<void> {
+  // 1. Dismiss "Link" login popup — click "Not now" or close button
+  const linkDismiss = page.locator(
+    'button:has-text("Not now"), ' +
+    'button:has-text("Pay another way"), ' +
+    'button:has-text("Cancel"), ' +
+    '[data-testid="link-dismiss"], ' +
+    '.LinkModal--close, ' +
+    '[aria-label="Close"]'
+  ).first();
+  if (await linkDismiss.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await linkDismiss.click().catch(() => {});
+    await page.waitForTimeout(500);
+  }
+
+  // 2. Handle 3DS authentication test iframe — click "Complete" or "Approve"
+  const threeDSFrame = page.frameLocator('iframe[name*="stripe-challenge"], iframe[name*="__privateStripeFrame"]').first();
+  try {
+    const completeBtn = threeDSFrame.locator(
+      'button:has-text("Complete"), button:has-text("Approve"), #test-source-authorize-3ds'
+    ).first();
+    if (await completeBtn.isVisible({ timeout: 1_000 }).catch(() => false)) {
+      await completeBtn.click().catch(() => {});
+      await page.waitForTimeout(1_000);
+    }
+  } catch {
+    // No 3DS frame — expected for 4242 card
+  }
+
+  // 3. Dismiss generic overlays / modal backdrops
+  const overlay = page.locator('.Modal-overlay, .VerificationModal, [data-testid="modal-overlay"]').first();
+  if (await overlay.isVisible({ timeout: 500 }).catch(() => false)) {
+    // Press Escape to dismiss modal
+    await page.keyboard.press('Escape').catch(() => {});
+    await page.waitForTimeout(300);
+  }
+}
+
+/**
+ * Full checkout + pay flow: create checkout session → navigate to Stripe → fill & submit.
+ * Returns orderId and checkoutUrl.
+ */
+export async function fullCheckoutAndPay(
+  page: any,
+  buyerEmail: string,
+  productId: string,
+  quantity = 1,
+  password = DEFAULT_PASS
+): Promise<{ orderId: string; checkoutUrl: string }> {
+  const auth = await signIn(buyerEmail, password);
+  const { data } = await buildCheckoutPayload(auth.localId, productId, quantity);
+  const result = await callOk('create_checkout_session', data, auth.idToken);
+
+  if (!result.orderId) throw new Error(`Checkout failed: no orderId returned`);
+  if (!result.checkoutUrl) throw new Error(`Checkout failed: no checkoutUrl returned`);
+
+  // Navigate to Stripe Checkout and fill the form
+  await page.goto(result.checkoutUrl);
+  await fillStripeCheckout(page, buyerEmail);
+
+  // Wait a bit for webhook processing
+  await page.waitForTimeout(5_000);
+
+  return { orderId: result.orderId, checkoutUrl: result.checkoutUrl };
+}
+
+/**
+ * Full multi-seller checkout + pay flow.
+ */
+export async function fullMultiSellerCheckoutAndPay(
+  page: any,
+  buyerEmail: string,
+  items: { productId: string; quantity: number }[],
+  password = DEFAULT_PASS
+): Promise<{ orderId: string }> {
+  const auth = await signIn(buyerEmail, password);
+  const payload = await buildMultiSellerPayload(auth.localId, items);
+  const result = await callOk('create_checkout_session', payload, auth.idToken);
+
+  if (!result.orderId) throw new Error(`Multi-seller checkout failed: no orderId`);
+
+  await page.goto(result.checkoutUrl);
+  await fillStripeCheckout(page, buyerEmail);
+  await page.waitForTimeout(5_000);
+
+  return { orderId: result.orderId };
+}

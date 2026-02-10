@@ -713,7 +713,10 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
   }
 
   Widget _actionButton({IconData? icon, required String label, required Color color, bool isLoading = false, VoidCallback? onTap}) {
-    return Material(
+    return Semantics(
+      button: true,
+      label: 'btn-${label.toLowerCase().replaceAll(' ', '-')}',
+      child: Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(DesignTokens.radius12),
       child: InkWell(
@@ -739,6 +742,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -1163,7 +1167,10 @@ class _PendingApprovalsBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
           boxShadow: [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 4))],
         ),
-        child: Material(
+        child: Semantics(
+          button: true,
+          label: 'btn-pending-approvals',
+          child: Material(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
           child: InkWell(
@@ -1203,6 +1210,7 @@ class _PendingApprovalsBanner extends StatelessWidget {
                 ],
               ),
             ),
+          ),
           ),
         ),
       ),

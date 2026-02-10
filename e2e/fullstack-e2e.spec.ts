@@ -17,16 +17,19 @@
  * Stripe test card: 4242 4242 4242 4242 / any future exp / any CVC
  */
 import { test, expect, Page, BrowserContext } from '@playwright/test';
+import {
+  signIn as signInUser,
+  readDoc as readDocByPath,
+  parseVal as parseFirestoreValue, parseDoc,
+  AUTH_EMULATOR, FIRESTORE_EMULATOR, FUNCTIONS_EMULATOR, PROJECT_ID,
+  WEB_APP_URL,
+} from './api-helpers';
 
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
 
-const BASE_URL = 'http://localhost:5005';
-const AUTH_EMULATOR = 'http://localhost:9099';
-const FIRESTORE_EMULATOR = 'http://localhost:8080';
-const FUNCTIONS_EMULATOR = 'http://localhost:5001';
-const PROJECT_ID = 'orignagta';
+const BASE_URL = WEB_APP_URL;
 
 // Infrastructure availability cache
 let infraAvailable: {
@@ -153,46 +156,9 @@ async function findFlutterElement(page: Page, text: string, timeout = ACTION_TIM
   }
 }
 
-/** Sign in via Auth Emulator REST API and ensure email_verified token */
-async function signInUser(email: string, password: string) {
-  // Step 1: Sign in to get initial token
-  const response = await fetch(
-    `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, returnSecureToken: true }),
-    }
-  );
-  const data = await response.json();
-  if (!data.idToken) return data;
-
-  // Step 2: Force emailVerified=true and get a fresh token
-  // (Auth Emulator may not reflect emailVerified set via PATCH in the JWT)
-  const updateResponse = await fetch(
-    `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:update?key=fake-api-key`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken: data.idToken, emailVerified: true, returnSecureToken: true }),
-    }
-  );
-  const updated = await updateResponse.json();
-  if (updated.idToken) {
-    data.idToken = updated.idToken;
-    data.refreshToken = updated.refreshToken || data.refreshToken;
-  }
-  return data;
-}
-
 /** Read Firestore document via emulator REST API */
 async function readFirestoreDoc(collection: string, docId: string) {
-  const url = `${FIRESTORE_EMULATOR}/v1/projects/${PROJECT_ID}/databases/(default)/documents/${collection}/${docId}`;
-  const response = await fetch(url, {
-    headers: { 'Authorization': 'Bearer owner' },
-  });
-  if (!response.ok) return null;
-  return response.json();
+  return readDocByPath(`${collection}/${docId}`);
 }
 
 /** Query Firestore collection via emulator REST API */
@@ -207,35 +173,6 @@ async function queryFirestore(structuredQuery: any) {
     body: JSON.stringify({ structuredQuery }),
   });
   return response.json();
-}
-
-/** Parse Firestore REST value to JS value */
-function parseFirestoreValue(v: any): any {
-  if (v.stringValue !== undefined) return v.stringValue;
-  if (v.integerValue !== undefined) return parseInt(v.integerValue);
-  if (v.doubleValue !== undefined) return v.doubleValue;
-  if (v.booleanValue !== undefined) return v.booleanValue;
-  if (v.nullValue !== undefined) return null;
-  if (v.timestampValue !== undefined) return v.timestampValue;
-  if (v.arrayValue) return (v.arrayValue.values || []).map(parseFirestoreValue);
-  if (v.mapValue) {
-    const obj: any = {};
-    for (const [k, val] of Object.entries(v.mapValue.fields || {})) {
-      obj[k] = parseFirestoreValue(val);
-    }
-    return obj;
-  }
-  return v;
-}
-
-/** Parse Firestore document fields to plain JS object */
-function parseDoc(doc: any): any {
-  if (!doc?.fields) return null;
-  const result: any = {};
-  for (const [key, value] of Object.entries(doc.fields)) {
-    result[key] = parseFirestoreValue(value);
-  }
-  return result;
 }
 
 /** Login via Flutter UI - navigates to home, triggers login prompt via cart/account action */

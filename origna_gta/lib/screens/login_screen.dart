@@ -164,15 +164,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                     const SizedBox(height: DesignTokens.spacing16),
                                     Row(
                                       children: [
-                                        Checkbox(
-                                          value: state.acceptedTerms,
-                                          onChanged: (v) => viewModel.setAcceptedTerms(v ?? false),
-                                          fillColor: WidgetStateProperty.resolveWith<Color?>((states) {
-                                            if (states.contains(WidgetState.selected)) {
-                                              return DesignTokens.primary;
-                                            }
-                                            return null;
-                                          }),
+                                        Semantics(
+                                          label: 'checkbox-accept-terms',
+                                          child: Checkbox(
+                                            value: state.acceptedTerms,
+                                            onChanged: (v) => viewModel.setAcceptedTerms(v ?? false),
+                                            fillColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                                              if (states.contains(WidgetState.selected)) {
+                                                return DesignTokens.primary;
+                                              }
+                                              return null;
+                                            }),
+                                          ),
                                         ),
                                         Expanded(
                                           child: RichText(
@@ -245,11 +248,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                           const SizedBox(height: 16),
 
                           if (state.isLogin) ...[
-                            TextButton(
-                              onPressed: () => _showForgotPasswordDialog(context),
-                              child: const Text(
-                                'Forgot Password?',
-                                style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600, fontSize: 14),
+                            Semantics(
+                              label: 'btn-forgot-password',
+                              button: true,
+                              child: TextButton(
+                                onPressed: () => _showForgotPasswordDialog(context),
+                                child: const Text(
+                                  'Forgot Password?',
+                                  style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600, fontSize: 14),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -278,14 +285,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                           ],
 
                           // Toggle auth mode
-                          GestureDetector(
-                            onTap: state.isLoading
-                                ? null
-                                : () {
-                                    viewModel.toggleAuthMode();
-                                    _formKey.currentState?.reset();
-                                  },
-                            child: RichText(
+                          Semantics(
+                            label: 'btn-toggle-auth-mode',
+                            button: true,
+                            child: GestureDetector(
+                              onTap: state.isLoading
+                                  ? null
+                                  : () {
+                                      viewModel.toggleAuthMode();
+                                      _formKey.currentState?.reset();
+                                    },
+                              child: RichText(
                               text: TextSpan(
                                 style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500),
                                 children: [
@@ -297,6 +307,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                 ],
                               ),
                             ),
+                          ),
                           ),
                         ],
                       ),
@@ -373,8 +384,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-                ElevatedButton(
+                Semantics(
+                  label: 'btn-forgot-cancel',
+                  button: true,
+                  child: TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                ),
+                Semantics(
+                  label: 'btn-forgot-send',
+                  button: true,
+                  child: ElevatedButton(
                   onPressed: isSending
                       ? null
                       : () async {
@@ -398,6 +416,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                         },
                   style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
                   child: isSending ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white)) : const Text('Send'),
+                  ),
                 ),
               ],
             );

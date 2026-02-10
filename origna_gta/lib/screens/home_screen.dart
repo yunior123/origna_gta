@@ -58,6 +58,7 @@ class _AddProductButton extends ConsumerWidget {
 
     return IconButton(
       key: const Key('home_add_product_button'),
+      tooltip: 'Add product',
       icon: const Icon(Icons.add_box_outlined, color: Colors.white),
       onPressed: () {
         if (isSuspended) {
@@ -117,6 +118,7 @@ class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProvide
               return Transform.scale(
                 scale: _scaleAnimation.value,
                 child: IconButton(
+                  tooltip: 'Shopping cart',
                   icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
                   onPressed: () async {
                     _triggerAnimation();
@@ -334,29 +336,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           alignment: WrapAlignment.center,
                           spacing: 8,
                           children: [
-                            TextButton(
-                              onPressed: () {
-                                // Navigate to privacy policy URL
-                                // On web: goes to /privacy-policy (OAuth compliance)
-                                // On mobile: shows in-app screen
-                                openPrivacyPolicy(context);
-                              },
-                              child: Text(
-                                'Privacy Policy',
-                                style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+                            Semantics(
+                              label: 'btn-home-privacy-policy',
+                              button: true,
+                              child: TextButton(
+                                onPressed: () {
+                                  // Navigate to privacy policy URL
+                                  // On web: goes to /privacy-policy (OAuth compliance)
+                                  // On mobile: shows in-app screen
+                                  openPrivacyPolicy(context);
+                                },
+                                child: Text(
+                                  'Privacy Policy',
+                                  style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+                                ),
                               ),
                             ),
                             Text('|', style: TextStyle(color: Colors.grey.withValues(alpha: 0.4), fontSize: 13)),
-                            TextButton(
-                              onPressed: () {
-                                // Navigate to terms URL
-                                // On web: goes to /terms-of-service (OAuth compliance)
-                                // On mobile: shows in-app screen
-                                openTermsOfService(context);
-                              },
-                              child: Text(
-                                'Terms of Service',
-                                style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+                            Semantics(
+                              label: 'btn-home-terms-of-service',
+                              button: true,
+                              child: TextButton(
+                                onPressed: () {
+                                  // Navigate to terms URL
+                                  // On web: goes to /terms-of-service (OAuth compliance)
+                                  // On mobile: shows in-app screen
+                                  openTermsOfService(context);
+                                },
+                                child: Text(
+                                  'Terms of Service',
+                                  style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+                                ),
                               ),
                             ),
                           ],
@@ -364,7 +374,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const SizedBox(height: 8),
                         Text(
                           '© 2026 Origna GTA. All rights reserved.',
-                          style: TextStyle(color: isDark ? Colors.grey[600] : Colors.grey[400], fontSize: 11),
+                          style: TextStyle(color: isDark ? Colors.grey[600] : DesignTokens.textSecondary, fontSize: 11),
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -450,15 +460,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       },
                     ),
                     const SizedBox(width: 12),
-                    ShaderMask(
-                      shaderCallback: (bounds) => LinearGradient(
-                        colors: [Colors.white, Colors.white.withValues(alpha: 0.8)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ).createShader(bounds),
-                      child: const Text(
-                        'Origna GTA',
-                        style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 24, letterSpacing: 0.5),
+                    Semantics(
+                      header: true,
+                      child: ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(
+                          colors: [Colors.white, Colors.white.withValues(alpha: 0.8)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ).createShader(bounds),
+                        child: const Text(
+                          'Origna GTA',
+                          style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 24, letterSpacing: 0.5),
+                        ),
                       ),
                     ),
                   ],
@@ -476,24 +489,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GlassContainer(
-      child: TextField(
-        controller: _searchController,
-        onChanged: homeNotifier.onSearchChanged,
-        style: TextStyle(color: isDark ? Colors.white : Colors.black87),
-        cursorColor: DesignTokens.primary,
-        decoration: InputDecoration(
-          hintText: 'Search products...',
-          hintStyle: TextStyle(color: Colors.grey[500]),
-          prefixIcon: Icon(Icons.search, color: DesignTokens.primary),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? GestureDetector(
-                  onTap: () {
-                    _searchController.clear();
-                    homeNotifier.onSearchChanged('');
-                  },
-                  child: Icon(Icons.close, color: Colors.grey[500]),
-                )
-              : null,
+      child: Semantics(
+        label: 'input-home-search',
+        child: TextField(
+          controller: _searchController,
+          onChanged: homeNotifier.onSearchChanged,
+          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+          cursorColor: DesignTokens.primary,
+          decoration: InputDecoration(
+            hintText: 'Search products...',
+            hintStyle: TextStyle(color: Colors.grey[500]),
+            prefixIcon: Icon(Icons.search, color: DesignTokens.primary),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? Semantics(
+                    label: 'btn-clear-search',
+                    button: true,
+                    child: GestureDetector(
+                      onTap: () {
+                        _searchController.clear();
+                        homeNotifier.onSearchChanged('');
+                      },
+                      child: Icon(Icons.close, color: Colors.grey[500]),
+                    ),
+                  )
+                : null,
           filled: true,
           fillColor: Colors.transparent,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12), borderSide: BorderSide.none),
@@ -507,6 +526,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
+      ),
       ),
     );
   }
@@ -546,13 +566,17 @@ class _PaginationLoader extends ConsumerWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 32),
         child: Center(
-          child: ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(
-              colors: [DesignTokens.primary, DesignTokens.secondary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ).createShader(bounds),
-            child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+          child: Semantics(
+            label: 'Loading more products',
+            liveRegion: true,
+            child: ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [DesignTokens.primary, DesignTokens.secondary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ).createShader(bounds),
+              child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+            ),
           ),
         ),
       ),
@@ -674,6 +698,7 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton> with SingleTic
           return Transform.rotate(
             angle: _rotationAnimation.value * 3.14159,
             child: IconButton(
+              tooltip: 'Settings',
               icon: const Icon(Icons.settings_outlined, color: Colors.white),
               onPressed: () {
                 _triggerAnimation();

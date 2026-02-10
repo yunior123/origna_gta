@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:origna_gta/firebase_options.dart';
@@ -22,6 +24,18 @@ void main() {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+
+      // Initialize easy_localization — required before runApp
+      // Supports EN (default) + FR (Quebec Bill 96 / Loi 96 compliance)
+      await EasyLocalization.ensureInitialized();
+
+      // Force semantic tree on web for accessibility + E2E Playwright testing.
+      // Flutter Web renders to <canvas> — this generates a parallel <flt-semantics>
+      // DOM tree with ARIA attributes that Playwright can target.
+      if (kIsWeb) {
+        SemanticsBinding.instance.ensureSemantics();
+      }
+
       await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
       // Print environment info (debug only)
@@ -119,7 +133,14 @@ void main() {
         FlutterError.presentError(details);
       };
 
-      runApp(const ProviderScope(child: OrignaApp()));
+      runApp(
+        EasyLocalization(
+          supportedLocales: const [Locale('en'), Locale('fr')],
+          path: 'assets/translations',
+          fallbackLocale: const Locale('en'),
+          child: const ProviderScope(child: OrignaApp()),
+        ),
+      );
     },
     (exception, stackTrace) async {
       // Capture unhandled errors to Sentry

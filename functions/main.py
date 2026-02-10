@@ -118,7 +118,7 @@ if not firebase_admin._apps:
 def get_secret(secret_id: str) -> str:
     """Retrieve secret from GCP Secret Manager"""
     client = secretmanager.SecretManagerServiceClient()
-    project_id = os.environ.get('GCP_PROJECT', 'origna-gta')
+    project_id = os.environ.get('GCLOUD_PROJECT', os.environ.get('GCP_PROJECT', 'orignagta'))
     name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
     response = client.access_secret_version(request={Fields.NAME: name})
     return response.payload.data.decode('UTF-8')

@@ -138,6 +138,34 @@ When changing a field:
 
 ---
 
+## 🎯 Flutter Web Semantics & Playwright E2E
+
+### Architecture
+Flutter Web renders to `<canvas>` but generates a parallel `<flt-semantics>` DOM tree
+with ARIA attributes. `main.dart` calls `SemanticsBinding.instance.ensureSemantics()`
+to force semantics always-on for web. Playwright targets these DOM elements.
+
+### Convention
+kebab-case semantic labels: `btn-*` (buttons), `input-*` (fields), `chk-*` (checkboxes),
+`chip-*` (chips), `link-*` (links), `nav-*` (navigation), `menu-*` (menu items),
+`product-card-*` (product cards).
+
+### Playwright Helpers: `e2e/flutter-helpers.ts`
+```typescript
+import { waitForFlutter, flutterButton, flutterInput, fillFlutterInput,
+         productCard, toggleFavorite, addToCart } from './flutter-helpers';
+```
+
+### Key Rules
+- `ModernButton` auto-labels with `Semantics(button: true, label: widget.label)` (~50 buttons)
+- `IconButton` uses `tooltip:` (auto-generates `aria-label`)
+- `Key('x')` does NOT appear in DOM — use `Semantics(label:)` instead
+- No Tab-key hack needed — semantics is force-enabled
+- Full reference: `.claude/skills/flutter-semantics-playwright/SKILL.md`
+- Widget→selector map: `.claude/skills/widget-finders/SKILL.md`
+
+---
+
 ## 🧪 Testing Quick Reference
 
 ```bash
@@ -147,12 +175,34 @@ cd functions && source venv/bin/activate && pytest tests/ -v --tb=short
 # Flutter
 cd origna_gta && flutter test && flutter analyze
 
-# E2E (161+ tests)
+# E2E (267+ tests across 8 files)
 cd e2e && npx playwright test
+
+# Run a specific E2E file
+cd e2e && npx playwright test comprehensive-flows-e2e.spec.ts
 
 # Python lint
 ruff check functions/
 ```
+
+### E2E Test Suite Inventory (267+ tests)
+
+| File | Tests | Status |
+|------|-------|--------|
+| comprehensive-flows-e2e.spec.ts | 32 | ✅ All pass |
+| regression-e2e.spec.ts | 42 | ✅ All pass |
+| flutter-web-e2e.spec.ts | 14 | ✅ All pass |
+| fullstack-e2e.spec.ts | 37 | 🔶 34/37 (Stripe headless issue) |
+| logic-failures-e2e.spec.ts | 29 | 🔴 13/29 (Unauthenticated) |
+| payment-workflow-e2e.spec.ts | 62 | 🔴 9/62 (Unauthenticated) |
+| shipping-lifecycle-e2e.spec.ts | 48 | 🔴 2/48 (Unauthenticated) |
+| admin-email-test.spec.ts | 3 | 🔴 0/3 (Stripe UI + real email) |
+
+### Firestore REST API — E2E Critical Knowledge
+- **PATCH without `updateMask`** replaces entire document — ALWAYS use `updateMask.fieldPaths`
+- **`seed-uid-map.json`** must match current emulator seed (mega-seed.ts=75 users vs seed-emulator.ts=25 users)
+- **Rate limits**: `create_checkout_session` = 5 req/min — add delays between test suites
+- **Test ordering matters**: shared Firestore data modified by earlier tests must be restored
 
 ---
 
@@ -163,6 +213,11 @@ ruff check functions/
 3. **AlgoliaProductRepository.uploadImages / getUploadUrl** — throw `UnimplementedError`. Image upload goes through `FirebaseProductRepository` path.
 4. **Firestore eventual consistency** — reads after writes may return stale data. Use `Source.server` for critical verifications.
 5. **Canada-only validation (buyer/shipping addresses)** — NEVER trust frontend. Backend validates postal code + province on every buyer/shipping address write. Sellers can be from any country worldwide.
+6. **Firestore REST PATCH** — MUST use `updateMask.fieldPaths` query params for partial updates. Without it, PATCH replaces the ENTIRE document, wiping all fields not in the body.
+7. **Auth Emulator** — does NOT support GET `/emulator/v1/projects/{id}/accounts`. To list users, query Firestore `/users` collection via REST with `Bearer owner`.
+8. **`seed-uid-map.json`** — stale UIDs from wrong seed script cause cascading E2E failures. Must match current emulator Auth UIDs.
+9. **E2E rate limits** — `create_checkout_session` has 5 req/min limit. Add ≥65s delays between test suites that call it.
+10. **Stripe Checkout in headless Playwright** — `VerificationModal` overlay blocks Pay button. No known workaround in headless Chromium.
 
 ---
 
@@ -176,7 +231,8 @@ ruff check functions/
 | Orders | `order_repository.dart`, `orders_viewmodel.dart`, `orders_screen.dart`, `handlers/orders.py` |
 | Auth | `auth_repository.dart`, `auth_viewmodel.dart`, `login_screen.dart`, `handlers/admin.py` |
 | Seller | `seller_viewmodel.dart`, `seller_dashboard_screen.dart`, `seller_products_screen.dart` |
+| E2E Helpers | `e2e/flutter-helpers.ts` (Playwright selectors for Flutter Web Semantics) |
 
 ---
 
-*Last updated: 2026-02-07 — Copilot session with Yunior*
+*Last updated: 2026-02-10 — Copilot session with Yunior (Flutter Semantics enrichment + Playwright helpers)*

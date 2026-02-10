@@ -61,13 +61,21 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
         ],
       ),
       actions: [
-        TextButton(onPressed: _isSubmitting ? null : () => Navigator.pop(context), child: const Text('Cancel')),
-        ElevatedButton(
+        Semantics(
+          button: true,
+          label: 'Cancel rating',
+          child: TextButton(onPressed: _isSubmitting ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+        ),
+        Semantics(
+          button: true,
+          label: 'Submit rating',
+          child: ElevatedButton(
           onPressed: (_selectedRating == 0 || _isSubmitting) ? null : _submitRating,
           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
           child: _isSubmitting
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
               : const Text('Submit'),
+        ),
         ),
       ],
     );
@@ -78,13 +86,17 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(5, (index) {
         final starNumber = index + 1;
-        return GestureDetector(
-          onTap: () {
-            setState(() => _selectedRating = starNumber);
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Icon(starNumber <= _selectedRating ? Icons.star : Icons.star_border, color: Colors.amber[700], size: 40),
+        return Semantics(
+          button: true,
+          label: 'Rate $starNumber out of 5 stars',
+          child: GestureDetector(
+            onTap: () {
+              setState(() => _selectedRating = starNumber);
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(4), // WCAG 2.5.8: 4+40+4=48dp touch target
+              child: Icon(starNumber <= _selectedRating ? Icons.star : Icons.star_border, color: Colors.amber[700], size: 40),
+            ),
           ),
         );
       }),

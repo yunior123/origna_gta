@@ -183,6 +183,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                     children: [
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
+                        tooltip: 'Go back',
                         icon: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -1369,7 +1370,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   }
 
   Widget _buildSubmitButton(AddProductState state, AddProductViewModel viewModel) {
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      label: 'btn-publish-product',
+      child: GestureDetector(
       onTapDown: state.isLoading ? null : (_) => HapticFeedback.mediumImpact(),
       child: AnimatedContainer(
         duration: DesignTokens.durationFast,
@@ -1472,6 +1476,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           ),
         ),
       ),
+    ),
     );
   }
 

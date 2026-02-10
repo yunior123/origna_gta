@@ -80,6 +80,18 @@ class EmailConfig:
     DEV_URL = "http://localhost:5005"
     MAILJET_API_VERSION = "v3.1"
 
+    # === CASL COMPLIANCE (Canadian Anti-Spam Legislation) ===
+    # Physical mailing address — REQUIRED by CASL in every commercial email
+    PHYSICAL_ADDRESS = "Origna Ventures Inc., 200 University Ave W, Suite 300, Waterloo, ON N2L 3G1, Canada"
+    # GST/HST Registration Number — REQUIRED on all receipts (Excise Tax Act)
+    GST_HST_NUMBER = "123456789RT0001"  # TODO: Replace with actual CRA-issued number before launch
+    # Unsubscribe URL — REQUIRED by CASL
+    UNSUBSCRIBE_URL_PROD = "https://orignagta.ca/unsubscribe"
+    UNSUBSCRIBE_URL_DEV = "http://localhost:5005/unsubscribe"
+    # Privacy Officer contact — REQUIRED by Quebec Law 25 (since Sept 2022)
+    PRIVACY_OFFICER_EMAIL = "privacy@orignaventures.ca"
+    PRIVACY_OFFICER_NAME = "Yunior Rodriguez Osorio"
+
 
 class AppConfig:
     """Application-wide configuration constants."""
@@ -216,6 +228,19 @@ class Fields:
     TAX_EXEMPT = "taxExempt"
     TAX_EXEMPTION = "taxExemption"
     GST_NUMBER = "gstNumber"
+
+    # === CONSENT & COMPLIANCE FIELDS (CASL + PIPEDA + Quebec Law 25) ===
+    EMAIL_CONSENT = "emailConsent"                  # bool — user accepted transactional emails
+    MARKETING_OPT_IN = "marketingOptIn"              # bool — explicit opt-in for marketing emails
+    CONSENT_TIMESTAMP = "consentTimestamp"            # datetime — when consent was given
+    CONSENT_METHOD = "consentMethod"                  # str — how consent was obtained (signup, checkbox, etc.)
+    PRIVACY_ACCEPTED_AT = "privacyAcceptedAt"          # datetime — when privacy policy was accepted
+    TERMS_ACCEPTED_AT = "termsAcceptedAt"              # datetime — when ToS was accepted
+    PRIVACY_POLICY_VERSION = "privacyPolicyVersion"    # str — version of privacy policy accepted
+    TERMS_VERSION = "termsVersion"                    # str — version of ToS accepted
+    PREFERRED_LANGUAGE = "preferredLanguage"            # str — 'en' or 'fr' (for Quebec Bill 96 compliance)
+    UNSUBSCRIBED_AT = "unsubscribedAt"                # datetime — when user unsubscribed from marketing
+    DATA_PROCESSING_CONSENT = "dataProcessingConsent"  # bool — explicit consent for data processing
 
     # === DELIVERY FIELDS ===
     DELIVERY_INSTRUCTIONS = "deliveryInstructions"

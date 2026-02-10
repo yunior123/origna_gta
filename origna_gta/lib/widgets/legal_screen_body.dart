@@ -168,6 +168,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
       stretch: true,
       backgroundColor: DesignTokens.gradientMiddle,
       leading: IconButton(
+        tooltip: 'Back',
         icon: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
@@ -194,27 +195,31 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
           ),
           child: Stack(
             children: [
-              Positioned(
-                top: -40,
-                right: -30,
-                child: Container(
-                  width: 160,
-                  height: 160,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.04),
+              ExcludeSemantics(
+                child: Positioned(
+                  top: -40,
+                  right: -30,
+                  child: Container(
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.04),
+                    ),
                   ),
                 ),
               ),
-              Positioned(
-                bottom: 20,
-                left: -50,
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: DesignTokens.accent.withValues(alpha: 0.06),
+              ExcludeSemantics(
+                child: Positioned(
+                  bottom: 20,
+                  left: -50,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: DesignTokens.accent.withValues(alpha: 0.06),
+                    ),
                   ),
                 ),
               ),
@@ -309,7 +314,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
           ),
         ),
         SizedBox(
-          height: 38,
+          height: 48, // WCAG 2.5.8: ≥48dp touch target
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),

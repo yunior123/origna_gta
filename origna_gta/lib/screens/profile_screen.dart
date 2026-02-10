@@ -126,7 +126,10 @@ class ProfileScreen extends ConsumerWidget {
                       style: TextStyle(fontSize: 18, color: Colors.grey[700]),
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton.icon(
+                    Semantics(
+                      button: true,
+                      label: 'btn-sign-in',
+                      child: ElevatedButton.icon(
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -144,6 +147,7 @@ class ProfileScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
+                    ),
                     ),
                   ],
                 ),
@@ -335,7 +339,10 @@ class ProfileScreen extends ConsumerWidget {
                               icon: Icons.logout,
                             ),
                             const SizedBox(height: 12),
-                            Material(
+                            Semantics(
+                              button: true,
+                              label: 'btn-delete-account',
+                              child: Material(
                               color: Colors.transparent,
                               child: InkWell(
                                 onTap: () =>
@@ -358,6 +365,7 @@ class ProfileScreen extends ConsumerWidget {
                                   ),
                                 ),
                               ),
+                            ),
                             ),
                           ],
                         ),
@@ -400,7 +408,10 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ],
       ),
-      child: Material(
+      child: Semantics(
+        button: true,
+        label: 'menu-${title.toLowerCase().replaceAll(' ', '-')}',
+        child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
@@ -459,6 +470,7 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -586,7 +598,10 @@ class ProfileScreen extends ConsumerWidget {
               style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
             const SizedBox(height: 16),
-            Material(
+            Semantics(
+              link: true,
+              label: 'link-email-support',
+              child: Material(
               color: Colors.transparent,
               child: InkWell(
                 onTap: () async {
@@ -625,7 +640,11 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            Material(
+            ),
+            Semantics(
+              link: true,
+              label: 'link-website',
+              child: Material(
               color: Colors.transparent,
               child: InkWell(
                 onTap: () async {
@@ -663,6 +682,7 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+            ),
             ),
           ],
         ),

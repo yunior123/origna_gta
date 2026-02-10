@@ -114,6 +114,25 @@ See @docs/AGENT_GUIDE.md for full agent usage guide, workflow chunking, and sess
 ## LEARNED (Persistent Knowledge)
 Be serious, audit logic, json schema, use logic, cross stack agents, check the hole logic of the project in parallel, add all issues to tasks list. no hardcoded values no magic strings, this is serious, they nuke entire projects. Most of the bugs are related to logic, incomplete work, hardcoded values instead of constants or enums. Verify the payment system backend and frontend, thats important.
 
+### E2E Testing Infrastructure (Feb 2026)
+- **Solo developer** — Yunior is building this alone. AI agents (Copilot, Claude, Gemini) are the QA team. All E2E scenarios MUST be fully covered by automated tests — no manual testing is feasible.
+- **267 E2E tests** across 8 Playwright files + 288 backend pytest tests
+- **`e2e/api-helpers.ts`** — **CANONICAL** shared module for ALL E2E test helpers (created Feb 2026). All spec files import from here. NEVER duplicate helpers in spec files.
+  - **Fail-fast `signIn()`** — throws immediately if auth emulator returns no `idToken` (missing seed data). Prevents cascading "Unauthenticated" failures.
+  - **`ensureSeedData()`** — validates Auth + Firestore emulators have seeded users before tests run. Call in `test.beforeAll` for fast failure diagnosis.
+  - **`fillStripeCheckout()`** — handles Stripe "Link" login popup, 3DS iframe, and generic modal overlay dismissal in headless Chromium.
+  - **`callCallable()`** returns raw body; **`callOk()`** throws on error; **`callExpectError()`** returns the error for assertion.
+  - **`patchDoc()`** supports both `(path, fields)` and `(collection, docId, fields)` signatures.
+- **Root cause of ~61 "Unauthenticated" failures**: Auth Emulator had 0 users (emulator restarted without `--import`). `signIn()` silently returned no `idToken` → `Bearer undefined` → token rejected. NOT a protocol or project ID mismatch.
+- **Firestore REST PATCH** — MUST use `updateMask.fieldPaths` query params for partial updates, otherwise it REPLACES the entire document (wiping all fields not included in the PATCH body)
+- **`Bearer owner`** — bypasses ALL Firestore/Auth security rules in emulator mode. Use for tooling scripts only.
+- **Auth Emulator** — does NOT support GET on `/emulator/v1/projects/{id}/accounts`. To list users, query Firestore `/users` collection via REST with `Bearer owner` instead.
+- **`seed-uid-map.json`** — maps email → Firebase Auth UID for `seed-orders.py`. MUST be regenerated when switching between `mega-seed.ts` (75 users) and `seed-emulator.ts` (25 users). Stale UIDs cause order seed failures and cascading test breaks.
+- **Rate limiting** — `create_checkout_session` has 5 req/min rate limit. Tests that call it multiple times need delays (65s+) between suites.
+- **Test ordering** — tests within a file run sequentially and modify shared Firestore data. If test C modifies a document, test G must restore it before asserting.
+- **Stripe Checkout UI in headless** — "VerificationModal" overlay is likely Stripe's "Link" login popup (NOT 3DS — card 4242424242424242 is not enrolled). `fillStripeCheckout()` in `api-helpers.ts` handles this with modal dismissal logic.
+- **patchDoc() in E2E** — must construct `updateMask.fieldPaths` from all fields being patched, not rely on Firestore's default merge behavior (REST API ≠ SDK).
+
 ### Algolia Search Architecture
 - **`AlgoliaService.isAvailable`** — detects empty credentials at init. Emulator has no Algolia keys → `isAvailable=false` → all queries route to Firestore.
 - **`EnvConfig().algoliaIndexName`** — `products_emulator` in emulator, `products` in prod. Used by AlgoliaService.create().
@@ -122,10 +141,26 @@ Be serious, audit logic, json schema, use logic, cross stack agents, check the h
 - **`productRepositoryProvider`** — always returns `AlgoliaProductRepository` (no dead try/catch). Graceful degradation is built into the repository itself.
 - Full decision table in `.github/copilot-skills.md`.
 
+### Canadian Law Compliance (Audit Feb 2026)
+- **Full audit**: `docs/CANADIAN_LAW_COMPLIANCE_AUDIT.md` — 10 critical, 12 moderate, 7 low issues
+- **Skill**: `.claude/skills/canadian-law-compliance/SKILL.md` — quick reference for all agents
+- **12 Canadian laws apply**: PIPEDA, Quebec Law 25, CASL, Competition Act, Excise Tax Act, Ontario CPA, Quebec CPA, ACA, AODA, Charter of French Language, Official Languages Act, CCPSA
+- **Tax rates verified correct** — all 13 provinces/territories match CRA (NS=14% HST updated)
+- **Top 3 CRITICAL before launch**: (1) GST/HST reg number on receipts, (2) CASL email compliance (address + unsubscribe), (3) French language for Quebec users
+- **CASL fines up to $10M** — all emails need physical address + unsubscribe link + consent tracking
+- **Quebec Law 25** — must designate privacy officer + publish contact, mandatory PIA, granular consent
+- **PIPEDA** — mandatory breach notification since 2018, must have data breach response plan
+- **Bill C-56 (June 2024)** — drip pricing banned, but govt taxes exempt; still add "+ applicable taxes" to prices
+- **AODA/ACA** — WCAG 2.1 AA required, semantics exist but no formal audit done
+- **Bill 96 (Quebec)** — all consumer-facing content must be available in French, fines $3K-$30K/violation
+- **Ontario CPA** — order confirmation emails must include: full supplier name, itemized price, delivery date, cancellation rights, contact info
+- **Schema fields needed**: `emailConsent`, `consentTimestamp`, `consentMethod`, `marketingOptIn` in user docs
+- **Email templates need**: physical address footer, unsubscribe link, `List-Unsubscribe` header, GST/HST number
+
 ### .claude/ Infrastructure
 - **5 agents**: logic-auditor, cross-stack-auditor, payment-auditor, schema-sync-checker, order-lifecycle-auditor
 - **7 rules** (path-scoped): flutter, backend, payments, orders, firestore, testing, security
-- **9+ skills**: audit-workflow, design-tokens, e2e-test-suites, email-system, full-stack-audit, read-workflow, shipping-costs, ux-info-buttons, widget-finders
+- **10+ skills**: audit-workflow, design-tokens, e2e-test-suites, email-system, full-stack-audit, read-workflow, shipping-costs, ux-info-buttons, widget-finders, **canadian-law-compliance**
 - **5 hooks**: validate-schema-sync, validate-payment, validate-orders, protect-production, verify-logic-on-stop (Stop gate)
 - **15+ commands**: plan-task, execute-plan, pause-work, resume-work, investigate, create-skill, audit-workflow, check-schema-sync, cross-stack-check, commit-push, deploy, test-all, fix-tests, optimize-db, clear-context
 - **Quality tools**: ruff (Python linting), dart analyze (Dart), universal-ctags (symbol extraction)

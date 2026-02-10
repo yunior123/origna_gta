@@ -27,307 +27,32 @@
  *   - Tests what the USER would experience, not implementation details
  */
 import { test, expect } from '@playwright/test';
+import {
+  checkInfrastructure, ensureSeedData, signIn, createTestUser,
+  callCallable, callOk, callExpectError,
+  readDoc, writeDoc, deleteDoc, listDocs, listSubcollection, parseDoc,
+  buildCheckoutPayload, createOrder, forceOrderStatus, pollDocField,
+  DEFAULT_PASS, TEST_ACCOUNTS, TEST_PRODUCTS,
+} from './api-helpers';
 
 // ════════════════════════════════════════════════════════════════════
-// CONFIGURATION
+// CONFIGURATION — Re-exported from api-helpers.ts
 // ════════════════════════════════════════════════════════════════════
 
-const AUTH_EMULATOR  = 'http://localhost:9099';
-const FIRESTORE_EMU  = 'http://localhost:8080';
-const FUNCTIONS_EMU  = 'http://localhost:5001';
-const PROJECT_ID     = 'orignagta';
-const BASE           = `${FIRESTORE_EMU}/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
-
-// Infrastructure availability cache
-let infraAvailable: {
-  auth: boolean | null;
-  firestore: boolean | null;
-  functions: boolean | null;
-} = {
-  auth: null,
-  firestore: null,
-  functions: null,
-};
-
-/** Check if infrastructure is available */
-async function checkInfrastructure(request: any): Promise<typeof infraAvailable> {
-  if (infraAvailable.auth === null) {
-    const [authRes, firestoreRes, functionsRes] = await Promise.all([
-      request.get(`${AUTH_EMULATOR}/`).catch(() => null),
-      request.get(`${FIRESTORE_EMU}/`).catch(() => null),
-      request.get(`${FUNCTIONS_EMU}/`).catch(() => null),
-    ]);
-    infraAvailable = {
-      auth: !!authRes,
-      firestore: !!firestoreRes,
-      functions: !!functionsRes,
-    };
-    if (Object.values(infraAvailable).some(v => !v)) {
-      console.log('⚠️  Some infrastructure is unavailable:');
-      console.log(`   Auth: ${infraAvailable.auth ? '✅' : '❌'}`);
-      console.log(`   Firestore: ${infraAvailable.firestore ? '✅' : '❌'}`);
-      console.log(`   Functions: ${infraAvailable.functions ? '✅' : '❌'}`);
-    }
-  }
-  return infraAvailable;
-}
-
-// Test accounts (from seed-emulator.ts)
-const ADMIN_EMAIL    = 'yr62813@gmail.com';
-const ADMIN_PASS     = '960227Y#y';
-const SELLER1_EMAIL  = 'seller1@test.origna.ca';
-const SELLER2_EMAIL  = 'seller2@test.origna.ca';
+const ADMIN_EMAIL    = TEST_ACCOUNTS.ADMIN_EMAIL;
+const ADMIN_PASS     = TEST_ACCOUNTS.ADMIN_PASS;
+const SELLER1_EMAIL  = TEST_ACCOUNTS.SELLER1_EMAIL;
+const SELLER2_EMAIL  = TEST_ACCOUNTS.SELLER2_EMAIL;
 const SELLER5_EMAIL  = 'seller5@test.origna.ca'; // Non-onboarded seller
 const BUYER1_EMAIL   = 'yuniorrodriguezo460@gmail.com'; // Note: no buyer1@ in seed
-const BUYER2_EMAIL   = 'buyer2@test.origna.ca';
-const BUYER3_EMAIL   = 'buyer3@test.origna.ca';
+const BUYER2_EMAIL   = TEST_ACCOUNTS.BUYER2_EMAIL;
+const BUYER3_EMAIL   = TEST_ACCOUNTS.BUYER3_EMAIL;
 const BUYER10_EMAIL  = 'buyer10@test.origna.ca';
 const BUYER11_EMAIL  = 'buyer11@test.origna.ca';
-const DEFAULT_PASS   = 'REDACTED_TEST_PASSWORD';
 
-// Products
-const PRODUCT_HIGH_STOCK = 'product_001'; // Quebec Scarf, ~25 stock
-const PRODUCT_SELLER2    = 'product_003'; // BC Cedar Incense Set
-const PRODUCT_DIGITAL    = 'product_010'; // Canadian History eBook Bundle
-
-// ════════════════════════════════════════════════════════════════════
-// HELPERS
-// ════════════════════════════════════════════════════════════════════
-
-async function signIn(email: string, password = DEFAULT_PASS) {
-  const res = await fetch(
-    `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, returnSecureToken: true }) }
-  );
-  const data = await res.json();
-  if (data.idToken) {
-    const upd = await fetch(
-      `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:update?key=fake-api-key`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: data.idToken, emailVerified: true, returnSecureToken: true }) }
-    );
-    const u = await upd.json();
-    if (u.idToken) { data.idToken = u.idToken; data.refreshToken = u.refreshToken || data.refreshToken; }
-  }
-  return data;
-}
-
-/** Create a new user in Auth emulator and write Firestore user doc */
-async function createTestUser(email: string, password: string, displayName: string, roles: string[] = ['buyer']) {
-  // Create in Auth
-  const signUpRes = await fetch(
-    `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, displayName, returnSecureToken: true }) }
-  );
-  const signUpData = await signUpRes.json();
-  const uid = signUpData.localId;
-
-  // Verify email
-  if (signUpData.idToken) {
-    await fetch(
-      `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:update?key=fake-api-key`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: signUpData.idToken, emailVerified: true, returnSecureToken: true }) }
-    );
-  }
-
-  // Write Firestore user doc
-  await writeDoc(`users/${uid}`, {
-    uid,
-    email,
-    name: displayName,
-    roles,
-    address: {
-      street: '100 Test St',
-      apartment: '',
-      city: 'Toronto',
-      state: 'ON',
-      postalCode: 'M5V 3A8',
-      country: 'Canada',
-      phoneNumber: '+14165550099',
-      isDefault: true,
-      label: 'Home',
-    },
-    createdAt: new Date().toISOString(),
-  });
-
-  return { uid, ...signUpData };
-}
-
-async function callCallable(fn: string, data: any, token: string) {
-  const res = await fetch(`${FUNCTIONS_EMU}/${PROJECT_ID}/us-central1/${fn}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify({ data }),
-  });
-  const body = await res.json();
-  return body;
-}
-
-/** callCallable that expects success — throws on error */
-async function callOk(fn: string, data: any, token: string) {
-  const body = await callCallable(fn, data, token);
-  if (body.error) throw new Error(`${fn} failed: ${body.error.message || JSON.stringify(body.error)}`);
-  return body.result || body;
-}
-
-/** callCallable that expects failure — returns the error */
-async function callExpectError(fn: string, data: any, token: string): Promise<{ code: string; message: string }> {
-  const body = await callCallable(fn, data, token);
-  if (body.error) return body.error;
-  if (body.result?.error) return body.result.error;
-  return { code: 'unexpected-success', message: `Expected ${fn} to fail but got: ${JSON.stringify(body)}` };
-}
-
-async function readDoc(path: string) {
-  const res = await fetch(`${BASE}/${path}`,
-    { headers: { 'Authorization': 'Bearer owner' } }
-  );
-  if (!res.ok) return null;
-  return res.json();
-}
-
-async function writeDoc(path: string, fields: Record<string, any>) {
-  const fieldPaths = Object.keys(fields).map(k => `updateMask.fieldPaths=${k}`).join('&');
-  const res = await fetch(`${BASE}/${path}?${fieldPaths}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer owner' },
-    body: JSON.stringify({ fields: toFirestoreFields(fields) }),
-  });
-  return res.ok;
-}
-
-async function deleteDoc(path: string) {
-  const res = await fetch(`${BASE}/${path}`,
-    { method: 'DELETE', headers: { 'Authorization': 'Bearer owner' } }
-  );
-  return res.ok;
-}
-
-/** List documents in a collection (optionally filtered) */
-async function listDocs(collectionPath: string, pageSize = 100) {
-  const res = await fetch(`${BASE}/${collectionPath}?pageSize=${pageSize}`,
-    { headers: { 'Authorization': 'Bearer owner' } }
-  );
-  if (!res.ok) return [];
-  const body = await res.json();
-  return (body.documents || []).map(parseDoc);
-}
-
-/** List subcollection documents */
-async function listSubcollection(parentPath: string, subcollection: string) {
-  const res = await fetch(`${BASE}/${parentPath}/${subcollection}?pageSize=100`,
-    { headers: { 'Authorization': 'Bearer owner' } }
-  );
-  if (!res.ok) return [];
-  const body = await res.json();
-  return (body.documents || []).map((doc: any) => ({
-    id: doc.name?.split('/').pop(),
-    ...parseDoc(doc),
-  }));
-}
-
-function toFirestoreFields(obj: any): any {
-  const f: any = {};
-  for (const [k, v] of Object.entries(obj)) f[k] = toFsVal(v);
-  return f;
-}
-function toFsVal(v: any): any {
-  if (v === null || v === undefined) return { nullValue: null };
-  if (typeof v === 'string') return { stringValue: v };
-  if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
-  if (typeof v === 'boolean') return { booleanValue: v };
-  if (Array.isArray(v)) return { arrayValue: { values: v.map(toFsVal) } };
-  if (v instanceof Date) return { timestampValue: v.toISOString() };
-  if (typeof v === 'object') return { mapValue: { fields: toFirestoreFields(v) } };
-  return { stringValue: String(v) };
-}
-function parseVal(v: any): any {
-  if (!v) return null;
-  if (v.stringValue !== undefined) return v.stringValue;
-  if (v.integerValue !== undefined) return parseInt(v.integerValue);
-  if (v.doubleValue !== undefined) return v.doubleValue;
-  if (v.booleanValue !== undefined) return v.booleanValue;
-  if (v.nullValue !== undefined) return null;
-  if (v.timestampValue) return v.timestampValue;
-  if (v.arrayValue) return (v.arrayValue.values || []).map(parseVal);
-  if (v.mapValue) {
-    const o: any = {};
-    for (const [k, val] of Object.entries(v.mapValue.fields || {})) o[k] = parseVal(val);
-    return o;
-  }
-  return v;
-}
-function parseDoc(doc: any): any {
-  if (!doc?.fields) return null;
-  const r: any = {};
-  for (const [k, v] of Object.entries(doc.fields)) r[k] = parseVal(v);
-  return r;
-}
-
-/** Build checkout payload */
-async function buildCheckoutPayload(buyerUid: string, productId: string, quantity = 1) {
-  const prodDoc = await readDoc(`products/${productId}`);
-  const product = parseDoc(prodDoc);
-  const buyerDoc = await readDoc(`users/${buyerUid}`);
-  const buyer = parseDoc(buyerDoc);
-  const address = buyer?.address || {};
-
-  return {
-    data: {
-      userId: buyerUid,
-      items: [{
-        productId, name: product.name, price: product.price,
-        quantity, sellerId: product.sellerId,
-        imageUrls: product.imageUrls || ['https://picsum.photos/400'],
-      }],
-      subtotal: +(product.price * quantity).toFixed(2),
-      shippingAddress: {
-        street: address.street || '100 King St W',
-        apartment: address.apartment || '',
-        city: address.city || 'Toronto',
-        state: address.state || 'ON',
-        postalCode: address.postalCode || 'M5X 1A9',
-        country: address.country || 'CA',
-        phoneNumber: address.phoneNumber || '+14165550000',
-      },
-    },
-    product,
-    buyer,
-  };
-}
-
-/** Create an order via checkout (API only) and return orderId */
-async function createOrder(buyerEmail: string, productId: string, quantity = 1, password = DEFAULT_PASS) {
-  const auth = await signIn(buyerEmail, password);
-  const { data } = await buildCheckoutPayload(auth.localId, productId, quantity);
-  const result = await callOk('create_checkout_session', data, auth.idToken);
-  return { orderId: result.orderId as string, auth, checkoutUrl: result.checkoutUrl };
-}
-
-/** Force an order to a specific status via direct Firestore write */
-async function forceOrderStatus(orderId: string, status: string, extraFields: Record<string, any> = {}) {
-  await writeDoc(`orders/${orderId}`, { orderStatus: status, ...extraFields });
-}
-
-/** Poll until a Firestore doc field matches expected value */
-async function pollDocField(
-  path: string, field: string, expected: any, maxMs = 15_000
-): Promise<any> {
-  const start = Date.now();
-  while (Date.now() - start < maxMs) {
-    const doc = await readDoc(path);
-    if (doc) {
-      const parsed = parseDoc(doc);
-      if (parsed?.[field] === expected) return parsed;
-    }
-    await new Promise(r => setTimeout(r, 1_000));
-  }
-  const doc = await readDoc(path);
-  return doc ? parseDoc(doc) : null;
-}
+const PRODUCT_HIGH_STOCK = TEST_PRODUCTS.HIGH_STOCK;
+const PRODUCT_SELLER2    = TEST_PRODUCTS.SELLER2;
+const PRODUCT_DIGITAL    = TEST_PRODUCTS.DIGITAL;
 
 /** Unique suffix for test isolation */
 function uid() { return `test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; }
@@ -1164,6 +889,9 @@ test.describe('J. Shipping Cost Management', () => {
   });
 
   test('J.1 Seller can update shipping cost on an order', async () => {
+    // Wait for rate limit window to reset (I.* tests consumed checkout quota)
+    await new Promise(r => setTimeout(r, 65_000));
+
     const { orderId } = await createOrder(BUYER1_EMAIL, PRODUCT_HIGH_STOCK, 1);
     await forceOrderStatus(orderId, 'confirmed', {
       paymentStatus: 'authorized',

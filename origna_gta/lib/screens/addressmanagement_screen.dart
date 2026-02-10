@@ -66,12 +66,16 @@ class AddressManagementScreen extends ConsumerWidget {
                 subtitle: 'Add a delivery address to speed up checkout.',
                 action: SizedBox(
                   width: 220,
-                  child: ModernButton(
+                  child: Semantics(
+                    button: true,
+                    label: 'btn-add-address',
+                    child: ModernButton(
                     label: 'Add Address',
                     icon: Icons.add_location_alt_outlined,
                     onPressed: () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEditAddressScreen()));
                     },
+                  ),
                   ),
                 ),
               );
@@ -139,7 +143,10 @@ class AddressManagementScreen extends ConsumerWidget {
                 )
               else
                 const SizedBox.shrink(),
-              Material(
+              Semantics(
+                button: true,
+                label: 'btn-edit-address',
+                child: Material(
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
@@ -160,6 +167,7 @@ class AddressManagementScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+              ),
               ),
             ],
           ),

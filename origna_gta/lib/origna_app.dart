@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -177,6 +178,10 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
       onTap: () => _sessionTimeout.recordActivity(context),
       onPanDown: (_) => _sessionTimeout.recordActivity(context),
       child: MaterialApp(
+        // === i18n: easy_localization (Quebec Bill 96 / Loi 96 compliance) ===
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        locale: context.locale,
         scrollBehavior: const MaterialScrollBehavior().copyWith(
           // Fix Sentry issue: !identical(kind, PointerDeviceKind.trackpad)
           // Explicitly supports all pointer kinds for modern Flutter Web

@@ -415,10 +415,13 @@ class _CartTotalDisplay extends ConsumerWidget {
               Tooltip(
                 message:
                     'Frais de plateforme de ${(BusinessRules.platformFeePercent * 100).toStringAsFixed(1)}% pour maintenir le service sécurisé et fiable.',
-                child: InkWell(
-                  onTap: () => _showInfoSheet(
-                    context,
-                    'Frais de Service',
+                child: Semantics(
+                  button: true,
+                  label: 'btn-info-service-fee',
+                  child: InkWell(
+                    onTap: () => _showInfoSheet(
+                      context,
+                      'Frais de Service',
                     'Une commission de ${(BusinessRules.platformFeePercent * 100).toStringAsFixed(1)}% est appliquée sur chaque transaction pour couvrir:\n\n'
                         '• Paiements sécurisés via Stripe\n'
                         '• Protection acheteur et vendeur\n'
@@ -435,6 +438,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                       color: DesignTokens.info.withValues(alpha: 0.6),
                     ),
                   ),
+                ),
                 ),
               ),
             ],
@@ -463,10 +467,13 @@ class _CartTotalDisplay extends ConsumerWidget {
               Tooltip(
                 message:
                     'Les taxes (GST/HST/PST) seront calculées lors du paiement selon votre province.',
-                child: InkWell(
-                  onTap: () => _showInfoSheet(
-                    context,
-                    'Estimation des Taxes',
+                child: Semantics(
+                  button: true,
+                  label: 'btn-info-tax-estimate',
+                  child: InkWell(
+                    onTap: () => _showInfoSheet(
+                      context,
+                      'Estimation des Taxes',
                     'Les taxes sont calculées automatiquement lors du paiement en fonction de:\n\n'
                         '• Votre province de livraison\n'
                         '• Le type de produits (certaines catégories sont exonérées)\n\n'
@@ -487,6 +494,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                     ),
                   ),
                 ),
+                ),
               ),
             ],
           ),
@@ -496,7 +504,10 @@ class _CartTotalDisplay extends ConsumerWidget {
           const SizedBox(height: 12),
 
           // Delivery instructions row with pencil icon
-          InkWell(
+          Semantics(
+            button: true,
+            label: 'btn-delivery-instructions',
+            child: InkWell(
             onTap: () => _showDeliveryInstructionsDialog(
               context,
               ref,
@@ -572,6 +583,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                 ],
               ),
             ),
+          ),
           ),
         ],
       ),

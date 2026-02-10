@@ -52,7 +52,9 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
     final iconSize = isCompact ? 16.0 : 18.0;
     final favIconSize = isCompact ? 18.0 : 20.0;
 
-    return GestureDetector(
+    return Semantics(
+      label: 'product-card-${widget.productId}',
+      child: GestureDetector(
       onTap: () {
         Navigator.push(
           context,
@@ -150,15 +152,19 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                         color: Colors.white,
                         shape: const CircleBorder(),
                         elevation: 4,
-                        child: InkWell(
-                          onTap: () => _toggleFavorite(),
-                          customBorder: const CircleBorder(),
-                          child: Padding(
-                            padding: EdgeInsets.all(isCompact ? 6 : 8),
-                            child: Icon(
-                              isFavorite ? Icons.favorite : Icons.favorite_border,
-                              color: isFavorite ? Colors.red : Colors.grey[600],
-                              size: favIconSize,
+                        child: Semantics(
+                          button: true,
+                          label: 'btn-favorite-${widget.productId}',
+                          child: InkWell(
+                            onTap: () => _toggleFavorite(),
+                            customBorder: const CircleBorder(),
+                            child: Padding(
+                              padding: EdgeInsets.all(isCompact ? 6 : 8),
+                              child: Icon(
+                                isFavorite ? Icons.favorite : Icons.favorite_border,
+                                color: isFavorite ? Colors.red : Colors.grey[600],
+                                size: favIconSize,
+                              ),
                             ),
                           ),
                         ),
@@ -214,7 +220,10 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                         const SizedBox(width: 4),
                         // Hide add to cart button if user owns this product
                         if (!isOwner)
-                          Material(
+                          Semantics(
+                            button: true,
+                            label: 'btn-add-to-cart-${widget.productId}',
+                            child: Material(
                             color: DesignTokens.primary,
                             borderRadius: BorderRadius.circular(isCompact ? 6 : 8),
                             child: InkWell(
@@ -242,6 +251,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                                 child: Icon(Icons.add_shopping_cart, color: Colors.white, size: iconSize),
                               ),
                             ),
+                          ),
                           ),
                       ],
                     ),
@@ -277,6 +287,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
           ],
         ),
       ),
+    ),
     );
   }
 

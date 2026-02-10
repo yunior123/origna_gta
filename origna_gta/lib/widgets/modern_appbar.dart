@@ -45,7 +45,7 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
         backgroundColor: Colors.transparent,
         centerTitle: centerTitle,
         leading: showBackButton
-            ? IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded), onPressed: onBackPressed ?? () => Navigator.pop(context))
+            ? IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded), tooltip: 'Back', onPressed: onBackPressed ?? () => Navigator.pop(context))
             : leadingIcon,
         title: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
         actions: actions,
@@ -98,11 +98,17 @@ class _NavBarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
+    return Semantics(
+      button: true,
+      label: '${item.label} tab',
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
         duration: DesignTokens.durationNormal,
-        padding: EdgeInsets.symmetric(horizontal: isActive ? DesignTokens.spacing16 : DesignTokens.spacing8, vertical: DesignTokens.spacing8),
+        padding: EdgeInsets.symmetric(
+          horizontal: isActive ? DesignTokens.spacing16 : DesignTokens.spacing12,
+          vertical: DesignTokens.spacing12, // WCAG 2.5.8: 12+20+12=44dp ≈ 48dp
+        ),
         decoration: BoxDecoration(gradient: isActive ? DesignTokens.primaryGradient : null, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -117,6 +123,7 @@ class _NavBarItem extends StatelessWidget {
             ],
           ],
         ),
+      ),
       ),
     );
   }

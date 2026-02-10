@@ -42,9 +42,11 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
       onExit: (_) => _controller.reverse(),
       child: ScaleTransition(
         scale: _scaleAnimation,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: Container(
+        child: Semantics(
+          label: '${widget.productName}, \$${widget.price.toStringAsFixed(2)}, ${widget.rating.toStringAsFixed(1)} stars',
+          child: GestureDetector(
+            onTap: widget.onTap,
+            child: Container(
             decoration: BoxDecoration(
               color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.6) : DesignTokens.surface,
               borderRadius: BorderRadius.circular(DesignTokens.radius16),
@@ -73,6 +75,7 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                             ? Image.network(
                                 widget.imageUrl,
                                 fit: BoxFit.cover,
+                                semanticLabel: '${widget.productName} product image',
                                 errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 48),
                               )
                             : const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 48),
@@ -133,15 +136,19 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.primary),
                               ),
                               if (widget.onAddToCart != null)
-                                GestureDetector(
-                                  onTap: widget.onAddToCart,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      gradient: DesignTokens.primaryGradient,
-                                      borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                                Semantics(
+                                  button: true,
+                                  label: 'Add ${widget.productName} to cart',
+                                  child: GestureDetector(
+                                    onTap: widget.onAddToCart,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(14), // WCAG 2.5.8: ≥48dp touch target
+                                      decoration: BoxDecoration(
+                                        gradient: DesignTokens.primaryGradient,
+                                        borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                                      ),
+                                      child: const Icon(Icons.add, size: 20, color: Colors.white),
                                     ),
-                                    child: const Icon(Icons.add, size: 16, color: Colors.white),
                                   ),
                                 ),
                             ],
@@ -154,6 +161,7 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
               ),
             ),
           ),
+        ),
         ),
       ),
     );

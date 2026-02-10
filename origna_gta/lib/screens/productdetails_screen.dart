@@ -65,10 +65,14 @@ class ProductDetailScreen extends ConsumerWidget {
                                 itemCount: imageUrls.length,
                                 onPageChanged: viewModel.setImageIndex,
                                 itemBuilder: (context, index) {
-                                  return GestureDetector(
-                                    onTap: () => _showImageDialog(context, imageUrls, index),
-                                    child: SizedBox.expand(
-                                      child: CachedNetworkImage(
+                                  return Semantics(
+                                    label: 'Product image ${index + 1} of ${imageUrls.length}. Tap to view fullscreen',
+                                    button: true,
+                                    image: true,
+                                    child: GestureDetector(
+                                      onTap: () => _showImageDialog(context, imageUrls, index),
+                                      child: SizedBox.expand(
+                                        child: CachedNetworkImage(
                                         imageUrl: imageUrls[index],
                                         fit: BoxFit.cover,
                                         placeholder: (context, url) => Shimmer.fromColors(
@@ -80,6 +84,7 @@ class ProductDetailScreen extends ConsumerWidget {
                                             Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported, size: 100)),
                                       ),
                                     ),
+                                  ),
                                   );
                                 },
                               )
@@ -94,6 +99,7 @@ class ProductDetailScreen extends ConsumerWidget {
                               border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
                             ),
                             child: IconButton(
+                              tooltip: 'Go back',
                               icon: const Icon(Icons.arrow_back, color: Colors.white),
                               onPressed: () => Navigator.pop(context),
                             ),
@@ -124,15 +130,18 @@ class ProductDetailScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ShaderMask(
-                            shaderCallback: (bounds) => LinearGradient(
-                              colors: [DesignTokens.primary, DesignTokens.secondary],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ).createShader(bounds),
-                            child: Text(
-                              product.name,
-                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white),
+                          Semantics(
+                            header: true,
+                            child: ShaderMask(
+                              shaderCallback: (bounds) => LinearGradient(
+                                colors: [DesignTokens.primary, DesignTokens.secondary],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ).createShader(bounds),
+                              child: Text(
+                                product.name,
+                                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -277,6 +286,7 @@ class ProductDetailScreen extends ConsumerWidget {
                 child: Container(
                   decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
                   child: IconButton(
+                    tooltip: 'Close',
                     icon: const Icon(Icons.close, color: Colors.white, size: 28),
                     onPressed: () => Navigator.pop(context),
                   ),
@@ -501,15 +511,17 @@ class _ImageDots extends ConsumerWidget {
 
     final currentIndex = ref.watch(productDetailViewModelProvider.select((state) => state.currentImageIndex));
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(
-        imageCount,
-        (index) => Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: currentIndex == index ? Colors.white : Colors.white.withValues(alpha: 0.5)),
+    return ExcludeSemantics(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(
+          imageCount,
+          (index) => Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: currentIndex == index ? Colors.white : Colors.white.withValues(alpha: 0.5)),
+          ),
         ),
       ),
     );
@@ -519,20 +531,26 @@ class _ImageDots extends ConsumerWidget {
 class _QuantityButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
+  final String semanticLabel;
 
-  const _QuantityButton({required this.icon, required this.onPressed});
+  const _QuantityButton({required this.icon, required this.onPressed, required this.semanticLabel});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        splashColor: DesignTokens.primary.withValues(alpha: 0.3),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Icon(icon, color: onPressed != null ? DesignTokens.primary : Colors.grey[400], size: 20),
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      enabled: onPressed != null,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(8),
+          splashColor: DesignTokens.primary.withValues(alpha: 0.3),
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Icon(icon, color: onPressed != null ? DesignTokens.primary : Colors.grey[400], size: 20),
+          ),
         ),
       ),
     );
@@ -558,12 +576,12 @@ class _QuantitySelector extends ConsumerWidget {
         GlassContainer(
           child: Row(
             children: [
-              _QuantityButton(icon: Icons.remove, onPressed: quantity > 1 ? viewModel.decrementQuantity : null),
+              _QuantityButton(icon: Icons.remove, onPressed: quantity > 1 ? viewModel.decrementQuantity : null, semanticLabel: 'btn-product-qty-minus'),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text('$quantity', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               ),
-              _QuantityButton(icon: Icons.add, onPressed: viewModel.incrementQuantity),
+              _QuantityButton(icon: Icons.add, onPressed: viewModel.incrementQuantity, semanticLabel: 'btn-product-qty-plus'),
             ],
           ),
         ),

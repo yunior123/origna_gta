@@ -13,6 +13,34 @@ FORCE_REAL_EMAIL = os.environ.get('FORCE_REAL_EMAIL', 'false').lower() == 'true'
 # Dynamic base URL for email links — Flutter web local in emulator, prod otherwise
 APP_BASE_URL = EmailConfig.DEV_URL if IS_EMULATOR else EmailConfig.PROD_URL
 
+# Dynamic unsubscribe URL
+UNSUBSCRIBE_URL = EmailConfig.UNSUBSCRIBE_URL_DEV if IS_EMULATOR else EmailConfig.UNSUBSCRIBE_URL_PROD
+
+
+def _casl_compliant_footer(include_gst: bool = False) -> str:
+    """Generate CASL-compliant email footer with physical address, unsubscribe, and optional GST/HST.
+
+    Required by:
+    - CASL (Canadian Anti-Spam Legislation): Physical address + unsubscribe link
+    - Excise Tax Act: GST/HST registration number on receipts
+    - Quebec Law 25: Privacy officer contact
+    """
+    gst_line = f'<p style="margin: 0 0 8px 0; font-size: 11px; color: rgba(255,255,255,0.35);">GST/HST Registration: {EmailConfig.GST_HST_NUMBER}</p>' if include_gst else ''
+    return f"""
+        <tr><td bgcolor="#1a1a2e" style="background-color: #1a1a2e; padding: 32px 40px; text-align: center;">
+            <div style="margin-bottom: 16px;">
+                <span style="font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.5);">O R I G N A</span>
+            </div>
+            <p style="margin: 0 0 8px 0; font-size: 13px; color: rgba(255,255,255,0.5);">{EmailConfig.APP_TAGLINE}</p>
+            <p style="margin: 0 0 8px 0; font-size: 12px; color: rgba(255,255,255,0.35);">{EmailConfig.PHYSICAL_ADDRESS}</p>
+            {gst_line}
+            <p style="margin: 0 0 8px 0; font-size: 12px; color: rgba(255,255,255,0.35);">Questions? <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA; text-decoration: none;">{EmailConfig.SUPPORT_EMAIL}</a> | Privacy: <a href="mailto:{EmailConfig.PRIVACY_OFFICER_EMAIL}" style="color: #667EEA; text-decoration: none;">{EmailConfig.PRIVACY_OFFICER_EMAIL}</a></p>
+            <p style="margin: 0 0 12px 0; font-size: 12px; color: rgba(255,255,255,0.35);"><a href="{UNSUBSCRIBE_URL}" style="color: #667EEA; text-decoration: underline;">Unsubscribe from marketing emails</a> | <a href="{APP_BASE_URL}/privacy-policy" style="color: #667EEA; text-decoration: none;">Privacy Policy</a></p>
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+                <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.25);">{EmailConfig.COPYRIGHT_TEXT}</p>
+            </div>
+        </td></tr>"""
+
 def get_order_confirmation_email(order_data, order_id=None):
     """Generate HTML email for customer order confirmation
 
@@ -60,6 +88,10 @@ def get_order_confirmation_email(order_data, order_id=None):
     phone_html = f"<br>📱 {delivery_info[Fields.PHONE_NUMBER]}" if delivery_info.get(Fields.PHONE_NUMBER) else ''
 
     order_date = datetime.now().strftime('%B %d, %Y at %I:%M %p')
+
+    # CPA Ontario: estimated delivery date (7 business days from now as default)
+    from datetime import timedelta
+    estimated_delivery = (datetime.now() + timedelta(days=10)).strftime('%B %d, %Y')
 
     return f"""
     <!DOCTYPE html>
@@ -197,7 +229,9 @@ def get_order_confirmation_email(order_data, order_id=None):
 
         <!-- ORDER DATE -->
         <tr><td style="padding: 0 40px 24px 40px; text-align: center;">
-            <p style="margin: 0; font-size: 12px; color: #999;">🕐 Ordered on {order_date}</p>
+            <p style="margin: 0 0 4px 0; font-size: 12px; color: #999;">🕐 Ordered on {order_date}</p>
+            <p style="margin: 0 0 4px 0; font-size: 12px; color: #999;">📦 Estimated delivery by {estimated_delivery}</p>
+            <p style="margin: 0; font-size: 12px; color: #999;">Sold by: Origna Ventures Inc. | GST/HST: {EmailConfig.GST_HST_NUMBER}</p>
         </td></tr>
 
         <!-- CTA BUTTON -->
@@ -209,17 +243,16 @@ def get_order_confirmation_email(order_data, order_id=None):
             </tr></table>
         </td></tr>
 
-        <!-- FOOTER -->
-        <tr><td bgcolor="#1a1a2e" style="background-color: #1a1a2e; padding: 32px 40px; text-align: center;">
-            <div style="margin-bottom: 16px;">
-                <span style="font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.5);">O R I G N A</span>
-            </div>
-            <p style="margin: 0 0 8px 0; font-size: 13px; color: rgba(255,255,255,0.5);">{EmailConfig.APP_TAGLINE}</p>
-            <p style="margin: 0 0 16px 0; font-size: 12px; color: rgba(255,255,255,0.35);">Questions? Reach us at <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA; text-decoration: none;">{EmailConfig.SUPPORT_EMAIL}</a></p>
-            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
-                <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.25);">{EmailConfig.COPYRIGHT_TEXT}</p>
+        <!-- CPA ONTARIO COMPLIANCE: Cancellation rights notice -->
+        <tr><td style="padding: 0 40px 24px 40px;">
+            <div style="background: #f8f9ff; border: 1px solid #e8ebf0; border-radius: 12px; padding: 16px 20px;">
+                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">Your Rights</p>
+                <p style="margin: 0; font-size: 12px; color: #666; line-height: 1.6;">Under Ontario's Consumer Protection Act, you may cancel this order within 7 days of receiving it if the goods are defective or not as described. For digital goods, cancellation rights apply before delivery. To request a cancellation, contact <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a> with your order ID.</p>
             </div>
         </td></tr>
+
+        <!-- CASL-COMPLIANT FOOTER with GST/HST (Excise Tax Act) -->
+        {_casl_compliant_footer(include_gst=True)}
 
         </table>
         </td></tr>
@@ -432,17 +465,8 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
             </tr></table>
         </td></tr>
 
-        <!-- FOOTER -->
-        <tr><td bgcolor="#1a1a2e" style="background-color: #1a1a2e; padding: 32px 40px; text-align: center;">
-            <div style="margin-bottom: 16px;">
-                <span style="font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.5);">O R I G N A</span>
-            </div>
-            <p style="margin: 0 0 8px 0; font-size: 13px; color: rgba(255,255,255,0.5);">Seller Dashboard Notification</p>
-            <p style="margin: 0 0 16px 0; font-size: 12px; color: rgba(255,255,255,0.35);">Questions? <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA; text-decoration: none;">{EmailConfig.SUPPORT_EMAIL}</a></p>
-            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
-                <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.25);">{EmailConfig.COPYRIGHT_TEXT}</p>
-            </div>
-        </td></tr>
+        <!-- CASL-COMPLIANT FOOTER -->
+        {_casl_compliant_footer(include_gst=False)}
 
         </table>
         </td></tr>
@@ -452,7 +476,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
     """
 
 def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_EMAIL):
-    """Send email using Mailjet"""
+    """Send email using Mailjet — CASL compliant with List-Unsubscribe header"""
     try:
         if (IS_EMULATOR and not FORCE_REAL_EMAIL) or not MAILJET_API_KEY:
             print(f"\U0001f4e7 [EMULATOR] Would send email to {to_email}: {subject}")
@@ -476,7 +500,11 @@ def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_E
                         }
                     ],
                     "Subject": subject,
-                    "HTMLPart": html_content
+                    "HTMLPart": html_content,
+                    "Headers": {
+                        "List-Unsubscribe": f"<{UNSUBSCRIBE_URL}?email={to_email}>, <mailto:{EmailConfig.SUPPORT_EMAIL}?subject=Unsubscribe>",
+                        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"
+                    }
                 }
             ]
         }
@@ -533,9 +561,12 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
                         <p>The hold on your payment has been released. No charge was made to your card.</p>
                         <p>If you still want these items, please place a new order.</p>
 
-                        <p style="margin-top: 30px; color: #999; font-size: 12px;">
-                            Questions? Contact {EmailConfig.SUPPORT_EMAIL}
+                        <p style="margin-top: 20px; font-size: 12px; color: #666;">
+                            {EmailConfig.PHYSICAL_ADDRESS}<br>
+                            Questions? Contact <a href="mailto:{EmailConfig.SUPPORT_EMAIL}">{EmailConfig.SUPPORT_EMAIL}</a><br>
+                            <a href="{UNSUBSCRIBE_URL}">Unsubscribe</a> | <a href="{APP_BASE_URL}/privacy-policy">Privacy Policy</a>
                         </p>
+                        <p style="margin-top: 8px; font-size: 11px; color: #999;">{EmailConfig.COPYRIGHT_TEXT}</p>
                     </div>
                 </body>
                 </html>
@@ -646,16 +677,8 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
             <p style="margin: 0; font-size: 13px; color: #888; text-align: center;">Need help? Contact us with order ID: <strong>{order_id[:8]}</strong></p>
         </td></tr>
 
-        <!-- Footer -->
-        <tr><td bgcolor="#1a1a2e" style="background-color: #1a1a2e; padding: 28px 40px; text-align: center;">
-            <div style="margin-bottom: 12px;">
-                <span style="font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #808097;">O R I G N A</span>
-            </div>
-            <p style="margin: 0 0 12px 0; font-size: 12px; color: #5c5c72;">Questions? <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA; text-decoration: none;">{EmailConfig.SUPPORT_EMAIL}</a></p>
-            <div style="border-top: 1px solid #333348; padding-top: 12px;">
-                <p style="margin: 0; font-size: 11px; color: #4a4a60;">{EmailConfig.COPYRIGHT_TEXT}</p>
-            </div>
-        </td></tr>
+        <!-- CASL-COMPLIANT FOOTER -->
+        {_casl_compliant_footer(include_gst=False)}
 
         </table>
         </td></tr>
@@ -671,6 +694,10 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
                 'To': [{'Email': customer_email, 'Name': customer_name}],
                 'Subject': subject,
                 'HTMLPart': html_body,
+                'Headers': {
+                    'List-Unsubscribe': f'<{UNSUBSCRIBE_URL}?email={customer_email}>, <mailto:{EmailConfig.SUPPORT_EMAIL}?subject=Unsubscribe>',
+                    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+                }
             }]
         })
         print(f"✅ Capture failure email sent to {customer_email}")
@@ -789,8 +816,10 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
             <div style="margin-bottom: 12px;">
                 <span style="font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #808097;">O R I G N A</span>
             </div>
+            <p style="margin: 0 0 8px 0; font-size: 12px; color: #5c5c72;">{EmailConfig.PHYSICAL_ADDRESS}</p>
             <p style="margin: 0 0 8px 0; font-size: 12px; color: #5c5c72;">Questions? <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA; text-decoration: none;">{EmailConfig.SUPPORT_EMAIL}</a></p>
-            <p style="margin: 0 0 12px 0; font-size: 11px; color: #4a4a60;">Order ID: {order_id}</p>
+            <p style="margin: 0 0 8px 0; font-size: 11px; color: #4a4a60;">Order ID: {order_id}</p>
+            <p style="margin: 0 0 12px 0; font-size: 12px; color: #5c5c72;"><a href="{UNSUBSCRIBE_URL}" style="color: #667EEA; text-decoration: underline;">Unsubscribe</a> | <a href="{APP_BASE_URL}/privacy-policy" style="color: #667EEA; text-decoration: none;">Privacy Policy</a></p>
             <div style="border-top: 1px solid #333348; padding-top: 12px;">
                 <p style="margin: 0; font-size: 11px; color: #4a4a60;">{EmailConfig.COPYRIGHT_TEXT}</p>
             </div>
@@ -812,6 +841,10 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
             'To': [{'Email': customer_email, 'Name': customer_name}],
             'Subject': subject,
             'HTMLPart': html_body,
+            'Headers': {
+                'List-Unsubscribe': f'<{UNSUBSCRIBE_URL}?email={customer_email}>, <mailto:{EmailConfig.SUPPORT_EMAIL}?subject=Unsubscribe>',
+                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+            }
         }]
     })
 

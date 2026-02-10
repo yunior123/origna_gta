@@ -152,6 +152,7 @@ class CartItemScreen extends StatelessWidget {
                             icon: Icons.remove_rounded,
                             onPressed: quantity > 1 ? () => cartController.updateQuantity(productId, quantity - 1) : null,
                             isDark: isDark,
+                            semanticLabel: 'btn-cart-qty-minus',
                           ),
                           AnimatedSwitcher(
                             duration: DesignTokens.durationFast,
@@ -173,6 +174,7 @@ class CartItemScreen extends StatelessWidget {
                             icon: Icons.add_rounded,
                             onPressed: () => cartController.updateQuantity(productId, quantity + 1),
                             isDark: isDark,
+                            semanticLabel: 'btn-cart-qty-plus',
                           ),
                         ],
                       ),
@@ -181,6 +183,7 @@ class CartItemScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: DesignTokens.spacing8),
                 IconButton(
+                  tooltip: 'Remove from cart',
                   icon: Icon(Icons.delete_outline_rounded, color: DesignTokens.error.withValues(alpha: 0.7), size: 20),
                   onPressed: onRemove,
                   padding: EdgeInsets.zero,
@@ -266,28 +269,34 @@ class _QuantityButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final bool isDark;
+  final String semanticLabel;
 
-  const _QuantityButton({required this.icon, this.onPressed, required this.isDark});
+  const _QuantityButton({required this.icon, this.onPressed, required this.isDark, required this.semanticLabel});
 
   @override
   Widget build(BuildContext context) {
     final isDisabled = onPressed == null;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(DesignTokens.radius8),
-        onTap: isDisabled
-            ? null
-            : () {
-                HapticFeedback.selectionClick();
-                onPressed!();
-              },
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Icon(
-            icon,
-            size: 18,
-            color: isDisabled ? Colors.grey[400] : (isDark ? Colors.white70 : DesignTokens.primary),
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      enabled: !isDisabled,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(DesignTokens.radius8),
+          onTap: isDisabled
+              ? null
+              : () {
+                  HapticFeedback.selectionClick();
+                  onPressed!();
+                },
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Icon(
+              icon,
+              size: 18,
+              color: isDisabled ? Colors.grey[400] : (isDark ? Colors.white70 : DesignTokens.primary),
+            ),
           ),
         ),
       ),

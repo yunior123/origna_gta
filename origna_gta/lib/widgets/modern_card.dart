@@ -12,6 +12,7 @@ class ModernCard extends StatefulWidget {
   final bool enableHoverScale;
   final double? width;
   final double? height;
+  final String? semanticLabel;
 
   const ModernCard({
     super.key,
@@ -23,6 +24,7 @@ class ModernCard extends StatefulWidget {
     this.enableHoverScale = true,
     this.width,
     this.height,
+    this.semanticLabel,
   });
 
   @override
@@ -46,7 +48,7 @@ class _ModernCardState extends State<ModernCard> with SingleTickerProviderStateM
         child: AnimatedBuilder(
           animation: _elevationAnimation,
           builder: (context, child) {
-            return GestureDetector(
+            final card = GestureDetector(
               onTap: widget.onTap,
               child: Container(
                 width: widget.width,
@@ -69,6 +71,14 @@ class _ModernCardState extends State<ModernCard> with SingleTickerProviderStateM
                 ),
               ),
             );
+            if (widget.semanticLabel != null) {
+              return Semantics(label: widget.semanticLabel, child: card);
+            }
+            // WCAG 4.1.2: Interactive cards must have a semantic role
+            if (widget.onTap != null) {
+              return Semantics(button: true, child: card);
+            }
+            return card;
           },
         ),
       ),

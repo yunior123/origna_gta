@@ -50,6 +50,25 @@ _User _$UserFromJson(Map<String, dynamic> json) => _User(
   businessName: json['businessName'] as String?,
   payoutHoldDays: (json['payoutHoldDays'] as num?)?.toInt(),
   taxExemption: json['taxExemption'] as Map<String, dynamic>?,
+  emailConsent: json['emailConsent'] as bool? ?? true,
+  marketingOptIn: json['marketingOptIn'] as bool? ?? false,
+  consentTimestamp: json['consentTimestamp'] == null
+      ? null
+      : DateTime.parse(json['consentTimestamp'] as String),
+  consentMethod: json['consentMethod'] as String?,
+  privacyAcceptedAt: json['privacyAcceptedAt'] == null
+      ? null
+      : DateTime.parse(json['privacyAcceptedAt'] as String),
+  termsAcceptedAt: json['termsAcceptedAt'] == null
+      ? null
+      : DateTime.parse(json['termsAcceptedAt'] as String),
+  privacyPolicyVersion: json['privacyPolicyVersion'] as String?,
+  termsVersion: json['termsVersion'] as String?,
+  preferredLanguage: json['preferredLanguage'] as String? ?? 'en',
+  unsubscribedAt: json['unsubscribedAt'] == null
+      ? null
+      : DateTime.parse(json['unsubscribedAt'] as String),
+  dataProcessingConsent: json['dataProcessingConsent'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
@@ -84,6 +103,17 @@ Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
   'businessName': instance.businessName,
   'payoutHoldDays': instance.payoutHoldDays,
   'taxExemption': instance.taxExemption,
+  'emailConsent': instance.emailConsent,
+  'marketingOptIn': instance.marketingOptIn,
+  'consentTimestamp': instance.consentTimestamp?.toIso8601String(),
+  'consentMethod': instance.consentMethod,
+  'privacyAcceptedAt': instance.privacyAcceptedAt?.toIso8601String(),
+  'termsAcceptedAt': instance.termsAcceptedAt?.toIso8601String(),
+  'privacyPolicyVersion': instance.privacyPolicyVersion,
+  'termsVersion': instance.termsVersion,
+  'preferredLanguage': instance.preferredLanguage,
+  'unsubscribedAt': instance.unsubscribedAt?.toIso8601String(),
+  'dataProcessingConsent': instance.dataProcessingConsent,
 };
 
 const _$UserRoleEnumMap = {

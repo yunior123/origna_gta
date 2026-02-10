@@ -288,18 +288,22 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   ProductAddImages(imageModels: state.newImages),
                   const SizedBox(height: 32),
 
-                  SizedBox(
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: state.isLoading ? null : () => _handleSave(viewModel),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF667EEA),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  Semantics(
+                    button: true,
+                    label: 'btn-save-product',
+                    child: SizedBox(
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: state.isLoading ? null : () => _handleSave(viewModel),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF667EEA),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: state.isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text('Save Changes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
-                      child: state.isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Save Changes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 40),
@@ -514,6 +518,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
               right: 8,
               child: IconButton(
                 icon: const Icon(Icons.remove_circle, color: Colors.red),
+                tooltip: 'Remove image',
                 onPressed: () => viewModel.removeExistingImage(index),
               ),
             ),

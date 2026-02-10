@@ -146,6 +146,52 @@ class User(BaseModel):
         description="Tax exemption details: {gstNumber: '123456789RT0001'}"
     )
 
+    # === CONSENT & COMPLIANCE (CASL + PIPEDA + Quebec Law 25) ===
+    emailConsent: bool = Field(
+        default=True,
+        description="User consented to receive transactional emails"
+    )
+    marketingOptIn: bool = Field(
+        default=False,
+        description="Explicit opt-in for marketing/promotional emails (CASL)"
+    )
+    consentTimestamp: datetime | None = Field(
+        default=None,
+        description="When consent was given (ISO 8601)"
+    )
+    consentMethod: str | None = Field(
+        default=None,
+        description="How consent was obtained: signup, checkbox, double_opt_in, implied"
+    )
+    privacyAcceptedAt: datetime | None = Field(
+        default=None,
+        description="When user accepted the privacy policy"
+    )
+    termsAcceptedAt: datetime | None = Field(
+        default=None,
+        description="When user accepted the Terms of Service"
+    )
+    privacyPolicyVersion: str | None = Field(
+        default=None,
+        description="Version of privacy policy the user accepted"
+    )
+    termsVersion: str | None = Field(
+        default=None,
+        description="Version of Terms of Service the user accepted"
+    )
+    preferredLanguage: str = Field(
+        default="en",
+        description="User preferred language: 'en' or 'fr' (for Quebec Bill 96 compliance)"
+    )
+    unsubscribedAt: datetime | None = Field(
+        default=None,
+        description="When user unsubscribed from marketing emails"
+    )
+    dataProcessingConsent: bool = Field(
+        default=False,
+        description="Explicit consent for personal data processing (PIPEDA / Law 25)"
+    )
+
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:

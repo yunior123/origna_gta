@@ -220,7 +220,10 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                         ),
 
                       // --- Terms and Conditions ---
-                      CheckboxListTile(
+                      Semantics(
+                        label: 'chk-seller-terms',
+                        checked: _termsAccepted,
+                        child: CheckboxListTile(
                         value: _termsAccepted,
                         onChanged: (value) => setState(() => _termsAccepted = value ?? false),
                         title: const Text('I accept the Terms and Conditions'),
@@ -238,6 +241,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                           return null;
                         }),
                         contentPadding: EdgeInsets.zero,
+                      ),
                       ),
                       const SizedBox(height: 12),
 
@@ -396,7 +400,10 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       onPressed = _termsAccepted ? viewModel.startRegistration : null;
     }
 
-    return ModernButton(
+    return Semantics(
+      button: true,
+      label: 'btn-seller-action',
+      child: ModernButton(
       onPressed: isLoading ? null : onPressed,
       label: buttonText,
       isLoading: isLoading,
@@ -405,6 +412,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
           : hasAccount
           ? Icons.check_circle
           : Icons.store,
+    ),
     );
   }
 

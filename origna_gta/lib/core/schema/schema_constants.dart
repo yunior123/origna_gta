@@ -204,6 +204,19 @@ abstract final class Fields {
   static const taxExemption = 'taxExemption';
   static const gstNumber = 'gstNumber';
 
+  // === CONSENT & COMPLIANCE FIELDS (CASL + PIPEDA + Quebec Law 25) ===
+  static const emailConsent = 'emailConsent';
+  static const marketingOptIn = 'marketingOptIn';
+  static const consentTimestamp = 'consentTimestamp';
+  static const consentMethod = 'consentMethod';
+  static const privacyAcceptedAt = 'privacyAcceptedAt';
+  static const termsAcceptedAt = 'termsAcceptedAt';
+  static const privacyPolicyVersion = 'privacyPolicyVersion';
+  static const termsVersion = 'termsVersion';
+  static const preferredLanguage = 'preferredLanguage';
+  static const unsubscribedAt = 'unsubscribedAt';
+  static const dataProcessingConsent = 'dataProcessingConsent';
+
   // === DELIVERY FIELDS ===
   static const deliveryInstructions = 'deliveryInstructions';
 
@@ -568,8 +581,44 @@ abstract final class DiscountTypeValues {
 }
 
 // =============================================================================
-// SCHEMA REGISTRY - For runtime validation
+// EMAIL & COMPLIANCE CONFIGURATION
 // =============================================================================
+
+/// Email and CASL compliance constants — Dart mirror of Python EmailConfig
+abstract final class EmailConfig {
+  static const supportEmail = 'support@orignaventures.ca';
+  static const senderName = 'Origna GTA';
+  static const copyrightText = '\u00a9 2026 Origna Ventures Inc. All rights reserved.';
+  static const appTagline = "Canada's Modern Marketplace";
+  static const prodUrl = 'https://orignagta.ca';
+
+  // === CASL COMPLIANCE ===
+  // TODO get Virtual business address (recommended)
+  /// Physical mailing address — REQUIRED by CASL in every commercial email
+  static const physicalAddress =
+      'Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada';
+
+  /// GST/HST Registration Number — REQUIRED on all receipts (Excise Tax Act)
+  static const gstHstNumber = '123456789RT0001'; // TODO: Replace with actual CRA-issued number
+
+  /// Unsubscribe URL — REQUIRED by CASL
+  static const unsubscribeUrl = 'https://orignagta.ca/unsubscribe';
+
+  /// Privacy Officer contact — REQUIRED by Quebec Law 25
+  static const privacyOfficerEmail = 'privacy@orignaventures.ca';
+  static const privacyOfficerName = 'Yunior Rodriguez Osorio';
+}
+
+/// Consent method values for CASL compliance tracking
+abstract final class ConsentMethodValues {
+  static const signup = 'signup';
+  static const checkbox = 'checkbox';
+  static const doubleOptIn = 'double_opt_in';
+  static const implied = 'implied';
+
+  static const all = {signup, checkbox, doubleOptIn, implied};
+}
+
 
 /// Registry of expected fields per collection.
 /// Used for validation and to get the correct timestamp field.

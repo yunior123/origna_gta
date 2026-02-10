@@ -7,5 +7,7 @@
 	"playwright.reuseBrowser": false,
 	"playwright.showTrace": false,
 	"playwright.useTestServer": false,
-	"chat.agent.maxRequests": 200
+	"chat.agent.maxRequests": 200,
+	"diffEditor.maxComputationTime": 0,
+	"typescript.tsserver.maxTsServerMemory": 3072
 }

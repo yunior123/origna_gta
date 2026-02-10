@@ -44,24 +44,28 @@ class _ModernButtonState extends State<ModernButton>
     // Theme detection for future dark mode support
     final isDisabled = widget.onPressed == null || widget.isLoading;
 
-    return GestureDetector(
-      onTapDown: isDisabled
-          ? null
-          : (_) {
-              if (widget.isPrimary && !widget.isOutlined) {
-                HapticFeedback.lightImpact();
-              }
-              _scaleController.forward();
-            },
-      onTapUp: isDisabled
-          ? null
-          : (_) {
-              _scaleController.reverse();
-              // Prevent double tap execution as InkWell handles the tap too
-              // widget.onPressed?.call();
-            },
-      onTapCancel: isDisabled ? null : () => _scaleController.reverse(),
-      child: ScaleTransition(
+    return Semantics(
+      button: true,
+      enabled: !isDisabled,
+      label: widget.label,
+      child: GestureDetector(
+        onTapDown: isDisabled
+            ? null
+            : (_) {
+                if (widget.isPrimary && !widget.isOutlined) {
+                  HapticFeedback.lightImpact();
+                }
+                _scaleController.forward();
+              },
+        onTapUp: isDisabled
+            ? null
+            : (_) {
+                _scaleController.reverse();
+                // Prevent double tap execution as InkWell handles the tap too
+                // widget.onPressed?.call();
+              },
+        onTapCancel: isDisabled ? null : () => _scaleController.reverse(),
+        child: ScaleTransition(
         scale: _scaleAnimation,
         child: Container(
           width: widget.fullWidth ? double.infinity : widget.width,
@@ -136,6 +140,7 @@ class _ModernButtonState extends State<ModernButton>
           ),
         ),
       ),
+    ),
     );
   }
 

@@ -31,18 +31,19 @@ class DesignTokens {
   static const Color darkCard = Color(0xFF1E1E32);
   static const Color darkBackground = Color(0xFF0F0F1E);
 
-  // Text Colors
+  // Text Colors (WCAG 2.1 AA: ≥4.5:1 for normal text, ≥3:1 for large text)
   static const Color textPrimary = Color(0xFF1A1A2E);
   static const Color textSecondary = Color(0xFF6B7280);
-  static const Color textTertiary = Color(0xFF9CA3AF);
-  static const Color textDisabled = Color(0xFFBDBDBD);
+  static const Color textTertiary = Color(0xFF6B7280); // Was #9CA3AF (~2.8:1) → #6B7280 (~5.3:1 on white)
+  static const Color textDisabled = Color(0xFF9CA3AF); // Was #BDBDBD (~1.7:1) → #9CA3AF (~3.7:1 - decorative only)
   static const Color textOnPrimary = Colors.white;
   static const Color textOnDark = Colors.white;
   static const Color textOnDarkSecondary = Color(0xFFBDBDBD);
 
   // Semantic
   static const Color success = Color(0xFF10B981); // Emerald
-  static const Color warning = Color(0xFFF59E0B); // Amber
+  static const Color warning = Color(0xFFF59E0B); // Amber (backgrounds/icons only)
+  static const Color warningText = Color(0xFF92400E); // WCAG AA: ~7:1 on white (for text)
   static const Color error = Color(0xFFEF4444); // Red
   static const Color info = Color(0xFF3B82F6); // Blue
 

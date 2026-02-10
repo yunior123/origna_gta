@@ -14,141 +14,17 @@
  * 4. Run: npx playwright test regression-e2e.spec.ts
  */
 import { test, expect } from '@playwright/test';
+import {
+  checkInfrastructure, signIn,
+  callCallable as callFunction,
+  readDoc as readDocByPath, patchDoc,
+  sv, iv, bv, parseVal as parseValue, parseDoc,
+  FIRESTORE_BASE as BASE, FIRESTORE_EMULATOR, FUNCTIONS_EMULATOR, PROJECT_ID,
+} from './api-helpers';
 
-const FIRESTORE_EMULATOR = 'http://localhost:8080';
-const FUNCTIONS_EMULATOR = 'http://localhost:5001';
-const AUTH_EMULATOR = 'http://localhost:9099';
-const PROJECT_ID = 'orignagta';
-const BASE = `${FIRESTORE_EMULATOR}/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
-
-// Infrastructure availability cache
-let infraAvailable: {
-  auth: boolean | null;
-  firestore: boolean | null;
-  functions: boolean | null;
-} = {
-  auth: null,
-  firestore: null,
-  functions: null,
-};
-
-/** Check if infrastructure is available */
-async function checkInfrastructure(request: any): Promise<typeof infraAvailable> {
-  if (infraAvailable.auth === null) {
-    const [authRes, firestoreRes, functionsRes] = await Promise.all([
-      request.get(`${AUTH_EMULATOR}/`).catch(() => null),
-      request.get(`${FIRESTORE_EMULATOR}/`).catch(() => null),
-      request.get(`${FUNCTIONS_EMULATOR}/`).catch(() => null),
-    ]);
-    infraAvailable = {
-      auth: !!authRes,
-      firestore: !!firestoreRes,
-      functions: !!functionsRes,
-    };
-    if (Object.values(infraAvailable).some(v => !v)) {
-      console.log('⚠️  Some infrastructure is unavailable:');
-      console.log(`   Auth: ${infraAvailable.auth ? '✅' : '❌'}`);
-      console.log(`   Firestore: ${infraAvailable.firestore ? '✅' : '❌'}`);
-      console.log(`   Functions: ${infraAvailable.functions ? '✅' : '❌'}`);
-    }
-  }
-  return infraAvailable;
-}
-
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-/** Read Firestore document via emulator REST API */
+// Wrapper to match this file's readDoc(collection, docId) signature
 async function readDoc(collection: string, docId: string) {
-  const url = `${BASE}/${collection}/${docId}`;
-  const r = await fetch(url, { headers: { Authorization: 'Bearer owner' } });
-  if (!r.ok) return null;
-  return r.json();
-}
-
-/** Write/patch Firestore document */
-async function patchDoc(collection: string, docId: string, fields: any) {
-  const url = `${BASE}/${collection}/${docId}`;
-  const r = await fetch(url, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer owner' },
-    body: JSON.stringify({ fields }),
-  });
-  return r.ok;
-}
-
-function sv(val: string) { return { stringValue: val }; }
-function iv(val: number) { return { integerValue: String(val) }; }
-function bv(val: boolean) { return { booleanValue: val }; }
-
-function parseValue(v: any): any {
-  if (!v) return null;
-  if (v.stringValue !== undefined) return v.stringValue;
-  if (v.integerValue !== undefined) return parseInt(v.integerValue);
-  if (v.doubleValue !== undefined) return v.doubleValue;
-  if (v.booleanValue !== undefined) return v.booleanValue;
-  if (v.nullValue !== undefined) return null;
-  if (v.timestampValue !== undefined) return v.timestampValue;
-  if (v.arrayValue) return (v.arrayValue.values || []).map(parseValue);
-  if (v.mapValue) {
-    const obj: any = {};
-    for (const [k, val] of Object.entries(v.mapValue.fields || {} as Record<string, any>)) {
-      obj[k] = parseValue(val);
-    }
-    return obj;
-  }
-  return v;
-}
-
-function parseDoc(doc: any): any {
-  if (!doc?.fields) return null;
-  const result: any = {};
-  for (const [key, value] of Object.entries(doc.fields)) {
-    result[key] = parseValue(value);
-  }
-  return result;
-}
-
-/** Sign in and get auth token */
-async function signIn(email: string, password: string) {
-  const r = await fetch(
-    `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, returnSecureToken: true }),
-    }
-  );
-  const data = await r.json();
-  if (!data.idToken) throw new Error(`Sign-in failed: ${JSON.stringify(data)}`);
-
-  // Force emailVerified
-  const up = await fetch(
-    `${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/accounts:update?key=fake-api-key`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken: data.idToken, emailVerified: true, returnSecureToken: true }),
-    }
-  );
-  const updated = await up.json();
-  if (updated.idToken) data.idToken = updated.idToken;
-  return data;
-}
-
-/** Call Firebase callable function */
-async function callFunction(name: string, data: any, token: string) {
-  const url = `${FUNCTIONS_EMULATOR}/${PROJECT_ID}/us-central1/${name}`;
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ data }),
-  });
-  return r.json();
+  return readDocByPath(`${collection}/${docId}`);
 }
 
 // ============================================================================
@@ -505,6 +381,9 @@ test.describe('G: Payment Status Validation', () => {
     test.skip(!infra.firestore, 'Firestore emulator not running. Run `firebase emulators:start`');
   });
   test('G1: Shipped/in_transit/delivered orders have "captured" payment status', async () => {
+    // C3 test may have changed order_test_004.paymentStatus to "authorized" — restore it
+    await patchDoc('orders', 'order_test_004', { paymentStatus: sv('captured') });
+
     for (const orderId of ['order_test_004', 'order_test_005', 'order_test_006']) {
       const doc = await readDoc('orders', orderId);
       const parsed = parseDoc(doc);
@@ -554,11 +433,11 @@ test.describe('H: Schema Consistency', () => {
     expect(raw?.deliveryInfo).toBeUndefined();
   });
 
-  test('H3: Orders use "createdAt" not "createdAt"', async () => {
+  test('H3: Orders use "createdAt" not "dateCreated"', async () => {
     const doc = await readDoc('orders', 'order_test_001');
     const raw = doc?.fields;
     expect(raw?.createdAt).toBeDefined();
-    expect(raw?.createdAt).toBeUndefined();
+    expect(raw?.dateCreated).toBeUndefined();
   });
 
   test('H4: Money fields are integers (cents)', async () => {

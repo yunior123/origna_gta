@@ -79,9 +79,17 @@ class _ModernTextFieldState extends State<ModernTextField> {
             fillColor: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.surfaceVariant.withValues(alpha: 0.7),
             prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon, color: DesignTokens.primary, size: 20) : null,
             suffixIcon: widget.suffixIcon != null
-                ? GestureDetector(
-                    onTap: widget.onSuffixTap,
-                    child: Icon(widget.suffixIcon, color: DesignTokens.primary, size: 20),
+                ? Semantics(
+                    button: true,
+                    label: 'Toggle password visibility',
+                    child: SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: GestureDetector(
+                        onTap: widget.onSuffixTap,
+                        child: Center(child: Icon(widget.suffixIcon, color: DesignTokens.primary, size: 20)),
+                      ),
+                    ),
                   )
                 : null,
             border: OutlineInputBorder(
