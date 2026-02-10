@@ -163,7 +163,7 @@ def test_product_valid():
         categoryId=1,
         stockQuantity=100,
         rating=4.5,
-        dateCreated=datetime.now(),
+        createdAt=datetime.now(),
         isActive=True,
     )
 
@@ -194,7 +194,7 @@ def test_product_price_validation():
             sellerAddress=address,
             categoryId=1,
             stockQuantity=100,
-            dateCreated=datetime.now(),
+            createdAt=datetime.now(),
         )
 
     # Invalid: zero price
@@ -209,7 +209,7 @@ def test_product_price_validation():
             sellerAddress=address,
             categoryId=1,
             stockQuantity=100,
-            dateCreated=datetime.now(),
+            createdAt=datetime.now(),
         )
 
 
@@ -235,7 +235,7 @@ def test_product_category_validation():
             sellerAddress=address,
             categoryId=0,  # Invalid
             stockQuantity=100,
-            dateCreated=datetime.now(),
+            createdAt=datetime.now(),
         )
 
     # Invalid: category 22
@@ -250,7 +250,7 @@ def test_product_category_validation():
             sellerAddress=address,
             categoryId=22,  # Invalid
             stockQuantity=100,
-            dateCreated=datetime.now(),
+            createdAt=datetime.now(),
         )
 
 
@@ -276,7 +276,7 @@ def test_product_image_urls_validation():
             sellerAddress=address,
             categoryId=1,
             stockQuantity=100,
-            dateCreated=datetime.now(),
+            createdAt=datetime.now(),
         )
 
 
@@ -528,7 +528,7 @@ def test_product_json_serialization():
         sellerAddress=address,
         categoryId=1,
         stockQuantity=100,
-        dateCreated=datetime.now(),
+        createdAt=datetime.now(),
     )
 
     # Serialize to JSON

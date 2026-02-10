@@ -12,9 +12,11 @@ from datetime import datetime, timedelta
 import stripe
 from firebase_functions import scheduler_fn
 
-from config import AUTHORIZATION_VALID_DAYS, AUTO_CONFIRM_DAYS, PLATFORM_FEE_PERCENT, STRIPE_SECRET_KEY, Collections
-from function_options import CRON_OPTIONS
+from config import AUTHORIZATION_VALID_DAYS, AUTO_CONFIRM_DAYS, PLATFORM_FEE_PERCENT, STRIPE_SECRET_KEY
+from utils.function_options import CRON_OPTIONS
 from schema_constants import (
+    Collections,
+    BusinessRules,
     DeliveryStatusValues,
     Fields,
     OrderStatusValues,
@@ -23,10 +25,6 @@ from schema_constants import (
     SecurityAlertTypes,
     SeverityLevels,
 )
-
-# Aliases for backward compatibility — canonical source is schema_constants
-OrderStatus = OrderStatusValues
-PaymentStatus = PaymentStatusValues
 
 stripe.api_key = STRIPE_SECRET_KEY
 
@@ -59,41 +57,50 @@ def get_server_timestamp():
 @scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
 def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
     """
-    Auto-captures payments for orders delivered 7+ days ago.
+    Auto-payout for delivered orders (payment already captured at checkout).
 
     Runs: Daily at 01:00 UTC
 
-    Logic:
-    - Check if Stripe provider is enabled
-    - Find orders with status=delivered, paymentStatus=authorized
-    - Delivered 7+ days ago
-    - Capture payment and initiate payouts
+    Flow (post-automatic-capture migration):
+    - Payment is captured immediately at Stripe Checkout — no manual capture needed.
+    - This cron creates Transfers (payouts) to sellers for DELIVERED orders
+      that have been delivered for AUTO_CONFIRM_DAYS without dispute.
+    - Also auto-confirms SHIPPED orders after AUTO_CONFIRM_DAYS if buyer
+      doesn't manually confirm receipt (marks as DELIVERED for payout).
     """
-    print('Running auto_capture_confirmed_receipts cron job')
+    print('Running auto_capture_confirmed_receipts cron job (auto-payout mode)')
 
     # Check if Stripe is enabled before processing
     from handlers.payment_providers import PaymentProvider, is_provider_enabled
     if not is_provider_enabled(PaymentProvider.STRIPE):
-        print('Stripe payments are disabled, skipping auto-capture')
+        print('Stripe payments are disabled, skipping auto-payout')
         return
 
     cutoff_date = datetime.now() - timedelta(days=AUTO_CONFIRM_DAYS)
 
-    # Query both DELIVERED and SHIPPED orders past cutoff
-    # SHIPPED orders auto-complete after AUTO_CONFIRM_DAYS if buyer doesn't confirm
-    # FIX S23: Use UPDATED_AT only as initial filter; verify actual delivery/ship
-    # timestamps per-order to avoid capturing too early on edited orders.
+    # Query DELIVERED orders with captured payment that haven't been paid out yet
+    # Also query SHIPPED orders past cutoff for auto-confirmation
     all_orders = []
-    for target_status in [OrderStatusValues.DELIVERED, OrderStatusValues.SHIPPED]:
-        status_orders = get_db().collection(Collections.ORDERS)\
-            .where(Fields.ORDER_STATUS, '==', target_status)\
-            .where(Fields.PAYMENT_STATUS, '==', PaymentStatus.AUTHORIZED)\
-            .where(Fields.UPDATED_AT, '<=', cutoff_date)\
-            .limit(250)\
-            .stream()
-        all_orders.extend(status_orders)
 
-    captured_count = 0
+    # DELIVERED orders ready for payout (payoutStatus not yet completed)
+    delivered_orders = get_db().collection(Collections.ORDERS)\
+        .where(Fields.ORDER_STATUS, '==', OrderStatusValues.DELIVERED)\
+        .where(Fields.PAYMENT_STATUS, '==', PaymentStatusValues.CAPTURED)\
+        .where(Fields.UPDATED_AT, '<=', cutoff_date)\
+        .limit(250)\
+        .stream()
+    all_orders.extend(delivered_orders)
+
+    # SHIPPED orders past cutoff — auto-confirm as delivered for payout
+    shipped_orders = get_db().collection(Collections.ORDERS)\
+        .where(Fields.ORDER_STATUS, '==', OrderStatusValues.SHIPPED)\
+        .where(Fields.PAYMENT_STATUS, '==', PaymentStatusValues.CAPTURED)\
+        .where(Fields.UPDATED_AT, '<=', cutoff_date)\
+        .limit(250)\
+        .stream()
+    all_orders.extend(shipped_orders)
+
+    payout_count = 0
     failed_count = 0
 
     for order_doc in all_orders:
@@ -105,9 +112,12 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
             print(f'Order {order_id} has no payment intent, skipping')
             continue
 
-        # AUDIT FIX (HIGH-024): Check for active disputes before auto-capturing.
-        # Without this, cron could capture funds for disputed orders,
-        # causing the platform to pay both the dispute AND the seller.
+        # Skip orders that already have completed payouts
+        payout_status = order_data.get(Fields.PAYOUT_STATUS)
+        if payout_status == PayoutStatusValues.COMPLETED:
+            continue
+
+        # AUDIT FIX (HIGH-024): Check for active disputes before auto-payout.
         try:
             dispute_alerts = get_db().collection(Collections.SECURITY_ALERTS)\
                 .where(Fields.TYPE, '==', SecurityAlertTypes.DISPUTE_CREATED)\
@@ -116,14 +126,13 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                 .limit(1).get()
 
             if len(dispute_alerts) > 0:
-                print(f'⚠️ Order {order_id} has active dispute, skipping auto-capture')
+                print(f'⚠️ Order {order_id} has active dispute, skipping auto-payout')
                 continue
         except Exception as e:
             print(f'⚠️ Failed to check disputes for order {order_id}: {str(e)}, skipping for safety')
             continue
 
-        # FIX S23: Verify actual delivery/ship time before capture.
-        # updatedAt can be bumped by unrelated edits; use item-level timestamps.
+        # FIX S23: Verify actual delivery/ship time before payout.
         items = order_data.get(Fields.ITEMS, [])
         latest_event_time = None
         for item in items:
@@ -140,6 +149,8 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
         if latest_event_time and latest_event_time > cutoff_date:
             print(f'Order {order_id} item-level timestamp too recent ({latest_event_time}), skipping')
             continue
+
+        # Auto-confirm SHIPPED orders as DELIVERED after cutoff
         if order_data.get(Fields.ORDER_STATUS) == OrderStatusValues.SHIPPED:
             items = order_data.get(Fields.ITEMS, [])
             for item in items:
@@ -150,50 +161,16 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                 Fields.ITEMS: items,
                 Fields.ORDER_STATUS: OrderStatusValues.DELIVERED,
                 Fields.AUTO_CONFIRMED: True,
+                Fields.UPDATED_AT: get_server_timestamp(),
             })
             order_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
-            print(f'Auto-marked order {order_id} as delivered (was shipped, {AUTO_CONFIRM_DAYS}+ days)')
+            print(f'Auto-confirmed order {order_id} as delivered (was shipped, {AUTO_CONFIRM_DAYS}+ days)')
 
         try:
-            # SECURITY FIX (HIGH-012): Atomically lock order for capture to prevent
-            # race condition with check_expired_authorizations and manual capture_payment.
-            @get_firestore().transactional
-            def lock_for_auto_capture(transaction, order_doc=order_doc):
-                fresh_doc = order_doc.reference.get(transaction=transaction)
-                if not fresh_doc.exists:
-                    return 'not_found'
-                fresh_data = fresh_doc.to_dict()
-                current_ps = fresh_data.get(Fields.PAYMENT_STATUS)
-                if current_ps == PaymentStatusValues.CAPTURED:
-                    return 'already_captured'
-                if current_ps != PaymentStatus.AUTHORIZED:
-                    return f'invalid_status:{current_ps}'
-                transaction.update(order_doc.reference, {
-                    Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURING,
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                })
-                return 'locked'
-
-            lock_result = lock_for_auto_capture(get_db().transaction())
-            if lock_result == 'already_captured':
-                print(f'Order {order_id} already captured, skipping')
-                continue
-            if lock_result != 'locked':
-                print(f'Order {order_id} cannot be captured: {lock_result}')
-                continue
-
-            # Capture payment (with idempotency key)
-            stripe.PaymentIntent.capture(
-                payment_intent_id,
-                idempotency_key=f'auto_capture_{order_id}_{payment_intent_id}'
-            )
-
-            # Update order
+            # Payment is already captured — just mark payout in progress
             order_doc.reference.update({
-                Fields.PAYMENT_STATUS: PaymentStatus.CAPTURED,
-                Fields.CAPTURED_AT: get_server_timestamp(),
-                Fields.AUTO_CAPTURED: True,
-                Fields.UPDATED_AT: get_server_timestamp()
+                Fields.PAYOUT_STATUS: PayoutStatusValues.PROCESSING,
+                Fields.UPDATED_AT: get_server_timestamp(),
             })
 
             # Create payouts ONLY for sellers whose items are DELIVERED
@@ -201,8 +178,8 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
             items = order_data.get(Fields.ITEMS, [])
             sellers_total_cents = {}
             for item in items:
-                item_status = item.get(Fields.STATUS, OrderStatusValues.PENDING)
-                if item_status == OrderStatusValues.DELIVERED:
+                item_status = item.get(Fields.STATUS, DeliveryStatusValues.PENDING)
+                if item_status == DeliveryStatusValues.DELIVERED:
                     seller_id = item[Fields.SELLER_ID]
                     item_price_cents = round(item[Fields.PRICE] * 100)
                     item_total_cents = item_price_cents * item[Fields.QUANTITY]
@@ -239,6 +216,23 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
 
                     if stripe_account_id and seller_charges_ok:
                         try:
+                            # CRITICAL FIX: Stripe Transfer requires a Charge ID (ch_xxx),
+                            # not a PaymentIntent ID (pi_xxx). Retrieve the charge from the PI.
+                            charge_id = None
+                            try:
+                                pi = stripe.PaymentIntent.retrieve(payment_intent_id)
+                                charge_id = pi.latest_charge
+                            except stripe.error.StripeError as pi_err:
+                                print(f'Failed to retrieve charge for PI {payment_intent_id}: {str(pi_err)}')
+
+                            if not charge_id:
+                                print(f'⚠️ No charge found for PI {payment_intent_id}, skipping transfer for seller {seller_id}')
+                                order_doc.reference.update({
+                                    Fields.REQUIRES_MANUAL_REVIEW: True,
+                                    Fields.MANUAL_REVIEW_REASON: f'No charge ID found for auto-payout to seller {seller_id}',
+                                })
+                                continue
+
                             # Create PENDING payout record BEFORE Stripe transfer
                             payout_ref = get_db().collection(Collections.PAYOUTS).document()
                             payout_ref.set({
@@ -254,9 +248,9 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
 
                             transfer = stripe.Transfer.create(
                                 amount=net_amount_cents,
-                                currency='cad',
+                                currency=BusinessRules.DEFAULT_CURRENCY,
                                 destination=stripe_account_id,
-                                source_transaction=payment_intent_id,
+                                source_transaction=charge_id,
                                 transfer_group=order_id,
                                 metadata={
                                     Fields.ORDER_ID: order_id,
@@ -296,29 +290,20 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                                     Fields.CREATED_AT: get_server_timestamp()
                                 })
 
-            captured_count += 1
-            print(f'Auto-captured order {order_id}')
+            payout_count += 1
+            print(f'Auto-payout completed for order {order_id}')
 
         except stripe.error.StripeError as e:
             failed_count += 1
-            print(f'Failed to capture order {order_id}: {str(e)}')
-
-            # Rollback 'capturing' state to 'authorized' so the order isn't stuck
-            try:
-                order_doc.reference.update({
-                    Fields.PAYMENT_STATUS: PaymentStatus.AUTHORIZED,
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                })
-            except Exception:
-                print(f'⚠️ Failed to rollback capturing state for order {order_id}')
+            print(f'Failed to process payout for order {order_id}: {str(e)}')
 
             order_doc.reference.update({
-                Fields.CAPTURE_ATTEMPTS: order_data.get(Fields.CAPTURE_ATTEMPTS, 0) + 1,
+                Fields.PAYOUT_STATUS: PayoutStatusValues.FAILED,
                 Fields.LAST_CAPTURE_ERROR: str(e),
                 Fields.UPDATED_AT: get_server_timestamp()
             })
 
-    print(f'Auto-capture completed: {captured_count} captured, {failed_count} failed')
+    print(f'Auto-payout completed: {payout_count} paid out, {failed_count} failed')
 
 
 @scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
@@ -329,19 +314,22 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     Runs: Daily at 02:00 UTC
 
     Logic:
-    - Find orders with paymentStatus=authorized
-    - Created 7+ days ago
-    - Cancel and restore stock
+    - With automatic capture, there are no authorization holds to expire.
+    - This cron now cleans up stale PENDING orders (checkout abandoned)
+      that were never paid and are older than AUTHORIZATION_VALID_DAYS.
+    - Restores stock for these abandoned orders.
     """
-    print('Running check_expired_authorizations cron job')
+    print('Running check_expired_authorizations cron job (stale order cleanup)')
 
     cutoff_date = datetime.now() - timedelta(days=AUTHORIZATION_VALID_DAYS)
 
-    # Limit to 100 orders per run to avoid timeout
-    # Use Fields.CREATED_AT constant to prevent field name typos (orders use 'createdAt')
+    # Find stale PENDING orders that were never paid (session expired/abandoned)
     orders = get_db().collection(Collections.ORDERS)\
-        .where(Fields.PAYMENT_STATUS, '==', PaymentStatus.AUTHORIZED)\
-        .where(Fields.ORDER_STATUS, 'in', [OrderStatus.PENDING, OrderStatus.CONFIRMED])\
+        .where(Fields.PAYMENT_STATUS, 'in', [
+            PaymentStatusValues.AWAITING_PAYMENT,
+            PaymentStatusValues.SESSION_EXPIRED,
+        ])\
+        .where(Fields.ORDER_STATUS, 'in', [OrderStatusValues.PENDING])\
         .where(Fields.CREATED_AT, '<=', cutoff_date)\
         .limit(100)\
         .stream()
@@ -352,24 +340,19 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
         order_data = order_doc.to_dict()
         order_id = order_doc.id
 
-        # SECURITY FIX (HIGH-012): Atomically verify and update status to prevent
-        # race condition with capture_payment running concurrently.
-        # If order is in 'capturing' state, skip it — capture is in progress.
+        # For stale unpaid orders, simply mark as expired and restore stock
         @get_firestore().transactional
         def try_expire_order(transaction, order_doc=order_doc):
             fresh_doc = order_doc.reference.get(transaction=transaction)
             if not fresh_doc.exists:
                 return 'not_found'
             fresh_data = fresh_doc.to_dict()
-            current_ps = fresh_data.get(Fields.PAYMENT_STATUS)
-            if current_ps == PaymentStatusValues.CAPTURING:
-                return 'capturing_in_progress'
-            if current_ps == PaymentStatusValues.CAPTURED:
-                return 'already_captured'
-            if current_ps != PaymentStatus.AUTHORIZED:
-                return f'invalid_status:{current_ps}'
+            current_status = fresh_data.get(Fields.ORDER_STATUS)
+            if current_status != OrderStatusValues.PENDING:
+                return f'invalid_status:{current_status}'
             transaction.update(order_doc.reference, {
-                Fields.PAYMENT_STATUS: PaymentStatusValues.EXPIRING,
+                Fields.ORDER_STATUS: OrderStatusValues.EXPIRED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.SESSION_EXPIRED,
                 Fields.UPDATED_AT: get_server_timestamp(),
             })
             return 'locked'
@@ -396,23 +379,12 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
                         Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY])
                     })
                 except Exception as e:
-                    print(f'Failed to restore stock for product {item["productId"]}: {str(e)}')
+                    print(f'Failed to restore stock for product {item[Fields.PRODUCT_ID]}: {str(e)}')
 
-        # Cancel the PaymentIntent to release buyer funds
-        payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
-        if payment_intent_id:
-            try:
-                stripe.PaymentIntent.cancel(
-                    payment_intent_id,
-                    cancellation_reason='abandoned',
-                )
-            except stripe.error.StripeError as e:
-                print(f'Failed to cancel PI for expired order {order_id}: {str(e)}')
-
-        # Update order
+        # Update order with remaining fields NOT set in the transaction
+        # NOTE: ORDER_STATUS and PAYMENT_STATUS are already set in the transaction.
+        # Only set STOCK_RESTORED, EXPIRES_AT here to avoid duplicating writes.
         order_doc.reference.update({
-            Fields.ORDER_STATUS: OrderStatus.EXPIRED,
-            Fields.PAYMENT_STATUS: PaymentStatus.AUTHORIZATION_EXPIRED,
             Fields.STOCK_RESTORED: True,
             Fields.EXPIRES_AT: get_server_timestamp(),
             Fields.UPDATED_AT: get_server_timestamp()
@@ -421,7 +393,7 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
         expired_count += 1
         print(f'Expired order {order_id}')
 
-    print(f'Authorization check completed: {expired_count} orders expired')
+    print(f'Stale order cleanup completed: {expired_count} orders expired')
 
 
 @scheduler_fn.on_schedule(schedule="every 12 hours", **CRON_OPTIONS)
@@ -438,14 +410,14 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
     """
     print('Running auto_archive_old_orders cron job')
 
-    cutoff_date = datetime.now() - timedelta(days=30)
+    cutoff_date = datetime.now() - timedelta(days=BusinessRules.ARCHIVE_AFTER_DAYS)
 
     # Limit to 200 orders per run and use batch
     # NOTE: We cannot filter 'archived == False' because Firestore doesn't match
     # documents where the field doesn't exist. Instead, we query without the filter
     # and skip already-archived orders in the loop.
     orders = get_db().collection(Collections.ORDERS)\
-        .where(Fields.ORDER_STATUS, 'in', [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REFUNDED])\
+        .where(Fields.ORDER_STATUS, 'in', [OrderStatusValues.DELIVERED, OrderStatusValues.CANCELLED, OrderStatusValues.REFUNDED])\
         .where(Fields.UPDATED_AT, '<=', cutoff_date)\
         .limit(200)\
         .stream()
@@ -454,7 +426,7 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
     batch = get_db().batch()
 
     for order_doc in orders:
-        # Skip already-archived orders (field may not exist on old orders)
+
         if order_doc.to_dict().get(Fields.ARCHIVED, False):
             continue
 
@@ -501,7 +473,7 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
         firestore_count = count_query.get()[0][0].value
 
         # Count products in Algolia
-        from algolia_service import get_index_stats
+        from services.algolia_service import get_index_stats
         algolia_count = get_index_stats()
 
         # Check for significant mismatch
@@ -511,7 +483,7 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
 
         mismatch_percent = abs(firestore_count - algolia_count) / firestore_count
 
-        if mismatch_percent > 0.05:  # > 5% mismatch
+        if mismatch_percent > BusinessRules.ALGOLIA_SYNC_MISMATCH_THRESHOLD:  # > 5% mismatch
             get_db().collection(Collections.SECURITY_ALERTS).add({
                 Fields.TYPE: SecurityAlertTypes.ALGOLIA_SYNC_ISSUE,
                 Fields.SEVERITY: SeverityLevels.MEDIUM,

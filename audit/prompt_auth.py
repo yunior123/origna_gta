@@ -1,7 +1,7 @@
 AUTH_AUDIT_PROMPT = """You are a senior security engineer auditing the AUTHENTICATION & AUTHORIZATION system of a production e-commerce marketplace (Flutter + Firebase + Stripe Connect).
 
 Context:
-- Canada-only marketplace targeting 100M+ users/year
+- E-commerce marketplace serving Canadian buyers (sellers worldwide), targeting 100M+ users/year
 - Firebase Auth for authentication (email/password)
 - Firestore rules for authorization (role-based: buyer, seller, admin)
 - Admin MFA via TOTP (pyotp) with 5-minute verification window

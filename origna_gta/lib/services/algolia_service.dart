@@ -82,8 +82,8 @@ class AlgoliaService {
       Fields.description: hit[Fields.description] ?? '',
       Fields.categoryId: hit[Fields.categoryId],
       Fields.sellerId: hit[Fields.sellerId] ?? '',
-      Fields.dateCreated:
-          hit[Fields.dateCreated] ?? DateTime.now().toIso8601String(),
+      Fields.createdAt:
+          hit[Fields.createdAt] ?? DateTime.now().toIso8601String(),
       Fields.stockQuantity: hit[Fields.stockQuantity] ?? 0,
       Fields.rating: hit[Fields.rating] ?? 0.0,
       Fields.ratingCount: hit[Fields.ratingCount] ?? 0,

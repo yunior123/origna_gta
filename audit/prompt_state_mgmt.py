@@ -1,7 +1,7 @@
 STATE_MGMT_AUDIT_PROMPT = """You are a senior Flutter architect auditing the STATE MANAGEMENT AND MVVM ARCHITECTURE of a production e-commerce marketplace (Flutter + Riverpod).
 
 Context:
-- Canada-only marketplace targeting 100M+ users/year
+- E-commerce marketplace serving Canadian buyers (sellers worldwide), targeting 100M+ users/year
 - STRICT MVVM pattern: Screens (View) → ViewModels → Repositories → Providers
 - State management: Riverpod ONLY (NEVER Provider, Bloc, or Redux)
 - Freezed for immutable state classes

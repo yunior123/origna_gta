@@ -87,6 +87,7 @@ class FirebaseOrderRepository implements OrderRepository {
           constants.PaymentStatus.authorizationExpired.value,
         ])
         .orderBy(Fields.createdAt, descending: true)
+        .limit(50) // Pagination: limit initial load for scalability (100M+ users)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => models.Order.fromFirestore(doc)).toList());
   }
@@ -96,7 +97,7 @@ class FirebaseOrderRepository implements OrderRepository {
     return _firestore
         .collection(Collections.orders)
         .where(Fields.stripeSessionId, isEqualTo: sessionId)
-        .where(Fields.paymentStatus, isEqualTo: constants.PaymentStatus.paid.value)
+        .where(Fields.paymentStatus, isEqualTo: constants.PaymentStatus.captured.value)
         .limit(1)
         .snapshots()
         .map((snapshot) {
@@ -118,6 +119,7 @@ class FirebaseOrderRepository implements OrderRepository {
           constants.PaymentStatus.authorizationExpired.value,
         ])
         .orderBy(Fields.createdAt, descending: true)
+        .limit(50) // Pagination: limit initial load for scalability (100M+ users)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => models.Order.fromFirestore(doc)).toList());
   }

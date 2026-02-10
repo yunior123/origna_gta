@@ -6,7 +6,7 @@ part of 'user_models.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$UserImpl _$$UserImplFromJson(Map<String, dynamic> json) => _$UserImpl(
+_User _$UserFromJson(Map<String, dynamic> json) => _User(
   uid: json['uid'] as String,
   email: json['email'] as String,
   name: json['name'] as String,
@@ -52,9 +52,7 @@ _$UserImpl _$$UserImplFromJson(Map<String, dynamic> json) => _$UserImpl(
   taxExemption: json['taxExemption'] as Map<String, dynamic>?,
 );
 
-Map<String, dynamic> _$$UserImplToJson(
-  _$UserImpl instance,
-) => <String, dynamic>{
+Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
   'uid': instance.uid,
   'email': instance.email,
   'name': instance.name,
@@ -94,21 +92,20 @@ const _$UserRoleEnumMap = {
   UserRole.buyer: 'buyer',
 };
 
-_$UserCreateImpl _$$UserCreateImplFromJson(Map<String, dynamic> json) =>
-    _$UserCreateImpl(
-      email: json['email'] as String,
-      name: json['name'] as String,
-      roles:
-          (json['roles'] as List<dynamic>?)
-              ?.map((e) => $enumDecode(_$UserRoleEnumMap, e))
-              .toList() ??
-          const [UserRole.buyer],
-      address: json['address'] == null
-          ? null
-          : Address.fromJson(json['address'] as Map<String, dynamic>),
-    );
+_UserCreate _$UserCreateFromJson(Map<String, dynamic> json) => _UserCreate(
+  email: json['email'] as String,
+  name: json['name'] as String,
+  roles:
+      (json['roles'] as List<dynamic>?)
+          ?.map((e) => $enumDecode(_$UserRoleEnumMap, e))
+          .toList() ??
+      const [UserRole.buyer],
+  address: json['address'] == null
+      ? null
+      : Address.fromJson(json['address'] as Map<String, dynamic>),
+);
 
-Map<String, dynamic> _$$UserCreateImplToJson(_$UserCreateImpl instance) =>
+Map<String, dynamic> _$UserCreateToJson(_UserCreate instance) =>
     <String, dynamic>{
       'email': instance.email,
       'name': instance.name,

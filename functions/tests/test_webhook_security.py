@@ -234,7 +234,7 @@ class TestAirwallexWebhookSecurity:
         mock_request.data = payload
 
         # Mock RateLimiter, get_db, and AirwallexService
-        with patch('rate_limiter.RateLimiter') as MockRateLimiter, \
+        with patch('services.rate_limiter.RateLimiter') as MockRateLimiter, \
              patch('handlers.payment_airwallex.get_db') as mock_get_db, \
              patch('handlers.payment_airwallex.get_airwallex_service') as mock_service:
 
@@ -277,7 +277,7 @@ class TestAirwallexWebhookSecurity:
         }.get(h, default))
         mock_request.data = b'{"id": "evt_test", "name": "test"}'
 
-        with patch('rate_limiter.RateLimiter') as MockRateLimiter, \
+        with patch('services.rate_limiter.RateLimiter') as MockRateLimiter, \
              patch('handlers.payment_airwallex.get_db') as mock_get_db, \
              patch('handlers.payment_airwallex.get_airwallex_service') as mock_service:
 
@@ -311,7 +311,7 @@ class TestAirwallexWebhookSecurity:
         }.get(h, default))
         mock_request.data = b'{"id": "evt_ddos", "name": "test"}'
 
-        with patch('rate_limiter.RateLimiter') as MockRateLimiter, \
+        with patch('services.rate_limiter.RateLimiter') as MockRateLimiter, \
              patch('handlers.payment_airwallex.get_db') as mock_get_db:
 
             mock_limiter = Mock()
@@ -425,7 +425,7 @@ class TestRateLimiterSecurity:
 
         Protection contre race conditions
         """
-        from rate_limiter import RateLimiter
+        from services.rate_limiter import RateLimiter
 
         # Arrange
         mock_db = Mock()
@@ -452,7 +452,7 @@ class TestRateLimiterSecurity:
 
         En cas d'erreur, doit bloquer (pas autoriser)
         """
-        from rate_limiter import RateLimiter
+        from services.rate_limiter import RateLimiter
 
         # Arrange
         mock_db = Mock()
@@ -479,7 +479,7 @@ class TestRateLimiterSecurity:
 
         En cas d'erreur, autoriser (ne pas bloquer utilisateurs légitimes)
         """
-        from rate_limiter import RateLimiter
+        from services.rate_limiter import RateLimiter
 
         # Arrange
         mock_db = Mock()

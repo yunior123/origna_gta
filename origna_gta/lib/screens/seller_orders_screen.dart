@@ -167,6 +167,8 @@ class _SellerOrderCard extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final sellerTotal = sellerItems.fold<double>(0.0, (acc, item) => acc + (item.price * item.quantity));
+    final platformFee = sellerTotal * 0.025; // 2.5% platform fee
+    final sellerNet = sellerTotal - platformFee;
 
     return Container(
       margin: const EdgeInsets.only(bottom: DesignTokens.spacing16),
@@ -198,9 +200,12 @@ class _SellerOrderCard extends ConsumerWidget {
                     gradient: DesignTokens.primaryGradient,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
-                    '\$${sellerTotal.toStringAsFixed(2)}',
-                    style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 14),
+                  child: Tooltip(
+                    message: 'Gross: \$${sellerTotal.toStringAsFixed(2)} − 2.5% fee',
+                    child: Text(
+                      '\$${sellerNet.toStringAsFixed(2)}',
+                      style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 14),
+                    ),
                   ),
                 ),
               ],
@@ -227,11 +232,56 @@ class _SellerOrderCard extends ConsumerWidget {
             ),
             Divider(height: 28, color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey[200]),
             if (order.paymentStatus == PaymentStatus.awaitingPayment) _buildAuthorizationBanner(context, ref, isDark),
+            // Delivery instructions from buyer
+            if (order.deliveryInstructions != null && order.deliveryInstructions!.isNotEmpty)
+              _buildDeliveryInstructionsBanner(isDark),
             Text('Your Items', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? Colors.white : Colors.grey[800])),
             const SizedBox(height: 8),
             ...sellerItems.map((item) => _buildSellerItem(context, ref, item, isDark)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDeliveryInstructionsBanner(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: DesignTokens.info.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+        border: Border.all(color: DesignTokens.info.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: DesignTokens.info.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.edit_note_outlined, size: 16, color: DesignTokens.info),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Instructions de livraison',
+                  style: TextStyle(fontWeight: FontWeight.w700, color: DesignTokens.info, fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  order.deliveryInstructions!,
+                  style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

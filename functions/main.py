@@ -104,11 +104,11 @@ from handlers.users import (  # noqa: E402
 from schema_constants import Fields  # noqa: E402
 
 # ===============================================
-# SHIPPING CALCULATION — Canonical source is shipping_service.py
-# This wrapper is kept for backward compatibility only (external HTTP callers).
-# The checkout flow (payment_stripe.py) imports directly from shipping_service.
+# SHIPPING CALCULATION — Canonical source is services/shipping_service.py
+# This wrapper re-exports calculate_shipping_cost for external HTTP callers.
+# The checkout flow (payment_stripe.py) imports directly from services.shipping_service.
 # ===============================================
-from shipping_service import calculate_shipping_cost  # noqa: E402, F811
+from services.shipping_service import calculate_shipping_cost  # noqa: E402, F811
 
 # Only initialize if not already initialized (for testing)
 if not firebase_admin._apps:

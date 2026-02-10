@@ -7,7 +7,7 @@
 
 ## Project
 
-OrignaGta — Canada-only e-commerce marketplace built with Flutter + Firebase + Stripe Connect.
+OrignaGta — E-commerce marketplace serving Canadian buyers, with sellers worldwide. Built with Flutter + Firebase + Stripe Connect.
 
 ## Critical Rules
 

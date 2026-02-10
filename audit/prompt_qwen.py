@@ -3,7 +3,7 @@ AUDIT_PROMPT_QWEN = """You are an elite code auditor and vulnerability researche
 You are auditing a production e-commerce marketplace (Flutter + Firebase + Stripe Connect).
 
 Context:
-- Canada-only marketplace targeting 100M+ users/year
+- E-commerce marketplace serving Canadian buyers (sellers worldwide), targeting 100M+ users/year
 - Stripe Connect Express for payments (direct charges, 2.5% platform fee)
 - Payment Intents with manual capture (authorize first, capture after shipping)
 - Firestore as primary database with strict security rules

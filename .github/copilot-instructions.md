@@ -19,7 +19,7 @@ This file provides a quick reference only. For complete context, always consult 
 
 ## Project Overview
 
-**OrignaGta** — Canada-only e-commerce marketplace. Scale: 100M+ users/year. Launch: March 2026.
+**OrignaGta** — E-commerce marketplace serving Canadian buyers, with sellers worldwide. Scale: 100M+ users/year. Launch: March 2026.
 Solo founder-developer project. Production-grade quality required.
 
 ## Tech Stack
@@ -82,7 +82,7 @@ See `docs/REPO_MAP.md` for complete file inventory.
 
 1. **Cross-stack sync** — When changing a field: update `schema_constants.py` → `schema_constants.dart` → `database_schema.json` → Freezed models → Pydantic models → ALL tests
 2. **Idempotency** — All payment and transfer operations MUST be idempotent (use idempotency keys)
-3. **Canada-only** — Backend-first postal code/province validation. Never trust frontend.
+3. **Canada-only buyers** — Backend-first postal code/province validation for buyer/shipping addresses. Sellers can be worldwide. Never trust frontend.
 4. **Eventual consistency** — Minimize Firestore reads/writes. Assume data may be stale.
 5. **Error handling** — Always handle: network errors, auth expiry, permission denied, not found, rate limits
 

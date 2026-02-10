@@ -60,7 +60,7 @@ void main() {
         categoryId: 1,
         stockQuantity: 100,
         rating: 4.5,
-        dateCreated: DateTime(2026, 2, 1),
+        createdAt: DateTime(2026, 2, 1),
         isActive: true,
       );
 
@@ -82,7 +82,7 @@ void main() {
         sellerAddress: address,
         categoryId: 1,
         stockQuantity: 100,
-        dateCreated: DateTime.now(),
+        createdAt: DateTime.now(),
       );
 
       final updated = product.copyWith(name: 'Updated Apples', price: 5.99);

@@ -6,7 +6,7 @@ part of 'order_models.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$OrderImpl _$$OrderImplFromJson(Map<String, dynamic> json) => _$OrderImpl(
+_Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
   orderId: json['orderId'] as String,
   userId: json['userId'] as String,
   customerId: json['customerId'] as String,
@@ -100,60 +100,61 @@ _$OrderImpl _$$OrderImplFromJson(Map<String, dynamic> json) => _$OrderImpl(
       const [],
   taxExempt: json['taxExempt'] as bool? ?? false,
   taxExemption: json['taxExemption'] as Map<String, dynamic>?,
+  deliveryInstructions: json['deliveryInstructions'] as String?,
 );
 
-Map<String, dynamic> _$$OrderImplToJson(_$OrderImpl instance) =>
-    <String, dynamic>{
-      'orderId': instance.orderId,
-      'userId': instance.userId,
-      'customerId': instance.customerId,
-      'customerEmail': instance.customerEmail,
-      'items': instance.items,
-      'totalAmountCents': instance.totalAmountCents,
-      'subtotalCents': instance.subtotalCents,
-      'shippingCostCents': instance.shippingCostCents,
-      'taxAmountCents': instance.taxAmountCents,
-      'taxes': instance.taxes,
-      'orderStatus': _$OrderStatusEnumMap[instance.orderStatus]!,
-      'paymentStatus': _$PaymentStatusEnumMap[instance.paymentStatus]!,
-      'shippingAddress': instance.shippingAddress,
-      'createdAt': instance.createdAt.toIso8601String(),
-      'currency': instance.currency,
-      'sellerIds': instance.sellerIds,
-      'stripeSessionId': instance.stripeSessionId,
-      'shippingApprovalStatus':
-          _$ShippingApprovalStatusEnumMap[instance.shippingApprovalStatus]!,
-      'shippingApprovalRequired': instance.shippingApprovalRequired,
-      'actualShipping': instance.actualShipping,
-      'pendingTotal': instance.pendingTotal,
-      'sellerPayouts': instance.sellerPayouts,
-      'confirmedByClient': instance.confirmedByClient,
-      'confirmedAt': instance.confirmedAt?.toIso8601String(),
-      'platformFeeTotal': instance.platformFeeTotal,
-      'payoutStatus': instance.payoutStatus,
-      'ratings': instance.ratings,
-      'stripePaymentIntentId': instance.stripePaymentIntentId,
-      'captureAttempts': instance.captureAttempts,
-      'capturedAt': instance.capturedAt?.toIso8601String(),
-      'expiresAt': instance.expiresAt?.toIso8601String(),
-      'autoConfirmed': instance.autoConfirmed,
-      'autoCaptured': instance.autoCaptured,
-      'refundAmount': instance.refundAmount,
-      'refundedAt': instance.refundedAt?.toIso8601String(),
-      'stockRestored': instance.stockRestored,
-      'cancelledBy': instance.cancelledBy,
-      'cancelledAt': instance.cancelledAt?.toIso8601String(),
-      'cancellationReason': instance.cancellationReason,
-      'respondedAt': instance.respondedAt?.toIso8601String(),
-      'actualCost': instance.actualCost,
-      'requiresManualReview': instance.requiresManualReview,
-      'manualReviewReason': instance.manualReviewReason,
-      'payoutErrors': instance.payoutErrors,
-      'updatedAt': instance.updatedAt?.toIso8601String(),
-      'itemTaxes': instance.itemTaxes,
-      'taxExempt': instance.taxExempt,
-      'taxExemption': instance.taxExemption,
-    };
+Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
+  'orderId': instance.orderId,
+  'userId': instance.userId,
+  'customerId': instance.customerId,
+  'customerEmail': instance.customerEmail,
+  'items': instance.items,
+  'totalAmountCents': instance.totalAmountCents,
+  'subtotalCents': instance.subtotalCents,
+  'shippingCostCents': instance.shippingCostCents,
+  'taxAmountCents': instance.taxAmountCents,
+  'taxes': instance.taxes,
+  'orderStatus': _$OrderStatusEnumMap[instance.orderStatus]!,
+  'paymentStatus': _$PaymentStatusEnumMap[instance.paymentStatus]!,
+  'shippingAddress': instance.shippingAddress,
+  'createdAt': instance.createdAt.toIso8601String(),
+  'currency': instance.currency,
+  'sellerIds': instance.sellerIds,
+  'stripeSessionId': instance.stripeSessionId,
+  'shippingApprovalStatus':
+      _$ShippingApprovalStatusEnumMap[instance.shippingApprovalStatus]!,
+  'shippingApprovalRequired': instance.shippingApprovalRequired,
+  'actualShipping': instance.actualShipping,
+  'pendingTotal': instance.pendingTotal,
+  'sellerPayouts': instance.sellerPayouts,
+  'confirmedByClient': instance.confirmedByClient,
+  'confirmedAt': instance.confirmedAt?.toIso8601String(),
+  'platformFeeTotal': instance.platformFeeTotal,
+  'payoutStatus': instance.payoutStatus,
+  'ratings': instance.ratings,
+  'stripePaymentIntentId': instance.stripePaymentIntentId,
+  'captureAttempts': instance.captureAttempts,
+  'capturedAt': instance.capturedAt?.toIso8601String(),
+  'expiresAt': instance.expiresAt?.toIso8601String(),
+  'autoConfirmed': instance.autoConfirmed,
+  'autoCaptured': instance.autoCaptured,
+  'refundAmount': instance.refundAmount,
+  'refundedAt': instance.refundedAt?.toIso8601String(),
+  'stockRestored': instance.stockRestored,
+  'cancelledBy': instance.cancelledBy,
+  'cancelledAt': instance.cancelledAt?.toIso8601String(),
+  'cancellationReason': instance.cancellationReason,
+  'respondedAt': instance.respondedAt?.toIso8601String(),
+  'actualCost': instance.actualCost,
+  'requiresManualReview': instance.requiresManualReview,
+  'manualReviewReason': instance.manualReviewReason,
+  'payoutErrors': instance.payoutErrors,
+  'updatedAt': instance.updatedAt?.toIso8601String(),
+  'itemTaxes': instance.itemTaxes,
+  'taxExempt': instance.taxExempt,
+  'taxExemption': instance.taxExemption,
+  'deliveryInstructions': instance.deliveryInstructions,
+};
 
 const _$OrderStatusEnumMap = {
   OrderStatus.pending: 'pending',
@@ -193,24 +194,22 @@ const _$ShippingApprovalStatusEnumMap = {
   ShippingApprovalStatus.rejected: 'rejected',
 };
 
-_$OrderCreateImpl _$$OrderCreateImplFromJson(Map<String, dynamic> json) =>
-    _$OrderCreateImpl(
-      userId: json['userId'] as String,
-      customerId: json['customerId'] as String,
-      customerEmail: json['customerEmail'] as String,
-      items: (json['items'] as List<dynamic>)
-          .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      shippingAddress: Address.fromJson(
-        json['shippingAddress'] as Map<String, dynamic>,
-      ),
-      shippingCost: (json['shippingCost'] as num?)?.toDouble() ?? 0.0,
-      currency: json['currency'] as String? ?? BusinessRules.defaultCurrency,
-      shippingApprovalRequired:
-          json['shippingApprovalRequired'] as bool? ?? false,
-    );
+_OrderCreate _$OrderCreateFromJson(Map<String, dynamic> json) => _OrderCreate(
+  userId: json['userId'] as String,
+  customerId: json['customerId'] as String,
+  customerEmail: json['customerEmail'] as String,
+  items: (json['items'] as List<dynamic>)
+      .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  shippingAddress: Address.fromJson(
+    json['shippingAddress'] as Map<String, dynamic>,
+  ),
+  shippingCost: (json['shippingCost'] as num?)?.toDouble() ?? 0.0,
+  currency: json['currency'] as String? ?? BusinessRules.defaultCurrency,
+  shippingApprovalRequired: json['shippingApprovalRequired'] as bool? ?? false,
+);
 
-Map<String, dynamic> _$$OrderCreateImplToJson(_$OrderCreateImpl instance) =>
+Map<String, dynamic> _$OrderCreateToJson(_OrderCreate instance) =>
     <String, dynamic>{
       'userId': instance.userId,
       'customerId': instance.customerId,
@@ -222,9 +221,7 @@ Map<String, dynamic> _$$OrderCreateImplToJson(_$OrderCreateImpl instance) =>
       'shippingApprovalRequired': instance.shippingApprovalRequired,
     };
 
-_$OrderItemImpl _$$OrderItemImplFromJson(
-  Map<String, dynamic> json,
-) => _$OrderItemImpl(
+_OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => _OrderItem(
   productId: json['productId'] as String,
   name: json['name'] as String,
   description: json['description'] as String,
@@ -274,7 +271,7 @@ _$OrderItemImpl _$$OrderItemImplFromJson(
   taxCode: json['taxCode'] as String?,
 );
 
-Map<String, dynamic> _$$OrderItemImplToJson(_$OrderItemImpl instance) =>
+Map<String, dynamic> _$OrderItemToJson(_OrderItem instance) =>
     <String, dynamic>{
       'productId': instance.productId,
       'name': instance.name,
@@ -316,24 +313,22 @@ const _$DeliveryStatusEnumMap = {
   DeliveryStatus.refunded: 'refunded',
 };
 
-_$RatingsImpl _$$RatingsImplFromJson(Map<String, dynamic> json) =>
-    _$RatingsImpl(
-      productId: json['productId'] as String,
-      rating: (json['rating'] as num).toDouble(),
-      review: json['review'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-    );
+_Ratings _$RatingsFromJson(Map<String, dynamic> json) => _Ratings(
+  productId: json['productId'] as String,
+  rating: (json['rating'] as num).toDouble(),
+  review: json['review'] as String?,
+  createdAt: DateTime.parse(json['createdAt'] as String),
+);
 
-Map<String, dynamic> _$$RatingsImplToJson(_$RatingsImpl instance) =>
-    <String, dynamic>{
-      'productId': instance.productId,
-      'rating': instance.rating,
-      'review': instance.review,
-      'createdAt': instance.createdAt.toIso8601String(),
-    };
+Map<String, dynamic> _$RatingsToJson(_Ratings instance) => <String, dynamic>{
+  'productId': instance.productId,
+  'rating': instance.rating,
+  'review': instance.review,
+  'createdAt': instance.createdAt.toIso8601String(),
+};
 
-_$SellerPayoutImpl _$$SellerPayoutImplFromJson(Map<String, dynamic> json) =>
-    _$SellerPayoutImpl(
+_SellerPayout _$SellerPayoutFromJson(Map<String, dynamic> json) =>
+    _SellerPayout(
       sellerId: json['sellerId'] as String,
       stripeAccountId: json['stripeAccountId'] as String?,
       amountCents: (json['amountCents'] as num).toInt(),
@@ -347,7 +342,7 @@ _$SellerPayoutImpl _$$SellerPayoutImplFromJson(Map<String, dynamic> json) =>
       failureReason: json['failureReason'] as String?,
     );
 
-Map<String, dynamic> _$$SellerPayoutImplToJson(_$SellerPayoutImpl instance) =>
+Map<String, dynamic> _$SellerPayoutToJson(_SellerPayout instance) =>
     <String, dynamic>{
       'sellerId': instance.sellerId,
       'stripeAccountId': instance.stripeAccountId,

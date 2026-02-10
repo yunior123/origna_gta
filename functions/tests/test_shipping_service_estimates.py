@@ -1,6 +1,6 @@
 import pytest
 
-from shipping_service import (
+from services.shipping_service import (
     estimate_delivery_date_range,
     get_international_shipping_estimate,
 )

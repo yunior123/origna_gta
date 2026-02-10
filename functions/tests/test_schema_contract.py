@@ -75,8 +75,8 @@ def schema_timestamp_fields(schema: dict) -> dict[str, str]:
                 # Check for common timestamp fields
                 if "createdAt" in collection_def["fields"]:
                     timestamp_map[collection_name] = "createdAt"
-                elif "dateCreated" in collection_def["fields"]:
-                    timestamp_map[collection_name] = "dateCreated"
+                elif "createdAt" in collection_def["fields"]:
+                    timestamp_map[collection_name] = "createdAt"
 
             # Check subcollections
             if "subcollections" in collection_def:
@@ -84,8 +84,8 @@ def schema_timestamp_fields(schema: dict) -> dict[str, str]:
                     if "fields" in sub_def:
                         if "createdAt" in sub_def["fields"]:
                             timestamp_map[sub_name] = "createdAt"
-                        elif "dateCreated" in sub_def["fields"]:
-                            timestamp_map[sub_name] = "dateCreated"
+                        elif "createdAt" in sub_def["fields"]:
+                            timestamp_map[sub_name] = "createdAt"
 
     return timestamp_map
 
@@ -115,13 +115,13 @@ class TestSchemaConsistency:
 
     def test_timestamp_fields_documented(self, schema: dict, schema_timestamp_fields: dict[str, str]):
         """Verify timestamp field naming is consistent and documented"""
-        # This test documents the current state (some use createdAt, some dateCreated)
+        # This test documents the current state (some use createdAt, some createdAt)
         expected_timestamps = {
             "users": "createdAt",
-            "products": "dateCreated",  # Legacy
+            "products": "createdAt",
             "orders": "createdAt",
             "payouts": "createdAt",
-            "cart": "dateCreated",  # Legacy subcollection
+            "cart": "createdAt",
         }
 
         for collection, expected_field in expected_timestamps.items():
@@ -188,7 +188,7 @@ class TestPythonSchemaContract:
 
     def test_cron_jobs_uses_correct_timestamp_field(self):
         """
-        CRITICAL: Verify cron_jobs.py queries 'createdAt' for orders, not 'dateCreated'.
+        CRITICAL: Verify cron_jobs.py queries 'createdAt' for orders, not 'createdAt'.
         This was a real bug that this test prevents from recurring.
 
         Accepts both:
@@ -209,8 +209,8 @@ class TestPythonSchemaContract:
             "cron_jobs.py should query 'createdAt' for orders (either as string or Fields.CREATED_AT)"
         )
 
-        # Should NOT use dateCreated for orders (either as literal or constant)
-        # For orders collection, DATE_CREATED should not appear in order queries
+        # Should NOT use createdAt for orders (either as literal or constant)
+        # For orders collection, CREATED_AT should not appear in order queries
         order_section_match = re.search(
             r"collection\(['\"]orders['\"]\).*?\.stream\(\)",
             content,
@@ -219,8 +219,8 @@ class TestPythonSchemaContract:
 
         if order_section_match:
             order_section = order_section_match.group(0)
-            assert "dateCreated" not in order_section.lower() or "DATE_CREATED" not in order_section, (
-                "cron_jobs.py should NOT query 'dateCreated' for orders collection. "
+            assert "createdAt" not in order_section.lower() or "CREATED_AT" not in order_section, (
+                "cron_jobs.py should NOT query 'createdAt' for orders collection. "
                 "Orders use 'createdAt'. Found violations."
             )
 
@@ -247,7 +247,7 @@ class TestPythonSchemaContract:
         handlers_dir = FUNCTIONS_DIR / "handlers"
 
         violations = []
-        timestamp_pattern = re.compile(r"['\"](?:createdAt|dateCreated|updatedAt)['\"]")
+        timestamp_pattern = re.compile(r"['\"](?:createdAt|createdAt|updatedAt)['\"]")
 
         for py_file in handlers_dir.glob("*.py"):
             content = py_file.read_text()
@@ -375,7 +375,7 @@ class TestDartSchemaContract:
         # What each repository should use
         expected = {
             "order_repository.dart": ("orders", "createdAt"),
-            "product_repository.dart": ("products", "dateCreated"),
+            "product_repository.dart": ("products", "createdAt"),
         }
 
         for repo_file, (collection, expected_field) in expected.items():
@@ -386,7 +386,7 @@ class TestDartSchemaContract:
             content = repo_path.read_text()
 
             # Check orderBy clauses
-            wrong_field = "dateCreated" if expected_field == "createdAt" else "createdAt"
+            wrong_field = "createdAt" if expected_field == "createdAt" else "createdAt"
 
             # Look for orderBy with wrong field
             wrong_pattern = re.compile(
@@ -417,18 +417,17 @@ class TestSchemaDrift:
         assert "version" in schema, "Schema should have a version number"
         assert "lastUpdated" in schema, "Schema should have lastUpdated date"
 
-    def test_no_deprecated_field_usage_in_new_code(self):
-        """Check that deprecated fields aren't used in new code"""
-        deprecated_fields = {
-            "deliveryStatus": "Use 'status' instead",
-            "dateCreated": "Consider using 'createdAt' for new collections",
+    def test_parallel_field_usage_tracking(self):
+        """Track where parallel fields are still used across codebases"""
+        tracked_fields = {
+            "deliveryStatus": "Parallel field alongside 'status'",
+            "createdAt": "Used by products and cart collections",
         }
 
-        # This is informational - we track where deprecated fields are still used
-        # but don't fail since some are needed for backward compatibility
-        print("\nDeprecated field usage (informational):")
+        # Informational only — tracks usage but does not fail
+        print("\nParallel field usage (informational):")
 
-        for field, replacement in deprecated_fields.items():
+        for field, replacement in tracked_fields.items():
             # Count usage in Python
             py_count = 0
             for py_file in FUNCTIONS_DIR.rglob("*.py"):
@@ -500,8 +499,8 @@ class TestSchemaCI:
         # Orders MUST use createdAt
         assert "createdAt" in schema["collections"]["orders"]["fields"]
 
-        # Products use dateCreated (legacy, documented)
-        assert "dateCreated" in schema["collections"]["products"]["fields"]
+        # Products use createdAt as their timestamp field
+        assert "createdAt" in schema["collections"]["products"]["fields"]
 
         # Money fields use Cents suffix
         order_fields = schema["collections"]["orders"]["fields"]

@@ -1,6 +1,7 @@
 // coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // Generated from Pydantic models - Single source of truth
+// ignore_for_file: non_abstract_class_inherits_abstract_member
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -79,7 +80,7 @@ Address _safeAddress(dynamic value) {
     city: _safeString(map[Fields.city]),
     state: _safeString(map[Fields.state]),
     postalCode: _safeString(map[Fields.postalCode]),
-    country: _safeString(map[Fields.country], BusinessRules.allowedCountries.first),
+    country: _safeString(map[Fields.country], BusinessRules.allowedShippingCountries.first),
     phoneNumber: map[Fields.phoneNumber] != null ? _safeString(map[Fields.phoneNumber]) : null,
     isDefault: _safeBool(map[Fields.isDefault]),
     label: map[Fields.label] != null ? _safeString(map[Fields.label]) : null,
@@ -223,6 +224,8 @@ class Order with _$Order {
     @Default([]) List<Map<String, dynamic>> itemTaxes,
     @Default(false) bool taxExempt,
     Map<String, dynamic>? taxExemption,
+    // Delivery instructions from buyer
+    String? deliveryInstructions,
   }) = _Order;
 
   factory Order.fromFirestore(DocumentSnapshot doc) {
@@ -378,6 +381,8 @@ class Order with _$Order {
       itemTaxes: (data[Fields.itemTaxes] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [],
       taxExempt: _safeBool(data[Fields.taxExempt]),
       taxExemption: data[Fields.taxExemption] != null ? _safeMap(data[Fields.taxExemption]) : null,
+      // Delivery instructions from buyer
+      deliveryInstructions: data[Fields.deliveryInstructions] != null ? _safeString(data[Fields.deliveryInstructions]) : null,
     );
   }
 
@@ -433,9 +438,9 @@ class OrderItem with _$OrderItem {
     required List<String> imageUrls,
     required String sellerId,
     required Address sellerAddress,
-    // Per-item status tracking (NEW)
+    // Per-item status tracking
     @Default(DeliveryStatusValues.pending) String status, // 'pending' | 'shipped' | 'delivered' | 'refunded'
-    @Default(DeliveryStatus.pending) DeliveryStatus deliveryStatus, // DEPRECATED: backwards compatibility
+    @Default(DeliveryStatus.pending) DeliveryStatus deliveryStatus, // Parallel enum field for type-safe access
     String? trackingNumber,
     String? carrier,
     DateTime? shippedAt,

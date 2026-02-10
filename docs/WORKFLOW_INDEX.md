@@ -179,7 +179,7 @@ SCHEMA:
 ### Logic checkpoints:
 - [ ] Email verification required before checkout?
 - [ ] Role assignment: buyer default, seller on onboarding, admin manual?
-- [ ] Stripe Connect account created with correct country (CA)?
+- [ ] Stripe Connect account created with seller's actual country (sellers can be worldwide)?
 - [ ] Onboarding return URL handles success AND failure?
 - [ ] Suspended seller → products deactivated cascade?
 - [ ] Rate limiting on login and registration?

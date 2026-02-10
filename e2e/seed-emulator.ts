@@ -392,7 +392,7 @@ async function seedProducts(uidMap: Map<string, string>) {
       keywords: product.keywords,
       rating: Math.round((3 + Math.random() * 2) * 10) / 10, // 3.0-5.0
       ratingCount: Math.floor(Math.random() * 50),
-      dateCreated: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
       isActive: true,
       isDigital: product.isDigital,
       freeShipping: product.freeShipping,
@@ -433,7 +433,7 @@ async function seedCartItems(uidMap: Map<string, string>) {
     const cartDoc = {
       productId: cartItem.productId,
       quantity: cartItem.quantity,
-      dateCreated: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     };
     
     const success = await createFirestoreDoc(`users/${uid}/cart`, cartItem.productId, cartDoc);

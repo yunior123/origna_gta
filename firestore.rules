@@ -45,8 +45,25 @@ service cloud.firestore {
         isStringWithLen(addr.city, 2, 50) &&
         isValidProvince(addr.state) &&
         isValidPostalCode(addr.postalCode) &&
-        // CANADA-ONLY: Seller/Buyer addresses must be in Canada
+        // Buyer/shipping addresses must be in Canada
         (addr.country == 'Canada' || addr.country == 'CA' || addr.country == 'canada') &&
+        (addr.phoneNumber == null || (addr.phoneNumber is string && addr.phoneNumber.matches('^\\d{10,15}$'))) &&
+        (addr.isDefault == null || addr.isDefault is bool) &&
+        (addr.label == null || isStringWithLen(addr.label, 1, 30)) &&
+        (addr.latitude == null || (addr.latitude is number && addr.latitude >= -90 && addr.latitude <= 90)) &&
+        (addr.longitude == null || (addr.longitude is number && addr.longitude >= -180 && addr.longitude <= 180));
+    }
+
+    // Seller addresses can be from any country — no Canada-only restriction
+    function isValidSellerAddress(addr) {
+      return addr is map &&
+        addr.keys().hasOnly(['street','apartment','city','state','postalCode','country','phoneNumber','isDefault','label','latitude','longitude']) &&
+        isStringWithLen(addr.street, 3, 100) &&
+        (addr.apartment == null || isStringWithLen(addr.apartment, 1, 20)) &&
+        isStringWithLen(addr.city, 2, 50) &&
+        isStringWithLen(addr.state, 1, 50) &&
+        isStringWithLen(addr.postalCode, 2, 15) &&
+        isStringWithLen(addr.country, 2, 56) &&
         (addr.phoneNumber == null || (addr.phoneNumber is string && addr.phoneNumber.matches('^\\d{10,15}$'))) &&
         (addr.isDefault == null || addr.isDefault is bool) &&
         (addr.label == null || isStringWithLen(addr.label, 1, 30)) &&
@@ -152,11 +169,11 @@ service cloud.firestore {
       match /cart/{itemId} {
         allow read: if isOwner(userId);
         allow create, update: if isOwner(userId) &&
-          request.resource.data.keys().hasOnly(['productId','quantity','dateCreated']) &&
+          request.resource.data.keys().hasOnly(['productId','quantity','createdAt']) &&
           request.resource.data.productId is string &&
           request.resource.data.quantity is int &&
           request.resource.data.quantity > 0 && request.resource.data.quantity <= 100 &&
-          request.resource.data.dateCreated is timestamp;
+          request.resource.data.createdAt is timestamp;
         allow delete: if isOwner(userId);
       }
       
@@ -192,7 +209,7 @@ service cloud.firestore {
 
       // Only sellers can create products
       // Must set correct sellerId
-      // CANADA-ONLY: Products must have Canadian seller address
+      // Seller addresses can be from any country (buyers/shipping must be Canada)
       // CAD-ONLY: All prices are in Canadian Dollars
       allow create: if isSellerApproved() &&
         request.resource.data.sellerId == request.auth.uid &&
@@ -204,7 +221,7 @@ service cloud.firestore {
           'categoryId', 'stockQuantity',
           'keywords',
           // Metadata
-          'dateCreated', 'isActive', 'rating', 'status', 'taxCode',
+          'createdAt', 'isActive', 'rating', 'status', 'taxCode',
           // Shipping / delivery
           'weightKg', 'lengthCm', 'widthCm', 'heightCm',
           'isLocalDeliveryOnly', 'isPerishable', 'estimatedShipDays',
@@ -217,12 +234,9 @@ service cloud.firestore {
         ]) &&
         isStringWithLen(request.resource.data.name, 2, 120) &&
         isStringWithLen(request.resource.data.description, 10, 4000) &&
-        isValidAddress(request.resource.data.sellerAddress) &&
-        // Enforce Canada-only seller address
-        (request.resource.data.sellerAddress.country == 'Canada' || 
-         request.resource.data.sellerAddress.country == 'CA' ||
-         request.resource.data.sellerAddress.country == 'canada') &&
-        request.resource.data.dateCreated is timestamp &&
+        isValidSellerAddress(request.resource.data.sellerAddress) &&
+        // Sellers can be from any country — no geographic restriction on seller addresses
+        request.resource.data.createdAt is timestamp &&
         request.resource.data.imageUrls is list &&
         // Allow empty images initially to support Create -> Upload -> Update flow
         // request.resource.data.imageUrls.size() >= 1 && request.resource.data.imageUrls.size() <= 5 &&
@@ -265,7 +279,7 @@ service cloud.firestore {
           request.resource.data.sellerId == resource.data.sellerId &&
           isStringWithLen(request.resource.data.name, 2, 120) &&
           isStringWithLen(request.resource.data.description, 10, 4000) &&
-          isValidAddress(request.resource.data.sellerAddress) &&
+          isValidSellerAddress(request.resource.data.sellerAddress) &&
           request.resource.data.imageUrls is list &&
           request.resource.data.imageUrls.size() >= 1 && request.resource.data.imageUrls.size() <= 5 &&
           request.resource.data.keywords is list &&

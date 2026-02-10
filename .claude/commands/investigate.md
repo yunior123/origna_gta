@@ -12,7 +12,7 @@ $ARGUMENTS = topic or question to investigate
 ```
 Investigate: $ARGUMENTS
 
-Context: This is the OrignaGta project — a Canada-only e-commerce marketplace built with Flutter + Firebase + Stripe Connect.
+Context: This is the OrignaGta project — an e-commerce marketplace serving Canadian buyers, with sellers worldwide, built with Flutter + Firebase + Stripe Connect.
 
 Your task:
 1. Read docs/WORKFLOW_INDEX.md to understand the project structure

@@ -55,6 +55,20 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
+  Future<void> addProductWithId(String productId, Product product) async {
+    if (kDebugMode) debugPrint('REPO: Adding product with ID: $productId');
+    final firestoreData = _sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
+    firestoreData[Fields.productId] = productId;
+    await _firestore.collection(Collections.products).doc(productId).set(firestoreData);
+    if (kDebugMode) debugPrint('REPO: Product added with predetermined ID: $productId');
+  }
+
+  @override
+  String generateProductId() {
+    return _firestore.collection(Collections.products).doc().id;
+  }
+
+  @override
   Future<void> deleteProduct(String productId) async {
     await _functions.httpsCallable('delete_product').call({Fields.productId: productId});
   }
@@ -83,7 +97,7 @@ class FirebaseProductRepository implements ProductRepository {
       query = query.where(Fields.categoryId, isEqualTo: categoryId);
     }
 
-    query = query.orderBy(Fields.dateCreated, descending: true).limit(pageSize);
+    query = query.orderBy(Fields.createdAt, descending: true).limit(pageSize);
 
     if (lastDocument != null) {
       query = query.startAfterDocument(lastDocument);
@@ -178,19 +192,19 @@ class FirebaseProductRepository implements ProductRepository {
     // productId is derived from document id; avoid storing a client-controlled field.
     data.remove(Fields.productId);
 
-    // Ensure dateCreated is stored as a Firestore Timestamp (not ISO string)
-    if (data.containsKey(Fields.dateCreated) || ensureDateCreated) {
-      final dateCreated = data[Fields.dateCreated];
-      if (dateCreated is String) {
+    // Ensure createdAt is stored as a Firestore Timestamp (not ISO string)
+    if (data.containsKey(Fields.createdAt) || ensureDateCreated) {
+      final createdAt = data[Fields.createdAt];
+      if (createdAt is String) {
         try {
-          data[Fields.dateCreated] = Timestamp.fromDate(DateTime.parse(dateCreated));
+          data[Fields.createdAt] = Timestamp.fromDate(DateTime.parse(createdAt));
         } catch (_) {
-          data[Fields.dateCreated] = Timestamp.now();
+          data[Fields.createdAt] = Timestamp.now();
         }
-      } else if (dateCreated is DateTime) {
-        data[Fields.dateCreated] = Timestamp.fromDate(dateCreated);
-      } else if (dateCreated == null && ensureDateCreated) {
-        data[Fields.dateCreated] = Timestamp.now();
+      } else if (createdAt is DateTime) {
+        data[Fields.createdAt] = Timestamp.fromDate(createdAt);
+      } else if (createdAt == null && ensureDateCreated) {
+        data[Fields.createdAt] = Timestamp.now();
       }
     }
 
@@ -231,10 +245,12 @@ class ProductQueryResult {
 
 abstract class ProductRepository {
   Future<String> addProduct(Product product);
+  Future<void> addProductWithId(String productId, Product product);
   Future<void> deleteProduct(String productId);
   Future<Product?> fetchProductById(String productId);
   Future<ProductQueryResult> fetchProducts({String? searchQuery, int? categoryId, DocumentSnapshot? lastDocument, int pageSize = 20});
   Future<List<Product>> fetchProductsByIds(List<String> productIds);
+  String generateProductId();
   Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(String query);
   Future<String?> getUploadUrl(String fileName);
   Future<void> submitRating(String orderId, String productId, int rating);

@@ -20,7 +20,7 @@ void main() {
     });
 
     test('getTaxRate returns correct rate for Atlantic provinces (HST)', () {
-      expect(getTaxRate('NS'), 0.15);
+      expect(getTaxRate('NS'), 0.14);  // Changed from 15% to 14% on April 1, 2025 (CRA)
       expect(getTaxRate('NB'), 0.15);
       expect(getTaxRate('NL'), 0.15);
       expect(getTaxRate('PE'), 0.15);

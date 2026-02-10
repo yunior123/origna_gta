@@ -226,6 +226,10 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
       // Backend expects: items, shippingAddress, subtotal, userId, deliverySpeed
       // Backend handles: tax calculation, shipping calculation, total calculation server-side
+      
+      // Get delivery instructions from cart provider
+      final deliveryInstructions = _ref.read(deliveryInstructionsProvider);
+      
       final orderData = {
         Fields.userId: userId,
         Fields.items: items
@@ -244,6 +248,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         Fields.shippingAddress: state.address?.toMap() ?? {},
         // Bug #9: Send delivery speed so backend applies correct multiplier
         Fields.deliverySpeed: state.deliverySpeed.value,
+        // Delivery instructions for sellers
+        Fields.deliveryInstructions: deliveryInstructions,
       };
 
       debugPrint('Sending checkout request for user: $userId');
@@ -259,6 +265,20 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       }
 
       // Backend returns: {success, sessionId, orderId, checkoutUrl}
+      // Handle duplicate order (idempotency) — backend may return existing session
+      if (result[ApiKeys.duplicate] == true) {
+        final checkoutUrl = result[ApiKeys.checkoutUrl] as String?;
+        final orderId = result[Fields.orderId] as String;
+        if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
+          state = state.copyWith(isProcessing: false, clearIdempotencyKey: true);
+          _ref.invalidate(cartItemsProvider);
+          return CheckoutSuccess(checkoutUrl: checkoutUrl, orderId: orderId, sessionId: result[ApiKeys.sessionId] as String? ?? '');
+        }
+        // Duplicate but no valid URL — return as already processed
+        state = state.copyWith(isProcessing: false, clearIdempotencyKey: true);
+        return CheckoutAlreadyProcessed(existingOrderId: orderId);
+      }
+
       final checkoutUrl = result[ApiKeys.checkoutUrl] as String;
       final orderId = result[Fields.orderId] as String;
       final sessionId = result[ApiKeys.sessionId] as String;

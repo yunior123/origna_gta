@@ -12,11 +12,14 @@ from typing import Any
 import stripe
 from firebase_functions import firestore_fn, https_fn
 
-from config import STRIPE_SECRET_KEY, Collections
-from email_service import send_email
-from function_options import DEFAULT_OPTIONS
+from config import STRIPE_SECRET_KEY
+from services.email_service import send_email
+from utils.function_options import DEFAULT_OPTIONS
 from schema_constants import (
     ApiKeys,
+    AppConfig,
+    BusinessRules,
+    Collections,
     DeliveryStatusValues,
     Fields,
     OrderStatusValues,
@@ -25,12 +28,7 @@ from schema_constants import (
     ShippingApprovalStatusValues,
     UserRoleValues,
 )
-from utils import create_success_response, is_valid_order_status_transition
-
-# Aliases for backward compatibility — canonical source is schema_constants
-OrderStatus = OrderStatusValues
-PaymentStatus = PaymentStatusValues
-DeliveryStatus = DeliveryStatusValues
+from utils.helpers import create_success_response, is_valid_order_status_transition
 
 stripe.api_key = STRIPE_SECRET_KEY
 _db = None
@@ -108,7 +106,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     data = req.data
 
     # Import validation functions
-    from utils import sanitized_text
+    from utils.helpers import sanitized_text
 
     order_id = data.get(Fields.ORDER_ID)
     new_status = data.get(ApiKeys.NEW_STATUS)
@@ -123,7 +121,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('invalid-argument', 'orderId and newStatus required')
 
     # AUDIT FIX: Rate limit order status updates (after input validation)
-    from rate_limiter import RateLimiter
+    from services.rate_limiter import RateLimiter
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=user_id, action='update_order_status',
@@ -285,7 +283,7 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     data = req.data
 
     # Import validation functions
-    from utils import sanitized_text
+    from utils.helpers import sanitized_text
 
     order_id = data.get(Fields.ORDER_ID)
     product_id = data.get(Fields.PRODUCT_ID)
@@ -301,7 +299,7 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('invalid-argument', 'orderId, productId, and newStatus required')
 
     # AUDIT FIX: Rate limit item status updates (after input validation)
-    from rate_limiter import RateLimiter
+    from services.rate_limiter import RateLimiter
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=user_id, action='update_item_status',
@@ -313,7 +311,8 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Validate status value — sellers can only set PENDING or SHIPPED.
     # DELIVERED is set by buyer confirmation or auto-capture cron only.
     # REFUNDED is set by refund_order_item handler only.
-    valid_statuses = [OrderStatusValues.PENDING, OrderStatusValues.SHIPPED, OrderStatusValues.DELIVERED, OrderStatusValues.REFUNDED]
+    # NOTE: Item statuses use DeliveryStatusValues, NOT OrderStatusValues.
+    valid_statuses = [DeliveryStatusValues.PENDING, DeliveryStatusValues.SHIPPED, DeliveryStatusValues.DELIVERED, DeliveryStatusValues.REFUNDED]
     if new_status not in valid_statuses:
         raise https_fn.HttpsError('invalid-argument', f'Status must be one of: {valid_statuses}')
 
@@ -404,9 +403,9 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     }
 
     # If all items delivered, update order status
-    if all_items_delivered and order_data.get(Fields.ORDER_STATUS) != OrderStatus.DELIVERED:
-        update_data[Fields.ORDER_STATUS] = OrderStatus.DELIVERED
-        update_data[Fields.DELIVERY_STATUS] = DeliveryStatus.DELIVERED
+    if all_items_delivered and order_data.get(Fields.ORDER_STATUS) != OrderStatusValues.DELIVERED:
+        update_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
+        update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.DELIVERED
 
     order_ref.update(update_data)
 
@@ -432,7 +431,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
     # AUDIT FIX: Rate limit order cancellations (security-critical)
-    from rate_limiter import RateLimiter
+    from services.rate_limiter import RateLimiter
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=req.auth.uid, action='cancel_order',
@@ -448,7 +447,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
     reason_raw = data.get(ApiKeys.REASON, 'User requested cancellation')
 
     # Import validation functions
-    from utils import sanitized_text
+    from utils.helpers import sanitized_text
 
     # Sanitize reason input to prevent XSS
     reason = sanitized_text(reason_raw)[:500]  # Max 500 chars
@@ -464,7 +463,9 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     order_data = order_doc.to_dict()
 
-    # Block updates on archived orders\n    if order_data.get(Fields.ARCHIVED, False):\n        raise https_fn.HttpsError('failed-precondition', 'Cannot cancel archived order')
+    # Block updates on archived orders
+    if order_data.get(Fields.ARCHIVED, False):
+        raise https_fn.HttpsError('failed-precondition', 'Cannot cancel archived order')
 
     # Check permissions
     user_ref = get_db().collection(Collections.USERS).document(user_id)
@@ -540,7 +541,17 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
             refunded = True
             new_payment_status = PaymentStatusValues.REFUNDED
         except stripe.error.StripeError as e:
-            print(f'Refund failed: {str(e)}')
+            # CRITICAL: Refund failed — mark for manual review, do NOT silently continue
+            order_ref.update({
+                Fields.REQUIRES_MANUAL_REVIEW: True,
+                Fields.MANUAL_REVIEW_REASON: f'Refund failed during cancellation: {str(e)}',
+                Fields.PAYMENT_STATUS: payment_status,  # Restore original payment status
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
+            raise https_fn.HttpsError(
+                'internal',
+                'Order cancellation failed: refund could not be processed. Flagged for manual review.'
+            ) from e
 
     elif payment_status == PaymentStatusValues.AUTHORIZED and payment_intent_id:
         # CRITICAL FIX: Payment was authorized but not captured — cancel the PI to release buyer funds
@@ -602,7 +613,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
     # AUDIT FIX: Rate limit refund requests (security-critical)
-    from rate_limiter import RateLimiter
+    from services.rate_limiter import RateLimiter
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=req.auth.uid, action='refund_order_item',
@@ -619,7 +630,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     reason_raw = data.get(ApiKeys.REASON, 'Item refund requested')
 
     # Import validation functions
-    from utils import sanitized_text
+    from utils.helpers import sanitized_text
 
     # Sanitize reason input
     reason = sanitized_text(reason_raw)[:500]
@@ -726,17 +737,49 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Restore stock for this item
     product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
-    product_ref.update({
-        Fields.STOCK_QUANTITY: get_firestore().Increment(item_quantity),
-        Fields.UPDATED_AT: get_server_timestamp()
-    })
 
-    # Update item status
-    items[item_index][Fields.STATUS] = DeliveryStatusValues.REFUNDED
-    items[item_index][Fields.REFUNDED_AT] = get_server_timestamp()
-    items[item_index][Fields.REFUND_REASON] = reason
-    items[item_index][Fields.REFUND_AMOUNT_CENTS] = refund_amount_cents
-    items[item_index][Fields.REFUND_ID] = refund.id
+    # AUDIT FIX: Use transaction to prevent race condition (double refund / double stock restore)
+    @get_firestore().transactional
+    def _apply_refund_atomically(transaction):
+        """Atomically verify item not yet refunded + update item status + restore stock."""
+        fresh_order_doc = order_ref.get(transaction=transaction)
+        if not fresh_order_doc.exists:
+            raise https_fn.HttpsError('not-found', 'Order not found')
+
+        fresh_data = fresh_order_doc.to_dict()
+        fresh_items = fresh_data.get(Fields.ITEMS, [])
+
+        # Re-verify item not already refunded (protect against concurrent requests)
+        for idx, it in enumerate(fresh_items):
+            if it[Fields.PRODUCT_ID] == product_id:
+                if it.get(Fields.STATUS) == DeliveryStatusValues.REFUNDED:
+                    return 'already_refunded'
+
+                # Update item status atomically
+                fresh_items[idx][Fields.STATUS] = DeliveryStatusValues.REFUNDED
+                fresh_items[idx][Fields.REFUNDED_AT] = get_server_timestamp()
+                fresh_items[idx][Fields.REFUND_REASON] = reason
+                fresh_items[idx][Fields.REFUND_AMOUNT_CENTS] = refund_amount_cents
+                fresh_items[idx][Fields.REFUND_ID] = refund.id
+                break
+
+        transaction.update(order_ref, {
+            Fields.ITEMS: fresh_items,
+            Fields.UPDATED_AT: get_server_timestamp()
+        })
+        transaction.update(product_ref, {
+            Fields.STOCK_QUANTITY: get_firestore().Increment(item_quantity),
+            Fields.UPDATED_AT: get_server_timestamp()
+        })
+        return 'refunded'
+
+    txn_result = _apply_refund_atomically(get_db().transaction())
+    if txn_result == 'already_refunded':
+        return create_success_response({
+            Fields.REFUND_AMOUNT: refund_amount_cents / 100,
+            Fields.REFUND_ID: refund.id,
+            'message': 'Item was already refunded'
+        })
 
     # Reverse seller transfer if payout exists
     seller_id = item_data[Fields.SELLER_ID]
@@ -754,7 +797,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # Calculate proportional reversal amount
         seller_total_cents = payout_data.get(Fields.AMOUNT_CENTS, 0)
-        payout_data.get(Fields.PLATFORM_FEE_CENTS, 0)
+        platform_fee_cents = payout_data.get(Fields.PLATFORM_FEE_CENTS, 0)
 
         if seller_total_cents > 0:
             seller_proportion = item_subtotal_cents / seller_total_cents
@@ -787,11 +830,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
                 # Log failed reversal but don't fail the refund
                 print(f'Transfer reversal failed for {seller_id}: {str(e)}')
 
-    # Update order
-    order_ref.update({
-        Fields.ITEMS: items,
-        Fields.UPDATED_AT: get_server_timestamp()
-    })
+    # Order items already updated atomically in _apply_refund_atomically transaction
 
     return create_success_response({
         Fields.REFUND_AMOUNT: refund_amount_cents / 100,  # Return in dollars
@@ -943,7 +982,7 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
     # AUDIT FIX: Rate limit shipping cost updates
-    from rate_limiter import RateLimiter
+    from services.rate_limiter import RateLimiter
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=req.auth.uid, action='update_shipping_cost',
@@ -956,7 +995,7 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
     data = req.data
 
     from config import SHIPPING_APPROVAL_THRESHOLD
-    from utils import sanitized_text
+    from utils.helpers import sanitized_text
 
     order_id = data.get(Fields.ORDER_ID)
     new_shipping_cost = data.get(ApiKeys.NEW_SHIPPING_COST)
@@ -1039,7 +1078,7 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         order_ref.update(update_data)
 
-    return create_success_response({'approvalRequired': approval_required})
+    return create_success_response({ApiKeys.APPROVAL_REQUIRED: approval_required})
 
 
 @firestore_fn.on_document_updated(document="orders/{orderId}", **DEFAULT_OPTIONS)
@@ -1093,7 +1132,7 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 <p>Order ID: {order_id}</p>
                 <p>Tracking Number: {tracking_number}</p>
                 <p>Carrier: {carrier}</p>
-                <p>You can track your order at: https://orignagta.ca/orders/{order_id}</p>
+                <p>You can track your order at: {AppConfig.SITE_URL}/orders/{order_id}</p>
                 '''
             )
 
@@ -1101,7 +1140,7 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
             seller_ids = set(item.get(Fields.SELLER_ID) for item in after_data.get(Fields.ITEMS, []))
             for sid in seller_ids:
                 try:
-                    seller_doc = _db.collection(Collections.USERS).document(sid).get()
+                    seller_doc = get_db().collection(Collections.USERS).document(sid).get()
                     if seller_doc.exists:
                         seller_email = seller_doc.to_dict().get(Fields.EMAIL)
                         if seller_email:
@@ -1127,8 +1166,8 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 <h2>Your order has been delivered!</h2>
                 <p>Order ID: {order_id}</p>
                 <p>Please confirm receipt to release payment to sellers:</p>
-                <a href="https://orignagta.ca/orders/{order_id}">Confirm Receipt</a>
-                <p><strong>Note:</strong> Payment will be auto-released after 7 days if not confirmed.</p>
+                <a href="{AppConfig.SITE_URL}/orders/{order_id}">Confirm Receipt</a>
+                <p><strong>Note:</strong> Payment will be auto-released after {BusinessRules.AUTO_CONFIRM_DAYS} days if not confirmed.</p>
                 '''
             )
 

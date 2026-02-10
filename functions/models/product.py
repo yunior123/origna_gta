@@ -2,11 +2,20 @@
 Product models for OrignaGTA
 """
 
-from datetime import datetime
+import re
+from datetime import datetime, timezone
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from schema_constants import Fields
+from schema_constants import (
+    BusinessRules,
+    CategoryIds,
+    DeliveryTypeValues,
+    DiscountTypeValues,
+    Fields,
+    ProductStatusValues,
+    SupplierCurrencyValues,
+)
 
 from .base import Address
 
@@ -33,7 +42,7 @@ class ShippingQuantityDiscount(BaseModel):
         description="Minimum quantity to qualify for this discount"
     )
     discountType: str = Field(
-        default="percent",
+        default=DiscountTypeValues.PERCENT,
         description="Discount type: percent, fixed, flat_rate"
     )
     discountValue: float = Field(
@@ -50,10 +59,16 @@ class ShippingQuantityDiscount(BaseModel):
     @field_validator("discountType")
     @classmethod
     def validate_discount_type(cls, v: str) -> str:
-        valid_types = {"percent", "fixed", "flat_rate"}
-        if v not in valid_types:
-            raise ValueError(f"Invalid discount type: {v}. Must be one of: {valid_types}")
+        if v not in DiscountTypeValues.ALL:
+            raise ValueError(f"Invalid discount type: {v}. Must be one of: {DiscountTypeValues.ALL}")
         return v
+
+    @model_validator(mode="after")
+    def validate_discount_value_range(self) -> "ShippingQuantityDiscount":
+        """Ensure percent discounts don't exceed 100%"""
+        if self.discountType == DiscountTypeValues.PERCENT and self.discountValue > 100:
+            raise ValueError("Percent discount cannot exceed 100%")
+        return self
 
 
 class SellerDeliveryOption(BaseModel):
@@ -109,17 +124,16 @@ class SellerDeliveryOption(BaseModel):
         description="Additional cost per item after maxItemsPerShipment"
     )
     availableInternational: bool = Field(
-        default=True,
-        description="Whether option is available for international suppliers"
+        default=False,
+        description="Whether option is available nationwide across Canada"
     )
 
     @field_validator("type")
     @classmethod
     def validate_type(cls, v: str) -> str:
         """Validate delivery type"""
-        valid_types = {"pickup", "standard", "express", "same_day", "custom"}
-        if v not in valid_types:
-            raise ValueError(f"Invalid delivery type: {v}")
+        if v not in DeliveryTypeValues.ALL:
+            raise ValueError(f"Invalid delivery type: {v}. Must be one of: {DeliveryTypeValues.ALL}")
         return v
 
 
@@ -171,7 +185,7 @@ class SupplierInfo(BaseModel):
         description="Cost price from supplier (what seller pays)"
     )
     currency: str = Field(
-        default="USD",
+        default=SupplierCurrencyValues.DEFAULT,
         description="Currency of SUPPLIER cost (for tracking). Selling price is always CAD."
     )
     shippingDays: str | None = Field(
@@ -193,12 +207,8 @@ class SupplierInfo(BaseModel):
     @classmethod
     def validate_supplier_currency(cls, v: str) -> str:
         """Validate supplier cost currency (these are for cost tracking, not selling)"""
-        valid_currencies = {
-            "CAD", "USD", "EUR", "GBP", "CNY", "JPY", "KRW",
-            "INR", "AUD", "MXN", "BRL", "HKD", "SGD", "TWD"
-        }
-        if v.upper() not in valid_currencies:
-            raise ValueError(f"Invalid currency: {v}. Must be one of: {valid_currencies}")
+        if v.upper() not in SupplierCurrencyValues.ALL:
+            raise ValueError(f"Invalid currency: {v}. Must be one of: {SupplierCurrencyValues.ALL}")
         return v.upper()
 
 
@@ -270,7 +280,7 @@ class Product(BaseModel):
                 Fields.CATEGORY_ID: 1,
                 Fields.STOCK_QUANTITY: 100,
                 Fields.RATING: 4.5,
-                Fields.DATE_CREATED: "2026-02-01T10:00:00Z",
+                Fields.CREATED_AT: "2026-02-01T10:00:00Z",
                 Fields.IS_ACTIVE: True
             }
         }
@@ -317,9 +327,9 @@ class Product(BaseModel):
     )
     categoryId: int = Field(
         ...,
-        ge=1,
-        le=21,
-        description="Product category ID (1-21)"
+        ge=CategoryIds.MIN,
+        le=CategoryIds.MAX,
+        description="Product category ID"
     )
     stockQuantity: int = Field(
         ...,
@@ -332,8 +342,13 @@ class Product(BaseModel):
         le=5,
         description="Average product rating (0-5)"
     )
-    dateCreated: datetime = Field(
-        default_factory=datetime.now,
+    ratingCount: int = Field(
+        default=0,
+        ge=0,
+        description="Number of ratings"
+    )
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
         description="Product creation timestamp"
     )
     isActive: bool = Field(
@@ -423,16 +438,23 @@ class Product(BaseModel):
         description="Inventory management configuration"
     )
     status: str = Field(
-        default="active",
+        default=ProductStatusValues.ACTIVE,
         description="Product status: draft, active, paused, archived, out_of_stock"
     )
 
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str) -> str:
-        valid_statuses = {"draft", "active", "paused", "archived", "out_of_stock"}
-        if v not in valid_statuses:
-            raise ValueError(f"Invalid status: {v}. Must be one of: {valid_statuses}")
+        if v not in ProductStatusValues.ALL:
+            raise ValueError(f"Invalid status: {v}. Must be one of: {ProductStatusValues.ALL}")
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        """Reject HTML/script injection in product names"""
+        if re.search(r"[<>]", v):
+            raise ValueError("Name contains disallowed characters")
         return v
 
     @field_validator("imageUrls")
@@ -447,20 +469,33 @@ class Product(BaseModel):
     @field_validator("description")
     @classmethod
     def validate_description(cls, v: str) -> str:
-        """Validate description doesn't contain disallowed characters"""
-        disallowed = ["<script>", "<iframe>", "javascript:"]
+        """Validate description doesn't contain disallowed HTML/script content"""
+        # Reject any HTML tags or dangerous patterns
+        if re.search(r"<[^>]*>", v):
+            raise ValueError("Description contains disallowed HTML content")
+        dangerous_patterns = ["javascript:", "data:text/html", "vbscript:", "expression("]
         v_lower = v.lower()
-        for pattern in disallowed:
+        for pattern in dangerous_patterns:
             if pattern in v_lower:
                 raise ValueError("Description contains disallowed content")
         return v
+
+    @model_validator(mode="after")
+    def validate_status_active_consistency(self) -> "Product":
+        """Ensure isActive and status are not contradictory"""
+        if self.status == ProductStatusValues.ACTIVE and not self.isActive:
+            # Auto-fix: if status is active but isActive is False, respect isActive
+            object.__setattr__(self, 'status', ProductStatusValues.PAUSED)
+        elif self.status in {ProductStatusValues.ARCHIVED, ProductStatusValues.PAUSED} and self.isActive:
+            object.__setattr__(self, 'isActive', False)
+        return self
 
 
 class ProductCreate(BaseModel):
     """
     Model for creating new products
-    (excludes productId and dateCreated which are generated)
-    IMPORTANT: sellerAddress.country MUST be 'Canada' - enforced by validation
+    (excludes productId and createdAt which are generated)
+    Sellers can be from any country — no country restriction on seller addresses
     """
     name: str = Field(..., min_length=1, max_length=120)
     price: float = Field(..., gt=0, le=100000)
@@ -468,7 +503,7 @@ class ProductCreate(BaseModel):
     imageUrls: list[str] = Field(..., min_length=1, max_length=5)
     sellerId: str = Field(..., min_length=1)
     sellerAddress: Address
-    categoryId: int = Field(..., ge=1, le=21)
+    categoryId: int = Field(..., ge=CategoryIds.MIN, le=CategoryIds.MAX)
     stockQuantity: int = Field(..., ge=0)
     rating: float = Field(default=0.0, ge=0, le=5)
     isActive: bool = Field(default=True)
@@ -488,12 +523,49 @@ class ProductCreate(BaseModel):
     # NEW: Structured objects
     supplier: SupplierInfo | None = Field(default=None)
     inventory: InventoryConfig | None = Field(default=None)
-    status: str = Field(default="active")
+    status: str = Field(default=ProductStatusValues.ACTIVE)
 
     @field_validator("sellerAddress")
     @classmethod
-    def validate_canada_only(cls, v: Address) -> Address:
-        """CRITICAL: Only Canadian sellers can list products"""
-        if v.country.lower() not in ['canada', 'ca']:
-            raise ValueError(f"Only Canadian sellers can list products. Received country: {v.country}")
+    def validate_seller_address(cls, v: Address) -> Address:
+        """Validate seller address has a non-empty country (sellers can be from any country)"""
+        if not v.country or not v.country.strip():
+            raise ValueError("Seller address must include a country")
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        """Reject HTML/script injection in product names"""
+        if re.search(r"[<>]", v):
+            raise ValueError("Name contains disallowed characters")
+        return v
+
+    @field_validator("imageUrls")
+    @classmethod
+    def validate_image_urls(cls, v: list[str]) -> list[str]:
+        """Validate image URLs"""
+        for url in v:
+            if not url.startswith(("http://", "https://")):
+                raise ValueError(f"Invalid image URL: {url}")
+        return v
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, v: str) -> str:
+        """Validate description doesn't contain disallowed HTML/script content"""
+        if re.search(r"<[^>]*>", v):
+            raise ValueError("Description contains disallowed HTML content")
+        dangerous_patterns = ["javascript:", "data:text/html", "vbscript:", "expression("]
+        v_lower = v.lower()
+        for pattern in dangerous_patterns:
+            if pattern in v_lower:
+                raise ValueError("Description contains disallowed content")
+        return v
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: str) -> str:
+        if v not in ProductStatusValues.ALL:
+            raise ValueError(f"Invalid status: {v}. Must be one of: {ProductStatusValues.ALL}")
         return v

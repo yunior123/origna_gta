@@ -58,6 +58,56 @@ class Documents:
 
 
 # =============================================================================
+# APPLICATION CONSTANTS
+# =============================================================================
+
+APP_NAME = "Origna Marketplace"
+"""Canonical application name used in TOTP provisioning, emails, etc."""
+
+
+# =============================================================================
+# EMAIL & APP CONFIGURATION CONSTANTS
+# =============================================================================
+
+class EmailConfig:
+    """Email sending configuration constants."""
+    SUPPORT_EMAIL = "support@orignaventures.ca"
+    SENDER_NAME = "Origna GTA"
+    SENDER_NAME_SECURITY = "Origna GTA Security"
+    COPYRIGHT_TEXT = "\u00a9 2026 Origna Ventures Inc. All rights reserved."
+    APP_TAGLINE = "Canada's Modern Marketplace"
+    PROD_URL = "https://orignagta.ca"
+    DEV_URL = "http://localhost:5005"
+    MAILJET_API_VERSION = "v3.1"
+
+
+class AppConfig:
+    """Application-wide configuration constants."""
+    PLATFORM_NAME = "origna_gta"
+    DEFAULT_COUNTRY_CODE = "CA"
+    DEFAULT_COUNTRY_NAME = "Canada"
+    API_TIMEOUT_SECONDS = 30
+    GEOAPIFY_TIMEOUT_SECONDS = 5
+    TOKEN_CACHE_MINUTES = 25
+    ALGOLIA_MAX_RETRIES = 3
+    ALGOLIA_HITS_PER_PAGE = 20
+    PROD_WEB_URL = "https://orignagta.web.app"
+    SITE_URL = "https://orignagta.ca"
+    CHECKOUT_SUCCESS_PATH = "/payment-success"
+    CHECKOUT_CANCEL_PATH = "/payment-cancel"
+    SELLER_REFRESH_PATH = "/seller/refresh"
+    SELLER_RETURN_PATH = "/seller/return"
+
+    # Canonical CORS origins — use this list in all handlers
+    CORS_ORIGINS: list[str] = [
+        "https://orignagta.ca",
+        "https://www.orignagta.ca",
+        "https://orignagta.web.app",
+        "https://orignagta.firebaseapp.com",
+    ]
+
+
+# =============================================================================
 # FIELD NAMES - All Firestore document field names
 # =============================================================================
 
@@ -79,6 +129,9 @@ class Fields:
     UPDATED_AT = "updatedAt"
     DELETED_AT = "deletedAt"
     DELETED_BY = "deletedBy"
+    DELETED = "deleted"
+    ANONYMIZED_AT = "anonymizedAt"
+    ORIGINAL_USER_DELETED = "originalUserDeleted"
 
     # === USER FIELDS ===
     UID = "uid"
@@ -118,6 +171,9 @@ class Fields:
     MFA_ENABLED = "mfaEnabled"
     MFA_SECRET = "mfaSecret"
     MFA_SECRET_TEMP = "mfaSecretTemp"
+    MFA_BACKUP_CODES = "mfaBackupCodes"
+    MFA_BACKUP_CODES_TEMP = "mfaBackupCodesTemp"
+    MFA_BACKUP_CODES_SALT = "mfaBackupCodesSalt"
     MFA_FAILED_ATTEMPTS = "mfaFailedAttempts"
     MFA_LOCKOUT_UNTIL = "mfaLockoutUntil"
     LAST_MFA_VERIFY = "lastMfaVerify"
@@ -135,10 +191,10 @@ class Fields:
     STOCK_QUANTITY = "stockQuantity"
     RATING = "rating"
     RATING_COUNT = "ratingCount"
+    REVIEW = "review"
     KEYWORDS = "keywords"
     SEARCH_KEYWORDS = "searchKeywords"
     IS_ACTIVE = "isActive"
-    DATE_CREATED = "dateCreated"  # NOTE: Products use dateCreated (legacy)
     IS_DIGITAL = "isDigital"
     WEIGHT_KG = "weightKg"
     LENGTH_CM = "lengthCm"
@@ -153,12 +209,24 @@ class Fields:
     MINIMUM_ORDER_QUANTITY = "minimumOrderQuantity"
     FREE_SHIPPING = "freeShipping"
     TAX_CODE = "taxCode"
+    DEACTIVATION_REASON = "deactivationReason"
 
     # === TAX FIELDS (new) ===
     ITEM_TAXES = "itemTaxes"
     TAX_EXEMPT = "taxExempt"
     TAX_EXEMPTION = "taxExemption"
     GST_NUMBER = "gstNumber"
+
+    # === DELIVERY FIELDS ===
+    DELIVERY_INSTRUCTIONS = "deliveryInstructions"
+    SHIPPING_DAYS = "shippingDays"
+    HAS_TRACKING = "hasTracking"
+    MAX_ITEMS_PER_SHIPMENT = "maxItemsPerShipment"
+    ADDITIONAL_ITEM_COST = "additionalItemCost"
+    QUANTITY_DISCOUNTS = "quantityDiscounts"
+    DISCOUNT_TYPE = "discountType"
+    DISCOUNT_VALUE = "discountValue"
+    MIN_QUANTITY = "minQuantity"
 
     SUPPLIER = "supplier"
     INVENTORY = "inventory"
@@ -174,6 +242,8 @@ class Fields:
     SUBTOTAL_CENTS = "subtotalCents"
     TAXES = "taxes"
     TAX_AMOUNT_CENTS = "taxAmountCents"
+    TAX_CENTS = "taxCents"  # Per-item tax in cents (inside itemTaxes array)
+    TAX_RATE = "taxRate"    # Per-item tax rate (inside itemTaxes array)
     SHIPPING_COST_CENTS = "shippingCostCents"
     TOTAL_AMOUNT_CENTS = "totalAmountCents"
     CURRENCY = "currency"
@@ -228,11 +298,16 @@ class Fields:
     NEW_ENABLED = "newEnabled"
 
     # === AIRWALLEX-SPECIFIC FIELDS ===
+    AIRWALLEX_PAYMENT_INTENT_ID = "airwallexPaymentIntentId"
     AIRWALLEX_PAYMENT_ID = "airwallexPaymentId"
+    AIRWALLEX_ACCOUNT_VERIFIED = "airwallexAccountVerified"
+    AIRWALLEX_VERIFICATION_STATUS = "airwallexVerificationStatus"
+    AIRWALLEX_VERIFICATION_ERROR = "airwallexVerificationError"
     PAYMENT_COMPLETED_AT = "paymentCompletedAt"
     PAYMENT_ERROR = "paymentError"
     REQUIRES_3DS = "requires3ds"
     AUTHENTICATION_URL = "authenticationUrl"
+    CUSTOMER_NAME = "customerName"
 
     # === ORDER ITEM FIELDS ===
     QUANTITY = "quantity"
@@ -244,7 +319,12 @@ class Fields:
     REFUND_AMOUNT_CENTS = "refundAmountCents"
     REFUND_ID = "refundId"
     CONFIRMED_BY_BUYER = "confirmedByBuyer"
-    DELIVERY_STATUS = "deliveryStatus"  # DEPRECATED: Use STATUS
+    DELIVERY_STATUS = "deliveryStatus"  # Parallel status field (both STATUS and DELIVERY_STATUS are written)
+
+    # === STRIPE METADATA KEYS (used in transfer/alert metadata) ===
+    SNAPSHOT_ACCOUNT_ID = "snapshotAccountId"
+    LIVE_ACCOUNT_ID = "liveAccountId"
+    METADATA_PLATFORM_FEE = "platformFee"
 
     # === PAYOUT FIELDS ===
     AMOUNT_CENTS = "amountCents"
@@ -333,15 +413,13 @@ class Fields:
 
     # === FAVORITES FIELDS ===
     DATE_FAVORITED = 'dateFavorited'
-    # NOTE: Cart items use DATE_CREATED, not CREATED_AT
 
-    # === LEGACY/DEPRECATED FIELDS (for backward compatibility) ===
-    # These are old field names kept for parsing legacy documents
-    BUYER_CONFIRMED = "buyerConfirmed"  # Legacy: use CONFIRMED_BY_BUYER
-    LOCAL_DELIVERY_ONLY = "localDeliveryOnly"  # Legacy: use IS_LOCAL_DELIVERY_ONLY
-    PERISHABLE = "perishable"  # Legacy: use IS_PERISHABLE
-    SUPPLIER_SHIPPING_DAYS = "supplierShippingDays"  # Legacy: use ESTIMATED_SHIP_DAYS
-    MIN_ORDER_QUANTITY = "minOrderQuantity"  # Legacy: use MINIMUM_ORDER_QUANTITY
+    # === ALTERNATE FIELD NAMES (used in Firestore deserialization fallbacks) ===
+    BUYER_CONFIRMED = "buyerConfirmed"       # Alternate for CONFIRMED_BY_BUYER
+    LOCAL_DELIVERY_ONLY = "localDeliveryOnly" # Alternate for IS_LOCAL_DELIVERY_ONLY
+    PERISHABLE = "perishable"                 # Alternate for IS_PERISHABLE
+    SUPPLIER_SHIPPING_DAYS = "supplierShippingDays"  # Alternate for ESTIMATED_SHIP_DAYS
+    MIN_ORDER_QUANTITY = "minOrderQuantity"   # Alternate for MINIMUM_ORDER_QUANTITY
 
 
 # =============================================================================
@@ -458,6 +536,10 @@ class DeliveryTypeValues:
     LOCAL_DELIVERY = "local_delivery"
     CUSTOM = "custom"
 
+    ALL: frozenset[str] = frozenset({
+        PICKUP, STANDARD, EXPRESS, SAME_DAY, LOCAL_DELIVERY, CUSTOM
+    })
+
 
 class WebhookStatusValues:
     """Valid values for webhook processing status"""
@@ -481,12 +563,15 @@ class SecurityAlertTypes:
     SELLER_ACCOUNT_CHANGED = "seller_account_changed"
     PAYOUT_RECORD_INCOMPLETE = "payout_record_incomplete"
     MFA_LOW_BACKUP_CODES = "mfa_low_backup_codes"
+    # Airwallex
+    SELLER_KYC_FAILED = "seller_kyc_failed"
     # Tax exemption fraud prevention
     INVALID_GST_ATTEMPT = "invalid_gst_attempt"
     BLOCKED_GST_ATTEMPT = "blocked_gst_attempt"
     SHARED_GST_NUMBER = "shared_gst_number"
     TAX_EXEMPTION_PENDING_REVIEW = "tax_exemption_pending_review"
     SUSPICIOUS_TAX_EXEMPTION = "suspicious_tax_exemption"
+    AUTH_DELETION_FAILED = "auth_deletion_failed"
 
 
 class SeverityLevels:
@@ -497,9 +582,126 @@ class SeverityLevels:
     CRITICAL = "critical"
 
 
+class DiscountTypeValues:
+    """Valid values for shipping discount types"""
+    PERCENT = "percent"
+    FIXED = "fixed"
+    FLAT_RATE = "flat_rate"
+
+    ALL: frozenset[str] = frozenset({PERCENT, FIXED, FLAT_RATE})
+
+
+class PaymentProviderValues:
+    """Valid values for payment provider"""
+    STRIPE = "stripe"
+    AIRWALLEX = "airwallex"
+
+    ALL: frozenset[str] = frozenset({STRIPE, AIRWALLEX})
+
+
+class SupplierCurrencyValues:
+    """Valid currencies for supplier cost tracking (NOT selling price)"""
+    CAD = "CAD"
+    USD = "USD"
+    EUR = "EUR"
+    GBP = "GBP"
+    CNY = "CNY"
+    JPY = "JPY"
+    KRW = "KRW"
+    INR = "INR"
+    AUD = "AUD"
+    MXN = "MXN"
+    BRL = "BRL"
+    HKD = "HKD"
+    SGD = "SGD"
+    TWD = "TWD"
+
+    DEFAULT = "USD"
+    ALL: frozenset[str] = frozenset({
+        CAD, USD, EUR, GBP, CNY, JPY, KRW, INR, AUD, MXN, BRL, HKD, SGD, TWD
+    })
+
+
 class AdminActionValues:
     """Valid values for admin log action field."""
     PAYMENT_PROVIDER_UPDATE = "payment_provider_update"
+
+
+class WebhookResponseStatus:
+    """Internal webhook handler response status values."""
+    PROCESSED = "processed"
+    IGNORED = "ignored"
+    ERROR = "error"
+
+
+class ShippingSourceValues:
+    """Source type for delivery estimate."""
+    INTERNATIONAL_SUPPLIER = "international_supplier"
+    INTERNATIONAL_GENERIC = "international_generic"
+    DOMESTIC = "domestic"
+
+
+# =============================================================================
+# SHIPPING TIERS — Single source of truth for all shipping pricing
+# =============================================================================
+
+class ShippingTiers:
+    """Distance-based shipping cost tiers (CAD).
+    Benchmarked against Instacart/DoorDash/PC Express.
+    """
+    NATIONAL_CEILING = 26.99
+
+    # Distance thresholds (km) and base costs
+    TIERS: list[tuple[float, float]] = [
+        (15, 1.99),      # Hyper-local
+        (50, 4.99),      # Local
+        (150, 9.99),     # Regional
+        (500, 14.99),    # Inter-city (Toronto-Ottawa corridor)
+        (1200, 18.99),   # Inter-regional
+        (2500, 22.99),   # Long-distance
+    ]
+
+    # Speed multipliers by distance range
+    EXPRESS_MULTIPLIERS: dict[str, float] = {
+        'hyper_local': 4.0,   # ≤15km
+        'local': 1.6,         # ≤50km
+        'regional': 1.5,      # ≤150km
+        'default': 1.6,       # >150km
+    }
+    SAME_DAY_MULTIPLIERS: dict[str, float] = {
+        'hyper_local': 4.5,   # ≤15km
+        'local': 1.8,         # ≤50km
+        'regional': 1.8,      # ≤150km
+        'default': 2.5,       # >150km
+    }
+
+    # Surcharges
+    WEIGHT_SURCHARGE_PER_KG = 1.5        # Per kg over threshold
+    WEIGHT_SURCHARGE_THRESHOLD_KG = 2.0  # Free weight allowance
+    ADDITIONAL_ITEM_RATE = 0.15          # 15% of base per extra item
+    VOLUMETRIC_DIVISOR = 5000.0          # L*W*H / divisor
+    DEFAULT_WEIGHT_KG = 0.5
+    DEFAULT_DIMENSION_CM = 10
+
+    # Perishable surcharges
+    PERISHABLE_CROSS_PROVINCE = 50.0     # $50 flat
+    PERISHABLE_LONG_DISTANCE = 75.0      # $75 for >100km
+    PERISHABLE_DISTANCE_THRESHOLD_KM = 100
+
+    # Fallback rates (province matrix)
+    FALLBACK_SAME_PROVINCE = 12.99
+    FALLBACK_ADJACENT = 18.99
+    FALLBACK_SAME_REGION = 22.99
+
+    # International weight surcharge
+    INTL_WEIGHT_SURCHARGE_PER_KG = 3.0
+    INTL_WEIGHT_THRESHOLD_KG = 1.0
+
+    # Default seller estimated days
+    DEFAULT_SELLER_SHIP_DAYS = 3
+    DOMESTIC_BUFFER_DAYS = 3
+    INTL_GENERIC_MIN_DAYS = 14
+    INTL_GENERIC_MAX_DAYS = 30
 
 
 # =============================================================================
@@ -520,7 +722,7 @@ class SchemaRegistry:
         Collections.PRODUCTS: {
             Fields.NAME, Fields.PRICE, Fields.DESCRIPTION, Fields.IMAGE_URLS,
             Fields.SELLER_ID, Fields.SELLER_ADDRESS, Fields.CATEGORY_ID,
-            Fields.STOCK_QUANTITY, Fields.DATE_CREATED  # Products use dateCreated
+            Fields.STOCK_QUANTITY, Fields.CREATED_AT
         },
         Collections.ORDERS: {
             Fields.USER_ID, Fields.ITEMS, Fields.SUBTOTAL_CENTS, Fields.TAX_AMOUNT_CENTS,
@@ -537,10 +739,10 @@ class SchemaRegistry:
     # Timestamp field mapping (which field name each collection uses)
     TIMESTAMP_FIELD: dict[str, str] = {
         Collections.USERS: Fields.CREATED_AT,
-        Collections.PRODUCTS: Fields.DATE_CREATED,  # Legacy: uses dateCreated
+        Collections.PRODUCTS: Fields.CREATED_AT,
         Collections.ORDERS: Fields.CREATED_AT,
         Collections.PAYOUTS: Fields.CREATED_AT,
-        Collections.CART: Fields.DATE_CREATED,  # Subcollection: uses dateCreated
+        Collections.CART: Fields.CREATED_AT,
     }
 
     @classmethod
@@ -557,17 +759,66 @@ class SchemaRegistry:
 
 
 # =============================================================================
+# VALIDATION LIMITS — Shared between frontend (schema_constants.dart) and backend
+# =============================================================================
+
+class ValidationLimits:
+    """Centralized validation constraints. Must match frontend schema_constants.dart."""
+    MAX_EMAIL_LENGTH = 254
+    MAX_NAME_LENGTH = 60
+    MIN_NAME_LENGTH = 2
+    MAX_STREET_LENGTH = 100
+    MAX_CITY_LENGTH = 50
+    MAX_MESSAGE_LENGTH = 1000
+    MIN_MESSAGE_LENGTH = 10
+    MAX_ITEM_QUANTITY = 100
+    MAX_PHONE_DIGITS = 15
+    MIN_PHONE_DIGITS = 10
+
+
+# =============================================================================
 # BUSINESS CONSTANTS
 # =============================================================================
 
 class BusinessRules:
     """Business rule constants"""
     PLATFORM_FEE_PERCENT = 2.5
+    PLATFORM_FEE_RATIO = 0.025  # PLATFORM_FEE_PERCENT / 100 — use this for calculations
     AUTO_CONFIRM_DAYS = 5  # Must be < AUTHORIZATION_EXPIRY_DAYS (2-day safety margin)
     AUTHORIZATION_EXPIRY_DAYS = 7
     MAX_CAPTURE_ATTEMPTS = 3
     DEFAULT_CURRENCY = "cad"
-    ALLOWED_COUNTRIES = frozenset({"Canada", "CA"})
+    SUPPORTED_SELLING_CURRENCIES = frozenset({"cad"})  # All transactions in CAD
+    ALLOWED_SHIPPING_COUNTRIES = frozenset({"Canada", "CA"})  # Buyers/delivery in Canada only
+    # Sellers can be from any country — no country restriction on seller addresses
+    MAX_ORDER_AMOUNT_CAD = 100000  # $100,000 CAD per order
+
+    # Stripe integration limits
+    STRIPE_MAX_NETWORK_RETRIES = 2
+    WEBHOOK_RATE_LIMIT_PER_MINUTE = 100  # Per IP
+    WEBHOOK_MAX_AGE_SECONDS = 300  # 5 minutes — reject stale webhooks
+    ORDER_DEDUP_WINDOW_SECONDS = 60  # Prevent duplicate orders from retries
+    MAX_DELIVERY_INSTRUCTIONS_LENGTH = 500
+    CHECKOUT_RATE_LIMIT = 5  # Per minute per user
+    CONNECT_ACCOUNT_RATE_LIMIT = 3  # Per hour per user
+
+    # MFA security constants
+    MFA_VERIFICATION_VALIDITY_MINUTES = 5
+    MFA_MAX_ATTEMPTS = 5
+    MFA_LOCKOUT_MINUTES = 15
+    MFA_TOTP_VALID_WINDOW = 1  # ±30 seconds
+
+    # Account management
+    MIN_NAME_LENGTH = 2
+    MAX_NAME_LENGTH = 60
+    GST_NUMBER_REGEX = r'^\d{9}[A-Z]{2}\d{4}$'
+
+    # Order archival
+    ARCHIVE_AFTER_DAYS = 30
+    FIRESTORE_BATCH_LIMIT = 500
+
+    # Algolia monitoring
+    ALGOLIA_SYNC_MISMATCH_THRESHOLD = 0.05  # 5%
 
     # Tax rates by province
     TAX_RATES: dict[str, dict[str, float]] = {
@@ -576,7 +827,7 @@ class BusinessRules:
         "MB": {"GST": 5.0, "PST": 7.0},
         "NB": {"HST": 15.0},
         "NL": {"HST": 15.0},
-        "NS": {"HST": 15.0},
+        "NS": {"HST": 14.0},  # Changed from 15% to 14% on April 1, 2025 (CRA)
         "NT": {"GST": 5.0},
         "NU": {"GST": 5.0},
         "ON": {"HST": 13.0},
@@ -585,6 +836,29 @@ class BusinessRules:
         "SK": {"GST": 5.0, "PST": 6.0},
         "YT": {"GST": 5.0},
     }
+
+    # Derived from TAX_RATES keys — single source of truth for valid provinces
+    VALID_PROVINCES: frozenset[str] = frozenset({
+        "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"
+    })
+
+    # Stripe Tax Code constants (avoid magic strings in tax calculation)
+    TAX_CODE_CHILDRENS_CLOTHING = "txcd_20030002"
+    TAX_CODE_BASIC_GROCERIES = "txcd_30060005"
+    TAX_CODE_GENERAL_GOODS = "txcd_99999999"
+    TAX_CODE_SHIPPING = "txcd_92010001"
+    TAX_CODE_VIDEO_GAMES = "txcd_10201000"
+    TAX_CODE_BOOKS = "txcd_10302000"
+    TAX_CODE_DIGITAL_SERVICES = "txcd_10000000"
+
+    # Provinces where children's clothing is tax-exempt
+    CHILDRENS_CLOTHING_EXEMPT_PROVINCES: frozenset[str] = frozenset({"ON", "BC", "MB", "SK"})
+
+    # Stripe tax ID type for Canadian GST/HST
+    STRIPE_TAX_TYPE_CA_GST_HST = "ca_gst_hst"
+
+    # Default province for tax fallback
+    DEFAULT_PROVINCE = "ON"
 
 
 # =============================================================================
@@ -652,6 +926,7 @@ class ApiKeys:
     PROVISIONING_URI = "provisioning_uri"
     BACKUP_CODES = "backup_codes"
     MFA_VERIFIED = "mfaVerified"
+    REMAINING_CODES = "remainingCodes"
     DETAILS_SUBMITTED = "detailsSubmitted"
     REQUIREMENTS_CURRENTLY_DUE = "requirementsCurrentlyDue"
     DUPLICATE = "duplicate"
@@ -670,6 +945,7 @@ class ApiKeys:
     REQUESTED = "requested"
     AVAILABLE = "available"
     PRODUCT_NAME = "productName"
+    APPROVAL_REQUIRED = "approvalRequired"
 
     # === PAYMENT PROVIDER RESPONSE KEYS ===
     SUPPORTED_CURRENCIES = "supportedCurrencies"

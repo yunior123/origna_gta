@@ -125,7 +125,7 @@ class TestOrderStateMachine:
 
     def test_valid_transitions(self):
         """Scenario 1-12: All valid state transitions succeed."""
-        from utils import is_valid_order_status_transition
+        from utils.helpers import is_valid_order_status_transition
 
         valid_cases = [
             ('pending', 'confirmed'),
@@ -151,7 +151,7 @@ class TestOrderStateMachine:
 
     def test_invalid_transitions(self):
         """Scenario 13-20: All invalid state transitions are blocked."""
-        from utils import is_valid_order_status_transition
+        from utils.helpers import is_valid_order_status_transition
 
         invalid_cases = [
             ('cancelled', 'pending'),      # Terminal state
@@ -1083,22 +1083,22 @@ class TestEmailNotifications:
 
     def test_emulator_mode_skips_real_email(self):
         """Scenario 70: Emulator mode doesn't send real emails."""
-        with patch('email_service.IS_EMULATOR', True):
-            from email_service import send_email
+        with patch('services.email_service.IS_EMULATOR', True):
+            from services.email_service import send_email
             result = send_email('test@example.com', 'Test', '<p>Test</p>')
             assert result is True
 
     def test_send_email_missing_mailjet_key(self):
         """Scenario 71: Missing Mailjet key doesn't crash."""
-        with patch('email_service.IS_EMULATOR', False), \
-             patch('email_service.MAILJET_API_KEY', ''):
-            from email_service import send_email
+        with patch('services.email_service.IS_EMULATOR', False), \
+             patch('services.email_service.MAILJET_API_KEY', ''):
+            from services.email_service import send_email
             send_email('test@example.com', 'Test', '<p>Test</p>')
             # Should not crash, returns True (skip) or False (error)
 
     def test_order_confirmation_email_escapes_html(self):
         """Scenario 72: Product names are HTML-escaped in emails."""
-        from email_service import get_order_confirmation_email
+        from services.email_service import get_order_confirmation_email
 
         order_data = make_order_data()
         order_data['items'][0]['name'] = '<script>alert("xss")</script>'
@@ -1110,7 +1110,7 @@ class TestEmailNotifications:
 
     def test_seller_notification_includes_address(self):
         """Scenario 73: Seller notification includes delivery address."""
-        from email_service import get_seller_notification_email
+        from services.email_service import get_seller_notification_email
 
         order_data = make_order_data()
         order_data['orderId'] = 'order_001'
@@ -1120,8 +1120,8 @@ class TestEmailNotifications:
 
     def test_authorization_expired_email(self):
         """Scenario 74: Authorization expired email sends correctly in emulator."""
-        with patch('email_service.IS_EMULATOR', True):
-            from email_service import send_authorization_expired_email
+        with patch('services.email_service.IS_EMULATOR', True):
+            from services.email_service import send_authorization_expired_email
             order_data = make_order_data()
             order_data['customerEmail'] = 'buyer@test.com'
             # Should not raise
@@ -1129,7 +1129,7 @@ class TestEmailNotifications:
 
     def test_capture_failed_email_missing_email(self):
         """Scenario 75: Capture failed email handles missing email gracefully."""
-        from email_service import send_payment_capture_failed_email
+        from services.email_service import send_payment_capture_failed_email
         # Should print warning, not crash
         send_payment_capture_failed_email('order_001', '', 'John', 50.00, 'Card declined')
 
@@ -1143,7 +1143,7 @@ class TestShippingCalculation:
 
     def test_shipping_all_free_shipping(self):
         """Scenario 76: All free-shipping items = $0 shipping."""
-        from shipping_service import calculate_shipping_cost
+        from services.shipping_service import calculate_shipping_cost
 
         items = [
             {'sellerId': 's1', 'freeShipping': True, 'sellerAddress': {'state': 'ON', 'latitude': 43.6, 'longitude': -79.3}},
@@ -1156,7 +1156,7 @@ class TestShippingCalculation:
 
     def test_shipping_missing_buyer_coordinates(self):
         """Scenario 77: Missing buyer coordinates returns $0 (graceful fallback)."""
-        from shipping_service import calculate_shipping_cost
+        from services.shipping_service import calculate_shipping_cost
 
         items = [{'sellerId': 's1', 'freeShipping': False, 'sellerAddress': {'state': 'ON'}}]
         buyer = {'state': 'ON'}  # No lat/lon
@@ -1166,14 +1166,14 @@ class TestShippingCalculation:
 
     def test_shipping_empty_items(self):
         """Scenario 78: Empty items list returns $0."""
-        from shipping_service import calculate_shipping_cost
+        from services.shipping_service import calculate_shipping_cost
 
         cost = calculate_shipping_cost([], {'state': 'ON', 'latitude': 43.7, 'longitude': -79.4})
         assert cost == 0.0
 
     def test_shipping_cross_province(self):
         """Scenario 79: Cross-province shipping is more expensive."""
-        from shipping_service import _calculate_fallback_shipping
+        from services.shipping_service import _calculate_fallback_shipping
 
         same_province = _calculate_fallback_shipping(1, 'ON', 'ON')
         cross_province = _calculate_fallback_shipping(1, 'ON', 'BC')
@@ -1182,7 +1182,7 @@ class TestShippingCalculation:
 
     def test_shipping_local_delivery_cross_province_blocked(self):
         """Scenario 80: Local-only items across provinces are blocked entirely."""
-        from shipping_service import calculate_shipping_cost
+        from services.shipping_service import calculate_shipping_cost
 
         items = [{
             'sellerId': 's1',
@@ -1193,7 +1193,7 @@ class TestShippingCalculation:
         }]
         buyer = {'state': 'BC', 'latitude': 49.3, 'longitude': -123.1}
 
-        with patch('shipping_service.GEOAPIFY_API_KEY', ''), \
+        with patch('services.shipping_service.GEOAPIFY_API_KEY', ''), \
              pytest.raises(ValueError, match="Local delivery only"):
             calculate_shipping_cost(items, buyer)
 
@@ -1207,7 +1207,7 @@ class TestTaxCalculation:
 
     def test_all_provinces_have_tax_rates(self):
         """Scenario 81: All 13 provinces/territories have defined tax rates."""
-        from shipping_service import get_tax_rate
+        from services.shipping_service import get_tax_rate
 
         provinces = ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT']
         for province in provinces:
@@ -1217,29 +1217,33 @@ class TestTaxCalculation:
 
     def test_unknown_province_defaults_to_13(self):
         """Scenario 82: Unknown province defaults to 13% (ON rate)."""
-        from shipping_service import get_tax_rate
+        from services.shipping_service import get_tax_rate
 
         rate = get_tax_rate('XX')
         assert rate == 0.13
 
     def test_alberta_lowest_tax(self):
         """Scenario 83: Alberta has lowest tax (5% GST only)."""
-        from shipping_service import get_tax_rate
+        from services.shipping_service import get_tax_rate
 
         ab_rate = get_tax_rate('AB')
         assert ab_rate == 0.05
 
     def test_atlantic_highest_tax(self):
-        """Scenario 84: Atlantic provinces have 15% HST."""
-        from shipping_service import get_tax_rate
+        """Scenario 84: Atlantic provinces have 15% HST (NS changed to 14% April 2025)."""
+        from services.shipping_service import get_tax_rate
 
-        for province in ['NB', 'NL', 'NS', 'PE']:
+        # NS changed from 15% to 14% on April 1, 2025 (CRA)
+        for province in ['NB', 'NL', 'PE']:
             rate = get_tax_rate(province)
             assert rate == 0.15, f"{province} should be 15%"
+        # Nova Scotia: 14% as of April 1, 2025
+        ns_rate = get_tax_rate('NS')
+        assert ns_rate == 0.14, f"NS should be 14% (changed April 2025)"
 
     def test_quebec_has_qst(self):
         """Scenario 85: Quebec has GST + QST = 14.975%."""
-        from shipping_service import get_tax_rate
+        from services.shipping_service import get_tax_rate
 
         rate = get_tax_rate('QC')
         assert abs(rate - 0.14975) < 0.001
@@ -1260,12 +1264,13 @@ class TestCronJobs:
         # The WHERE clause should use Fields.CREATED_AT or 'createdAt' to compare with cutoff
         assert "Fields.CREATED_AT" in source or "'createdAt'" in source or '"createdAt"' in source, \
             "check_expired_authorizations should query by createdAt or expiresAt"
-        # Must filter by authorized payment status
-        assert "PaymentStatus.AUTHORIZED" in source, \
-            "check_expired_authorizations should filter by AUTHORIZED payment status"
-        # Should NOT use legacy 'dateCreated' field
-        assert ".where('dateCreated'" not in source, \
-            "check_expired_authorizations should NOT query 'dateCreated'"
+        # With auto-capture, we clean up stale unpaid orders (AWAITING_PAYMENT / SESSION_EXPIRED)
+        assert "PaymentStatus.AWAITING_PAYMENT" in source or "PaymentStatusValues.AWAITING_PAYMENT" in source \
+            or "PaymentStatus.SESSION_EXPIRED" in source or "PaymentStatusValues.SESSION_EXPIRED" in source, \
+            "check_expired_authorizations should filter by AWAITING_PAYMENT or SESSION_EXPIRED payment status"
+        # Orders collection uses createdAt, not createdAt
+        assert ".where('createdAt'" not in source, \
+            "check_expired_authorizations should NOT query 'createdAt'"
 
     def test_archive_skips_already_archived(self):
         """Scenario 87: auto_archive skips already-archived orders (FIX verification)."""
@@ -1314,49 +1319,55 @@ class TestInputSanitization:
     """Tests input validation and XSS prevention."""
 
     def test_sanitize_script_tags(self):
-        """Scenario 91: Script tags are removed."""
-        from utils import sanitized_text
+        """Scenario 91: Script tags are escaped (html.escape approach)."""
+        from utils.helpers import sanitized_text
 
         malicious = '<script>alert("xss")</script>Hello'
         result = sanitized_text(malicious)
         assert '<script>' not in result
+        assert '&lt;script&gt;' in result
         assert 'Hello' in result
 
     def test_sanitize_iframe_tags(self):
-        """Scenario 92: Iframe tags are removed."""
-        from utils import sanitized_text
+        """Scenario 92: Iframe tags are escaped (html.escape approach)."""
+        from utils.helpers import sanitized_text
 
         malicious = '<iframe src="http://evil.com"></iframe>Safe text'
         result = sanitized_text(malicious)
         assert '<iframe' not in result
+        assert '&lt;iframe' in result
         assert 'Safe text' in result
 
     def test_sanitize_javascript_protocol(self):
-        """Scenario 93: javascript: protocol is removed."""
-        from utils import sanitized_text
+        """Scenario 93: javascript: protocol in HTML context is neutralized via html.escape."""
+        from utils.helpers import sanitized_text
 
-        malicious = 'javascript:alert(1)'
+        # javascript: alone is harmless — it only matters inside HTML attributes
+        # html.escape ensures no HTML attribute injection is possible
+        malicious = '<a href="javascript:alert(1)">click</a>'
         result = sanitized_text(malicious)
-        assert 'javascript:' not in result
+        assert '<a ' not in result
+        assert '&lt;a ' in result
 
     def test_sanitize_event_handlers(self):
-        """Scenario 94: Event handlers (onerror, onclick) are removed."""
-        from utils import sanitized_text
+        """Scenario 94: Event handlers in HTML tags are neutralized via html.escape."""
+        from utils.helpers import sanitized_text
 
         malicious = '<img src=x onerror=alert(1)>'
         result = sanitized_text(malicious)
-        assert 'onerror' not in result
+        assert '<img' not in result
+        assert '&lt;img' in result
 
     def test_sanitize_none_input(self):
         """Scenario 95: None input returns empty string."""
-        from utils import sanitized_text
+        from utils.helpers import sanitized_text
 
         result = sanitized_text(None)
         assert result == ""
 
     def test_sanitize_path_traversal(self):
         """Scenario 96: Path traversal attacks are blocked."""
-        from utils import sanitize_path
+        from utils.helpers import sanitize_path
 
         malicious = '../../../etc/passwd'
         result = sanitize_path(malicious)
@@ -1365,7 +1376,7 @@ class TestInputSanitization:
 
     def test_validate_email_rfc5322(self):
         """Scenario 97: Email validation follows RFC 5322."""
-        from utils import sanitize_email
+        from utils.helpers import sanitize_email
 
         # Valid
         assert sanitize_email("test@example.com") == "test@example.com"
@@ -1376,7 +1387,7 @@ class TestInputSanitization:
 
     def test_validate_email_too_long(self):
         """Scenario 98: Overly long email rejected."""
-        from utils import sanitize_email
+        from utils.helpers import sanitize_email
 
         long_email = "a" * 300 + "@example.com"
         with pytest.raises(ValueError):
@@ -1384,7 +1395,7 @@ class TestInputSanitization:
 
     def test_validate_name_special_chars(self):
         """Scenario 99: Names with accents, apostrophes, hyphens accepted."""
-        from utils import validate_name
+        from utils.helpers import validate_name
 
         valid_names = ["O'Brien", "Mary-Jane", "José", "François"]
         for name in valid_names:
@@ -1392,13 +1403,12 @@ class TestInputSanitization:
             assert result is not None
 
     def test_validate_name_rejects_injection(self):
-        """Scenario 100: Names with angle brackets are sanitized (tags stripped)."""
-        from utils import validate_name
+        """Scenario 100: Names with angle brackets are rejected by regex."""
+        from utils.helpers import validate_name
+        import pytest
 
-        result = validate_name("<script>")
-        # validate_name strips HTML tags, result should NOT contain angle brackets
-        assert '<' not in result
-        assert '>' not in result
+        with pytest.raises(ValueError):
+            validate_name("<script>")
 
 
 # ============================================================================
@@ -1556,12 +1566,12 @@ class TestOnOrderStatusChangedEmails:
             "Should send email to buyer_email, not user_id"
 
     def test_trigger_uses_correct_domain(self):
-        """Scenario 111: on_order_status_changed uses orignagta.ca domain."""
+        """Scenario 111: on_order_status_changed uses orignagta.ca domain via AppConfig."""
         source_file = Path(__file__).parent.parent / 'handlers' / 'orders.py'
         source = source_file.read_text()
-        # URLs should use orignagta.ca
-        assert 'orignagta.ca' in source, \
-            "Should use orignagta.ca domain"
+        # URLs should use AppConfig.SITE_URL (which resolves to orignagta.ca)
+        assert 'AppConfig.SITE_URL' in source, \
+            "Should use AppConfig.SITE_URL constant for domain"
 
     def test_trigger_handles_missing_email_gracefully(self):
         """Scenario 112: Missing buyer email doesn't crash the trigger."""

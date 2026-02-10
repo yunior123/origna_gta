@@ -113,12 +113,12 @@ for doc in docs:
             obj[field] = data[field]
 
     # Convert Firestore timestamp to unix timestamp for sorting
-    dc = data.get(Fields.DATE_CREATED)
+    dc = data.get(Fields.CREATED_AT)
     if dc:
         if hasattr(dc, 'timestamp'):
-            obj[Fields.DATE_CREATED] = int(dc.timestamp())
+            obj[Fields.CREATED_AT] = int(dc.timestamp())
         elif isinstance(dc, (int, float)):
-            obj[Fields.DATE_CREATED] = int(dc)
+            obj[Fields.CREATED_AT] = int(dc)
 
     algolia_objects.append(obj)
     name = data.get(Fields.NAME, '???')

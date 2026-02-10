@@ -87,7 +87,7 @@ void main() {
       await cartRef.doc('prod_1').set({
         'productId': 'prod_1',
         'quantity': 2,
-        'dateCreated': Timestamp.now(),
+        'createdAt': Timestamp.now(),
       });
 
       await Future.delayed(const Duration(milliseconds: 100));
@@ -96,7 +96,7 @@ void main() {
       await cartRef.doc('prod_2').set({
         'productId': 'prod_2',
         'quantity': 1,
-        'dateCreated': Timestamp.now(),
+        'createdAt': Timestamp.now(),
       });
 
       await Future.delayed(const Duration(milliseconds: 100));
@@ -300,7 +300,7 @@ void main() {
       await cartRef.doc('prod_1').set({
         'productId': 'prod_1',
         'quantity': 1,
-        'dateCreated': Timestamp.now(),
+        'createdAt': Timestamp.now(),
       });
 
       // Track quantity changes

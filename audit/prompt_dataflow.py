@@ -1,7 +1,7 @@
 DATAFLOW_AUDIT_PROMPT = """You are a senior data architecture engineer auditing the DATA FLOW AND SCHEMA CONSISTENCY of a production e-commerce marketplace (Flutter + Firebase + Stripe Connect).
 
 Context:
-- Canada-only marketplace targeting 100M+ users/year
+- E-commerce marketplace serving Canadian buyers (sellers worldwide), targeting 100M+ users/year
 - Schema defined in BOTH schema_constants.py (Python backend) AND schema_constants.dart (Flutter frontend)
 - Pydantic v2 models on backend, Freezed + json_serializable on frontend
 - Firestore as primary database with security rules

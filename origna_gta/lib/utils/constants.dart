@@ -151,7 +151,8 @@ enum OrderStatus {
   failed(OrderStatusValues.failed),
   expired(OrderStatusValues.expired),
   refunded(OrderStatusValues.refunded),
-  partiallyRefunded(OrderStatusValues.partiallyRefunded);
+  partiallyRefunded(OrderStatusValues.partiallyRefunded),
+  disputed(OrderStatusValues.disputed);
 
   final String value;
   const OrderStatus(this.value);
@@ -181,6 +182,8 @@ enum OrderStatus {
         return 'Refunded';
       case OrderStatus.partiallyRefunded:
         return 'Partially Refunded';
+      case OrderStatus.disputed:
+        return 'Disputed';
     }
   }
 
@@ -205,7 +208,10 @@ enum PaymentStatus {
   refunded(PaymentStatusValues.refunded),
   sessionExpired(PaymentStatusValues.sessionExpired),
   cancelled(PaymentStatusValues.cancelled),
-  authorizationExpired(PaymentStatusValues.authorizationExpired);
+  authorizationExpired(PaymentStatusValues.authorizationExpired),
+  capturing(PaymentStatusValues.capturing),
+  cancelling(PaymentStatusValues.cancelling),
+  expiring(PaymentStatusValues.expiring);
 
   final String value;
   const PaymentStatus(this.value);
@@ -233,6 +239,12 @@ enum PaymentStatus {
         return 'Cancelled';
       case PaymentStatus.authorizationExpired:
         return 'Authorization Expired';
+      case PaymentStatus.capturing:
+        return 'Capturing Payment';
+      case PaymentStatus.cancelling:
+        return 'Cancelling';
+      case PaymentStatus.expiring:
+        return 'Expiring';
     }
   }
 
@@ -285,7 +297,7 @@ enum PayoutStatus {
 /// Stored in Firestore under [Fields.deliveryOptions].
 ///
 /// Canonical schema uses: type/description/cost/estimatedDays (+ optional volume discounts).
-/// Legacy schema (pre-migration) used: speed/isEnabled/price/maxRadiusKm.
+/// Alternate schema uses: speed/isEnabled/price/maxRadiusKm.
 class ShippingQuantityDiscount {
   final int minQuantity;
 
@@ -360,20 +372,20 @@ class SellerDeliveryOption {
       );
     }
 
-    // Legacy schema
+    // Alternate schema (speed/isEnabled/price)
     final isEnabled = map['isEnabled'] as bool? ?? false;
     if (!isEnabled) return null;
 
-    final legacySpeed = map['speed'] as String? ?? DeliverySpeed.standard.value;
-    final legacyDays = (map['estimatedDays'] as num?)?.toInt() ?? 5;
-    final legacyPrice = (map['price'] as num?)?.toDouble() ?? 0.0;
+    final altSpeed = map['speed'] as String? ?? DeliverySpeed.standard.value;
+    final altDays = (map['estimatedDays'] as num?)?.toInt() ?? 5;
+    final altPrice = (map['price'] as num?)?.toDouble() ?? 0.0;
 
-    final displayName = DeliverySpeed.fromValue(legacySpeed).displayName;
+    final displayName = DeliverySpeed.fromValue(altSpeed).displayName;
     return SellerDeliveryOption(
-      type: legacySpeed,
+      type: altSpeed,
       description: '$displayName Delivery',
-      cost: legacyPrice,
-      estimatedDays: legacyDays,
+      cost: altPrice,
+      estimatedDays: altDays,
     );
   }
 

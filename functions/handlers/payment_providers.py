@@ -16,13 +16,14 @@ from typing import Any, ClassVar
 
 from firebase_functions import https_fn
 
-from config import Collections
-from function_options import DEFAULT_OPTIONS
+from utils.function_options import DEFAULT_OPTIONS
 from schema_constants import (
     AdminActionValues,
     ApiKeys,
+    Collections,
     Documents,
     Fields,
+    PaymentProviderValues,
     SecurityAlertTypes,
     SeverityLevels,
     UserRoleValues,
@@ -60,7 +61,7 @@ def _is_provider_configured(provider: str) -> tuple:
     Returns:
         Tuple of (is_configured: bool, missing_keys: list)
     """
-    if provider == "stripe":
+    if provider == PaymentProviderValues.STRIPE:
         from config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
         missing = []
         if not STRIPE_SECRET_KEY:
@@ -69,7 +70,7 @@ def _is_provider_configured(provider: str) -> tuple:
             missing.append("STRIPE_WEBHOOK_SECRET")
         return (len(missing) == 0, missing)
 
-    elif provider == "airwallex":
+    elif provider == PaymentProviderValues.AIRWALLEX:
         from config import AIRWALLEX_API_KEY, AIRWALLEX_CLIENT_ID
         missing = []
         if not AIRWALLEX_API_KEY:

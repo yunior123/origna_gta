@@ -4,135 +4,134 @@
       "collectionGroup": "products",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "isActive", "order": "ASCENDING"},
-        {"fieldPath": "keywords", "arrayConfig": "CONTAINS"},
-        {"fieldPath": "dateCreated", "order": "DESCENDING"}
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "keywords",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "products",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "isActive", "order": "ASCENDING"},
-        {"fieldPath": "categoryId", "order": "ASCENDING"},
-        {"fieldPath": "dateCreated", "order": "DESCENDING"}
-      ]
-    },
-    {
-      "collectionGroup": "products",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "isActive", "order": "ASCENDING"},
-        {"fieldPath": "__name__", "order": "ASCENDING"}
-      ]
-    },
-    {
-      "collectionGroup": "products",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "sellerId", "order": "ASCENDING"},
-        {"fieldPath": "dateCreated", "order": "DESCENDING"}
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "categoryId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "userId", "order": "ASCENDING"},
-        {"fieldPath": "paymentStatus", "order": "ASCENDING"},
-        {"fieldPath": "createdAt", "order": "DESCENDING"}
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paymentStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "sellerIds", "arrayConfig": "CONTAINS"},
-        {"fieldPath": "status", "order": "ASCENDING"}
+        {
+          "fieldPath": "sellerIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "status", "order": "ASCENDING"},
-        {"fieldPath": "createdAt", "order": "DESCENDING"}
-      ],
-      "comment": "MEDIUM PRIORITY #11: Index for querying orders by status and time"
-    },
-    {
-      "collectionGroup": "orders",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "sellerIds", "arrayConfig": "CONTAINS"},
-        {"fieldPath": "status", "order": "ASCENDING"}
-      ],
-      "comment": "MEDIUM PRIORITY #11: Index for seller-specific order queries with status filter"
-    },
-    {
-      "collectionGroup": "orders",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "paymentStatus", "order": "ASCENDING"},
-        {"fieldPath": "createdAt", "order": "DESCENDING"}
-      ]
-    },
-    {
-      "collectionGroup": "orders",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "stripeSessionId", "order": "ASCENDING"},
-        {"fieldPath": "paymentStatus", "order": "ASCENDING"}
-      ]
-    },
-    {
-      "collectionGroup": "orders",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "paymentStatus", "order": "ASCENDING"},
-        {"fieldPath": "confirmedByClient", "order": "ASCENDING"},
-        {"fieldPath": "payoutStatus", "order": "ASCENDING"}
-      ]
-    },
-    {
-      "collectionGroup": "orders",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "paymentStatus", "order": "ASCENDING"},
-        {"fieldPath": "authorizationExpiresAt", "order": "ASCENDING"}
-      ]
-    },
-    {
-      "collectionGroup": "orders",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "paymentStatus", "order": "ASCENDING"},
-        {"fieldPath": "captureMethod", "order": "ASCENDING"}
-      ]
-    },
-    {
-      "collectionGroup": "orders",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "userId", "order": "ASCENDING"},
-        {"fieldPath": "idempotencyKey", "order": "ASCENDING"}
+        {
+          "fieldPath": "paymentStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "confirmedByClient",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "payoutStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "users",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "roles", "arrayConfig": "CONTAINS"},
-        {"fieldPath": "createdAt", "order": "DESCENDING"}
+        {
+          "fieldPath": "roles",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "orderStatus", "order": "ASCENDING"},
-        {"fieldPath": "paymentStatus", "order": "ASCENDING"},
-        {"fieldPath": "updatedAt", "order": "DESCENDING"}
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paymentStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
       ],
       "comment": "OPTIMIZATION 2026-02-03: Index for cron job auto_capture_confirmed_receipts"
     },
@@ -140,9 +139,22 @@
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "paymentStatus", "order": "ASCENDING"},
-        {"fieldPath": "orderStatus", "order": "ASCENDING"},
-        {"fieldPath": "dateCreated", "order": "ASCENDING"}
+        {
+          "fieldPath": "paymentStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
       ],
       "comment": "OPTIMIZATION 2026-02-03: Index for check_expired_authorizations cron job"
     },
@@ -150,45 +162,41 @@
       "collectionGroup": "product_ratings",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "productId", "order": "ASCENDING"},
-        {"fieldPath": "rating", "order": "ASCENDING"},
-        {"fieldPath": "createdAt", "order": "DESCENDING"}
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "rating",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ],
       "comment": "OPTIMIZATION 2026-02-03: Index for filtered product ratings pagination"
     },
     {
-      "collectionGroup": "product_ratings",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "productId", "order": "ASCENDING"},
-        {"fieldPath": "userId", "order": "ASCENDING"}
-      ],
-      "comment": "OPTIMIZATION 2026-02-03: Index for checking existing ratings (limit 1)"
-    },
-    {
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "userId", "order": "ASCENDING"},
-        {"fieldPath": "orderStatus", "order": "ASCENDING"}
-      ],
-      "comment": "OPTIMIZATION 2026-02-03: Index for checking pending orders on account deletion"
-    },
-    {
-      "collectionGroup": "rate_limits",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "lastRequest", "order": "ASCENDING"}
-      ],
-      "comment": "OPTIMIZATION 2026-02-03: Index for cleanup_stale_rate_limits cron job"
-    },
-    {
-      "collectionGroup": "orders",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "orderStatus", "order": "ASCENDING"},
-        {"fieldPath": "updatedAt", "order": "ASCENDING"},
-        {"fieldPath": "archived", "order": "ASCENDING"}
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "archived",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
       ],
       "comment": "OPTIMIZATION 2026-02-03: Index for auto_archive_old_orders cron job"
     },
@@ -196,9 +204,18 @@
       "collectionGroup": "products",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "sellerId", "order": "ASCENDING"},
-        {"fieldPath": "isActive", "order": "ASCENDING"},
-        {"fieldPath": "createdAt", "order": "DESCENDING"}
+        {
+          "fieldPath": "sellerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ],
       "comment": "OPTIMIZATION 2026-02-03: Index for get_seller_products_paginated with filters"
     },
@@ -206,56 +223,64 @@
       "collectionGroup": "products",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "isActive", "order": "ASCENDING"},
-        {"fieldPath": "category", "order": "ASCENDING"},
-        {"fieldPath": "createdAt", "order": "DESCENDING"}
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "categoryId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ],
       "comment": "OPTIMIZATION 2026-02-03: Index for get_products_paginated with category filter"
     },
     {
-      "collectionGroup": "products",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "isActive", "order": "ASCENDING"},
-        {"fieldPath": "price", "order": "DESCENDING"}
-      ],
-      "comment": "OPTIMIZATION 2026-02-03: Index for products sorted by price"
-    },
-    {
-      "collectionGroup": "products",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "isActive", "order": "ASCENDING"},
-        {"fieldPath": "rating", "order": "DESCENDING"}
-      ],
-      "comment": "OPTIMIZATION 2026-02-03: Index for products sorted by rating"
-    },
-    {
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "sellerIds", "arrayConfig": "CONTAINS"},
-        {"fieldPath": "orderStatus", "order": "ASCENDING"},
-        {"fieldPath": "dateCreated", "order": "DESCENDING"}
+        {
+          "fieldPath": "sellerIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "orderStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
       ],
       "comment": "AUDIT 2026-02-04: Index for seller order queries with status + date"
     },
     {
-      "collectionGroup": "webhook_events",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {"fieldPath": "status", "order": "ASCENDING"},
-        {"fieldPath": "timestamp", "order": "ASCENDING"}
-      ],
-      "comment": "AUDIT 2026-02-04: Index for failed webhook retry queries"
-    },
-    {
       "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
-        {"fieldPath": "sellerIds", "arrayConfig": "CONTAINS"},
-        {"fieldPath": "paymentStatus", "order": "ASCENDING"},
-        {"fieldPath": "createdAt", "order": "DESCENDING"}
+        {
+          "fieldPath": "sellerIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "paymentStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
       ],
       "comment": "AUDIT 2026-02-07: Index for seller orders filtered by paymentStatus (watchSellerOrders)"
     }

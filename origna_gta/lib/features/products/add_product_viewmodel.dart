@@ -38,15 +38,15 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     required List<models.SellerDeliveryOption> deliveryOptions,
     int? minimumOrderQuantity,
     bool? freeShipping,
-    // LEGACY: Flat supplier fields (for backward compatibility)
+    // Flat supplier fields (when supplier object is not used)
     double? cost,
     String? supplierSku,
     String? supplierUrl,
-    // NEW: Structured supplier info
+    // Structured supplier info
     models.SupplierInfo? supplier,
-    // NEW: Inventory configuration
+    // Inventory configuration
     models.InventoryConfig? inventory,
-    // NEW: Product status
+    // Product status
     String? status,
   }) async {
     // Bug #27: Prevent double-submit
@@ -124,20 +124,34 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       final productRepository = _ref.read(productRepositoryProvider);
 
       final sanitizedDeliveryOptions = state.isDigital ? <models.SellerDeliveryOption>[] : deliveryOptions;
+
+      // AUDIT FIX: Upload images FIRST to prevent orphan Firestore documents.
+      // If image upload fails, no product document is created.
+      final compressedImages = await _compressImages(state.imageModels);
+      if (compressedImages.isEmpty) {
+        throw Exception('Failed to compress images. Please try different images.');
+      }
+
+      // Generate a temporary product ID for the image path
+      final tempProductId = _ref.read(productRepositoryProvider).generateProductId();
+      final urls = await productRepository.uploadImages(compressedImages, tempProductId);
+
+      if (urls.isEmpty) throw Exception('Failed to upload images. Please check your connection and try again.');
+
       final productCreate = models.ProductCreate(
         sellerId: _ref.read(userIdProvider)!,
         name: name,
         keywords: generateSearchKeywords(name),
         stockQuantity: stock,
         price: price,
-        imageUrls: [],
+        imageUrls: urls,  // Images already uploaded
         sellerAddress: models.Address(
           street: street,
           apartment: apartment,
           city: city,
           state: state.selectedProvince,
           postalCode: postalCode.toUpperCase(),
-          country: 'Canada',
+          country: 'Canada', // Default for now — sellers can be from any country, UI supports CA addresses
           latitude: state.latitude,
           longitude: state.longitude,
         ),
@@ -155,11 +169,11 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         isDigital: state.isDigital,
         minimumOrderQuantity: minOrderQty,
         freeShipping: freeShipping ?? state.freeShipping,
-        // LEGACY: Flat supplier fields (backward compatibility)
+        // Flat supplier fields
         cost: cost,
         supplierSku: supplierSku,
         supplierUrl: supplierUrl,
-        // NEW: Structured objects for long-term scaling
+        // Structured objects for long-term scaling
         supplier: supplier,
         inventory: inventory,
         status: status ?? 'active',
@@ -170,19 +184,13 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       // Create a Product instance from the JSON (repository expects Product type)
       final product = models.Product.fromJson({
         ...productData,
-        Fields.productId: '', // Will be set by Firestore
-        Fields.dateCreated: DateTime.now().toIso8601String(),
+        Fields.productId: tempProductId,  // Use the same ID as image upload path
+        Fields.createdAt: DateTime.now().toIso8601String(),
         Fields.rating: 0.0,
         Fields.isActive: true,
       });
 
-      final productId = await productRepository.addProduct(product);
-      final compressedImages = await _compressImages(state.imageModels);
-      final urls = await productRepository.uploadImages(compressedImages, productId);
-
-      if (urls.isEmpty) throw Exception('Failed to upload images');
-
-      await productRepository.updateProduct(productId, {Fields.productId: productId, Fields.imageUrls: urls});
+      await productRepository.addProductWithId(tempProductId, product);
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
@@ -239,14 +247,27 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     sameDayEnabled: value ? false : state.sameDayEnabled,
   );
 
-  void toggleFreeShipping(bool value) => state = state.copyWith(
-    freeShipping: state.isDigital ? true : value,
-    // When free shipping is ON, only standard delivery makes sense —
-    // the backend makes ALL tiers $0, so express/same-day would be free too.
-    expressEnabled: (state.isDigital ? true : value) ? false : state.expressEnabled,
-    sameDayEnabled: (state.isDigital ? true : value) ? false : state.sameDayEnabled,
-    freeShippingAt10Plus: (state.isDigital ? true : value) ? false : state.freeShippingAt10Plus,
-  );
+  void toggleFreeShipping(bool value) {
+    final effectiveValue = state.isDigital ? true : value;
+    if (effectiveValue) {
+      // Save current express/same-day state before disabling them
+      state = state.copyWith(
+        freeShipping: true,
+        savedExpressEnabled: state.expressEnabled,
+        savedSameDayEnabled: state.sameDayEnabled,
+        expressEnabled: false,
+        sameDayEnabled: false,
+        freeShippingAt10Plus: false,
+      );
+    } else {
+      // Restore previously saved express/same-day state
+      state = state.copyWith(
+        freeShipping: false,
+        expressEnabled: state.savedExpressEnabled,
+        sameDayEnabled: state.savedSameDayEnabled,
+      );
+    }
+  }
 
   void togglePerishable(bool value) => state = state.copyWith(isPerishable: value);
 

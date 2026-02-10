@@ -1,7 +1,7 @@
 ORDERS_AUDIT_PROMPT = """You are a senior software architect auditing the ORDER LIFECYCLE of a production e-commerce marketplace (Flutter + Firebase + Stripe Connect).
 
 Context:
-- Canada-only marketplace targeting 100M+ users/year
+- E-commerce marketplace serving Canadian buyers (sellers worldwide), targeting 100M+ users/year
 - Order state machine: pending → confirmed → processing → shipped → in_transit → delivered → completed (also: cancelled, refunded, expired, disputed)
 - Manual capture: authorize at checkout, capture after buyer confirms delivery or auto-capture after 7 days
 - Multi-seller orders: each seller's items tracked independently

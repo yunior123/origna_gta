@@ -6,5 +6,6 @@
 	"debug.onTaskErrors": "debugAnyway",
 	"playwright.reuseBrowser": false,
 	"playwright.showTrace": false,
-	"playwright.useTestServer": false
+	"playwright.useTestServer": false,
+	"chat.agent.maxRequests": 200
 }

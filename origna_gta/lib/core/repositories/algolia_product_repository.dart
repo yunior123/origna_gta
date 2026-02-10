@@ -62,6 +62,19 @@ class AlgoliaProductRepository implements ProductRepository {
   }
 
   @override
+  Future<void> addProductWithId(String productId, Product product) async {
+    if (kDebugMode) debugPrint('REPO: [AlgoliaProductRepository] Adding product with ID: $productId');
+    final firestoreData = product.toJson();
+    firestoreData[Fields.productId] = productId;
+    await _firestore.collection(Collections.products).doc(productId).set(firestoreData);
+  }
+
+  @override
+  String generateProductId() {
+    return _firestore.collection(Collections.products).doc().id;
+  }
+
+  @override
   Future<void> deleteProduct(String productId) async {
     await _firestore.collection(Collections.products).doc(productId).delete();
   }
@@ -251,7 +264,7 @@ class AlgoliaProductRepository implements ProductRepository {
       }
     }
 
-    query = query.orderBy(Fields.dateCreated, descending: true);
+    query = query.orderBy(Fields.createdAt, descending: true);
 
     if (lastDocument != null) {
       query = query.startAfterDocument(lastDocument);

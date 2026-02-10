@@ -13,7 +13,7 @@
 | Text search + Algolia available | Algolia → Firestore fallback on error | Full-text ranking, typo tolerance |
 | Text search + Algolia unavailable | Firestore `arrayContains(keywords.first)` | Emulator has no Algolia; credentials empty |
 | Category only (no text) | Firestore `where(categoryId)` | Cursor pagination works; Algolia can't paginate with `DocumentSnapshot` |
-| Browse (no filter) | Firestore `orderBy(dateCreated)` | Simple cursor pagination |
+| Browse (no filter) | Firestore `orderBy(createdAt)` | Simple cursor pagination |
 | Algolia timeout (>5s) | Firestore fallback | Prevents infinite shimmer |
 
 ### Key Files
@@ -65,15 +65,21 @@ In `HomeViewModel.loadProducts()`:
 ## 💳 Payment Pipeline
 
 ```
-checkout_provider.dart → create_payment_intent → payment_stripe.py
-  (manual capture) → seller confirms → capture_payment → 
-  Stripe Connect transfer after delivery
+checkout_provider.dart → createCheckoutSession → payment_stripe.py
+  → Stripe Checkout (hosted) → checkout.session.completed webhook
+  → order CONFIRMED/CAPTURED → seller ships → buyer confirm_order_receipt
+  → stripe.Transfer.create() to seller Connect accounts
 ```
 
-- **2.5% platform fee** on every transaction
-- **Manual capture** — PaymentIntent authorized, captured only after seller confirms
-- **Idempotency keys** required for ALL payment operations
-- Cron: 7-day auto-confirm, authorization expiry check
+- **2.5% platform fee** on every transaction (`BusinessRules.PLATFORM_FEE_RATIO`)
+- **Auto-capture** (default) — funds captured at checkout. Transfer on delivery.
+- **Idempotency keys** required for ALL payment/transfer operations
+- Cron: `auto_confirm_orders` (5-day), `expire_unpaid_orders` (authorization expiry)
+- **14 webhook events** handled (see `.claude/skills/payment-system/SKILL.md` for full list)
+- `source_transaction` MUST be charge ID (`ch_xxx`), NOT PaymentIntent ID (`pi_xxx`)
+- DO NOT hardcode `payment_method_types` — Stripe Dashboard controls enabled methods
+- Refund failures MUST create SECURITY_ALERTS + flag `requires_manual_review`
+- Currency: CAD only. Canada-only buyers, worldwide sellers.
 
 ---
 
@@ -156,7 +162,7 @@ ruff check functions/
 2. **Remote Config in emulator** — `fetchAndActivate()` returns defaults (empty strings). This is expected.
 3. **AlgoliaProductRepository.uploadImages / getUploadUrl** — throw `UnimplementedError`. Image upload goes through `FirebaseProductRepository` path.
 4. **Firestore eventual consistency** — reads after writes may return stale data. Use `Source.server` for critical verifications.
-5. **Canada-only validation** — NEVER trust frontend. Backend validates postal code + province on every write.
+5. **Canada-only validation (buyer/shipping addresses)** — NEVER trust frontend. Backend validates postal code + province on every buyer/shipping address write. Sellers can be from any country worldwide.
 
 ---
 

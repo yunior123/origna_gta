@@ -17,10 +17,12 @@ import pyotp
 from firebase_admin import auth
 from firebase_functions import https_fn
 
-from config import Collections
-from function_options import DEFAULT_OPTIONS
-from rate_limiter import RateLimiter
+from utils.function_options import DEFAULT_OPTIONS
+from services.rate_limiter import RateLimiter
 from schema_constants import (
+    BusinessRules,
+    Collections,
+    APP_NAME,
     ApiKeys,
     Fields,
     OrderStatusValues,
@@ -29,7 +31,7 @@ from schema_constants import (
     SeverityLevels,
     UserRoleValues,
 )
-from utils import create_success_response
+from utils.helpers import create_success_response
 
 _db = None
 _firestore = None
@@ -92,11 +94,14 @@ def _require_recent_admin_mfa(admin_data: dict[str, Any]) -> None:
             'MFA verification required. Please verify your MFA code first.'
         )
 
-    # Check if MFA was verified within last 5 minutes
-    now = datetime.now()
-    time_diff = now - last_mfa_verify.replace(tzinfo=None)
+    # Check if MFA was verified within allowed window
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+    # Firestore timestamps are UTC — compare in UTC
+    last_mfa_utc = last_mfa_verify.replace(tzinfo=timezone.utc) if last_mfa_verify.tzinfo is None else last_mfa_verify
+    time_diff = now - last_mfa_utc
 
-    if time_diff > timedelta(minutes=5):
+    if time_diff > timedelta(minutes=BusinessRules.MFA_VERIFICATION_VALIDITY_MINUTES):
         raise https_fn.HttpsError(
             'permission-denied',
             'MFA verification expired. Please verify again.'
@@ -115,8 +120,10 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
     - Logs all role changes in security_alerts
 
     Request data:
-        targetUserId: User ID to modify
-        roles: Array of roles ["buyer", "seller", "admin"]
+        targetUserId (or userId): User ID to modify
+        add: Array of roles to add (optional)
+        remove: Array of roles to remove (optional)
+        reason: Reason for change (optional)
 
     Returns:
         {success: True, newRoles: [...]}
@@ -127,11 +134,15 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
     admin_id = req.auth.uid
     data = req.data
 
-    target_user_id_raw = data.get('targetUserId')
-    new_roles = data.get(Fields.ROLES, [])
+    # Accept both 'targetUserId' and 'userId' as parameter names
+    target_user_id_raw = data.get(Fields.TARGET_USER_ID) or data.get(Fields.USER_ID)
+    # Support both patterns: full 'roles' list OR incremental 'add'/'remove'
+    roles_to_add = data.get(ApiKeys.ADD, [])
+    roles_to_remove = data.get(ApiKeys.REMOVE, [])
+    reason = data.get(ApiKeys.REASON, 'No reason provided')
 
     # Import validation functions
-    from utils import sanitized_text
+    from utils.helpers import sanitized_text
 
     # Sanitize targetUserId (should be alphanumeric)
     target_user_id = sanitized_text(target_user_id_raw) if target_user_id_raw else None
@@ -139,13 +150,12 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not target_user_id:
         raise https_fn.HttpsError('invalid-argument', 'targetUserId required')
 
-    if not isinstance(new_roles, list):
-        raise https_fn.HttpsError('invalid-argument', 'roles must be an array')
+    if not isinstance(roles_to_add, list) or not isinstance(roles_to_remove, list):
+        raise https_fn.HttpsError('invalid-argument', 'add and remove must be arrays')
 
     # Validate roles
-    valid_roles = ['buyer', 'seller', 'admin']
-    for role in new_roles:
-        if role not in valid_roles:
+    for role in roles_to_add + roles_to_remove:
+        if role not in UserRoleValues.ALL:
             raise https_fn.HttpsError('invalid-argument', f'Invalid role: {role}')
 
     # Check admin permissions
@@ -178,6 +188,12 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
     target_user_data = target_user_doc.to_dict()
     old_roles = target_user_data.get(Fields.ROLES, [])
 
+    # Compute new roles via add/remove delta
+    new_roles = list((set(old_roles) | set(roles_to_add)) - set(roles_to_remove))
+    # Ensure at least 'buyer' role is always present
+    if UserRoleValues.BUYER not in new_roles:
+        new_roles.append(UserRoleValues.BUYER)
+
     # Update roles
     target_user_ref.update({
         Fields.ROLES: new_roles,
@@ -188,11 +204,7 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Update custom claims in Firebase Auth
     try:
-        custom_claims = {
-            'admin': 'admin' in new_roles,
-            'seller': 'seller' in new_roles,
-            'buyer': 'buyer' in new_roles
-        }
+        custom_claims = {role: role in new_roles for role in UserRoleValues.ALL}
         auth.set_custom_user_claims(target_user_id, custom_claims)
     except Exception as e:
         print(f'Failed to set custom claims: {str(e)}')
@@ -205,11 +217,12 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.TARGET_USER_ID: target_user_id,
         Fields.OLD_ROLES: old_roles,
         Fields.NEW_ROLES: new_roles,
+        Fields.REASON: reason,
         Fields.TIMESTAMP: get_server_timestamp(),
         Fields.RESOLVED: True
     })
 
-    return create_success_response({'newRoles': new_roles})
+    return create_success_response({Fields.NEW_ROLES: new_roles})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -246,7 +259,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('resource-exhausted', msg)
 
     # Import validation functions
-    from utils import sanitized_text
+    from utils.helpers import sanitized_text
 
     seller_id_raw = data.get(Fields.SELLER_ID)
     reason_raw = data.get(ApiKeys.REASON, 'Policy violation')
@@ -285,7 +298,11 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not seller_doc.exists:
         raise https_fn.HttpsError('not-found', 'Seller not found')
 
-    seller_doc.to_dict()
+    seller_data = seller_doc.to_dict()
+
+    # Verify user has seller role
+    if UserRoleValues.SELLER not in seller_data.get(Fields.ROLES, []):
+        raise https_fn.HttpsError('invalid-argument', 'User is not a seller')
 
     # Suspend seller
     seller_ref.update({
@@ -403,9 +420,9 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
     })
 
     return create_success_response({
-        'message': 'Seller suspended',
-        'productsDeactivated': product_count,
-        'ordersCancelled': order_count
+        ApiKeys.MESSAGE: 'Seller suspended',
+        Fields.PRODUCTS_DEACTIVATED: product_count,
+        Fields.ORDERS_CANCELLED: order_count
     })
 
 
@@ -427,7 +444,7 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_id = req.auth.uid
 
     # AUDIT FIX: Rate limit MFA enrollment
-    from rate_limiter import RateLimiter
+    from services.rate_limiter import RateLimiter
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=user_id, action='mfa_enroll',
@@ -445,7 +462,7 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     user_data = user_doc.to_dict()
 
-    if 'admin' not in user_data.get(Fields.ROLES, []):
+    if UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
         raise https_fn.HttpsError('permission-denied', 'Admin role required')
 
     # Generate TOTP secret
@@ -466,14 +483,14 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
     ]
 
     # AUDIT FIX: Encrypt MFA secret before storing in Firestore
-    from crypto_utils import encrypt_mfa_secret
+    from utils.crypto_utils import encrypt_mfa_secret
     encrypted_secret = encrypt_mfa_secret(secret)
 
     # Save to Firestore (temporary, until verified)
     user_ref.update({
         Fields.MFA_SECRET_TEMP: encrypted_secret,
-        'mfaBackupCodesTemp': hashed_backup_codes,
-        'mfaBackupCodesSalt': backup_codes_salt,
+        Fields.MFA_BACKUP_CODES_TEMP: hashed_backup_codes,
+        Fields.MFA_BACKUP_CODES_SALT: backup_codes_salt,
         Fields.UPDATED_AT: get_server_timestamp()
     })
 
@@ -482,7 +499,7 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
     email = user_data.get(Fields.EMAIL, user_id)
     qr_code_url = totp.provisioning_uri(
         name=email,
-        issuer_name='Origna Marketplace'
+        issuer_name=APP_NAME
     )
 
     return create_success_response({
@@ -525,8 +542,8 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not raw_secret:
         raise https_fn.HttpsError('failed-precondition', 'MFA not enrolled. Call admin_mfa_enroll first.')
 
-    # AUDIT FIX: Decrypt MFA secret (handles legacy plaintext via fallback)
-    from crypto_utils import decrypt_mfa_secret, encrypt_mfa_secret
+    # Decrypt MFA secret (rejects unencrypted plaintext)
+    from utils.crypto_utils import decrypt_mfa_secret, encrypt_mfa_secret
     secret = decrypt_mfa_secret(raw_secret)
 
     # SECURITY: Check MFA attempt limiting (max 5 attempts per 15 min)
@@ -552,9 +569,9 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not code_valid:
         # Increment failed attempts
         attempt_update = {Fields.MFA_FAILED_ATTEMPTS: mfa_attempts + 1}
-        if mfa_attempts + 1 >= 5:
-            # Lock out for 15 minutes after 5 failures
-            attempt_update[Fields.MFA_LOCKOUT_UNTIL] = datetime.now() + timedelta(minutes=15)
+        if mfa_attempts + 1 >= BusinessRules.MFA_MAX_ATTEMPTS:
+            # Lock out after max failures
+            attempt_update[Fields.MFA_LOCKOUT_UNTIL] = datetime.now() + timedelta(minutes=BusinessRules.MFA_LOCKOUT_MINUTES)
             attempt_update[Fields.MFA_FAILED_ATTEMPTS] = 0
             print(f'SECURITY: MFA lockout triggered for user {user_id}')
         user_ref.update(attempt_update)
@@ -573,13 +590,13 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
     }
 
     # Persist backup codes from temp storage
-    temp_backup_codes = user_data.get('mfaBackupCodesTemp')
-    backup_codes_salt = user_data.get('mfaBackupCodesSalt')
+    temp_backup_codes = user_data.get(Fields.MFA_BACKUP_CODES_TEMP)
+    backup_codes_salt = user_data.get(Fields.MFA_BACKUP_CODES_SALT)
     if temp_backup_codes:
-        update_data['mfaBackupCodes'] = temp_backup_codes
-        update_data['mfaBackupCodesTemp'] = get_delete_field()
+        update_data[Fields.MFA_BACKUP_CODES] = temp_backup_codes
+        update_data[Fields.MFA_BACKUP_CODES_TEMP] = get_delete_field()
         if backup_codes_salt:
-            update_data['mfaBackupCodesSalt'] = backup_codes_salt
+            update_data[Fields.MFA_BACKUP_CODES_SALT] = backup_codes_salt
 
     # Remove temporary secret
     if Fields.MFA_SECRET_TEMP in user_data:
@@ -622,8 +639,8 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not raw_secret:
         raise https_fn.HttpsError('failed-precondition', 'MFA not enabled')
 
-    # AUDIT FIX: Decrypt MFA secret (handles legacy plaintext via fallback)
-    from crypto_utils import decrypt_mfa_secret
+    # Decrypt MFA secret (rejects unencrypted plaintext)
+    from utils.crypto_utils import decrypt_mfa_secret
     secret = decrypt_mfa_secret(raw_secret)
 
     # Verify code before disabling
@@ -686,8 +703,8 @@ def admin_mfa_verify_backup(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('failed-precondition', 'MFA not enabled')
 
     # Get stored backup codes and salt
-    stored_hashed_codes = user_data.get('mfaBackupCodes', [])
-    backup_codes_salt = user_data.get('mfaBackupCodesSalt', '')
+    stored_hashed_codes = user_data.get(Fields.MFA_BACKUP_CODES, [])
+    backup_codes_salt = user_data.get(Fields.MFA_BACKUP_CODES_SALT, '')
 
     if not stored_hashed_codes:
         raise https_fn.HttpsError('failed-precondition', 'No backup codes available')
@@ -707,7 +724,7 @@ def admin_mfa_verify_backup(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Update last MFA verify time
     user_ref.update({
         Fields.LAST_MFA_VERIFY: get_server_timestamp(),
-        'mfaBackupCodes': remaining_codes,
+        Fields.MFA_BACKUP_CODES: remaining_codes,
         Fields.UPDATED_AT: get_server_timestamp()
     })
 
@@ -717,14 +734,14 @@ def admin_mfa_verify_backup(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.TYPE: SecurityAlertTypes.MFA_LOW_BACKUP_CODES,
             Fields.SEVERITY: SeverityLevels.MEDIUM,
             Fields.USER_ID: user_id,
-            'remainingCodes': len(remaining_codes),
+            ApiKeys.REMAINING_CODES: len(remaining_codes),
             Fields.TIMESTAMP: get_server_timestamp(),
             Fields.RESOLVED: False
         })
 
     return create_success_response({
-        Fields.MFA_VERIFIED: True,
-        'remainingCodes': len(remaining_codes)
+        ApiKeys.MFA_VERIFIED: True,
+        ApiKeys.REMAINING_CODES: len(remaining_codes)
     })
 
 
@@ -747,7 +764,7 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_id = req.auth.uid
 
     # AUDIT FIX: Rate limit account deletion
-    from rate_limiter import RateLimiter
+    from services.rate_limiter import RateLimiter
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=user_id, action='delete_account',
@@ -773,7 +790,7 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Check if user is a seller with active orders to fulfill
     active_sales = get_db().collection(Collections.ORDERS)\
-        .where(Fields.SELLER_IDS, 'array-contains', user_id)\
+        .where(Fields.SELLER_IDS, 'array_contains', user_id)\
         .where(Fields.ORDER_STATUS, 'in', [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING, OrderStatusValues.SHIPPED])\
         .limit(1)\
         .stream()
@@ -803,7 +820,21 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.NAME: '[Deleted User]',
         Fields.ADDRESS: get_delete_field(),
         Fields.STRIPE_ACCOUNT_ID: get_delete_field(),
-        'deleted': True,
+        Fields.SELLER_PROFILE: get_delete_field(),
+        Fields.BUSINESS_ADDRESS: get_delete_field(),
+        Fields.BUSINESS_NAME: get_delete_field(),
+        Fields.FULL_NAME: get_delete_field(),
+        Fields.CUSTOMER_ID: get_delete_field(),
+        Fields.AIRWALLEX_ACCOUNT_ID: get_delete_field(),
+        Fields.AIRWALLEX_CUSTOMER_ID: get_delete_field(),
+        Fields.BANK_DETAILS: get_delete_field(),
+        Fields.PHONE_NUMBER: get_delete_field(),
+        Fields.MFA_SECRET: get_delete_field(),
+        Fields.MFA_SECRET_TEMP: get_delete_field(),
+        Fields.MFA_BACKUP_CODES: get_delete_field(),
+        Fields.MFA_BACKUP_CODES_TEMP: get_delete_field(),
+        Fields.MFA_BACKUP_CODES_SALT: get_delete_field(),
+        Fields.DELETED: True,
         Fields.DELETED_AT: get_server_timestamp()
     })
 
@@ -826,8 +857,8 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.USER_ID: anonymized_id,
             Fields.CUSTOMER_EMAIL: None,  # Remove email
             Fields.SHIPPING_ADDRESS: None,  # Remove address PII
-            'anonymizedAt': get_server_timestamp(),
-            'originalUserDeleted': True
+            Fields.ANONYMIZED_AT: get_server_timestamp(),
+            Fields.ORIGINAL_USER_DELETED: True
         })
         orders_count += 1
         batch_size += 1
@@ -902,6 +933,16 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
     try:
         auth.delete_user(user_id)
     except Exception as e:
-        print(f'Failed to delete Auth user: {str(e)}')
+        # CRITICAL: If Auth deletion fails, user can still sign in
+        # Mark for manual review but still return success for Firestore anonymization
+        get_db().collection(Collections.SECURITY_ALERTS).add({
+            Fields.TYPE: SecurityAlertTypes.AUTH_DELETION_FAILED,
+            Fields.SEVERITY: SeverityLevels.HIGH,
+            Fields.USER_ID: user_id,
+            Fields.ERROR_MESSAGE: str(e),
+            Fields.TIMESTAMP: get_server_timestamp(),
+            Fields.RESOLVED: False
+        })
+        print(f'CRITICAL: Failed to delete Auth user {user_id}: {str(e)}')
 
-    return create_success_response({'message': 'Account deleted successfully'})
+    return create_success_response({ApiKeys.MESSAGE: 'Account deleted successfully'})

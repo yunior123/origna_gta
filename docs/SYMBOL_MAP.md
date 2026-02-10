@@ -189,7 +189,7 @@ Use it for navigating the codebase architecture without reading every file.
 | `SellerDeliveryOption` | class | functions/models/product.py | L58 |
 | `ShippingQuantityDiscount` | class | functions/models/product.py | L16 |
 | `SupplierInfo` | class | functions/models/product.py | L131 |
-| `validate_canada_only` | member | functions/models/product.py | L494 |
+| `validate_seller_address` | member | functions/models/product.py | L530 |
 | `validate_description` | member | functions/models/product.py | L448 |
 | `validate_discount_type` | member | functions/models/product.py | L51 |
 | `validate_image_urls` | member | functions/models/product.py | L439 |
@@ -841,7 +841,7 @@ features/cart/cart_provider.dart:13:  final cartItems = ref.watch(cartItemsProvi
 features/cart/cart_provider.dart:18:final cartItemDateProvider = Provider.autoDispose.family<Timestamp?, String>((ref, productId) {
 features/cart/cart_provider.dart:27:final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailModel?, String>((ref, productId) async {
 features/cart/cart_provider.dart:28:  final firestore = ref.watch(firestoreProvider);
-features/cart/cart_provider.dart:29:  final dateCreated = ref.watch(cartItemDateProvider(productId));
+features/cart/cart_provider.dart:29:  final createdAt = ref.watch(cartItemDateProvider(productId));
 features/cart/cart_provider.dart:79:final cartItemQuantityProvider = StreamProvider.autoDispose.family<int, String>((ref, productId) {
 features/cart/cart_provider.dart:80:  final userId = ref.watch(userIdProvider);
 features/cart/cart_provider.dart:93:final cartItemsProvider = StreamProvider.autoDispose<List<CartItemModel>>((ref) {

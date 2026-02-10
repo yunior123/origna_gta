@@ -199,7 +199,7 @@ def main():
             "ratingCount": iv(random.randint(5, 200)),
             "keywords": av([sv(kw) for kw in p["keywords"]]),
             "isActive": bv(True),
-            "dateCreated": ts(created),  # ← PROPER timestampValue
+            "createdAt": ts(created),  # ← PROPER timestampValue
             "isDigital": bv(p.get("digital", False)),
             "isLocalDeliveryOnly": bv(False),
             "isPerishable": bv(False),
@@ -221,12 +221,12 @@ def main():
     # Verify
     print(f"\n{'=' * 60}")
     print(f"🏁 Done! {ok}/{total} products created.")
-    print(f"\n🔍 Verifying dateCreated types...")
+    print(f"\n🔍 Verifying createdAt types...")
     r = requests.get(f"{FIRESTORE}/products?pageSize=25", headers=HEADERS)
     docs = r.json().get("documents", [])
     types = {}
     for d in docs:
-        dc = d.get("fields", {}).get("dateCreated", {})
+        dc = d.get("fields", {}).get("createdAt", {})
         t = list(dc.keys())[0] if dc else "MISSING"
         types[t] = types.get(t, 0) + 1
     for t, c in types.items():

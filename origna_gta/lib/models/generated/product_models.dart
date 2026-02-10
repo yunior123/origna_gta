@@ -1,6 +1,7 @@
 // coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // Generated from Pydantic models - Single source of truth
+// ignore_for_file: non_abstract_class_inherits_abstract_member
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -101,7 +102,7 @@ class Product with _$Product {
     required int categoryId,
     required int stockQuantity,
     @Default(0.0) double rating,
-    required DateTime dateCreated,
+    required DateTime createdAt,
     @Default(true) bool isActive,
     // Optional shipping metadata
     double? weightKg,
@@ -120,11 +121,11 @@ class Product with _$Product {
     // Tax and metadata
     String? taxCode,
     @Default([]) List<String> keywords,
-    // DEPRECATED: Legacy flat fields - use supplier object instead
+    // Flat supplier fields (used when supplier object is not provided)
     double? cost,
     String? supplierSku,
     String? supplierUrl,
-    // NEW: Structured objects for scalability
+    // Structured objects for scalability
     /// Supplier information for dropshipping/marketplace products
     SupplierInfo? supplier,
 
@@ -138,15 +139,15 @@ class Product with _$Product {
   factory Product.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
-    final rawDateCreated = data[Fields.dateCreated];
-    final DateTime parsedDateCreated = switch (rawDateCreated) {
+    final rawCreatedAt = data[Fields.createdAt];
+    final DateTime parsedCreatedAt = switch (rawCreatedAt) {
       Timestamp t => t.toDate(),
       DateTime d => d,
       String s => DateTime.tryParse(s) ?? DateTime.now(),
       _ => DateTime.now(),
     };
 
-    return Product.fromJson({...data, 'productId': doc.id, 'dateCreated': parsedDateCreated.toIso8601String()});
+    return Product.fromJson({...data, 'productId': doc.id, 'createdAt': parsedCreatedAt.toIso8601String()});
   }
 
   factory Product.fromJson(Map<String, dynamic> json) => _$ProductFromJson(json);
@@ -182,11 +183,11 @@ class ProductCreate with _$ProductCreate {
     @Default(false) bool isDigital,
     String? taxCode,
     @Default([]) List<String> keywords,
-    // DEPRECATED: Legacy flat fields
+    // Flat supplier fields (used when supplier object is not provided)
     double? cost,
     String? supplierSku,
     String? supplierUrl,
-    // NEW: Structured objects
+    // Structured objects
     SupplierInfo? supplier,
     InventoryConfig? inventory,
     @Default(ProductStatusValues.active) String status,
@@ -291,7 +292,7 @@ class SupplierInfo with _$SupplierInfo {
 }
 
 // ============================================================================
-// PRODUCT EXTENSION - Helper getters for backward compatibility
+// PRODUCT EXTENSION - Helper getters
 // ============================================================================
 
 extension ProductExtension on Product {
@@ -318,13 +319,13 @@ extension ProductExtension on Product {
     );
   }
 
-  /// Get effective cost (from supplier object or legacy field)
+  /// Get effective cost (from supplier object or flat field)
   double? get effectiveCost => supplier?.cost ?? cost;
 
-  /// Get effective supplier SKU (from supplier object or legacy field)
+  /// Get effective supplier SKU (from supplier object or flat field)
   String? get effectiveSupplierSku => supplier?.supplierSku ?? supplierSku;
 
-  /// Get effective supplier URL (from supplier object or legacy field)
+  /// Get effective supplier URL (from supplier object or flat field)
   String? get effectiveSupplierUrl => supplier?.supplierUrl ?? supplierUrl;
 
   /// Get estimated delivery days range for buyers

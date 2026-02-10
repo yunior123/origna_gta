@@ -1,5 +1,5 @@
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// coverage:ignore-file
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
@@ -9,3322 +9,2048 @@ part of 'order_models.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
-
-Order _$OrderFromJson(Map<String, dynamic> json) {
-  return _Order.fromJson(json);
-}
 
 /// @nodoc
 mixin _$Order {
-  String get orderId => throw _privateConstructorUsedError;
-  String get userId => throw _privateConstructorUsedError;
-  String get customerId => throw _privateConstructorUsedError;
-  String get customerEmail => throw _privateConstructorUsedError;
-  List<OrderItem> get items =>
-      throw _privateConstructorUsedError; // All money in integer cents
-  int get totalAmountCents => throw _privateConstructorUsedError;
-  int get subtotalCents => throw _privateConstructorUsedError;
-  int get shippingCostCents => throw _privateConstructorUsedError;
-  int get taxAmountCents => throw _privateConstructorUsedError;
-  Taxes get taxes => throw _privateConstructorUsedError;
-  OrderStatus get orderStatus => throw _privateConstructorUsedError;
-  PaymentStatus get paymentStatus => throw _privateConstructorUsedError;
-  Address get shippingAddress => throw _privateConstructorUsedError;
-  DateTime get createdAt => throw _privateConstructorUsedError;
-  String get currency => throw _privateConstructorUsedError;
-  List<String> get sellerIds => throw _privateConstructorUsedError;
-  String get stripeSessionId =>
-      throw _privateConstructorUsedError; // Shipping approval
-  ShippingApprovalStatus get shippingApprovalStatus =>
-      throw _privateConstructorUsedError;
-  bool get shippingApprovalRequired => throw _privateConstructorUsedError;
-  double get actualShipping => throw _privateConstructorUsedError;
-  double get pendingTotal =>
-      throw _privateConstructorUsedError; // Payout tracking
-  List<SellerPayout> get sellerPayouts => throw _privateConstructorUsedError;
-  bool get confirmedByClient => throw _privateConstructorUsedError;
-  DateTime? get confirmedAt => throw _privateConstructorUsedError;
-  double get platformFeeTotal => throw _privateConstructorUsedError;
-  String get payoutStatus => throw _privateConstructorUsedError; // Ratings
-  List<Ratings> get ratings =>
-      throw _privateConstructorUsedError; // === AUDIT FIX: 18 missing fields synced from Python/Firestore ===
-  // Payment capture tracking
-  String? get stripePaymentIntentId => throw _privateConstructorUsedError;
-  int get captureAttempts => throw _privateConstructorUsedError;
-  DateTime? get capturedAt => throw _privateConstructorUsedError;
-  DateTime? get expiresAt => throw _privateConstructorUsedError;
-  bool get autoConfirmed => throw _privateConstructorUsedError;
-  bool get autoCaptured =>
-      throw _privateConstructorUsedError; // Refund tracking
-  double get refundAmount => throw _privateConstructorUsedError;
-  DateTime? get refundedAt =>
-      throw _privateConstructorUsedError; // Cancellation tracking
-  bool get stockRestored => throw _privateConstructorUsedError;
-  String? get cancelledBy => throw _privateConstructorUsedError;
-  DateTime? get cancelledAt => throw _privateConstructorUsedError;
-  String? get cancellationReason =>
-      throw _privateConstructorUsedError; // Shipping approval
-  DateTime? get respondedAt => throw _privateConstructorUsedError;
-  double? get actualCost => throw _privateConstructorUsedError; // Admin review
-  bool get requiresManualReview => throw _privateConstructorUsedError;
-  String? get manualReviewReason => throw _privateConstructorUsedError;
-  List<String> get payoutErrors =>
-      throw _privateConstructorUsedError; // Timestamp
-  DateTime? get updatedAt =>
-      throw _privateConstructorUsedError; // Tax fields (new)
-  List<Map<String, dynamic>> get itemTaxes =>
-      throw _privateConstructorUsedError;
-  bool get taxExempt => throw _privateConstructorUsedError;
-  Map<String, dynamic>? get taxExemption => throw _privateConstructorUsedError;
+
+ String get orderId; String get userId; String get customerId; String get customerEmail; List<OrderItem> get items;// All money in integer cents
+ int get totalAmountCents; int get subtotalCents; int get shippingCostCents; int get taxAmountCents; Taxes get taxes; OrderStatus get orderStatus; PaymentStatus get paymentStatus; Address get shippingAddress; DateTime get createdAt; String get currency; List<String> get sellerIds; String get stripeSessionId;// Shipping approval
+ ShippingApprovalStatus get shippingApprovalStatus; bool get shippingApprovalRequired; double get actualShipping; double get pendingTotal;// Payout tracking
+ List<SellerPayout> get sellerPayouts; bool get confirmedByClient; DateTime? get confirmedAt; double get platformFeeTotal; String get payoutStatus;// Ratings
+ List<Ratings> get ratings;// === AUDIT FIX: 18 missing fields synced from Python/Firestore ===
+// Payment capture tracking
+ String? get stripePaymentIntentId; int get captureAttempts; DateTime? get capturedAt; DateTime? get expiresAt; bool get autoConfirmed; bool get autoCaptured;// Refund tracking
+ double get refundAmount; DateTime? get refundedAt;// Cancellation tracking
+ bool get stockRestored; String? get cancelledBy; DateTime? get cancelledAt; String? get cancellationReason;// Shipping approval
+ DateTime? get respondedAt; double? get actualCost;// Admin review
+ bool get requiresManualReview; String? get manualReviewReason; List<String> get payoutErrors;// Timestamp
+ DateTime? get updatedAt;// Tax fields (new)
+ List<Map<String, dynamic>> get itemTaxes; bool get taxExempt; Map<String, dynamic>? get taxExemption;// Delivery instructions from buyer
+ String? get deliveryInstructions;
+/// Create a copy of Order
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$OrderCopyWith<Order> get copyWith => _$OrderCopyWithImpl<Order>(this as Order, _$identity);
 
   /// Serializes this Order to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  Map<String, dynamic> toJson();
 
-  /// Create a copy of Order
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $OrderCopyWith<Order> get copyWith => throw _privateConstructorUsedError;
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Order&&(identical(other.orderId, orderId) || other.orderId == orderId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.customerId, customerId) || other.customerId == customerId)&&(identical(other.customerEmail, customerEmail) || other.customerEmail == customerEmail)&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.totalAmountCents, totalAmountCents) || other.totalAmountCents == totalAmountCents)&&(identical(other.subtotalCents, subtotalCents) || other.subtotalCents == subtotalCents)&&(identical(other.shippingCostCents, shippingCostCents) || other.shippingCostCents == shippingCostCents)&&(identical(other.taxAmountCents, taxAmountCents) || other.taxAmountCents == taxAmountCents)&&(identical(other.taxes, taxes) || other.taxes == taxes)&&(identical(other.orderStatus, orderStatus) || other.orderStatus == orderStatus)&&(identical(other.paymentStatus, paymentStatus) || other.paymentStatus == paymentStatus)&&(identical(other.shippingAddress, shippingAddress) || other.shippingAddress == shippingAddress)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.currency, currency) || other.currency == currency)&&const DeepCollectionEquality().equals(other.sellerIds, sellerIds)&&(identical(other.stripeSessionId, stripeSessionId) || other.stripeSessionId == stripeSessionId)&&(identical(other.shippingApprovalStatus, shippingApprovalStatus) || other.shippingApprovalStatus == shippingApprovalStatus)&&(identical(other.shippingApprovalRequired, shippingApprovalRequired) || other.shippingApprovalRequired == shippingApprovalRequired)&&(identical(other.actualShipping, actualShipping) || other.actualShipping == actualShipping)&&(identical(other.pendingTotal, pendingTotal) || other.pendingTotal == pendingTotal)&&const DeepCollectionEquality().equals(other.sellerPayouts, sellerPayouts)&&(identical(other.confirmedByClient, confirmedByClient) || other.confirmedByClient == confirmedByClient)&&(identical(other.confirmedAt, confirmedAt) || other.confirmedAt == confirmedAt)&&(identical(other.platformFeeTotal, platformFeeTotal) || other.platformFeeTotal == platformFeeTotal)&&(identical(other.payoutStatus, payoutStatus) || other.payoutStatus == payoutStatus)&&const DeepCollectionEquality().equals(other.ratings, ratings)&&(identical(other.stripePaymentIntentId, stripePaymentIntentId) || other.stripePaymentIntentId == stripePaymentIntentId)&&(identical(other.captureAttempts, captureAttempts) || other.captureAttempts == captureAttempts)&&(identical(other.capturedAt, capturedAt) || other.capturedAt == capturedAt)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.autoConfirmed, autoConfirmed) || other.autoConfirmed == autoConfirmed)&&(identical(other.autoCaptured, autoCaptured) || other.autoCaptured == autoCaptured)&&(identical(other.refundAmount, refundAmount) || other.refundAmount == refundAmount)&&(identical(other.refundedAt, refundedAt) || other.refundedAt == refundedAt)&&(identical(other.stockRestored, stockRestored) || other.stockRestored == stockRestored)&&(identical(other.cancelledBy, cancelledBy) || other.cancelledBy == cancelledBy)&&(identical(other.cancelledAt, cancelledAt) || other.cancelledAt == cancelledAt)&&(identical(other.cancellationReason, cancellationReason) || other.cancellationReason == cancellationReason)&&(identical(other.respondedAt, respondedAt) || other.respondedAt == respondedAt)&&(identical(other.actualCost, actualCost) || other.actualCost == actualCost)&&(identical(other.requiresManualReview, requiresManualReview) || other.requiresManualReview == requiresManualReview)&&(identical(other.manualReviewReason, manualReviewReason) || other.manualReviewReason == manualReviewReason)&&const DeepCollectionEquality().equals(other.payoutErrors, payoutErrors)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&const DeepCollectionEquality().equals(other.itemTaxes, itemTaxes)&&(identical(other.taxExempt, taxExempt) || other.taxExempt == taxExempt)&&const DeepCollectionEquality().equals(other.taxExemption, taxExemption)&&(identical(other.deliveryInstructions, deliveryInstructions) || other.deliveryInstructions == deliveryInstructions));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hashAll([runtimeType,orderId,userId,customerId,customerEmail,const DeepCollectionEquality().hash(items),totalAmountCents,subtotalCents,shippingCostCents,taxAmountCents,taxes,orderStatus,paymentStatus,shippingAddress,createdAt,currency,const DeepCollectionEquality().hash(sellerIds),stripeSessionId,shippingApprovalStatus,shippingApprovalRequired,actualShipping,pendingTotal,const DeepCollectionEquality().hash(sellerPayouts),confirmedByClient,confirmedAt,platformFeeTotal,payoutStatus,const DeepCollectionEquality().hash(ratings),stripePaymentIntentId,captureAttempts,capturedAt,expiresAt,autoConfirmed,autoCaptured,refundAmount,refundedAt,stockRestored,cancelledBy,cancelledAt,cancellationReason,respondedAt,actualCost,requiresManualReview,manualReviewReason,const DeepCollectionEquality().hash(payoutErrors),updatedAt,const DeepCollectionEquality().hash(itemTaxes),taxExempt,const DeepCollectionEquality().hash(taxExemption),deliveryInstructions]);
+
+@override
+String toString() {
+  return 'Order(orderId: $orderId, userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, totalAmountCents: $totalAmountCents, subtotalCents: $subtotalCents, shippingCostCents: $shippingCostCents, taxAmountCents: $taxAmountCents, taxes: $taxes, orderStatus: $orderStatus, paymentStatus: $paymentStatus, shippingAddress: $shippingAddress, createdAt: $createdAt, currency: $currency, sellerIds: $sellerIds, stripeSessionId: $stripeSessionId, shippingApprovalStatus: $shippingApprovalStatus, shippingApprovalRequired: $shippingApprovalRequired, actualShipping: $actualShipping, pendingTotal: $pendingTotal, sellerPayouts: $sellerPayouts, confirmedByClient: $confirmedByClient, confirmedAt: $confirmedAt, platformFeeTotal: $platformFeeTotal, payoutStatus: $payoutStatus, ratings: $ratings, stripePaymentIntentId: $stripePaymentIntentId, captureAttempts: $captureAttempts, capturedAt: $capturedAt, expiresAt: $expiresAt, autoConfirmed: $autoConfirmed, autoCaptured: $autoCaptured, refundAmount: $refundAmount, refundedAt: $refundedAt, stockRestored: $stockRestored, cancelledBy: $cancelledBy, cancelledAt: $cancelledAt, cancellationReason: $cancellationReason, respondedAt: $respondedAt, actualCost: $actualCost, requiresManualReview: $requiresManualReview, manualReviewReason: $manualReviewReason, payoutErrors: $payoutErrors, updatedAt: $updatedAt, itemTaxes: $itemTaxes, taxExempt: $taxExempt, taxExemption: $taxExemption, deliveryInstructions: $deliveryInstructions)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $OrderCopyWith<$Res> {
-  factory $OrderCopyWith(Order value, $Res Function(Order) then) =
-      _$OrderCopyWithImpl<$Res, Order>;
-  @useResult
-  $Res call({
-    String orderId,
-    String userId,
-    String customerId,
-    String customerEmail,
-    List<OrderItem> items,
-    int totalAmountCents,
-    int subtotalCents,
-    int shippingCostCents,
-    int taxAmountCents,
-    Taxes taxes,
-    OrderStatus orderStatus,
-    PaymentStatus paymentStatus,
-    Address shippingAddress,
-    DateTime createdAt,
-    String currency,
-    List<String> sellerIds,
-    String stripeSessionId,
-    ShippingApprovalStatus shippingApprovalStatus,
-    bool shippingApprovalRequired,
-    double actualShipping,
-    double pendingTotal,
-    List<SellerPayout> sellerPayouts,
-    bool confirmedByClient,
-    DateTime? confirmedAt,
-    double platformFeeTotal,
-    String payoutStatus,
-    List<Ratings> ratings,
-    String? stripePaymentIntentId,
-    int captureAttempts,
-    DateTime? capturedAt,
-    DateTime? expiresAt,
-    bool autoConfirmed,
-    bool autoCaptured,
-    double refundAmount,
-    DateTime? refundedAt,
-    bool stockRestored,
-    String? cancelledBy,
-    DateTime? cancelledAt,
-    String? cancellationReason,
-    DateTime? respondedAt,
-    double? actualCost,
-    bool requiresManualReview,
-    String? manualReviewReason,
-    List<String> payoutErrors,
-    DateTime? updatedAt,
-    List<Map<String, dynamic>> itemTaxes,
-    bool taxExempt,
-    Map<String, dynamic>? taxExemption,
-  });
+abstract mixin class $OrderCopyWith<$Res>  {
+  factory $OrderCopyWith(Order value, $Res Function(Order) _then) = _$OrderCopyWithImpl;
+@useResult
+$Res call({
+ String orderId, String userId, String customerId, String customerEmail, List<OrderItem> items, int totalAmountCents, int subtotalCents, int shippingCostCents, int taxAmountCents, Taxes taxes, OrderStatus orderStatus, PaymentStatus paymentStatus, Address shippingAddress, DateTime createdAt, String currency, List<String> sellerIds, String stripeSessionId, ShippingApprovalStatus shippingApprovalStatus, bool shippingApprovalRequired, double actualShipping, double pendingTotal, List<SellerPayout> sellerPayouts, bool confirmedByClient, DateTime? confirmedAt, double platformFeeTotal, String payoutStatus, List<Ratings> ratings, String? stripePaymentIntentId, int captureAttempts, DateTime? capturedAt, DateTime? expiresAt, bool autoConfirmed, bool autoCaptured, double refundAmount, DateTime? refundedAt, bool stockRestored, String? cancelledBy, DateTime? cancelledAt, String? cancellationReason, DateTime? respondedAt, double? actualCost, bool requiresManualReview, String? manualReviewReason, List<String> payoutErrors, DateTime? updatedAt, List<Map<String, dynamic>> itemTaxes, bool taxExempt, Map<String, dynamic>? taxExemption, String? deliveryInstructions
+});
 
-  $TaxesCopyWith<$Res> get taxes;
-  $AddressCopyWith<$Res> get shippingAddress;
+
+$TaxesCopyWith<$Res> get taxes;$AddressCopyWith<$Res> get shippingAddress;
+
 }
-
 /// @nodoc
-class _$OrderCopyWithImpl<$Res, $Val extends Order>
+class _$OrderCopyWithImpl<$Res>
     implements $OrderCopyWith<$Res> {
-  _$OrderCopyWithImpl(this._value, this._then);
+  _$OrderCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final Order _self;
+  final $Res Function(Order) _then;
 
-  /// Create a copy of Order
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? orderId = null,
-    Object? userId = null,
-    Object? customerId = null,
-    Object? customerEmail = null,
-    Object? items = null,
-    Object? totalAmountCents = null,
-    Object? subtotalCents = null,
-    Object? shippingCostCents = null,
-    Object? taxAmountCents = null,
-    Object? taxes = null,
-    Object? orderStatus = null,
-    Object? paymentStatus = null,
-    Object? shippingAddress = null,
-    Object? createdAt = null,
-    Object? currency = null,
-    Object? sellerIds = null,
-    Object? stripeSessionId = null,
-    Object? shippingApprovalStatus = null,
-    Object? shippingApprovalRequired = null,
-    Object? actualShipping = null,
-    Object? pendingTotal = null,
-    Object? sellerPayouts = null,
-    Object? confirmedByClient = null,
-    Object? confirmedAt = freezed,
-    Object? platformFeeTotal = null,
-    Object? payoutStatus = null,
-    Object? ratings = null,
-    Object? stripePaymentIntentId = freezed,
-    Object? captureAttempts = null,
-    Object? capturedAt = freezed,
-    Object? expiresAt = freezed,
-    Object? autoConfirmed = null,
-    Object? autoCaptured = null,
-    Object? refundAmount = null,
-    Object? refundedAt = freezed,
-    Object? stockRestored = null,
-    Object? cancelledBy = freezed,
-    Object? cancelledAt = freezed,
-    Object? cancellationReason = freezed,
-    Object? respondedAt = freezed,
-    Object? actualCost = freezed,
-    Object? requiresManualReview = null,
-    Object? manualReviewReason = freezed,
-    Object? payoutErrors = null,
-    Object? updatedAt = freezed,
-    Object? itemTaxes = null,
-    Object? taxExempt = null,
-    Object? taxExemption = freezed,
-  }) {
-    return _then(
-      _value.copyWith(
-            orderId: null == orderId
-                ? _value.orderId
-                : orderId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            userId: null == userId
-                ? _value.userId
-                : userId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            customerId: null == customerId
-                ? _value.customerId
-                : customerId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            customerEmail: null == customerEmail
-                ? _value.customerEmail
-                : customerEmail // ignore: cast_nullable_to_non_nullable
-                      as String,
-            items: null == items
-                ? _value.items
-                : items // ignore: cast_nullable_to_non_nullable
-                      as List<OrderItem>,
-            totalAmountCents: null == totalAmountCents
-                ? _value.totalAmountCents
-                : totalAmountCents // ignore: cast_nullable_to_non_nullable
-                      as int,
-            subtotalCents: null == subtotalCents
-                ? _value.subtotalCents
-                : subtotalCents // ignore: cast_nullable_to_non_nullable
-                      as int,
-            shippingCostCents: null == shippingCostCents
-                ? _value.shippingCostCents
-                : shippingCostCents // ignore: cast_nullable_to_non_nullable
-                      as int,
-            taxAmountCents: null == taxAmountCents
-                ? _value.taxAmountCents
-                : taxAmountCents // ignore: cast_nullable_to_non_nullable
-                      as int,
-            taxes: null == taxes
-                ? _value.taxes
-                : taxes // ignore: cast_nullable_to_non_nullable
-                      as Taxes,
-            orderStatus: null == orderStatus
-                ? _value.orderStatus
-                : orderStatus // ignore: cast_nullable_to_non_nullable
-                      as OrderStatus,
-            paymentStatus: null == paymentStatus
-                ? _value.paymentStatus
-                : paymentStatus // ignore: cast_nullable_to_non_nullable
-                      as PaymentStatus,
-            shippingAddress: null == shippingAddress
-                ? _value.shippingAddress
-                : shippingAddress // ignore: cast_nullable_to_non_nullable
-                      as Address,
-            createdAt: null == createdAt
-                ? _value.createdAt
-                : createdAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime,
-            currency: null == currency
-                ? _value.currency
-                : currency // ignore: cast_nullable_to_non_nullable
-                      as String,
-            sellerIds: null == sellerIds
-                ? _value.sellerIds
-                : sellerIds // ignore: cast_nullable_to_non_nullable
-                      as List<String>,
-            stripeSessionId: null == stripeSessionId
-                ? _value.stripeSessionId
-                : stripeSessionId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            shippingApprovalStatus: null == shippingApprovalStatus
-                ? _value.shippingApprovalStatus
-                : shippingApprovalStatus // ignore: cast_nullable_to_non_nullable
-                      as ShippingApprovalStatus,
-            shippingApprovalRequired: null == shippingApprovalRequired
-                ? _value.shippingApprovalRequired
-                : shippingApprovalRequired // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            actualShipping: null == actualShipping
-                ? _value.actualShipping
-                : actualShipping // ignore: cast_nullable_to_non_nullable
-                      as double,
-            pendingTotal: null == pendingTotal
-                ? _value.pendingTotal
-                : pendingTotal // ignore: cast_nullable_to_non_nullable
-                      as double,
-            sellerPayouts: null == sellerPayouts
-                ? _value.sellerPayouts
-                : sellerPayouts // ignore: cast_nullable_to_non_nullable
-                      as List<SellerPayout>,
-            confirmedByClient: null == confirmedByClient
-                ? _value.confirmedByClient
-                : confirmedByClient // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            confirmedAt: freezed == confirmedAt
-                ? _value.confirmedAt
-                : confirmedAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            platformFeeTotal: null == platformFeeTotal
-                ? _value.platformFeeTotal
-                : platformFeeTotal // ignore: cast_nullable_to_non_nullable
-                      as double,
-            payoutStatus: null == payoutStatus
-                ? _value.payoutStatus
-                : payoutStatus // ignore: cast_nullable_to_non_nullable
-                      as String,
-            ratings: null == ratings
-                ? _value.ratings
-                : ratings // ignore: cast_nullable_to_non_nullable
-                      as List<Ratings>,
-            stripePaymentIntentId: freezed == stripePaymentIntentId
-                ? _value.stripePaymentIntentId
-                : stripePaymentIntentId // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            captureAttempts: null == captureAttempts
-                ? _value.captureAttempts
-                : captureAttempts // ignore: cast_nullable_to_non_nullable
-                      as int,
-            capturedAt: freezed == capturedAt
-                ? _value.capturedAt
-                : capturedAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            expiresAt: freezed == expiresAt
-                ? _value.expiresAt
-                : expiresAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            autoConfirmed: null == autoConfirmed
-                ? _value.autoConfirmed
-                : autoConfirmed // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            autoCaptured: null == autoCaptured
-                ? _value.autoCaptured
-                : autoCaptured // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            refundAmount: null == refundAmount
-                ? _value.refundAmount
-                : refundAmount // ignore: cast_nullable_to_non_nullable
-                      as double,
-            refundedAt: freezed == refundedAt
-                ? _value.refundedAt
-                : refundedAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            stockRestored: null == stockRestored
-                ? _value.stockRestored
-                : stockRestored // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            cancelledBy: freezed == cancelledBy
-                ? _value.cancelledBy
-                : cancelledBy // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            cancelledAt: freezed == cancelledAt
-                ? _value.cancelledAt
-                : cancelledAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            cancellationReason: freezed == cancellationReason
-                ? _value.cancellationReason
-                : cancellationReason // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            respondedAt: freezed == respondedAt
-                ? _value.respondedAt
-                : respondedAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            actualCost: freezed == actualCost
-                ? _value.actualCost
-                : actualCost // ignore: cast_nullable_to_non_nullable
-                      as double?,
-            requiresManualReview: null == requiresManualReview
-                ? _value.requiresManualReview
-                : requiresManualReview // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            manualReviewReason: freezed == manualReviewReason
-                ? _value.manualReviewReason
-                : manualReviewReason // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            payoutErrors: null == payoutErrors
-                ? _value.payoutErrors
-                : payoutErrors // ignore: cast_nullable_to_non_nullable
-                      as List<String>,
-            updatedAt: freezed == updatedAt
-                ? _value.updatedAt
-                : updatedAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            itemTaxes: null == itemTaxes
-                ? _value.itemTaxes
-                : itemTaxes // ignore: cast_nullable_to_non_nullable
-                      as List<Map<String, dynamic>>,
-            taxExempt: null == taxExempt
-                ? _value.taxExempt
-                : taxExempt // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            taxExemption: freezed == taxExemption
-                ? _value.taxExemption
-                : taxExemption // ignore: cast_nullable_to_non_nullable
-                      as Map<String, dynamic>?,
-          )
-          as $Val,
-    );
-  }
-
-  /// Create a copy of Order
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $TaxesCopyWith<$Res> get taxes {
-    return $TaxesCopyWith<$Res>(_value.taxes, (value) {
-      return _then(_value.copyWith(taxes: value) as $Val);
-    });
-  }
-
-  /// Create a copy of Order
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $AddressCopyWith<$Res> get shippingAddress {
-    return $AddressCopyWith<$Res>(_value.shippingAddress, (value) {
-      return _then(_value.copyWith(shippingAddress: value) as $Val);
-    });
-  }
+/// Create a copy of Order
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? orderId = null,Object? userId = null,Object? customerId = null,Object? customerEmail = null,Object? items = null,Object? totalAmountCents = null,Object? subtotalCents = null,Object? shippingCostCents = null,Object? taxAmountCents = null,Object? taxes = null,Object? orderStatus = null,Object? paymentStatus = null,Object? shippingAddress = null,Object? createdAt = null,Object? currency = null,Object? sellerIds = null,Object? stripeSessionId = null,Object? shippingApprovalStatus = null,Object? shippingApprovalRequired = null,Object? actualShipping = null,Object? pendingTotal = null,Object? sellerPayouts = null,Object? confirmedByClient = null,Object? confirmedAt = freezed,Object? platformFeeTotal = null,Object? payoutStatus = null,Object? ratings = null,Object? stripePaymentIntentId = freezed,Object? captureAttempts = null,Object? capturedAt = freezed,Object? expiresAt = freezed,Object? autoConfirmed = null,Object? autoCaptured = null,Object? refundAmount = null,Object? refundedAt = freezed,Object? stockRestored = null,Object? cancelledBy = freezed,Object? cancelledAt = freezed,Object? cancellationReason = freezed,Object? respondedAt = freezed,Object? actualCost = freezed,Object? requiresManualReview = null,Object? manualReviewReason = freezed,Object? payoutErrors = null,Object? updatedAt = freezed,Object? itemTaxes = null,Object? taxExempt = null,Object? taxExemption = freezed,Object? deliveryInstructions = freezed,}) {
+  return _then(_self.copyWith(
+orderId: null == orderId ? _self.orderId : orderId // ignore: cast_nullable_to_non_nullable
+as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String,customerId: null == customerId ? _self.customerId : customerId // ignore: cast_nullable_to_non_nullable
+as String,customerEmail: null == customerEmail ? _self.customerEmail : customerEmail // ignore: cast_nullable_to_non_nullable
+as String,items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
+as List<OrderItem>,totalAmountCents: null == totalAmountCents ? _self.totalAmountCents : totalAmountCents // ignore: cast_nullable_to_non_nullable
+as int,subtotalCents: null == subtotalCents ? _self.subtotalCents : subtotalCents // ignore: cast_nullable_to_non_nullable
+as int,shippingCostCents: null == shippingCostCents ? _self.shippingCostCents : shippingCostCents // ignore: cast_nullable_to_non_nullable
+as int,taxAmountCents: null == taxAmountCents ? _self.taxAmountCents : taxAmountCents // ignore: cast_nullable_to_non_nullable
+as int,taxes: null == taxes ? _self.taxes : taxes // ignore: cast_nullable_to_non_nullable
+as Taxes,orderStatus: null == orderStatus ? _self.orderStatus : orderStatus // ignore: cast_nullable_to_non_nullable
+as OrderStatus,paymentStatus: null == paymentStatus ? _self.paymentStatus : paymentStatus // ignore: cast_nullable_to_non_nullable
+as PaymentStatus,shippingAddress: null == shippingAddress ? _self.shippingAddress : shippingAddress // ignore: cast_nullable_to_non_nullable
+as Address,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as DateTime,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,sellerIds: null == sellerIds ? _self.sellerIds : sellerIds // ignore: cast_nullable_to_non_nullable
+as List<String>,stripeSessionId: null == stripeSessionId ? _self.stripeSessionId : stripeSessionId // ignore: cast_nullable_to_non_nullable
+as String,shippingApprovalStatus: null == shippingApprovalStatus ? _self.shippingApprovalStatus : shippingApprovalStatus // ignore: cast_nullable_to_non_nullable
+as ShippingApprovalStatus,shippingApprovalRequired: null == shippingApprovalRequired ? _self.shippingApprovalRequired : shippingApprovalRequired // ignore: cast_nullable_to_non_nullable
+as bool,actualShipping: null == actualShipping ? _self.actualShipping : actualShipping // ignore: cast_nullable_to_non_nullable
+as double,pendingTotal: null == pendingTotal ? _self.pendingTotal : pendingTotal // ignore: cast_nullable_to_non_nullable
+as double,sellerPayouts: null == sellerPayouts ? _self.sellerPayouts : sellerPayouts // ignore: cast_nullable_to_non_nullable
+as List<SellerPayout>,confirmedByClient: null == confirmedByClient ? _self.confirmedByClient : confirmedByClient // ignore: cast_nullable_to_non_nullable
+as bool,confirmedAt: freezed == confirmedAt ? _self.confirmedAt : confirmedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,platformFeeTotal: null == platformFeeTotal ? _self.platformFeeTotal : platformFeeTotal // ignore: cast_nullable_to_non_nullable
+as double,payoutStatus: null == payoutStatus ? _self.payoutStatus : payoutStatus // ignore: cast_nullable_to_non_nullable
+as String,ratings: null == ratings ? _self.ratings : ratings // ignore: cast_nullable_to_non_nullable
+as List<Ratings>,stripePaymentIntentId: freezed == stripePaymentIntentId ? _self.stripePaymentIntentId : stripePaymentIntentId // ignore: cast_nullable_to_non_nullable
+as String?,captureAttempts: null == captureAttempts ? _self.captureAttempts : captureAttempts // ignore: cast_nullable_to_non_nullable
+as int,capturedAt: freezed == capturedAt ? _self.capturedAt : capturedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,expiresAt: freezed == expiresAt ? _self.expiresAt : expiresAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,autoConfirmed: null == autoConfirmed ? _self.autoConfirmed : autoConfirmed // ignore: cast_nullable_to_non_nullable
+as bool,autoCaptured: null == autoCaptured ? _self.autoCaptured : autoCaptured // ignore: cast_nullable_to_non_nullable
+as bool,refundAmount: null == refundAmount ? _self.refundAmount : refundAmount // ignore: cast_nullable_to_non_nullable
+as double,refundedAt: freezed == refundedAt ? _self.refundedAt : refundedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,stockRestored: null == stockRestored ? _self.stockRestored : stockRestored // ignore: cast_nullable_to_non_nullable
+as bool,cancelledBy: freezed == cancelledBy ? _self.cancelledBy : cancelledBy // ignore: cast_nullable_to_non_nullable
+as String?,cancelledAt: freezed == cancelledAt ? _self.cancelledAt : cancelledAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,cancellationReason: freezed == cancellationReason ? _self.cancellationReason : cancellationReason // ignore: cast_nullable_to_non_nullable
+as String?,respondedAt: freezed == respondedAt ? _self.respondedAt : respondedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,actualCost: freezed == actualCost ? _self.actualCost : actualCost // ignore: cast_nullable_to_non_nullable
+as double?,requiresManualReview: null == requiresManualReview ? _self.requiresManualReview : requiresManualReview // ignore: cast_nullable_to_non_nullable
+as bool,manualReviewReason: freezed == manualReviewReason ? _self.manualReviewReason : manualReviewReason // ignore: cast_nullable_to_non_nullable
+as String?,payoutErrors: null == payoutErrors ? _self.payoutErrors : payoutErrors // ignore: cast_nullable_to_non_nullable
+as List<String>,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,itemTaxes: null == itemTaxes ? _self.itemTaxes : itemTaxes // ignore: cast_nullable_to_non_nullable
+as List<Map<String, dynamic>>,taxExempt: null == taxExempt ? _self.taxExempt : taxExempt // ignore: cast_nullable_to_non_nullable
+as bool,taxExemption: freezed == taxExemption ? _self.taxExemption : taxExemption // ignore: cast_nullable_to_non_nullable
+as Map<String, dynamic>?,deliveryInstructions: freezed == deliveryInstructions ? _self.deliveryInstructions : deliveryInstructions // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
 }
-
-/// @nodoc
-abstract class _$$OrderImplCopyWith<$Res> implements $OrderCopyWith<$Res> {
-  factory _$$OrderImplCopyWith(
-    _$OrderImpl value,
-    $Res Function(_$OrderImpl) then,
-  ) = __$$OrderImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({
-    String orderId,
-    String userId,
-    String customerId,
-    String customerEmail,
-    List<OrderItem> items,
-    int totalAmountCents,
-    int subtotalCents,
-    int shippingCostCents,
-    int taxAmountCents,
-    Taxes taxes,
-    OrderStatus orderStatus,
-    PaymentStatus paymentStatus,
-    Address shippingAddress,
-    DateTime createdAt,
-    String currency,
-    List<String> sellerIds,
-    String stripeSessionId,
-    ShippingApprovalStatus shippingApprovalStatus,
-    bool shippingApprovalRequired,
-    double actualShipping,
-    double pendingTotal,
-    List<SellerPayout> sellerPayouts,
-    bool confirmedByClient,
-    DateTime? confirmedAt,
-    double platformFeeTotal,
-    String payoutStatus,
-    List<Ratings> ratings,
-    String? stripePaymentIntentId,
-    int captureAttempts,
-    DateTime? capturedAt,
-    DateTime? expiresAt,
-    bool autoConfirmed,
-    bool autoCaptured,
-    double refundAmount,
-    DateTime? refundedAt,
-    bool stockRestored,
-    String? cancelledBy,
-    DateTime? cancelledAt,
-    String? cancellationReason,
-    DateTime? respondedAt,
-    double? actualCost,
-    bool requiresManualReview,
-    String? manualReviewReason,
-    List<String> payoutErrors,
-    DateTime? updatedAt,
-    List<Map<String, dynamic>> itemTaxes,
-    bool taxExempt,
-    Map<String, dynamic>? taxExemption,
+/// Create a copy of Order
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$TaxesCopyWith<$Res> get taxes {
+  
+  return $TaxesCopyWith<$Res>(_self.taxes, (value) {
+    return _then(_self.copyWith(taxes: value));
   });
-
-  @override
-  $TaxesCopyWith<$Res> get taxes;
-  @override
-  $AddressCopyWith<$Res> get shippingAddress;
+}/// Create a copy of Order
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$AddressCopyWith<$Res> get shippingAddress {
+  
+  return $AddressCopyWith<$Res>(_self.shippingAddress, (value) {
+    return _then(_self.copyWith(shippingAddress: value));
+  });
+}
 }
 
-/// @nodoc
-class __$$OrderImplCopyWithImpl<$Res>
-    extends _$OrderCopyWithImpl<$Res, _$OrderImpl>
-    implements _$$OrderImplCopyWith<$Res> {
-  __$$OrderImplCopyWithImpl(
-    _$OrderImpl _value,
-    $Res Function(_$OrderImpl) _then,
-  ) : super(_value, _then);
 
-  /// Create a copy of Order
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? orderId = null,
-    Object? userId = null,
-    Object? customerId = null,
-    Object? customerEmail = null,
-    Object? items = null,
-    Object? totalAmountCents = null,
-    Object? subtotalCents = null,
-    Object? shippingCostCents = null,
-    Object? taxAmountCents = null,
-    Object? taxes = null,
-    Object? orderStatus = null,
-    Object? paymentStatus = null,
-    Object? shippingAddress = null,
-    Object? createdAt = null,
-    Object? currency = null,
-    Object? sellerIds = null,
-    Object? stripeSessionId = null,
-    Object? shippingApprovalStatus = null,
-    Object? shippingApprovalRequired = null,
-    Object? actualShipping = null,
-    Object? pendingTotal = null,
-    Object? sellerPayouts = null,
-    Object? confirmedByClient = null,
-    Object? confirmedAt = freezed,
-    Object? platformFeeTotal = null,
-    Object? payoutStatus = null,
-    Object? ratings = null,
-    Object? stripePaymentIntentId = freezed,
-    Object? captureAttempts = null,
-    Object? capturedAt = freezed,
-    Object? expiresAt = freezed,
-    Object? autoConfirmed = null,
-    Object? autoCaptured = null,
-    Object? refundAmount = null,
-    Object? refundedAt = freezed,
-    Object? stockRestored = null,
-    Object? cancelledBy = freezed,
-    Object? cancelledAt = freezed,
-    Object? cancellationReason = freezed,
-    Object? respondedAt = freezed,
-    Object? actualCost = freezed,
-    Object? requiresManualReview = null,
-    Object? manualReviewReason = freezed,
-    Object? payoutErrors = null,
-    Object? updatedAt = freezed,
-    Object? itemTaxes = null,
-    Object? taxExempt = null,
-    Object? taxExemption = freezed,
-  }) {
-    return _then(
-      _$OrderImpl(
-        orderId: null == orderId
-            ? _value.orderId
-            : orderId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        userId: null == userId
-            ? _value.userId
-            : userId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        customerId: null == customerId
-            ? _value.customerId
-            : customerId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        customerEmail: null == customerEmail
-            ? _value.customerEmail
-            : customerEmail // ignore: cast_nullable_to_non_nullable
-                  as String,
-        items: null == items
-            ? _value._items
-            : items // ignore: cast_nullable_to_non_nullable
-                  as List<OrderItem>,
-        totalAmountCents: null == totalAmountCents
-            ? _value.totalAmountCents
-            : totalAmountCents // ignore: cast_nullable_to_non_nullable
-                  as int,
-        subtotalCents: null == subtotalCents
-            ? _value.subtotalCents
-            : subtotalCents // ignore: cast_nullable_to_non_nullable
-                  as int,
-        shippingCostCents: null == shippingCostCents
-            ? _value.shippingCostCents
-            : shippingCostCents // ignore: cast_nullable_to_non_nullable
-                  as int,
-        taxAmountCents: null == taxAmountCents
-            ? _value.taxAmountCents
-            : taxAmountCents // ignore: cast_nullable_to_non_nullable
-                  as int,
-        taxes: null == taxes
-            ? _value.taxes
-            : taxes // ignore: cast_nullable_to_non_nullable
-                  as Taxes,
-        orderStatus: null == orderStatus
-            ? _value.orderStatus
-            : orderStatus // ignore: cast_nullable_to_non_nullable
-                  as OrderStatus,
-        paymentStatus: null == paymentStatus
-            ? _value.paymentStatus
-            : paymentStatus // ignore: cast_nullable_to_non_nullable
-                  as PaymentStatus,
-        shippingAddress: null == shippingAddress
-            ? _value.shippingAddress
-            : shippingAddress // ignore: cast_nullable_to_non_nullable
-                  as Address,
-        createdAt: null == createdAt
-            ? _value.createdAt
-            : createdAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime,
-        currency: null == currency
-            ? _value.currency
-            : currency // ignore: cast_nullable_to_non_nullable
-                  as String,
-        sellerIds: null == sellerIds
-            ? _value._sellerIds
-            : sellerIds // ignore: cast_nullable_to_non_nullable
-                  as List<String>,
-        stripeSessionId: null == stripeSessionId
-            ? _value.stripeSessionId
-            : stripeSessionId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        shippingApprovalStatus: null == shippingApprovalStatus
-            ? _value.shippingApprovalStatus
-            : shippingApprovalStatus // ignore: cast_nullable_to_non_nullable
-                  as ShippingApprovalStatus,
-        shippingApprovalRequired: null == shippingApprovalRequired
-            ? _value.shippingApprovalRequired
-            : shippingApprovalRequired // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        actualShipping: null == actualShipping
-            ? _value.actualShipping
-            : actualShipping // ignore: cast_nullable_to_non_nullable
-                  as double,
-        pendingTotal: null == pendingTotal
-            ? _value.pendingTotal
-            : pendingTotal // ignore: cast_nullable_to_non_nullable
-                  as double,
-        sellerPayouts: null == sellerPayouts
-            ? _value._sellerPayouts
-            : sellerPayouts // ignore: cast_nullable_to_non_nullable
-                  as List<SellerPayout>,
-        confirmedByClient: null == confirmedByClient
-            ? _value.confirmedByClient
-            : confirmedByClient // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        confirmedAt: freezed == confirmedAt
-            ? _value.confirmedAt
-            : confirmedAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        platformFeeTotal: null == platformFeeTotal
-            ? _value.platformFeeTotal
-            : platformFeeTotal // ignore: cast_nullable_to_non_nullable
-                  as double,
-        payoutStatus: null == payoutStatus
-            ? _value.payoutStatus
-            : payoutStatus // ignore: cast_nullable_to_non_nullable
-                  as String,
-        ratings: null == ratings
-            ? _value._ratings
-            : ratings // ignore: cast_nullable_to_non_nullable
-                  as List<Ratings>,
-        stripePaymentIntentId: freezed == stripePaymentIntentId
-            ? _value.stripePaymentIntentId
-            : stripePaymentIntentId // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        captureAttempts: null == captureAttempts
-            ? _value.captureAttempts
-            : captureAttempts // ignore: cast_nullable_to_non_nullable
-                  as int,
-        capturedAt: freezed == capturedAt
-            ? _value.capturedAt
-            : capturedAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        expiresAt: freezed == expiresAt
-            ? _value.expiresAt
-            : expiresAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        autoConfirmed: null == autoConfirmed
-            ? _value.autoConfirmed
-            : autoConfirmed // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        autoCaptured: null == autoCaptured
-            ? _value.autoCaptured
-            : autoCaptured // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        refundAmount: null == refundAmount
-            ? _value.refundAmount
-            : refundAmount // ignore: cast_nullable_to_non_nullable
-                  as double,
-        refundedAt: freezed == refundedAt
-            ? _value.refundedAt
-            : refundedAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        stockRestored: null == stockRestored
-            ? _value.stockRestored
-            : stockRestored // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        cancelledBy: freezed == cancelledBy
-            ? _value.cancelledBy
-            : cancelledBy // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        cancelledAt: freezed == cancelledAt
-            ? _value.cancelledAt
-            : cancelledAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        cancellationReason: freezed == cancellationReason
-            ? _value.cancellationReason
-            : cancellationReason // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        respondedAt: freezed == respondedAt
-            ? _value.respondedAt
-            : respondedAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        actualCost: freezed == actualCost
-            ? _value.actualCost
-            : actualCost // ignore: cast_nullable_to_non_nullable
-                  as double?,
-        requiresManualReview: null == requiresManualReview
-            ? _value.requiresManualReview
-            : requiresManualReview // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        manualReviewReason: freezed == manualReviewReason
-            ? _value.manualReviewReason
-            : manualReviewReason // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        payoutErrors: null == payoutErrors
-            ? _value._payoutErrors
-            : payoutErrors // ignore: cast_nullable_to_non_nullable
-                  as List<String>,
-        updatedAt: freezed == updatedAt
-            ? _value.updatedAt
-            : updatedAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        itemTaxes: null == itemTaxes
-            ? _value._itemTaxes
-            : itemTaxes // ignore: cast_nullable_to_non_nullable
-                  as List<Map<String, dynamic>>,
-        taxExempt: null == taxExempt
-            ? _value.taxExempt
-            : taxExempt // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        taxExemption: freezed == taxExemption
-            ? _value._taxExemption
-            : taxExemption // ignore: cast_nullable_to_non_nullable
-                  as Map<String, dynamic>?,
-      ),
-    );
-  }
+/// Adds pattern-matching-related methods to [Order].
+extension OrderPatterns on Order {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _Order value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _Order() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _Order value)  $default,){
+final _that = this;
+switch (_that) {
+case _Order():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _Order value)?  $default,){
+final _that = this;
+switch (_that) {
+case _Order() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String orderId,  String userId,  String customerId,  String customerEmail,  List<OrderItem> items,  int totalAmountCents,  int subtotalCents,  int shippingCostCents,  int taxAmountCents,  Taxes taxes,  OrderStatus orderStatus,  PaymentStatus paymentStatus,  Address shippingAddress,  DateTime createdAt,  String currency,  List<String> sellerIds,  String stripeSessionId,  ShippingApprovalStatus shippingApprovalStatus,  bool shippingApprovalRequired,  double actualShipping,  double pendingTotal,  List<SellerPayout> sellerPayouts,  bool confirmedByClient,  DateTime? confirmedAt,  double platformFeeTotal,  String payoutStatus,  List<Ratings> ratings,  String? stripePaymentIntentId,  int captureAttempts,  DateTime? capturedAt,  DateTime? expiresAt,  bool autoConfirmed,  bool autoCaptured,  double refundAmount,  DateTime? refundedAt,  bool stockRestored,  String? cancelledBy,  DateTime? cancelledAt,  String? cancellationReason,  DateTime? respondedAt,  double? actualCost,  bool requiresManualReview,  String? manualReviewReason,  List<String> payoutErrors,  DateTime? updatedAt,  List<Map<String, dynamic>> itemTaxes,  bool taxExempt,  Map<String, dynamic>? taxExemption,  String? deliveryInstructions)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _Order() when $default != null:
+return $default(_that.orderId,_that.userId,_that.customerId,_that.customerEmail,_that.items,_that.totalAmountCents,_that.subtotalCents,_that.shippingCostCents,_that.taxAmountCents,_that.taxes,_that.orderStatus,_that.paymentStatus,_that.shippingAddress,_that.createdAt,_that.currency,_that.sellerIds,_that.stripeSessionId,_that.shippingApprovalStatus,_that.shippingApprovalRequired,_that.actualShipping,_that.pendingTotal,_that.sellerPayouts,_that.confirmedByClient,_that.confirmedAt,_that.platformFeeTotal,_that.payoutStatus,_that.ratings,_that.stripePaymentIntentId,_that.captureAttempts,_that.capturedAt,_that.expiresAt,_that.autoConfirmed,_that.autoCaptured,_that.refundAmount,_that.refundedAt,_that.stockRestored,_that.cancelledBy,_that.cancelledAt,_that.cancellationReason,_that.respondedAt,_that.actualCost,_that.requiresManualReview,_that.manualReviewReason,_that.payoutErrors,_that.updatedAt,_that.itemTaxes,_that.taxExempt,_that.taxExemption,_that.deliveryInstructions);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String orderId,  String userId,  String customerId,  String customerEmail,  List<OrderItem> items,  int totalAmountCents,  int subtotalCents,  int shippingCostCents,  int taxAmountCents,  Taxes taxes,  OrderStatus orderStatus,  PaymentStatus paymentStatus,  Address shippingAddress,  DateTime createdAt,  String currency,  List<String> sellerIds,  String stripeSessionId,  ShippingApprovalStatus shippingApprovalStatus,  bool shippingApprovalRequired,  double actualShipping,  double pendingTotal,  List<SellerPayout> sellerPayouts,  bool confirmedByClient,  DateTime? confirmedAt,  double platformFeeTotal,  String payoutStatus,  List<Ratings> ratings,  String? stripePaymentIntentId,  int captureAttempts,  DateTime? capturedAt,  DateTime? expiresAt,  bool autoConfirmed,  bool autoCaptured,  double refundAmount,  DateTime? refundedAt,  bool stockRestored,  String? cancelledBy,  DateTime? cancelledAt,  String? cancellationReason,  DateTime? respondedAt,  double? actualCost,  bool requiresManualReview,  String? manualReviewReason,  List<String> payoutErrors,  DateTime? updatedAt,  List<Map<String, dynamic>> itemTaxes,  bool taxExempt,  Map<String, dynamic>? taxExemption,  String? deliveryInstructions)  $default,) {final _that = this;
+switch (_that) {
+case _Order():
+return $default(_that.orderId,_that.userId,_that.customerId,_that.customerEmail,_that.items,_that.totalAmountCents,_that.subtotalCents,_that.shippingCostCents,_that.taxAmountCents,_that.taxes,_that.orderStatus,_that.paymentStatus,_that.shippingAddress,_that.createdAt,_that.currency,_that.sellerIds,_that.stripeSessionId,_that.shippingApprovalStatus,_that.shippingApprovalRequired,_that.actualShipping,_that.pendingTotal,_that.sellerPayouts,_that.confirmedByClient,_that.confirmedAt,_that.platformFeeTotal,_that.payoutStatus,_that.ratings,_that.stripePaymentIntentId,_that.captureAttempts,_that.capturedAt,_that.expiresAt,_that.autoConfirmed,_that.autoCaptured,_that.refundAmount,_that.refundedAt,_that.stockRestored,_that.cancelledBy,_that.cancelledAt,_that.cancellationReason,_that.respondedAt,_that.actualCost,_that.requiresManualReview,_that.manualReviewReason,_that.payoutErrors,_that.updatedAt,_that.itemTaxes,_that.taxExempt,_that.taxExemption,_that.deliveryInstructions);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String orderId,  String userId,  String customerId,  String customerEmail,  List<OrderItem> items,  int totalAmountCents,  int subtotalCents,  int shippingCostCents,  int taxAmountCents,  Taxes taxes,  OrderStatus orderStatus,  PaymentStatus paymentStatus,  Address shippingAddress,  DateTime createdAt,  String currency,  List<String> sellerIds,  String stripeSessionId,  ShippingApprovalStatus shippingApprovalStatus,  bool shippingApprovalRequired,  double actualShipping,  double pendingTotal,  List<SellerPayout> sellerPayouts,  bool confirmedByClient,  DateTime? confirmedAt,  double platformFeeTotal,  String payoutStatus,  List<Ratings> ratings,  String? stripePaymentIntentId,  int captureAttempts,  DateTime? capturedAt,  DateTime? expiresAt,  bool autoConfirmed,  bool autoCaptured,  double refundAmount,  DateTime? refundedAt,  bool stockRestored,  String? cancelledBy,  DateTime? cancelledAt,  String? cancellationReason,  DateTime? respondedAt,  double? actualCost,  bool requiresManualReview,  String? manualReviewReason,  List<String> payoutErrors,  DateTime? updatedAt,  List<Map<String, dynamic>> itemTaxes,  bool taxExempt,  Map<String, dynamic>? taxExemption,  String? deliveryInstructions)?  $default,) {final _that = this;
+switch (_that) {
+case _Order() when $default != null:
+return $default(_that.orderId,_that.userId,_that.customerId,_that.customerEmail,_that.items,_that.totalAmountCents,_that.subtotalCents,_that.shippingCostCents,_that.taxAmountCents,_that.taxes,_that.orderStatus,_that.paymentStatus,_that.shippingAddress,_that.createdAt,_that.currency,_that.sellerIds,_that.stripeSessionId,_that.shippingApprovalStatus,_that.shippingApprovalRequired,_that.actualShipping,_that.pendingTotal,_that.sellerPayouts,_that.confirmedByClient,_that.confirmedAt,_that.platformFeeTotal,_that.payoutStatus,_that.ratings,_that.stripePaymentIntentId,_that.captureAttempts,_that.capturedAt,_that.expiresAt,_that.autoConfirmed,_that.autoCaptured,_that.refundAmount,_that.refundedAt,_that.stockRestored,_that.cancelledBy,_that.cancelledAt,_that.cancellationReason,_that.respondedAt,_that.actualCost,_that.requiresManualReview,_that.manualReviewReason,_that.payoutErrors,_that.updatedAt,_that.itemTaxes,_that.taxExempt,_that.taxExemption,_that.deliveryInstructions);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$OrderImpl extends _Order {
-  const _$OrderImpl({
-    required this.orderId,
-    required this.userId,
-    required this.customerId,
-    required this.customerEmail,
-    required final List<OrderItem> items,
-    required this.totalAmountCents,
-    required this.subtotalCents,
-    this.shippingCostCents = 0,
-    this.taxAmountCents = 0,
-    required this.taxes,
-    this.orderStatus = OrderStatus.pending,
-    this.paymentStatus = PaymentStatus.awaitingPayment,
-    required this.shippingAddress,
-    required this.createdAt,
-    this.currency = BusinessRules.defaultCurrency,
-    final List<String> sellerIds = const [],
-    required this.stripeSessionId,
-    this.shippingApprovalStatus = ShippingApprovalStatus.notRequired,
-    this.shippingApprovalRequired = false,
-    this.actualShipping = 0.0,
-    this.pendingTotal = 0.0,
-    final List<SellerPayout> sellerPayouts = const [],
-    this.confirmedByClient = false,
-    this.confirmedAt,
-    this.platformFeeTotal = 0.0,
-    this.payoutStatus = PayoutStatusValues.pending,
-    final List<Ratings> ratings = const [],
-    this.stripePaymentIntentId,
-    this.captureAttempts = 0,
-    this.capturedAt,
-    this.expiresAt,
-    this.autoConfirmed = false,
-    this.autoCaptured = false,
-    this.refundAmount = 0.0,
-    this.refundedAt,
-    this.stockRestored = false,
-    this.cancelledBy,
-    this.cancelledAt,
-    this.cancellationReason,
-    this.respondedAt,
-    this.actualCost,
-    this.requiresManualReview = false,
-    this.manualReviewReason,
-    final List<String> payoutErrors = const [],
-    this.updatedAt,
-    final List<Map<String, dynamic>> itemTaxes = const [],
-    this.taxExempt = false,
-    final Map<String, dynamic>? taxExemption,
-  }) : _items = items,
-       _sellerIds = sellerIds,
-       _sellerPayouts = sellerPayouts,
-       _ratings = ratings,
-       _payoutErrors = payoutErrors,
-       _itemTaxes = itemTaxes,
-       _taxExemption = taxExemption,
-       super._();
 
-  factory _$OrderImpl.fromJson(Map<String, dynamic> json) =>
-      _$$OrderImplFromJson(json);
+class _Order extends Order {
+  const _Order({required this.orderId, required this.userId, required this.customerId, required this.customerEmail, required final  List<OrderItem> items, required this.totalAmountCents, required this.subtotalCents, this.shippingCostCents = 0, this.taxAmountCents = 0, required this.taxes, this.orderStatus = OrderStatus.pending, this.paymentStatus = PaymentStatus.awaitingPayment, required this.shippingAddress, required this.createdAt, this.currency = BusinessRules.defaultCurrency, final  List<String> sellerIds = const [], required this.stripeSessionId, this.shippingApprovalStatus = ShippingApprovalStatus.notRequired, this.shippingApprovalRequired = false, this.actualShipping = 0.0, this.pendingTotal = 0.0, final  List<SellerPayout> sellerPayouts = const [], this.confirmedByClient = false, this.confirmedAt, this.platformFeeTotal = 0.0, this.payoutStatus = PayoutStatusValues.pending, final  List<Ratings> ratings = const [], this.stripePaymentIntentId, this.captureAttempts = 0, this.capturedAt, this.expiresAt, this.autoConfirmed = false, this.autoCaptured = false, this.refundAmount = 0.0, this.refundedAt, this.stockRestored = false, this.cancelledBy, this.cancelledAt, this.cancellationReason, this.respondedAt, this.actualCost, this.requiresManualReview = false, this.manualReviewReason, final  List<String> payoutErrors = const [], this.updatedAt, final  List<Map<String, dynamic>> itemTaxes = const [], this.taxExempt = false, final  Map<String, dynamic>? taxExemption, this.deliveryInstructions}): _items = items,_sellerIds = sellerIds,_sellerPayouts = sellerPayouts,_ratings = ratings,_payoutErrors = payoutErrors,_itemTaxes = itemTaxes,_taxExemption = taxExemption,super._();
+  factory _Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
 
-  @override
-  final String orderId;
-  @override
-  final String userId;
-  @override
-  final String customerId;
-  @override
-  final String customerEmail;
-  final List<OrderItem> _items;
-  @override
-  List<OrderItem> get items {
-    if (_items is EqualUnmodifiableListView) return _items;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_items);
-  }
-
-  // All money in integer cents
-  @override
-  final int totalAmountCents;
-  @override
-  final int subtotalCents;
-  @override
-  @JsonKey()
-  final int shippingCostCents;
-  @override
-  @JsonKey()
-  final int taxAmountCents;
-  @override
-  final Taxes taxes;
-  @override
-  @JsonKey()
-  final OrderStatus orderStatus;
-  @override
-  @JsonKey()
-  final PaymentStatus paymentStatus;
-  @override
-  final Address shippingAddress;
-  @override
-  final DateTime createdAt;
-  @override
-  @JsonKey()
-  final String currency;
-  final List<String> _sellerIds;
-  @override
-  @JsonKey()
-  List<String> get sellerIds {
-    if (_sellerIds is EqualUnmodifiableListView) return _sellerIds;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_sellerIds);
-  }
-
-  @override
-  final String stripeSessionId;
-  // Shipping approval
-  @override
-  @JsonKey()
-  final ShippingApprovalStatus shippingApprovalStatus;
-  @override
-  @JsonKey()
-  final bool shippingApprovalRequired;
-  @override
-  @JsonKey()
-  final double actualShipping;
-  @override
-  @JsonKey()
-  final double pendingTotal;
-  // Payout tracking
-  final List<SellerPayout> _sellerPayouts;
-  // Payout tracking
-  @override
-  @JsonKey()
-  List<SellerPayout> get sellerPayouts {
-    if (_sellerPayouts is EqualUnmodifiableListView) return _sellerPayouts;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_sellerPayouts);
-  }
-
-  @override
-  @JsonKey()
-  final bool confirmedByClient;
-  @override
-  final DateTime? confirmedAt;
-  @override
-  @JsonKey()
-  final double platformFeeTotal;
-  @override
-  @JsonKey()
-  final String payoutStatus;
-  // Ratings
-  final List<Ratings> _ratings;
-  // Ratings
-  @override
-  @JsonKey()
-  List<Ratings> get ratings {
-    if (_ratings is EqualUnmodifiableListView) return _ratings;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_ratings);
-  }
-
-  // === AUDIT FIX: 18 missing fields synced from Python/Firestore ===
-  // Payment capture tracking
-  @override
-  final String? stripePaymentIntentId;
-  @override
-  @JsonKey()
-  final int captureAttempts;
-  @override
-  final DateTime? capturedAt;
-  @override
-  final DateTime? expiresAt;
-  @override
-  @JsonKey()
-  final bool autoConfirmed;
-  @override
-  @JsonKey()
-  final bool autoCaptured;
-  // Refund tracking
-  @override
-  @JsonKey()
-  final double refundAmount;
-  @override
-  final DateTime? refundedAt;
-  // Cancellation tracking
-  @override
-  @JsonKey()
-  final bool stockRestored;
-  @override
-  final String? cancelledBy;
-  @override
-  final DateTime? cancelledAt;
-  @override
-  final String? cancellationReason;
-  // Shipping approval
-  @override
-  final DateTime? respondedAt;
-  @override
-  final double? actualCost;
-  // Admin review
-  @override
-  @JsonKey()
-  final bool requiresManualReview;
-  @override
-  final String? manualReviewReason;
-  final List<String> _payoutErrors;
-  @override
-  @JsonKey()
-  List<String> get payoutErrors {
-    if (_payoutErrors is EqualUnmodifiableListView) return _payoutErrors;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_payoutErrors);
-  }
-
-  // Timestamp
-  @override
-  final DateTime? updatedAt;
-  // Tax fields (new)
-  final List<Map<String, dynamic>> _itemTaxes;
-  // Tax fields (new)
-  @override
-  @JsonKey()
-  List<Map<String, dynamic>> get itemTaxes {
-    if (_itemTaxes is EqualUnmodifiableListView) return _itemTaxes;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_itemTaxes);
-  }
-
-  @override
-  @JsonKey()
-  final bool taxExempt;
-  final Map<String, dynamic>? _taxExemption;
-  @override
-  Map<String, dynamic>? get taxExemption {
-    final value = _taxExemption;
-    if (value == null) return null;
-    if (_taxExemption is EqualUnmodifiableMapView) return _taxExemption;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableMapView(value);
-  }
-
-  @override
-  String toString() {
-    return 'Order(orderId: $orderId, userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, totalAmountCents: $totalAmountCents, subtotalCents: $subtotalCents, shippingCostCents: $shippingCostCents, taxAmountCents: $taxAmountCents, taxes: $taxes, orderStatus: $orderStatus, paymentStatus: $paymentStatus, shippingAddress: $shippingAddress, createdAt: $createdAt, currency: $currency, sellerIds: $sellerIds, stripeSessionId: $stripeSessionId, shippingApprovalStatus: $shippingApprovalStatus, shippingApprovalRequired: $shippingApprovalRequired, actualShipping: $actualShipping, pendingTotal: $pendingTotal, sellerPayouts: $sellerPayouts, confirmedByClient: $confirmedByClient, confirmedAt: $confirmedAt, platformFeeTotal: $platformFeeTotal, payoutStatus: $payoutStatus, ratings: $ratings, stripePaymentIntentId: $stripePaymentIntentId, captureAttempts: $captureAttempts, capturedAt: $capturedAt, expiresAt: $expiresAt, autoConfirmed: $autoConfirmed, autoCaptured: $autoCaptured, refundAmount: $refundAmount, refundedAt: $refundedAt, stockRestored: $stockRestored, cancelledBy: $cancelledBy, cancelledAt: $cancelledAt, cancellationReason: $cancellationReason, respondedAt: $respondedAt, actualCost: $actualCost, requiresManualReview: $requiresManualReview, manualReviewReason: $manualReviewReason, payoutErrors: $payoutErrors, updatedAt: $updatedAt, itemTaxes: $itemTaxes, taxExempt: $taxExempt, taxExemption: $taxExemption)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$OrderImpl &&
-            (identical(other.orderId, orderId) || other.orderId == orderId) &&
-            (identical(other.userId, userId) || other.userId == userId) &&
-            (identical(other.customerId, customerId) ||
-                other.customerId == customerId) &&
-            (identical(other.customerEmail, customerEmail) ||
-                other.customerEmail == customerEmail) &&
-            const DeepCollectionEquality().equals(other._items, _items) &&
-            (identical(other.totalAmountCents, totalAmountCents) ||
-                other.totalAmountCents == totalAmountCents) &&
-            (identical(other.subtotalCents, subtotalCents) ||
-                other.subtotalCents == subtotalCents) &&
-            (identical(other.shippingCostCents, shippingCostCents) ||
-                other.shippingCostCents == shippingCostCents) &&
-            (identical(other.taxAmountCents, taxAmountCents) ||
-                other.taxAmountCents == taxAmountCents) &&
-            (identical(other.taxes, taxes) || other.taxes == taxes) &&
-            (identical(other.orderStatus, orderStatus) ||
-                other.orderStatus == orderStatus) &&
-            (identical(other.paymentStatus, paymentStatus) ||
-                other.paymentStatus == paymentStatus) &&
-            (identical(other.shippingAddress, shippingAddress) ||
-                other.shippingAddress == shippingAddress) &&
-            (identical(other.createdAt, createdAt) ||
-                other.createdAt == createdAt) &&
-            (identical(other.currency, currency) ||
-                other.currency == currency) &&
-            const DeepCollectionEquality().equals(
-              other._sellerIds,
-              _sellerIds,
-            ) &&
-            (identical(other.stripeSessionId, stripeSessionId) ||
-                other.stripeSessionId == stripeSessionId) &&
-            (identical(other.shippingApprovalStatus, shippingApprovalStatus) ||
-                other.shippingApprovalStatus == shippingApprovalStatus) &&
-            (identical(
-                  other.shippingApprovalRequired,
-                  shippingApprovalRequired,
-                ) ||
-                other.shippingApprovalRequired == shippingApprovalRequired) &&
-            (identical(other.actualShipping, actualShipping) ||
-                other.actualShipping == actualShipping) &&
-            (identical(other.pendingTotal, pendingTotal) ||
-                other.pendingTotal == pendingTotal) &&
-            const DeepCollectionEquality().equals(
-              other._sellerPayouts,
-              _sellerPayouts,
-            ) &&
-            (identical(other.confirmedByClient, confirmedByClient) ||
-                other.confirmedByClient == confirmedByClient) &&
-            (identical(other.confirmedAt, confirmedAt) ||
-                other.confirmedAt == confirmedAt) &&
-            (identical(other.platformFeeTotal, platformFeeTotal) ||
-                other.platformFeeTotal == platformFeeTotal) &&
-            (identical(other.payoutStatus, payoutStatus) ||
-                other.payoutStatus == payoutStatus) &&
-            const DeepCollectionEquality().equals(other._ratings, _ratings) &&
-            (identical(other.stripePaymentIntentId, stripePaymentIntentId) ||
-                other.stripePaymentIntentId == stripePaymentIntentId) &&
-            (identical(other.captureAttempts, captureAttempts) ||
-                other.captureAttempts == captureAttempts) &&
-            (identical(other.capturedAt, capturedAt) ||
-                other.capturedAt == capturedAt) &&
-            (identical(other.expiresAt, expiresAt) ||
-                other.expiresAt == expiresAt) &&
-            (identical(other.autoConfirmed, autoConfirmed) ||
-                other.autoConfirmed == autoConfirmed) &&
-            (identical(other.autoCaptured, autoCaptured) ||
-                other.autoCaptured == autoCaptured) &&
-            (identical(other.refundAmount, refundAmount) ||
-                other.refundAmount == refundAmount) &&
-            (identical(other.refundedAt, refundedAt) ||
-                other.refundedAt == refundedAt) &&
-            (identical(other.stockRestored, stockRestored) ||
-                other.stockRestored == stockRestored) &&
-            (identical(other.cancelledBy, cancelledBy) ||
-                other.cancelledBy == cancelledBy) &&
-            (identical(other.cancelledAt, cancelledAt) ||
-                other.cancelledAt == cancelledAt) &&
-            (identical(other.cancellationReason, cancellationReason) ||
-                other.cancellationReason == cancellationReason) &&
-            (identical(other.respondedAt, respondedAt) ||
-                other.respondedAt == respondedAt) &&
-            (identical(other.actualCost, actualCost) ||
-                other.actualCost == actualCost) &&
-            (identical(other.requiresManualReview, requiresManualReview) ||
-                other.requiresManualReview == requiresManualReview) &&
-            (identical(other.manualReviewReason, manualReviewReason) ||
-                other.manualReviewReason == manualReviewReason) &&
-            const DeepCollectionEquality().equals(
-              other._payoutErrors,
-              _payoutErrors,
-            ) &&
-            (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt) &&
-            const DeepCollectionEquality().equals(
-              other._itemTaxes,
-              _itemTaxes,
-            ) &&
-            (identical(other.taxExempt, taxExempt) ||
-                other.taxExempt == taxExempt) &&
-            const DeepCollectionEquality().equals(
-              other._taxExemption,
-              _taxExemption,
-            ));
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hashAll([
-    runtimeType,
-    orderId,
-    userId,
-    customerId,
-    customerEmail,
-    const DeepCollectionEquality().hash(_items),
-    totalAmountCents,
-    subtotalCents,
-    shippingCostCents,
-    taxAmountCents,
-    taxes,
-    orderStatus,
-    paymentStatus,
-    shippingAddress,
-    createdAt,
-    currency,
-    const DeepCollectionEquality().hash(_sellerIds),
-    stripeSessionId,
-    shippingApprovalStatus,
-    shippingApprovalRequired,
-    actualShipping,
-    pendingTotal,
-    const DeepCollectionEquality().hash(_sellerPayouts),
-    confirmedByClient,
-    confirmedAt,
-    platformFeeTotal,
-    payoutStatus,
-    const DeepCollectionEquality().hash(_ratings),
-    stripePaymentIntentId,
-    captureAttempts,
-    capturedAt,
-    expiresAt,
-    autoConfirmed,
-    autoCaptured,
-    refundAmount,
-    refundedAt,
-    stockRestored,
-    cancelledBy,
-    cancelledAt,
-    cancellationReason,
-    respondedAt,
-    actualCost,
-    requiresManualReview,
-    manualReviewReason,
-    const DeepCollectionEquality().hash(_payoutErrors),
-    updatedAt,
-    const DeepCollectionEquality().hash(_itemTaxes),
-    taxExempt,
-    const DeepCollectionEquality().hash(_taxExemption),
-  ]);
-
-  /// Create a copy of Order
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$OrderImplCopyWith<_$OrderImpl> get copyWith =>
-      __$$OrderImplCopyWithImpl<_$OrderImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$OrderImplToJson(this);
-  }
+@override final  String orderId;
+@override final  String userId;
+@override final  String customerId;
+@override final  String customerEmail;
+ final  List<OrderItem> _items;
+@override List<OrderItem> get items {
+  if (_items is EqualUnmodifiableListView) return _items;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_items);
 }
 
-abstract class _Order extends Order {
-  const factory _Order({
-    required final String orderId,
-    required final String userId,
-    required final String customerId,
-    required final String customerEmail,
-    required final List<OrderItem> items,
-    required final int totalAmountCents,
-    required final int subtotalCents,
-    final int shippingCostCents,
-    final int taxAmountCents,
-    required final Taxes taxes,
-    final OrderStatus orderStatus,
-    final PaymentStatus paymentStatus,
-    required final Address shippingAddress,
-    required final DateTime createdAt,
-    final String currency,
-    final List<String> sellerIds,
-    required final String stripeSessionId,
-    final ShippingApprovalStatus shippingApprovalStatus,
-    final bool shippingApprovalRequired,
-    final double actualShipping,
-    final double pendingTotal,
-    final List<SellerPayout> sellerPayouts,
-    final bool confirmedByClient,
-    final DateTime? confirmedAt,
-    final double platformFeeTotal,
-    final String payoutStatus,
-    final List<Ratings> ratings,
-    final String? stripePaymentIntentId,
-    final int captureAttempts,
-    final DateTime? capturedAt,
-    final DateTime? expiresAt,
-    final bool autoConfirmed,
-    final bool autoCaptured,
-    final double refundAmount,
-    final DateTime? refundedAt,
-    final bool stockRestored,
-    final String? cancelledBy,
-    final DateTime? cancelledAt,
-    final String? cancellationReason,
-    final DateTime? respondedAt,
-    final double? actualCost,
-    final bool requiresManualReview,
-    final String? manualReviewReason,
-    final List<String> payoutErrors,
-    final DateTime? updatedAt,
-    final List<Map<String, dynamic>> itemTaxes,
-    final bool taxExempt,
-    final Map<String, dynamic>? taxExemption,
-  }) = _$OrderImpl;
-  const _Order._() : super._();
-
-  factory _Order.fromJson(Map<String, dynamic> json) = _$OrderImpl.fromJson;
-
-  @override
-  String get orderId;
-  @override
-  String get userId;
-  @override
-  String get customerId;
-  @override
-  String get customerEmail;
-  @override
-  List<OrderItem> get items; // All money in integer cents
-  @override
-  int get totalAmountCents;
-  @override
-  int get subtotalCents;
-  @override
-  int get shippingCostCents;
-  @override
-  int get taxAmountCents;
-  @override
-  Taxes get taxes;
-  @override
-  OrderStatus get orderStatus;
-  @override
-  PaymentStatus get paymentStatus;
-  @override
-  Address get shippingAddress;
-  @override
-  DateTime get createdAt;
-  @override
-  String get currency;
-  @override
-  List<String> get sellerIds;
-  @override
-  String get stripeSessionId; // Shipping approval
-  @override
-  ShippingApprovalStatus get shippingApprovalStatus;
-  @override
-  bool get shippingApprovalRequired;
-  @override
-  double get actualShipping;
-  @override
-  double get pendingTotal; // Payout tracking
-  @override
-  List<SellerPayout> get sellerPayouts;
-  @override
-  bool get confirmedByClient;
-  @override
-  DateTime? get confirmedAt;
-  @override
-  double get platformFeeTotal;
-  @override
-  String get payoutStatus; // Ratings
-  @override
-  List<Ratings> get ratings; // === AUDIT FIX: 18 missing fields synced from Python/Firestore ===
-  // Payment capture tracking
-  @override
-  String? get stripePaymentIntentId;
-  @override
-  int get captureAttempts;
-  @override
-  DateTime? get capturedAt;
-  @override
-  DateTime? get expiresAt;
-  @override
-  bool get autoConfirmed;
-  @override
-  bool get autoCaptured; // Refund tracking
-  @override
-  double get refundAmount;
-  @override
-  DateTime? get refundedAt; // Cancellation tracking
-  @override
-  bool get stockRestored;
-  @override
-  String? get cancelledBy;
-  @override
-  DateTime? get cancelledAt;
-  @override
-  String? get cancellationReason; // Shipping approval
-  @override
-  DateTime? get respondedAt;
-  @override
-  double? get actualCost; // Admin review
-  @override
-  bool get requiresManualReview;
-  @override
-  String? get manualReviewReason;
-  @override
-  List<String> get payoutErrors; // Timestamp
-  @override
-  DateTime? get updatedAt; // Tax fields (new)
-  @override
-  List<Map<String, dynamic>> get itemTaxes;
-  @override
-  bool get taxExempt;
-  @override
-  Map<String, dynamic>? get taxExemption;
-
-  /// Create a copy of Order
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$OrderImplCopyWith<_$OrderImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+// All money in integer cents
+@override final  int totalAmountCents;
+@override final  int subtotalCents;
+@override@JsonKey() final  int shippingCostCents;
+@override@JsonKey() final  int taxAmountCents;
+@override final  Taxes taxes;
+@override@JsonKey() final  OrderStatus orderStatus;
+@override@JsonKey() final  PaymentStatus paymentStatus;
+@override final  Address shippingAddress;
+@override final  DateTime createdAt;
+@override@JsonKey() final  String currency;
+ final  List<String> _sellerIds;
+@override@JsonKey() List<String> get sellerIds {
+  if (_sellerIds is EqualUnmodifiableListView) return _sellerIds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_sellerIds);
 }
 
-OrderCreate _$OrderCreateFromJson(Map<String, dynamic> json) {
-  return _OrderCreate.fromJson(json);
+@override final  String stripeSessionId;
+// Shipping approval
+@override@JsonKey() final  ShippingApprovalStatus shippingApprovalStatus;
+@override@JsonKey() final  bool shippingApprovalRequired;
+@override@JsonKey() final  double actualShipping;
+@override@JsonKey() final  double pendingTotal;
+// Payout tracking
+ final  List<SellerPayout> _sellerPayouts;
+// Payout tracking
+@override@JsonKey() List<SellerPayout> get sellerPayouts {
+  if (_sellerPayouts is EqualUnmodifiableListView) return _sellerPayouts;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_sellerPayouts);
 }
+
+@override@JsonKey() final  bool confirmedByClient;
+@override final  DateTime? confirmedAt;
+@override@JsonKey() final  double platformFeeTotal;
+@override@JsonKey() final  String payoutStatus;
+// Ratings
+ final  List<Ratings> _ratings;
+// Ratings
+@override@JsonKey() List<Ratings> get ratings {
+  if (_ratings is EqualUnmodifiableListView) return _ratings;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_ratings);
+}
+
+// === AUDIT FIX: 18 missing fields synced from Python/Firestore ===
+// Payment capture tracking
+@override final  String? stripePaymentIntentId;
+@override@JsonKey() final  int captureAttempts;
+@override final  DateTime? capturedAt;
+@override final  DateTime? expiresAt;
+@override@JsonKey() final  bool autoConfirmed;
+@override@JsonKey() final  bool autoCaptured;
+// Refund tracking
+@override@JsonKey() final  double refundAmount;
+@override final  DateTime? refundedAt;
+// Cancellation tracking
+@override@JsonKey() final  bool stockRestored;
+@override final  String? cancelledBy;
+@override final  DateTime? cancelledAt;
+@override final  String? cancellationReason;
+// Shipping approval
+@override final  DateTime? respondedAt;
+@override final  double? actualCost;
+// Admin review
+@override@JsonKey() final  bool requiresManualReview;
+@override final  String? manualReviewReason;
+ final  List<String> _payoutErrors;
+@override@JsonKey() List<String> get payoutErrors {
+  if (_payoutErrors is EqualUnmodifiableListView) return _payoutErrors;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_payoutErrors);
+}
+
+// Timestamp
+@override final  DateTime? updatedAt;
+// Tax fields (new)
+ final  List<Map<String, dynamic>> _itemTaxes;
+// Tax fields (new)
+@override@JsonKey() List<Map<String, dynamic>> get itemTaxes {
+  if (_itemTaxes is EqualUnmodifiableListView) return _itemTaxes;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_itemTaxes);
+}
+
+@override@JsonKey() final  bool taxExempt;
+ final  Map<String, dynamic>? _taxExemption;
+@override Map<String, dynamic>? get taxExemption {
+  final value = _taxExemption;
+  if (value == null) return null;
+  if (_taxExemption is EqualUnmodifiableMapView) return _taxExemption;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(value);
+}
+
+// Delivery instructions from buyer
+@override final  String? deliveryInstructions;
+
+/// Create a copy of Order
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$OrderCopyWith<_Order> get copyWith => __$OrderCopyWithImpl<_Order>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$OrderToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Order&&(identical(other.orderId, orderId) || other.orderId == orderId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.customerId, customerId) || other.customerId == customerId)&&(identical(other.customerEmail, customerEmail) || other.customerEmail == customerEmail)&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.totalAmountCents, totalAmountCents) || other.totalAmountCents == totalAmountCents)&&(identical(other.subtotalCents, subtotalCents) || other.subtotalCents == subtotalCents)&&(identical(other.shippingCostCents, shippingCostCents) || other.shippingCostCents == shippingCostCents)&&(identical(other.taxAmountCents, taxAmountCents) || other.taxAmountCents == taxAmountCents)&&(identical(other.taxes, taxes) || other.taxes == taxes)&&(identical(other.orderStatus, orderStatus) || other.orderStatus == orderStatus)&&(identical(other.paymentStatus, paymentStatus) || other.paymentStatus == paymentStatus)&&(identical(other.shippingAddress, shippingAddress) || other.shippingAddress == shippingAddress)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.currency, currency) || other.currency == currency)&&const DeepCollectionEquality().equals(other._sellerIds, _sellerIds)&&(identical(other.stripeSessionId, stripeSessionId) || other.stripeSessionId == stripeSessionId)&&(identical(other.shippingApprovalStatus, shippingApprovalStatus) || other.shippingApprovalStatus == shippingApprovalStatus)&&(identical(other.shippingApprovalRequired, shippingApprovalRequired) || other.shippingApprovalRequired == shippingApprovalRequired)&&(identical(other.actualShipping, actualShipping) || other.actualShipping == actualShipping)&&(identical(other.pendingTotal, pendingTotal) || other.pendingTotal == pendingTotal)&&const DeepCollectionEquality().equals(other._sellerPayouts, _sellerPayouts)&&(identical(other.confirmedByClient, confirmedByClient) || other.confirmedByClient == confirmedByClient)&&(identical(other.confirmedAt, confirmedAt) || other.confirmedAt == confirmedAt)&&(identical(other.platformFeeTotal, platformFeeTotal) || other.platformFeeTotal == platformFeeTotal)&&(identical(other.payoutStatus, payoutStatus) || other.payoutStatus == payoutStatus)&&const DeepCollectionEquality().equals(other._ratings, _ratings)&&(identical(other.stripePaymentIntentId, stripePaymentIntentId) || other.stripePaymentIntentId == stripePaymentIntentId)&&(identical(other.captureAttempts, captureAttempts) || other.captureAttempts == captureAttempts)&&(identical(other.capturedAt, capturedAt) || other.capturedAt == capturedAt)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.autoConfirmed, autoConfirmed) || other.autoConfirmed == autoConfirmed)&&(identical(other.autoCaptured, autoCaptured) || other.autoCaptured == autoCaptured)&&(identical(other.refundAmount, refundAmount) || other.refundAmount == refundAmount)&&(identical(other.refundedAt, refundedAt) || other.refundedAt == refundedAt)&&(identical(other.stockRestored, stockRestored) || other.stockRestored == stockRestored)&&(identical(other.cancelledBy, cancelledBy) || other.cancelledBy == cancelledBy)&&(identical(other.cancelledAt, cancelledAt) || other.cancelledAt == cancelledAt)&&(identical(other.cancellationReason, cancellationReason) || other.cancellationReason == cancellationReason)&&(identical(other.respondedAt, respondedAt) || other.respondedAt == respondedAt)&&(identical(other.actualCost, actualCost) || other.actualCost == actualCost)&&(identical(other.requiresManualReview, requiresManualReview) || other.requiresManualReview == requiresManualReview)&&(identical(other.manualReviewReason, manualReviewReason) || other.manualReviewReason == manualReviewReason)&&const DeepCollectionEquality().equals(other._payoutErrors, _payoutErrors)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&const DeepCollectionEquality().equals(other._itemTaxes, _itemTaxes)&&(identical(other.taxExempt, taxExempt) || other.taxExempt == taxExempt)&&const DeepCollectionEquality().equals(other._taxExemption, _taxExemption)&&(identical(other.deliveryInstructions, deliveryInstructions) || other.deliveryInstructions == deliveryInstructions));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hashAll([runtimeType,orderId,userId,customerId,customerEmail,const DeepCollectionEquality().hash(_items),totalAmountCents,subtotalCents,shippingCostCents,taxAmountCents,taxes,orderStatus,paymentStatus,shippingAddress,createdAt,currency,const DeepCollectionEquality().hash(_sellerIds),stripeSessionId,shippingApprovalStatus,shippingApprovalRequired,actualShipping,pendingTotal,const DeepCollectionEquality().hash(_sellerPayouts),confirmedByClient,confirmedAt,platformFeeTotal,payoutStatus,const DeepCollectionEquality().hash(_ratings),stripePaymentIntentId,captureAttempts,capturedAt,expiresAt,autoConfirmed,autoCaptured,refundAmount,refundedAt,stockRestored,cancelledBy,cancelledAt,cancellationReason,respondedAt,actualCost,requiresManualReview,manualReviewReason,const DeepCollectionEquality().hash(_payoutErrors),updatedAt,const DeepCollectionEquality().hash(_itemTaxes),taxExempt,const DeepCollectionEquality().hash(_taxExemption),deliveryInstructions]);
+
+@override
+String toString() {
+  return 'Order(orderId: $orderId, userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, totalAmountCents: $totalAmountCents, subtotalCents: $subtotalCents, shippingCostCents: $shippingCostCents, taxAmountCents: $taxAmountCents, taxes: $taxes, orderStatus: $orderStatus, paymentStatus: $paymentStatus, shippingAddress: $shippingAddress, createdAt: $createdAt, currency: $currency, sellerIds: $sellerIds, stripeSessionId: $stripeSessionId, shippingApprovalStatus: $shippingApprovalStatus, shippingApprovalRequired: $shippingApprovalRequired, actualShipping: $actualShipping, pendingTotal: $pendingTotal, sellerPayouts: $sellerPayouts, confirmedByClient: $confirmedByClient, confirmedAt: $confirmedAt, platformFeeTotal: $platformFeeTotal, payoutStatus: $payoutStatus, ratings: $ratings, stripePaymentIntentId: $stripePaymentIntentId, captureAttempts: $captureAttempts, capturedAt: $capturedAt, expiresAt: $expiresAt, autoConfirmed: $autoConfirmed, autoCaptured: $autoCaptured, refundAmount: $refundAmount, refundedAt: $refundedAt, stockRestored: $stockRestored, cancelledBy: $cancelledBy, cancelledAt: $cancelledAt, cancellationReason: $cancellationReason, respondedAt: $respondedAt, actualCost: $actualCost, requiresManualReview: $requiresManualReview, manualReviewReason: $manualReviewReason, payoutErrors: $payoutErrors, updatedAt: $updatedAt, itemTaxes: $itemTaxes, taxExempt: $taxExempt, taxExemption: $taxExemption, deliveryInstructions: $deliveryInstructions)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$OrderCopyWith<$Res> implements $OrderCopyWith<$Res> {
+  factory _$OrderCopyWith(_Order value, $Res Function(_Order) _then) = __$OrderCopyWithImpl;
+@override @useResult
+$Res call({
+ String orderId, String userId, String customerId, String customerEmail, List<OrderItem> items, int totalAmountCents, int subtotalCents, int shippingCostCents, int taxAmountCents, Taxes taxes, OrderStatus orderStatus, PaymentStatus paymentStatus, Address shippingAddress, DateTime createdAt, String currency, List<String> sellerIds, String stripeSessionId, ShippingApprovalStatus shippingApprovalStatus, bool shippingApprovalRequired, double actualShipping, double pendingTotal, List<SellerPayout> sellerPayouts, bool confirmedByClient, DateTime? confirmedAt, double platformFeeTotal, String payoutStatus, List<Ratings> ratings, String? stripePaymentIntentId, int captureAttempts, DateTime? capturedAt, DateTime? expiresAt, bool autoConfirmed, bool autoCaptured, double refundAmount, DateTime? refundedAt, bool stockRestored, String? cancelledBy, DateTime? cancelledAt, String? cancellationReason, DateTime? respondedAt, double? actualCost, bool requiresManualReview, String? manualReviewReason, List<String> payoutErrors, DateTime? updatedAt, List<Map<String, dynamic>> itemTaxes, bool taxExempt, Map<String, dynamic>? taxExemption, String? deliveryInstructions
+});
+
+
+@override $TaxesCopyWith<$Res> get taxes;@override $AddressCopyWith<$Res> get shippingAddress;
+
+}
+/// @nodoc
+class __$OrderCopyWithImpl<$Res>
+    implements _$OrderCopyWith<$Res> {
+  __$OrderCopyWithImpl(this._self, this._then);
+
+  final _Order _self;
+  final $Res Function(_Order) _then;
+
+/// Create a copy of Order
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? orderId = null,Object? userId = null,Object? customerId = null,Object? customerEmail = null,Object? items = null,Object? totalAmountCents = null,Object? subtotalCents = null,Object? shippingCostCents = null,Object? taxAmountCents = null,Object? taxes = null,Object? orderStatus = null,Object? paymentStatus = null,Object? shippingAddress = null,Object? createdAt = null,Object? currency = null,Object? sellerIds = null,Object? stripeSessionId = null,Object? shippingApprovalStatus = null,Object? shippingApprovalRequired = null,Object? actualShipping = null,Object? pendingTotal = null,Object? sellerPayouts = null,Object? confirmedByClient = null,Object? confirmedAt = freezed,Object? platformFeeTotal = null,Object? payoutStatus = null,Object? ratings = null,Object? stripePaymentIntentId = freezed,Object? captureAttempts = null,Object? capturedAt = freezed,Object? expiresAt = freezed,Object? autoConfirmed = null,Object? autoCaptured = null,Object? refundAmount = null,Object? refundedAt = freezed,Object? stockRestored = null,Object? cancelledBy = freezed,Object? cancelledAt = freezed,Object? cancellationReason = freezed,Object? respondedAt = freezed,Object? actualCost = freezed,Object? requiresManualReview = null,Object? manualReviewReason = freezed,Object? payoutErrors = null,Object? updatedAt = freezed,Object? itemTaxes = null,Object? taxExempt = null,Object? taxExemption = freezed,Object? deliveryInstructions = freezed,}) {
+  return _then(_Order(
+orderId: null == orderId ? _self.orderId : orderId // ignore: cast_nullable_to_non_nullable
+as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String,customerId: null == customerId ? _self.customerId : customerId // ignore: cast_nullable_to_non_nullable
+as String,customerEmail: null == customerEmail ? _self.customerEmail : customerEmail // ignore: cast_nullable_to_non_nullable
+as String,items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
+as List<OrderItem>,totalAmountCents: null == totalAmountCents ? _self.totalAmountCents : totalAmountCents // ignore: cast_nullable_to_non_nullable
+as int,subtotalCents: null == subtotalCents ? _self.subtotalCents : subtotalCents // ignore: cast_nullable_to_non_nullable
+as int,shippingCostCents: null == shippingCostCents ? _self.shippingCostCents : shippingCostCents // ignore: cast_nullable_to_non_nullable
+as int,taxAmountCents: null == taxAmountCents ? _self.taxAmountCents : taxAmountCents // ignore: cast_nullable_to_non_nullable
+as int,taxes: null == taxes ? _self.taxes : taxes // ignore: cast_nullable_to_non_nullable
+as Taxes,orderStatus: null == orderStatus ? _self.orderStatus : orderStatus // ignore: cast_nullable_to_non_nullable
+as OrderStatus,paymentStatus: null == paymentStatus ? _self.paymentStatus : paymentStatus // ignore: cast_nullable_to_non_nullable
+as PaymentStatus,shippingAddress: null == shippingAddress ? _self.shippingAddress : shippingAddress // ignore: cast_nullable_to_non_nullable
+as Address,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as DateTime,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,sellerIds: null == sellerIds ? _self._sellerIds : sellerIds // ignore: cast_nullable_to_non_nullable
+as List<String>,stripeSessionId: null == stripeSessionId ? _self.stripeSessionId : stripeSessionId // ignore: cast_nullable_to_non_nullable
+as String,shippingApprovalStatus: null == shippingApprovalStatus ? _self.shippingApprovalStatus : shippingApprovalStatus // ignore: cast_nullable_to_non_nullable
+as ShippingApprovalStatus,shippingApprovalRequired: null == shippingApprovalRequired ? _self.shippingApprovalRequired : shippingApprovalRequired // ignore: cast_nullable_to_non_nullable
+as bool,actualShipping: null == actualShipping ? _self.actualShipping : actualShipping // ignore: cast_nullable_to_non_nullable
+as double,pendingTotal: null == pendingTotal ? _self.pendingTotal : pendingTotal // ignore: cast_nullable_to_non_nullable
+as double,sellerPayouts: null == sellerPayouts ? _self._sellerPayouts : sellerPayouts // ignore: cast_nullable_to_non_nullable
+as List<SellerPayout>,confirmedByClient: null == confirmedByClient ? _self.confirmedByClient : confirmedByClient // ignore: cast_nullable_to_non_nullable
+as bool,confirmedAt: freezed == confirmedAt ? _self.confirmedAt : confirmedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,platformFeeTotal: null == platformFeeTotal ? _self.platformFeeTotal : platformFeeTotal // ignore: cast_nullable_to_non_nullable
+as double,payoutStatus: null == payoutStatus ? _self.payoutStatus : payoutStatus // ignore: cast_nullable_to_non_nullable
+as String,ratings: null == ratings ? _self._ratings : ratings // ignore: cast_nullable_to_non_nullable
+as List<Ratings>,stripePaymentIntentId: freezed == stripePaymentIntentId ? _self.stripePaymentIntentId : stripePaymentIntentId // ignore: cast_nullable_to_non_nullable
+as String?,captureAttempts: null == captureAttempts ? _self.captureAttempts : captureAttempts // ignore: cast_nullable_to_non_nullable
+as int,capturedAt: freezed == capturedAt ? _self.capturedAt : capturedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,expiresAt: freezed == expiresAt ? _self.expiresAt : expiresAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,autoConfirmed: null == autoConfirmed ? _self.autoConfirmed : autoConfirmed // ignore: cast_nullable_to_non_nullable
+as bool,autoCaptured: null == autoCaptured ? _self.autoCaptured : autoCaptured // ignore: cast_nullable_to_non_nullable
+as bool,refundAmount: null == refundAmount ? _self.refundAmount : refundAmount // ignore: cast_nullable_to_non_nullable
+as double,refundedAt: freezed == refundedAt ? _self.refundedAt : refundedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,stockRestored: null == stockRestored ? _self.stockRestored : stockRestored // ignore: cast_nullable_to_non_nullable
+as bool,cancelledBy: freezed == cancelledBy ? _self.cancelledBy : cancelledBy // ignore: cast_nullable_to_non_nullable
+as String?,cancelledAt: freezed == cancelledAt ? _self.cancelledAt : cancelledAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,cancellationReason: freezed == cancellationReason ? _self.cancellationReason : cancellationReason // ignore: cast_nullable_to_non_nullable
+as String?,respondedAt: freezed == respondedAt ? _self.respondedAt : respondedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,actualCost: freezed == actualCost ? _self.actualCost : actualCost // ignore: cast_nullable_to_non_nullable
+as double?,requiresManualReview: null == requiresManualReview ? _self.requiresManualReview : requiresManualReview // ignore: cast_nullable_to_non_nullable
+as bool,manualReviewReason: freezed == manualReviewReason ? _self.manualReviewReason : manualReviewReason // ignore: cast_nullable_to_non_nullable
+as String?,payoutErrors: null == payoutErrors ? _self._payoutErrors : payoutErrors // ignore: cast_nullable_to_non_nullable
+as List<String>,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,itemTaxes: null == itemTaxes ? _self._itemTaxes : itemTaxes // ignore: cast_nullable_to_non_nullable
+as List<Map<String, dynamic>>,taxExempt: null == taxExempt ? _self.taxExempt : taxExempt // ignore: cast_nullable_to_non_nullable
+as bool,taxExemption: freezed == taxExemption ? _self._taxExemption : taxExemption // ignore: cast_nullable_to_non_nullable
+as Map<String, dynamic>?,deliveryInstructions: freezed == deliveryInstructions ? _self.deliveryInstructions : deliveryInstructions // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+/// Create a copy of Order
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$TaxesCopyWith<$Res> get taxes {
+  
+  return $TaxesCopyWith<$Res>(_self.taxes, (value) {
+    return _then(_self.copyWith(taxes: value));
+  });
+}/// Create a copy of Order
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$AddressCopyWith<$Res> get shippingAddress {
+  
+  return $AddressCopyWith<$Res>(_self.shippingAddress, (value) {
+    return _then(_self.copyWith(shippingAddress: value));
+  });
+}
+}
+
 
 /// @nodoc
 mixin _$OrderCreate {
-  String get userId => throw _privateConstructorUsedError;
-  String get customerId => throw _privateConstructorUsedError;
-  String get customerEmail => throw _privateConstructorUsedError;
-  List<OrderItem> get items => throw _privateConstructorUsedError;
-  Address get shippingAddress => throw _privateConstructorUsedError;
-  double get shippingCost => throw _privateConstructorUsedError;
-  String get currency => throw _privateConstructorUsedError;
-  bool get shippingApprovalRequired => throw _privateConstructorUsedError;
+
+ String get userId; String get customerId; String get customerEmail; List<OrderItem> get items; Address get shippingAddress; double get shippingCost; String get currency; bool get shippingApprovalRequired;
+/// Create a copy of OrderCreate
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$OrderCreateCopyWith<OrderCreate> get copyWith => _$OrderCreateCopyWithImpl<OrderCreate>(this as OrderCreate, _$identity);
 
   /// Serializes this OrderCreate to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  Map<String, dynamic> toJson();
 
-  /// Create a copy of OrderCreate
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $OrderCreateCopyWith<OrderCreate> get copyWith =>
-      throw _privateConstructorUsedError;
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is OrderCreate&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.customerId, customerId) || other.customerId == customerId)&&(identical(other.customerEmail, customerEmail) || other.customerEmail == customerEmail)&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.shippingAddress, shippingAddress) || other.shippingAddress == shippingAddress)&&(identical(other.shippingCost, shippingCost) || other.shippingCost == shippingCost)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.shippingApprovalRequired, shippingApprovalRequired) || other.shippingApprovalRequired == shippingApprovalRequired));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,userId,customerId,customerEmail,const DeepCollectionEquality().hash(items),shippingAddress,shippingCost,currency,shippingApprovalRequired);
+
+@override
+String toString() {
+  return 'OrderCreate(userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, shippingAddress: $shippingAddress, shippingCost: $shippingCost, currency: $currency, shippingApprovalRequired: $shippingApprovalRequired)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $OrderCreateCopyWith<$Res> {
-  factory $OrderCreateCopyWith(
-    OrderCreate value,
-    $Res Function(OrderCreate) then,
-  ) = _$OrderCreateCopyWithImpl<$Res, OrderCreate>;
-  @useResult
-  $Res call({
-    String userId,
-    String customerId,
-    String customerEmail,
-    List<OrderItem> items,
-    Address shippingAddress,
-    double shippingCost,
-    String currency,
-    bool shippingApprovalRequired,
-  });
+abstract mixin class $OrderCreateCopyWith<$Res>  {
+  factory $OrderCreateCopyWith(OrderCreate value, $Res Function(OrderCreate) _then) = _$OrderCreateCopyWithImpl;
+@useResult
+$Res call({
+ String userId, String customerId, String customerEmail, List<OrderItem> items, Address shippingAddress, double shippingCost, String currency, bool shippingApprovalRequired
+});
 
-  $AddressCopyWith<$Res> get shippingAddress;
+
+$AddressCopyWith<$Res> get shippingAddress;
+
 }
-
 /// @nodoc
-class _$OrderCreateCopyWithImpl<$Res, $Val extends OrderCreate>
+class _$OrderCreateCopyWithImpl<$Res>
     implements $OrderCreateCopyWith<$Res> {
-  _$OrderCreateCopyWithImpl(this._value, this._then);
+  _$OrderCreateCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final OrderCreate _self;
+  final $Res Function(OrderCreate) _then;
 
-  /// Create a copy of OrderCreate
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? userId = null,
-    Object? customerId = null,
-    Object? customerEmail = null,
-    Object? items = null,
-    Object? shippingAddress = null,
-    Object? shippingCost = null,
-    Object? currency = null,
-    Object? shippingApprovalRequired = null,
-  }) {
-    return _then(
-      _value.copyWith(
-            userId: null == userId
-                ? _value.userId
-                : userId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            customerId: null == customerId
-                ? _value.customerId
-                : customerId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            customerEmail: null == customerEmail
-                ? _value.customerEmail
-                : customerEmail // ignore: cast_nullable_to_non_nullable
-                      as String,
-            items: null == items
-                ? _value.items
-                : items // ignore: cast_nullable_to_non_nullable
-                      as List<OrderItem>,
-            shippingAddress: null == shippingAddress
-                ? _value.shippingAddress
-                : shippingAddress // ignore: cast_nullable_to_non_nullable
-                      as Address,
-            shippingCost: null == shippingCost
-                ? _value.shippingCost
-                : shippingCost // ignore: cast_nullable_to_non_nullable
-                      as double,
-            currency: null == currency
-                ? _value.currency
-                : currency // ignore: cast_nullable_to_non_nullable
-                      as String,
-            shippingApprovalRequired: null == shippingApprovalRequired
-                ? _value.shippingApprovalRequired
-                : shippingApprovalRequired // ignore: cast_nullable_to_non_nullable
-                      as bool,
-          )
-          as $Val,
-    );
-  }
-
-  /// Create a copy of OrderCreate
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $AddressCopyWith<$Res> get shippingAddress {
-    return $AddressCopyWith<$Res>(_value.shippingAddress, (value) {
-      return _then(_value.copyWith(shippingAddress: value) as $Val);
-    });
-  }
+/// Create a copy of OrderCreate
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? customerId = null,Object? customerEmail = null,Object? items = null,Object? shippingAddress = null,Object? shippingCost = null,Object? currency = null,Object? shippingApprovalRequired = null,}) {
+  return _then(_self.copyWith(
+userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String,customerId: null == customerId ? _self.customerId : customerId // ignore: cast_nullable_to_non_nullable
+as String,customerEmail: null == customerEmail ? _self.customerEmail : customerEmail // ignore: cast_nullable_to_non_nullable
+as String,items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
+as List<OrderItem>,shippingAddress: null == shippingAddress ? _self.shippingAddress : shippingAddress // ignore: cast_nullable_to_non_nullable
+as Address,shippingCost: null == shippingCost ? _self.shippingCost : shippingCost // ignore: cast_nullable_to_non_nullable
+as double,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,shippingApprovalRequired: null == shippingApprovalRequired ? _self.shippingApprovalRequired : shippingApprovalRequired // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
 }
-
-/// @nodoc
-abstract class _$$OrderCreateImplCopyWith<$Res>
-    implements $OrderCreateCopyWith<$Res> {
-  factory _$$OrderCreateImplCopyWith(
-    _$OrderCreateImpl value,
-    $Res Function(_$OrderCreateImpl) then,
-  ) = __$$OrderCreateImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({
-    String userId,
-    String customerId,
-    String customerEmail,
-    List<OrderItem> items,
-    Address shippingAddress,
-    double shippingCost,
-    String currency,
-    bool shippingApprovalRequired,
+/// Create a copy of OrderCreate
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$AddressCopyWith<$Res> get shippingAddress {
+  
+  return $AddressCopyWith<$Res>(_self.shippingAddress, (value) {
+    return _then(_self.copyWith(shippingAddress: value));
   });
-
-  @override
-  $AddressCopyWith<$Res> get shippingAddress;
+}
 }
 
-/// @nodoc
-class __$$OrderCreateImplCopyWithImpl<$Res>
-    extends _$OrderCreateCopyWithImpl<$Res, _$OrderCreateImpl>
-    implements _$$OrderCreateImplCopyWith<$Res> {
-  __$$OrderCreateImplCopyWithImpl(
-    _$OrderCreateImpl _value,
-    $Res Function(_$OrderCreateImpl) _then,
-  ) : super(_value, _then);
 
-  /// Create a copy of OrderCreate
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? userId = null,
-    Object? customerId = null,
-    Object? customerEmail = null,
-    Object? items = null,
-    Object? shippingAddress = null,
-    Object? shippingCost = null,
-    Object? currency = null,
-    Object? shippingApprovalRequired = null,
-  }) {
-    return _then(
-      _$OrderCreateImpl(
-        userId: null == userId
-            ? _value.userId
-            : userId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        customerId: null == customerId
-            ? _value.customerId
-            : customerId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        customerEmail: null == customerEmail
-            ? _value.customerEmail
-            : customerEmail // ignore: cast_nullable_to_non_nullable
-                  as String,
-        items: null == items
-            ? _value._items
-            : items // ignore: cast_nullable_to_non_nullable
-                  as List<OrderItem>,
-        shippingAddress: null == shippingAddress
-            ? _value.shippingAddress
-            : shippingAddress // ignore: cast_nullable_to_non_nullable
-                  as Address,
-        shippingCost: null == shippingCost
-            ? _value.shippingCost
-            : shippingCost // ignore: cast_nullable_to_non_nullable
-                  as double,
-        currency: null == currency
-            ? _value.currency
-            : currency // ignore: cast_nullable_to_non_nullable
-                  as String,
-        shippingApprovalRequired: null == shippingApprovalRequired
-            ? _value.shippingApprovalRequired
-            : shippingApprovalRequired // ignore: cast_nullable_to_non_nullable
-                  as bool,
-      ),
-    );
-  }
+/// Adds pattern-matching-related methods to [OrderCreate].
+extension OrderCreatePatterns on OrderCreate {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _OrderCreate value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _OrderCreate() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _OrderCreate value)  $default,){
+final _that = this;
+switch (_that) {
+case _OrderCreate():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _OrderCreate value)?  $default,){
+final _that = this;
+switch (_that) {
+case _OrderCreate() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String userId,  String customerId,  String customerEmail,  List<OrderItem> items,  Address shippingAddress,  double shippingCost,  String currency,  bool shippingApprovalRequired)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _OrderCreate() when $default != null:
+return $default(_that.userId,_that.customerId,_that.customerEmail,_that.items,_that.shippingAddress,_that.shippingCost,_that.currency,_that.shippingApprovalRequired);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String userId,  String customerId,  String customerEmail,  List<OrderItem> items,  Address shippingAddress,  double shippingCost,  String currency,  bool shippingApprovalRequired)  $default,) {final _that = this;
+switch (_that) {
+case _OrderCreate():
+return $default(_that.userId,_that.customerId,_that.customerEmail,_that.items,_that.shippingAddress,_that.shippingCost,_that.currency,_that.shippingApprovalRequired);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String userId,  String customerId,  String customerEmail,  List<OrderItem> items,  Address shippingAddress,  double shippingCost,  String currency,  bool shippingApprovalRequired)?  $default,) {final _that = this;
+switch (_that) {
+case _OrderCreate() when $default != null:
+return $default(_that.userId,_that.customerId,_that.customerEmail,_that.items,_that.shippingAddress,_that.shippingCost,_that.currency,_that.shippingApprovalRequired);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$OrderCreateImpl implements _OrderCreate {
-  const _$OrderCreateImpl({
-    required this.userId,
-    required this.customerId,
-    required this.customerEmail,
-    required final List<OrderItem> items,
-    required this.shippingAddress,
-    this.shippingCost = 0.0,
-    this.currency = BusinessRules.defaultCurrency,
-    this.shippingApprovalRequired = false,
-  }) : _items = items;
 
-  factory _$OrderCreateImpl.fromJson(Map<String, dynamic> json) =>
-      _$$OrderCreateImplFromJson(json);
+class _OrderCreate implements OrderCreate {
+  const _OrderCreate({required this.userId, required this.customerId, required this.customerEmail, required final  List<OrderItem> items, required this.shippingAddress, this.shippingCost = 0.0, this.currency = BusinessRules.defaultCurrency, this.shippingApprovalRequired = false}): _items = items;
+  factory _OrderCreate.fromJson(Map<String, dynamic> json) => _$OrderCreateFromJson(json);
 
-  @override
-  final String userId;
-  @override
-  final String customerId;
-  @override
-  final String customerEmail;
-  final List<OrderItem> _items;
-  @override
-  List<OrderItem> get items {
-    if (_items is EqualUnmodifiableListView) return _items;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_items);
-  }
-
-  @override
-  final Address shippingAddress;
-  @override
-  @JsonKey()
-  final double shippingCost;
-  @override
-  @JsonKey()
-  final String currency;
-  @override
-  @JsonKey()
-  final bool shippingApprovalRequired;
-
-  @override
-  String toString() {
-    return 'OrderCreate(userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, shippingAddress: $shippingAddress, shippingCost: $shippingCost, currency: $currency, shippingApprovalRequired: $shippingApprovalRequired)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$OrderCreateImpl &&
-            (identical(other.userId, userId) || other.userId == userId) &&
-            (identical(other.customerId, customerId) ||
-                other.customerId == customerId) &&
-            (identical(other.customerEmail, customerEmail) ||
-                other.customerEmail == customerEmail) &&
-            const DeepCollectionEquality().equals(other._items, _items) &&
-            (identical(other.shippingAddress, shippingAddress) ||
-                other.shippingAddress == shippingAddress) &&
-            (identical(other.shippingCost, shippingCost) ||
-                other.shippingCost == shippingCost) &&
-            (identical(other.currency, currency) ||
-                other.currency == currency) &&
-            (identical(
-                  other.shippingApprovalRequired,
-                  shippingApprovalRequired,
-                ) ||
-                other.shippingApprovalRequired == shippingApprovalRequired));
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    userId,
-    customerId,
-    customerEmail,
-    const DeepCollectionEquality().hash(_items),
-    shippingAddress,
-    shippingCost,
-    currency,
-    shippingApprovalRequired,
-  );
-
-  /// Create a copy of OrderCreate
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$OrderCreateImplCopyWith<_$OrderCreateImpl> get copyWith =>
-      __$$OrderCreateImplCopyWithImpl<_$OrderCreateImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$OrderCreateImplToJson(this);
-  }
+@override final  String userId;
+@override final  String customerId;
+@override final  String customerEmail;
+ final  List<OrderItem> _items;
+@override List<OrderItem> get items {
+  if (_items is EqualUnmodifiableListView) return _items;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_items);
 }
 
-abstract class _OrderCreate implements OrderCreate {
-  const factory _OrderCreate({
-    required final String userId,
-    required final String customerId,
-    required final String customerEmail,
-    required final List<OrderItem> items,
-    required final Address shippingAddress,
-    final double shippingCost,
-    final String currency,
-    final bool shippingApprovalRequired,
-  }) = _$OrderCreateImpl;
+@override final  Address shippingAddress;
+@override@JsonKey() final  double shippingCost;
+@override@JsonKey() final  String currency;
+@override@JsonKey() final  bool shippingApprovalRequired;
 
-  factory _OrderCreate.fromJson(Map<String, dynamic> json) =
-      _$OrderCreateImpl.fromJson;
+/// Create a copy of OrderCreate
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$OrderCreateCopyWith<_OrderCreate> get copyWith => __$OrderCreateCopyWithImpl<_OrderCreate>(this, _$identity);
 
-  @override
-  String get userId;
-  @override
-  String get customerId;
-  @override
-  String get customerEmail;
-  @override
-  List<OrderItem> get items;
-  @override
-  Address get shippingAddress;
-  @override
-  double get shippingCost;
-  @override
-  String get currency;
-  @override
-  bool get shippingApprovalRequired;
-
-  /// Create a copy of OrderCreate
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$OrderCreateImplCopyWith<_$OrderCreateImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+@override
+Map<String, dynamic> toJson() {
+  return _$OrderCreateToJson(this, );
 }
 
-OrderItem _$OrderItemFromJson(Map<String, dynamic> json) {
-  return _OrderItem.fromJson(json);
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _OrderCreate&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.customerId, customerId) || other.customerId == customerId)&&(identical(other.customerEmail, customerEmail) || other.customerEmail == customerEmail)&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.shippingAddress, shippingAddress) || other.shippingAddress == shippingAddress)&&(identical(other.shippingCost, shippingCost) || other.shippingCost == shippingCost)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.shippingApprovalRequired, shippingApprovalRequired) || other.shippingApprovalRequired == shippingApprovalRequired));
 }
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,userId,customerId,customerEmail,const DeepCollectionEquality().hash(_items),shippingAddress,shippingCost,currency,shippingApprovalRequired);
+
+@override
+String toString() {
+  return 'OrderCreate(userId: $userId, customerId: $customerId, customerEmail: $customerEmail, items: $items, shippingAddress: $shippingAddress, shippingCost: $shippingCost, currency: $currency, shippingApprovalRequired: $shippingApprovalRequired)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$OrderCreateCopyWith<$Res> implements $OrderCreateCopyWith<$Res> {
+  factory _$OrderCreateCopyWith(_OrderCreate value, $Res Function(_OrderCreate) _then) = __$OrderCreateCopyWithImpl;
+@override @useResult
+$Res call({
+ String userId, String customerId, String customerEmail, List<OrderItem> items, Address shippingAddress, double shippingCost, String currency, bool shippingApprovalRequired
+});
+
+
+@override $AddressCopyWith<$Res> get shippingAddress;
+
+}
+/// @nodoc
+class __$OrderCreateCopyWithImpl<$Res>
+    implements _$OrderCreateCopyWith<$Res> {
+  __$OrderCreateCopyWithImpl(this._self, this._then);
+
+  final _OrderCreate _self;
+  final $Res Function(_OrderCreate) _then;
+
+/// Create a copy of OrderCreate
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? customerId = null,Object? customerEmail = null,Object? items = null,Object? shippingAddress = null,Object? shippingCost = null,Object? currency = null,Object? shippingApprovalRequired = null,}) {
+  return _then(_OrderCreate(
+userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String,customerId: null == customerId ? _self.customerId : customerId // ignore: cast_nullable_to_non_nullable
+as String,customerEmail: null == customerEmail ? _self.customerEmail : customerEmail // ignore: cast_nullable_to_non_nullable
+as String,items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
+as List<OrderItem>,shippingAddress: null == shippingAddress ? _self.shippingAddress : shippingAddress // ignore: cast_nullable_to_non_nullable
+as Address,shippingCost: null == shippingCost ? _self.shippingCost : shippingCost // ignore: cast_nullable_to_non_nullable
+as double,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,shippingApprovalRequired: null == shippingApprovalRequired ? _self.shippingApprovalRequired : shippingApprovalRequired // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+/// Create a copy of OrderCreate
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$AddressCopyWith<$Res> get shippingAddress {
+  
+  return $AddressCopyWith<$Res>(_self.shippingAddress, (value) {
+    return _then(_self.copyWith(shippingAddress: value));
+  });
+}
+}
+
 
 /// @nodoc
 mixin _$OrderItem {
-  String get productId => throw _privateConstructorUsedError;
-  String get name => throw _privateConstructorUsedError;
-  String get description => throw _privateConstructorUsedError;
-  double get price => throw _privateConstructorUsedError;
-  int get quantity => throw _privateConstructorUsedError;
-  List<String> get imageUrls => throw _privateConstructorUsedError;
-  String get sellerId => throw _privateConstructorUsedError;
-  Address get sellerAddress =>
-      throw _privateConstructorUsedError; // Per-item status tracking (NEW)
-  String get status =>
-      throw _privateConstructorUsedError; // 'pending' | 'shipped' | 'delivered' | 'refunded'
-  DeliveryStatus get deliveryStatus =>
-      throw _privateConstructorUsedError; // DEPRECATED: backwards compatibility
-  String? get trackingNumber => throw _privateConstructorUsedError;
-  String? get carrier => throw _privateConstructorUsedError;
-  DateTime? get shippedAt => throw _privateConstructorUsedError;
-  DateTime? get deliveredAt => throw _privateConstructorUsedError;
-  DateTime? get refundedAt => throw _privateConstructorUsedError;
-  String? get refundReason => throw _privateConstructorUsedError;
-  int? get refundAmountCents => throw _privateConstructorUsedError;
-  String? get refundId => throw _privateConstructorUsedError;
-  bool get confirmedByBuyer =>
-      throw _privateConstructorUsedError; // Shipping metadata
-  double? get weightKg => throw _privateConstructorUsedError;
-  double? get lengthCm => throw _privateConstructorUsedError;
-  double? get widthCm => throw _privateConstructorUsedError;
-  double? get heightCm => throw _privateConstructorUsedError;
-  bool get isLocalDeliveryOnly => throw _privateConstructorUsedError;
-  bool get isPerishable => throw _privateConstructorUsedError;
-  int get estimatedShipDays => throw _privateConstructorUsedError;
-  List<SellerDeliveryOption> get deliveryOptions =>
-      throw _privateConstructorUsedError;
-  int get minimumOrderQuantity => throw _privateConstructorUsedError;
-  bool get freeShipping => throw _privateConstructorUsedError;
-  bool get isDigital => throw _privateConstructorUsedError; // Tax field (new)
-  String? get taxCode => throw _privateConstructorUsedError;
+
+ String get productId; String get name; String get description; double get price; int get quantity; List<String> get imageUrls; String get sellerId; Address get sellerAddress;// Per-item status tracking
+ String get status;// 'pending' | 'shipped' | 'delivered' | 'refunded'
+ DeliveryStatus get deliveryStatus;// Parallel enum field for type-safe access
+ String? get trackingNumber; String? get carrier; DateTime? get shippedAt; DateTime? get deliveredAt; DateTime? get refundedAt; String? get refundReason; int? get refundAmountCents; String? get refundId; bool get confirmedByBuyer;// Shipping metadata
+ double? get weightKg; double? get lengthCm; double? get widthCm; double? get heightCm; bool get isLocalDeliveryOnly; bool get isPerishable; int get estimatedShipDays; List<SellerDeliveryOption> get deliveryOptions; int get minimumOrderQuantity; bool get freeShipping; bool get isDigital;// Tax field (new)
+ String? get taxCode;
+/// Create a copy of OrderItem
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$OrderItemCopyWith<OrderItem> get copyWith => _$OrderItemCopyWithImpl<OrderItem>(this as OrderItem, _$identity);
 
   /// Serializes this OrderItem to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  Map<String, dynamic> toJson();
 
-  /// Create a copy of OrderItem
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $OrderItemCopyWith<OrderItem> get copyWith =>
-      throw _privateConstructorUsedError;
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is OrderItem&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.price, price) || other.price == price)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&const DeepCollectionEquality().equals(other.imageUrls, imageUrls)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.sellerAddress, sellerAddress) || other.sellerAddress == sellerAddress)&&(identical(other.status, status) || other.status == status)&&(identical(other.deliveryStatus, deliveryStatus) || other.deliveryStatus == deliveryStatus)&&(identical(other.trackingNumber, trackingNumber) || other.trackingNumber == trackingNumber)&&(identical(other.carrier, carrier) || other.carrier == carrier)&&(identical(other.shippedAt, shippedAt) || other.shippedAt == shippedAt)&&(identical(other.deliveredAt, deliveredAt) || other.deliveredAt == deliveredAt)&&(identical(other.refundedAt, refundedAt) || other.refundedAt == refundedAt)&&(identical(other.refundReason, refundReason) || other.refundReason == refundReason)&&(identical(other.refundAmountCents, refundAmountCents) || other.refundAmountCents == refundAmountCents)&&(identical(other.refundId, refundId) || other.refundId == refundId)&&(identical(other.confirmedByBuyer, confirmedByBuyer) || other.confirmedByBuyer == confirmedByBuyer)&&(identical(other.weightKg, weightKg) || other.weightKg == weightKg)&&(identical(other.lengthCm, lengthCm) || other.lengthCm == lengthCm)&&(identical(other.widthCm, widthCm) || other.widthCm == widthCm)&&(identical(other.heightCm, heightCm) || other.heightCm == heightCm)&&(identical(other.isLocalDeliveryOnly, isLocalDeliveryOnly) || other.isLocalDeliveryOnly == isLocalDeliveryOnly)&&(identical(other.isPerishable, isPerishable) || other.isPerishable == isPerishable)&&(identical(other.estimatedShipDays, estimatedShipDays) || other.estimatedShipDays == estimatedShipDays)&&const DeepCollectionEquality().equals(other.deliveryOptions, deliveryOptions)&&(identical(other.minimumOrderQuantity, minimumOrderQuantity) || other.minimumOrderQuantity == minimumOrderQuantity)&&(identical(other.freeShipping, freeShipping) || other.freeShipping == freeShipping)&&(identical(other.isDigital, isDigital) || other.isDigital == isDigital)&&(identical(other.taxCode, taxCode) || other.taxCode == taxCode));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hashAll([runtimeType,productId,name,description,price,quantity,const DeepCollectionEquality().hash(imageUrls),sellerId,sellerAddress,status,deliveryStatus,trackingNumber,carrier,shippedAt,deliveredAt,refundedAt,refundReason,refundAmountCents,refundId,confirmedByBuyer,weightKg,lengthCm,widthCm,heightCm,isLocalDeliveryOnly,isPerishable,estimatedShipDays,const DeepCollectionEquality().hash(deliveryOptions),minimumOrderQuantity,freeShipping,isDigital,taxCode]);
+
+@override
+String toString() {
+  return 'OrderItem(productId: $productId, name: $name, description: $description, price: $price, quantity: $quantity, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, status: $status, deliveryStatus: $deliveryStatus, trackingNumber: $trackingNumber, carrier: $carrier, shippedAt: $shippedAt, deliveredAt: $deliveredAt, refundedAt: $refundedAt, refundReason: $refundReason, refundAmountCents: $refundAmountCents, refundId: $refundId, confirmedByBuyer: $confirmedByBuyer, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, taxCode: $taxCode)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $OrderItemCopyWith<$Res> {
-  factory $OrderItemCopyWith(OrderItem value, $Res Function(OrderItem) then) =
-      _$OrderItemCopyWithImpl<$Res, OrderItem>;
-  @useResult
-  $Res call({
-    String productId,
-    String name,
-    String description,
-    double price,
-    int quantity,
-    List<String> imageUrls,
-    String sellerId,
-    Address sellerAddress,
-    String status,
-    DeliveryStatus deliveryStatus,
-    String? trackingNumber,
-    String? carrier,
-    DateTime? shippedAt,
-    DateTime? deliveredAt,
-    DateTime? refundedAt,
-    String? refundReason,
-    int? refundAmountCents,
-    String? refundId,
-    bool confirmedByBuyer,
-    double? weightKg,
-    double? lengthCm,
-    double? widthCm,
-    double? heightCm,
-    bool isLocalDeliveryOnly,
-    bool isPerishable,
-    int estimatedShipDays,
-    List<SellerDeliveryOption> deliveryOptions,
-    int minimumOrderQuantity,
-    bool freeShipping,
-    bool isDigital,
-    String? taxCode,
-  });
+abstract mixin class $OrderItemCopyWith<$Res>  {
+  factory $OrderItemCopyWith(OrderItem value, $Res Function(OrderItem) _then) = _$OrderItemCopyWithImpl;
+@useResult
+$Res call({
+ String productId, String name, String description, double price, int quantity, List<String> imageUrls, String sellerId, Address sellerAddress, String status, DeliveryStatus deliveryStatus, String? trackingNumber, String? carrier, DateTime? shippedAt, DateTime? deliveredAt, DateTime? refundedAt, String? refundReason, int? refundAmountCents, String? refundId, bool confirmedByBuyer, double? weightKg, double? lengthCm, double? widthCm, double? heightCm, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? taxCode
+});
 
-  $AddressCopyWith<$Res> get sellerAddress;
+
+$AddressCopyWith<$Res> get sellerAddress;
+
 }
-
 /// @nodoc
-class _$OrderItemCopyWithImpl<$Res, $Val extends OrderItem>
+class _$OrderItemCopyWithImpl<$Res>
     implements $OrderItemCopyWith<$Res> {
-  _$OrderItemCopyWithImpl(this._value, this._then);
+  _$OrderItemCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final OrderItem _self;
+  final $Res Function(OrderItem) _then;
 
-  /// Create a copy of OrderItem
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? productId = null,
-    Object? name = null,
-    Object? description = null,
-    Object? price = null,
-    Object? quantity = null,
-    Object? imageUrls = null,
-    Object? sellerId = null,
-    Object? sellerAddress = null,
-    Object? status = null,
-    Object? deliveryStatus = null,
-    Object? trackingNumber = freezed,
-    Object? carrier = freezed,
-    Object? shippedAt = freezed,
-    Object? deliveredAt = freezed,
-    Object? refundedAt = freezed,
-    Object? refundReason = freezed,
-    Object? refundAmountCents = freezed,
-    Object? refundId = freezed,
-    Object? confirmedByBuyer = null,
-    Object? weightKg = freezed,
-    Object? lengthCm = freezed,
-    Object? widthCm = freezed,
-    Object? heightCm = freezed,
-    Object? isLocalDeliveryOnly = null,
-    Object? isPerishable = null,
-    Object? estimatedShipDays = null,
-    Object? deliveryOptions = null,
-    Object? minimumOrderQuantity = null,
-    Object? freeShipping = null,
-    Object? isDigital = null,
-    Object? taxCode = freezed,
-  }) {
-    return _then(
-      _value.copyWith(
-            productId: null == productId
-                ? _value.productId
-                : productId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            name: null == name
-                ? _value.name
-                : name // ignore: cast_nullable_to_non_nullable
-                      as String,
-            description: null == description
-                ? _value.description
-                : description // ignore: cast_nullable_to_non_nullable
-                      as String,
-            price: null == price
-                ? _value.price
-                : price // ignore: cast_nullable_to_non_nullable
-                      as double,
-            quantity: null == quantity
-                ? _value.quantity
-                : quantity // ignore: cast_nullable_to_non_nullable
-                      as int,
-            imageUrls: null == imageUrls
-                ? _value.imageUrls
-                : imageUrls // ignore: cast_nullable_to_non_nullable
-                      as List<String>,
-            sellerId: null == sellerId
-                ? _value.sellerId
-                : sellerId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            sellerAddress: null == sellerAddress
-                ? _value.sellerAddress
-                : sellerAddress // ignore: cast_nullable_to_non_nullable
-                      as Address,
-            status: null == status
-                ? _value.status
-                : status // ignore: cast_nullable_to_non_nullable
-                      as String,
-            deliveryStatus: null == deliveryStatus
-                ? _value.deliveryStatus
-                : deliveryStatus // ignore: cast_nullable_to_non_nullable
-                      as DeliveryStatus,
-            trackingNumber: freezed == trackingNumber
-                ? _value.trackingNumber
-                : trackingNumber // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            carrier: freezed == carrier
-                ? _value.carrier
-                : carrier // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            shippedAt: freezed == shippedAt
-                ? _value.shippedAt
-                : shippedAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            deliveredAt: freezed == deliveredAt
-                ? _value.deliveredAt
-                : deliveredAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            refundedAt: freezed == refundedAt
-                ? _value.refundedAt
-                : refundedAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            refundReason: freezed == refundReason
-                ? _value.refundReason
-                : refundReason // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            refundAmountCents: freezed == refundAmountCents
-                ? _value.refundAmountCents
-                : refundAmountCents // ignore: cast_nullable_to_non_nullable
-                      as int?,
-            refundId: freezed == refundId
-                ? _value.refundId
-                : refundId // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            confirmedByBuyer: null == confirmedByBuyer
-                ? _value.confirmedByBuyer
-                : confirmedByBuyer // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            weightKg: freezed == weightKg
-                ? _value.weightKg
-                : weightKg // ignore: cast_nullable_to_non_nullable
-                      as double?,
-            lengthCm: freezed == lengthCm
-                ? _value.lengthCm
-                : lengthCm // ignore: cast_nullable_to_non_nullable
-                      as double?,
-            widthCm: freezed == widthCm
-                ? _value.widthCm
-                : widthCm // ignore: cast_nullable_to_non_nullable
-                      as double?,
-            heightCm: freezed == heightCm
-                ? _value.heightCm
-                : heightCm // ignore: cast_nullable_to_non_nullable
-                      as double?,
-            isLocalDeliveryOnly: null == isLocalDeliveryOnly
-                ? _value.isLocalDeliveryOnly
-                : isLocalDeliveryOnly // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            isPerishable: null == isPerishable
-                ? _value.isPerishable
-                : isPerishable // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            estimatedShipDays: null == estimatedShipDays
-                ? _value.estimatedShipDays
-                : estimatedShipDays // ignore: cast_nullable_to_non_nullable
-                      as int,
-            deliveryOptions: null == deliveryOptions
-                ? _value.deliveryOptions
-                : deliveryOptions // ignore: cast_nullable_to_non_nullable
-                      as List<SellerDeliveryOption>,
-            minimumOrderQuantity: null == minimumOrderQuantity
-                ? _value.minimumOrderQuantity
-                : minimumOrderQuantity // ignore: cast_nullable_to_non_nullable
-                      as int,
-            freeShipping: null == freeShipping
-                ? _value.freeShipping
-                : freeShipping // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            isDigital: null == isDigital
-                ? _value.isDigital
-                : isDigital // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            taxCode: freezed == taxCode
-                ? _value.taxCode
-                : taxCode // ignore: cast_nullable_to_non_nullable
-                      as String?,
-          )
-          as $Val,
-    );
-  }
-
-  /// Create a copy of OrderItem
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $AddressCopyWith<$Res> get sellerAddress {
-    return $AddressCopyWith<$Res>(_value.sellerAddress, (value) {
-      return _then(_value.copyWith(sellerAddress: value) as $Val);
-    });
-  }
+/// Create a copy of OrderItem
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? productId = null,Object? name = null,Object? description = null,Object? price = null,Object? quantity = null,Object? imageUrls = null,Object? sellerId = null,Object? sellerAddress = null,Object? status = null,Object? deliveryStatus = null,Object? trackingNumber = freezed,Object? carrier = freezed,Object? shippedAt = freezed,Object? deliveredAt = freezed,Object? refundedAt = freezed,Object? refundReason = freezed,Object? refundAmountCents = freezed,Object? refundId = freezed,Object? confirmedByBuyer = null,Object? weightKg = freezed,Object? lengthCm = freezed,Object? widthCm = freezed,Object? heightCm = freezed,Object? isLocalDeliveryOnly = null,Object? isPerishable = null,Object? estimatedShipDays = null,Object? deliveryOptions = null,Object? minimumOrderQuantity = null,Object? freeShipping = null,Object? isDigital = null,Object? taxCode = freezed,}) {
+  return _then(_self.copyWith(
+productId: null == productId ? _self.productId : productId // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String,price: null == price ? _self.price : price // ignore: cast_nullable_to_non_nullable
+as double,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
+as int,imageUrls: null == imageUrls ? _self.imageUrls : imageUrls // ignore: cast_nullable_to_non_nullable
+as List<String>,sellerId: null == sellerId ? _self.sellerId : sellerId // ignore: cast_nullable_to_non_nullable
+as String,sellerAddress: null == sellerAddress ? _self.sellerAddress : sellerAddress // ignore: cast_nullable_to_non_nullable
+as Address,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as String,deliveryStatus: null == deliveryStatus ? _self.deliveryStatus : deliveryStatus // ignore: cast_nullable_to_non_nullable
+as DeliveryStatus,trackingNumber: freezed == trackingNumber ? _self.trackingNumber : trackingNumber // ignore: cast_nullable_to_non_nullable
+as String?,carrier: freezed == carrier ? _self.carrier : carrier // ignore: cast_nullable_to_non_nullable
+as String?,shippedAt: freezed == shippedAt ? _self.shippedAt : shippedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,deliveredAt: freezed == deliveredAt ? _self.deliveredAt : deliveredAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,refundedAt: freezed == refundedAt ? _self.refundedAt : refundedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,refundReason: freezed == refundReason ? _self.refundReason : refundReason // ignore: cast_nullable_to_non_nullable
+as String?,refundAmountCents: freezed == refundAmountCents ? _self.refundAmountCents : refundAmountCents // ignore: cast_nullable_to_non_nullable
+as int?,refundId: freezed == refundId ? _self.refundId : refundId // ignore: cast_nullable_to_non_nullable
+as String?,confirmedByBuyer: null == confirmedByBuyer ? _self.confirmedByBuyer : confirmedByBuyer // ignore: cast_nullable_to_non_nullable
+as bool,weightKg: freezed == weightKg ? _self.weightKg : weightKg // ignore: cast_nullable_to_non_nullable
+as double?,lengthCm: freezed == lengthCm ? _self.lengthCm : lengthCm // ignore: cast_nullable_to_non_nullable
+as double?,widthCm: freezed == widthCm ? _self.widthCm : widthCm // ignore: cast_nullable_to_non_nullable
+as double?,heightCm: freezed == heightCm ? _self.heightCm : heightCm // ignore: cast_nullable_to_non_nullable
+as double?,isLocalDeliveryOnly: null == isLocalDeliveryOnly ? _self.isLocalDeliveryOnly : isLocalDeliveryOnly // ignore: cast_nullable_to_non_nullable
+as bool,isPerishable: null == isPerishable ? _self.isPerishable : isPerishable // ignore: cast_nullable_to_non_nullable
+as bool,estimatedShipDays: null == estimatedShipDays ? _self.estimatedShipDays : estimatedShipDays // ignore: cast_nullable_to_non_nullable
+as int,deliveryOptions: null == deliveryOptions ? _self.deliveryOptions : deliveryOptions // ignore: cast_nullable_to_non_nullable
+as List<SellerDeliveryOption>,minimumOrderQuantity: null == minimumOrderQuantity ? _self.minimumOrderQuantity : minimumOrderQuantity // ignore: cast_nullable_to_non_nullable
+as int,freeShipping: null == freeShipping ? _self.freeShipping : freeShipping // ignore: cast_nullable_to_non_nullable
+as bool,isDigital: null == isDigital ? _self.isDigital : isDigital // ignore: cast_nullable_to_non_nullable
+as bool,taxCode: freezed == taxCode ? _self.taxCode : taxCode // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
 }
-
-/// @nodoc
-abstract class _$$OrderItemImplCopyWith<$Res>
-    implements $OrderItemCopyWith<$Res> {
-  factory _$$OrderItemImplCopyWith(
-    _$OrderItemImpl value,
-    $Res Function(_$OrderItemImpl) then,
-  ) = __$$OrderItemImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({
-    String productId,
-    String name,
-    String description,
-    double price,
-    int quantity,
-    List<String> imageUrls,
-    String sellerId,
-    Address sellerAddress,
-    String status,
-    DeliveryStatus deliveryStatus,
-    String? trackingNumber,
-    String? carrier,
-    DateTime? shippedAt,
-    DateTime? deliveredAt,
-    DateTime? refundedAt,
-    String? refundReason,
-    int? refundAmountCents,
-    String? refundId,
-    bool confirmedByBuyer,
-    double? weightKg,
-    double? lengthCm,
-    double? widthCm,
-    double? heightCm,
-    bool isLocalDeliveryOnly,
-    bool isPerishable,
-    int estimatedShipDays,
-    List<SellerDeliveryOption> deliveryOptions,
-    int minimumOrderQuantity,
-    bool freeShipping,
-    bool isDigital,
-    String? taxCode,
+/// Create a copy of OrderItem
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$AddressCopyWith<$Res> get sellerAddress {
+  
+  return $AddressCopyWith<$Res>(_self.sellerAddress, (value) {
+    return _then(_self.copyWith(sellerAddress: value));
   });
-
-  @override
-  $AddressCopyWith<$Res> get sellerAddress;
+}
 }
 
-/// @nodoc
-class __$$OrderItemImplCopyWithImpl<$Res>
-    extends _$OrderItemCopyWithImpl<$Res, _$OrderItemImpl>
-    implements _$$OrderItemImplCopyWith<$Res> {
-  __$$OrderItemImplCopyWithImpl(
-    _$OrderItemImpl _value,
-    $Res Function(_$OrderItemImpl) _then,
-  ) : super(_value, _then);
 
-  /// Create a copy of OrderItem
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? productId = null,
-    Object? name = null,
-    Object? description = null,
-    Object? price = null,
-    Object? quantity = null,
-    Object? imageUrls = null,
-    Object? sellerId = null,
-    Object? sellerAddress = null,
-    Object? status = null,
-    Object? deliveryStatus = null,
-    Object? trackingNumber = freezed,
-    Object? carrier = freezed,
-    Object? shippedAt = freezed,
-    Object? deliveredAt = freezed,
-    Object? refundedAt = freezed,
-    Object? refundReason = freezed,
-    Object? refundAmountCents = freezed,
-    Object? refundId = freezed,
-    Object? confirmedByBuyer = null,
-    Object? weightKg = freezed,
-    Object? lengthCm = freezed,
-    Object? widthCm = freezed,
-    Object? heightCm = freezed,
-    Object? isLocalDeliveryOnly = null,
-    Object? isPerishable = null,
-    Object? estimatedShipDays = null,
-    Object? deliveryOptions = null,
-    Object? minimumOrderQuantity = null,
-    Object? freeShipping = null,
-    Object? isDigital = null,
-    Object? taxCode = freezed,
-  }) {
-    return _then(
-      _$OrderItemImpl(
-        productId: null == productId
-            ? _value.productId
-            : productId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        name: null == name
-            ? _value.name
-            : name // ignore: cast_nullable_to_non_nullable
-                  as String,
-        description: null == description
-            ? _value.description
-            : description // ignore: cast_nullable_to_non_nullable
-                  as String,
-        price: null == price
-            ? _value.price
-            : price // ignore: cast_nullable_to_non_nullable
-                  as double,
-        quantity: null == quantity
-            ? _value.quantity
-            : quantity // ignore: cast_nullable_to_non_nullable
-                  as int,
-        imageUrls: null == imageUrls
-            ? _value._imageUrls
-            : imageUrls // ignore: cast_nullable_to_non_nullable
-                  as List<String>,
-        sellerId: null == sellerId
-            ? _value.sellerId
-            : sellerId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        sellerAddress: null == sellerAddress
-            ? _value.sellerAddress
-            : sellerAddress // ignore: cast_nullable_to_non_nullable
-                  as Address,
-        status: null == status
-            ? _value.status
-            : status // ignore: cast_nullable_to_non_nullable
-                  as String,
-        deliveryStatus: null == deliveryStatus
-            ? _value.deliveryStatus
-            : deliveryStatus // ignore: cast_nullable_to_non_nullable
-                  as DeliveryStatus,
-        trackingNumber: freezed == trackingNumber
-            ? _value.trackingNumber
-            : trackingNumber // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        carrier: freezed == carrier
-            ? _value.carrier
-            : carrier // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        shippedAt: freezed == shippedAt
-            ? _value.shippedAt
-            : shippedAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        deliveredAt: freezed == deliveredAt
-            ? _value.deliveredAt
-            : deliveredAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        refundedAt: freezed == refundedAt
-            ? _value.refundedAt
-            : refundedAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        refundReason: freezed == refundReason
-            ? _value.refundReason
-            : refundReason // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        refundAmountCents: freezed == refundAmountCents
-            ? _value.refundAmountCents
-            : refundAmountCents // ignore: cast_nullable_to_non_nullable
-                  as int?,
-        refundId: freezed == refundId
-            ? _value.refundId
-            : refundId // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        confirmedByBuyer: null == confirmedByBuyer
-            ? _value.confirmedByBuyer
-            : confirmedByBuyer // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        weightKg: freezed == weightKg
-            ? _value.weightKg
-            : weightKg // ignore: cast_nullable_to_non_nullable
-                  as double?,
-        lengthCm: freezed == lengthCm
-            ? _value.lengthCm
-            : lengthCm // ignore: cast_nullable_to_non_nullable
-                  as double?,
-        widthCm: freezed == widthCm
-            ? _value.widthCm
-            : widthCm // ignore: cast_nullable_to_non_nullable
-                  as double?,
-        heightCm: freezed == heightCm
-            ? _value.heightCm
-            : heightCm // ignore: cast_nullable_to_non_nullable
-                  as double?,
-        isLocalDeliveryOnly: null == isLocalDeliveryOnly
-            ? _value.isLocalDeliveryOnly
-            : isLocalDeliveryOnly // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        isPerishable: null == isPerishable
-            ? _value.isPerishable
-            : isPerishable // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        estimatedShipDays: null == estimatedShipDays
-            ? _value.estimatedShipDays
-            : estimatedShipDays // ignore: cast_nullable_to_non_nullable
-                  as int,
-        deliveryOptions: null == deliveryOptions
-            ? _value._deliveryOptions
-            : deliveryOptions // ignore: cast_nullable_to_non_nullable
-                  as List<SellerDeliveryOption>,
-        minimumOrderQuantity: null == minimumOrderQuantity
-            ? _value.minimumOrderQuantity
-            : minimumOrderQuantity // ignore: cast_nullable_to_non_nullable
-                  as int,
-        freeShipping: null == freeShipping
-            ? _value.freeShipping
-            : freeShipping // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        isDigital: null == isDigital
-            ? _value.isDigital
-            : isDigital // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        taxCode: freezed == taxCode
-            ? _value.taxCode
-            : taxCode // ignore: cast_nullable_to_non_nullable
-                  as String?,
-      ),
-    );
-  }
+/// Adds pattern-matching-related methods to [OrderItem].
+extension OrderItemPatterns on OrderItem {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _OrderItem value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _OrderItem() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _OrderItem value)  $default,){
+final _that = this;
+switch (_that) {
+case _OrderItem():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _OrderItem value)?  $default,){
+final _that = this;
+switch (_that) {
+case _OrderItem() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String productId,  String name,  String description,  double price,  int quantity,  List<String> imageUrls,  String sellerId,  Address sellerAddress,  String status,  DeliveryStatus deliveryStatus,  String? trackingNumber,  String? carrier,  DateTime? shippedAt,  DateTime? deliveredAt,  DateTime? refundedAt,  String? refundReason,  int? refundAmountCents,  String? refundId,  bool confirmedByBuyer,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? taxCode)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _OrderItem() when $default != null:
+return $default(_that.productId,_that.name,_that.description,_that.price,_that.quantity,_that.imageUrls,_that.sellerId,_that.sellerAddress,_that.status,_that.deliveryStatus,_that.trackingNumber,_that.carrier,_that.shippedAt,_that.deliveredAt,_that.refundedAt,_that.refundReason,_that.refundAmountCents,_that.refundId,_that.confirmedByBuyer,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.taxCode);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String productId,  String name,  String description,  double price,  int quantity,  List<String> imageUrls,  String sellerId,  Address sellerAddress,  String status,  DeliveryStatus deliveryStatus,  String? trackingNumber,  String? carrier,  DateTime? shippedAt,  DateTime? deliveredAt,  DateTime? refundedAt,  String? refundReason,  int? refundAmountCents,  String? refundId,  bool confirmedByBuyer,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? taxCode)  $default,) {final _that = this;
+switch (_that) {
+case _OrderItem():
+return $default(_that.productId,_that.name,_that.description,_that.price,_that.quantity,_that.imageUrls,_that.sellerId,_that.sellerAddress,_that.status,_that.deliveryStatus,_that.trackingNumber,_that.carrier,_that.shippedAt,_that.deliveredAt,_that.refundedAt,_that.refundReason,_that.refundAmountCents,_that.refundId,_that.confirmedByBuyer,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.taxCode);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String productId,  String name,  String description,  double price,  int quantity,  List<String> imageUrls,  String sellerId,  Address sellerAddress,  String status,  DeliveryStatus deliveryStatus,  String? trackingNumber,  String? carrier,  DateTime? shippedAt,  DateTime? deliveredAt,  DateTime? refundedAt,  String? refundReason,  int? refundAmountCents,  String? refundId,  bool confirmedByBuyer,  double? weightKg,  double? lengthCm,  double? widthCm,  double? heightCm,  bool isLocalDeliveryOnly,  bool isPerishable,  int estimatedShipDays,  List<SellerDeliveryOption> deliveryOptions,  int minimumOrderQuantity,  bool freeShipping,  bool isDigital,  String? taxCode)?  $default,) {final _that = this;
+switch (_that) {
+case _OrderItem() when $default != null:
+return $default(_that.productId,_that.name,_that.description,_that.price,_that.quantity,_that.imageUrls,_that.sellerId,_that.sellerAddress,_that.status,_that.deliveryStatus,_that.trackingNumber,_that.carrier,_that.shippedAt,_that.deliveredAt,_that.refundedAt,_that.refundReason,_that.refundAmountCents,_that.refundId,_that.confirmedByBuyer,_that.weightKg,_that.lengthCm,_that.widthCm,_that.heightCm,_that.isLocalDeliveryOnly,_that.isPerishable,_that.estimatedShipDays,_that.deliveryOptions,_that.minimumOrderQuantity,_that.freeShipping,_that.isDigital,_that.taxCode);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$OrderItemImpl extends _OrderItem {
-  const _$OrderItemImpl({
-    required this.productId,
-    required this.name,
-    required this.description,
-    required this.price,
-    required this.quantity,
-    required final List<String> imageUrls,
-    required this.sellerId,
-    required this.sellerAddress,
-    this.status = DeliveryStatusValues.pending,
-    this.deliveryStatus = DeliveryStatus.pending,
-    this.trackingNumber,
-    this.carrier,
-    this.shippedAt,
-    this.deliveredAt,
-    this.refundedAt,
-    this.refundReason,
-    this.refundAmountCents,
-    this.refundId,
-    this.confirmedByBuyer = false,
-    this.weightKg,
-    this.lengthCm,
-    this.widthCm,
-    this.heightCm,
-    this.isLocalDeliveryOnly = false,
-    this.isPerishable = false,
-    this.estimatedShipDays = 3,
-    final List<SellerDeliveryOption> deliveryOptions = const [],
-    this.minimumOrderQuantity = 1,
-    this.freeShipping = false,
-    this.isDigital = false,
-    this.taxCode,
-  }) : _imageUrls = imageUrls,
-       _deliveryOptions = deliveryOptions,
-       super._();
 
-  factory _$OrderItemImpl.fromJson(Map<String, dynamic> json) =>
-      _$$OrderItemImplFromJson(json);
+class _OrderItem extends OrderItem {
+  const _OrderItem({required this.productId, required this.name, required this.description, required this.price, required this.quantity, required final  List<String> imageUrls, required this.sellerId, required this.sellerAddress, this.status = DeliveryStatusValues.pending, this.deliveryStatus = DeliveryStatus.pending, this.trackingNumber, this.carrier, this.shippedAt, this.deliveredAt, this.refundedAt, this.refundReason, this.refundAmountCents, this.refundId, this.confirmedByBuyer = false, this.weightKg, this.lengthCm, this.widthCm, this.heightCm, this.isLocalDeliveryOnly = false, this.isPerishable = false, this.estimatedShipDays = 3, final  List<SellerDeliveryOption> deliveryOptions = const [], this.minimumOrderQuantity = 1, this.freeShipping = false, this.isDigital = false, this.taxCode}): _imageUrls = imageUrls,_deliveryOptions = deliveryOptions,super._();
+  factory _OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);
 
-  @override
-  final String productId;
-  @override
-  final String name;
-  @override
-  final String description;
-  @override
-  final double price;
-  @override
-  final int quantity;
-  final List<String> _imageUrls;
-  @override
-  List<String> get imageUrls {
-    if (_imageUrls is EqualUnmodifiableListView) return _imageUrls;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_imageUrls);
-  }
-
-  @override
-  final String sellerId;
-  @override
-  final Address sellerAddress;
-  // Per-item status tracking (NEW)
-  @override
-  @JsonKey()
-  final String status;
-  // 'pending' | 'shipped' | 'delivered' | 'refunded'
-  @override
-  @JsonKey()
-  final DeliveryStatus deliveryStatus;
-  // DEPRECATED: backwards compatibility
-  @override
-  final String? trackingNumber;
-  @override
-  final String? carrier;
-  @override
-  final DateTime? shippedAt;
-  @override
-  final DateTime? deliveredAt;
-  @override
-  final DateTime? refundedAt;
-  @override
-  final String? refundReason;
-  @override
-  final int? refundAmountCents;
-  @override
-  final String? refundId;
-  @override
-  @JsonKey()
-  final bool confirmedByBuyer;
-  // Shipping metadata
-  @override
-  final double? weightKg;
-  @override
-  final double? lengthCm;
-  @override
-  final double? widthCm;
-  @override
-  final double? heightCm;
-  @override
-  @JsonKey()
-  final bool isLocalDeliveryOnly;
-  @override
-  @JsonKey()
-  final bool isPerishable;
-  @override
-  @JsonKey()
-  final int estimatedShipDays;
-  final List<SellerDeliveryOption> _deliveryOptions;
-  @override
-  @JsonKey()
-  List<SellerDeliveryOption> get deliveryOptions {
-    if (_deliveryOptions is EqualUnmodifiableListView) return _deliveryOptions;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_deliveryOptions);
-  }
-
-  @override
-  @JsonKey()
-  final int minimumOrderQuantity;
-  @override
-  @JsonKey()
-  final bool freeShipping;
-  @override
-  @JsonKey()
-  final bool isDigital;
-  // Tax field (new)
-  @override
-  final String? taxCode;
-
-  @override
-  String toString() {
-    return 'OrderItem(productId: $productId, name: $name, description: $description, price: $price, quantity: $quantity, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, status: $status, deliveryStatus: $deliveryStatus, trackingNumber: $trackingNumber, carrier: $carrier, shippedAt: $shippedAt, deliveredAt: $deliveredAt, refundedAt: $refundedAt, refundReason: $refundReason, refundAmountCents: $refundAmountCents, refundId: $refundId, confirmedByBuyer: $confirmedByBuyer, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, taxCode: $taxCode)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$OrderItemImpl &&
-            (identical(other.productId, productId) ||
-                other.productId == productId) &&
-            (identical(other.name, name) || other.name == name) &&
-            (identical(other.description, description) ||
-                other.description == description) &&
-            (identical(other.price, price) || other.price == price) &&
-            (identical(other.quantity, quantity) ||
-                other.quantity == quantity) &&
-            const DeepCollectionEquality().equals(
-              other._imageUrls,
-              _imageUrls,
-            ) &&
-            (identical(other.sellerId, sellerId) ||
-                other.sellerId == sellerId) &&
-            (identical(other.sellerAddress, sellerAddress) ||
-                other.sellerAddress == sellerAddress) &&
-            (identical(other.status, status) || other.status == status) &&
-            (identical(other.deliveryStatus, deliveryStatus) ||
-                other.deliveryStatus == deliveryStatus) &&
-            (identical(other.trackingNumber, trackingNumber) ||
-                other.trackingNumber == trackingNumber) &&
-            (identical(other.carrier, carrier) || other.carrier == carrier) &&
-            (identical(other.shippedAt, shippedAt) ||
-                other.shippedAt == shippedAt) &&
-            (identical(other.deliveredAt, deliveredAt) ||
-                other.deliveredAt == deliveredAt) &&
-            (identical(other.refundedAt, refundedAt) ||
-                other.refundedAt == refundedAt) &&
-            (identical(other.refundReason, refundReason) ||
-                other.refundReason == refundReason) &&
-            (identical(other.refundAmountCents, refundAmountCents) ||
-                other.refundAmountCents == refundAmountCents) &&
-            (identical(other.refundId, refundId) ||
-                other.refundId == refundId) &&
-            (identical(other.confirmedByBuyer, confirmedByBuyer) ||
-                other.confirmedByBuyer == confirmedByBuyer) &&
-            (identical(other.weightKg, weightKg) ||
-                other.weightKg == weightKg) &&
-            (identical(other.lengthCm, lengthCm) ||
-                other.lengthCm == lengthCm) &&
-            (identical(other.widthCm, widthCm) || other.widthCm == widthCm) &&
-            (identical(other.heightCm, heightCm) ||
-                other.heightCm == heightCm) &&
-            (identical(other.isLocalDeliveryOnly, isLocalDeliveryOnly) ||
-                other.isLocalDeliveryOnly == isLocalDeliveryOnly) &&
-            (identical(other.isPerishable, isPerishable) ||
-                other.isPerishable == isPerishable) &&
-            (identical(other.estimatedShipDays, estimatedShipDays) ||
-                other.estimatedShipDays == estimatedShipDays) &&
-            const DeepCollectionEquality().equals(
-              other._deliveryOptions,
-              _deliveryOptions,
-            ) &&
-            (identical(other.minimumOrderQuantity, minimumOrderQuantity) ||
-                other.minimumOrderQuantity == minimumOrderQuantity) &&
-            (identical(other.freeShipping, freeShipping) ||
-                other.freeShipping == freeShipping) &&
-            (identical(other.isDigital, isDigital) ||
-                other.isDigital == isDigital) &&
-            (identical(other.taxCode, taxCode) || other.taxCode == taxCode));
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hashAll([
-    runtimeType,
-    productId,
-    name,
-    description,
-    price,
-    quantity,
-    const DeepCollectionEquality().hash(_imageUrls),
-    sellerId,
-    sellerAddress,
-    status,
-    deliveryStatus,
-    trackingNumber,
-    carrier,
-    shippedAt,
-    deliveredAt,
-    refundedAt,
-    refundReason,
-    refundAmountCents,
-    refundId,
-    confirmedByBuyer,
-    weightKg,
-    lengthCm,
-    widthCm,
-    heightCm,
-    isLocalDeliveryOnly,
-    isPerishable,
-    estimatedShipDays,
-    const DeepCollectionEquality().hash(_deliveryOptions),
-    minimumOrderQuantity,
-    freeShipping,
-    isDigital,
-    taxCode,
-  ]);
-
-  /// Create a copy of OrderItem
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$OrderItemImplCopyWith<_$OrderItemImpl> get copyWith =>
-      __$$OrderItemImplCopyWithImpl<_$OrderItemImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$OrderItemImplToJson(this);
-  }
+@override final  String productId;
+@override final  String name;
+@override final  String description;
+@override final  double price;
+@override final  int quantity;
+ final  List<String> _imageUrls;
+@override List<String> get imageUrls {
+  if (_imageUrls is EqualUnmodifiableListView) return _imageUrls;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_imageUrls);
 }
 
-abstract class _OrderItem extends OrderItem {
-  const factory _OrderItem({
-    required final String productId,
-    required final String name,
-    required final String description,
-    required final double price,
-    required final int quantity,
-    required final List<String> imageUrls,
-    required final String sellerId,
-    required final Address sellerAddress,
-    final String status,
-    final DeliveryStatus deliveryStatus,
-    final String? trackingNumber,
-    final String? carrier,
-    final DateTime? shippedAt,
-    final DateTime? deliveredAt,
-    final DateTime? refundedAt,
-    final String? refundReason,
-    final int? refundAmountCents,
-    final String? refundId,
-    final bool confirmedByBuyer,
-    final double? weightKg,
-    final double? lengthCm,
-    final double? widthCm,
-    final double? heightCm,
-    final bool isLocalDeliveryOnly,
-    final bool isPerishable,
-    final int estimatedShipDays,
-    final List<SellerDeliveryOption> deliveryOptions,
-    final int minimumOrderQuantity,
-    final bool freeShipping,
-    final bool isDigital,
-    final String? taxCode,
-  }) = _$OrderItemImpl;
-  const _OrderItem._() : super._();
-
-  factory _OrderItem.fromJson(Map<String, dynamic> json) =
-      _$OrderItemImpl.fromJson;
-
-  @override
-  String get productId;
-  @override
-  String get name;
-  @override
-  String get description;
-  @override
-  double get price;
-  @override
-  int get quantity;
-  @override
-  List<String> get imageUrls;
-  @override
-  String get sellerId;
-  @override
-  Address get sellerAddress; // Per-item status tracking (NEW)
-  @override
-  String get status; // 'pending' | 'shipped' | 'delivered' | 'refunded'
-  @override
-  DeliveryStatus get deliveryStatus; // DEPRECATED: backwards compatibility
-  @override
-  String? get trackingNumber;
-  @override
-  String? get carrier;
-  @override
-  DateTime? get shippedAt;
-  @override
-  DateTime? get deliveredAt;
-  @override
-  DateTime? get refundedAt;
-  @override
-  String? get refundReason;
-  @override
-  int? get refundAmountCents;
-  @override
-  String? get refundId;
-  @override
-  bool get confirmedByBuyer; // Shipping metadata
-  @override
-  double? get weightKg;
-  @override
-  double? get lengthCm;
-  @override
-  double? get widthCm;
-  @override
-  double? get heightCm;
-  @override
-  bool get isLocalDeliveryOnly;
-  @override
-  bool get isPerishable;
-  @override
-  int get estimatedShipDays;
-  @override
-  List<SellerDeliveryOption> get deliveryOptions;
-  @override
-  int get minimumOrderQuantity;
-  @override
-  bool get freeShipping;
-  @override
-  bool get isDigital; // Tax field (new)
-  @override
-  String? get taxCode;
-
-  /// Create a copy of OrderItem
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$OrderItemImplCopyWith<_$OrderItemImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+@override final  String sellerId;
+@override final  Address sellerAddress;
+// Per-item status tracking
+@override@JsonKey() final  String status;
+// 'pending' | 'shipped' | 'delivered' | 'refunded'
+@override@JsonKey() final  DeliveryStatus deliveryStatus;
+// Parallel enum field for type-safe access
+@override final  String? trackingNumber;
+@override final  String? carrier;
+@override final  DateTime? shippedAt;
+@override final  DateTime? deliveredAt;
+@override final  DateTime? refundedAt;
+@override final  String? refundReason;
+@override final  int? refundAmountCents;
+@override final  String? refundId;
+@override@JsonKey() final  bool confirmedByBuyer;
+// Shipping metadata
+@override final  double? weightKg;
+@override final  double? lengthCm;
+@override final  double? widthCm;
+@override final  double? heightCm;
+@override@JsonKey() final  bool isLocalDeliveryOnly;
+@override@JsonKey() final  bool isPerishable;
+@override@JsonKey() final  int estimatedShipDays;
+ final  List<SellerDeliveryOption> _deliveryOptions;
+@override@JsonKey() List<SellerDeliveryOption> get deliveryOptions {
+  if (_deliveryOptions is EqualUnmodifiableListView) return _deliveryOptions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_deliveryOptions);
 }
 
-Ratings _$RatingsFromJson(Map<String, dynamic> json) {
-  return _Ratings.fromJson(json);
+@override@JsonKey() final  int minimumOrderQuantity;
+@override@JsonKey() final  bool freeShipping;
+@override@JsonKey() final  bool isDigital;
+// Tax field (new)
+@override final  String? taxCode;
+
+/// Create a copy of OrderItem
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$OrderItemCopyWith<_OrderItem> get copyWith => __$OrderItemCopyWithImpl<_OrderItem>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$OrderItemToJson(this, );
 }
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _OrderItem&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.price, price) || other.price == price)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&const DeepCollectionEquality().equals(other._imageUrls, _imageUrls)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.sellerAddress, sellerAddress) || other.sellerAddress == sellerAddress)&&(identical(other.status, status) || other.status == status)&&(identical(other.deliveryStatus, deliveryStatus) || other.deliveryStatus == deliveryStatus)&&(identical(other.trackingNumber, trackingNumber) || other.trackingNumber == trackingNumber)&&(identical(other.carrier, carrier) || other.carrier == carrier)&&(identical(other.shippedAt, shippedAt) || other.shippedAt == shippedAt)&&(identical(other.deliveredAt, deliveredAt) || other.deliveredAt == deliveredAt)&&(identical(other.refundedAt, refundedAt) || other.refundedAt == refundedAt)&&(identical(other.refundReason, refundReason) || other.refundReason == refundReason)&&(identical(other.refundAmountCents, refundAmountCents) || other.refundAmountCents == refundAmountCents)&&(identical(other.refundId, refundId) || other.refundId == refundId)&&(identical(other.confirmedByBuyer, confirmedByBuyer) || other.confirmedByBuyer == confirmedByBuyer)&&(identical(other.weightKg, weightKg) || other.weightKg == weightKg)&&(identical(other.lengthCm, lengthCm) || other.lengthCm == lengthCm)&&(identical(other.widthCm, widthCm) || other.widthCm == widthCm)&&(identical(other.heightCm, heightCm) || other.heightCm == heightCm)&&(identical(other.isLocalDeliveryOnly, isLocalDeliveryOnly) || other.isLocalDeliveryOnly == isLocalDeliveryOnly)&&(identical(other.isPerishable, isPerishable) || other.isPerishable == isPerishable)&&(identical(other.estimatedShipDays, estimatedShipDays) || other.estimatedShipDays == estimatedShipDays)&&const DeepCollectionEquality().equals(other._deliveryOptions, _deliveryOptions)&&(identical(other.minimumOrderQuantity, minimumOrderQuantity) || other.minimumOrderQuantity == minimumOrderQuantity)&&(identical(other.freeShipping, freeShipping) || other.freeShipping == freeShipping)&&(identical(other.isDigital, isDigital) || other.isDigital == isDigital)&&(identical(other.taxCode, taxCode) || other.taxCode == taxCode));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hashAll([runtimeType,productId,name,description,price,quantity,const DeepCollectionEquality().hash(_imageUrls),sellerId,sellerAddress,status,deliveryStatus,trackingNumber,carrier,shippedAt,deliveredAt,refundedAt,refundReason,refundAmountCents,refundId,confirmedByBuyer,weightKg,lengthCm,widthCm,heightCm,isLocalDeliveryOnly,isPerishable,estimatedShipDays,const DeepCollectionEquality().hash(_deliveryOptions),minimumOrderQuantity,freeShipping,isDigital,taxCode]);
+
+@override
+String toString() {
+  return 'OrderItem(productId: $productId, name: $name, description: $description, price: $price, quantity: $quantity, imageUrls: $imageUrls, sellerId: $sellerId, sellerAddress: $sellerAddress, status: $status, deliveryStatus: $deliveryStatus, trackingNumber: $trackingNumber, carrier: $carrier, shippedAt: $shippedAt, deliveredAt: $deliveredAt, refundedAt: $refundedAt, refundReason: $refundReason, refundAmountCents: $refundAmountCents, refundId: $refundId, confirmedByBuyer: $confirmedByBuyer, weightKg: $weightKg, lengthCm: $lengthCm, widthCm: $widthCm, heightCm: $heightCm, isLocalDeliveryOnly: $isLocalDeliveryOnly, isPerishable: $isPerishable, estimatedShipDays: $estimatedShipDays, deliveryOptions: $deliveryOptions, minimumOrderQuantity: $minimumOrderQuantity, freeShipping: $freeShipping, isDigital: $isDigital, taxCode: $taxCode)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$OrderItemCopyWith<$Res> implements $OrderItemCopyWith<$Res> {
+  factory _$OrderItemCopyWith(_OrderItem value, $Res Function(_OrderItem) _then) = __$OrderItemCopyWithImpl;
+@override @useResult
+$Res call({
+ String productId, String name, String description, double price, int quantity, List<String> imageUrls, String sellerId, Address sellerAddress, String status, DeliveryStatus deliveryStatus, String? trackingNumber, String? carrier, DateTime? shippedAt, DateTime? deliveredAt, DateTime? refundedAt, String? refundReason, int? refundAmountCents, String? refundId, bool confirmedByBuyer, double? weightKg, double? lengthCm, double? widthCm, double? heightCm, bool isLocalDeliveryOnly, bool isPerishable, int estimatedShipDays, List<SellerDeliveryOption> deliveryOptions, int minimumOrderQuantity, bool freeShipping, bool isDigital, String? taxCode
+});
+
+
+@override $AddressCopyWith<$Res> get sellerAddress;
+
+}
+/// @nodoc
+class __$OrderItemCopyWithImpl<$Res>
+    implements _$OrderItemCopyWith<$Res> {
+  __$OrderItemCopyWithImpl(this._self, this._then);
+
+  final _OrderItem _self;
+  final $Res Function(_OrderItem) _then;
+
+/// Create a copy of OrderItem
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? productId = null,Object? name = null,Object? description = null,Object? price = null,Object? quantity = null,Object? imageUrls = null,Object? sellerId = null,Object? sellerAddress = null,Object? status = null,Object? deliveryStatus = null,Object? trackingNumber = freezed,Object? carrier = freezed,Object? shippedAt = freezed,Object? deliveredAt = freezed,Object? refundedAt = freezed,Object? refundReason = freezed,Object? refundAmountCents = freezed,Object? refundId = freezed,Object? confirmedByBuyer = null,Object? weightKg = freezed,Object? lengthCm = freezed,Object? widthCm = freezed,Object? heightCm = freezed,Object? isLocalDeliveryOnly = null,Object? isPerishable = null,Object? estimatedShipDays = null,Object? deliveryOptions = null,Object? minimumOrderQuantity = null,Object? freeShipping = null,Object? isDigital = null,Object? taxCode = freezed,}) {
+  return _then(_OrderItem(
+productId: null == productId ? _self.productId : productId // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String,price: null == price ? _self.price : price // ignore: cast_nullable_to_non_nullable
+as double,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
+as int,imageUrls: null == imageUrls ? _self._imageUrls : imageUrls // ignore: cast_nullable_to_non_nullable
+as List<String>,sellerId: null == sellerId ? _self.sellerId : sellerId // ignore: cast_nullable_to_non_nullable
+as String,sellerAddress: null == sellerAddress ? _self.sellerAddress : sellerAddress // ignore: cast_nullable_to_non_nullable
+as Address,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as String,deliveryStatus: null == deliveryStatus ? _self.deliveryStatus : deliveryStatus // ignore: cast_nullable_to_non_nullable
+as DeliveryStatus,trackingNumber: freezed == trackingNumber ? _self.trackingNumber : trackingNumber // ignore: cast_nullable_to_non_nullable
+as String?,carrier: freezed == carrier ? _self.carrier : carrier // ignore: cast_nullable_to_non_nullable
+as String?,shippedAt: freezed == shippedAt ? _self.shippedAt : shippedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,deliveredAt: freezed == deliveredAt ? _self.deliveredAt : deliveredAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,refundedAt: freezed == refundedAt ? _self.refundedAt : refundedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,refundReason: freezed == refundReason ? _self.refundReason : refundReason // ignore: cast_nullable_to_non_nullable
+as String?,refundAmountCents: freezed == refundAmountCents ? _self.refundAmountCents : refundAmountCents // ignore: cast_nullable_to_non_nullable
+as int?,refundId: freezed == refundId ? _self.refundId : refundId // ignore: cast_nullable_to_non_nullable
+as String?,confirmedByBuyer: null == confirmedByBuyer ? _self.confirmedByBuyer : confirmedByBuyer // ignore: cast_nullable_to_non_nullable
+as bool,weightKg: freezed == weightKg ? _self.weightKg : weightKg // ignore: cast_nullable_to_non_nullable
+as double?,lengthCm: freezed == lengthCm ? _self.lengthCm : lengthCm // ignore: cast_nullable_to_non_nullable
+as double?,widthCm: freezed == widthCm ? _self.widthCm : widthCm // ignore: cast_nullable_to_non_nullable
+as double?,heightCm: freezed == heightCm ? _self.heightCm : heightCm // ignore: cast_nullable_to_non_nullable
+as double?,isLocalDeliveryOnly: null == isLocalDeliveryOnly ? _self.isLocalDeliveryOnly : isLocalDeliveryOnly // ignore: cast_nullable_to_non_nullable
+as bool,isPerishable: null == isPerishable ? _self.isPerishable : isPerishable // ignore: cast_nullable_to_non_nullable
+as bool,estimatedShipDays: null == estimatedShipDays ? _self.estimatedShipDays : estimatedShipDays // ignore: cast_nullable_to_non_nullable
+as int,deliveryOptions: null == deliveryOptions ? _self._deliveryOptions : deliveryOptions // ignore: cast_nullable_to_non_nullable
+as List<SellerDeliveryOption>,minimumOrderQuantity: null == minimumOrderQuantity ? _self.minimumOrderQuantity : minimumOrderQuantity // ignore: cast_nullable_to_non_nullable
+as int,freeShipping: null == freeShipping ? _self.freeShipping : freeShipping // ignore: cast_nullable_to_non_nullable
+as bool,isDigital: null == isDigital ? _self.isDigital : isDigital // ignore: cast_nullable_to_non_nullable
+as bool,taxCode: freezed == taxCode ? _self.taxCode : taxCode // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+/// Create a copy of OrderItem
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$AddressCopyWith<$Res> get sellerAddress {
+  
+  return $AddressCopyWith<$Res>(_self.sellerAddress, (value) {
+    return _then(_self.copyWith(sellerAddress: value));
+  });
+}
+}
+
 
 /// @nodoc
 mixin _$Ratings {
-  String get productId => throw _privateConstructorUsedError;
-  double get rating => throw _privateConstructorUsedError;
-  String? get review => throw _privateConstructorUsedError;
-  DateTime get createdAt => throw _privateConstructorUsedError;
+
+ String get productId; double get rating; String? get review; DateTime get createdAt;
+/// Create a copy of Ratings
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$RatingsCopyWith<Ratings> get copyWith => _$RatingsCopyWithImpl<Ratings>(this as Ratings, _$identity);
 
   /// Serializes this Ratings to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  Map<String, dynamic> toJson();
 
-  /// Create a copy of Ratings
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $RatingsCopyWith<Ratings> get copyWith => throw _privateConstructorUsedError;
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Ratings&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,productId,rating,review,createdAt);
+
+@override
+String toString() {
+  return 'Ratings(productId: $productId, rating: $rating, review: $review, createdAt: $createdAt)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $RatingsCopyWith<$Res> {
-  factory $RatingsCopyWith(Ratings value, $Res Function(Ratings) then) =
-      _$RatingsCopyWithImpl<$Res, Ratings>;
-  @useResult
-  $Res call({
-    String productId,
-    double rating,
-    String? review,
-    DateTime createdAt,
-  });
-}
+abstract mixin class $RatingsCopyWith<$Res>  {
+  factory $RatingsCopyWith(Ratings value, $Res Function(Ratings) _then) = _$RatingsCopyWithImpl;
+@useResult
+$Res call({
+ String productId, double rating, String? review, DateTime createdAt
+});
 
+
+
+
+}
 /// @nodoc
-class _$RatingsCopyWithImpl<$Res, $Val extends Ratings>
+class _$RatingsCopyWithImpl<$Res>
     implements $RatingsCopyWith<$Res> {
-  _$RatingsCopyWithImpl(this._value, this._then);
+  _$RatingsCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final Ratings _self;
+  final $Res Function(Ratings) _then;
 
-  /// Create a copy of Ratings
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? productId = null,
-    Object? rating = null,
-    Object? review = freezed,
-    Object? createdAt = null,
-  }) {
-    return _then(
-      _value.copyWith(
-            productId: null == productId
-                ? _value.productId
-                : productId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            rating: null == rating
-                ? _value.rating
-                : rating // ignore: cast_nullable_to_non_nullable
-                      as double,
-            review: freezed == review
-                ? _value.review
-                : review // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            createdAt: null == createdAt
-                ? _value.createdAt
-                : createdAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime,
-          )
-          as $Val,
-    );
-  }
+/// Create a copy of Ratings
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? productId = null,Object? rating = null,Object? review = freezed,Object? createdAt = null,}) {
+  return _then(_self.copyWith(
+productId: null == productId ? _self.productId : productId // ignore: cast_nullable_to_non_nullable
+as String,rating: null == rating ? _self.rating : rating // ignore: cast_nullable_to_non_nullable
+as double,review: freezed == review ? _self.review : review // ignore: cast_nullable_to_non_nullable
+as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as DateTime,
+  ));
 }
 
-/// @nodoc
-abstract class _$$RatingsImplCopyWith<$Res> implements $RatingsCopyWith<$Res> {
-  factory _$$RatingsImplCopyWith(
-    _$RatingsImpl value,
-    $Res Function(_$RatingsImpl) then,
-  ) = __$$RatingsImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({
-    String productId,
-    double rating,
-    String? review,
-    DateTime createdAt,
-  });
 }
 
-/// @nodoc
-class __$$RatingsImplCopyWithImpl<$Res>
-    extends _$RatingsCopyWithImpl<$Res, _$RatingsImpl>
-    implements _$$RatingsImplCopyWith<$Res> {
-  __$$RatingsImplCopyWithImpl(
-    _$RatingsImpl _value,
-    $Res Function(_$RatingsImpl) _then,
-  ) : super(_value, _then);
 
-  /// Create a copy of Ratings
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? productId = null,
-    Object? rating = null,
-    Object? review = freezed,
-    Object? createdAt = null,
-  }) {
-    return _then(
-      _$RatingsImpl(
-        productId: null == productId
-            ? _value.productId
-            : productId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        rating: null == rating
-            ? _value.rating
-            : rating // ignore: cast_nullable_to_non_nullable
-                  as double,
-        review: freezed == review
-            ? _value.review
-            : review // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        createdAt: null == createdAt
-            ? _value.createdAt
-            : createdAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime,
-      ),
-    );
-  }
+/// Adds pattern-matching-related methods to [Ratings].
+extension RatingsPatterns on Ratings {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _Ratings value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _Ratings() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _Ratings value)  $default,){
+final _that = this;
+switch (_that) {
+case _Ratings():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _Ratings value)?  $default,){
+final _that = this;
+switch (_that) {
+case _Ratings() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String productId,  double rating,  String? review,  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _Ratings() when $default != null:
+return $default(_that.productId,_that.rating,_that.review,_that.createdAt);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String productId,  double rating,  String? review,  DateTime createdAt)  $default,) {final _that = this;
+switch (_that) {
+case _Ratings():
+return $default(_that.productId,_that.rating,_that.review,_that.createdAt);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String productId,  double rating,  String? review,  DateTime createdAt)?  $default,) {final _that = this;
+switch (_that) {
+case _Ratings() when $default != null:
+return $default(_that.productId,_that.rating,_that.review,_that.createdAt);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$RatingsImpl implements _Ratings {
-  const _$RatingsImpl({
-    required this.productId,
-    required this.rating,
-    this.review,
-    required this.createdAt,
-  });
 
-  factory _$RatingsImpl.fromJson(Map<String, dynamic> json) =>
-      _$$RatingsImplFromJson(json);
+class _Ratings implements Ratings {
+  const _Ratings({required this.productId, required this.rating, this.review, required this.createdAt});
+  factory _Ratings.fromJson(Map<String, dynamic> json) => _$RatingsFromJson(json);
 
-  @override
-  final String productId;
-  @override
-  final double rating;
-  @override
-  final String? review;
-  @override
-  final DateTime createdAt;
+@override final  String productId;
+@override final  double rating;
+@override final  String? review;
+@override final  DateTime createdAt;
 
-  @override
-  String toString() {
-    return 'Ratings(productId: $productId, rating: $rating, review: $review, createdAt: $createdAt)';
-  }
+/// Create a copy of Ratings
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$RatingsCopyWith<_Ratings> get copyWith => __$RatingsCopyWithImpl<_Ratings>(this, _$identity);
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$RatingsImpl &&
-            (identical(other.productId, productId) ||
-                other.productId == productId) &&
-            (identical(other.rating, rating) || other.rating == rating) &&
-            (identical(other.review, review) || other.review == review) &&
-            (identical(other.createdAt, createdAt) ||
-                other.createdAt == createdAt));
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode =>
-      Object.hash(runtimeType, productId, rating, review, createdAt);
-
-  /// Create a copy of Ratings
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$RatingsImplCopyWith<_$RatingsImpl> get copyWith =>
-      __$$RatingsImplCopyWithImpl<_$RatingsImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$RatingsImplToJson(this);
-  }
+@override
+Map<String, dynamic> toJson() {
+  return _$RatingsToJson(this, );
 }
 
-abstract class _Ratings implements Ratings {
-  const factory _Ratings({
-    required final String productId,
-    required final double rating,
-    final String? review,
-    required final DateTime createdAt,
-  }) = _$RatingsImpl;
-
-  factory _Ratings.fromJson(Map<String, dynamic> json) = _$RatingsImpl.fromJson;
-
-  @override
-  String get productId;
-  @override
-  double get rating;
-  @override
-  String? get review;
-  @override
-  DateTime get createdAt;
-
-  /// Create a copy of Ratings
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$RatingsImplCopyWith<_$RatingsImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Ratings&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
-SellerPayout _$SellerPayoutFromJson(Map<String, dynamic> json) {
-  return _SellerPayout.fromJson(json);
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,productId,rating,review,createdAt);
+
+@override
+String toString() {
+  return 'Ratings(productId: $productId, rating: $rating, review: $review, createdAt: $createdAt)';
 }
+
+
+}
+
+/// @nodoc
+abstract mixin class _$RatingsCopyWith<$Res> implements $RatingsCopyWith<$Res> {
+  factory _$RatingsCopyWith(_Ratings value, $Res Function(_Ratings) _then) = __$RatingsCopyWithImpl;
+@override @useResult
+$Res call({
+ String productId, double rating, String? review, DateTime createdAt
+});
+
+
+
+
+}
+/// @nodoc
+class __$RatingsCopyWithImpl<$Res>
+    implements _$RatingsCopyWith<$Res> {
+  __$RatingsCopyWithImpl(this._self, this._then);
+
+  final _Ratings _self;
+  final $Res Function(_Ratings) _then;
+
+/// Create a copy of Ratings
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? productId = null,Object? rating = null,Object? review = freezed,Object? createdAt = null,}) {
+  return _then(_Ratings(
+productId: null == productId ? _self.productId : productId // ignore: cast_nullable_to_non_nullable
+as String,rating: null == rating ? _self.rating : rating // ignore: cast_nullable_to_non_nullable
+as double,review: freezed == review ? _self.review : review // ignore: cast_nullable_to_non_nullable
+as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as DateTime,
+  ));
+}
+
+
+}
+
 
 /// @nodoc
 mixin _$SellerPayout {
-  String get sellerId => throw _privateConstructorUsedError;
-  String? get stripeAccountId => throw _privateConstructorUsedError;
-  int get amountCents => throw _privateConstructorUsedError;
-  int get platformFeeCents => throw _privateConstructorUsedError;
-  int get netAmountCents => throw _privateConstructorUsedError;
-  String get status => throw _privateConstructorUsedError;
-  DateTime? get payoutDate => throw _privateConstructorUsedError;
-  String? get stripeTransferId => throw _privateConstructorUsedError;
-  String? get failureReason => throw _privateConstructorUsedError;
+
+ String get sellerId; String? get stripeAccountId; int get amountCents; int get platformFeeCents; int get netAmountCents; String get status; DateTime? get payoutDate; String? get stripeTransferId; String? get failureReason;
+/// Create a copy of SellerPayout
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SellerPayoutCopyWith<SellerPayout> get copyWith => _$SellerPayoutCopyWithImpl<SellerPayout>(this as SellerPayout, _$identity);
 
   /// Serializes this SellerPayout to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  Map<String, dynamic> toJson();
 
-  /// Create a copy of SellerPayout
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $SellerPayoutCopyWith<SellerPayout> get copyWith =>
-      throw _privateConstructorUsedError;
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SellerPayout&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.stripeAccountId, stripeAccountId) || other.stripeAccountId == stripeAccountId)&&(identical(other.amountCents, amountCents) || other.amountCents == amountCents)&&(identical(other.platformFeeCents, platformFeeCents) || other.platformFeeCents == platformFeeCents)&&(identical(other.netAmountCents, netAmountCents) || other.netAmountCents == netAmountCents)&&(identical(other.status, status) || other.status == status)&&(identical(other.payoutDate, payoutDate) || other.payoutDate == payoutDate)&&(identical(other.stripeTransferId, stripeTransferId) || other.stripeTransferId == stripeTransferId)&&(identical(other.failureReason, failureReason) || other.failureReason == failureReason));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sellerId,stripeAccountId,amountCents,platformFeeCents,netAmountCents,status,payoutDate,stripeTransferId,failureReason);
+
+@override
+String toString() {
+  return 'SellerPayout(sellerId: $sellerId, stripeAccountId: $stripeAccountId, amountCents: $amountCents, platformFeeCents: $platformFeeCents, netAmountCents: $netAmountCents, status: $status, payoutDate: $payoutDate, stripeTransferId: $stripeTransferId, failureReason: $failureReason)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $SellerPayoutCopyWith<$Res> {
-  factory $SellerPayoutCopyWith(
-    SellerPayout value,
-    $Res Function(SellerPayout) then,
-  ) = _$SellerPayoutCopyWithImpl<$Res, SellerPayout>;
-  @useResult
-  $Res call({
-    String sellerId,
-    String? stripeAccountId,
-    int amountCents,
-    int platformFeeCents,
-    int netAmountCents,
-    String status,
-    DateTime? payoutDate,
-    String? stripeTransferId,
-    String? failureReason,
-  });
-}
+abstract mixin class $SellerPayoutCopyWith<$Res>  {
+  factory $SellerPayoutCopyWith(SellerPayout value, $Res Function(SellerPayout) _then) = _$SellerPayoutCopyWithImpl;
+@useResult
+$Res call({
+ String sellerId, String? stripeAccountId, int amountCents, int platformFeeCents, int netAmountCents, String status, DateTime? payoutDate, String? stripeTransferId, String? failureReason
+});
 
+
+
+
+}
 /// @nodoc
-class _$SellerPayoutCopyWithImpl<$Res, $Val extends SellerPayout>
+class _$SellerPayoutCopyWithImpl<$Res>
     implements $SellerPayoutCopyWith<$Res> {
-  _$SellerPayoutCopyWithImpl(this._value, this._then);
+  _$SellerPayoutCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final SellerPayout _self;
+  final $Res Function(SellerPayout) _then;
 
-  /// Create a copy of SellerPayout
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? sellerId = null,
-    Object? stripeAccountId = freezed,
-    Object? amountCents = null,
-    Object? platformFeeCents = null,
-    Object? netAmountCents = null,
-    Object? status = null,
-    Object? payoutDate = freezed,
-    Object? stripeTransferId = freezed,
-    Object? failureReason = freezed,
-  }) {
-    return _then(
-      _value.copyWith(
-            sellerId: null == sellerId
-                ? _value.sellerId
-                : sellerId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            stripeAccountId: freezed == stripeAccountId
-                ? _value.stripeAccountId
-                : stripeAccountId // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            amountCents: null == amountCents
-                ? _value.amountCents
-                : amountCents // ignore: cast_nullable_to_non_nullable
-                      as int,
-            platformFeeCents: null == platformFeeCents
-                ? _value.platformFeeCents
-                : platformFeeCents // ignore: cast_nullable_to_non_nullable
-                      as int,
-            netAmountCents: null == netAmountCents
-                ? _value.netAmountCents
-                : netAmountCents // ignore: cast_nullable_to_non_nullable
-                      as int,
-            status: null == status
-                ? _value.status
-                : status // ignore: cast_nullable_to_non_nullable
-                      as String,
-            payoutDate: freezed == payoutDate
-                ? _value.payoutDate
-                : payoutDate // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            stripeTransferId: freezed == stripeTransferId
-                ? _value.stripeTransferId
-                : stripeTransferId // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            failureReason: freezed == failureReason
-                ? _value.failureReason
-                : failureReason // ignore: cast_nullable_to_non_nullable
-                      as String?,
-          )
-          as $Val,
-    );
-  }
+/// Create a copy of SellerPayout
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? sellerId = null,Object? stripeAccountId = freezed,Object? amountCents = null,Object? platformFeeCents = null,Object? netAmountCents = null,Object? status = null,Object? payoutDate = freezed,Object? stripeTransferId = freezed,Object? failureReason = freezed,}) {
+  return _then(_self.copyWith(
+sellerId: null == sellerId ? _self.sellerId : sellerId // ignore: cast_nullable_to_non_nullable
+as String,stripeAccountId: freezed == stripeAccountId ? _self.stripeAccountId : stripeAccountId // ignore: cast_nullable_to_non_nullable
+as String?,amountCents: null == amountCents ? _self.amountCents : amountCents // ignore: cast_nullable_to_non_nullable
+as int,platformFeeCents: null == platformFeeCents ? _self.platformFeeCents : platformFeeCents // ignore: cast_nullable_to_non_nullable
+as int,netAmountCents: null == netAmountCents ? _self.netAmountCents : netAmountCents // ignore: cast_nullable_to_non_nullable
+as int,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as String,payoutDate: freezed == payoutDate ? _self.payoutDate : payoutDate // ignore: cast_nullable_to_non_nullable
+as DateTime?,stripeTransferId: freezed == stripeTransferId ? _self.stripeTransferId : stripeTransferId // ignore: cast_nullable_to_non_nullable
+as String?,failureReason: freezed == failureReason ? _self.failureReason : failureReason // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
 }
 
-/// @nodoc
-abstract class _$$SellerPayoutImplCopyWith<$Res>
-    implements $SellerPayoutCopyWith<$Res> {
-  factory _$$SellerPayoutImplCopyWith(
-    _$SellerPayoutImpl value,
-    $Res Function(_$SellerPayoutImpl) then,
-  ) = __$$SellerPayoutImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({
-    String sellerId,
-    String? stripeAccountId,
-    int amountCents,
-    int platformFeeCents,
-    int netAmountCents,
-    String status,
-    DateTime? payoutDate,
-    String? stripeTransferId,
-    String? failureReason,
-  });
 }
 
-/// @nodoc
-class __$$SellerPayoutImplCopyWithImpl<$Res>
-    extends _$SellerPayoutCopyWithImpl<$Res, _$SellerPayoutImpl>
-    implements _$$SellerPayoutImplCopyWith<$Res> {
-  __$$SellerPayoutImplCopyWithImpl(
-    _$SellerPayoutImpl _value,
-    $Res Function(_$SellerPayoutImpl) _then,
-  ) : super(_value, _then);
 
-  /// Create a copy of SellerPayout
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? sellerId = null,
-    Object? stripeAccountId = freezed,
-    Object? amountCents = null,
-    Object? platformFeeCents = null,
-    Object? netAmountCents = null,
-    Object? status = null,
-    Object? payoutDate = freezed,
-    Object? stripeTransferId = freezed,
-    Object? failureReason = freezed,
-  }) {
-    return _then(
-      _$SellerPayoutImpl(
-        sellerId: null == sellerId
-            ? _value.sellerId
-            : sellerId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        stripeAccountId: freezed == stripeAccountId
-            ? _value.stripeAccountId
-            : stripeAccountId // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        amountCents: null == amountCents
-            ? _value.amountCents
-            : amountCents // ignore: cast_nullable_to_non_nullable
-                  as int,
-        platformFeeCents: null == platformFeeCents
-            ? _value.platformFeeCents
-            : platformFeeCents // ignore: cast_nullable_to_non_nullable
-                  as int,
-        netAmountCents: null == netAmountCents
-            ? _value.netAmountCents
-            : netAmountCents // ignore: cast_nullable_to_non_nullable
-                  as int,
-        status: null == status
-            ? _value.status
-            : status // ignore: cast_nullable_to_non_nullable
-                  as String,
-        payoutDate: freezed == payoutDate
-            ? _value.payoutDate
-            : payoutDate // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        stripeTransferId: freezed == stripeTransferId
-            ? _value.stripeTransferId
-            : stripeTransferId // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        failureReason: freezed == failureReason
-            ? _value.failureReason
-            : failureReason // ignore: cast_nullable_to_non_nullable
-                  as String?,
-      ),
-    );
-  }
+/// Adds pattern-matching-related methods to [SellerPayout].
+extension SellerPayoutPatterns on SellerPayout {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _SellerPayout value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _SellerPayout() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _SellerPayout value)  $default,){
+final _that = this;
+switch (_that) {
+case _SellerPayout():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _SellerPayout value)?  $default,){
+final _that = this;
+switch (_that) {
+case _SellerPayout() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String sellerId,  String? stripeAccountId,  int amountCents,  int platformFeeCents,  int netAmountCents,  String status,  DateTime? payoutDate,  String? stripeTransferId,  String? failureReason)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _SellerPayout() when $default != null:
+return $default(_that.sellerId,_that.stripeAccountId,_that.amountCents,_that.platformFeeCents,_that.netAmountCents,_that.status,_that.payoutDate,_that.stripeTransferId,_that.failureReason);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String sellerId,  String? stripeAccountId,  int amountCents,  int platformFeeCents,  int netAmountCents,  String status,  DateTime? payoutDate,  String? stripeTransferId,  String? failureReason)  $default,) {final _that = this;
+switch (_that) {
+case _SellerPayout():
+return $default(_that.sellerId,_that.stripeAccountId,_that.amountCents,_that.platformFeeCents,_that.netAmountCents,_that.status,_that.payoutDate,_that.stripeTransferId,_that.failureReason);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String sellerId,  String? stripeAccountId,  int amountCents,  int platformFeeCents,  int netAmountCents,  String status,  DateTime? payoutDate,  String? stripeTransferId,  String? failureReason)?  $default,) {final _that = this;
+switch (_that) {
+case _SellerPayout() when $default != null:
+return $default(_that.sellerId,_that.stripeAccountId,_that.amountCents,_that.platformFeeCents,_that.netAmountCents,_that.status,_that.payoutDate,_that.stripeTransferId,_that.failureReason);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$SellerPayoutImpl extends _SellerPayout {
-  const _$SellerPayoutImpl({
-    required this.sellerId,
-    this.stripeAccountId,
-    required this.amountCents,
-    required this.platformFeeCents,
-    required this.netAmountCents,
-    this.status = PayoutStatusValues.pending,
-    this.payoutDate,
-    this.stripeTransferId,
-    this.failureReason,
-  }) : super._();
 
-  factory _$SellerPayoutImpl.fromJson(Map<String, dynamic> json) =>
-      _$$SellerPayoutImplFromJson(json);
+class _SellerPayout extends SellerPayout {
+  const _SellerPayout({required this.sellerId, this.stripeAccountId, required this.amountCents, required this.platformFeeCents, required this.netAmountCents, this.status = PayoutStatusValues.pending, this.payoutDate, this.stripeTransferId, this.failureReason}): super._();
+  factory _SellerPayout.fromJson(Map<String, dynamic> json) => _$SellerPayoutFromJson(json);
 
-  @override
-  final String sellerId;
-  @override
-  final String? stripeAccountId;
-  @override
-  final int amountCents;
-  @override
-  final int platformFeeCents;
-  @override
-  final int netAmountCents;
-  @override
-  @JsonKey()
-  final String status;
-  @override
-  final DateTime? payoutDate;
-  @override
-  final String? stripeTransferId;
-  @override
-  final String? failureReason;
+@override final  String sellerId;
+@override final  String? stripeAccountId;
+@override final  int amountCents;
+@override final  int platformFeeCents;
+@override final  int netAmountCents;
+@override@JsonKey() final  String status;
+@override final  DateTime? payoutDate;
+@override final  String? stripeTransferId;
+@override final  String? failureReason;
 
-  @override
-  String toString() {
-    return 'SellerPayout(sellerId: $sellerId, stripeAccountId: $stripeAccountId, amountCents: $amountCents, platformFeeCents: $platformFeeCents, netAmountCents: $netAmountCents, status: $status, payoutDate: $payoutDate, stripeTransferId: $stripeTransferId, failureReason: $failureReason)';
-  }
+/// Create a copy of SellerPayout
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SellerPayoutCopyWith<_SellerPayout> get copyWith => __$SellerPayoutCopyWithImpl<_SellerPayout>(this, _$identity);
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$SellerPayoutImpl &&
-            (identical(other.sellerId, sellerId) ||
-                other.sellerId == sellerId) &&
-            (identical(other.stripeAccountId, stripeAccountId) ||
-                other.stripeAccountId == stripeAccountId) &&
-            (identical(other.amountCents, amountCents) ||
-                other.amountCents == amountCents) &&
-            (identical(other.platformFeeCents, platformFeeCents) ||
-                other.platformFeeCents == platformFeeCents) &&
-            (identical(other.netAmountCents, netAmountCents) ||
-                other.netAmountCents == netAmountCents) &&
-            (identical(other.status, status) || other.status == status) &&
-            (identical(other.payoutDate, payoutDate) ||
-                other.payoutDate == payoutDate) &&
-            (identical(other.stripeTransferId, stripeTransferId) ||
-                other.stripeTransferId == stripeTransferId) &&
-            (identical(other.failureReason, failureReason) ||
-                other.failureReason == failureReason));
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    sellerId,
-    stripeAccountId,
-    amountCents,
-    platformFeeCents,
-    netAmountCents,
-    status,
-    payoutDate,
-    stripeTransferId,
-    failureReason,
-  );
-
-  /// Create a copy of SellerPayout
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$SellerPayoutImplCopyWith<_$SellerPayoutImpl> get copyWith =>
-      __$$SellerPayoutImplCopyWithImpl<_$SellerPayoutImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$SellerPayoutImplToJson(this);
-  }
+@override
+Map<String, dynamic> toJson() {
+  return _$SellerPayoutToJson(this, );
 }
 
-abstract class _SellerPayout extends SellerPayout {
-  const factory _SellerPayout({
-    required final String sellerId,
-    final String? stripeAccountId,
-    required final int amountCents,
-    required final int platformFeeCents,
-    required final int netAmountCents,
-    final String status,
-    final DateTime? payoutDate,
-    final String? stripeTransferId,
-    final String? failureReason,
-  }) = _$SellerPayoutImpl;
-  const _SellerPayout._() : super._();
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SellerPayout&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.stripeAccountId, stripeAccountId) || other.stripeAccountId == stripeAccountId)&&(identical(other.amountCents, amountCents) || other.amountCents == amountCents)&&(identical(other.platformFeeCents, platformFeeCents) || other.platformFeeCents == platformFeeCents)&&(identical(other.netAmountCents, netAmountCents) || other.netAmountCents == netAmountCents)&&(identical(other.status, status) || other.status == status)&&(identical(other.payoutDate, payoutDate) || other.payoutDate == payoutDate)&&(identical(other.stripeTransferId, stripeTransferId) || other.stripeTransferId == stripeTransferId)&&(identical(other.failureReason, failureReason) || other.failureReason == failureReason));
+}
 
-  factory _SellerPayout.fromJson(Map<String, dynamic> json) =
-      _$SellerPayoutImpl.fromJson;
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sellerId,stripeAccountId,amountCents,platformFeeCents,netAmountCents,status,payoutDate,stripeTransferId,failureReason);
 
-  @override
-  String get sellerId;
-  @override
-  String? get stripeAccountId;
-  @override
-  int get amountCents;
-  @override
-  int get platformFeeCents;
-  @override
-  int get netAmountCents;
-  @override
-  String get status;
-  @override
-  DateTime? get payoutDate;
-  @override
-  String? get stripeTransferId;
-  @override
-  String? get failureReason;
+@override
+String toString() {
+  return 'SellerPayout(sellerId: $sellerId, stripeAccountId: $stripeAccountId, amountCents: $amountCents, platformFeeCents: $platformFeeCents, netAmountCents: $netAmountCents, status: $status, payoutDate: $payoutDate, stripeTransferId: $stripeTransferId, failureReason: $failureReason)';
+}
 
-  /// Create a copy of SellerPayout
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$SellerPayoutImplCopyWith<_$SellerPayoutImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+
+}
+
+/// @nodoc
+abstract mixin class _$SellerPayoutCopyWith<$Res> implements $SellerPayoutCopyWith<$Res> {
+  factory _$SellerPayoutCopyWith(_SellerPayout value, $Res Function(_SellerPayout) _then) = __$SellerPayoutCopyWithImpl;
+@override @useResult
+$Res call({
+ String sellerId, String? stripeAccountId, int amountCents, int platformFeeCents, int netAmountCents, String status, DateTime? payoutDate, String? stripeTransferId, String? failureReason
+});
+
+
+
+
+}
+/// @nodoc
+class __$SellerPayoutCopyWithImpl<$Res>
+    implements _$SellerPayoutCopyWith<$Res> {
+  __$SellerPayoutCopyWithImpl(this._self, this._then);
+
+  final _SellerPayout _self;
+  final $Res Function(_SellerPayout) _then;
+
+/// Create a copy of SellerPayout
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? sellerId = null,Object? stripeAccountId = freezed,Object? amountCents = null,Object? platformFeeCents = null,Object? netAmountCents = null,Object? status = null,Object? payoutDate = freezed,Object? stripeTransferId = freezed,Object? failureReason = freezed,}) {
+  return _then(_SellerPayout(
+sellerId: null == sellerId ? _self.sellerId : sellerId // ignore: cast_nullable_to_non_nullable
+as String,stripeAccountId: freezed == stripeAccountId ? _self.stripeAccountId : stripeAccountId // ignore: cast_nullable_to_non_nullable
+as String?,amountCents: null == amountCents ? _self.amountCents : amountCents // ignore: cast_nullable_to_non_nullable
+as int,platformFeeCents: null == platformFeeCents ? _self.platformFeeCents : platformFeeCents // ignore: cast_nullable_to_non_nullable
+as int,netAmountCents: null == netAmountCents ? _self.netAmountCents : netAmountCents // ignore: cast_nullable_to_non_nullable
+as int,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as String,payoutDate: freezed == payoutDate ? _self.payoutDate : payoutDate // ignore: cast_nullable_to_non_nullable
+as DateTime?,stripeTransferId: freezed == stripeTransferId ? _self.stripeTransferId : stripeTransferId // ignore: cast_nullable_to_non_nullable
+as String?,failureReason: freezed == failureReason ? _self.failureReason : failureReason // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
 }
 
 /// @nodoc
 mixin _$Taxes {
-  double get gst => throw _privateConstructorUsedError;
-  double get pst => throw _privateConstructorUsedError;
-  double get hst => throw _privateConstructorUsedError;
-  double get qst => throw _privateConstructorUsedError;
 
-  /// Create a copy of Taxes
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $TaxesCopyWith<Taxes> get copyWith => throw _privateConstructorUsedError;
+ double get gst; double get pst; double get hst; double get qst;
+/// Create a copy of Taxes
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$TaxesCopyWith<Taxes> get copyWith => _$TaxesCopyWithImpl<Taxes>(this as Taxes, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Taxes&&(identical(other.gst, gst) || other.gst == gst)&&(identical(other.pst, pst) || other.pst == pst)&&(identical(other.hst, hst) || other.hst == hst)&&(identical(other.qst, qst) || other.qst == qst));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,gst,pst,hst,qst);
+
+@override
+String toString() {
+  return 'Taxes(gst: $gst, pst: $pst, hst: $hst, qst: $qst)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $TaxesCopyWith<$Res> {
-  factory $TaxesCopyWith(Taxes value, $Res Function(Taxes) then) =
-      _$TaxesCopyWithImpl<$Res, Taxes>;
-  @useResult
-  $Res call({double gst, double pst, double hst, double qst});
-}
+abstract mixin class $TaxesCopyWith<$Res>  {
+  factory $TaxesCopyWith(Taxes value, $Res Function(Taxes) _then) = _$TaxesCopyWithImpl;
+@useResult
+$Res call({
+ double gst, double pst, double hst, double qst
+});
 
+
+
+
+}
 /// @nodoc
-class _$TaxesCopyWithImpl<$Res, $Val extends Taxes>
+class _$TaxesCopyWithImpl<$Res>
     implements $TaxesCopyWith<$Res> {
-  _$TaxesCopyWithImpl(this._value, this._then);
+  _$TaxesCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final Taxes _self;
+  final $Res Function(Taxes) _then;
 
-  /// Create a copy of Taxes
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? gst = null,
-    Object? pst = null,
-    Object? hst = null,
-    Object? qst = null,
-  }) {
-    return _then(
-      _value.copyWith(
-            gst: null == gst
-                ? _value.gst
-                : gst // ignore: cast_nullable_to_non_nullable
-                      as double,
-            pst: null == pst
-                ? _value.pst
-                : pst // ignore: cast_nullable_to_non_nullable
-                      as double,
-            hst: null == hst
-                ? _value.hst
-                : hst // ignore: cast_nullable_to_non_nullable
-                      as double,
-            qst: null == qst
-                ? _value.qst
-                : qst // ignore: cast_nullable_to_non_nullable
-                      as double,
-          )
-          as $Val,
-    );
-  }
+/// Create a copy of Taxes
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? gst = null,Object? pst = null,Object? hst = null,Object? qst = null,}) {
+  return _then(_self.copyWith(
+gst: null == gst ? _self.gst : gst // ignore: cast_nullable_to_non_nullable
+as double,pst: null == pst ? _self.pst : pst // ignore: cast_nullable_to_non_nullable
+as double,hst: null == hst ? _self.hst : hst // ignore: cast_nullable_to_non_nullable
+as double,qst: null == qst ? _self.qst : qst // ignore: cast_nullable_to_non_nullable
+as double,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [Taxes].
+extension TaxesPatterns on Taxes {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _Taxes value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _Taxes() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _Taxes value)  $default,){
+final _that = this;
+switch (_that) {
+case _Taxes():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _Taxes value)?  $default,){
+final _that = this;
+switch (_that) {
+case _Taxes() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( double gst,  double pst,  double hst,  double qst)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _Taxes() when $default != null:
+return $default(_that.gst,_that.pst,_that.hst,_that.qst);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( double gst,  double pst,  double hst,  double qst)  $default,) {final _that = this;
+switch (_that) {
+case _Taxes():
+return $default(_that.gst,_that.pst,_that.hst,_that.qst);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( double gst,  double pst,  double hst,  double qst)?  $default,) {final _that = this;
+switch (_that) {
+case _Taxes() when $default != null:
+return $default(_that.gst,_that.pst,_that.hst,_that.qst);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
-abstract class _$$TaxesImplCopyWith<$Res> implements $TaxesCopyWith<$Res> {
-  factory _$$TaxesImplCopyWith(
-    _$TaxesImpl value,
-    $Res Function(_$TaxesImpl) then,
-  ) = __$$TaxesImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({double gst, double pst, double hst, double qst});
+
+
+class _Taxes extends Taxes {
+  const _Taxes({this.gst = 0.0, this.pst = 0.0, this.hst = 0.0, this.qst = 0.0}): super._();
+  
+
+@override@JsonKey() final  double gst;
+@override@JsonKey() final  double pst;
+@override@JsonKey() final  double hst;
+@override@JsonKey() final  double qst;
+
+/// Create a copy of Taxes
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$TaxesCopyWith<_Taxes> get copyWith => __$TaxesCopyWithImpl<_Taxes>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Taxes&&(identical(other.gst, gst) || other.gst == gst)&&(identical(other.pst, pst) || other.pst == pst)&&(identical(other.hst, hst) || other.hst == hst)&&(identical(other.qst, qst) || other.qst == qst));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,gst,pst,hst,qst);
+
+@override
+String toString() {
+  return 'Taxes(gst: $gst, pst: $pst, hst: $hst, qst: $qst)';
+}
+
+
 }
 
 /// @nodoc
-class __$$TaxesImplCopyWithImpl<$Res>
-    extends _$TaxesCopyWithImpl<$Res, _$TaxesImpl>
-    implements _$$TaxesImplCopyWith<$Res> {
-  __$$TaxesImplCopyWithImpl(
-    _$TaxesImpl _value,
-    $Res Function(_$TaxesImpl) _then,
-  ) : super(_value, _then);
+abstract mixin class _$TaxesCopyWith<$Res> implements $TaxesCopyWith<$Res> {
+  factory _$TaxesCopyWith(_Taxes value, $Res Function(_Taxes) _then) = __$TaxesCopyWithImpl;
+@override @useResult
+$Res call({
+ double gst, double pst, double hst, double qst
+});
 
-  /// Create a copy of Taxes
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? gst = null,
-    Object? pst = null,
-    Object? hst = null,
-    Object? qst = null,
-  }) {
-    return _then(
-      _$TaxesImpl(
-        gst: null == gst
-            ? _value.gst
-            : gst // ignore: cast_nullable_to_non_nullable
-                  as double,
-        pst: null == pst
-            ? _value.pst
-            : pst // ignore: cast_nullable_to_non_nullable
-                  as double,
-        hst: null == hst
-            ? _value.hst
-            : hst // ignore: cast_nullable_to_non_nullable
-                  as double,
-        qst: null == qst
-            ? _value.qst
-            : qst // ignore: cast_nullable_to_non_nullable
-                  as double,
-      ),
-    );
-  }
+
+
+
 }
-
 /// @nodoc
+class __$TaxesCopyWithImpl<$Res>
+    implements _$TaxesCopyWith<$Res> {
+  __$TaxesCopyWithImpl(this._self, this._then);
 
-class _$TaxesImpl extends _Taxes {
-  const _$TaxesImpl({
-    this.gst = 0.0,
-    this.pst = 0.0,
-    this.hst = 0.0,
-    this.qst = 0.0,
-  }) : super._();
+  final _Taxes _self;
+  final $Res Function(_Taxes) _then;
 
-  @override
-  @JsonKey()
-  final double gst;
-  @override
-  @JsonKey()
-  final double pst;
-  @override
-  @JsonKey()
-  final double hst;
-  @override
-  @JsonKey()
-  final double qst;
-
-  @override
-  String toString() {
-    return 'Taxes(gst: $gst, pst: $pst, hst: $hst, qst: $qst)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$TaxesImpl &&
-            (identical(other.gst, gst) || other.gst == gst) &&
-            (identical(other.pst, pst) || other.pst == pst) &&
-            (identical(other.hst, hst) || other.hst == hst) &&
-            (identical(other.qst, qst) || other.qst == qst));
-  }
-
-  @override
-  int get hashCode => Object.hash(runtimeType, gst, pst, hst, qst);
-
-  /// Create a copy of Taxes
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$TaxesImplCopyWith<_$TaxesImpl> get copyWith =>
-      __$$TaxesImplCopyWithImpl<_$TaxesImpl>(this, _$identity);
+/// Create a copy of Taxes
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? gst = null,Object? pst = null,Object? hst = null,Object? qst = null,}) {
+  return _then(_Taxes(
+gst: null == gst ? _self.gst : gst // ignore: cast_nullable_to_non_nullable
+as double,pst: null == pst ? _self.pst : pst // ignore: cast_nullable_to_non_nullable
+as double,hst: null == hst ? _self.hst : hst // ignore: cast_nullable_to_non_nullable
+as double,qst: null == qst ? _self.qst : qst // ignore: cast_nullable_to_non_nullable
+as double,
+  ));
 }
 
-abstract class _Taxes extends Taxes {
-  const factory _Taxes({
-    final double gst,
-    final double pst,
-    final double hst,
-    final double qst,
-  }) = _$TaxesImpl;
-  const _Taxes._() : super._();
 
-  @override
-  double get gst;
-  @override
-  double get pst;
-  @override
-  double get hst;
-  @override
-  double get qst;
-
-  /// Create a copy of Taxes
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$TaxesImplCopyWith<_$TaxesImpl> get copyWith =>
-      throw _privateConstructorUsedError;
 }
+
+// dart format on

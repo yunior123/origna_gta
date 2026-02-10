@@ -1,6 +1,6 @@
 #+#+#+#+ origna_gta (Flutter app)
 
-Canada-only marketplace app (Web, Android, iOS) using Firebase + Stripe Connect Express.
+E-commerce marketplace serving Canadian buyers (Web, Android, iOS) using Firebase + Stripe Connect Express. Sellers can be worldwide.
 
 ## Architecture (MVVM)
 - UI → ViewModels → Repositories → Firebase/Stripe services
@@ -66,7 +66,7 @@ erDiagram
 	USERS_CART {
 		string productId
 		number quantity
-		timestamp dateCreated
+		timestamp createdAt
 	}
 
 	USERS_FAVORITES {
@@ -88,7 +88,7 @@ erDiagram
 		string[] searchKeywords
 		boolean isActive
 		timestamp deletedAt
-		timestamp dateCreated
+		timestamp createdAt
 	}
 
 	ORDERS {
@@ -133,7 +133,7 @@ erDiagram
 		string deliveryStatus
 		string trackingNumber
 		boolean confirmedByBuyer
-		timestamp dateCreated
+		timestamp createdAt
 	}
 
 	SELLER_PAYOUTS {

@@ -1,6 +1,6 @@
 ---
 name: shipping-costs
-description: Distance-based and province-based shipping cost tables, surcharges, and multipliers for the Canada-only marketplace. Use when working on checkout, shipping, or pricing logic.
+description: Distance-based and province-based shipping cost tables, surcharges, and multipliers for the e-commerce marketplace serving Canadian buyers (sellers worldwide). Use when working on checkout, shipping, or pricing logic.
 ---
 
 # Shipping Cost Reference

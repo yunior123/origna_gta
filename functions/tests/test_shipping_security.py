@@ -233,7 +233,7 @@ class TestPaymentSecurity(unittest.TestCase):
                 "sellerAddress": {"state": "ON"},
                 "quantity": 2,
                 "deliveryOptions": [
-                    {"speed": "express", "isEnabled": True, "price": 4.0}
+                    {"deliverySpeed": "express", "isEnabled": True, "price": 4.0}
                 ]
             },
             {
@@ -241,7 +241,7 @@ class TestPaymentSecurity(unittest.TestCase):
                 "sellerAddress": {"state": "ON"},
                 "quantity": 1,
                 "deliveryOptions": [
-                    {"speed": "express", "isEnabled": True, "price": 7.5}
+                    {"deliverySpeed": "express", "isEnabled": True, "price": 7.5}
                 ]
             }
         ]
@@ -270,7 +270,7 @@ class TestPaymentSecurity(unittest.TestCase):
                 "sellerAddress": {"state": "ON"},
                 "quantity": 1,
                 "deliveryOptions": [
-                    {"speed": "standard", "isEnabled": True, "price": 5.0}
+                    {"deliverySpeed": "standard", "isEnabled": True, "price": 5.0}
                 ]
             },
             {

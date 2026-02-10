@@ -14,16 +14,17 @@ import boto3
 from botocore.config import Config
 from firebase_functions import firestore_fn, https_fn, options
 
-from algolia_service import delete_product as algolia_delete_product
-from algolia_service import index_product
-from config import R2_ACCESS_KEY_NEW, R2_ACCOUNT_ID_NEW, R2_SECRET_KEY_NEW, Collections, R2Config, get_r2_credentials
-from function_options import DEFAULT_OPTIONS
-from schema_constants import CategoryIds, DeliveryTypeValues, Fields, OrderStatusValues, UserRoleValues
-from utils import create_success_response
+from services.algolia_service import delete_product as algolia_delete_product
+from services.algolia_service import index_product
+from config import R2_ACCESS_KEY_NEW, R2_ACCOUNT_ID_NEW, R2_SECRET_KEY_NEW, R2Config, get_r2_credentials
+from utils.function_options import DEFAULT_OPTIONS
+from schema_constants import AppConfig, BusinessRules, CategoryIds, Collections, DeliveryTypeValues, Fields, OrderStatusValues, UserRoleValues
+from utils.helpers import create_success_response
 
-# Lazy loading constants
+# Constants
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
+CDN_BASE_URL = "https://cdn.origna.ca"
 
 _db = None
 _firestore = None
@@ -47,12 +48,7 @@ def get_server_timestamp():
 
 # CORS configuration for production
 CORS_CONFIG = options.CorsOptions(
-    cors_origins=[
-        "https://orignagta.ca",
-        "https://www.orignagta.ca",
-        "https://orignagta.web.app",
-        "https://orignagta.firebaseapp.com",
-    ],
+    cors_origins=AppConfig.CORS_ORIGINS,
     cors_methods=["POST", "OPTIONS"],
 )
 
@@ -82,7 +78,7 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
     # AUDIT FIX: Rate limit image uploads
-    from rate_limiter import RateLimiter
+    from services.rate_limiter import RateLimiter
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=req.auth.uid, action='upload_images',
@@ -96,7 +92,7 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     content_types = data.get('contentTypes', [])
 
     # Import validation functions
-    from utils import sanitize_path
+    from utils.helpers import sanitize_path
 
     if not file_names_raw or len(file_names_raw) == 0:
         raise https_fn.HttpsError('invalid-argument', 'No files specified')
@@ -160,7 +156,7 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
                 ExpiresIn=3600  # 1 hour
             )
 
-            public_url = f'https://cdn.origna.ca/{unique_key}'
+            public_url = f'{CDN_BASE_URL}/{unique_key}'
 
             upload_urls.append({
                 'uploadUrl': presigned_url,
@@ -222,13 +218,22 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not (is_admin or is_owner):
         raise https_fn.HttpsError('permission-denied', 'Only product owner or admin can delete')
 
-    # Check for pending orders with lazy loading limit
+    # Check for pending orders
+    # NOTE: Firestore can't filter on nested array map fields with array_contains.
+    # Use sellerIds (denormalized on orders) to find related orders for this seller,
+    # then check if any contain this productId in items.
     pending_orders_query = get_db().collection(Collections.ORDERS)\
-        .where(f'{Fields.ITEMS}.{Fields.PRODUCT_ID}', 'array_contains', product_id)\
+        .where(Fields.SELLER_IDS, 'array_contains', user_id)\
         .where(Fields.ORDER_STATUS, 'in', [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING, OrderStatusValues.SHIPPED])\
-        .limit(1)
+        .limit(20)
 
-    pending_orders = list(pending_orders_query.stream())
+    pending_orders = []
+    for order_doc in pending_orders_query.stream():
+        order_data_check = order_doc.to_dict()
+        for item in order_data_check.get(Fields.ITEMS, []):
+            if item.get(Fields.PRODUCT_ID) == product_id:
+                pending_orders.append(order_doc)
+                break
 
     if pending_orders:
         raise https_fn.HttpsError(
@@ -275,7 +280,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
     # AUDIT FIX: Rate limit rating submissions
-    from rate_limiter import RateLimiter
+    from services.rate_limiter import RateLimiter
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=req.auth.uid, action='submit_rating',
@@ -288,12 +293,12 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     data = req.data
 
     # Import validation functions
-    from utils import sanitized_text
+    from utils.helpers import sanitized_text
 
     product_id = data.get(Fields.PRODUCT_ID)
     order_id = data.get(Fields.ORDER_ID)
     rating = data.get(Fields.RATING)
-    review_raw = data.get('review', '')
+    review_raw = data.get(Fields.REVIEW, '')
 
     # Sanitize review text to prevent XSS
     review = sanitized_text(review_raw)[:1000] if review_raw else ''  # Max 1000 chars
@@ -343,7 +348,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.USER_ID: user_id,
         Fields.ORDER_ID: order_id,
         Fields.RATING: rating,
-        'review': review,
+        Fields.REVIEW: review,
         Fields.CREATED_AT: get_server_timestamp()
     })
 
@@ -402,7 +407,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         return
 
     # ── SECURITY: SERVER-SIDE VALIDATION (products written from Flutter) ──
-    from utils import sanitized_text
+    from utils.helpers import sanitized_text
 
     # CRITICAL: Validate price > 0 and <= 100000 CAD
     price = product_data.get(Fields.PRICE)
@@ -410,7 +415,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         print(f'SECURITY: Product {product_id} has invalid price ({price}) — deactivating')
         get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
-            'deactivationReason': f'Invalid price: {price}',
+            Fields.DEACTIVATION_REASON: f'Invalid price: {price}',
         })
         return
 
@@ -420,18 +425,19 @@ def on_product_created(event: firestore_fn.Event) -> None:
         print(f'SECURITY: Product {product_id} has invalid stock ({stock}) — deactivating')
         get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
-            'deactivationReason': f'Invalid stock: {stock}',
+            Fields.DEACTIVATION_REASON: f'Invalid stock: {stock}',
         })
         return
 
-    # CRITICAL: Canada-only seller validation
+    # Seller address validation — sellers can be from any country
+    # Only verify that a seller address with a non-empty country is present
     seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
-    country = (seller_address.get(Fields.COUNTRY) or '').lower()
-    if country not in ('canada', 'ca'):
-        print(f'SECURITY: Product {product_id} has non-Canadian seller ({country}) — deactivating')
+    country = (seller_address.get(Fields.COUNTRY) or '')
+    if not country:
+        print(f'SECURITY: Product {product_id} has empty seller country — deactivating')
         get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
-            'deactivationReason': f'Non-Canadian seller: {country}',
+            Fields.DEACTIVATION_REASON: 'Missing seller country',
         })
         return
 
@@ -446,7 +452,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         print(f'SECURITY: Product {product_id} has invalid categoryId ({category_id}) — deactivating')
         get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
-            'deactivationReason': f'Invalid categoryId: {category_id}',
+            Fields.DEACTIVATION_REASON: f'Invalid categoryId: {category_id}',
         })
         return
     sanitized_name = sanitized_text(name)
@@ -499,8 +505,12 @@ def on_product_created(event: firestore_fn.Event) -> None:
     if is_perishable:
         delivery_options = product_data.get(Fields.DELIVERY_OPTIONS, [])
         has_local_or_same_day = any(
-            opt.get(Fields.TYPE) in ['local_delivery', 'same_day', 'local', 'pickup'] or
-            opt.get('estimatedDays', 99) <= 1
+            opt.get(Fields.TYPE) in (
+                DeliveryTypeValues.LOCAL_DELIVERY,
+                DeliveryTypeValues.SAME_DAY,
+                DeliveryTypeValues.PICKUP,
+            ) or
+            opt.get(Fields.ESTIMATED_DAYS, 99) <= 1
             for opt in delivery_options
         ) if delivery_options else product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False)
 
@@ -515,7 +525,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             product_data[Fields.NAME] = sanitized_text(product_data[Fields.NAME])
         if Fields.DESCRIPTION in product_data:
             product_data[Fields.DESCRIPTION] = sanitized_text(product_data[Fields.DESCRIPTION])
-        index_product(product_data)
+        index_product(product_id, product_data)
         print(f'Product {product_id} indexed to Algolia')
     except Exception as e:
         print(f'Failed to index product {product_id}: {str(e)}')
@@ -541,6 +551,51 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         except Exception as e:
             print(f'Failed to delete from Algolia: {str(e)}')
         return
+
+    # ── SERVER-SIDE VALIDATION on update (same as on_product_created) ──
+    from utils.helpers import sanitized_text
+
+    # Validate price > 0 and <= 100000 CAD
+    price = product_data.get(Fields.PRICE)
+    if price is not None and (not isinstance(price, (int, float)) or price <= 0 or price > 100000):
+        print(f'SECURITY: Product {product_id} updated with invalid price ({price}) — deactivating')
+        get_db().collection(Collections.PRODUCTS).document(product_id).update({
+            Fields.IS_ACTIVE: False,
+        })
+        return
+
+    # Validate stock quantity >= 0
+    stock = product_data.get(Fields.STOCK_QUANTITY, 0)
+    if not isinstance(stock, (int, float)) or stock < 0:
+        print(f'SECURITY: Product {product_id} updated with invalid stock ({stock}) — deactivating')
+        get_db().collection(Collections.PRODUCTS).document(product_id).update({
+            Fields.IS_ACTIVE: False,
+        })
+        return
+
+    # Seller address validation — sellers can be from any country
+    seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
+    country = (seller_address.get(Fields.COUNTRY) or '')
+    if not country:
+        print(f'SECURITY: Product {product_id} updated with empty seller country — deactivating')
+        get_db().collection(Collections.PRODUCTS).document(product_id).update({
+            Fields.IS_ACTIVE: False,
+        })
+        return
+
+    # Sanitize text fields to prevent stored XSS
+    xss_patches = {}
+    name = product_data.get(Fields.NAME, '')
+    description = product_data.get(Fields.DESCRIPTION, '')
+    sanitized_name = sanitized_text(name)
+    sanitized_desc = sanitized_text(description)
+    if sanitized_name != name:
+        xss_patches[Fields.NAME] = sanitized_name
+    if sanitized_desc != description:
+        xss_patches[Fields.DESCRIPTION] = sanitized_desc
+    if xss_patches:
+        get_db().collection(Collections.PRODUCTS).document(product_id).update(xss_patches)
+        product_data.update(xss_patches)
 
     try:
         product_data['id'] = product_id
@@ -588,7 +643,7 @@ def configure_algolia(req: https_fn.CallableRequest) -> dict:
         raise https_fn.HttpsError('permission-denied', 'Admin only')
 
     try:
-        from algolia_service import configure_algolia_index
+        from services.algolia_service import configure_algolia_index
         configure_algolia_index()
         return create_success_response({'message': 'Algolia index configured'})
     except Exception as e:
@@ -629,7 +684,7 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
     order_direction = data.get('orderDirection', 'desc')
 
     # Validation
-    if order_by not in [Fields.CREATED_AT, Fields.PRICE, Fields.RATING, Fields.RATING_COUNT, 'title']:
+    if order_by not in [Fields.CREATED_AT, Fields.PRICE, Fields.RATING, Fields.RATING_COUNT, Fields.NAME]:
         raise https_fn.HttpsError('invalid-argument', 'Invalid orderBy field')
 
     if order_direction not in ['asc', 'desc']:

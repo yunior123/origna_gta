@@ -117,7 +117,7 @@ sequenceDiagram
 - Category filtering
 - Searchable attributes: name, description, keywords
 - Firestore field name: keywords (array) for both Algolia and fallback
-- Custom ranking: rating → ratingCount → dateCreated
+- Custom ranking: rating → ratingCount → createdAt
 - Highlighting enabled
 - 20 results per page
 
@@ -132,6 +132,6 @@ sequenceDiagram
 - Functions README: functions/Readme.md
 
 ## Environments
-- Canada-only delivery enforced in Functions.
+- Canada-only delivery enforced in Functions (buyer/shipping addresses only; sellers can be worldwide).
 - Stripe Connect Express direct charges, manual capture.
 - Algolia search with Firestore fallback.

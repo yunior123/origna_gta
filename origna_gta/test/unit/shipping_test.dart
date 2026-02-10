@@ -22,7 +22,7 @@ void main() {
         price: 10.0,
         imageUrls: [],
         quantity: quantity,
-        dateCreated: Timestamp.now(),
+        createdAt: Timestamp.now(),
         sellerAddress: mockAddress,
         sellerId: 'seller_123',
         deliveryStatus: 'pending',

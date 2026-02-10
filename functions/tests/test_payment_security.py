@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from airwallex_service import AirwallexService
+from services.airwallex_service import AirwallexService
 
 
 class TestPaymentFlowSecurity:

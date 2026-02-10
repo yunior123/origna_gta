@@ -36,7 +36,7 @@
 
 ## PROJECT
 
-**OrignaGta** — Canada-only e-commerce marketplace. Scale: 100M+ users/year. Launch: March 2026.
+**OrignaGta** — E-commerce marketplace serving Canadian buyers, with sellers worldwide. Scale: 100M+ users/year. Launch: March 2026.
 
 **Tech:** Flutter (Web/Android/iOS) + Firebase + Stripe Connect Express + R2 Cloudflare + Geoapify + Algolia + Sentry + Mailjet + Riverpod
 
@@ -47,7 +47,7 @@
 1. MVVM only. Frontend = no business logic.
 2. APIs replaceable by editing service files only
 3. Idempotency required for all payments/transfers
-4. Canada-only enforced backend-first
+4. Buyer addresses/shipping Canada-only enforced backend-first (sellers can be worldwide)
 5. Assume eventual consistency. Minimize DB reads/writes.
 6. **Changing one line → update EVERY file that line impacts** (Tests, Rules, Indexes, Schema, Deploy)
 
@@ -112,24 +112,7 @@ See @docs/AGENT_GUIDE.md for full agent usage guide, workflow chunking, and sess
 ---
 
 ## LEARNED (Persistent Knowledge)
-
-### Key Architecture
-- **Stripe Connect Express** — direct charges, manual capture, 2.5% platform fee
-- **Canada-only** — backend-first postal code/province validation
-- **R2 Cloudflare** for images, **Algolia** for search, **Mailjet** for email, **Sentry** for errors
-- **Riverpod** for state (NOT Provider, NOT Bloc)
-
-### Payment Pipeline
-`checkout_provider.dart` → `create_payment_intent` → `payment_stripe.py` (manual capture) → seller confirms → `capture_payment` → Stripe Connect transfer after delivery
-
-### Order Lifecycle
-`pending → confirmed → processing → shipped → in_transit → delivered` (happy path)
-Cancel/refund: restore stock + refund/void. Cron: 7-day auto-confirm, auth expiry.
-
-### Add Product Flow
-→ **Full knowledge in `.claude/skills/add-product-flow/SKILL.md`**
-Sentinel `copyWith`, image sync callback, free shipping cascade, digital product guards, postal code normalization, stale coordinates, double-submit guard.
-
+Be serious, audit logic, json schema, use logic, cross stack agents, check the hole logic of the project in parallel, add all issues to tasks list. no hardcoded values no magic strings, this is serious, they nuke entire projects. Most of the bugs are related to logic, incomplete work, hardcoded values instead of constants or enums. Verify the payment system backend and frontend, thats important.
 
 ### Algolia Search Architecture
 - **`AlgoliaService.isAvailable`** — detects empty credentials at init. Emulator has no Algolia keys → `isAvailable=false` → all queries route to Firestore.

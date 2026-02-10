@@ -27,7 +27,7 @@ docs = r.json().get("documents", [])
 print(f"   Total: {len(docs)} documents")
 
 # 2. Run the same query the Flutter app uses
-print("\n2. FLUTTER APP QUERY: isActive==true, orderBy dateCreated desc")
+print("\n2. FLUTTER APP QUERY: isActive==true, orderBy createdAt desc")
 query = {
     "structuredQuery": {
         "from": [{"collectionId": "products"}],
@@ -38,7 +38,7 @@ query = {
                 "value": {"booleanValue": True}
             }
         },
-        "orderBy": [{"field": {"fieldPath": "dateCreated"}, "direction": "DESCENDING"}],
+        "orderBy": [{"field": {"fieldPath": "createdAt"}, "direction": "DESCENDING"}],
         "limit": 20
     }
 }
@@ -53,9 +53,9 @@ for i, item in enumerate(results[:5]):
     fields = doc.get("fields", {})
     name = fields.get("name", {}).get("stringValue", "?")
     price = fields.get("price", {}).get("doubleValue", 0)
-    dc = fields.get("dateCreated", {})
+    dc = fields.get("createdAt", {})
     dc_type = list(dc.keys())[0] if dc else "MISSING"
-    print(f"   [{i+1}] {name} | ${price} | dateCreated type: {dc_type}")
+    print(f"   [{i+1}] {name} | ${price} | createdAt type: {dc_type}")
 
 # 3. Check first product deserialization
 if results:
@@ -65,7 +65,7 @@ if results:
     native = {k: rest_to_native(v) for k, v in fields.items()}
     native["productId"] = doc["name"].split("/")[-1]
     
-    required = ["productId", "name", "price", "description", "imageUrls", "sellerId", "sellerAddress", "categoryId", "stockQuantity", "dateCreated"]
+    required = ["productId", "name", "price", "description", "imageUrls", "sellerId", "sellerAddress", "categoryId", "stockQuantity", "createdAt"]
     missing = [f for f in required if f not in native]
     print(f"   Missing required fields: {missing if missing else 'NONE ✅'}")
     
@@ -77,26 +77,26 @@ if results:
     else:
         print(f"   ⚠️ sellerAddress is not a map: {type(addr)}")
     
-    print(f"   dateCreated = {native.get('dateCreated')}")
+    print(f"   createdAt = {native.get('createdAt')}")
     print(f"   categoryId type = {type(native.get('categoryId')).__name__} = {native.get('categoryId')}")
 
-# 4. Check for products without dateCreated (would break orderBy)
-print("\n4. PRODUCTS WITHOUT dateCreated FIELD")
+# 4. Check for products without createdAt (would break orderBy)
+print("\n4. PRODUCTS WITHOUT createdAt FIELD")
 bad_count = 0
 for doc_data in docs:
     fields = doc_data.get("fields", {})
-    if "dateCreated" not in fields:
+    if "createdAt" not in fields:
         name = fields.get("name", {}).get("stringValue", "?")
-        print(f"   ⚠️ MISSING dateCreated: {name}")
+        print(f"   ⚠️ MISSING createdAt: {name}")
         bad_count += 1
-print(f"   {bad_count} products missing dateCreated" if bad_count else "   All products have dateCreated ✅")
+print(f"   {bad_count} products missing createdAt" if bad_count else "   All products have createdAt ✅")
 
-# 5. Check dateCreated types (mixed types would break ordering)
-print("\n5. dateCreated TYPE CHECK")
+# 5. Check createdAt types (mixed types would break ordering)
+print("\n5. createdAt TYPE CHECK")
 types = {}
 for doc_data in docs:
     fields = doc_data.get("fields", {})
-    dc = fields.get("dateCreated", {})
+    dc = fields.get("createdAt", {})
     t = list(dc.keys())[0] if dc else "MISSING"
     types[t] = types.get(t, 0) + 1
 for t, count in types.items():

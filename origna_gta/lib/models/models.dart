@@ -150,7 +150,7 @@ class CartItemDetailModel {
   final double price;
   final List<String> imageUrls;
   final int quantity;
-  final Timestamp dateCreated;
+  final Timestamp createdAt;
   final Address sellerAddress;
   final String sellerId;
   final String deliveryStatus;
@@ -175,7 +175,7 @@ class CartItemDetailModel {
     required this.price,
     required this.imageUrls,
     required this.quantity,
-    required this.dateCreated,
+    required this.createdAt,
     required this.sellerAddress,
     required this.sellerId,
     required this.deliveryStatus,
@@ -203,7 +203,7 @@ class CartItemDetailModel {
       price: (map[Fields.price] ?? 0).toDouble(),
       imageUrls: List<String>.from(map[Fields.imageUrls] ?? []),
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
-      dateCreated: _parseTimestamp(map[Fields.dateCreated]),
+      createdAt: _parseTimestamp(map[Fields.createdAt]),
       sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
       sellerId: map[Fields.sellerId] ?? '',
       deliveryStatus: map[Fields.status] ?? map[Fields.deliveryStatus] ?? DeliveryStatus.pending.value,
@@ -238,10 +238,10 @@ class CartItemDetailModel {
       Fields.price: price,
       Fields.imageUrls: imageUrls,
       Fields.quantity: quantity,
-      Fields.dateCreated: dateCreated,
+      Fields.createdAt: createdAt,
       Fields.sellerAddress: sellerAddress.toMap(),
       Fields.sellerId: sellerId,
-      // Canonical per-item status field (preferred) + legacy field for backwards compatibility.
+      // Both status fields are written for consistency
       Fields.status: deliveryStatus,
       Fields.deliveryStatus: deliveryStatus,
       Fields.trackingNumber: trackingNumber,
@@ -264,10 +264,10 @@ class CartItemDetailModel {
 class CartItemModel {
   final int quantity;
   final String productId;
-  final Timestamp dateCreated;
-  CartItemModel({required this.quantity, required this.productId, required this.dateCreated});
+  final Timestamp createdAt;
+  CartItemModel({required this.quantity, required this.productId, required this.createdAt});
   factory CartItemModel.fromMap(Map<String, dynamic> map) {
-    final raw = map[Fields.dateCreated];
+    final raw = map[Fields.createdAt];
     Timestamp ts;
     if (raw is Timestamp) {
       ts = raw;
@@ -281,26 +281,26 @@ class CartItemModel {
     return CartItemModel(
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
       productId: map[Fields.productId] ?? '',
-      dateCreated: ts,
+      createdAt: ts,
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {Fields.quantity: quantity, Fields.productId: productId, Fields.dateCreated: dateCreated};
+    return {Fields.quantity: quantity, Fields.productId: productId, Fields.createdAt: createdAt};
   }
 }
 
 class CartModel {
   final String productId;
   final int quantity;
-  final DateTime dateCreated;
+  final DateTime createdAt;
 
-  CartModel({required this.productId, this.quantity = 1, required this.dateCreated});
+  CartModel({required this.productId, this.quantity = 1, required this.createdAt});
 
   factory CartModel.fromMap(Map<String, dynamic> map) {
     // Handle both Timestamp and null cases safely
     DateTime parsedDate;
-    final rawDate = map[Fields.dateCreated];
+    final rawDate = map[Fields.createdAt];
     if (rawDate is Timestamp) {
       parsedDate = rawDate.toDate();
     } else if (rawDate is DateTime) {
@@ -309,11 +309,11 @@ class CartModel {
       parsedDate = DateTime.now();
     }
 
-    return CartModel(productId: map[Fields.productId] ?? '', quantity: (map[Fields.quantity] as num?)?.toInt() ?? 1, dateCreated: parsedDate);
+    return CartModel(productId: map[Fields.productId] ?? '', quantity: (map[Fields.quantity] as num?)?.toInt() ?? 1, createdAt: parsedDate);
   }
 
   Map<String, dynamic> toMap() {
-    return {Fields.productId: productId, Fields.quantity: quantity, Fields.dateCreated: Timestamp.fromDate(dateCreated)};
+    return {Fields.productId: productId, Fields.quantity: quantity, Fields.createdAt: Timestamp.fromDate(createdAt)};
   }
 }
 
@@ -421,7 +421,7 @@ class OrderModel {
         price: (map[Fields.price] ?? 0).toDouble(),
         imageUrls: List<String>.from(map[Fields.imageUrls] ?? []),
         quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
-        dateCreated: (map[Fields.dateCreated] as Timestamp?) ?? Timestamp.now(),
+        createdAt: (map[Fields.createdAt] as Timestamp?) ?? Timestamp.now(),
         sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
         sellerId: map[Fields.sellerId] ?? '',
         deliveryStatus: map[Fields.status] ?? map[Fields.deliveryStatus] ?? DeliveryStatus.pending.value,
@@ -492,7 +492,7 @@ class OrderModel {
         price: (map[Fields.price] ?? 0).toDouble(),
         imageUrls: List<String>.from(map[Fields.imageUrls] ?? []),
         quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
-        dateCreated: (map[Fields.dateCreated] as Timestamp?) ?? Timestamp.now(),
+        createdAt: (map[Fields.createdAt] as Timestamp?) ?? Timestamp.now(),
         sellerAddress: map[Fields.sellerAddress] != null ? Address.fromMap(map[Fields.sellerAddress] as Map<String, dynamic>) : Address.empty(),
         sellerId: map[Fields.sellerId] ?? '',
         deliveryStatus: map[Fields.status] ?? map[Fields.deliveryStatus] ?? DeliveryStatus.pending.value,
@@ -611,7 +611,7 @@ class ProductModel {
   final int categoryId;
   final double rating;
   final int ratingCount;
-  final Timestamp? dateCreated;
+  final Timestamp? createdAt;
   final List<String> searchKeywords;
   // Shipping dimensions (optional - for better shipping calculation)
   final double? weightKg; // Weight in kilograms
@@ -619,7 +619,7 @@ class ProductModel {
   final double? widthCm; // Width in centimeters
   final double? heightCm; // Height in centimeters
   final bool isLocalDeliveryOnly; // Restrict to buyers within 50km for same-day/next-day delivery
-  final int estimatedShipDays; // Seller's estimated shipping time in days (legacy, use deliveryOptions)
+  final int estimatedShipDays; // Seller's estimated shipping time in days
   final String? taxCode; // Optional Stripe Tax Code (e.g. txcd_10000000)
   // Seller-defined delivery options (standard, express, same-day with custom times/prices)
   final List<SellerDeliveryOption> deliveryOptions;
@@ -643,7 +643,7 @@ class ProductModel {
     required List<String> keywords,
     this.rating = 0.0,
     this.ratingCount = 0,
-    this.dateCreated,
+    this.createdAt,
     this.weightKg,
     this.lengthCm,
     this.widthCm,
@@ -693,7 +693,7 @@ class ProductModel {
       categoryId: _parseInt(map[Fields.categoryId]),
       rating: _parseDouble(map[Fields.rating]),
       ratingCount: _parseInt(map[Fields.ratingCount]),
-      dateCreated: map[Fields.dateCreated] != null ? _parseTimestamp(map[Fields.dateCreated]) : null,
+      createdAt: map[Fields.createdAt] != null ? _parseTimestamp(map[Fields.createdAt]) : null,
       sellerId: map[Fields.sellerId]?.toString() ?? '',
       keywords: _parseStringList(map[Fields.keywords]),
       stockQuantity: _parseInt(map[Fields.stockQuantity]),
@@ -733,7 +733,7 @@ class ProductModel {
       Fields.categoryId: categoryId,
       Fields.rating: rating,
       Fields.ratingCount: ratingCount,
-      Fields.dateCreated: dateCreated,
+      Fields.createdAt: createdAt,
       Fields.keywords: searchKeywords,
       if (weightKg != null) Fields.weightKg: weightKg,
       if (lengthCm != null) Fields.lengthCm: lengthCm,

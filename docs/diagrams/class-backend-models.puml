@@ -22,7 +22,7 @@ class Address <<BaseModel>> {
     @field_validator('postal_code')
     validate_postal_code()
     @field_validator('country')
-    validate_canada_only()
+    validate_seller_address()
     @field_validator('province')
     validate_province()
     --
@@ -406,21 +406,21 @@ note top of Order
 end note
 
 note bottom of ValidationUtils
-  **Canada-Only Validation**
+  **Address Validation**
   
-  # Firestore security rules
-  match /products/{productId} {
-    allow create: if request.resource.data.sellerAddress.country in ['Canada', 'CA']
-                  && request.resource.data.sellerAddress.postalCode.matches('[A-Z]\\d[A-Z] ?\\d[A-Z]\\d');
+  # Firestore security rules (buyer/shipping addresses)
+  match /orders/{orderId} {
+    allow create: if request.resource.data.shippingAddress.country in ['Canada', 'CA']
+                  && request.resource.data.shippingAddress.postalCode.matches('[A-Z]\\d[A-Z] ?\\d[A-Z]\\d');
   }
   
+  # Seller addresses: any country allowed
   # Python validation (Pydantic)
-  @field_validator('country')
+  @field_validator('sellerAddress')
   @classmethod
-  def validate_canada_only(cls, v: str) -> str:
-    if v not in ['Canada', 'CA']:
-      raise ValueError('Only Canadian addresses allowed')
-    return 'Canada'
+  def validate_seller_address(cls, v: Address) -> Address:
+    # Validates required fields, no country restriction
+    return v
 end note
 
 note right of Taxes

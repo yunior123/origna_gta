@@ -1,7 +1,7 @@
 SELLER_AUDIT_PROMPT = """You are a senior software architect auditing the SELLER ONBOARDING & MANAGEMENT system of a production e-commerce marketplace (Flutter + Firebase + Stripe Connect).
 
 Context:
-- Canada-only marketplace targeting 100M+ users/year
+- E-commerce marketplace serving Canadian buyers (sellers worldwide), targeting 100M+ users/year
 - Sellers onboard via Stripe Connect Express (KYC handled by Stripe)
 - Seller approval requires: onboardingCompleted + chargesEnabled + payoutsEnabled + !suspended
 - Sellers manage products, view orders, track payouts

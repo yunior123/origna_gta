@@ -3,11 +3,16 @@ Order models for OrignaGTA
 Includes OrderItem, Taxes, Ratings, SellerPayout, and Order
 """
 
-from datetime import datetime
+import re
+from datetime import datetime, timezone
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from schema_constants import Fields
+from schema_constants import (
+    BusinessRules,
+    Fields,
+    PayoutStatusValues,
+)
 
 from .base import Address, DeliveryStatusEnum, OrderStatusEnum, PaymentStatusEnum, ShippingApprovalStatusEnum
 from .product import SellerDeliveryOption
@@ -47,7 +52,20 @@ class OrderItem(BaseModel):
     sellerAddress: Address
     deliveryStatus: DeliveryStatusEnum = Field(default=DeliveryStatusEnum.PENDING)
     trackingNumber: str | None = Field(default=None, max_length=100)
+    carrier: str | None = Field(default=None, max_length=100)
     confirmedByBuyer: bool = Field(default=False)
+
+    # Per-item status (newer field, supersedes deliveryStatus)
+    status: str = Field(default="pending", description="Item status: pending, shipped, delivered, refunded")
+
+    # Timestamps
+    shippedAt: datetime | None = Field(default=None)
+    deliveredAt: datetime | None = Field(default=None)
+
+    # Refund tracking
+    refundReason: str | None = Field(default=None, max_length=500)
+    refundAmountCents: int | None = Field(default=None, ge=0)
+    refundId: str | None = Field(default=None)
 
     # Shipping metadata (captured at purchase time)
     weightKg: float | None = Field(default=None, gt=0)
@@ -61,6 +79,24 @@ class OrderItem(BaseModel):
     minimumOrderQuantity: int = Field(default=1, ge=1)
     freeShipping: bool = Field(default=False)
     isDigital: bool = Field(default=False, description="Whether this item is a digital product")
+    taxCode: str | None = Field(default=None, description="Tax code for this item")
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        """Reject HTML/script injection in product names"""
+        if re.search(r"[<>]", v):
+            raise ValueError("Name contains disallowed characters")
+        return v
+
+    @field_validator("imageUrls")
+    @classmethod
+    def validate_image_urls(cls, v: list[str]) -> list[str]:
+        """Validate image URLs"""
+        for url in v:
+            if not url.startswith(("http://", "https://")):
+                raise ValueError(f"Invalid image URL: {url}")
+        return v
 
     def subtotal(self) -> float:
         """Calculate item subtotal"""
@@ -84,7 +120,15 @@ class Ratings(BaseModel):
     productId: str = Field(..., min_length=1)
     rating: float = Field(..., ge=0, le=5)
     review: str | None = Field(default=None, max_length=1000)
-    createdAt: datetime = Field(default_factory=datetime.now)
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @field_validator("review")
+    @classmethod
+    def validate_review(cls, v: str | None) -> str | None:
+        """Reject HTML/script injection in reviews"""
+        if v is not None and re.search(r"[<>]", v):
+            raise ValueError("Review contains disallowed characters")
+        return v
 
 
 class SellerPayout(BaseModel):
@@ -107,7 +151,10 @@ class SellerPayout(BaseModel):
     amountCents: int = Field(..., ge=0, description="Gross amount in cents")
     platformFeeCents: int = Field(..., ge=0, description="Platform fee in cents")
     netAmountCents: int = Field(..., ge=0, description="Net amount in cents")
-    status: str = Field(default="pending", description="Payout status: pending, processing, completed, failed")
+    status: str = Field(
+        default=PayoutStatusValues.PENDING,
+        description="Payout status"
+    )
     payoutDate: datetime | None = Field(default=None)
     stripeTransferId: str | None = Field(default=None)
     failureReason: str | None = Field(default=None, max_length=500)
@@ -115,9 +162,8 @@ class SellerPayout(BaseModel):
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str) -> str:
-        valid_statuses = {"pending", "processing", "completed", "failed"}
-        if v not in valid_statuses:
-            raise ValueError(f"Invalid payout status: {v}")
+        if v not in PayoutStatusValues.ALL:
+            raise ValueError(f"Invalid payout status: {v}. Must be one of: {PayoutStatusValues.ALL}")
         return v
 
 
@@ -168,16 +214,17 @@ class Order(BaseModel):
 
     # Address
     shippingAddress: Address | None = Field(default=None)
+    deliveryInstructions: str | None = Field(default=None, max_length=500)
 
     # Timestamps
-    createdAt: datetime = Field(default_factory=datetime.now)
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updatedAt: datetime | None = Field(default=None)
 
     # Payment provider IDs
     stripeSessionId: str | None = Field(default=None, min_length=1)
     stripePaymentIntentId: str | None = Field(default=None, min_length=1)
 
-    currency: str = Field(default="cad")
+    currency: str = Field(default=BusinessRules.DEFAULT_CURRENCY)
 
     # Shipping approval
     shippingApprovalStatus: ShippingApprovalStatusEnum = Field(
@@ -191,11 +238,42 @@ class Order(BaseModel):
     sellerPayouts: list[SellerPayout] = Field(default_factory=list)
     confirmedByClient: bool = Field(default=False)
     confirmedAt: datetime | None = None
+    autoConfirmed: bool = Field(default=False)
+    autoCaptured: bool = Field(default=False)
     platformFeeTotal: float = Field(default=0.0, ge=0)
     payoutStatus: str = Field(
-        default="pending",
-        description="Overall payout status: pending, processing, completed, partial"
+        default=PayoutStatusValues.PENDING,
+        description="Overall payout status"
     )
+
+    # Capture tracking
+    captureAttempts: int = Field(default=0, ge=0)
+    capturedAt: datetime | None = Field(default=None)
+    expiresAt: datetime | None = Field(default=None)
+
+    # Cancellation tracking
+    cancelledBy: str | None = Field(default=None)
+    cancelledAt: datetime | None = Field(default=None)
+    cancellationReason: str | None = Field(default=None, max_length=500)
+    stockRestored: bool = Field(default=False)
+
+    # Refund tracking
+    refundAmount: float = Field(default=0.0, ge=0)
+    refundedAt: datetime | None = Field(default=None)
+
+    # Manual review
+    requiresManualReview: bool = Field(default=False)
+    manualReviewReason: str | None = Field(default=None, max_length=500)
+    payoutErrors: list[str] = Field(default_factory=list)
+
+    # Tax fields
+    itemTaxes: list[dict] = Field(default_factory=list, description="Per-item tax breakdown")
+    taxExempt: bool = Field(default=False)
+    taxExemption: dict | None = Field(default=None)
+
+    # Shipping approval response
+    respondedAt: datetime | None = Field(default=None)
+    actualCost: float | None = Field(default=None, ge=0)
 
     # Ratings
     ratings: list[Ratings] = Field(default_factory=list)
@@ -203,9 +281,18 @@ class Order(BaseModel):
     @field_validator("currency")
     @classmethod
     def validate_currency(cls, v: str) -> str:
-        if v.lower() not in {"cad", "usd"}:
-            raise ValueError("Only CAD and USD currencies supported")
+        if v.lower() not in BusinessRules.SUPPORTED_SELLING_CURRENCIES:
+            raise ValueError(
+                f"Only {BusinessRules.SUPPORTED_SELLING_CURRENCIES} currencies supported"
+            )
         return v.lower()
+
+    @field_validator("payoutStatus")
+    @classmethod
+    def validate_payout_status(cls, v: str) -> str:
+        if v not in PayoutStatusValues.ALL:
+            raise ValueError(f"Invalid payout status: {v}")
+        return v
 
 
 class OrderCreate(BaseModel):
@@ -216,5 +303,5 @@ class OrderCreate(BaseModel):
     items: list[OrderItem] = Field(..., min_length=1)
     shippingAddress: Address
     shippingCost: float = Field(default=0.0, ge=0)
-    currency: str = Field(default="cad")
+    currency: str = Field(default=BusinessRules.DEFAULT_CURRENCY)
     shippingApprovalRequired: bool = Field(default=False)

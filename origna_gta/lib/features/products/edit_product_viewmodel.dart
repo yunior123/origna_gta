@@ -189,7 +189,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           city: city,
           state: state.selectedProvince,
           postalCode: postalCode.toUpperCase(),
-          country: 'Canada',
+          country: 'Canada', // Default for now — sellers can be from any country, UI supports CA addresses
           latitude: state.latitude,
           longitude: state.longitude,
         ),

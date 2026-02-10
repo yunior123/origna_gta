@@ -547,6 +547,15 @@
 			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
 		},
 		{
+			"label": "🪝🧾 Claude: Tax & Compliance Audit",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook tax",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
 			"label": "🪝 Claude: List Available Hooks",
 			"type": "shell",
 			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --list",

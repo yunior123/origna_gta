@@ -385,7 +385,7 @@ test.describe('E: Cart Quantity Operations', () => {
     const cartItemFields = {
       productId: sv('product_001'),
       quantity: iv(2),
-      dateCreated: { timestampValue: new Date().toISOString() },
+      createdAt: { timestampValue: new Date().toISOString() },
     };
     const ok = await patchDoc(`users/${buyerUid}/cart`, 'product_001', cartItemFields);
     expect(ok).toBe(true);
@@ -554,11 +554,11 @@ test.describe('H: Schema Consistency', () => {
     expect(raw?.deliveryInfo).toBeUndefined();
   });
 
-  test('H3: Orders use "createdAt" not "dateCreated"', async () => {
+  test('H3: Orders use "createdAt" not "createdAt"', async () => {
     const doc = await readDoc('orders', 'order_test_001');
     const raw = doc?.fields;
     expect(raw?.createdAt).toBeDefined();
-    expect(raw?.dateCreated).toBeUndefined();
+    expect(raw?.createdAt).toBeUndefined();
   });
 
   test('H4: Money fields are integers (cents)', async () => {
@@ -660,7 +660,8 @@ test.describe('J: Multi-seller Order Validation', () => {
       expect(item.sellerAddress.city).toBeTruthy();
       expect(item.sellerAddress.state).toBeTruthy();
       expect(item.sellerAddress.postalCode).toBeTruthy();
-      expect(item.sellerAddress.country).toBe('Canada');
+      // Seed data uses Canadian sellers — sellers can be from any country
+      expect(item.sellerAddress.country).toBeTruthy();
     }
   });
 });

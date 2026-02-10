@@ -6,30 +6,26 @@ part of 'product_models.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$InventoryConfigImpl _$$InventoryConfigImplFromJson(
-  Map<String, dynamic> json,
-) => _$InventoryConfigImpl(
-  managed: json['managed'] as bool? ?? true,
-  trackQuantity: json['trackQuantity'] as bool? ?? true,
-  allowBackorder: json['allowBackorder'] as bool? ?? false,
-  lowStockThreshold: (json['lowStockThreshold'] as num?)?.toInt() ?? 5,
-  reservationHoldMinutes:
-      (json['reservationHoldMinutes'] as num?)?.toInt() ?? 30,
-);
+_InventoryConfig _$InventoryConfigFromJson(Map<String, dynamic> json) =>
+    _InventoryConfig(
+      managed: json['managed'] as bool? ?? true,
+      trackQuantity: json['trackQuantity'] as bool? ?? true,
+      allowBackorder: json['allowBackorder'] as bool? ?? false,
+      lowStockThreshold: (json['lowStockThreshold'] as num?)?.toInt() ?? 5,
+      reservationHoldMinutes:
+          (json['reservationHoldMinutes'] as num?)?.toInt() ?? 30,
+    );
 
-Map<String, dynamic> _$$InventoryConfigImplToJson(
-  _$InventoryConfigImpl instance,
-) => <String, dynamic>{
-  'managed': instance.managed,
-  'trackQuantity': instance.trackQuantity,
-  'allowBackorder': instance.allowBackorder,
-  'lowStockThreshold': instance.lowStockThreshold,
-  'reservationHoldMinutes': instance.reservationHoldMinutes,
-};
+Map<String, dynamic> _$InventoryConfigToJson(_InventoryConfig instance) =>
+    <String, dynamic>{
+      'managed': instance.managed,
+      'trackQuantity': instance.trackQuantity,
+      'allowBackorder': instance.allowBackorder,
+      'lowStockThreshold': instance.lowStockThreshold,
+      'reservationHoldMinutes': instance.reservationHoldMinutes,
+    };
 
-_$ProductImpl _$$ProductImplFromJson(
-  Map<String, dynamic> json,
-) => _$ProductImpl(
+_Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   productId: json['productId'] as String,
   name: json['name'] as String,
   price: (json['price'] as num).toDouble(),
@@ -44,7 +40,7 @@ _$ProductImpl _$$ProductImplFromJson(
   categoryId: (json['categoryId'] as num).toInt(),
   stockQuantity: (json['stockQuantity'] as num).toInt(),
   rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-  dateCreated: DateTime.parse(json['dateCreated'] as String),
+  createdAt: DateTime.parse(json['createdAt'] as String),
   isActive: json['isActive'] as bool? ?? true,
   weightKg: (json['weightKg'] as num?)?.toDouble(),
   lengthCm: (json['lengthCm'] as num?)?.toDouble(),
@@ -77,44 +73,43 @@ _$ProductImpl _$$ProductImplFromJson(
   status: json['status'] as String? ?? ProductStatusValues.active,
 );
 
-Map<String, dynamic> _$$ProductImplToJson(_$ProductImpl instance) =>
-    <String, dynamic>{
-      'productId': instance.productId,
-      'name': instance.name,
-      'price': instance.price,
-      'description': instance.description,
-      'imageUrls': instance.imageUrls,
-      'sellerId': instance.sellerId,
-      'sellerAddress': instance.sellerAddress,
-      'categoryId': instance.categoryId,
-      'stockQuantity': instance.stockQuantity,
-      'rating': instance.rating,
-      'dateCreated': instance.dateCreated.toIso8601String(),
-      'isActive': instance.isActive,
-      'weightKg': instance.weightKg,
-      'lengthCm': instance.lengthCm,
-      'widthCm': instance.widthCm,
-      'heightCm': instance.heightCm,
-      'isLocalDeliveryOnly': instance.isLocalDeliveryOnly,
-      'isPerishable': instance.isPerishable,
-      'estimatedShipDays': instance.estimatedShipDays,
-      'deliveryOptions': instance.deliveryOptions,
-      'minimumOrderQuantity': instance.minimumOrderQuantity,
-      'freeShipping': instance.freeShipping,
-      'isDigital': instance.isDigital,
-      'taxCode': instance.taxCode,
-      'keywords': instance.keywords,
-      'cost': instance.cost,
-      'supplierSku': instance.supplierSku,
-      'supplierUrl': instance.supplierUrl,
-      'supplier': instance.supplier,
-      'inventory': instance.inventory,
-      'status': instance.status,
-    };
+Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
+  'productId': instance.productId,
+  'name': instance.name,
+  'price': instance.price,
+  'description': instance.description,
+  'imageUrls': instance.imageUrls,
+  'sellerId': instance.sellerId,
+  'sellerAddress': instance.sellerAddress,
+  'categoryId': instance.categoryId,
+  'stockQuantity': instance.stockQuantity,
+  'rating': instance.rating,
+  'createdAt': instance.createdAt.toIso8601String(),
+  'isActive': instance.isActive,
+  'weightKg': instance.weightKg,
+  'lengthCm': instance.lengthCm,
+  'widthCm': instance.widthCm,
+  'heightCm': instance.heightCm,
+  'isLocalDeliveryOnly': instance.isLocalDeliveryOnly,
+  'isPerishable': instance.isPerishable,
+  'estimatedShipDays': instance.estimatedShipDays,
+  'deliveryOptions': instance.deliveryOptions,
+  'minimumOrderQuantity': instance.minimumOrderQuantity,
+  'freeShipping': instance.freeShipping,
+  'isDigital': instance.isDigital,
+  'taxCode': instance.taxCode,
+  'keywords': instance.keywords,
+  'cost': instance.cost,
+  'supplierSku': instance.supplierSku,
+  'supplierUrl': instance.supplierUrl,
+  'supplier': instance.supplier,
+  'inventory': instance.inventory,
+  'status': instance.status,
+};
 
-_$ProductCreateImpl _$$ProductCreateImplFromJson(
+_ProductCreate _$ProductCreateFromJson(
   Map<String, dynamic> json,
-) => _$ProductCreateImpl(
+) => _ProductCreate(
   name: json['name'] as String,
   price: (json['price'] as num).toDouble(),
   description: json['description'] as String,
@@ -160,7 +155,7 @@ _$ProductCreateImpl _$$ProductCreateImplFromJson(
   status: json['status'] as String? ?? ProductStatusValues.active,
 );
 
-Map<String, dynamic> _$$ProductCreateImplToJson(_$ProductCreateImpl instance) =>
+Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
     <String, dynamic>{
       'name': instance.name,
       'price': instance.price,
@@ -193,9 +188,9 @@ Map<String, dynamic> _$$ProductCreateImplToJson(_$ProductCreateImpl instance) =>
       'status': instance.status,
     };
 
-_$SellerDeliveryOptionImpl _$$SellerDeliveryOptionImplFromJson(
+_SellerDeliveryOption _$SellerDeliveryOptionFromJson(
   Map<String, dynamic> json,
-) => _$SellerDeliveryOptionImpl(
+) => _SellerDeliveryOption(
   type: json['type'] as String? ?? DeliveryTypeValues.standard,
   description: json['description'] as String? ?? '',
   cost: (json['cost'] as num?)?.toDouble() ?? 0.0,
@@ -212,8 +207,8 @@ _$SellerDeliveryOptionImpl _$$SellerDeliveryOptionImplFromJson(
   availableInternational: json['availableInternational'] as bool? ?? true,
 );
 
-Map<String, dynamic> _$$SellerDeliveryOptionImplToJson(
-  _$SellerDeliveryOptionImpl instance,
+Map<String, dynamic> _$SellerDeliveryOptionToJson(
+  _SellerDeliveryOption instance,
 ) => <String, dynamic>{
   'type': instance.type,
   'description': instance.description,
@@ -225,17 +220,17 @@ Map<String, dynamic> _$$SellerDeliveryOptionImplToJson(
   'availableInternational': instance.availableInternational,
 };
 
-_$ShippingQuantityDiscountImpl _$$ShippingQuantityDiscountImplFromJson(
+_ShippingQuantityDiscount _$ShippingQuantityDiscountFromJson(
   Map<String, dynamic> json,
-) => _$ShippingQuantityDiscountImpl(
+) => _ShippingQuantityDiscount(
   minQuantity: (json['minQuantity'] as num).toInt(),
   discountType: json['discountType'] as String? ?? DiscountTypeValues.percent,
   discountValue: (json['discountValue'] as num).toDouble(),
   label: json['label'] as String?,
 );
 
-Map<String, dynamic> _$$ShippingQuantityDiscountImplToJson(
-  _$ShippingQuantityDiscountImpl instance,
+Map<String, dynamic> _$ShippingQuantityDiscountToJson(
+  _ShippingQuantityDiscount instance,
 ) => <String, dynamic>{
   'minQuantity': instance.minQuantity,
   'discountType': instance.discountType,
@@ -243,8 +238,8 @@ Map<String, dynamic> _$$ShippingQuantityDiscountImplToJson(
   'label': instance.label,
 };
 
-_$SupplierInfoImpl _$$SupplierInfoImplFromJson(Map<String, dynamic> json) =>
-    _$SupplierInfoImpl(
+_SupplierInfo _$SupplierInfoFromJson(Map<String, dynamic> json) =>
+    _SupplierInfo(
       type: json['type'] as String,
       supplierSku: json['supplierSku'] as String?,
       supplierUrl: json['supplierUrl'] as String?,
@@ -255,7 +250,7 @@ _$SupplierInfoImpl _$$SupplierInfoImplFromJson(Map<String, dynamic> json) =>
       notes: json['notes'] as String?,
     );
 
-Map<String, dynamic> _$$SupplierInfoImplToJson(_$SupplierInfoImpl instance) =>
+Map<String, dynamic> _$SupplierInfoToJson(_SupplierInfo instance) =>
     <String, dynamic>{
       'type': instance.type,
       'supplierSku': instance.supplierSku,

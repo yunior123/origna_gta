@@ -94,7 +94,7 @@ class TestProductHandlers:
         assert '5' in str(exc.value)
 
     @patch('handlers.products.create_success_response')
-    @patch('algolia_service.delete_product')  # Patch the algolia function, not the handler
+    @patch('services.algolia_service.delete_product')  # Patch the algolia function, not the handler
     @patch('handlers.products.get_db')
     def test_delete_product_soft_delete(self, mock_get_db, mock_algolia_delete, mock_create_response):
         """Test product soft delete (sets isActive=false)"""

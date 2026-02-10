@@ -252,7 +252,7 @@ class TestInventoryScenarios:
 
     def test_local_delivery_out_of_province_blocked(self, mock_firestore_client):
         """Scenario 30: Order local-only product from different province."""
-        from shipping_service import calculate_shipping_cost
+        from services.shipping_service import calculate_shipping_cost
 
         items = [{
             'productId': 'local_prod',
@@ -461,7 +461,7 @@ def mock_rate_limiter():
 @pytest.fixture
 def mock_orders_rate_limiter(monkeypatch):
     """Mock rate limiter in orders module to always allow."""
-    from rate_limiter import RateLimiter
+    from services.rate_limiter import RateLimiter
 
     def mock_check_rate_limit(self, identifier, action, max_requests, window_minutes, fail_closed=False):
         """Mock rate limiter to always allow requests in tests"""

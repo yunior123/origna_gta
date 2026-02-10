@@ -233,16 +233,17 @@ class favorites <<Subcollection>> {
 class Address {
     street : string [max 200 chars]
     city : string [max 100 chars]
-    province : string [2-char code: ON, QC, BC...]
-    postalCode : string [A1A 1A1 format]
-    country : string [must be "Canada" or "CA"]
+    province : string [2-char code for CA addresses]
+    postalCode : string [format varies by country]
+    country : string [buyer/shipping: must be Canada; seller: any country]
     latitude : number? [geocoded]
     longitude : number? [geocoded]
     --
     **Validation:**
-    - Canada-only (Firestore rule)
-    - Postal code regex
-    - Province in 13 valid codes
+    - Buyer/shipping: Canada-only (Firestore rule)
+    - Seller: any country allowed
+    - Postal code regex (Canadian format for CA addresses)
+    - Province in 13 valid codes (CA addresses)
 }
 
 class OrderItem {
@@ -305,7 +306,7 @@ note top of users
   - Self-read: authenticated
   - Self-write: authenticated + field validation
   - Admin-only: roles, suspended
-  - Canada-only: address.country
+  - Canada-only: buyer/shipping address.country (sellers can be worldwide)
 end note
 
 note top of products

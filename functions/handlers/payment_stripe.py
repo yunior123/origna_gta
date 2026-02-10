@@ -7,7 +7,6 @@ Stripe Payment Handlers
 """
 
 import contextlib
-import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -17,40 +16,43 @@ from firebase_functions import https_fn, options
 from config import (
     AUTHORIZATION_VALID_DAYS,
     CATEGORY_TAX_CODE_MAP,
+    IS_EMULATOR,
     PLATFORM_FEE_PERCENT,
     STRIPE_SECRET_KEY,
+    STRIPE_TAX_CODE_BASIC_GROCERIES,
+    STRIPE_TAX_CODE_CHILDRENS_CLOTHING,
+    STRIPE_TAX_CODE_GENERAL,
     STRIPE_TAX_CODE_SHIPPING,
     STRIPE_TAX_ENABLED,
     STRIPE_TAX_EXEMPT_NONE,
     STRIPE_TAX_TYPE_CA_GST_HST,
     STRIPE_WEBHOOK_SECRET,
-    Collections,
 )
-from email_service import get_order_confirmation_email, get_seller_notification_email, send_email
-from function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS
-from rate_limiter import RateLimiter
 from schema_constants import (
     ApiKeys,
+    AppConfig,
     BusinessRules,
     CartVerificationReasonValues,
+    Collections,
     DeliveryStatusValues,
     DeliveryTypeValues,
     ErrorCodeValues,
     Fields,
     OrderStatusValues,
+    PaymentProviderValues,
     PaymentStatusValues,
     PayoutStatusValues,
     PlaceholderAddressValues,
     SecurityAlertTypes,
     SeverityLevels,
     UserRoleValues,
+    ValidationLimits,
     WebhookStatusValues,
 )
-from shipping_service import calculate_shipping_cost, get_tax_rate
-
-# Aliases for backward compatibility — canonical source is schema_constants
-OrderStatus = OrderStatusValues
-PaymentStatus = PaymentStatusValues
+from services.email_service import get_order_confirmation_email, get_seller_notification_email, send_email
+from services.rate_limiter import RateLimiter
+from services.shipping_service import calculate_shipping_cost, get_tax_rate
+from utils.function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS
 
 stripe.api_key = STRIPE_SECRET_KEY
 
@@ -58,26 +60,26 @@ stripe.api_key = STRIPE_SECRET_KEY
 def get_tax_code_for_category(category_id):
     """Map product categories to Stripe tax codes"""
     return CATEGORY_TAX_CODE_MAP.get(category_id)
+
+# Province tax breakdown — derived from BusinessRules.TAX_RATES (single source of truth)
+# BusinessRules.TAX_RATES uses percentages (5.0), we convert to ratios (0.05) for math
+_PROVINCE_TAX_BREAKDOWN = {
+    province: {name: rate / 100.0 for name, rate in taxes.items()}
+    for province, taxes in BusinessRules.TAX_RATES.items()
+}
+
 # CRITICAL: Set timeout to 30s to prevent Cloud Function timeout (default is 80s)
 # Cloud Functions timeout at 60s, so we need Stripe to timeout before that
-stripe.max_network_retries = 2
+stripe.max_network_retries = BusinessRules.STRIPE_MAX_NETWORK_RETRIES
 # Note: stripe.default_http_client requires stripe-python v3+
 # For v2, timeout is set per-request via stripe.api_requestor.APIRequestor
 _db = None
 _rate_limiter = None
 _firestore = None
 
-# Check if running in emulator mode
-IS_EMULATOR = os.environ.get('FUNCTIONS_EMULATOR', 'false').lower() == 'true'
-
 # CORS configuration for production
 CORS_CONFIG = options.CorsOptions(
-    cors_origins=[
-        "https://orignagta.ca",
-        "https://www.orignagta.ca",
-        "https://orignagta.web.app",
-        "https://orignagta.firebaseapp.com",
-    ],
+    cors_origins=AppConfig.CORS_ORIGINS,
     cors_methods=["POST", "OPTIONS"],
 )
 
@@ -295,7 +297,7 @@ def verify_cart_prices(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     has_changes = len(price_changes) > 0 or len(stock_changes) > 0 or len(removed_products) > 0
 
-    from utils import create_success_response
+    from utils.helpers import create_success_response
     return create_success_response({
         ApiKeys.HAS_CHANGES: has_changes,
         ApiKeys.PRICE_CHANGES: price_changes,
@@ -309,12 +311,12 @@ def get_item_tax_rate(item, province):
     tax_code = item.get(Fields.TAX_CODE)
 
     # Children's clothing exempt in some provinces
-    if tax_code == "txcd_20030002" and province in ['ON', 'BC', 'MB', 'SK']:  # Children's clothing in exempt provinces
+    if tax_code == STRIPE_TAX_CODE_CHILDRENS_CLOTHING and province in BusinessRules.CHILDRENS_CLOTHING_EXEMPT_PROVINCES:
         return 0.0
 
-    # Basic groceries exempt in most provinces
-    if tax_code == "txcd_30060005":  # Basic groceries
-        return 0.0  # Exempt in all provinces
+    # Basic groceries exempt in all provinces
+    if tax_code == STRIPE_TAX_CODE_BASIC_GROCERIES:
+        return 0.0
 
     # Default province tax rate
     return get_tax_rate(province)
@@ -334,7 +336,7 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
         for item in validated_items:
             # Get tax code from category mapping
             category_id = item.get(Fields.CATEGORY_ID, 0)
-            tax_code = CATEGORY_TAX_CODE_MAP.get(category_id, 'txcd_99999999')
+            tax_code = CATEGORY_TAX_CODE_MAP.get(category_id, STRIPE_TAX_CODE_GENERAL)
 
             line_items.append({
                 'amount': int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY],
@@ -357,7 +359,7 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
                 'city': shipping_address.get(Fields.CITY, ''),
                 'state': shipping_address.get(Fields.STATE, ''),
                 'postal_code': shipping_address.get(Fields.POSTAL_CODE, ''),
-                'country': 'CA',
+                'country': AppConfig.DEFAULT_COUNTRY_CODE,
             },
             'address_source': 'shipping',
         }
@@ -372,7 +374,7 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
 
         # Call Stripe Tax API
         calculation = stripe.tax.Calculation.create(
-            currency='cad',
+            currency=BusinessRules.DEFAULT_CURRENCY,
             customer_details=customer_details,
             line_items=line_items,
         )
@@ -388,9 +390,9 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
         for line_item in calculation.line_items.data:
             if line_item.reference != 'shipping':
                 item_taxes.append({
-                    'productId': line_item.reference,
-                    'taxCents': line_item.amount_tax,
-                    'taxRate': (line_item.amount_tax / line_item.amount) if line_item.amount > 0 else 0,
+                    Fields.PRODUCT_ID: line_item.reference,
+                    Fields.TAX_CENTS: line_item.amount_tax,
+                    Fields.TAX_RATE: (line_item.amount_tax / line_item.amount) if line_item.amount > 0 else 0,
                 })
 
         # Check if Stripe applied reverse charge (B2B exemption)
@@ -450,7 +452,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Get GST number for B2B validation (Stripe Tax will validate it)
     tax_exemption = user_data.get(Fields.TAX_EXEMPTION)
-    gst_number = tax_exemption.get('gstNumber') if tax_exemption else None
+    gst_number = tax_exemption.get(Fields.GST_NUMBER) if tax_exemption else None
 
     # Rate limiting: 5 requests per minute per user
     allowed, message = get_rate_limiter().check_rate_limit(
@@ -477,7 +479,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('invalid-argument', 'Shipping address required')
 
     # NORMALIZE: Prefer canonical schema field `state` (province code),
-    # but accept legacy `province` from older clients.
+    # but also accept `province` from older clients.
     if Fields.STATE not in shipping_address and 'province' in shipping_address:
         shipping_address[Fields.STATE] = shipping_address['province']
 
@@ -502,16 +504,16 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Validate postal code format
     from main import validate_postal_code
     postal_code = shipping_address.get(Fields.POSTAL_CODE, '')
-    if not validate_postal_code(postal_code, shipping_address.get(Fields.COUNTRY, 'Canada')):
+    if not validate_postal_code(postal_code, shipping_address.get(Fields.COUNTRY, AppConfig.DEFAULT_COUNTRY_NAME)):
         raise https_fn.HttpsError('invalid-argument', f'Invalid postal code format: {postal_code}')
 
     # Validate subtotal is positive number
     if not isinstance(client_subtotal, (int, float)) or client_subtotal <= 0:
         raise https_fn.HttpsError('invalid-argument', 'Invalid subtotal: must be positive number')
 
-    # Validate subtotal is reasonable (max $100,000 CAD per order)
-    if client_subtotal > 100000:
-        raise https_fn.HttpsError('invalid-argument', 'Subtotal exceeds maximum allowed ($100,000 CAD)')
+    # Validate subtotal is reasonable
+    if client_subtotal > BusinessRules.MAX_ORDER_AMOUNT_CAD:
+        raise https_fn.HttpsError('invalid-argument', f'Subtotal exceeds maximum allowed (${BusinessRules.MAX_ORDER_AMOUNT_CAD:,} CAD)')
 
     # Validate and calculate actual prices/shipping server-side
     validated_items = []
@@ -530,7 +532,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         if item_quantity > 100:
             raise https_fn.HttpsError(
                 'invalid-argument',
-                f'Item quantity exceeds maximum allowed (100): {item_quantity}'
+                f'Item quantity exceeds maximum allowed ({ValidationLimits.MAX_ITEM_QUANTITY}): {item_quantity}'
             )
 
         # Fetch product from Firestore for server-side validation
@@ -592,9 +594,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 f"Insufficient stock for product {item[Fields.PRODUCT_ID]} ({item[Fields.NAME]}): {stock_quantity} available, {item[Fields.QUANTITY]} requested"
             )
 
-        # Check seller status
+        # Check seller status (using cache to avoid N+1 reads)
         seller_id = item[Fields.SELLER_ID]
-        _assert_seller_active(seller_id, require_approval=True)
         sellers.add(seller_id)
 
         # Prevent sellers from buying their own products
@@ -604,12 +605,22 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 f"You cannot purchase your own product: {product_data[Fields.NAME]}"
             )
 
-        # Fetch seller profile for shipping calculation (cached to avoid N+1)
+        # Fetch seller profile (cached to avoid N+1)
         if seller_id not in seller_cache:
             seller_ref = get_db().collection(Collections.USERS).document(seller_id)
             seller_doc = seller_ref.get()
             seller_cache[seller_id] = seller_doc.to_dict() if seller_doc.exists else {}
         seller_data = seller_cache[seller_id]
+
+        # Validate seller is active using cached data (avoids extra Firestore read)
+        if not seller_data:
+            raise https_fn.HttpsError('not-found', f'Seller {seller_id} not found')
+        if seller_data.get(Fields.SUSPENDED, False):
+            raise https_fn.HttpsError('permission-denied', f'Seller {seller_id} is suspended and cannot process orders')
+        if not seller_data.get(Fields.ONBOARDING_COMPLETED, False):
+            raise https_fn.HttpsError('failed-precondition', f'Seller {seller_id} has not completed onboarding')
+        if not seller_data.get(Fields.CHARGES_ENABLED, False):
+            raise https_fn.HttpsError('failed-precondition', f'Seller {seller_id} is not approved to receive payments')
         seller_profile = seller_data.get(Fields.SELLER_PROFILE, {})
         if not isinstance(seller_profile, dict):
             seller_profile = {}
@@ -646,7 +657,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.CATEGORY_ID: product_data.get(Fields.CATEGORY_ID, 0),
             Fields.TAX_CODE: get_tax_code_for_category(product_data.get(Fields.CATEGORY_ID, 0)),
             Fields.STATUS: DeliveryStatusValues.PENDING,  # Per-item status: pending | shipped | delivered | refunded
-            Fields.DELIVERY_STATUS: DeliveryStatusValues.PENDING,  # Legacy field (kept for backwards compatibility)
+            Fields.DELIVERY_STATUS: DeliveryStatusValues.PENDING,  # Parallel field (both are written for consistency)
             Fields.TRACKING_NUMBER: None,
             Fields.CARRIER: None,
             Fields.SHIPPED_AT: None,
@@ -682,6 +693,11 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     delivery_speed = data.get(Fields.DELIVERY_SPEED, DeliveryTypeValues.STANDARD)
     if delivery_speed not in (DeliveryTypeValues.STANDARD, DeliveryTypeValues.EXPRESS, DeliveryTypeValues.SAME_DAY):
         delivery_speed = DeliveryTypeValues.STANDARD  # Sanitize to prevent injection
+    
+    # Get delivery instructions from client (optional)
+    delivery_instructions = data.get(Fields.DELIVERY_INSTRUCTIONS, '')
+    if delivery_instructions and len(delivery_instructions) > BusinessRules.MAX_DELIVERY_INSTRUCTIONS_LENGTH:
+        delivery_instructions = delivery_instructions[:BusinessRules.MAX_DELIVERY_INSTRUCTIONS_LENGTH]
 
     try:
         shipping_cost_dollars = calculate_shipping_cost(validated_items, shipping_address, speed=delivery_speed)
@@ -691,7 +707,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('internal', 'Shipping calculation failed. Please try again.') from e
 
     # Calculate taxes per-item (server-side) - all in cents to avoid rounding errors
-    state_code = shipping_address.get(Fields.STATE, 'ON')
+    state_code = shipping_address.get(Fields.STATE, BusinessRules.DEFAULT_PROVINCE)
 
     if STRIPE_TAX_ENABLED:
         # Use Stripe Tax API for automatic tax calculation
@@ -717,23 +733,23 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 item_tax_cents = round(item_subtotal_cents * item_tax_rate)
                 tax_amount_cents += item_tax_cents
                 item_taxes.append({
-                    'productId': item[Fields.PRODUCT_ID],
-                    'taxCents': item_tax_cents,
-                    'taxRate': item_tax_rate
+                    Fields.PRODUCT_ID: item[Fields.PRODUCT_ID],
+                    Fields.TAX_CENTS: item_tax_cents,
+                    Fields.TAX_RATE: item_tax_rate
                 })
 
+            # CRA COMPLIANCE: GST/HST applies to shipping charges in Canada
+            if shipping_cost_cents > 0:
+                shipping_tax_rate = get_tax_rate(state_code)
+                shipping_tax_cents = round(shipping_cost_cents * shipping_tax_rate)
+                tax_amount_cents += shipping_tax_cents
+
             # Build tax breakdown dict (matches Flutter provinceTaxRates)
-            _PROVINCE_TAX_BREAKDOWN = {
-                'AB': {'GST': 0.05}, 'BC': {'GST': 0.05, 'PST': 0.07},
-                'MB': {'GST': 0.05, 'PST': 0.07}, 'NB': {'HST': 0.15},
-                'NL': {'HST': 0.15}, 'NS': {'HST': 0.15}, 'NT': {'GST': 0.05},
-                'NU': {'GST': 0.05}, 'ON': {'HST': 0.13}, 'PE': {'HST': 0.15},
-                'QC': {'GST': 0.05, 'QST': 0.09975}, 'SK': {'GST': 0.05, 'PST': 0.06},
-                'YT': {'GST': 0.05},
-            }
-            province_rates = _PROVINCE_TAX_BREAKDOWN.get(state_code, {'GST': 0.05})
+            # Tax base includes subtotal + shipping (CRA requirement)
+            taxable_total = actual_subtotal + (shipping_cost_cents / 100)
+            province_rates = _PROVINCE_TAX_BREAKDOWN.get(state_code, _PROVINCE_TAX_BREAKDOWN.get(BusinessRules.DEFAULT_PROVINCE, {'GST': 0.05}))
             taxes_breakdown = {
-                name: round(actual_subtotal * rate, 2)
+                name: round(taxable_total * rate, 2)
                 for name, rate in province_rates.items()
             }
 
@@ -750,25 +766,28 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             item_tax_cents = round(item_subtotal_cents * item_tax_rate)
             tax_amount_cents += item_tax_cents
             item_taxes.append({
-                'productId': item[Fields.PRODUCT_ID],
-                'taxCents': item_tax_cents,
-                'taxRate': item_tax_rate
+                Fields.PRODUCT_ID: item[Fields.PRODUCT_ID],
+                Fields.TAX_CENTS: item_tax_cents,
+                Fields.TAX_RATE: item_tax_rate
             })
 
+        # CRA COMPLIANCE: GST/HST applies to shipping charges in Canada
+        if shipping_cost_cents > 0:
+            shipping_tax_rate = get_tax_rate(state_code)
+            shipping_tax_cents = round(shipping_cost_cents * shipping_tax_rate)
+            tax_amount_cents += shipping_tax_cents
+
         # Build tax breakdown dict (matches Flutter provinceTaxRates)
-        _PROVINCE_TAX_BREAKDOWN = {
-            'AB': {'GST': 0.05}, 'BC': {'GST': 0.05, 'PST': 0.07},
-            'MB': {'GST': 0.05, 'PST': 0.07}, 'NB': {'HST': 0.15},
-            'NL': {'HST': 0.15}, 'NS': {'HST': 0.15}, 'NT': {'GST': 0.05},
-            'NU': {'GST': 0.05}, 'ON': {'HST': 0.13}, 'PE': {'HST': 0.15},
-            'QC': {'GST': 0.05, 'QST': 0.09975}, 'SK': {'GST': 0.05, 'PST': 0.06},
-            'YT': {'GST': 0.05},
-        }
-        province_rates = _PROVINCE_TAX_BREAKDOWN.get(state_code, {'GST': 0.05})
+        # Tax base includes subtotal + shipping (CRA requirement)
+        taxable_total = actual_subtotal + (shipping_cost_cents / 100)
+        province_rates = _PROVINCE_TAX_BREAKDOWN.get(state_code, _PROVINCE_TAX_BREAKDOWN.get(BusinessRules.DEFAULT_PROVINCE, {'GST': 0.05}))
         taxes_breakdown = {
-            name: round(actual_subtotal * rate, 2)
+            name: round(taxable_total * rate, 2)
             for name, rate in province_rates.items()
         }
+
+        # No Stripe Tax API available — B2B exemption not possible
+        is_reverse_charge = False
 
     # Total in cents
     total_amount_cents = actual_subtotal_cents + shipping_cost_cents + tax_amount_cents
@@ -824,8 +843,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # to prevent duplicate orders from client retries
     recent_orders = get_db().collection(Collections.ORDERS)\
         .where(Fields.USER_ID, '==', user_id)\
-        .where(Fields.ORDER_STATUS, '==', OrderStatus.PENDING)\
-        .where(Fields.PAYMENT_STATUS, '==', PaymentStatus.AWAITING_PAYMENT)\
+        .where(Fields.ORDER_STATUS, '==', OrderStatusValues.PENDING)\
+        .where(Fields.PAYMENT_STATUS, '==', PaymentStatusValues.AWAITING_PAYMENT)\
         .order_by(Fields.CREATED_AT, direction='DESCENDING')\
         .limit(1)\
         .get()
@@ -839,15 +858,25 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             if hasattr(recent_created, 'tzinfo') and recent_created.tzinfo is None:
                 recent_created = recent_created.replace(tzinfo=UTC)
             age_seconds = (datetime.now(UTC) - recent_created).total_seconds()
-            if age_seconds < 60 and recent_data.get(Fields.SUBTOTAL_CENTS) == actual_subtotal_cents:
+            if age_seconds < BusinessRules.ORDER_DEDUP_WINDOW_SECONDS and recent_data.get(Fields.SUBTOTAL_CENTS) == actual_subtotal_cents:
                 existing_session_id = recent_data.get(Fields.STRIPE_SESSION_ID)
                 if existing_session_id:
-                    return {
-                        ApiKeys.SUCCESS: True,
-                        ApiKeys.SESSION_ID: existing_session_id,
-                        Fields.ORDER_ID: recent_doc.id,
-                        ApiKeys.DUPLICATE: True,
-                    }
+                    # Retrieve session URL so frontend can redirect
+                    try:
+                        existing_session = stripe.checkout.Session.retrieve(existing_session_id)
+                        checkout_url = existing_session.url
+                    except Exception:
+                        checkout_url = None
+
+                    if checkout_url:
+                        return {
+                            ApiKeys.SUCCESS: True,
+                            ApiKeys.SESSION_ID: existing_session_id,
+                            Fields.ORDER_ID: recent_doc.id,
+                            ApiKeys.CHECKOUT_URL: checkout_url,
+                            ApiKeys.DUPLICATE: True,
+                        }
+                    # Session expired/no URL — fall through to create new one
 
     order_ref = get_db().collection(Collections.ORDERS).document()
     order_id = order_ref.id
@@ -860,7 +889,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     from handlers.payment_providers import PaymentProvider
 
     # Determine if B2B exemption was applied (Stripe validated GST and applied reverse charge)
-    is_tax_exempt = is_reverse_charge if 'is_reverse_charge' in locals() else False
+    # is_reverse_charge is now always defined in all tax calculation branches
+    is_tax_exempt = is_reverse_charge
 
     order_data = {
         Fields.ORDER_ID: order_id,
@@ -873,9 +903,10 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.TAX_AMOUNT_CENTS: tax_amount_cents,
         Fields.TOTAL_AMOUNT_CENTS: total_amount_cents,
         Fields.TAXES: taxes_breakdown,
-        Fields.ORDER_STATUS: OrderStatus.PENDING,
-        Fields.PAYMENT_STATUS: PaymentStatus.AWAITING_PAYMENT,
+        Fields.ORDER_STATUS: OrderStatusValues.PENDING,
+        Fields.PAYMENT_STATUS: PaymentStatusValues.AWAITING_PAYMENT,
         Fields.SHIPPING_ADDRESS: shipping_address,
+        Fields.DELIVERY_INSTRUCTIONS: delivery_instructions,
         Fields.CREATED_AT: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp(),
         Fields.CAPTURE_ATTEMPTS: 0,
@@ -958,18 +989,21 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             })
 
         session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
             line_items=line_items,
             mode='payment',
-            success_url='https://orignagta.ca/order-success?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url='https://orignagta.ca/cart',
+            # No payment_method_types — uses Stripe Dashboard settings
+            # Enables Apple Pay, Google Pay, Interac (popular in Canada), etc.
+            success_url=f'{AppConfig.SITE_URL}{AppConfig.CHECKOUT_SUCCESS_PATH}?session_id={{CHECKOUT_SESSION_ID}}',
+            cancel_url=f'{AppConfig.SITE_URL}{AppConfig.CHECKOUT_CANCEL_PATH}',
             client_reference_id=user_id,
             metadata={
                 Fields.ORDER_ID: order_id,
                 Fields.USER_ID: user_id
             },
             payment_intent_data={
-                'capture_method': 'manual',  # Manual capture for order confirmation flow
+                # Automatic capture: funds collected immediately at checkout.
+                # Seller payouts via stripe.Transfer.create() after delivery confirmation.
+                # This eliminates authorization expiry risk (7-day limit) for international sellers.
                 'metadata': {
                     Fields.ORDER_ID: order_id
                 }
@@ -1065,7 +1099,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         allowed, message = get_rate_limiter().check_rate_limit(
             identifier=f"ip_{client_ip}",
             action='stripe_webhook',
-            max_requests=100,  # 100 webhooks per minute per IP
+            max_requests=BusinessRules.WEBHOOK_RATE_LIMIT_PER_MINUTE,
             window_minutes=1,
             fail_closed=True  # Block on error for security
         )
@@ -1108,7 +1142,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     event_created = event.get('created', 0)
     current_time = int(_time.time())
     event_age_seconds = current_time - event_created
-    if not IS_EMULATOR and event_age_seconds > 300:  # 5 minutes
+    if not IS_EMULATOR and event_age_seconds > BusinessRules.WEBHOOK_MAX_AGE_SECONDS:
         print(f'⚠️ Rejecting stale webhook: {event_type} age={event_age_seconds}s (event: {event_id[:16]}...)')
         return https_fn.Response('Event too old', status=400)
 
@@ -1128,7 +1162,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     try:
         order_id = event.get('data', {}).get('object', {}).get('metadata', {}).get(Fields.ORDER_ID, 'N/A')
         webhook_ref.set({
-            Fields.PROVIDER: 'stripe',
+            Fields.PROVIDER: PaymentProviderValues.STRIPE,
             Fields.TYPE: event_type,
             Fields.STATUS: WebhookStatusValues.PROCESSING,
             Fields.TIMESTAMP: get_server_timestamp(),
@@ -1166,6 +1200,8 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             process_payout_failed(event['data']['object'])
         elif event_type == 'refund.failed':
             process_refund_failed(event['data']['object'])
+        elif event_type == 'payment_intent.canceled':
+            process_payment_intent_canceled(event['data']['object'])
         elif event_type == 'account.updated':
             process_account_updated(event['data']['object'])
         else:
@@ -1242,9 +1278,10 @@ def process_checkout_session_completed(session: dict) -> str | None:
 
     # Update order status
     order_ref.update({
-        Fields.ORDER_STATUS: OrderStatus.CONFIRMED,
-        Fields.PAYMENT_STATUS: PaymentStatus.AUTHORIZED,
+        Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+        Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
         Fields.STRIPE_PAYMENT_INTENT_ID: session.get('payment_intent'),
+        Fields.CAPTURED_AT: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp()
     })
 
@@ -1310,7 +1347,7 @@ def process_async_payment_succeeded(session: dict) -> str | None:
 
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_ref.update({
-        Fields.PAYMENT_STATUS: PaymentStatus.CAPTURED,
+        Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
         Fields.UPDATED_AT: get_server_timestamp()
     })
 
@@ -1330,13 +1367,15 @@ def process_async_payment_failed(session: dict) -> str | None:
     if order_doc.exists:
         order_data = order_doc.to_dict()
 
-        # Restore stock
-        _restore_stock_for_order(order_data)
+        # IDEMPOTENCY FIX: Only restore stock once per order
+        if not order_data.get(Fields.STOCK_RESTORED, False):
+            _restore_stock_for_order(order_data)
 
         # Update order
         order_ref.update({
-            Fields.ORDER_STATUS: OrderStatus.CANCELLED,
-            Fields.PAYMENT_STATUS: PaymentStatus.PAYMENT_FAILED,
+            Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.PAYMENT_FAILED,
+            Fields.STOCK_RESTORED: True,
             Fields.UPDATED_AT: get_server_timestamp()
         })
 
@@ -1370,24 +1409,68 @@ def _restore_stock_and_cancel_order(order_id: str, order_data: dict, reason: str
 
     # Cancel the order
     order_ref.update({
-        Fields.ORDER_STATUS: OrderStatus.CANCELLED,
-        Fields.PAYMENT_STATUS: PaymentStatus.CANCELLED,
+        Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
+        Fields.PAYMENT_STATUS: PaymentStatusValues.CANCELLED,
         Fields.CANCELLATION_REASON: reason,
         Fields.STOCK_RESTORED: True,
         Fields.CANCELLED_AT: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp(),
     })
 
-    # Cancel the PaymentIntent to release buyer funds
+    # Refund/cancel the PaymentIntent to release buyer funds
+    # With auto-capture, PI is in 'succeeded' state — must use refund, not cancel
     payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
     if payment_intent_id:
+        refund_succeeded = False
         try:
-            stripe.PaymentIntent.cancel(
-                payment_intent_id,
-                cancellation_reason='abandoned',
-            )
+            # Try to retrieve PI to check its current state
+            pi = stripe.PaymentIntent.retrieve(payment_intent_id)
+            if pi.status == 'succeeded':
+                # Auto-captured: must refund (cannot cancel a succeeded PI)
+                stripe.Refund.create(
+                    payment_intent=payment_intent_id,
+                    reason='requested_by_customer',
+                    metadata={Fields.ORDER_ID: order_id, Fields.REASON: reason[:500]},
+                    idempotency_key=f'refund_invalidated_{order_id}',
+                )
+                refund_succeeded = True
+            elif pi.status == 'requires_capture':
+                # Manual capture mode: cancel releases the authorization
+                stripe.PaymentIntent.cancel(
+                    payment_intent_id,
+                    cancellation_reason='abandoned',
+                )
+                refund_succeeded = True
+            elif pi.status in ('requires_payment_method', 'requires_confirmation', 'requires_action'):
+                # Not yet charged: safe to cancel
+                stripe.PaymentIntent.cancel(
+                    payment_intent_id,
+                    cancellation_reason='abandoned',
+                )
+                refund_succeeded = True
+            else:
+                print(f'⚠️ PI {payment_intent_id} in unexpected state: {pi.status}, skipping refund/cancel')
         except stripe.error.StripeError as e:
-            print(f'Failed to cancel PI for invalidated order {order_id}: {str(e)}')
+            print(f'🚨 CRITICAL: Failed to refund/cancel PI for invalidated order {order_id}: {str(e)}')
+            # SECURITY FIX: If refund fails, flag for manual review — buyer must not lose money
+            get_db().collection(Collections.SECURITY_ALERTS).add({
+                Fields.TYPE: SecurityAlertTypes.REFUND_FAILED,
+                Fields.SEVERITY: SeverityLevels.CRITICAL,
+                Fields.ORDER_ID: order_id,
+                Fields.PAYMENT_INTENT_ID: payment_intent_id,
+                Fields.REASON: f'Refund/cancel failed during post-payment validation: {str(e)}',
+                Fields.TIMESTAMP: get_server_timestamp(),
+                Fields.RESOLVED: False,
+            })
+
+        # If refund failed, mark order for manual review instead of silently closing
+        if not refund_succeeded:
+            order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+            order_ref.update({
+                Fields.REQUIRES_MANUAL_REVIEW: True,
+                Fields.MANUAL_REVIEW_REASON: f'Refund/cancel failed for invalidated order: {reason}',
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
 
 
 def process_session_expired(session: dict) -> str | None:
@@ -1402,11 +1485,15 @@ def process_session_expired(session: dict) -> str | None:
 
     if order_doc.exists:
         order_data = order_doc.to_dict()
-        _restore_stock_for_order(order_data)
+
+        # IDEMPOTENCY FIX: Only restore stock once per order
+        if not order_data.get(Fields.STOCK_RESTORED, False):
+            _restore_stock_for_order(order_data)
 
         order_ref.update({
-            Fields.ORDER_STATUS: OrderStatus.EXPIRED,
-            Fields.PAYMENT_STATUS: PaymentStatus.SESSION_EXPIRED,
+            Fields.ORDER_STATUS: OrderStatusValues.EXPIRED,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.SESSION_EXPIRED,
+            Fields.STOCK_RESTORED: True,
             Fields.UPDATED_AT: get_server_timestamp()
         })
 
@@ -1442,7 +1529,7 @@ def process_payment_intent_succeeded(payment_intent: dict) -> str | None:
     capturable_states = {PaymentStatusValues.CAPTURING, PaymentStatusValues.AWAITING_PAYMENT}
     if current_status in capturable_states:
         order_ref.update({
-            Fields.PAYMENT_STATUS: PaymentStatus.CAPTURED,
+            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
             Fields.UPDATED_AT: get_server_timestamp()
         })
         return f'Payment captured for order {order_id}'
@@ -1464,12 +1551,65 @@ def process_payment_intent_failed(payment_intent: dict) -> str | None:
         return None
 
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    order_doc = order_ref.get()
+
+    if not order_doc.exists:
+        return None
+
+    order_data = order_doc.to_dict()
+
+    # CRITICAL FIX: Restore stock on payment failure (was missing — caused phantom stock)
+    if not order_data.get(Fields.STOCK_RESTORED, False):
+        _restore_stock_for_order(order_data)
+
     order_ref.update({
-        Fields.PAYMENT_STATUS: PaymentStatus.PAYMENT_FAILED,
+        Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
+        Fields.PAYMENT_STATUS: PaymentStatusValues.PAYMENT_FAILED,
+        Fields.STOCK_RESTORED: True,
         Fields.UPDATED_AT: get_server_timestamp()
     })
 
     return f'Payment failed for order {order_id}'
+
+
+def process_payment_intent_canceled(payment_intent: dict) -> str | None:
+    """
+    Handles canceled payment intents.
+    Restores stock and cancels the order when a PI is canceled
+    (e.g., session expired, user abandon, or admin cancellation).
+    """
+    order_id = payment_intent.get('metadata', {}).get(Fields.ORDER_ID)
+
+    if not order_id:
+        return None
+
+    order_ref = get_db().collection(Collections.ORDERS).document(order_id)
+    order_doc = order_ref.get()
+
+    if not order_doc.exists:
+        return None
+
+    order_data = order_doc.to_dict()
+
+    # Skip if already in terminal state
+    current_status = order_data.get(Fields.ORDER_STATUS)
+    terminal_states = {OrderStatusValues.CANCELLED, OrderStatusValues.REFUNDED, OrderStatusValues.EXPIRED}
+    if current_status in terminal_states:
+        return f'Order {order_id} already in terminal state: {current_status} (idempotent)'
+
+    # Restore stock idempotently
+    if not order_data.get(Fields.STOCK_RESTORED, False):
+        _restore_stock_for_order(order_data)
+
+    order_ref.update({
+        Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
+        Fields.PAYMENT_STATUS: PaymentStatusValues.CANCELLED,
+        Fields.STOCK_RESTORED: True,
+        Fields.CANCELLED_AT: get_server_timestamp(),
+        Fields.UPDATED_AT: get_server_timestamp()
+    })
+
+    return f'Payment canceled for order {order_id}'
 
 
 def process_charge_refunded(charge: dict) -> str | None:
@@ -1620,8 +1760,8 @@ def process_charge_refunded(charge: dict) -> str | None:
 
         if is_full_refund:
             order_ref.update({
-                Fields.ORDER_STATUS: OrderStatus.REFUNDED,
-                Fields.PAYMENT_STATUS: PaymentStatus.REFUNDED,
+                Fields.ORDER_STATUS: OrderStatusValues.REFUNDED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.REFUNDED,
                 Fields.TRANSFERS_REVERSED: reversed_count,
                 Fields.CUMULATIVE_REFUNDED_CENTS: amount_refunded,
                 Fields.REFUND_AMOUNT: amount_refunded / 100.0,
@@ -1631,8 +1771,8 @@ def process_charge_refunded(charge: dict) -> str | None:
             return f'Order {order_id} fully refunded, reversed {reversed_count} transfers'
         else:
             order_ref.update({
-                Fields.ORDER_STATUS: OrderStatus.PARTIALLY_REFUNDED,
-                Fields.PAYMENT_STATUS: PaymentStatus.REFUNDED,
+                Fields.ORDER_STATUS: OrderStatusValues.PARTIALLY_REFUNDED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,  # Keep CAPTURED — only partially refunded
                 Fields.PARTIAL_REFUND_AMOUNT_CENTS: amount_refunded,
                 Fields.CUMULATIVE_REFUNDED_CENTS: amount_refunded,
                 Fields.TRANSFERS_REVERSED: reversed_count,
@@ -1699,7 +1839,7 @@ def process_dispute_created(dispute: dict) -> str | None:
             if not transfer_id:
                 # AUDIT FIX (D1-1): Alert on missing transfer ID instead of silent skip
                 print(f'🚨 DISPUTE: Payout {payout_doc.id} has no stripeTransferId — cannot reverse')
-                alert_ref[1].reference.update({
+                alert_ref[1].update({
                     Fields.REVERSAL_ERRORS: get_firestore().ArrayUnion([{
                         Fields.PAYOUT_ID: payout_doc.id,
                         Fields.ERROR: 'Missing stripeTransferId — manual reversal required',
@@ -1761,7 +1901,7 @@ def process_dispute_created(dispute: dict) -> str | None:
                 # AUDIT FIX (D1-2): Handle specific Stripe errors (already reversed, insufficient funds)
                 error_code = getattr(e, 'code', 'unknown')
                 print(f'⚠️ Stripe error reversing transfer {transfer_id}: {error_code} - {str(e)}')
-                alert_ref[1].reference.update({
+                alert_ref[1].update({
                     Fields.REVERSAL_ERRORS: get_firestore().ArrayUnion([{
                         Fields.TRANSFER_ID: transfer_id,
                         Fields.ERROR: str(e),
@@ -1787,7 +1927,7 @@ def process_dispute_created(dispute: dict) -> str | None:
             except Exception as e:
                 # Log failure but continue processing other transfers
                 print(f'⚠️ Failed to reverse transfer {transfer_id}: {str(e)}')
-                alert_ref[1].reference.update({
+                alert_ref[1].update({
                     Fields.REVERSAL_ERRORS: get_firestore().ArrayUnion([{
                         Fields.TRANSFER_ID: transfer_id,
                         Fields.ERROR: str(e),
@@ -1961,7 +2101,7 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('resource-exhausted', message)
 
     # Import validation functions
-    from utils import sanitize_email
+    from utils.helpers import sanitize_email
 
     # Get user data from Firestore to get email if not provided
     user_ref = get_db().collection(Collections.USERS).document(user_id)
@@ -1984,7 +2124,7 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Get email from request or user profile
     email_raw = data.get(Fields.EMAIL) or user_data.get(Fields.EMAIL)
-    country = data.get(Fields.COUNTRY, 'CA')
+    country = data.get(Fields.COUNTRY, AppConfig.DEFAULT_COUNTRY_CODE)
 
     if not email_raw:
         raise https_fn.HttpsError('invalid-argument', 'Email is required. Please update your profile with a valid email.')
@@ -1996,9 +2136,9 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('invalid-argument', str(e)) from e
 
     # Validate country code (ISO 3166-1 alpha-2)
-    valid_countries = ['CA', 'US', 'GB', 'FR', 'DE', 'IT', 'ES', 'NL', 'BE', 'CH', 'AT', 'SE', 'NO', 'DK', 'FI', 'IE', 'PT', 'PL', 'CZ', 'HU', 'RO', 'BG', 'GR', 'HR', 'SI', 'SK', 'LT', 'LV', 'EE', 'LU', 'MT', 'CY']
-    if country not in valid_countries:
-        raise https_fn.HttpsError('invalid-argument', f'Invalid country code: {country}')
+    # Sellers can be from any Stripe-supported country — no CA-only restriction
+    if not country or len(country) != 2 or not country.isalpha():
+        raise https_fn.HttpsError('invalid-argument', f'Invalid country code: {country}. Must be a 2-letter ISO country code.')
 
     try:
         account = stripe.Account.create(
@@ -2045,8 +2185,8 @@ def create_account_link(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Get URLs from request data (passed from frontend)
     data = req.data or {}
-    refresh_url = data.get(ApiKeys.REFRESH_URL, 'https://orignagta.ca/seller/refresh')
-    return_url = data.get(ApiKeys.RETURN_URL, 'https://orignagta.ca/seller/return')
+    refresh_url = data.get(ApiKeys.REFRESH_URL, f'{AppConfig.SITE_URL}{AppConfig.SELLER_REFRESH_PATH}')
+    return_url = data.get(ApiKeys.RETURN_URL, f'{AppConfig.SITE_URL}{AppConfig.SELLER_RETURN_PATH}')
 
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
@@ -2208,13 +2348,13 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
 
     # Verify order is in correct state (should be authorized/shipped)
-    if payment_status != PaymentStatus.AUTHORIZED:
+    if payment_status != PaymentStatusValues.AUTHORIZED:
         raise https_fn.HttpsError(
             'failed-precondition',
             f'Order payment not authorized (status: {payment_status})'
         )
 
-    if order_status not in [OrderStatus.SHIPPED, OrderStatus.IN_TRANSIT, OrderStatus.DELIVERED]:
+    if order_status not in [OrderStatusValues.SHIPPED, OrderStatusValues.IN_TRANSIT, OrderStatusValues.DELIVERED]:
         raise https_fn.HttpsError(
             'failed-precondition',
             f'Order not shipped yet (status: {order_status})'
@@ -2256,7 +2396,7 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         fresh_data = fresh_doc.to_dict()
         if fresh_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.CAPTURED:
             return 'already_captured'
-        if fresh_data.get(Fields.PAYMENT_STATUS) != PaymentStatus.AUTHORIZED:
+        if fresh_data.get(Fields.PAYMENT_STATUS) != PaymentStatusValues.AUTHORIZED:
             raise https_fn.HttpsError(
                 'failed-precondition',
                 f'Order payment status changed concurrently (status: {fresh_data.get(Fields.PAYMENT_STATUS)})'
@@ -2340,6 +2480,15 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
             idempotency_key=f'capture_{order_id}_{payment_intent_id}'
         )
 
+        # CRITICAL FIX: Resolve Charge ID from captured PaymentIntent.
+        # Stripe Transfer.create requires a Charge ID (ch_xxx), NOT a PaymentIntent ID (pi_xxx).
+        charge_id = payment_intent.latest_charge
+        if not charge_id:
+            raise https_fn.HttpsError(
+                'internal',
+                f'No charge found after capturing PI {payment_intent_id}. Cannot create transfers.'
+            )
+
         # Execute Transfers / Payouts
         transfer_errors = []
 
@@ -2377,8 +2526,8 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
                         Fields.SEVERITY: SeverityLevels.HIGH,
                         Fields.ORDER_ID: order_id,
                         Fields.SELLER_ID: seller_id,
-                        'snapshotAccountId': snapshot_account_id,
-                        'liveAccountId': live_account_id,
+                        Fields.SNAPSHOT_ACCOUNT_ID: snapshot_account_id,
+                        Fields.LIVE_ACCOUNT_ID: live_account_id,
                         Fields.TIMESTAMP: get_server_timestamp(),
                         Fields.RESOLVED: False,
                     })
@@ -2443,16 +2592,17 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
 
                         # Create transfer to seller (amount already in cents)
                         # SECURITY: idempotency_key prevents double-payouts at Stripe API level
+                        # CRITICAL: source_transaction requires Charge ID (ch_xxx), not PI ID
                         transfer = stripe.Transfer.create(
                             amount=net_amount_cents,
                             currency=BusinessRules.DEFAULT_CURRENCY,
                             destination=stripe_account_id,
-                            source_transaction=payment_intent_id,
+                            source_transaction=charge_id,
                             transfer_group=order_id,
                             metadata={
                                 Fields.ORDER_ID: order_id,
                                 Fields.SELLER_ID: seller_id,
-                                'platformFee': platform_fee_cents
+                                Fields.METADATA_PLATFORM_FEE: platform_fee_cents
                             },
                             idempotency_key=f'transfer_{order_id}_{seller_id}',
                         )
@@ -2523,7 +2673,7 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Rollback 'capturing' state to 'authorized' so the order isn't stuck
         with contextlib.suppress(Exception):
             order_ref.update({
-                Fields.PAYMENT_STATUS: PaymentStatus.AUTHORIZED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
                 Fields.UPDATED_AT: get_server_timestamp(),
             })
         raise
@@ -2531,7 +2681,7 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Rollback 'capturing' state to 'authorized' so the order isn't stuck
         with contextlib.suppress(Exception):
             order_ref.update({
-                Fields.PAYMENT_STATUS: PaymentStatus.AUTHORIZED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
                 Fields.UPDATED_AT: get_server_timestamp(),
             })
         error_msg = str(e).lower()

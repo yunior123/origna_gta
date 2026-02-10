@@ -1,7 +1,7 @@
 API_SECURITY_AUDIT_PROMPT = """You are a senior application security engineer auditing the API SECURITY of a production e-commerce marketplace (Python Cloud Functions + Flutter frontend).
 
 Context:
-- Canada-only marketplace targeting 100M+ users/year
+- E-commerce marketplace serving Canadian buyers (sellers worldwide), targeting 100M+ users/year
 - Python Cloud Functions (Flask-based) with firebase-functions
 - Firebase Auth for authentication (JWT tokens)
 - Firestore security rules as secondary defense

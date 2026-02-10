@@ -47,7 +47,7 @@ class FirebaseCartRepository implements CartRepository {
         transaction.update(cartItemRef, {Fields.quantity: newQty});
       } else {
         final clampedQty = quantity.clamp(minCartItemQuantity, maxCartItemQuantity);
-        transaction.set(cartItemRef, CartModel(productId: productId, quantity: clampedQty, dateCreated: DateTime.now()).toMap());
+        transaction.set(cartItemRef, CartModel(productId: productId, quantity: clampedQty, createdAt: DateTime.now()).toMap());
       }
     });
   }

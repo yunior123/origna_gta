@@ -10,7 +10,7 @@ from models.base import Address
 from models.order import OrderItem, Taxes
 from models.product import Product
 from models.user import User
-from utils import validate_address_map, validate_item, validate_order_data
+from utils.helpers import validate_address_map, validate_item, validate_order_data
 
 
 def test_validate_address_map_valid():

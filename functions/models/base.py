@@ -8,7 +8,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from schema_constants import Fields
+from schema_constants import BusinessRules, Fields
 
 # ============================================================================
 # ENUMERATIONS
@@ -181,11 +181,8 @@ class Address(BaseModel):
     @classmethod
     def validate_state(cls, v: str) -> str:
         """Validate and normalize province code"""
-        valid_provinces = {
-            "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"
-        }
         v_upper = v.upper()
-        if v_upper not in valid_provinces:
+        if v_upper not in BusinessRules.VALID_PROVINCES:
             raise ValueError(f"Invalid Canadian province code: {v}")
         return v_upper
 
@@ -227,20 +224,19 @@ class AddressDetails(BaseModel):
     @field_validator("postalCode")
     @classmethod
     def validate_postal_code(cls, v: str) -> str:
-        """Validate Canadian postal code"""
+        """Validate and normalize Canadian postal code"""
         postal_pattern = re.compile(r"^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$")
         if not postal_pattern.match(v):
             raise ValueError("Invalid postal code format")
-        return v.upper()
+        # Normalize: remove existing space/dash, then add space in middle
+        v_clean = v.replace(" ", "").replace("-", "").upper()
+        return f"{v_clean[:3]} {v_clean[3:]}"  # Format as A1A 1A1
 
     @field_validator("state")
     @classmethod
     def validate_state(cls, v: str) -> str:
         """Validate province/state code"""
-        valid_provinces = {
-            "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"
-        }
         v_upper = v.upper()
-        if v_upper not in valid_provinces:
+        if v_upper not in BusinessRules.VALID_PROVINCES:
             raise ValueError(f"Invalid province: {v}")
         return v_upper

@@ -1,7 +1,7 @@
 PRODUCT_AUDIT_PROMPT = """You are a senior software architect auditing the PRODUCT LIFECYCLE of a production e-commerce marketplace (Flutter + Firebase + Stripe Connect).
 
 Context:
-- Canada-only marketplace targeting 100M+ users/year
+- E-commerce marketplace serving Canadian buyers (sellers worldwide), targeting 100M+ users/year
 - Single developer project — maintainability is critical
 - Stripe Connect Express for payments (direct charges, 2.5% platform fee)
 - Firestore as primary database, Algolia for search, Cloudflare R2 for images

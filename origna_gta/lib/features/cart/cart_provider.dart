@@ -18,7 +18,7 @@ final cartItemCountProvider = Provider.autoDispose<int>((ref) {
 final cartItemDateProvider = Provider.autoDispose.family<Timestamp?, String>((ref, productId) {
   return ref.watch(
     cartItemsProvider.select((async) {
-      return async.maybeWhen(data: (items) => items.where((i) => i.productId == productId).firstOrNull?.dateCreated, orElse: () => null);
+      return async.maybeWhen(data: (items) => items.where((i) => i.productId == productId).firstOrNull?.createdAt, orElse: () => null);
     }),
   );
 });
@@ -26,8 +26,8 @@ final cartItemDateProvider = Provider.autoDispose.family<Timestamp?, String>((re
 /// Family provider for individual cart item details - cached by Riverpod
 final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailModel?, String>((ref, productId) async {
   final firestore = ref.watch(firestoreProvider);
-  final dateCreated = ref.watch(cartItemDateProvider(productId));
-  if (dateCreated == null) return null;
+  final createdAt = ref.watch(cartItemDateProvider(productId));
+  if (createdAt == null) return null;
 
   // Quantity is NOT watched here. CartItemScreen has its own Consumer that
   // watches cartItemQuantityProvider directly for the +/- controls.
@@ -46,7 +46,7 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
     price: (productData[Fields.price] ?? 0).toDouble(),
     imageUrls: List<String>.from(productData[Fields.imageUrls] ?? []),
     quantity: 0, // Placeholder — real quantity rendered by CartItemScreen's own Consumer
-    dateCreated: dateCreated,
+    createdAt: createdAt,
     sellerAddress: Address.fromMap(productData[Fields.sellerAddress] ?? {}),
     sellerId: productData[Fields.sellerId] ?? '',
     deliveryStatus: DeliveryStatusValues.pending,
@@ -142,7 +142,7 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
                 price: (productData[Fields.price] ?? 0).toDouble(),
                 imageUrls: List<String>.from(productData[Fields.imageUrls] ?? []),
                 quantity: cartItem.quantity,
-                dateCreated: cartItem.dateCreated,
+                createdAt: cartItem.createdAt,
                 sellerAddress: Address.fromMap(productData[Fields.sellerAddress] ?? {}),
                 sellerId: productData[Fields.sellerId] ?? '',
                 deliveryStatus: DeliveryStatusValues.pending,
@@ -175,6 +175,9 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
     error: (e, st) => [],
   );
 });
+
+// Provider for delivery instructions (stored during cart/checkout flow)
+final deliveryInstructionsProvider = StateProvider.autoDispose<String>((ref) => '');
 
 class CartController {
   final Ref _ref;

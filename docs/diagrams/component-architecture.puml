@@ -125,7 +125,7 @@ note bottom of Firestore
   **NoSQL Database**
   - 8 collections
   - Composite indexes
-  - Security rules (Canada-only)
+  - Security rules (Canada-only buyer/shipping addresses)
   - Transactions for stock
 end note
 

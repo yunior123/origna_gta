@@ -6,7 +6,7 @@ Run: pytest tests/test_handlers_admin_cron.py -v --cov
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, Mock, call, patch
 
 import pyotp
@@ -85,14 +85,15 @@ class TestAdminHandlers:
 
         mock_create_response.return_value = {'success': True}
 
-        # Mock admin with MFA verified recently
+        # Mock admin with MFA verified recently (use UTC to match admin.py handler)
+        from datetime import timezone
         mock_admin_doc = Mock()
         mock_admin_doc.exists = True
         mock_admin_doc.to_dict.return_value = {
             'userId': 'admin_123',
             'roles': ['admin'],
             'mfaEnabled': True,
-            'lastMfaVerify': datetime.now()
+            'lastMfaVerify': datetime.now(timezone.utc)
         }
 
         # Mock target user
@@ -168,19 +169,21 @@ class TestAdminHandlers:
     def test_admin_mfa_verify_valid_code(self, mock_get_db, mock_create_response):
         """Test MFA verification with valid TOTP code"""
         from handlers.admin import admin_mfa_verify
+        from utils.crypto_utils import encrypt_mfa_secret
 
         secret = pyotp.random_base32()
+        encrypted_secret = encrypt_mfa_secret(secret)
         totp = pyotp.TOTP(secret)
         valid_code = totp.now()
 
         mock_create_response.return_value = {'success': True, 'mfaEnabled': True}
 
-        # Mock user with MFA secret (can be mfaSecretTemp or mfaSecret)
+        # Mock user with encrypted MFA secret
         mock_user_doc = Mock()
         mock_user_doc.exists = True
         mock_user_doc.to_dict.return_value = {
             'userId': 'admin_123',
-            'mfaSecretTemp': secret,  # Temporary secret before verification
+            'mfaSecretTemp': encrypted_secret,
             'mfaEnabled': False
         }
         mock_db = Mock()
@@ -202,14 +205,16 @@ class TestAdminHandlers:
     def test_admin_mfa_verify_invalid_code_rejected(self, mock_get_db):
         """SECURITY: Test invalid TOTP code is rejected"""
         from handlers.admin import admin_mfa_verify
+        from utils.crypto_utils import encrypt_mfa_secret
 
         secret = pyotp.random_base32()
+        encrypted_secret = encrypt_mfa_secret(secret)
 
         mock_user_doc = Mock()
         mock_user_doc.exists = True
         mock_user_doc.to_dict.return_value = {
             'userId': 'admin_123',
-            'mfaSecret': secret
+            'mfaSecret': encrypted_secret
         }
         mock_db = Mock()
         mock_get_db.return_value = mock_db
@@ -242,7 +247,7 @@ class TestAdminHandlers:
         mock_admin_doc.to_dict.return_value = {
             'roles': ['admin'],
             'mfaEnabled': True,
-            'lastMfaVerify': datetime.now()
+            'lastMfaVerify': datetime.now(timezone.utc)
         }
 
         # Mock seller
@@ -361,15 +366,17 @@ class TestSecurityEdgeCases:
     def test_mfa_brute_force_protection(self, mock_get_db):
         """SECURITY: Test MFA verification with invalid code is rejected"""
         from handlers.admin import admin_mfa_verify
+        from utils.crypto_utils import encrypt_mfa_secret
 
         mock_db = Mock()
         mock_get_db.return_value = mock_db
 
         secret = pyotp.random_base32()
+        encrypted_secret = encrypt_mfa_secret(secret)
         mock_user_doc = Mock()
         mock_user_doc.exists = True
         mock_user_doc.to_dict.return_value = {
-            'mfaSecret': secret
+            'mfaSecret': encrypted_secret
         }
         mock_user_ref = Mock()
         mock_user_ref.get.return_value = mock_user_doc

@@ -309,28 +309,28 @@ void main() {
   group('CartModel', () {
      test('fromMap creates correct CartModel', () {
       final now = DateTime(2024, 1, 15, 10, 30);
-      final map = {Fields.productId: 'prod123', Fields.quantity: 3, Fields.dateCreated: Timestamp.fromDate(now)};
+      final map = {Fields.productId: 'prod123', Fields.quantity: 3, Fields.createdAt: Timestamp.fromDate(now)};
 
       final cart = CartModel.fromMap(map);
 
       expect(cart.productId, 'prod123');
       expect(cart.quantity, 3);
-      expect(cart.dateCreated, now);
+      expect(cart.createdAt, now);
     });
 
     test('toMap returns correct map', () {
       final now = DateTime(2024, 1, 15, 10, 30);
-      final cart = CartModel(productId: 'prod123', quantity: 2, dateCreated: now);
+      final cart = CartModel(productId: 'prod123', quantity: 2, createdAt: now);
 
       final map = cart.toMap();
 
       expect(map[Fields.productId], 'prod123');
       expect(map[Fields.quantity], 2);
-      expect((map[Fields.dateCreated] as Timestamp).toDate(), now);
+      expect((map[Fields.createdAt] as Timestamp).toDate(), now);
     });
 
     test('default quantity is 1', () {
-      final cart = CartModel(productId: 'prod123', dateCreated: DateTime.now());
+      final cart = CartModel(productId: 'prod123', createdAt: DateTime.now());
 
       expect(cart.quantity, 1);
     });
@@ -338,7 +338,7 @@ void main() {
 
   group('CartItemModel', () {
     test('fromMap creates correct CartItemModel', () {
-      final map = {Fields.productId: 'prod123', Fields.quantity: 5, Fields.dateCreated: Timestamp.fromDate(DateTime(2024, 1, 15))};
+      final map = {Fields.productId: 'prod123', Fields.quantity: 5, Fields.createdAt: Timestamp.fromDate(DateTime(2024, 1, 15))};
 
       final item = CartItemModel.fromMap(map);
 
@@ -348,13 +348,13 @@ void main() {
 
     test('toMap returns correct map', () {
       final now = Timestamp.fromDate(DateTime(2024, 1, 15));
-      final item = CartItemModel(productId: 'prod123', quantity: 3, dateCreated: now);
+      final item = CartItemModel(productId: 'prod123', quantity: 3, createdAt: now);
 
       final map = item.toMap();
 
       expect(map[Fields.productId], 'prod123');
       expect(map[Fields.quantity], 3);
-      expect(map[Fields.dateCreated], now);
+      expect(map[Fields.createdAt], now);
     });
   });
 

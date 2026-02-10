@@ -432,7 +432,7 @@ async function seedProducts(uidMap: Map<string, string>) {
       imageUrls: product.imageUrls, keywords: product.keywords,
       rating: Math.round((3 + Math.random() * 2) * 10) / 10,
       ratingCount: Math.floor(Math.random() * 50),
-      dateCreated: new Date(), isActive: true,
+      createdAt: new Date(), isActive: true,
       isDigital: product.isDigital, freeShipping: product.freeShipping,
       isLocalDeliveryOnly: product.isLocalDeliveryOnly,
       isPerishable: product.isPerishable,
@@ -505,7 +505,7 @@ async function seedCartItems(uidMap: Map<string, string>) {
     const uid = uidMap.get(assignment.buyerEmail);
     if (!uid) continue;
     for (const item of assignment.items) {
-      const cartDoc = { productId: item.productId, quantity: item.quantity, dateCreated: new Date() };
+      const cartDoc = { productId: item.productId, quantity: item.quantity, createdAt: new Date() };
       if (await writeFirestoreDoc(`users/${uid}/cart/${item.productId}`, cartDoc)) count++;
     }
   }

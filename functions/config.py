@@ -53,88 +53,36 @@ def is_emulator() -> bool:
     return IS_EMULATOR
 
 # ============================================================================
-# CONSTANTS - Must match Flutter constants.dart
+# CONSTANTS — Single source of truth is schema_constants.py
+# Import all enums from there. DO NOT duplicate here.
 # ============================================================================
+from schema_constants import (  # noqa: E402
+    Collections,
+    DeliveryStatusValues as DeliveryStatus,
+    OrderStatusValues as OrderStatus,
+    PaymentStatusValues as PaymentStatus,
+    PayoutStatusValues as PayoutStatus,
+    ShippingApprovalStatusValues as ShippingApprovalStatus,
+    UserRoleValues as UserRoles,
+)
 
-class OrderStatus:
-    PENDING = 'pending'
-    CONFIRMED = 'confirmed'
-    PROCESSING = 'processing'
-    SHIPPED = 'shipped'
-    IN_TRANSIT = 'in_transit'
-    DELIVERED = 'delivered'
-    CANCELLED = 'cancelled'
-    FAILED = 'failed'
-    EXPIRED = 'expired'
-    REFUNDED = 'refunded'
-    PARTIALLY_REFUNDED = 'partially_refunded'
-
-class PaymentStatus:
-    AWAITING_PAYMENT = 'awaiting_payment'
-    PROCESSING = 'processing'
-    PAID = 'paid'
-    PAYMENT_FAILED = 'payment_failed'
-    REFUNDED = 'refunded'
-    SESSION_EXPIRED = 'session_expired'
-    AUTHORIZED = 'authorized'
-    CAPTURED = 'captured'
-    CANCELLED = 'cancelled'
-    AUTHORIZATION_EXPIRED = 'authorization_expired'
-
-class DeliveryStatus:
-    PENDING = 'pending'
-    SHIPPED = 'shipped'
-    DELIVERED = 'delivered'
-    REFUNDED = 'refunded'
-
-class UserRoles:
-    ADMIN = 'admin'
-    SELLER = 'seller'
-    BUYER = 'buyer'
-
-class Collections:
-    USERS = 'users'
-    PRODUCTS = 'products'
-    ORDERS = 'orders'
-    CART = 'cart'
-    FAVORITES = 'favorites'
-    PAYOUTS = 'payouts'
-    REFUNDS = 'refunds'
-    WEBHOOK_LOGS = 'webhook_logs'
-    WEBHOOK_EVENTS = 'webhook_events'
-    SECURITY_ALERTS = 'security_alerts'
-    RATE_LIMITS = 'rate_limits'
-    CONFIG = 'config'
-    ADMIN_LOGS = 'admin_logs'
-    PRODUCT_RATINGS = 'product_ratings'
-
-class PayoutStatus:
-    PENDING = 'pending'
-    PROCESSING = 'processing'
-    COMPLETED = 'completed'
-    PARTIAL = 'partial'
-    FAILED = 'failed'
-    REVERSED = 'reversed'
-    REVERSED_DISPUTE = 'reversed_dispute'
 
 class CaptureMethod:
     MANUAL = 'manual'
     AUTOMATIC = 'automatic'
 
-class ShippingApprovalStatus:
-    NOT_REQUIRED = 'not_required'
-    PENDING = 'pending'
-    APPROVED = 'approved'
-    REJECTED = 'rejected'
-
 # ============================================================================
 # PLATFORM CONFIGURATION
+# NOTE: These are RATIOS (0-1), not percentages (0-100).
+# BusinessRules.PLATFORM_FEE_PERCENT in schema_constants.py = 2.5 (percentage)
+# Here: PLATFORM_FEE_RATIO = 0.025 (ratio). Use this for math: amount * PLATFORM_FEE_RATIO
 # ============================================================================
 
-PLATFORM_FEE_PERCENT = 0.025  # 2.5% platform fee
+PLATFORM_FEE_RATIO = 0.025  # 2.5% platform fee as ratio (0.025 = 2.5/100)
+PLATFORM_FEE_PERCENT = PLATFORM_FEE_RATIO  # Alias used by payment handlers
 AUTO_CONFIRM_DAYS = 5  # Auto-capture after 5 days post-delivery (must be < AUTHORIZATION_VALID_DAYS with 2-day safety margin)
 AUTHORIZATION_VALID_DAYS = 7  # Stripe authorization valid for 7 days
-SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20%
+SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20% threshold ratio
 
 # ============================================================================
 # R2 STORAGE CONFIGURATION - REAL service, environment-aware paths
@@ -359,6 +307,9 @@ CATEGORY_TAX_CODE_MAP = {
 }
 
 # Stripe Tax Constants
+STRIPE_TAX_CODE_GENERAL = "txcd_99999999"       # General Tangible Goods
+STRIPE_TAX_CODE_CHILDRENS_CLOTHING = "txcd_20030002"  # Children's Clothing
+STRIPE_TAX_CODE_BASIC_GROCERIES = "txcd_30060005"     # Basic Groceries
 STRIPE_TAX_CODE_SHIPPING = "txcd_92010001"  # Shipping/Handling
 STRIPE_TAX_TYPE_CA_GST_HST = "ca_gst_hst"   # Canadian GST/HST tax ID type
 STRIPE_TAX_EXEMPT_NONE = "none"             # Let Stripe determine exemption

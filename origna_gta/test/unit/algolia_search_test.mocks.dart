@@ -31,6 +31,7 @@ import 'package:origna_gta/services/algolia_service.dart' as _i9;
 // ignore_for_file: unnecessary_parenthesis
 // ignore_for_file: camel_case_types
 // ignore_for_file: subtype_of_sealed_class
+// ignore_for_file: invalid_use_of_internal_member
 
 class _FakeFirebaseApp_0 extends _i1.SmartFake implements _i2.FirebaseApp {
   _FakeFirebaseApp_0(Object parent, Invocation parentInvocation)
@@ -168,14 +169,14 @@ class MockFirebaseFirestore extends _i1.Mock implements _i4.FirebaseFirestore {
           as _i3.Settings);
 
   @override
-  set app(_i2.FirebaseApp? _app) => super.noSuchMethod(
-    Invocation.setter(#app, _app),
+  set app(_i2.FirebaseApp? value) => super.noSuchMethod(
+    Invocation.setter(#app, value),
     returnValueForMissingStub: null,
   );
 
   @override
-  set databaseId(String? _databaseId) => super.noSuchMethod(
-    Invocation.setter(#databaseId, _databaseId),
+  set databaseId(String? value) => super.noSuchMethod(
+    Invocation.setter(#databaseId, value),
     returnValueForMissingStub: null,
   );
 
@@ -501,14 +502,6 @@ class MockFirebaseFunctions extends _i1.Mock implements _i8.FirebaseFunctions {
   }
 
   @override
-  _i2.FirebaseApp get app =>
-      (super.noSuchMethod(
-            Invocation.getter(#app),
-            returnValue: _FakeFirebaseApp_0(this, Invocation.getter(#app)),
-          )
-          as _i2.FirebaseApp);
-
-  @override
   _i7.FirebaseFunctionsPlatform get delegate =>
       (super.noSuchMethod(
             Invocation.getter(#delegate),
@@ -518,6 +511,14 @@ class MockFirebaseFunctions extends _i1.Mock implements _i8.FirebaseFunctions {
             ),
           )
           as _i7.FirebaseFunctionsPlatform);
+
+  @override
+  _i2.FirebaseApp get app =>
+      (super.noSuchMethod(
+            Invocation.getter(#app),
+            returnValue: _FakeFirebaseApp_0(this, Invocation.getter(#app)),
+          )
+          as _i2.FirebaseApp);
 
   @override
   Map<dynamic, dynamic> get pluginConstants =>

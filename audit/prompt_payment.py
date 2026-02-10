@@ -1,7 +1,7 @@
 PAYMENT_AUDIT_PROMPT = """You are a senior payment security engineer auditing the PAYMENT SYSTEM of a production e-commerce marketplace (Flutter + Firebase + Stripe Connect).
 
 Context:
-- Canada-only marketplace targeting 100M+ users/year
+- E-commerce marketplace serving Canadian buyers (sellers worldwide), targeting 100M+ users/year
 - Stripe Connect Express: direct charges with manual capture, 2.5% platform fee
 - Airwallex as alternative provider (can be toggled on/off)
 - Authorization hold for 7 days, capture after seller confirms delivery

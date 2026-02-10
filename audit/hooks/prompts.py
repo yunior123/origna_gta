@@ -34,7 +34,7 @@ Rules for the JSON block:
 
 PROJECT_CONTEXT = """
 ## Project Context
-- **OrignaGta**: Canada-only e-commerce marketplace (Flutter + Firebase + Stripe Connect)
+- **OrignaGta**: E-commerce marketplace serving Canadian buyers, with sellers worldwide (Flutter + Firebase + Stripe Connect)
 - **Scale**: 100M+ users/year target
 - **Architecture**: MVVM — Screens (UI only) → ViewModels → Repositories → Providers (Riverpod)
 - **Backend**: Python 3.11 Cloud Functions (Flask + firebase-functions)

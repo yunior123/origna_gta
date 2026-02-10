@@ -21,9 +21,12 @@ from .order import (
     Taxes,
 )
 from .product import (
+    InventoryConfig,
     Product,
     ProductCreate,
     SellerDeliveryOption,
+    ShippingQuantityDiscount,
+    SupplierInfo,
 )
 from .user import (
     User,
@@ -43,6 +46,9 @@ __all__ = [
     "Product",
     "ProductCreate",
     "SellerDeliveryOption",
+    "ShippingQuantityDiscount",
+    "SupplierInfo",
+    "InventoryConfig",
     # Order
     "OrderItem",
     "Taxes",

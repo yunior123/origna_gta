@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 try:
     from algoliasearch.search.client import SearchClient
 
-    from algolia_service import configure_algolia_index
+    from services.algolia_service import configure_algolia_index
 except ImportError:
     pass # Will fail in tests if needed
 

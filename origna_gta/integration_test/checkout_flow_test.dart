@@ -17,14 +17,14 @@ void main() {
   group('Cart Operations', () {
     test('CartModel serialization round-trip', () {
       final now = DateTime(2024, 1, 15, 10, 30);
-      final original = CartModel(productId: 'prod_123', quantity: 3, dateCreated: now);
+      final original = CartModel(productId: 'prod_123', quantity: 3, createdAt: now);
 
       final map = original.toMap();
       final restored = CartModel.fromMap(map);
 
       expect(restored.productId, original.productId);
       expect(restored.quantity, original.quantity);
-      expect(restored.dateCreated, original.dateCreated);
+      expect(restored.createdAt, original.createdAt);
     });
 
     test('CartItemDetailModel contains all order item fields', () {
@@ -35,7 +35,7 @@ void main() {
         price: 29.99,
         imageUrls: ['https://example.com/image.jpg'],
         quantity: 2,
-        dateCreated: Timestamp.now(),
+        createdAt: Timestamp.now(),
         sellerAddress: Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada'),
         sellerId: 'seller_456',
         deliveryStatus: 'pending',
@@ -267,7 +267,7 @@ CartItemDetailModel _createMockItem({
     price: price,
     imageUrls: [],
     quantity: quantity,
-    dateCreated: Timestamp.now(),
+    createdAt: Timestamp.now(),
     sellerAddress: Address(street: '123 Test St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada'),
     sellerId: sellerId,
     deliveryStatus: deliveryStatus,

@@ -20,6 +20,8 @@ class AddProductState {
   final int minimumOrderQuantity;
   final bool freeShipping;
   final bool freeShippingAt10Plus; // Free shipping for 10+ item orders
+  final bool savedExpressEnabled; // Saved state when free shipping toggled on
+  final bool savedSameDayEnabled; // Saved state when free shipping toggled on
   final String? errorMessage;
   final bool isSuccess;
 
@@ -40,6 +42,8 @@ class AddProductState {
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
     this.freeShippingAt10Plus = false,
+    this.savedExpressEnabled = false,
+    this.savedSameDayEnabled = false,
     this.errorMessage,
     this.isSuccess = false,
   });
@@ -63,6 +67,8 @@ class AddProductState {
     int? minimumOrderQuantity,
     bool? freeShipping,
     bool? freeShippingAt10Plus,
+    bool? savedExpressEnabled,
+    bool? savedSameDayEnabled,
     Object? errorMessage = _sentinel,
     bool? isSuccess,
   }) {
@@ -83,6 +89,8 @@ class AddProductState {
       minimumOrderQuantity: minimumOrderQuantity ?? this.minimumOrderQuantity,
       freeShipping: freeShipping ?? this.freeShipping,
       freeShippingAt10Plus: freeShippingAt10Plus ?? this.freeShippingAt10Plus,
+      savedExpressEnabled: savedExpressEnabled ?? this.savedExpressEnabled,
+      savedSameDayEnabled: savedSameDayEnabled ?? this.savedSameDayEnabled,
       errorMessage: errorMessage == _sentinel ? this.errorMessage : errorMessage as String?,
       isSuccess: isSuccess ?? this.isSuccess,
     );

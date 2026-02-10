@@ -285,7 +285,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     final isAuthorized = order.paymentStatus == PaymentStatus.authorized;
     final isPendingApproval = order.shippingApprovalStatus == ShippingApprovalStatus.pending;
     final showTimeline = _timelineStep(order.orderStatus) >= 0;
-    final isTerminal = [OrderStatus.cancelled, OrderStatus.failed, OrderStatus.expired, OrderStatus.refunded, OrderStatus.partiallyRefunded].contains(order.orderStatus);
+    final isTerminal = [OrderStatus.cancelled, OrderStatus.failed, OrderStatus.expired, OrderStatus.refunded, OrderStatus.partiallyRefunded, OrderStatus.disputed].contains(order.orderStatus);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -382,9 +382,18 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
 
           // ─── DELIVERY ADDRESS ───────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
             child: _buildAddressSection(order.shippingAddress, isDark),
           ),
+
+          // ─── DELIVERY INSTRUCTIONS ───────────────────────────
+          if (order.deliveryInstructions != null && order.deliveryInstructions!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+              child: _buildDeliveryInstructionsSection(order.deliveryInstructions!, isDark),
+            )
+          else
+            const SizedBox(height: 20),
         ],
       ),
     );
@@ -780,6 +789,50 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                 const SizedBox(height: 4),
                 Text(
                   address.formattedAddress,
+                  style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // DELIVERY INSTRUCTIONS SECTION
+  // ──────────────────────────────────────────────────────────────────────────
+
+  Widget _buildDeliveryInstructionsSection(String instructions, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? DesignTokens.info.withValues(alpha: 0.06) : const Color(0xFFF0F7FF),
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+        border: Border.all(
+          color: DesignTokens.info.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: DesignTokens.info.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.edit_note_outlined, size: 18, color: DesignTokens.info),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Instructions de livraison', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.info, letterSpacing: 0.3)),
+                const SizedBox(height: 4),
+                Text(
+                  instructions,
                   style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.4),
                 ),
               ],

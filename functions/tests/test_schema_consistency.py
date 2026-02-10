@@ -80,7 +80,7 @@ class TestSchemaConsistency:
         root = self.get_project_root()
 
         # Read Python algolia_service.py
-        algolia_service_path = root / 'functions' / 'algolia_service.py'
+        algolia_service_path = root / 'functions' / 'services' / 'algolia_service.py'
         with open(algolia_service_path) as f:
             algolia_content = f.read()
 
@@ -264,7 +264,7 @@ class TestSchemaConsistency:
         root = self.get_project_root()
 
         # Read Python algolia_service.py
-        algolia_service_path = root / 'functions' / 'algolia_service.py'
+        algolia_service_path = root / 'functions' / 'services' / 'algolia_service.py'
         with open(algolia_service_path) as f:
             algolia_content = f.read()
 

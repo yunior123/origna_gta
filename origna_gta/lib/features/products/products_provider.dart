@@ -58,7 +58,7 @@ final productByIdProvider = FutureProvider.autoDispose.family<Product?, String>(
   return repository.fetchProductById(productId);
 });
 
-/// Fetches products based on query parameters (legacy, kept for compat if needed, but home uses VM now)
+/// Fetches products based on query parameters
 final productsProvider = FutureProvider.autoDispose.family<List<Product>, ProductQuery>((ref, query) async {
   final repository = ref.watch(productRepositoryProvider);
   final result = await repository.fetchProducts(categoryId: query.categoryId, searchQuery: query.searchQuery, pageSize: query.limit);

@@ -204,7 +204,7 @@ class TestInputValidationAndSanitization:
 
     def test_xss_prevention_in_product_names(self):
         """SECURITY: Test XSS script tags rejected in product names"""
-        from utils import sanitized_text
+        from utils.helpers import sanitized_text
 
         malicious_names = [
             '<script>alert("XSS")</script>',
@@ -214,12 +214,15 @@ class TestInputValidationAndSanitization:
         ]
 
         for name in malicious_names:
-            # Product names should be sanitized
+            # Product names should be sanitized via html.escape
             sanitized = sanitized_text(name)
+            # html.escape converts < > to entities — no raw HTML remains
             assert '<script>' not in sanitized
             assert '<iframe>' not in sanitized
-            assert 'javascript:' not in sanitized
-            assert 'onerror=' not in sanitized
+            assert '<img' not in sanitized
+            # All angle brackets are escaped
+            if '<' in name:
+                assert '&lt;' in sanitized
 
     def test_sql_injection_prevention(self):
         """SECURITY: Test SQL injection attempts (even though Firestore is NoSQL)"""
@@ -245,7 +248,7 @@ class TestInputValidationAndSanitization:
             'test/../../../../secret.key'
         ]
 
-        from utils import sanitize_path
+        from utils.helpers import sanitize_path
 
         for path in malicious_paths:
             sanitized = sanitize_path(path)
@@ -356,7 +359,7 @@ class TestErrorHandlingAndRecovery:
         # Should retry automatically
         assert mock_stripe.call_count <= 3  # Max 3 retries
 
-    @patch('algolia_service.index_product')
+    @patch('services.algolia_service.index_product')
     def test_algolia_failure_fallback_to_firestore(self, mock_algolia):
         """Test search falls back to Firestore if Algolia fails"""
         mock_algolia.side_effect = Exception("Algolia service unavailable")
@@ -377,7 +380,7 @@ class TestErrorHandlingAndRecovery:
         available_items = [item for item in items if item['stockAvailable']]
         assert len(available_items) == 2
 
-    @patch('email_service.send_email')
+    @patch('services.email_service.send_email')
     def test_email_failure_logs_but_continues(self, mock_email):
         """Test email failures don't break order processing"""
         mock_email.side_effect = Exception("SMTP server down")

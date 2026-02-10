@@ -76,8 +76,10 @@ class TestStockRevalidation:
 
         mock_db.collection.side_effect = collection_side_effect
 
-        # Mock Stripe PaymentIntent.cancel
-        with patch('handlers.payment_stripe.stripe.PaymentIntent.cancel') as mock_cancel:
+        # Mock Stripe PaymentIntent.cancel and .retrieve
+        with patch('handlers.payment_stripe.stripe.PaymentIntent.cancel') as mock_cancel, \
+             patch('handlers.payment_stripe.stripe.PaymentIntent.retrieve') as mock_retrieve:
+            mock_retrieve.return_value = Mock(status='requires_capture')
             session = {
                 'metadata': {'orderId': 'order_123'},
                 'payment_intent': 'pi_test_123'
@@ -135,7 +137,9 @@ class TestStockRevalidation:
 
         mock_db.collection.side_effect = collection_side_effect
 
-        with patch('handlers.payment_stripe.stripe.PaymentIntent.cancel') as mock_cancel:
+        with patch('handlers.payment_stripe.stripe.PaymentIntent.cancel') as mock_cancel, \
+             patch('handlers.payment_stripe.stripe.PaymentIntent.retrieve') as mock_retrieve:
+            mock_retrieve.return_value = Mock(status='requires_capture')
             session = {
                 'metadata': {'orderId': 'order_123'},
                 'payment_intent': 'pi_test_123'
@@ -184,7 +188,9 @@ class TestStockRevalidation:
 
         mock_db.collection.side_effect = collection_side_effect
 
-        with patch('handlers.payment_stripe.stripe.PaymentIntent.cancel'):
+        with patch('handlers.payment_stripe.stripe.PaymentIntent.cancel'), \
+             patch('handlers.payment_stripe.stripe.PaymentIntent.retrieve') as mock_retrieve:
+            mock_retrieve.return_value = Mock(status='requires_capture')
             session = {
                 'metadata': {'orderId': 'order_123'},
                 'payment_intent': 'pi_test_123'

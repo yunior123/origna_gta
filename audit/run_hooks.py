@@ -52,6 +52,7 @@ from hooks.hook_extended import (
     SecurityHook, PerformanceHook, StateMgmtHook,
     OrdersHook, ErrorHandlingHook, SellerHook,
 )
+from hooks.hook_tax import TaxHook
 from hooks.base import get_all_hooks
 from hooks.runner import HookRunner
 
@@ -72,6 +73,7 @@ Available hooks:
   orders        📋 Order lifecycle (status machine, shipping, cancellation)
   errors        🛡️  Error handling (retries, graceful degradation, Sentry)
   seller        🏪 Seller onboarding (Stripe Connect, verification, payouts)
+  tax           🧾 Tax compliance (GST/HST/PST/QST, Stripe Tax, CRA compliance)
         """,
     )
 

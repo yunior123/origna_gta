@@ -2,11 +2,11 @@
 User models for OrignaGTA
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from schema_constants import Fields
+from schema_constants import Fields, PaymentProviderValues
 
 from .base import Address, UserRole
 
@@ -54,7 +54,7 @@ class User(BaseModel):
         description="User's default address"
     )
     createdAt: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=lambda: datetime.now(timezone.utc),
         description="Account creation timestamp"
     )
 
@@ -104,7 +104,7 @@ class User(BaseModel):
         description="When account was suspended"
     )
     paymentProvider: str | None = Field(
-        default="stripe",
+        default=PaymentProviderValues.STRIPE,
         description="Payment provider for seller payouts (stripe or airwallex)"
     )
     airwallexAccountId: str | None = Field(
@@ -149,12 +149,24 @@ class User(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
-        """Validate name (letters, spaces, hyphens, apostrophes, periods)"""
+        """Validate name: allow Unicode letters but reject digits, HTML, and dangerous characters.
+        Canada is multicultural — support Chinese, Arabic, Korean, Cyrillic, etc."""
         import re
-        # Allow: O'Brien, Jr., María-José, etc.
-        pattern = re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ' .\-]*[A-Za-zÀ-ÖØ-öø-ÿ.]?$")
-        if not pattern.match(v):
-            raise ValueError("Name must contain only letters, spaces, hyphens, apostrophes, and periods")
+        import unicodedata
+        # Reject HTML tags and dangerous characters
+        if re.search(r"[<>]", v):
+            raise ValueError("Name contains disallowed characters")
+        # Reject digits
+        if re.search(r"\d", v):
+            raise ValueError("Name must not contain digits")
+        # Allow only: Unicode letters, spaces, hyphens, apostrophes, periods
+        for char in v:
+            cat = unicodedata.category(char)
+            if cat.startswith("L"):  # Any letter (Latin, CJK, Arabic, Cyrillic, etc.)
+                continue
+            if char in " '-.\u00B7":  # Space, apostrophe, hyphen, period, middle dot
+                continue
+            raise ValueError(f"Name contains disallowed character: {char!r}")
         return v
 
     @field_validator("roles")

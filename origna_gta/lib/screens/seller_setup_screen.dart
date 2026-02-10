@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
-import 'package:origna_gta/features/app/seller_account_status_viewmodel.dart';
+import 'package:origna_gta/features/seller/seller_account_status_viewmodel.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/screens/seller_registration_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';

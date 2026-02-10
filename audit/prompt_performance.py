@@ -1,7 +1,7 @@
 PERFORMANCE_AUDIT_PROMPT = """You are a senior performance engineer auditing the SCALABILITY AND PERFORMANCE of a production e-commerce marketplace (Flutter + Firebase + Stripe Connect).
 
 Context:
-- Canada-only marketplace targeting 100M+ users/year
+- E-commerce marketplace serving Canadian buyers (sellers worldwide), targeting 100M+ users/year
 - Firestore: pay-per-read/write, hot-spotting kills performance
 - Algolia: search latency and indexing throughput matter
 - Stripe API: rate limits (25 req/sec test, 100 req/sec live)

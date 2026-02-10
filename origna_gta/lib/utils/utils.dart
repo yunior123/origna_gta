@@ -19,7 +19,6 @@ export 'package:origna_gta/models/models.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 
-
 // ============================================================================
 // ERROR HANDLING UTILITIES
 // ============================================================================
@@ -31,7 +30,7 @@ const Map<String, Map<String, double>> provinceTaxRates = {
   'MB': {'GST': 0.05, 'PST': 0.07},
   'NB': {'HST': 0.15},
   'NL': {'HST': 0.15},
-  'NS': {'HST': 0.15},
+  'NS': {'HST': 0.14}, // Changed from 15% to 14% on April 1, 2025 (CRA)
   'NT': {'GST': 0.05},
   'NU': {'GST': 0.05},
   'ON': {'HST': 0.13},
@@ -123,22 +122,11 @@ final List<ProductCategories> productCategories = [
   ),
 ];
 
-// Provincial tax configuration
-final taxConfig = {
-  'AB': {'GST': 0.05},
-  'BC': {'GST': 0.05, 'PST': 0.07},
-  'MB': {'GST': 0.05, 'PST': 0.07},
-  'NB': {'HST': 0.15},
-  'NL': {'HST': 0.15},
-  'NT': {'GST': 0.05},
-  'NS': {'HST': 0.15},
-  'NU': {'GST': 0.05},
-  'ON': {'HST': 0.13},
-  'PE': {'HST': 0.15},
-  'QC': {'GST': 0.05, 'QST': 0.09975},
-  'SK': {'GST': 0.05, 'PST': 0.06},
-  'YT': {'GST': 0.05},
-};
+// Provincial tax configuration — single source of truth
+// Used by checkout_screen.dart _buildTaxBreakdown() and getTaxRate()
+// NOTE: These are FRONTEND ESTIMATES only. The backend uses Stripe Tax API
+// for the authoritative calculation (which includes shipping in the tax base).
+final taxConfig = provinceTaxRates;
 
 Future<bool> addToCart({
   required String productId,
@@ -173,20 +161,36 @@ Future<bool> addToCart({
 
   try {
     await FirebaseFirestore.instance.runTransaction((transaction) async {
+      // Check product stock before adding to cart
+      final productRef = FirebaseFirestore.instance
+          .collection(Collections.products)
+          .doc(productId);
+      final productSnapshot = await transaction.get(productRef);
+      if (!productSnapshot.exists) {
+        throw Exception('Product not found');
+      }
+      final productData = productSnapshot.data()!;
+      final stockQuantity = productData[Fields.stockQuantity] as int? ?? 0;
+
       final snapshot = await transaction.get(cartItemRef);
+      final currentQty = snapshot.exists
+          ? (snapshot.data()?[Fields.quantity] ?? 0) as int
+          : 0;
+      final newTotalQty = currentQty + quantity;
+
+      if (newTotalQty > stockQuantity) {
+        throw Exception('Only $stockQuantity available in stock');
+      }
 
       if (snapshot.exists) {
-        int currentQty = snapshot.data()?[Fields.quantity] ?? 0;
-        transaction.update(cartItemRef, {
-          Fields.quantity: currentQty + quantity,
-        });
+        transaction.update(cartItemRef, {Fields.quantity: newTotalQty});
       } else {
         transaction.set(
           cartItemRef,
           CartModel(
             productId: productId,
             quantity: quantity,
-            dateCreated: DateTime.now(),
+            createdAt: DateTime.now(),
           ).toMap(),
         );
       }
@@ -431,22 +435,12 @@ int getCrossAxisCount(BuildContext context) {
 }
 
 double getTaxRate(String province) {
-  const taxRates = {
-    'AB': 0.05,
-    'BC': 0.12,
-    'MB': 0.12,
-    'NB': 0.15,
-    'NL': 0.15,
-    'NT': 0.05,
-    'NS': 0.15,
-    'NU': 0.05,
-    'ON': 0.13,
-    'PE': 0.15,
-    'QC': 0.14975,
-    'SK': 0.11,
-    'YT': 0.05,
-  };
-  return taxRates[province] ?? 0.13;
+  // Derive combined rate from the canonical provinceTaxRates map
+  final rates = provinceTaxRates[province];
+  if (rates == null) return 0.13; // Default: Ontario HST
+  // Round to 5 decimals to avoid IEEE 754 floating-point artifacts while preserving QC's 14.975%
+  final total = rates.values.fold(0.0, (sum, rate) => sum + rate);
+  return double.parse(total.toStringAsFixed(5));
 }
 
 bool hasValidAddress(Address? address) {
@@ -469,10 +463,7 @@ AddressDetails parseAddressSuggestion(Map<String, dynamic> suggestion) {
 
   final houseNumber = props['housenumber'];
   final streetName = props['street'];
-  final addressLine1 = [
-    ?houseNumber,
-    ?streetName,
-  ].join(' ');
+  final addressLine1 = [?houseNumber, ?streetName].join(' ');
 
   return AddressDetails(
     street: props['formatted'] ?? addressLine1,
@@ -802,7 +793,7 @@ _FixedPriceResult _hasFixedPriceForSpeed(
 
     final option = matches.first;
     final cost = option.calculateCostForQuantity(item.quantity);
-    // Keep legacy behavior: only treat as fixed-price shipping when cost is positive.
+    // Only treat as fixed-price shipping when cost is positive.
     // `freeShipping` is handled separately via the product flag.
     if (cost.isNaN || cost.isInfinite || cost <= 0) {
       return const _FixedPriceResult(isEnabled: false, total: 0);
@@ -909,11 +900,12 @@ class _FixedPriceResult {
 Future<void> _launchPath(String path) async {
   // Ensure you use https://
   final Uri url = Uri.parse('https://orignagta.ca$path');
-  
+
   if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
     throw Exception('Could not launch $url');
   }
 }
+
 /// Opens Privacy Policy page
 /// On web: navigates to /privacy-policy URL (required for OAuth verification)
 /// On mobile: shows in-app screen
@@ -936,7 +928,6 @@ void openTermsOfService(BuildContext context) {
   if (kIsWeb) {
     // Navigate to actual URL for OAuth compliance
     _launchPath('/terms-of-service');
-   
   } else {
     Navigator.push(
       context,

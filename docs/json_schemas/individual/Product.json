@@ -411,7 +411,7 @@
   "description": "Complete product model\nSingle source of truth for product data",
   "example": {
     "categoryId": 1,
-    "dateCreated": "2026-02-01T10:00:00Z",
+    "createdAt": "2026-02-01T10:00:00Z",
     "description": "Fresh organic apples from local farm",
     "imageUrls": [
       "https://example.com/image1.jpg"
@@ -501,7 +501,7 @@
       "title": "Rating",
       "type": "number"
     },
-    "dateCreated": {
+    "createdAt": {
       "description": "Product creation timestamp",
       "format": "date-time",
       "title": "Datecreated",

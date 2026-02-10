@@ -1,7 +1,7 @@
 ERROR_HANDLING_AUDIT_PROMPT = """You are a senior reliability engineer auditing the ERROR HANDLING AND RESILIENCE of a production e-commerce marketplace (Flutter + Firebase + Stripe Connect).
 
 Context:
-- Canada-only marketplace targeting 100M+ users/year
+- E-commerce marketplace serving Canadian buyers (sellers worldwide), targeting 100M+ users/year
 - Python Cloud Functions backend with Pydantic validation
 - Flutter frontend with Riverpod state management
 - Stripe Connect for payments, Algolia for search, Cloudflare R2 for storage, Mailjet for email

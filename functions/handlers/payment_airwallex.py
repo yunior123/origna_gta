@@ -1,21 +1,24 @@
 """
-Airwallex Payment Handlers
-- Alternative payment provider (3DS support)
-- Connected account creation
-- Payment intent processing
-- Webhook handling
+Airwallex Payment Handlers — DEAD CODE FOR LAUNCH
+==================================================
+Frontend is Stripe-only at launch (March 2026).
+This module is kept for future international seller support but is NOT
+referenced by the Flutter frontend.  All functions are gated behind
+`require_provider_enabled(PaymentProvider.AIRWALLEX)` which will raise
+HttpsError('unavailable') at runtime since Airwallex is not enabled.
+
+TODO(post-launch): Evaluate Airwallex activation or remove entirely.
 """
 
 from typing import Any
 
 from firebase_functions import https_fn
 
-from function_options import DEFAULT_OPTIONS
+from utils.function_options import DEFAULT_OPTIONS
 
 # Lazy-loaded globals
 _db = None
 _firestore = None
-_airwallex_service = None
 _airwallex_service = None
 _collections = None
 _utils = None
@@ -42,7 +45,7 @@ def get_airwallex_service():
     """Get Airwallex service (lazy initialization)."""
     global _airwallex_service
     if _airwallex_service is None:
-        from airwallex_service import AirwallexService
+        from services.airwallex_service import AirwallexService
         _airwallex_service = AirwallexService()
     return _airwallex_service
 
@@ -155,6 +158,8 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
     from handlers.payment_providers import PaymentProvider, require_provider_enabled
     require_provider_enabled(PaymentProvider.AIRWALLEX)
 
+    from schema_constants import ApiKeys, AppConfig, PaymentProviderValues
+
     user_id = req.auth.uid
     data = req.data
 
@@ -163,7 +168,7 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
     Fields = get_fields()
 
     order_id = data.get(Fields.ORDER_ID)
-    return_url = data.get('returnUrl', 'https://origna.ca/order-success')
+    return_url = data.get(ApiKeys.RETURN_URL, f'{AppConfig.SITE_URL}{AppConfig.CHECKOUT_SUCCESS_PATH}')
 
     if not order_id:
         raise https_fn.HttpsError('invalid-argument', 'orderId required')
@@ -186,9 +191,10 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         if amount_cents is None or not isinstance(amount_cents, int) or amount_cents < 0:
             raise https_fn.HttpsError('failed-precondition', 'Order total not available')
 
+        from schema_constants import SupplierCurrencyValues
         result = airwallex_service.create_payment_intent_for_checkout(
             amount_cents=int(amount_cents),
-            currency='CAD',
+            currency=SupplierCurrencyValues.CAD,
             order_id=order_id,
             return_url=return_url,
             capture=False,
@@ -196,9 +202,10 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         )
 
         # Update order with Airwallex payment intent
+        from schema_constants import PaymentProviderValues
         order_ref.update({
-            'airwallexPaymentIntentId': result['id'],
-            Fields.PAYMENT_PROVIDER: 'airwallex',
+            Fields.AIRWALLEX_PAYMENT_INTENT_ID: result['id'],
+            Fields.PAYMENT_PROVIDER: PaymentProviderValues.AIRWALLEX,
             Fields.UPDATED_AT: get_server_timestamp()
         })
 
@@ -243,7 +250,19 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('not-found', 'Order not found')
 
     order_data = order_doc.to_dict()
-    payment_intent_id = order_data.get('airwallexPaymentIntentId')
+
+    # SECURITY: Verify the requester is the order buyer or an admin
+    user_id = req.auth.uid
+    order_user_id = order_data.get(Fields.USER_ID)
+    if order_user_id != user_id:
+        # Check if admin
+        user_doc = get_db().collection(Collections.USERS).document(user_id).get()
+        user_roles = user_doc.to_dict().get(Fields.ROLES, []) if user_doc.exists else []
+        from schema_constants import UserRoleValues
+        if UserRoleValues.ADMIN not in user_roles:
+            raise https_fn.HttpsError('permission-denied', 'Only the order buyer or an admin can capture payment')
+
+    payment_intent_id = order_data.get(Fields.AIRWALLEX_PAYMENT_INTENT_ID)
 
     if not payment_intent_id:
         raise https_fn.HttpsError('failed-precondition', 'No Airwallex payment intent found')
@@ -352,7 +371,7 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
     """
     import json
 
-    from rate_limiter import RateLimiter
+    from services.rate_limiter import RateLimiter
 
     # SECURITY FIX #1: Rate limiting by IP FIRST (prevent DDoS)
     rate_limiter = RateLimiter(get_db())
@@ -425,9 +444,9 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
 
     # SECURITY FIX #7: Log webhook with client IP for audit trail
     try:
-        Fields = get_fields()
+        from schema_constants import PaymentProviderValues as _PPV
         webhook_ref.set({
-            Fields.PROVIDER: 'airwallex',
+            Fields.PROVIDER: _PPV.AIRWALLEX,
             Fields.TYPE: event_type,
             Fields.PROCESSED: True,
             Fields.TIMESTAMP: get_server_timestamp(),

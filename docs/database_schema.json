@@ -1,7 +1,7 @@
 {
   "version": "2.0.0",
   "lastUpdated": "2025-07-17",
-  "description": "Complete Firestore database schema for OrignaGTA e-commerce platform. CANADA-ONLY marketplace.",
+  "description": "Complete Firestore database schema for OrignaGTA e-commerce platform. Marketplace serving Canadian buyers, with sellers worldwide.",
 
   "collections": {
     "users": {
@@ -209,6 +209,46 @@
           "type": "string",
           "required": false,
           "description": "Admin UID who last changed roles"
+        },
+        "mfaBackupCodes": {
+          "type": "array",
+          "required": false,
+          "description": "Hashed MFA backup codes (admin only, SHA-256)"
+        },
+        "mfaBackupCodesTemp": {
+          "type": "array",
+          "required": false,
+          "description": "Temporary hashed backup codes during MFA enrollment"
+        },
+        "mfaBackupCodesSalt": {
+          "type": "string",
+          "required": false,
+          "description": "Salt used for hashing MFA backup codes"
+        },
+        "mfaFailedAttempts": {
+          "type": "number",
+          "default": 0,
+          "description": "Count of consecutive failed MFA attempts"
+        },
+        "mfaLockoutUntil": {
+          "type": "timestamp",
+          "required": false,
+          "description": "MFA lockout expiry after too many failed attempts"
+        },
+        "deleted": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether user account has been deleted (GDPR)"
+        },
+        "anonymizedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When user data was anonymized after account deletion"
+        },
+        "originalUserDeleted": {
+          "type": "boolean",
+          "required": false,
+          "description": "Flag on orders indicating the original user was deleted (GDPR)"
         }
       },
       "subcollections": {
@@ -226,7 +266,7 @@
               "required": true,
               "description": "Quantity in cart"
             },
-            "dateCreated": {
+            "createdAt": {
               "type": "timestamp",
               "required": true,
               "description": "When item was added to cart"
@@ -336,7 +376,7 @@
           "required": false,
           "description": "When product was soft deleted"
         },
-        "dateCreated": {
+        "createdAt": {
           "type": "timestamp",
           "required": true,
           "description": "Product creation date"
@@ -565,15 +605,15 @@
       },
       "indexes": [
         {
-          "fields": ["sellerId", "dateCreated desc"],
+          "fields": ["sellerId", "createdAt desc"],
           "description": "For seller's product listings"
         },
         {
-          "fields": ["isActive", "categoryId", "dateCreated desc"],
+          "fields": ["isActive", "categoryId", "createdAt desc"],
           "description": "For category browsing (active only)"
         },
         {
-          "fields": ["isActive", "keywords", "dateCreated desc"],
+          "fields": ["isActive", "keywords", "createdAt desc"],
           "description": "For product search (active only)"
         },
         {
@@ -641,7 +681,7 @@
         "currency": {
           "type": "string",
           "default": "cad",
-          "description": "Currency code (always 'cad' for Canada-only marketplace)"
+          "description": "Currency code (always 'cad' — all transactions in CAD)"
         },
         "orderStatus": {
           "type": "string",
@@ -1299,7 +1339,7 @@
         "deliveryStatus": {
           "type": "string",
           "default": "pending",
-          "description": "DEPRECATED: Use 'status' field instead. Legacy field for backwards compatibility",
+          "description": "Parallel status field for type-safe enum access (both 'status' and 'deliveryStatus' are written)",
           "values": ["pending", "shipped", "delivered"]
         },
         "trackingNumber": {
@@ -1580,10 +1620,10 @@
       "description": "Canadian dollars only"
     },
     "geographicRestrictions": {
-      "sellersAllowedCountries": ["Canada"],
+      "sellersAllowedCountries": "worldwide",
       "buyersAllowedCountries": ["Canada"],
       "billingAllowedCountries": ["Canada"],
-      "description": "CANADA-ONLY marketplace. Sellers must be Canadian. Buyers must have Canadian billing/shipping addresses."
+      "description": "Marketplace serving Canadian buyers. Sellers can be from any country. Buyers must have Canadian billing/shipping addresses."
     },
     "shippingCalculation": {
       "formula": "distance_km * 0.5",
@@ -1597,7 +1637,7 @@
         "MB": {"GST": 5, "PST": 7},
         "NB": {"HST": 15},
         "NL": {"HST": 15},
-        "NS": {"HST": 15},
+        "NS": {"HST": 14},
         "NT": {"GST": 5},
         "NU": {"GST": 5},
         "ON": {"HST": 13},

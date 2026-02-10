@@ -597,7 +597,7 @@ def main():
             "ratingCount": iv(random.randint(0, 150)),
             "keywords": av([sv(kw) for kw in p["keywords"]]),
             "isActive": bv(True),
-            "dateCreated": ts(created_dt),
+            "createdAt": ts(created_dt),
             "isDigital": bv(is_digital),
             "isLocalDeliveryOnly": bv(False),
             "isPerishable": bv(False),

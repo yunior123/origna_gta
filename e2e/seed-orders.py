@@ -98,8 +98,8 @@ def make_item(product_id, name, price, qty, seller_uid, seller_city, seller_prov
         "deliveryStatus": sv(delivery_status),
         "shippingStatus": sv(delivery_status),
         "freeShipping": bv(free_shipping),
-        "localDeliveryOnly": bv(False),
-        "perishable": bv(False),
+        "isLocalDeliveryOnly": bv(False),
+        "isPerishable": bv(False),
         "confirmedByBuyer": bv(False),
         "shippingOptions": av([]),
         "weightKg": fv(0.5),
@@ -123,10 +123,13 @@ def make_taxes(province):
         "AB": {"GST": 0.05},
         "MB": {"GST": 0.05, "PST": 0.07},
         "SK": {"GST": 0.05, "PST": 0.06},
-        "NS": {"HST": 0.15},
+        "NS": {"HST": 0.14},  # Changed from 15% to 14% on April 1, 2025 (CRA)
         "NB": {"HST": 0.15},
         "NL": {"HST": 0.15},
         "PE": {"HST": 0.15},
+        "NT": {"GST": 0.05},
+        "NU": {"GST": 0.05},
+        "YT": {"GST": 0.05},
     }
     return tax_rates.get(province, {"HST": 0.13})
 

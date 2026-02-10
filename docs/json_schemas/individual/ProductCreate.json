@@ -408,7 +408,7 @@
       "type": "object"
     }
   },
-  "description": "Model for creating new products\n(excludes productId and dateCreated which are generated)\nIMPORTANT: sellerAddress.country MUST be 'Canada' - enforced by validation",
+  "description": "Model for creating new products\n(excludes productId and createdAt which are generated)\nSellers can be from any country — no country restriction on seller addresses",
   "properties": {
     "name": {
       "maxLength": 120,

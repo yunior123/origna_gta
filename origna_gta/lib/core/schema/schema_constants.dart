@@ -38,6 +38,7 @@ abstract final class Collections {
   static const config = 'config';
   static const adminLogs = 'admin_logs';
   static const productRatings = 'product_ratings';
+  static const algoliaSyncFailures = 'algolia_sync_failures';
 
   // Subcollections
   static const cart = 'cart'; // users/{userId}/cart
@@ -55,7 +56,6 @@ abstract final class Collections {
 ///
 /// Convention:
 /// - Timestamps: Use [createdAt] for creation time across ALL collections
-///   (except products which use [dateCreated] for legacy reasons)
 /// - IDs: Use {entity}Id pattern (e.g., userId, productId, orderId)
 /// - Amounts: Use {name}Cents for money (e.g., subtotalCents, taxAmountCents)
 abstract final class Fields {
@@ -64,6 +64,9 @@ abstract final class Fields {
   static const updatedAt = 'updatedAt';
   static const String deletedAt = 'deletedAt';
   static const String deletedBy = 'deletedBy';
+  static const String deleted = 'deleted';
+  static const String anonymizedAt = 'anonymizedAt';
+  static const String originalUserDeleted = 'originalUserDeleted';
 
   // === USER FIELDS ===
   static const uid = 'uid';
@@ -103,6 +106,9 @@ abstract final class Fields {
   static const mfaFailedAttempts = 'mfaFailedAttempts';
   static const mfaLockoutUntil = 'mfaLockoutUntil';
   static const lastMfaVerify = 'lastMfaVerify';
+  static const mfaBackupCodes = 'mfaBackupCodes';
+  static const mfaBackupCodesTemp = 'mfaBackupCodesTemp';
+  static const mfaBackupCodesSalt = 'mfaBackupCodesSalt';
   static const lastRoleUpdate = 'lastRoleUpdate';
   static const lastRoleUpdateBy = 'lastRoleUpdateBy';
 
@@ -119,9 +125,6 @@ abstract final class Fields {
   static const ratingCount = 'ratingCount';
   static const keywords = 'keywords';
   static const isActive = 'isActive';
-
-  /// NOTE: Products use dateCreated (legacy naming)
-  static const dateCreated = 'dateCreated';
   static const isDigital = 'isDigital';
   static const weightKg = 'weightKg';
   static const lengthCm = 'lengthCm';
@@ -201,6 +204,9 @@ abstract final class Fields {
   static const taxExemption = 'taxExemption';
   static const gstNumber = 'gstNumber';
 
+  // === DELIVERY FIELDS ===
+  static const deliveryInstructions = 'deliveryInstructions';
+
   // === FIELDS missing from Dart (present in Python) ===
   static const archived = 'archived';
 
@@ -215,7 +221,7 @@ abstract final class Fields {
   static const refundId = 'refundId';
   static const confirmedByBuyer = 'confirmedByBuyer';
 
-  /// DEPRECATED: Use [status] instead
+  /// Parallel status field alongside [status] (both are written for consistency)
   static const deliveryStatus = 'deliveryStatus';
 
   // === PAYOUT FIELDS ===
@@ -298,37 +304,36 @@ abstract final class Fields {
   // === WEBHOOK EVENT FIELDS ===
   static const clientIp = 'clientIp';
 
-  // === CART FIELDS (subcollection uses dateCreated for legacy reasons) ===
-  // NOTE: Cart items use [dateCreated], not [createdAt]
+  // === CART & FAVORITES FIELDS ===
   static const dateFavorited = 'dateFavorited';
 
-  // === LEGACY/DEPRECATED FIELDS (for backward compatibility) ===
-  /// Legacy: use [confirmedByBuyer] instead
+  // === ALTERNATE FIELD NAMES (used in Firestore deserialization fallbacks) ===
+  /// Alternate name for [confirmedByBuyer]
   static const buyerConfirmed = 'buyerConfirmed';
 
-  /// Legacy: use [isLocalDeliveryOnly] instead
+  /// Alternate name for [isLocalDeliveryOnly]
   static const localDeliveryOnly = 'localDeliveryOnly';
 
-  /// Legacy: use [isPerishable] instead
+  /// Alternate name for [isPerishable]
   static const perishable = 'perishable';
 
-  /// Legacy: use [estimatedShipDays] instead
+  /// Alternate name for [estimatedShipDays]
   static const supplierShippingDays = 'supplierShippingDays';
 
-  /// Legacy: use [minimumOrderQuantity] instead
+  /// Alternate name for [minimumOrderQuantity]
   static const minOrderQuantity = 'minOrderQuantity';
 
-  // === LEGACY JSON KEYS (lowercase variants for JSON API compatibility) ===
-  /// Legacy lowercase: use [GST] instead
+  // === LOWERCASE TAX KEYS (used in JSON API responses) ===
+  /// Lowercase variant of [GST] for JSON responses
   static const gst = 'gst';
 
-  /// Legacy lowercase: use [PST] instead
+  /// Lowercase variant of [PST] for JSON responses
   static const pst = 'pst';
 
-  /// Legacy lowercase: use [HST] instead
+  /// Lowercase variant of [HST] for JSON responses
   static const hst = 'hst';
 
-  /// Legacy lowercase: use [QST] instead
+  /// Lowercase variant of [QST] for JSON responses
   static const qst = 'qst';
 
   // === REVIEW/RATING FIELDS ===
@@ -524,16 +529,33 @@ abstract final class SupplierTypeValues {
   static const aliexpress = 'aliexpress';
   static const dhgate = 'dhgate';
   static const alibaba = 'alibaba';
-  static const s1688 = '1688'; // Can't start with number, so use 's1688' as const name
+  static const s1688 =
+      '1688'; // Can't start with number, so use 's1688' as const name
   static const temu = 'temu';
   static const cjdropshipping = 'cjdropshipping';
   static const local = 'local';
   static const other = 'other';
 
-  static const all = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping, local, other};
+  static const all = {
+    aliexpress,
+    dhgate,
+    alibaba,
+    s1688,
+    temu,
+    cjdropshipping,
+    local,
+    other,
+  };
 
   /// International suppliers (non-local)
-  static const international = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping};
+  static const international = {
+    aliexpress,
+    dhgate,
+    alibaba,
+    s1688,
+    temu,
+    cjdropshipping,
+  };
 }
 
 /// Valid values for shipping discount types
@@ -555,10 +577,10 @@ abstract final class SchemaRegistry {
   /// Timestamp field mapping (which field name each collection uses)
   static const timestampField = {
     Collections.users: Fields.createdAt,
-    Collections.products: Fields.dateCreated, // Legacy: uses dateCreated
+    Collections.products: Fields.createdAt,
     Collections.orders: Fields.createdAt,
     Collections.payouts: Fields.createdAt,
-    Collections.cart: Fields.dateCreated, // Subcollection: uses dateCreated
+    Collections.cart: Fields.createdAt,
   };
 
   /// Get the correct timestamp field name for a collection.
@@ -574,11 +596,13 @@ abstract final class SchemaRegistry {
 /// Business rule constants
 abstract final class BusinessRules {
   static const platformFeePercent = 2.5;
-  static const autoConfirmDays = 5;  // Must be < authorizationExpiryDays (2-day safety margin)
+  static const autoConfirmDays =
+      5; // Must be < authorizationExpiryDays (2-day safety margin)
   static const authorizationExpiryDays = 7;
   static const maxCaptureAttempts = 3;
   static const defaultCurrency = 'cad';
-  static const allowedCountries = {'Canada', 'CA'};
+  static const allowedShippingCountries = {'Canada', 'CA'};
+  // Sellers can be from any country — no country restriction on seller addresses
 
   /// Tax rates by province
   static const taxRates = {
@@ -587,7 +611,7 @@ abstract final class BusinessRules {
     'MB': {'GST': 5.0, 'PST': 7.0},
     'NB': {'HST': 15.0},
     'NL': {'HST': 15.0},
-    'NS': {'HST': 15.0},
+    'NS': {'HST': 14.0}, // Changed from 15% to 14% on April 1, 2025 (CRA)
     'NT': {'GST': 5.0},
     'NU': {'GST': 5.0},
     'ON': {'HST': 13.0},
@@ -665,6 +689,8 @@ abstract final class ApiKeys {
   static const qrCodeUrl = 'qrCodeUrl';
   static const provisioningUri = 'provisioning_uri';
   static const backupCodes = 'backup_codes';
+  static const mfaVerified = 'mfaVerified';
+  static const remainingCodes = 'remainingCodes';
   static const detailsSubmitted = 'detailsSubmitted';
   static const requirementsCurrentlyDue = 'requirementsCurrentlyDue';
   static const duplicate = 'duplicate';
