@@ -89,8 +89,57 @@ checkout_provider.dart → createCheckoutSession → payment_stripe.py
 pending → confirmed → processing → shipped → in_transit → delivered
 ```
 - Cancel/refund: restore stock + refund/void PaymentIntent
-- Rating: backend-only via `submit_product_rating` Cloud Function
+- Rating: backend-only via `submit_product_rating` Cloud Function (idempotent per user+product)
 - Cross-stack: `order_models.dart` ↔ `models/order.py` ↔ `Order.json`
+- **Sellers CANNOT mark orders as `delivered`** — explicit backend check. Only admin or cron.
+- **Multi-seller orders block `update_order_status`** for sellers — must use `update_item_status`
+- **`update_item_status` auto-promotes**: all items shipped → order SHIPPED; all items delivered → order DELIVERED
+- **`signIn()` returns `{idToken, localId, ...}`** — use `.idToken` (NOT `.token`)
+
+---
+
+## 🔐 Firestore SERVER_TIMESTAMP Array Bug (CRITICAL)
+
+**`get_server_timestamp()` / `firestore.SERVER_TIMESTAMP` is a sentinel value that Firestore resolves server-side.**
+It CANNOT be nested inside:
+- Array elements (items in `update()` maps that go into arrays)
+- `ArrayUnion()` values
+- Any nested structure inside an array field
+
+**Error**: `('Cannot convert to a Firestore Value', Sentinel: Value used to set a document field to the server timestamp.)`
+
+**Fix**: Use `datetime.now(timezone.utc)` (or `datetime.now(UTC)` where `from datetime import UTC` is used) for timestamps inside arrays. Keep `get_server_timestamp()` for top-level document fields only.
+
+**Known locations fixed (Feb 2026)**:
+- `orders.py`: `update_order_status` (shipped_at in items), `update_item_status` (shipped_at, delivered_at), `refund_order_item` (refunded_at, partial_reversals)
+- `payment_stripe.py`: `handle_stripe_dispute` (3 ArrayUnion instances for reversal_errors)
+
+---
+
+## 💳 Payment Pipeline — Auto-Capture Mode
+
+```
+checkout_provider.dart → createCheckoutSession → payment_stripe.py
+  → Stripe Checkout (hosted) → checkout.session.completed webhook
+  → order CONFIRMED/CAPTURED → seller ships → buyer confirm_order_receipt
+  → _capture_payment_impl (idempotent path) → stripe.Transfer.create()
+```
+
+- **Auto-capture** (default) — `capture_method: 'automatic'` — funds captured at checkout, NOT at delivery
+- **`paymentStatus` is ALWAYS `'captured'` after checkout** — never `'authorized'` in auto-capture mode
+- **2.5% platform fee** (`BusinessRules.PLATFORM_FEE_RATIO`)
+- **Idempotency keys** required for ALL payment/transfer operations
+- **14 webhook events** handled (see `.claude/skills/payment-system/SKILL.md`)
+- **`source_transaction` MUST be charge ID (`ch_xxx`)**, NOT PaymentIntent ID (`pi_xxx`)
+- DO NOT hardcode `payment_method_types` — Stripe Dashboard controls enabled methods
+- Refund failures MUST create SECURITY_ALERTS + flag `requires_manual_review`
+- Currency: CAD only. Canada-only buyers, worldwide sellers.
+
+### `_capture_payment_impl` Architecture
+- **Undecorated function** containing all capture logic (no `@on_call` wrapper)
+- **`capture_payment`** = thin `@on_call` wrapper calling `_capture_payment_impl(req)`
+- **`confirm_order_receipt`** = calls `_capture_payment_impl(req)` directly (avoids CallableRequest vs Flask Request mismatch — `@on_call` wrapper expects Flask Request)
+- **Idempotent path** (paymentStatus == 'captured'): Creates payout records + Stripe Transfers if none exist (auto-capture skipped the full capture flow)
 
 ---
 
@@ -212,20 +261,35 @@ stripe listen --forward-to localhost:5001/orignagta/us-central1/stripeWebhook
 npx playwright test
 ```
 
-### E2E Test Suite Inventory (267+ tests)
+### E2E Test Suite Inventory (279 tests — 266 passing as of Feb 2026)
 
 | File | Tests | Passing | Status |
 |------|-------|---------|--------|
-| regression-e2e.spec.ts | 42 | 41/42 | ✅ E1 flaky (passes on retry) |
-| comprehensive-flows-e2e.spec.ts | 32 | 31/32 | ✅ G.2 seller delete perm bug |
-| payment-workflow-e2e.spec.ts | 54 | 34/54 | 🔶 4 need Stripe CLI, 2 bugs |
-| logic-failures-e2e.spec.ts | 29 | 22/29 | 🔶 7 backend bugs |
-| flutter-web-e2e.spec.ts | 14 | 14/14 | ✅ All pass |
-| fullstack-e2e.spec.ts | 37 | 34/37 | 🔶 3 Stripe headless issue |
-| shipping-lifecycle-e2e.spec.ts | 48 | ~41/48 | 🔶 Some need Stripe CLI |
-| admin-email-test.spec.ts | 3 | 0/3 | 🔴 Needs real Stripe + Mailjet |
+| regression-e2e.spec.ts | 42 | 42/42 | ✅ All pass |
+| comprehensive-flows-e2e.spec.ts | 34 | 34/34 | ✅ All pass |
+| payment-workflow-e2e.spec.ts | 62 | 62/62 | ✅ All pass |
+| logic-failures-e2e.spec.ts | 29 | 29/29 | ✅ (E.2 flaky, passes on retry) |
+| flutter-web-e2e.spec.ts | 16 | 16/16 | ✅ All pass |
+| fullstack-e2e.spec.ts | 37 | 37/37 | ✅ All pass |
+| shipping-lifecycle-e2e.spec.ts | 48 | 48/48 | ✅ All pass |
+| admin-email-test.spec.ts | 3 | 3/3 | ✅ All pass (requires real Stripe + Mailjet) |
+| full-marketplace-e2e.spec.ts | 17 | 5/5+12skip | ✅ Smoke pass, 12 intentionally skipped (Flutter CanvasKit) |
 
-**Total: ~128/259 passing (was ~3 before migration)**
+**Total: 266/267 passing (12 intentionally skipped), 1 flaky (passes on retry)**
+
+### Root Causes FIXED (Feb 2026 — Runs 1–7: 200→266)
+1. **SERVER_TIMESTAMP in arrays** — `get_server_timestamp()` returns sentinel that CANNOT be serialized inside arrays or ArrayUnion. 8 instances fixed across orders.py + payment_stripe.py. Use `datetime.now(timezone.utc)` inside arrays.
+2. **Auto-capture mode** — Backend uses `capture_method: 'automatic'`. `paymentStatus` is always `'captured'` after checkout, NEVER `'authorized'`. Tests expected `'authorized'`.
+3. **Seller delivery restriction** — Backend blocks sellers from marking orders/items as `delivered`. Tests must use admin token (`yr62813@gmail.com`/`960227Y#y`).
+4. **Multi-seller order-level blocked** — `update_order_status` blocked for sellers on multi-seller orders. Must use `update_item_status`.
+5. **Missing auto-promote to SHIPPED** — `update_item_status` only auto-promoted to DELIVERED, not SHIPPED.
+6. **CallableRequest vs Flask Request** — `confirm_order_receipt` called decorated `capture_payment` → `@on_call` wrapper tried to process CallableRequest as Flask Request. Fixed by extracting `_capture_payment_impl`.
+7. **Yahoo product missing isActive** — Product had `status: 'active'` but lacked `isActive: true` boolean field. `create_checkout_session` checks both.
+8. **signIn return property** — `signIn()` returns `{idToken, localId, ...}`, NOT `{token}`. Used `adminAuth.token` → undefined → `Unauthenticated`.
+9. **Missing payout records (auto-capture)** — With auto-capture, `_capture_payment_impl` idempotent path returned early without creating seller payout records.
+10. **Duplicate rating (test pollution)** — `submit_product_rating` rejected repeat ratings from previous runs. Fixed by cleaning existing ratings before test.
+11. **Webhook URL project ID** — `orignagta` (NO hyphen). Stripe webhook forward URL must match.
+12. **Product stock field** — `stockQuantity` (NOT `stock`). Stock assertion used wrong threshold.
 
 ### Rate Limiter Emulator Bypass
 `functions/services/rate_limiter.py` detects `FIRESTORE_EMULATOR_HOST` env var and applies 100x multiplier to `max_requests`. This prevents E2E tests from being throttled by the 5 req/min `create_checkout_session` limit.
@@ -251,6 +315,16 @@ npx playwright test
 9. **Rate limiter emulator bypass** — `functions/services/rate_limiter.py` applies 100x multiplier when `FIRESTORE_EMULATOR_HOST` is set. Don't add manual delays for rate limits in E2E tests.
 10. **Stripe Checkout in headless Playwright** — "VerificationModal" is Stripe's Link login popup, not 3DS. Dismiss with close button on `[data-testid="VerificationModal"]`. Card: `4242424242424242` (not enrolled in 3DS).
 11. **Cron Cloud Functions not deployed** — `auto_confirm_deliveries`, `expire_pending_authorizations`, `archive_old_orders`, `cleanup_rate_limits` return HTML instead of JSON. Need deployment fix.
+12. **SERVER_TIMESTAMP in arrays** — `get_server_timestamp()` returns a Firestore sentinel. It CANNOT be nested inside array items or ArrayUnion values. Use `datetime.now(timezone.utc)` for timestamps inside arrays. See CRITICAL section above.
+13. **`_capture_payment_impl` vs `capture_payment`** — Never call `capture_payment` from Python code (it's an `@on_call` wrapper expecting Flask Request). Import `_capture_payment_impl` for internal calls.
+14. **Sellers cannot mark delivered** — Backend explicitly blocks sellers from transitioning orders/items to `delivered`. Only admin or auto-confirm cron can.
+15. **Multi-seller `update_order_status` blocked** — Sellers on multi-seller orders cannot use `update_order_status`. Must use `update_item_status` per item.
+16. **`signIn()` returns `{idToken, localId, ...}`** — NOT `.token`. Always use `.idToken`.
+17. **Product `isActive` vs `status`** — `create_checkout_session` checks `isActive == true` boolean, not just `status == 'active'`. Products need BOTH.
+18. **Stock field is `stockQuantity`** — NOT `stock`. Use `stockQuantity` for Firestore REST operations.
+19. **Project ID is `orignagta`** — NO hyphen. Webhook URL: `localhost:5001/orignagta/us-central1/stripe_webhook`.
+20. **Test pollution with ratings** — `submit_product_rating` checks existing ratings per user+product. Cross-run pollution can cause "already rated" errors. Clean up ratings in beforeAll/J.1.
+21. **`on_order_status_changed` trigger crash** — Firebase Functions SDK bug: `KeyError: 'authtype'`. Fires async, doesn't affect callable functions. Ignore these errors in emulator logs.
 
 ---
 

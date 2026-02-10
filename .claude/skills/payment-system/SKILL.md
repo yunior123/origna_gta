@@ -44,13 +44,55 @@ Stripe → [Various webhooks for edge cases]
 
 | Mode | How | When |
 |------|-----|------|
-| **Auto-capture** (current default) | Funds captured at checkout | `payment_intent_data` with no `capture_method` |
+| **Auto-capture** (current default) | Funds captured at checkout | `payment_intent_data` with no `capture_method` or `capture_method: 'automatic'` |
 | **Manual capture** (optional) | Authorize → capture later | `capture_method: 'manual'` in `payment_intent_data` |
 
 With auto-capture:
 - `checkout.session.completed` → order is CONFIRMED + CAPTURED
-- `capture_payment` function returns "already captured" without creating transfers
-- Seller transfers happen via **cron job** (`auto_confirm_orders`) or buyer calling `confirm_order_receipt`
+- `_capture_payment_impl` idempotent path: returns "already captured" AND creates seller payout records + Stripe Transfers if none exist
+- Seller transfers happen when buyer calls `confirm_order_receipt` (or cron `auto_confirm_orders`)
+- **`paymentStatus` is ALWAYS `'captured'` after checkout** — never `'authorized'`
+
+### `_capture_payment_impl` Architecture (CRITICAL)
+
+```python
+# payment_stripe.py
+def _capture_payment_impl(req):    # Undecorated — all capture logic
+    ...
+    if payment_status == 'captured':
+        # AUTO-CAPTURE IDEMPOTENT PATH:
+        # 1. Persist confirmedByClient
+        # 2. Create payout records if none exist
+        # 3. Attempt Stripe Transfers
+        return {success: True, captured: True, message: 'Payment already captured'}
+    ...
+
+@https_fn.on_call(...)
+def capture_payment(req):          # Thin wrapper — Flask Request
+    return _capture_payment_impl(req)
+```
+
+- **`confirm_order_receipt`** (in orders.py) calls `_capture_payment_impl(req)` directly
+- **NEVER call `capture_payment` from Python** — it's decorated with `@on_call` which expects Flask Request, not CallableRequest
+- `confirm_order_receipt` receives CallableRequest → must call undecorated `_capture_payment_impl`
+
+### Firestore SERVER_TIMESTAMP in Arrays (CRITICAL BUG)
+
+`get_server_timestamp()` returns `firestore.SERVER_TIMESTAMP` — a sentinel resolved server-side.
+**It CANNOT be nested inside arrays or ArrayUnion.** Firestore raises:
+```
+('Cannot convert to a Firestore Value', Sentinel: Value used to set a document field to the server timestamp.)
+```
+
+**Rule**: Use `datetime.now(timezone.utc)` (or `datetime.now(UTC)`) for any timestamp inside:
+- Array element updates (e.g., item shipped_at, delivered_at, refunded_at)
+- `ArrayUnion()` values (e.g., partial_reversals, reversal_errors)
+
+Keep `get_server_timestamp()` for top-level fields only (updatedAt, createdAt).
+
+**Fixed locations (8 total)**:
+- `orders.py`: update_order_status (shipped items), update_item_status (shipped_at, delivered_at), refund_order_item (refunded_at, partial_reversals)
+- `payment_stripe.py`: handle_stripe_dispute (3 ArrayUnion reversal_errors)
 
 ---
 
@@ -241,7 +283,7 @@ All test cards: expiry = any future date, CVC = any 3 digits, postal = any valid
 
 ---
 
-## Known Bugs Found & Fixed (February 2026 Audit)
+## Known Bugs Found & Fixed (February 2026 Audit + E2E Marathon)
 
 ### P0 — `source_transaction` received PI ID instead of Charge ID
 **File:** `payment_stripe.py` ~L2560 in `capture_payment`
@@ -252,6 +294,18 @@ All test cards: expiry = any future date, CVC = any 3 digits, postal = any valid
 ### P0 — Duplicate order response crashed frontend
 **Bug:** Backend returned `{duplicate: true}` without `checkoutUrl` → frontend cast `null as String`
 **Fix:** Backend now retrieves existing session URL, frontend checks `duplicate` before casting
+
+### P0 — SERVER_TIMESTAMP inside ArrayUnion crashes Firestore
+**Bug:** 8 locations in `orders.py` and `payment_stripe.py` used `get_server_timestamp()` inside array elements or `ArrayUnion()`. Firestore cannot serialize the sentinel value inside arrays.
+**Fix:** Replace with `datetime.now(timezone.utc)` for all nested timestamps. Keep `get_server_timestamp()` only for top-level fields.
+
+### P0 — Missing payout records in auto-capture idempotent path
+**Bug:** `_capture_payment_impl` returned early when `payment_status == 'captured'` without creating payout records or Stripe transfers.
+**Fix:** Added payout record creation and transfer logic to the "already captured" idempotent path.
+
+### P0 — `capture_payment` decorator incompatible with `confirm_order_receipt`
+**Bug:** `confirm_order_receipt` (in `orders.py`) tried to call `capture_payment(req)` but `capture_payment` is decorated with `@https_fn.on_call()` which expects Flask Request, not CallableRequest.
+**Fix:** Extract undecorated `_capture_payment_impl(req)` and call that from `confirm_order_receipt`.
 
 ### P1 — `payment_method_types: ['card']` hardcoded
 **Bug:** Blocked Apple Pay, Google Pay, Interac (important in Canada)

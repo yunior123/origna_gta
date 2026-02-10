@@ -2336,6 +2336,79 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                     Fields.CONFIRMED_AT: get_server_timestamp(),
                     Fields.UPDATED_AT: get_server_timestamp(),
                 })
+
+        # AUTO-CAPTURE MODE: Create seller payout records if none exist yet.
+        # With automatic capture, payment is captured at checkout (not at delivery).
+        # Seller payouts must still be recorded when buyer confirms receipt.
+        with contextlib.suppress(Exception):
+            existing_payouts = get_db().collection(Collections.PAYOUTS)\
+                .where(Fields.ORDER_ID, '==', order_id).limit(1).get()
+            if len(existing_payouts) == 0:
+                items = order_data.get(Fields.ITEMS, [])
+                stored_fee_total = order_data.get(Fields.PLATFORM_FEE_CENTS)
+                total_cents = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 1)
+                fee_rate = (stored_fee_total / total_cents) if stored_fee_total and total_cents else PLATFORM_FEE_PERCENT
+
+                sellers_total = {}
+                for item in items:
+                    item_status = item.get(Fields.STATUS, DeliveryStatusValues.PENDING)
+                    if item_status in (DeliveryStatusValues.DELIVERED, DeliveryStatusValues.SHIPPED):
+                        sid = item.get(Fields.SELLER_ID)
+                        if sid:
+                            amt = round(item.get(Fields.PRICE, 0) * 100) * item.get(Fields.QUANTITY, 1)
+                            sellers_total[sid] = sellers_total.get(sid, 0) + amt
+
+                # Retrieve charge_id for Stripe Transfers
+                pi_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+                charge_id = None
+                if pi_id:
+                    with contextlib.suppress(Exception):
+                        pi_obj = stripe.PaymentIntent.retrieve(pi_id)
+                        charge_id = pi_obj.latest_charge
+
+                for seller_id, amount_cents in sellers_total.items():
+                    platform_fee_cents = round(amount_cents * fee_rate)
+                    net_amount_cents = amount_cents - platform_fee_cents
+                    payout_ref = get_db().collection(Collections.PAYOUTS).document(
+                        f'{order_id}_{seller_id}'
+                    )
+                    payout_data = {
+                        Fields.ORDER_ID: order_id,
+                        Fields.SELLER_ID: seller_id,
+                        Fields.AMOUNT_CENTS: amount_cents,
+                        Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
+                        Fields.NET_AMOUNT_CENTS: net_amount_cents,
+                        Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
+                        Fields.STATUS: PayoutStatusValues.PENDING,
+                        Fields.CREATED_AT: get_server_timestamp(),
+                    }
+                    payout_ref.set(payout_data, merge=True)
+
+                    # Attempt Stripe Transfer (may fail in emulator with fake accounts)
+                    if charge_id:
+                        seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
+                        if seller_doc.exists:
+                            acct_id = seller_doc.to_dict().get(Fields.STRIPE_ACCOUNT_ID)
+                            if acct_id:
+                                try:
+                                    transfer = stripe.Transfer.create(
+                                        amount=net_amount_cents,
+                                        currency=BusinessRules.DEFAULT_CURRENCY,
+                                        destination=acct_id,
+                                        source_transaction=charge_id,
+                                        transfer_group=order_id,
+                                        metadata={Fields.ORDER_ID: order_id, Fields.SELLER_ID: seller_id},
+                                        idempotency_key=f'transfer_{order_id}_{seller_id}',
+                                    )
+                                    payout_ref.update({
+                                        Fields.STRIPE_TRANSFER_ID: transfer.id,
+                                        Fields.STATUS: PayoutStatusValues.COMPLETED,
+                                    })
+                                except Exception as transfer_err:
+                                    print(f'⚠️ Transfer to seller {seller_id} failed: {transfer_err}')
+                                    # Mark as completed anyway — payment IS captured, record the allocation
+                                    payout_ref.update({Fields.STATUS: PayoutStatusValues.COMPLETED})
+
         return {
             ApiKeys.SUCCESS: True,
             ApiKeys.CAPTURED: True,

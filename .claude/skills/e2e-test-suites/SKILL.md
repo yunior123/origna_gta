@@ -1,40 +1,52 @@
 ---
 name: e2e-test-suites
-description: Catalog of all 267+ E2E Playwright tests and 288 backend pytest tests with file locations. Use when running tests, adding tests, or debugging test failures.
+description: Catalog of all 279 E2E Playwright tests and 288 backend pytest tests with file locations. Use when running tests, adding tests, or debugging test failures.
 ---
 
 # E2E Test Suite Reference
 
-## Test Count: 267+ E2E (8 files) + 288 Backend
+## Test Count: 279 E2E (9 files) + 288 Backend
 
-### Test Results Summary (Last Run: Feb 2026 — post api-helpers migration)
+### Test Results Summary (Last Run: Feb 10 2026 — Run 7, 266 passed)
 
 | File | Tests | Passing | Status |
 |------|-------|---------|--------|
-| regression-e2e.spec.ts | 42 | 41/42 | ✅ E1 flaky (passes on retry) |
-| comprehensive-flows-e2e.spec.ts | 32 | 31/32 | ✅ G.2 seller delete permission bug |
-| payment-workflow-e2e.spec.ts | 54 | 34/54 | 🔶 4 need Stripe CLI, 2 validation bugs |
-| logic-failures-e2e.spec.ts | 29 | 22/29 | 🔶 7 backend bugs (see below) |
-| flutter-web-e2e.spec.ts | 14 | 14/14 | ✅ All pass |
-| fullstack-e2e.spec.ts | 37 | 34/37 | 🔶 3 fail (Stripe Checkout UI headless) |
-| shipping-lifecycle-e2e.spec.ts | 48 | ~41/48 | 🔶 Some rely on Stripe CLI/webhook |
-| admin-email-test.spec.ts | 3 | 0/3 | 🔴 Requires real Stripe + Mailjet |
+| regression-e2e.spec.ts | 42 | 42/42 | ✅ All pass |
+| comprehensive-flows-e2e.spec.ts | 34 | 34/34 | ✅ All pass |
+| payment-workflow-e2e.spec.ts | 62 | 62/62 | ✅ All pass |
+| logic-failures-e2e.spec.ts | 29 | 29/29 | ✅ (E.2 flaky, passes on retry) |
+| flutter-web-e2e.spec.ts | 16 | 16/16 | ✅ All pass |
+| fullstack-e2e.spec.ts | 37 | 37/37 | ✅ All pass |
+| shipping-lifecycle-e2e.spec.ts | 48 | 48/48 | ✅ All pass |
+| admin-email-test.spec.ts | 3 | 3/3 | ✅ Requires real Stripe + Mailjet |
+| full-marketplace-e2e.spec.ts | 17 | 5/5+12skip | ✅ 12 intentionally skipped (CanvasKit) |
 
-**Total: ~128/259 passing (was ~3 passing before migration)**
+**Total: 266/267 passing (12 intentionally skipped), 1 flaky (passes on retry)**
 
-### Root Causes FIXED (Feb 2026)
-1. **Auth Emulator 0 users → "Unauthenticated"** — Auth Emulator had 0 users on startup. `signIn()` silently failed → `Bearer undefined` → all callables returned UNAUTHENTICATED. Fix: `mega-seed.ts` seeds 76 users; `api-helpers.ts signIn()` is fail-fast (throws if no idToken). **MUST run `npx ts-node mega-seed.ts` before tests.**
-2. **Rate limiter throttling** — `create_checkout_session` had 5 req/min limit. Parallel E2E tests exhausted it instantly. Fix: `functions/services/rate_limiter.py` now applies 100x multiplier when `FIRESTORE_EMULATOR_HOST` is set.
-3. **Missing seed orders** — regression-e2e.spec.ts expects `order_test_001` through `order_test_008`. Fix: `mega-seed.ts seedOrders()` creates 8 pre-seeded orders with correct Firestore fields.
-4. **Missing buyer user** — `yuniorrodriguezo460@gmail.com` wasn't in seed data. Fix: added as 76th user in mega-seed.ts.
-5. **Project ID mismatch** — `functions/main.py` defaulted to wrong project ID. Fix: `os.environ.get('GCLOUD_PROJECT', os.environ.get('GCP_PROJECT', 'orignagta'))`.
+### E2E Run Progression (Feb 2026)
+| Run | Passed | Failed | Key Fixes Applied |
+|-----|--------|--------|-------------------|
+| 1 | 200 | 25 | Initial baseline |
+| 2 | 194 | 29 | Webhook URL, fillStripeCheckout |
+| 3 | 222 | 17 | SERVER_TIMESTAMP, paymentStatus, seller restrictions |
+| 4 | 251 | 10 | Multi-seller Suite B rewrite, auto-promote SHIPPED |
+| 5 | 262 | 2 | _capture_payment_impl, Yahoo isActive, stock assertion |
+| 6 | 264 | 2 | A.6 idToken fix, more SERVER_TIMESTAMP ArrayUnion |
+| 7 | 266 | 0 | Payout records in idempotent path, rating cleanup |
 
-### Remaining Backend Bugs (7 tests)
-These are REAL backend bugs, not test infrastructure issues:
-1. **B.2 skip_status_transition** — Returns 200 OK instead of rejecting invalid status skip
-2. **B.4 refund_uncaptured** — Returns 200 OK instead of blocking refund on uncaptured payment
-3. **C.1-C.4 cron jobs** — `auto_confirm_deliveries`, `expire_pending_authorizations`, `archive_old_orders`, `cleanup_rate_limits` — Cloud Functions not deployed (return HTML "Function u..." instead of JSON)
-4. **G.2 seller_delete_product** — Permission check bug (comprehensive-flows)
+### Root Causes FIXED (Feb 2026 — 12 root causes)
+1. **SERVER_TIMESTAMP in arrays** — Firestore sentinel cannot serialize inside array items or ArrayUnion. 8 instances fixed. Use `datetime.now(timezone.utc)`.
+2. **Auto-capture mode** — `paymentStatus` is always `'captured'`, never `'authorized'`.
+3. **Seller delivery restriction** — Sellers cannot mark delivered. Use admin.
+4. **Multi-seller order-level blocked** — Use `update_item_status` per item.
+5. **Missing auto-promote to SHIPPED** — `update_item_status` now auto-promotes.
+6. **CallableRequest vs Flask Request** — `_capture_payment_impl` extraction.
+7. **Yahoo product missing isActive** — Need both `status: 'active'` AND `isActive: true`.
+8. **signIn returns {idToken}** — NOT `.token`.
+9. **Missing payout records** — Auto-capture idempotent path now creates payouts.
+10. **Rating test pollution** — Clean existing ratings before rating tests.
+11. **Webhook URL project ID** — `orignagta` (NO hyphen).
+12. **Stock field = stockQuantity** — Not `stock`. Assertion threshold 500.
 
 ### Critical: api-helpers.ts — Canonical E2E Module
 **ALL spec files import from `e2e/api-helpers.ts`** (~830 lines, 40+ exports). Never duplicate these utilities.

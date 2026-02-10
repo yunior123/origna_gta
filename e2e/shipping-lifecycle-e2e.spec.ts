@@ -1014,6 +1014,39 @@ test.describe('J. Product Rating After Delivery', () => {
     buyerToken = buyerAuth.idToken;
     buyerId = buyerAuth.localId;
 
+    // Clean up any existing ratings from previous runs to avoid "already rated" error
+    const ratingQueryUrl = `${FIRESTORE_EMU}/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery`;
+    const ratingQueryRes = await fetch(ratingQueryUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer owner' },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: 'product_ratings' }],
+          where: {
+            compositeFilter: {
+              op: 'AND',
+              filters: [
+                { fieldFilter: { field: { fieldPath: 'productId' }, op: 'EQUAL', value: { stringValue: 'product_003' } } },
+                { fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: buyerId } } },
+              ],
+            },
+          },
+        },
+      }),
+    });
+    const existingRatings = await ratingQueryRes.json();
+    for (const r of existingRatings) {
+      if (r.document?.name) {
+        const docPath = r.document.name.split('/databases/(default)/documents/')[1];
+        if (docPath) {
+          await fetch(`${FIRESTORE_EMU}/v1/projects/${PROJECT_ID}/databases/(default)/documents/${docPath}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer owner' },
+          });
+        }
+      }
+    }
+
     const sellerAuth = await signIn('seller1@test.origna.ca');
     await callCallable('update_order_status', { orderId, newStatus: 'processing' }, sellerAuth.idToken);
     await callCallable('update_order_status', {

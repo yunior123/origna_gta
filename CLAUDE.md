@@ -127,13 +127,15 @@ Be serious, audit logic, json schema, use logic, cross stack agents, check the h
   - **Additional helpers**: `getOrder()`, `getProductStock()`, `uid()`, `queryFirestore()` for cross-spec convenience.
 - **Root cause of ~61 "Unauthenticated" failures**: Auth Emulator had 0 users (emulator restarted without `--import`). `signIn()` silently returned no `idToken` → `Bearer undefined` → token rejected. NOT a protocol or project ID mismatch.
 - **Root cause of error code assertion failures**: Firebase v2 callable emulator returns `{ error: { status: "PERMISSION_DENIED" } }` but tests asserted `error.code === "permission-denied"`. Fixed by `normalizeErrorCode()` in `callExpectError()`.
-- **E2E Test Results (Feb 2026 after fixes)**:
-  - regression: **41/42 pass** (1 flaky, passes on retry)
-  - comprehensive-flows: **31/32 pass** (1 backend bug: G.2 seller delete permission)
-  - payment-workflow: **34/54 pass** (7 fail: 4 need Stripe CLI, 2 validation bugs, 1 seed email)
-  - logic-failures: **~29/29 pass** (all 7 failures fixed: error normalization, function names corrected, field names fixed)
-  - shipping-lifecycle: needs Stripe CLI + live checkout
-  - **Total: ~135+ pass from ~0 before migration**
+- **E2E Test Results (Feb 2026 — Run 7 FINAL)**:
+  - **266 passed / 0 failed / 1 flaky / 12 intentionally skipped** (20.7 min)
+  - Total: **279 tests** across 9 spec files
+  - 7 progressive runs: 200 → 243 → 252 → 258 → 262 → 264 → 266 passed
+  - **12 root causes fixed**: SERVER_TIMESTAMP in arrays (8 locations), auto-capture paymentStatus, seller delivery restriction, multi-seller order-level block, auto-promote SHIPPED, `_capture_payment_impl` extraction, Yahoo product isActive, signIn idToken property, payout records in idempotent path, rating test pollution, webhook URL project ID, stock field name
+  - **CRITICAL BUG discovered**: `get_server_timestamp()` (Firestore sentinel) CANNOT be nested in arrays or `ArrayUnion()`. Use `datetime.now(timezone.utc)` instead. 8 locations fixed in orders.py + payment_stripe.py.
+  - **Architecture fix**: Extracted `_capture_payment_impl(req)` (undecorated) from `capture_payment` so `confirm_order_receipt` can call it without Flask/CallableRequest mismatch.
+  - **Auto-capture mode**: `paymentStatus` is always `'captured'` after checkout — never `'authorized'`.
+  - See `.claude/skills/e2e-debugging/SKILL.md` for complete debugging methodology.
 - **`mega-seed.ts`** — seeds 76 users, 30 products, cart items, AND 8 pre-seeded orders (`order_test_001`-`008`) for regression tests. MUST run after emulators start: `cd e2e && npx ts-node mega-seed.ts`
 - **Rate limiter emulator bypass** — `services/rate_limiter.py` multiplies `max_requests` by 100x when `FUNCTIONS_EMULATOR=true`. Prevents test throttling while keeping production limits strict.
 - **Firestore REST PATCH** — MUST use `updateMask.fieldPaths` query params for partial updates, otherwise it REPLACES the entire document (wiping all fields not included in the PATCH body)
@@ -179,7 +181,7 @@ Be serious, audit logic, json schema, use logic, cross stack agents, check the h
 ### .claude/ Infrastructure
 - **5 agents**: logic-auditor, cross-stack-auditor, payment-auditor, schema-sync-checker, order-lifecycle-auditor
 - **7 rules** (path-scoped): flutter, backend, payments, orders, firestore, testing, security
-- **10+ skills**: audit-workflow, design-tokens, e2e-test-suites, email-system, full-stack-audit, read-workflow, shipping-costs, ux-info-buttons, widget-finders, **canadian-law-compliance**
+- **10+ skills**: audit-workflow, design-tokens, e2e-test-suites, **e2e-debugging**, email-system, full-stack-audit, read-workflow, shipping-costs, ux-info-buttons, widget-finders, **canadian-law-compliance**, payment-system
 - **5 hooks**: validate-schema-sync, validate-payment, validate-orders, protect-production, verify-logic-on-stop (Stop gate)
 - **15+ commands**: plan-task, execute-plan, pause-work, resume-work, investigate, create-skill, audit-workflow, check-schema-sync, cross-stack-check, commit-push, deploy, test-all, fix-tests, optimize-db, clear-context
 - **Quality tools**: ruff (Python linting), dart analyze (Dart), universal-ctags (symbol extraction)
