@@ -16,7 +16,6 @@ from typing import Any, ClassVar
 
 from firebase_functions import https_fn
 
-from utils.function_options import DEFAULT_OPTIONS
 from schema_constants import (
     AdminActionValues,
     ApiKeys,
@@ -28,6 +27,7 @@ from schema_constants import (
     SeverityLevels,
     UserRoleValues,
 )
+from utils.function_options import DEFAULT_OPTIONS
 
 # ============================================================================
 # LAZY INITIALIZATION

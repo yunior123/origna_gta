@@ -811,6 +811,7 @@ class BusinessRules:
     PLATFORM_FEE_RATIO = 0.025  # PLATFORM_FEE_PERCENT / 100 — use this for calculations
     AUTO_CONFIRM_DAYS = 5  # Must be < AUTHORIZATION_EXPIRY_DAYS (2-day safety margin)
     AUTHORIZATION_EXPIRY_DAYS = 7
+    RETURN_WINDOW_DAYS = 7  # No returns/refunds after 7 days post-delivery (Amazon-style policy)
     MAX_CAPTURE_ATTEMPTS = 3
     DEFAULT_CURRENCY = "cad"
     SUPPORTED_SELLING_CURRENCIES = frozenset({"cad"})  # All transactions in CAD

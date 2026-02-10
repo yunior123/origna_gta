@@ -82,7 +82,7 @@ def sanitize_path(path: str) -> str:
 
 def sanitize_text(value: str, max_length: int, field_name: str = "input", min_length: int = 1) -> str:
     """Sanitize text input: strip, remove control chars, enforce length constraints.
-    
+
     NOTE: This is for INPUT validation — does NOT html-escape.
     Use sanitized_text() for OUTPUT encoding (XSS prevention).
     """

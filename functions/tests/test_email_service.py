@@ -200,6 +200,7 @@ class TestSendEmail:
         with patch.dict(os.environ, {"FORCE_REAL_EMAIL": "false", "FUNCTIONS_EMULATOR": "true"}):
             # Re-import to pick up env changes (module-level constants)
             import importlib
+
             import services.email_service as mod
             original_force = mod.FORCE_REAL_EMAIL
             mod.FORCE_REAL_EMAIL = False
@@ -212,8 +213,8 @@ class TestSendEmail:
     @patch("services.email_service.Client")
     def test_send_email_success(self, mock_client_cls):
         """Should successfully send email via Mailjet."""
-        from services.email_service import send_email
         import services.email_service as mod
+        from services.email_service import send_email
 
         mock_client = MagicMock()
         mock_send_result = MagicMock()
@@ -240,8 +241,8 @@ class TestSendEmail:
     @patch("services.email_service.Client")
     def test_send_email_failure(self, mock_client_cls):
         """Should return False when Mailjet returns non-200."""
-        from services.email_service import send_email
         import services.email_service as mod
+        from services.email_service import send_email
 
         mock_client = MagicMock()
         mock_send_result = MagicMock()
@@ -265,8 +266,8 @@ class TestSendEmail:
     @patch("services.email_service.Client")
     def test_send_email_exception_returns_false(self, mock_client_cls):
         """Should return False when Mailjet raises an exception."""
-        from services.email_service import send_email
         import services.email_service as mod
+        from services.email_service import send_email
 
         mock_client_cls.side_effect = Exception("Connection refused")
 
@@ -284,8 +285,8 @@ class TestSendEmail:
 
     def test_send_email_custom_from(self):
         """Should accept custom from_email."""
-        from services.email_service import send_email
         import services.email_service as mod
+        from services.email_service import send_email
 
         # In emulator mode, just verify it doesn't crash
         original_force = mod.FORCE_REAL_EMAIL
@@ -306,8 +307,8 @@ class TestAuthorizationExpiredEmail:
 
     def test_emulator_mode_skips(self):
         """Should skip sending in emulator mode."""
-        from services.email_service import send_authorization_expired_email
         import services.email_service as mod
+        from services.email_service import send_authorization_expired_email
 
         original_force = mod.FORCE_REAL_EMAIL
         mod.FORCE_REAL_EMAIL = False
@@ -324,8 +325,8 @@ class TestAuthorizationExpiredEmail:
     @patch("services.email_service.Client")
     def test_sends_email_in_production(self, mock_client_cls):
         """Should send email via Mailjet in production mode."""
-        from services.email_service import send_authorization_expired_email
         import services.email_service as mod
+        from services.email_service import send_authorization_expired_email
 
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
@@ -352,8 +353,8 @@ class TestAuthorizationExpiredEmail:
 
     def test_no_crash_on_missing_mailjet_credentials(self):
         """Should handle missing Mailjet credentials gracefully."""
-        from services.email_service import send_authorization_expired_email
         import services.email_service as mod
+        from services.email_service import send_authorization_expired_email
 
         original_emulator = mod.IS_EMULATOR
         original_key = mod.MAILJET_API_KEY
@@ -381,8 +382,8 @@ class TestPaymentCaptureFailedEmail:
 
     def test_emulator_mode_skips(self):
         """Should skip in emulator mode."""
-        from services.email_service import send_payment_capture_failed_email
         import services.email_service as mod
+        from services.email_service import send_payment_capture_failed_email
 
         original_force = mod.FORCE_REAL_EMAIL
         mod.FORCE_REAL_EMAIL = False
@@ -407,8 +408,8 @@ class TestPaymentCaptureFailedEmail:
     @patch("services.email_service.Client")
     def test_sends_email_in_production(self, mock_client_cls):
         """Should send capture failure email via Mailjet."""
-        from services.email_service import send_payment_capture_failed_email
         import services.email_service as mod
+        from services.email_service import send_payment_capture_failed_email
 
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
@@ -448,8 +449,8 @@ class TestThreeDSAuthenticationEmail:
 
     def test_emulator_mode_skips(self):
         """Should skip in emulator mode."""
-        from services.email_service import send_3ds_authentication_email
         import services.email_service as mod
+        from services.email_service import send_3ds_authentication_email
 
         original_force = mod.FORCE_REAL_EMAIL
         mod.FORCE_REAL_EMAIL = False
@@ -479,8 +480,8 @@ class TestThreeDSAuthenticationEmail:
     @patch("services.email_service.Client")
     def test_sends_3ds_email_in_production(self, mock_client_cls):
         """Should send 3DS authentication email via Mailjet."""
-        from services.email_service import send_3ds_authentication_email
         import services.email_service as mod
+        from services.email_service import send_3ds_authentication_email
 
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client

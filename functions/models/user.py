@@ -2,7 +2,7 @@
 User models for OrignaGTA
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -54,7 +54,7 @@ class User(BaseModel):
         description="User's default address"
     )
     createdAt: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="Account creation timestamp"
     )
 

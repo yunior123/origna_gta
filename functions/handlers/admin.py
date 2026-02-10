@@ -10,20 +10,18 @@ import hashlib
 import secrets
 import string
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pyotp
 from firebase_admin import auth
 from firebase_functions import https_fn
 
-from utils.function_options import DEFAULT_OPTIONS
-from services.rate_limiter import RateLimiter
 from schema_constants import (
-    BusinessRules,
-    Collections,
     APP_NAME,
     ApiKeys,
+    BusinessRules,
+    Collections,
     Fields,
     OrderStatusValues,
     PayoutStatusValues,
@@ -31,6 +29,8 @@ from schema_constants import (
     SeverityLevels,
     UserRoleValues,
 )
+from services.rate_limiter import RateLimiter
+from utils.function_options import DEFAULT_OPTIONS
 from utils.helpers import create_success_response
 
 _db = None
@@ -95,10 +95,9 @@ def _require_recent_admin_mfa(admin_data: dict[str, Any]) -> None:
         )
 
     # Check if MFA was verified within allowed window
-    from datetime import timezone
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     # Firestore timestamps are UTC — compare in UTC
-    last_mfa_utc = last_mfa_verify.replace(tzinfo=timezone.utc) if last_mfa_verify.tzinfo is None else last_mfa_verify
+    last_mfa_utc = last_mfa_verify.replace(tzinfo=UTC) if last_mfa_verify.tzinfo is None else last_mfa_verify
     time_diff = now - last_mfa_utc
 
     if time_diff > timedelta(minutes=BusinessRules.MFA_VERIFICATION_VALIDITY_MINUTES):

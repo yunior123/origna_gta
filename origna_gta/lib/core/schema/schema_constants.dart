@@ -648,6 +648,8 @@ abstract final class BusinessRules {
   static const autoConfirmDays =
       5; // Must be < authorizationExpiryDays (2-day safety margin)
   static const authorizationExpiryDays = 7;
+  static const returnWindowDays =
+      7; // No returns/refunds after 7 days post-delivery
   static const maxCaptureAttempts = 3;
   static const defaultCurrency = 'cad';
   static const allowedShippingCountries = {'Canada', 'CA'};

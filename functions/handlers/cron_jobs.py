@@ -13,10 +13,9 @@ import stripe
 from firebase_functions import scheduler_fn
 
 from config import AUTHORIZATION_VALID_DAYS, AUTO_CONFIRM_DAYS, PLATFORM_FEE_PERCENT, STRIPE_SECRET_KEY
-from utils.function_options import CRON_OPTIONS
 from schema_constants import (
-    Collections,
     BusinessRules,
+    Collections,
     DeliveryStatusValues,
     Fields,
     OrderStatusValues,
@@ -25,6 +24,7 @@ from schema_constants import (
     SecurityAlertTypes,
     SeverityLevels,
 )
+from utils.function_options import CRON_OPTIONS
 
 stripe.api_key = STRIPE_SECRET_KEY
 

@@ -56,15 +56,6 @@ def is_emulator() -> bool:
 # CONSTANTS — Single source of truth is schema_constants.py
 # Import all enums from there. DO NOT duplicate here.
 # ============================================================================
-from schema_constants import (  # noqa: E402
-    Collections,
-    DeliveryStatusValues as DeliveryStatus,
-    OrderStatusValues as OrderStatus,
-    PaymentStatusValues as PaymentStatus,
-    PayoutStatusValues as PayoutStatus,
-    ShippingApprovalStatusValues as ShippingApprovalStatus,
-    UserRoleValues as UserRoles,
-)
 
 
 class CaptureMethod:

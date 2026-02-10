@@ -6,18 +6,15 @@ Order Lifecycle Management Handlers
 - Order cancellation
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import stripe
 from firebase_functions import firestore_fn, https_fn
 
 from config import STRIPE_SECRET_KEY
-from services.email_service import send_email
-from utils.function_options import DEFAULT_OPTIONS
 from schema_constants import (
     ApiKeys,
-    AppConfig,
     BusinessRules,
     Collections,
     DeliveryStatusValues,
@@ -28,6 +25,13 @@ from schema_constants import (
     ShippingApprovalStatusValues,
     UserRoleValues,
 )
+from services.email_service import (
+    get_order_cancelled_email,
+    get_order_delivered_email,
+    get_order_shipped_email,
+    send_email,
+)
+from utils.function_options import DEFAULT_OPTIONS
 from utils.helpers import create_success_response, is_valid_order_status_transition
 
 stripe.api_key = STRIPE_SECRET_KEY
@@ -208,7 +212,7 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         seller_items_updated = False
         # NOTE: Use actual datetime instead of SERVER_TIMESTAMP sentinel inside arrays.
         # Firestore SDK cannot serialize SERVER_TIMESTAMP sentinels nested in arrays.
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
 
         for idx, item in enumerate(items):
             if item.get(Fields.SELLER_ID) == user_id:
@@ -389,7 +393,7 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     items[item_index][Fields.STATUS] = new_status
     # NOTE: Use actual datetime instead of SERVER_TIMESTAMP sentinel inside arrays.
     # Firestore SDK cannot serialize SERVER_TIMESTAMP sentinels nested in arrays.
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
 
     if new_status == DeliveryStatusValues.SHIPPED:
         items[item_index][Fields.SHIPPED_AT] = now_utc
@@ -717,6 +721,27 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     if item_data.get(Fields.STATUS) == DeliveryStatusValues.REFUNDED:
         raise https_fn.HttpsError('failed-precondition', 'Item already refunded')
 
+    # Enforce 7-day return window post-delivery
+    if item_data.get(Fields.STATUS) == DeliveryStatusValues.DELIVERED:
+        delivered_at = item_data.get(Fields.DELIVERED_AT) or order_data.get(Fields.DELIVERED_AT)
+        if delivered_at:
+            if hasattr(delivered_at, 'timestamp'):
+                # Firestore Timestamp object
+                delivered_dt = delivered_at if hasattr(delivered_at, 'tzinfo') and delivered_at.tzinfo else delivered_at.replace(tzinfo=UTC)
+            elif isinstance(delivered_at, datetime):
+                delivered_dt = delivered_at if delivered_at.tzinfo else delivered_at.replace(tzinfo=UTC)
+            else:
+                delivered_dt = None
+
+            if delivered_dt:
+                days_since_delivery = (datetime.now(UTC) - delivered_dt).days
+                if days_since_delivery > BusinessRules.RETURN_WINDOW_DAYS:
+                    raise https_fn.HttpsError(
+                        'failed-precondition',
+                        f'Return window expired. Returns and refunds are not accepted after '
+                        f'{BusinessRules.RETURN_WINDOW_DAYS} days post-delivery.'
+                    )
+
     # Calculate refund amount (all in cents to avoid float errors)
     item_price_cents = round(item_data[Fields.PRICE] * 100)
     item_quantity = item_data[Fields.QUANTITY]
@@ -784,7 +809,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
                 # NOTE: Use datetime.now() instead of get_server_timestamp() for
                 # fields inside array elements — Firestore SDK cannot serialize
                 # SERVER_TIMESTAMP sentinels nested inside arrays.
-                now_utc = datetime.now(timezone.utc)
+                now_utc = datetime.now(UTC)
                 fresh_items[idx][Fields.STATUS] = DeliveryStatusValues.REFUNDED
                 fresh_items[idx][Fields.REFUNDED_AT] = now_utc
                 fresh_items[idx][Fields.REFUND_REASON] = reason
@@ -826,7 +851,8 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # Calculate proportional reversal amount
         seller_total_cents = payout_data.get(Fields.AMOUNT_CENTS, 0)
-        platform_fee_cents = payout_data.get(Fields.PLATFORM_FEE_CENTS, 0)
+        # platform_fee_cents tracked for audit trail but not used in reversal calculation
+        _platform_fee_cents = payout_data.get(Fields.PLATFORM_FEE_CENTS, 0)  # noqa: F841
 
         if seller_total_cents > 0:
             seller_proportion = item_subtotal_cents / seller_total_cents
@@ -853,7 +879,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
                             Fields.REVERSAL_ID: reversal.id,
                             Fields.AMOUNT_CENTS: reversal_amount_cents,
                             Fields.PRODUCT_ID: product_id,
-                            Fields.CREATED_AT: datetime.now(timezone.utc)
+                            Fields.CREATED_AT: datetime.now(UTC)
                         }]),
                         Fields.UPDATED_AT: get_server_timestamp()
                     })
@@ -928,7 +954,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # Validate authorization is still valid before modifying payment
         expires_at = order_data.get(Fields.EXPIRES_AT)
-        if expires_at and isinstance(expires_at, datetime) and expires_at < datetime.now(timezone.utc):
+        if expires_at and isinstance(expires_at, datetime) and expires_at < datetime.now(UTC):
             raise https_fn.HttpsError(
                 'failed-precondition',
                 'Payment authorization has expired. Order must be re-created.'
@@ -1154,17 +1180,12 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
             tracking_number = after_data.get(Fields.TRACKING_NUMBER, 'N/A')
             carrier = after_data.get(Fields.CARRIER, 'N/A')
 
-            # Email buyer
+            # Email buyer — branded template with receipt
+            shipped_html = get_order_shipped_email(after_data, order_id, tracking_number, carrier)
             send_email(
                 to_email=buyer_email,
-                subject='Your Order Has Shipped - Origna',
-                html_content=f'''
-                <h2>Your order has been shipped!</h2>
-                <p>Order ID: {order_id}</p>
-                <p>Tracking Number: {tracking_number}</p>
-                <p>Carrier: {carrier}</p>
-                <p>You can track your order at: {AppConfig.SITE_URL}/orders/{order_id}</p>
-                '''
+                subject=f'Your Order #{order_id[:8]} Has Shipped - Origna',
+                html_content=shipped_html
             )
 
             # Also notify sellers that shipment confirmed
@@ -1177,43 +1198,29 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                         if seller_email:
                             send_email(
                                 to_email=seller_email,
-                                subject=f'Order {order_id[:8]} Shipped Successfully',
-                                html_content=f'''
-                                <h2>Shipment Confirmed</h2>
-                                <p>Order ID: {order_id}</p>
-                                <p>Tracking: {tracking_number}</p>
-                                <p>Carrier: {carrier}</p>
-                                '''
+                                subject=f'Order {order_id[:8]} Shipped Successfully - Origna',
+                                html_content=shipped_html
                             )
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f'⚠️ Failed to send shipped notification to seller {sid}: {str(e)}')
 
         elif new_status == OrderStatusValues.DELIVERED:
-            # Email buyer to confirm receipt
+            # Email buyer — branded template with receipt + confirm receipt CTA
+            delivered_html = get_order_delivered_email(after_data, order_id)
             send_email(
                 to_email=buyer_email,
-                subject='Order Delivered - Please Confirm Receipt',
-                html_content=f'''
-                <h2>Your order has been delivered!</h2>
-                <p>Order ID: {order_id}</p>
-                <p>Please confirm receipt to release payment to sellers:</p>
-                <a href="{AppConfig.SITE_URL}/orders/{order_id}">Confirm Receipt</a>
-                <p><strong>Note:</strong> Payment will be auto-released after {BusinessRules.AUTO_CONFIRM_DAYS} days if not confirmed.</p>
-                '''
+                subject=f'Order #{order_id[:8]} Delivered - Please Confirm Receipt',
+                html_content=delivered_html
             )
 
         elif new_status == OrderStatusValues.CANCELLED:
             reason = after_data.get(Fields.CANCELLATION_REASON, 'Unknown')
+            cancelled_html = get_order_cancelled_email(after_data, order_id, reason)
             send_email(
                 to_email=buyer_email,
-                subject='Order Cancelled - Origna',
-                html_content=f'''
-                <h2>Your order has been cancelled</h2>
-                <p>Order ID: {order_id}</p>
-                <p>Reason: {reason}</p>
-                <p>If payment was captured, a refund will be issued within 5-10 business days.</p>
-                '''
+                subject=f'Order #{order_id[:8]} Cancelled - Origna',
+                html_content=cancelled_html
             )
 
     except Exception as e:
-        print(f'Failed to send order status email for order {order_id}: {str(e)}')
+        print(f'🚨 Failed to send order status email for order {order_id}: {str(e)}')

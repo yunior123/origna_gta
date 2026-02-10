@@ -74,8 +74,20 @@ def get_order_confirmation_email(order_data, order_id=None):
 
     subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 0) / 100
     shipping = order_data.get(Fields.SHIPPING_COST_CENTS, 0) / 100
-    taxes = sum(order_data.get(Fields.TAXES, {}).values())
+    taxes_dict = order_data.get(Fields.TAXES, {})
+    taxes = sum(taxes_dict.values())
     total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
+    num_items = sum(item.get(Fields.QUANTITY, 1) for item in order_data.get(Fields.ITEMS, []))
+
+    # Build itemized tax breakdown (Instacart-style: show GST, HST, PST, QST separately)
+    tax_rows_html = ''
+    if len(taxes_dict) > 1 or (len(taxes_dict) == 1 and list(taxes_dict.keys())[0] != 'HST'):
+        for tax_name, tax_amount in sorted(taxes_dict.items()):
+            tax_rows_html += f"""
+                        <tr>
+                            <td style="padding: 4px 0 4px 16px; font-size: 13px; color: #888888;">{html.escape(tax_name)}</td>
+                            <td style="padding: 4px 0; font-size: 13px; color: #1a1a2e; text-align: right;">${tax_amount:.2f}</td>
+                        </tr>"""
 
     delivery_info = order_data.get(Fields.SHIPPING_ADDRESS, {})
     address_parts = [
@@ -162,16 +174,16 @@ def get_order_confirmation_email(order_data, order_id=None):
         </td></tr>
 
         <!-- DIVIDER -->
-        <tr><td style="padding: 0 40px;"><div style="height: 1px; background: linear-gradient(90deg, transparent, #e8ebf0, transparent);"></div></td></tr>
+        <tr><td style="padding: 0 40px;"><div style="height: 1px; background-color: #e8ebf0;"></div></td></tr>
 
         <!-- ITEMS TABLE -->
         <tr><td style="padding: 28px 40px 0 40px;">
             <h2 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 1px;">
-                <span style="border-bottom: 3px solid #667EEA; padding-bottom: 6px;">Items Ordered</span>
+                <span style="border-bottom: 3px solid #667EEA; padding-bottom: 6px;">{num_items} Item{'s' if num_items != 1 else ''} Ordered</span>
             </h2>
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-radius: 12px; overflow: hidden; border: 1px solid #e8ebf0;">
                 <thead>
-                    <tr bgcolor="#667EEA" style="background-color: #667EEA; background-image: linear-gradient(135deg, #667EEA, #764BA2);">
+                    <tr bgcolor="#667EEA" style="background-color: #667EEA;">
                         <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Product</th>
                         <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: center; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Qty</th>
                         <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Price</th>
@@ -183,31 +195,35 @@ def get_order_confirmation_email(order_data, order_id=None):
             </table>
         </td></tr>
 
-        <!-- PRICE SUMMARY -->
+        <!-- ORDER RECEIPT (Gmail-safe: uses bgcolor fallbacks) -->
         <tr><td style="padding: 24px 40px;">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: linear-gradient(135deg, #f8f9ff 0%, #f3f0ff 100%); border-radius: 16px; border: 1px solid rgba(102, 126, 234, 0.1); overflow: hidden;">
-                <tr><td style="padding: 20px 24px 4px;">
+            <h2 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 1px;">
+                <span style="border-bottom: 3px solid #667EEA; padding-bottom: 6px;">Order Receipt</span>
+            </h2>
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#f8f9ff" style="background-color: #f8f9ff; border-radius: 16px; border: 1px solid #e0e3f0; overflow: hidden;">
+                <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 20px 24px 4px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #666;">Subtotal</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Subtotal ({num_items} item{'s' if num_items != 1 else ''})</td>
                             <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">${subtotal:.2f}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #666;">Shipping</td>
-                            <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">{"Free" if shipping == 0 else f"${shipping:.2f}"}</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Shipping</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: {"#10B981" if shipping == 0 else "#1a1a2e"}; text-align: right; font-weight: 500;">{"Free" if shipping == 0 else f"${shipping:.2f}"}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #666;">Taxes</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Taxes</td>
                             <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">${taxes:.2f}</td>
                         </tr>
+                        {tax_rows_html}
                     </table>
                 </td></tr>
-                <tr><td style="padding: 0 24px;"><div style="height: 1px; background: rgba(102, 126, 234, 0.15);"></div></td></tr>
-                <tr><td style="padding: 16px 24px 20px;">
+                <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 0 24px;"><div style="height: 1px; background-color: #d0d4e8;"></div></td></tr>
+                <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 16px 24px 20px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                         <tr>
-                            <td style="font-size: 16px; font-weight: 700; color: #1a1a2e;">Total</td>
-                            <td style="font-size: 22px; font-weight: 800; color: #667EEA; text-align: right; letter-spacing: -0.5px;">${total:.2f} <span style="font-size: 13px; font-weight: 600; color: #999;">CAD</span></td>
+                            <td style="font-size: 16px; font-weight: 700; color: #1a1a2e;">Total (CAD)</td>
+                            <td style="font-size: 22px; font-weight: 800; color: #667EEA; text-align: right; letter-spacing: -0.5px;">${total:.2f}</td>
                         </tr>
                     </table>
                 </td></tr>
@@ -245,9 +261,9 @@ def get_order_confirmation_email(order_data, order_id=None):
 
         <!-- CPA ONTARIO COMPLIANCE: Cancellation rights notice -->
         <tr><td style="padding: 0 40px 24px 40px;">
-            <div style="background: #f8f9ff; border: 1px solid #e8ebf0; border-radius: 12px; padding: 16px 20px;">
-                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">Your Rights</p>
-                <p style="margin: 0; font-size: 12px; color: #666; line-height: 1.6;">Under Ontario's Consumer Protection Act, you may cancel this order within 7 days of receiving it if the goods are defective or not as described. For digital goods, cancellation rights apply before delivery. To request a cancellation, contact <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a> with your order ID.</p>
+            <div style="background-color: #f8f9ff; border: 1px solid #e8ebf0; border-radius: 12px; padding: 16px 20px;">
+                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">Return &amp; Refund Policy</p>
+                <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.6;">Returns and refunds are accepted within <strong>7 days of delivery</strong>. After 7 days post-delivery, all sales are final. If the goods are defective or not as described, contact <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a> with your order ID within the return window. Under Ontario's Consumer Protection Act, you may cancel before shipment.</p>
             </div>
         </td></tr>
 
@@ -375,7 +391,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
 
         <!-- CUSTOMER INFO -->
         <tr><td style="padding: 28px 40px 0 40px;">
-            <div style="background: linear-gradient(135deg, #f8f9ff 0%, #f3f0ff 100%); border: 1px solid rgba(102, 126, 234, 0.1); border-radius: 16px; padding: 20px 24px;">
+            <div style="background-color: #f8f9ff; border: 1px solid #e0e3f0; border-radius: 16px; padding: 20px 24px;">
                 <div style="margin-bottom: 12px;">
                     <span style="font-size: 18px; margin-right: 8px;">👤</span>
                     <span style="font-size: 14px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.5px;">Customer Info</span>
@@ -412,31 +428,31 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
             </table>
         </td></tr>
 
-        <!-- PRICE SUMMARY -->
+        <!-- PRICE SUMMARY (Gmail-safe: uses bgcolor fallbacks) -->
         <tr><td style="padding: 24px 40px;">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: linear-gradient(135deg, #f8f9ff 0%, #f3f0ff 100%); border-radius: 16px; border: 1px solid rgba(102, 126, 234, 0.1); overflow: hidden;">
-                <tr><td style="padding: 20px 24px 4px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#f8f9ff" style="background-color: #f8f9ff; border-radius: 16px; border: 1px solid #e0e3f0; overflow: hidden;">
+                <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 20px 24px 4px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #666;">Subtotal</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Subtotal</td>
                             <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">${subtotal:.2f}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #666;">Shipping</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Shipping</td>
                             <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">{"Free" if shipping == 0 else f"${shipping:.2f}"}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #666;">Taxes</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Taxes</td>
                             <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">${taxes:.2f}</td>
                         </tr>
                     </table>
                 </td></tr>
-                <tr><td style="padding: 0 24px;"><div style="height: 1px; background: rgba(102, 126, 234, 0.15);"></div></td></tr>
-                <tr><td style="padding: 16px 24px 20px;">
+                <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 0 24px;"><div style="height: 1px; background-color: #d0d4e8;"></div></td></tr>
+                <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 16px 24px 20px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                         <tr>
                             <td style="font-size: 16px; font-weight: 700; color: #1a1a2e;">Order Total</td>
-                            <td style="font-size: 22px; font-weight: 800; color: #10B981; text-align: right; letter-spacing: -0.5px;">${total:.2f} <span style="font-size: 13px; font-weight: 600; color: #999;">CAD</span></td>
+                            <td style="font-size: 22px; font-weight: 800; color: #10B981; text-align: right; letter-spacing: -0.5px;">${total:.2f} <span style="font-size: 13px; font-weight: 600; color: #999999;">CAD</span></td>
                         </tr>
                     </table>
                 </td></tr>
@@ -474,6 +490,338 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
     </body>
     </html>
     """
+
+
+def _email_wrapper(title: str, content_html: str, include_gst: bool = False) -> str:
+    """Wrap email content in full branded HTML email template with CASL-compliant footer.
+
+    Gmail-safe: uses bgcolor fallbacks, no CSS-only gradients for backgrounds.
+    """
+    return f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{html.escape(title)} - Origna</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f0f2f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f0f2f8;">
+        <tr><td align="center" style="padding: 24px 16px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(102, 126, 234, 0.15);">
+
+        {content_html}
+
+        {_casl_compliant_footer(include_gst=include_gst)}
+
+        </table>
+        </td></tr>
+        </table>
+    </body>
+    </html>
+    """
+
+
+def _hero_header(icon: str, heading: str, subtext: str, icon_bg: str = 'rgba(102, 126, 234, 0.2)') -> str:
+    """Generate a branded hero header section for emails."""
+    return f"""
+        <tr><td bgcolor="#1F235A" style="background-color: #1F235A; background-image: linear-gradient(135deg, #1F235A 0%, #2F3B8F 40%, #764BA2 100%); padding: 48px 40px 40px 40px; text-align: center;">
+            <div style="margin-bottom: 8px;">
+                <span style="font-size: 14px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: rgba(255,255,255,0.6);">O R I G N A</span>
+            </div>
+            <div style="width: 72px; height: 72px; margin: 16px auto; background: {icon_bg}; border-radius: 50%; line-height: 72px; font-size: 36px;">
+                {icon}
+            </div>
+            <h1 style="margin: 16px 0 8px 0; font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">{html.escape(heading)}</h1>
+            <p style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.75);">{html.escape(subtext)}</p>
+        </td></tr>
+    """
+
+
+def _order_status_tracker(active_step: int) -> str:
+    """Generate order status progress tracker. active_step: 1=Confirmed, 2=Processing, 3=Shipped, 4=Delivered."""
+    steps = [
+        ('Confirmed', '✓'),
+        ('Processing', '📦'),
+        ('Shipped', '🚚'),
+        ('Delivered', '🏠'),
+    ]
+    rows = ''
+    for i, (label, icon) in enumerate(steps):
+        step_num = i + 1
+        if step_num <= active_step:
+            bg = 'background: linear-gradient(135deg, #667EEA, #764BA2);'
+            color = '#667EEA'
+            weight = '700'
+            text_color = 'white'
+        else:
+            bg = 'background-color: #e8ebf0;'
+            color = '#999999'
+            weight = '600'
+            text_color = '#999999'
+        rows += f"""
+                <td width="25%" align="center">
+                    <div style="width: 36px; height: 36px; {bg} border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: {text_color};">{icon}</div>
+                    <div style="font-size: 11px; font-weight: {weight}; color: {color}; text-transform: uppercase; letter-spacing: 0.5px;">{label}</div>
+                </td>"""
+
+    pct = ['12%', '37%', '62%', '100%'][active_step - 1] if active_step > 0 else '0%'
+    return f"""
+        <tr><td style="padding: 32px 40px 24px 40px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>{rows}</tr>
+            <tr><td colspan="4" style="padding-top: 12px;">
+                <div style="height: 4px; background-color: #e8ebf0; border-radius: 4px; overflow: hidden;">
+                    <div style="width: {pct}; height: 100%; background: linear-gradient(90deg, #667EEA, #764BA2); border-radius: 4px;"></div>
+                </div>
+            </td></tr>
+            </table>
+        </td></tr>
+    """
+
+
+def _cta_button(url: str, label: str, color: str = '#667EEA') -> str:
+    """Generate a pill-shaped CTA button."""
+    return f"""
+        <tr><td style="padding: 0 40px 32px 40px; text-align: center;">
+            <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin: 0 auto;"><tr>
+            <td align="center" bgcolor="{color}" style="background-color: {color}; border-radius: 50px;">
+                <a href="{url}" target="_blank" style="display: inline-block; padding: 16px 48px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 50px; letter-spacing: 0.5px;">{html.escape(label)}</a>
+            </td>
+            </tr></table>
+        </td></tr>
+    """
+
+
+def _items_summary_table(items: list) -> str:
+    """Generate a table of order items for receipt emails."""
+    if not items:
+        return ''
+    rows = ''
+    for i, item in enumerate(items):
+        safe_name = html.escape(str(item.get(Fields.NAME, 'Product')))
+        qty = item.get(Fields.QUANTITY, 1)
+        price = item.get(Fields.PRICE, 0)
+        line_total = price * qty
+        bg = '#f8f9ff' if i % 2 == 0 else '#ffffff'
+        rows += f"""
+        <tr style="background-color: {bg};">
+            <td style="padding: 14px 16px; font-size: 14px; color: #1a1a2e;">
+                <span style="font-weight: 600;">{safe_name}</span>
+            </td>
+            <td style="padding: 14px 16px; text-align: center; font-size: 14px; color: #555555;">
+                &times;{qty}
+            </td>
+            <td style="padding: 14px 16px; text-align: right; font-size: 14px; font-weight: 600; color: #1a1a2e;">
+                ${line_total:.2f}
+            </td>
+        </tr>"""
+
+    return f"""
+        <tr><td style="padding: 28px 40px 0 40px;">
+            <h2 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 1px;">
+                <span style="border-bottom: 3px solid #667EEA; padding-bottom: 6px;">Items Ordered</span>
+            </h2>
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-radius: 12px; overflow: hidden; border: 1px solid #e8ebf0;">
+                <thead>
+                    <tr bgcolor="#667EEA" style="background-color: #667EEA;">
+                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Product</th>
+                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: center; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Qty</th>
+                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows}
+                </tbody>
+            </table>
+        </td></tr>
+    """
+
+
+def _price_summary_block(subtotal: float, shipping: float, taxes: float, total: float) -> str:
+    """Generate Gmail-safe price summary block with receipt-style layout."""
+    return f"""
+        <tr><td style="padding: 24px 40px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#f8f9ff" style="background-color: #f8f9ff; border-radius: 16px; border: 1px solid #e0e3f0; overflow: hidden;">
+                <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 20px 24px 4px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                        <tr>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Subtotal</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">${subtotal:.2f}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Shipping</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">{"Free" if shipping == 0 else f"${shipping:.2f}"}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Taxes</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">${taxes:.2f}</td>
+                        </tr>
+                    </table>
+                </td></tr>
+                <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 0 24px;"><div style="height: 1px; background-color: #d0d4e8;"></div></td></tr>
+                <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 16px 24px 20px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                        <tr>
+                            <td style="font-size: 16px; font-weight: 700; color: #1a1a2e;">Total</td>
+                            <td style="font-size: 22px; font-weight: 800; color: #667EEA; text-align: right; letter-spacing: -0.5px;">${total:.2f} <span style="font-size: 13px; font-weight: 600; color: #999999;">CAD</span></td>
+                        </tr>
+                    </table>
+                </td></tr>
+            </table>
+        </td></tr>
+    """
+
+
+def get_order_shipped_email(order_data: dict, order_id: str, tracking_number: str = 'N/A', carrier: str = 'N/A') -> str:
+    """Generate branded HTML email for order shipped notification."""
+    short_oid = order_id[:8] if len(order_id) > 8 else order_id
+    safe_tracking = html.escape(str(tracking_number))
+    safe_carrier = html.escape(str(carrier))
+
+    items = order_data.get(Fields.ITEMS, [])
+    subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 0) / 100
+    shipping = order_data.get(Fields.SHIPPING_COST_CENTS, 0) / 100
+    taxes = sum(order_data.get(Fields.TAXES, {}).values())
+    total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
+
+    content = _hero_header('🚚', 'Your Order Has Shipped!', 'Your items are on the way.', 'rgba(59, 130, 246, 0.2)')
+    content += _order_status_tracker(3)
+
+    content += f"""
+        <tr><td style="padding: 0 40px;"><div style="height: 1px; background-color: #e8ebf0;"></div></td></tr>
+
+        <!-- Tracking Info -->
+        <tr><td style="padding: 24px 40px;">
+            <div style="background-color: #f8f9ff; border: 1px solid #e0e3f0; border-radius: 16px; padding: 20px 24px;">
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 18px; margin-right: 8px;">📦</span>
+                    <span style="font-size: 14px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.5px;">Tracking Details</span>
+                </div>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 120px;">Order ID:</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600; font-family: 'Courier New', monospace;">#{short_oid}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">Carrier:</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 500;">{safe_carrier}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">Tracking #:</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #667EEA; font-weight: 600;">{safe_tracking}</td>
+                    </tr>
+                </table>
+            </div>
+        </td></tr>
+    """
+
+    content += _items_summary_table(items)
+    content += _price_summary_block(subtotal, shipping, taxes, total)
+    content += _cta_button(f'{APP_BASE_URL}/orders', 'Track Your Order →')
+
+    return _email_wrapper('Order Shipped', content, include_gst=True)
+
+
+def get_order_delivered_email(order_data: dict, order_id: str) -> str:
+    """Generate branded HTML email for order delivered notification."""
+    short_oid = order_id[:8] if len(order_id) > 8 else order_id
+
+    items = order_data.get(Fields.ITEMS, [])
+    subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 0) / 100
+    shipping = order_data.get(Fields.SHIPPING_COST_CENTS, 0) / 100
+    taxes = sum(order_data.get(Fields.TAXES, {}).values())
+    total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
+
+    from schema_constants import BusinessRules
+
+    content = _hero_header('🏠', 'Your Order Has Been Delivered!', 'We hope you love your items.', 'rgba(16, 185, 129, 0.2)')
+    content += _order_status_tracker(4)
+
+    content += f"""
+        <tr><td style="padding: 0 40px;"><div style="height: 1px; background-color: #e8ebf0;"></div></td></tr>
+
+        <!-- Confirmation Notice -->
+        <tr><td style="padding: 24px 40px;">
+            <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 16px; padding: 20px 24px;">
+                <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #065F46;">📋 Please Confirm Receipt</p>
+                <p style="margin: 0 0 8px 0; font-size: 13px; color: #047857; line-height: 1.6;">Confirming receipt helps us release payment to the seller and improves the marketplace for everyone.</p>
+                <p style="margin: 0; font-size: 12px; color: #6B7280;"><strong>Note:</strong> Payment will be auto-released after {BusinessRules.AUTO_CONFIRM_DAYS} days if not confirmed.</p>
+            </div>
+        </td></tr>
+
+        <!-- Order ID badge -->
+        <tr><td style="padding: 0 40px 16px 40px; text-align: center;">
+            <div style="display: inline-block; background-color: #f8f9ff; border: 1px solid #e0e3f0; border-radius: 50px; padding: 10px 24px;">
+                <span style="font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px;">Order</span>
+                <span style="font-size: 15px; color: #1a1a2e; font-weight: 700; margin-left: 6px; font-family: 'Courier New', monospace;">#{short_oid}</span>
+            </div>
+        </td></tr>
+    """
+
+    content += _items_summary_table(items)
+    content += _price_summary_block(subtotal, shipping, taxes, total)
+
+    # Return & refund policy notice
+    content += f"""
+        <tr><td style="padding: 0 40px 24px 40px;">
+            <div style="background-color: #f8f9ff; border: 1px solid #e8ebf0; border-radius: 12px; padding: 16px 20px;">
+                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">Return &amp; Refund Policy</p>
+                <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.6;">Returns and refunds are accepted within <strong>{BusinessRules.RETURN_WINDOW_DAYS} days of delivery</strong>. After that, all sales are final. Contact <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a> with your order ID within the return window.</p>
+            </div>
+        </td></tr>
+    """
+
+    content += _cta_button(f'{APP_BASE_URL}/orders', 'Confirm Receipt →', '#10B981')
+
+    return _email_wrapper('Order Delivered', content, include_gst=True)
+
+
+def get_order_cancelled_email(order_data: dict, order_id: str, reason: str = 'Unknown') -> str:
+    """Generate branded HTML email for order cancelled notification."""
+    short_oid = order_id[:8] if len(order_id) > 8 else order_id
+    safe_reason = html.escape(str(reason))
+
+    items = order_data.get(Fields.ITEMS, [])
+    total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
+
+    content = _hero_header('❌', 'Order Cancelled', 'Your order has been cancelled.', 'rgba(220, 38, 38, 0.2)')
+
+    content += f"""
+        <!-- Cancellation details -->
+        <tr><td style="padding: 24px 40px;">
+            <div style="background-color: #FEF2F2; border: 1px solid #FECACA; border-radius: 16px; padding: 20px 24px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 100px;">Order ID:</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600; font-family: 'Courier New', monospace;">#{short_oid}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">Amount:</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600;">${total:.2f} CAD</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">Reason:</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #DC2626; font-weight: 500;">{safe_reason}</td>
+                    </tr>
+                </table>
+            </div>
+        </td></tr>
+
+        <!-- Refund notice -->
+        <tr><td style="padding: 0 40px 24px 40px;">
+            <div style="background-color: #f8f9ff; border: 1px solid #e8ebf0; border-radius: 12px; padding: 16px 20px;">
+                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">💰 Refund Information</p>
+                <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.6;">If payment was captured, a full refund will be issued to your original payment method within 5-10 business days. If you don't see the refund, contact your bank or <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>.</p>
+            </div>
+        </td></tr>
+    """
+
+    content += _items_summary_table(items)
+    content += _cta_button(f'{APP_BASE_URL}/orders', 'View Orders →')
+
+    return _email_wrapper('Order Cancelled', content, include_gst=False)
+
 
 def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_EMAIL):
     """Send email using Mailjet — CASL compliant with List-Unsubscribe header"""

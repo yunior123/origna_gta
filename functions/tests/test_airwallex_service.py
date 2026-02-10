@@ -27,7 +27,6 @@ from schema_constants import (
 )
 from services.airwallex_service import AirwallexService, get_airwallex_service
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================

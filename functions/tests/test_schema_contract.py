@@ -71,21 +71,15 @@ def schema_timestamp_fields(schema: dict) -> dict[str, str]:
 
     if "collections" in schema:
         for collection_name, collection_def in schema["collections"].items():
-            if "fields" in collection_def:
+            if "fields" in collection_def and "createdAt" in collection_def["fields"]:
                 # Check for common timestamp fields
-                if "createdAt" in collection_def["fields"]:
-                    timestamp_map[collection_name] = "createdAt"
-                elif "createdAt" in collection_def["fields"]:
-                    timestamp_map[collection_name] = "createdAt"
+                timestamp_map[collection_name] = "createdAt"
 
             # Check subcollections
             if "subcollections" in collection_def:
                 for sub_name, sub_def in collection_def["subcollections"].items():
-                    if "fields" in sub_def:
-                        if "createdAt" in sub_def["fields"]:
-                            timestamp_map[sub_name] = "createdAt"
-                        elif "createdAt" in sub_def["fields"]:
-                            timestamp_map[sub_name] = "createdAt"
+                    if "fields" in sub_def and "createdAt" in sub_def["fields"]:
+                        timestamp_map[sub_name] = "createdAt"
 
     return timestamp_map
 

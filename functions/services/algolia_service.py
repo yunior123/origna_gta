@@ -11,9 +11,8 @@ from algoliasearch.search.client import SearchClient
 from pydantic import ValidationError
 
 from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY, AlgoliaConfig
-from schema_constants import Collections
 from models.product import Product
-from schema_constants import AppConfig, Fields
+from schema_constants import AppConfig, Collections, Fields
 
 
 def _run_async(coro):

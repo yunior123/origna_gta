@@ -4,9 +4,9 @@ Includes OrderItem, Taxes, Ratings, SellerPayout, and Order
 """
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from schema_constants import (
     BusinessRules,
@@ -120,7 +120,7 @@ class Ratings(BaseModel):
     productId: str = Field(..., min_length=1)
     rating: float = Field(..., ge=0, le=5)
     review: str | None = Field(default=None, max_length=1000)
-    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @field_validator("review")
     @classmethod
@@ -217,7 +217,7 @@ class Order(BaseModel):
     deliveryInstructions: str | None = Field(default=None, max_length=500)
 
     # Timestamps
-    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updatedAt: datetime | None = Field(default=None)
 
     # Payment provider IDs

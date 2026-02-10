@@ -1239,7 +1239,7 @@ class TestTaxCalculation:
             assert rate == 0.15, f"{province} should be 15%"
         # Nova Scotia: 14% as of April 1, 2025
         ns_rate = get_tax_rate('NS')
-        assert ns_rate == 0.14, f"NS should be 14% (changed April 2025)"
+        assert ns_rate == 0.14, "NS should be 14% (changed April 2025)"
 
     def test_quebec_has_qst(self):
         """Scenario 85: Quebec has GST + QST = 14.975%."""
@@ -1404,8 +1404,9 @@ class TestInputSanitization:
 
     def test_validate_name_rejects_injection(self):
         """Scenario 100: Names with angle brackets are rejected by regex."""
-        from utils.helpers import validate_name
         import pytest
+
+        from utils.helpers import validate_name
 
         with pytest.raises(ValueError):
             validate_name("<script>")
@@ -1566,12 +1567,21 @@ class TestOnOrderStatusChangedEmails:
             "Should send email to buyer_email, not user_id"
 
     def test_trigger_uses_correct_domain(self):
-        """Scenario 111: on_order_status_changed uses orignagta.ca domain via AppConfig."""
-        source_file = Path(__file__).parent.parent / 'handlers' / 'orders.py'
-        source = source_file.read_text()
-        # URLs should use AppConfig.SITE_URL (which resolves to orignagta.ca)
-        assert 'AppConfig.SITE_URL' in source, \
-            "Should use AppConfig.SITE_URL constant for domain"
+        """Scenario 111: order status emails use correct domain via email_service templates."""
+        # Email templates now live in email_service.py — URLs use APP_BASE_URL
+        email_service_file = Path(__file__).parent.parent / 'services' / 'email_service.py'
+        email_source = email_service_file.read_text()
+        assert 'APP_BASE_URL' in email_source, \
+            "Email templates should use APP_BASE_URL for domain"
+        # orders.py delegates email generation to email_service templates
+        orders_file = Path(__file__).parent.parent / 'handlers' / 'orders.py'
+        orders_source = orders_file.read_text()
+        assert 'get_order_shipped_email' in orders_source, \
+            "Should use branded email template from email_service"
+        assert 'get_order_delivered_email' in orders_source, \
+            "Should use branded email template from email_service"
+        assert 'get_order_cancelled_email' in orders_source, \
+            "Should use branded email template from email_service"
 
     def test_trigger_handles_missing_email_gracefully(self):
         """Scenario 112: Missing buyer email doesn't crash the trigger."""

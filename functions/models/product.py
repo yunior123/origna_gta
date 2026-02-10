@@ -3,12 +3,11 @@ Product models for OrignaGTA
 """
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from schema_constants import (
-    BusinessRules,
     CategoryIds,
     DeliveryTypeValues,
     DiscountTypeValues,
@@ -348,7 +347,7 @@ class Product(BaseModel):
         description="Number of ratings"
     )
     createdAt: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="Product creation timestamp"
     )
     isActive: bool = Field(

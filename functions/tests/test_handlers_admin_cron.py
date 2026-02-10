@@ -6,7 +6,7 @@ Run: pytest tests/test_handlers_admin_cron.py -v --cov
 """
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from unittest.mock import MagicMock, Mock, call, patch
 
 import pyotp
@@ -93,7 +93,7 @@ class TestAdminHandlers:
             'userId': 'admin_123',
             'roles': ['admin'],
             'mfaEnabled': True,
-            'lastMfaVerify': datetime.now(timezone.utc)
+            'lastMfaVerify': datetime.now(UTC)
         }
 
         # Mock target user
@@ -247,7 +247,7 @@ class TestAdminHandlers:
         mock_admin_doc.to_dict.return_value = {
             'roles': ['admin'],
             'mfaEnabled': True,
-            'lastMfaVerify': datetime.now(timezone.utc)
+            'lastMfaVerify': datetime.now(UTC)
         }
 
         # Mock seller
