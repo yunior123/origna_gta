@@ -1423,9 +1423,9 @@ class TestPayoutConsistency:
         """Scenario 101: capture_payment creates payouts with *Cents field names (FIX verification)."""
         import inspect
 
-        from handlers.payment_stripe import capture_payment
+        from handlers.payment_stripe import _capture_payment_impl
 
-        source = inspect.getsource(capture_payment)
+        source = inspect.getsource(_capture_payment_impl)
         # Accept both string literals and Fields.* constants
         assert "'amountCents'" in source or '"amountCents"' in source or 'Fields.AMOUNT_CENTS' in source, \
             "Payout should use 'amountCents' field"
@@ -1438,11 +1438,11 @@ class TestPayoutConsistency:
         """Scenario 102: Cron auto_capture uses same payout fields as manual capture."""
         import inspect
 
-        from handlers.payment_stripe import capture_payment
+        from handlers.payment_stripe import _capture_payment_impl
 
         cron_source_file = Path(__file__).parent.parent / 'handlers' / 'cron_jobs.py'
         cron_source = cron_source_file.read_text()
-        capture_source = inspect.getsource(capture_payment)
+        capture_source = inspect.getsource(_capture_payment_impl)
 
         # Both should use amountCents (string literal or Fields constant)
         assert 'amountCents' in cron_source or 'AMOUNT_CENTS' in cron_source, "Cron should use amountCents"

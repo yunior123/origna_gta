@@ -5,7 +5,7 @@ Run: cd functions && python -m pytest tests/test_adversarial_scenarios.py -v
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -422,7 +422,7 @@ class TestShippingApprovalScenarios:
             },
             'shippingCostCents': 2000,
             'totalAmountCents': 10200,
-            'expiresAt': datetime.now() - timedelta(minutes=1),  # Expired!
+            'expiresAt': datetime.now(UTC) - timedelta(minutes=1),  # Expired!
         }
         mock_order.reference = Mock()
         mock_db.collection.return_value.document.return_value.get.return_value = mock_order

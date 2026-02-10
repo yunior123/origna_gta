@@ -246,12 +246,12 @@ class TestProductHandlers:
 class TestOrderHandlers:
     """Test order lifecycle management"""
 
-    @patch('handlers.payment_stripe.capture_payment')
-    def test_confirm_order_receipt_captures_and_pays_seller(self, mock_capture_payment):
+    @patch('handlers.payment_stripe._capture_payment_impl')
+    def test_confirm_order_receipt_captures_and_pays_seller(self, mock_capture_impl):
         """Test confirm_order_receipt delegates to capture_payment"""
         from handlers.orders import confirm_order_receipt
 
-        mock_capture_payment.return_value = {'success': True, 'captured': True}
+        mock_capture_impl.return_value = {'success': True, 'captured': True}
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="buyer_123")
@@ -260,14 +260,14 @@ class TestOrderHandlers:
         result = confirm_order_receipt(mock_request)
 
         assert result['success'] is True
-        mock_capture_payment.assert_called_once_with(mock_request)
+        mock_capture_impl.assert_called_once_with(mock_request)
 
-    @patch('handlers.payment_stripe.capture_payment')
-    def test_confirm_receipt_non_buyer_rejected(self, mock_capture_payment):
+    @patch('handlers.payment_stripe._capture_payment_impl')
+    def test_confirm_receipt_non_buyer_rejected(self, mock_capture_impl):
         """SECURITY: confirm_order_receipt propagates capture_payment auth checks"""
         from handlers.orders import confirm_order_receipt
 
-        mock_capture_payment.side_effect = https_fn.HttpsError('permission-denied', 'This is not your order')
+        mock_capture_impl.side_effect = https_fn.HttpsError('permission-denied', 'This is not your order')
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="attacker_999")  # Different user

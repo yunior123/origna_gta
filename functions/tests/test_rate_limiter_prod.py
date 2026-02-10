@@ -75,7 +75,8 @@ def test_webhook_uses_fail_closed():
         content = f.read()
 
     # Check IS_EMULATOR is available (either defined locally or imported from config)
-    assert 'IS_EMULATOR = os.environ.get' in content or 'from config import IS_EMULATOR' in content \
+    assert 'IS_EMULATOR = os.environ.get' in content \
+        or ('from config import' in content and 'IS_EMULATOR' in content) \
         or 'import IS_EMULATOR' in content, \
         'IS_EMULATOR should be defined or imported in payment_stripe.py'
     print('  ✅ IS_EMULATOR is available in payment_stripe.py')
