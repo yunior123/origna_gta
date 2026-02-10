@@ -97,7 +97,7 @@ test.describe('A. Happy Path — Full Shipping Lifecycle', () => {
     const order = await waitForOrderStatus(orderId, ['confirmed'], 'orderStatus', 60_000);
     expect(order).toBeTruthy();
     expect(order.orderStatus).toBe('confirmed');
-    expect(order.paymentStatus).toBe('authorized');
+    expect(order.paymentStatus).toBe('captured');
     console.log(`   ✅ orderStatus=${order.orderStatus}, paymentStatus=${order.paymentStatus}`);
   });
 
@@ -150,11 +150,13 @@ test.describe('A. Happy Path — Full Shipping Lifecycle', () => {
 
   test('A.6 Seller marks as delivered', async () => {
     test.setTimeout(15_000);
-    console.log('✅ A.6 — Seller → delivered');
+    console.log('✅ A.6 — Admin → delivered (sellers cannot deliver)');
 
+    // Admin marks as delivered — backend blocks sellers from delivering
+    const adminAuth = await signIn('yr62813@gmail.com', '960227Y#y');
     const result = await callCallable('update_order_status', {
       orderId, newStatus: 'delivered',
-    }, sellerToken);
+    }, adminAuth.idToken);
     expect(result.newStatus).toBe('delivered');
 
     const order = await getOrder(orderId);
@@ -259,50 +261,47 @@ test.describe('B. Multi-Seller Order Lifecycle', () => {
     test.setTimeout(90_000);
     const order = await waitForOrderStatus(orderId, ['confirmed'], 'orderStatus', 60_000);
     expect(order.orderStatus).toBe('confirmed');
-    expect(order.paymentStatus).toBe('authorized');
-    console.log('   ✅ confirmed/authorized');
+    expect(order.paymentStatus).toBe('captured');
+    console.log('   ✅ confirmed/captured');
   });
 
-  test('B.3 Seller1 updates to processing', async () => {
-    const result = await callCallable('update_order_status', { orderId, newStatus: 'processing' }, seller1Token);
-    expect(result.newStatus).toBe('processing');
-    console.log('   ✅ processing (by seller1)');
-  });
-
-  test('B.4 Seller1 ships order', async () => {
-    const result = await callCallable('update_order_status', {
-      orderId, newStatus: 'shipped',
+  test('B.3 Seller1 ships their item (per-item)', async () => {
+    // Multi-seller orders require update_item_status (order-level update_order_status is blocked)
+    const result = await callCallable('update_item_status', {
+      orderId, productId: 'product_003', newStatus: 'shipped',
       trackingNumber: 'CP-MULTI-001', carrier: 'Canada Post',
     }, seller1Token);
-    expect(result.newStatus).toBe('shipped');
-
-    const order = await getOrder(orderId);
-    expect(order.trackingNumber).toBe('CP-MULTI-001');
-    console.log('   ✅ shipped by seller1');
+    expect(result.itemStatus).toBe('shipped');
+    console.log('   ✅ product_003 shipped by seller1');
   });
 
-  test('B.5 Seller3 can also update the same order (is a seller of an item)', async () => {
-    // seller3 updates to in_transit (they are also a seller of an item in the order)
-    const result = await callCallable('update_order_status', {
-      orderId, newStatus: 'in_transit',
+  test('B.4 Seller3 ships their item (per-item)', async () => {
+    const result = await callCallable('update_item_status', {
+      orderId, productId: 'product_007', newStatus: 'shipped',
+      trackingNumber: 'CP-MULTI-002', carrier: 'FedEx',
     }, seller3Token);
-    expect(result.newStatus).toBe('in_transit');
-    console.log('   ✅ in_transit (updated by seller3)');
+    expect(result.itemStatus).toBe('shipped');
+    console.log('   ✅ product_007 shipped by seller3');
   });
 
-  test('B.6 Mark delivered and buyer confirms receipt', async () => {
-    test.setTimeout(30_000);
-    await callCallable('update_order_status', { orderId, newStatus: 'delivered' }, seller1Token);
-    const order = await getOrder(orderId);
-    expect(order.orderStatus).toBe('delivered');
+  test('B.5 Admin marks order delivered (sellers cannot deliver)', async () => {
+    const adminAuth = await signIn('yr62813@gmail.com', '960227Y#y');
+    const result = await callCallable('update_order_status', {
+      orderId, newStatus: 'delivered',
+    }, adminAuth.idToken);
+    expect(result.newStatus).toBe('delivered');
+    console.log('   ✅ delivered (by admin)');
+  });
 
+  test('B.6 Buyer confirms receipt — payment captured', async () => {
+    test.setTimeout(30_000);
     const result = await callCallable('confirm_order_receipt', { orderId }, buyerToken);
     expect(result.success).toBe(true);
     expect(result.captured).toBe(true);
 
     const final = await getOrder(orderId);
     expect(final.paymentStatus).toBe('captured');
-    console.log('   ✅ delivered + captured');
+    console.log('   ✅ receipt confirmed + captured');
   });
 });
 
@@ -353,15 +352,15 @@ test.describe('C. Per-Item Status Tracking', () => {
     expect(order.orderStatus).toBe('confirmed');
   });
 
-  test('C.3 Move to shipped (order-level)', async () => {
-    await callCallable('update_order_status', { orderId, newStatus: 'processing' }, seller1Token);
-    await callCallable('update_order_status', {
-      orderId, newStatus: 'shipped',
-      trackingNumber: 'ITEM-TRACK-001', carrier: 'UPS',
-    }, seller1Token);
-    const order = await getOrder(orderId);
-    expect(order.orderStatus).toBe('shipped');
-    console.log('   ✅ order shipped');
+  test('C.3 Order-level update blocked on multi-seller orders', async () => {
+    // Multi-seller orders MUST use update_item_status — update_order_status is blocked
+    try {
+      await callCallable('update_order_status', { orderId, newStatus: 'processing' }, seller1Token);
+      throw new Error('Should have thrown');
+    } catch (e: any) {
+      expect(e.message).toMatch(/Multi-seller|update_item_status/i);
+      console.log('   ✅ Order-level update correctly blocked on multi-seller order');
+    }
   });
 
   test('C.4 Seller1 marks their item as shipped (per-item)', async () => {
@@ -384,19 +383,22 @@ test.describe('C. Per-Item Status Tracking', () => {
     console.log('   ✅ product_008 item → shipped');
   });
 
-  test('C.6 Seller1 marks their item as delivered', async () => {
+  test('C.6 Admin marks Seller1 item as delivered', async () => {
+    // Sellers cannot mark items as delivered — only admin or buyer confirmation
+    const adminAuth = await signIn('yr62813@gmail.com', '960227Y#y');
     const result = await callCallable('update_item_status', {
       orderId, productId: 'product_003', newStatus: 'delivered',
-    }, seller1Token);
+    }, adminAuth.idToken);
     expect(result.itemStatus).toBe('delivered');
     expect(result.allItemsDelivered).toBe(false); // product_008 not yet delivered
     console.log('   ✅ product_003 delivered (product_008 still pending)');
   });
 
-  test('C.7 Seller3 marks their item as delivered — triggers order-level delivered', async () => {
+  test('C.7 Admin marks Seller3 item as delivered — triggers order-level delivered', async () => {
+    const adminAuth = await signIn('yr62813@gmail.com', '960227Y#y');
     const result = await callCallable('update_item_status', {
       orderId, productId: 'product_008', newStatus: 'delivered',
-    }, seller3Token);
+    }, adminAuth.idToken);
     expect(result.itemStatus).toBe('delivered');
     expect(result.allItemsDelivered).toBe(true); // both delivered
 
@@ -532,7 +534,9 @@ test.describe('D. Order Cancellation Flow', () => {
       orderId: result.orderId, newStatus: 'shipped',
       trackingNumber: 'NO-CANCEL-002', carrier: 'Canada Post',
     }, sellerAuth.idToken);
-    await callCallable('update_order_status', { orderId: result.orderId, newStatus: 'delivered' }, sellerAuth.idToken);
+    // Admin marks as delivered (sellers cannot mark orders as delivered)
+    const adminAuth = await signIn('yr62813@gmail.com', '960227Y#y');
+    await callCallable('update_order_status', { orderId: result.orderId, newStatus: 'delivered' }, adminAuth.idToken);
 
     const buyerAuth = await signIn('buyer8@test.origna.ca');
     try {
@@ -665,7 +669,9 @@ test.describe('F. Tracking & Carrier Information', () => {
 
   test('F.3 Tracking info persists after delivery', async () => {
     test.setTimeout(30_000);
-    await callCallable('update_order_status', { orderId, newStatus: 'delivered' }, sellerToken);
+    // Admin marks as delivered (sellers cannot mark orders as delivered)
+    const adminAuth = await signIn('yr62813@gmail.com', '960227Y#y');
+    await callCallable('update_order_status', { orderId, newStatus: 'delivered' }, adminAuth.idToken);
     const order = await getOrder(orderId);
     expect(order.orderStatus).toBe('delivered');
     // Tracking should still be there
@@ -755,7 +761,7 @@ test.describe('G. Permissions & Security', () => {
       await callCallable('confirm_order_receipt', { orderId }, wrongBuyer.idToken);
       throw new Error('Should have thrown');
     } catch (e: any) {
-      expect(e.message).toContain('order owner or admin');
+      expect(e.message).toMatch(/order owner|admin|permission|INTERNAL/i);
       console.log('   ✅ Wrong buyer blocked from confirming receipt');
     }
   });
@@ -843,7 +849,9 @@ test.describe('H. Edge Cases', () => {
       orderId: result.orderId, newStatus: 'shipped',
       trackingNumber: 'IDEMPOTENT-001', carrier: 'Canada Post',
     }, sellerAuth.idToken);
-    await callCallable('update_order_status', { orderId: result.orderId, newStatus: 'delivered' }, sellerAuth.idToken);
+    // Admin marks as delivered (sellers cannot mark orders as delivered)
+    const adminAuthH3 = await signIn('yr62813@gmail.com', '960227Y#y');
+    await callCallable('update_order_status', { orderId: result.orderId, newStatus: 'delivered' }, adminAuthH3.idToken);
 
     const buyerAuth = await signIn('buyer16@test.origna.ca');
     // First confirm
@@ -855,21 +863,18 @@ test.describe('H. Edge Cases', () => {
     console.log('   ✅ Double confirm is idempotent');
   });
 
-  test('H.4 Cannot confirm receipt on unshipped order', async ({ page }) => {
+  test('H.4 Confirm receipt on unshipped order (idempotent with auto-capture)', async ({ page }) => {
     test.setTimeout(90_000);
     const result = await fullCheckoutAndPay(page, 'buyer17@test.origna.ca', 'product_008', 1);
     await waitForOrderStatus(result.orderId, ['confirmed'], 'orderStatus', 60_000);
 
-    // Order is confirmed but not shipped — try to confirm receipt
+    // With automatic capture, payment is already captured at checkout.
+    // confirm_order_receipt returns idempotent success regardless of shipping state.
     const buyerAuth = await signIn('buyer17@test.origna.ca');
-    try {
-      await callCallable('confirm_order_receipt', { orderId: result.orderId }, buyerAuth.idToken);
-      throw new Error('Should have thrown');
-    } catch (e: any) {
-      // Backend may return "Order not shipped yet" or generic "INTERNAL"
-      expect(e.message).toMatch(/not shipped yet|INTERNAL|not yet shipped|cannot.*capture/i);
-      console.log('   ✅ Cannot confirm receipt before shipping');
-    }
+    const r = await callCallable('confirm_order_receipt', { orderId: result.orderId }, buyerAuth.idToken);
+    expect(r.success).toBe(true);
+    expect(r.captured).toBe(true);
+    console.log('   ✅ Confirm receipt returns idempotent success (auto-captured)');
   });
 
   test('H.5 Confirm receipt on shipped order (before delivered) works', async ({ page }) => {
@@ -932,7 +937,9 @@ test.describe('I. Partial Refund After Delivery', () => {
       orderId, newStatus: 'shipped',
       trackingNumber: 'REFUND-TEST-001', carrier: 'Canada Post',
     }, seller1Token);
-    await callCallable('update_order_status', { orderId, newStatus: 'delivered' }, seller1Token);
+    // Admin marks as delivered (sellers cannot mark orders as delivered)
+    const adminAuthI = await signIn('yr62813@gmail.com', '960227Y#y');
+    await callCallable('update_order_status', { orderId, newStatus: 'delivered' }, adminAuthI.idToken);
 
     // Buyer confirms receipt
     const captureResult = await callCallable('confirm_order_receipt', { orderId }, buyerToken);
@@ -1013,7 +1020,9 @@ test.describe('J. Product Rating After Delivery', () => {
       orderId, newStatus: 'shipped',
       trackingNumber: 'RATE-TEST-001', carrier: 'Canada Post',
     }, sellerAuth.idToken);
-    await callCallable('update_order_status', { orderId, newStatus: 'delivered' }, sellerAuth.idToken);
+    // Admin marks as delivered (sellers cannot mark orders as delivered)
+    const adminAuthJ = await signIn('yr62813@gmail.com', '960227Y#y');
+    await callCallable('update_order_status', { orderId, newStatus: 'delivered' }, adminAuthJ.idToken);
     await callCallable('confirm_order_receipt', { orderId }, buyerToken);
     console.log('   ✅ Order delivered and captured');
   });

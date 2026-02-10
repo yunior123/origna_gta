@@ -1839,11 +1839,13 @@ def process_dispute_created(dispute: dict) -> str | None:
             if not transfer_id:
                 # AUDIT FIX (D1-1): Alert on missing transfer ID instead of silent skip
                 print(f'🚨 DISPUTE: Payout {payout_doc.id} has no stripeTransferId — cannot reverse')
+                # NOTE: Use datetime.now() inside ArrayUnion — Firestore SDK
+                # cannot serialize SERVER_TIMESTAMP sentinels inside arrays.
                 alert_ref[1].update({
                     Fields.REVERSAL_ERRORS: get_firestore().ArrayUnion([{
                         Fields.PAYOUT_ID: payout_doc.id,
                         Fields.ERROR: 'Missing stripeTransferId — manual reversal required',
-                        Fields.TIMESTAMP: get_server_timestamp()
+                        Fields.TIMESTAMP: datetime.now(UTC)
                     }])
                 })
                 continue
@@ -1907,7 +1909,7 @@ def process_dispute_created(dispute: dict) -> str | None:
                         Fields.ERROR: str(e),
                         Fields.ERROR_CODE: error_code,
                         Fields.SEVERITY: SeverityLevels.CRITICAL if 'insufficient' in str(e).lower() else SeverityLevels.HIGH,
-                        Fields.TIMESTAMP: get_server_timestamp()
+                        Fields.TIMESTAMP: datetime.now(UTC)
                     }])
                 })
 
@@ -1931,7 +1933,7 @@ def process_dispute_created(dispute: dict) -> str | None:
                     Fields.REVERSAL_ERRORS: get_firestore().ArrayUnion([{
                         Fields.TRANSFER_ID: transfer_id,
                         Fields.ERROR: str(e),
-                        Fields.TIMESTAMP: get_server_timestamp()
+                        Fields.TIMESTAMP: datetime.now(UTC)
                     }])
                 })
 
@@ -2283,16 +2285,10 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('internal', 'Could not retrieve account status. Please try again later.') from e
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS)
-def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
+def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
-    Manually captures authorized payment and initiates seller payouts.
-    Called when buyer confirms order receipt.
-
-    Security:
-    - Only order owner (buyer) or admin can capture
-    - Order must be in valid state for capture
-    - Idempotency: prevents duplicate captures/transfers
+    Internal implementation of capture_payment logic.
+    Called by both the decorated capture_payment endpoint and confirm_order_receipt.
     """
     # Check if Stripe is enabled
     from handlers.payment_providers import PaymentProvider, require_provider_enabled
@@ -2711,6 +2707,15 @@ def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         raise https_fn.HttpsError('internal', 'Could not capture payment. Please try again.') from e
 
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Manually captures authorized payment and initiates seller payouts.
+    Called when buyer confirms order receipt.
+    Thin wrapper around _capture_payment_impl for HTTP callable endpoint.
+    """
+    return _capture_payment_impl(req)
 
 
 def sanitize_metadata(metadata: dict[str, Any]) -> dict[str, Any]:

@@ -281,6 +281,7 @@ test.beforeAll(async () => {
     sellerName: 'Yunior Yahoo',
     stockQuantity: 50,
     status: 'active',
+    isActive: true,
     approved: true,
     featured: false,
     imageUrls: ['https://picsum.photos/seed/candle/400/400'],

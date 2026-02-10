@@ -6,7 +6,7 @@ Order Lifecycle Management Handlers
 - Order cancellation
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import stripe
@@ -80,8 +80,10 @@ def confirm_order_receipt(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     # Backward-compatible wrapper around the canonical capture flow.
     # Flutter calls `confirm_order_receipt`; newer code calls `capture_payment` directly.
-    from handlers.payment_stripe import capture_payment
-    return capture_payment(req)
+    # NOTE: Import the undecorated _capture_payment_impl to avoid calling the
+    # @on_call wrapper (which expects a Flask Request, not a CallableRequest).
+    from handlers.payment_stripe import _capture_payment_impl
+    return _capture_payment_impl(req)
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -204,11 +206,14 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     if is_seller and not is_admin and new_status == OrderStatusValues.SHIPPED:
         items = order_data.get(Fields.ITEMS, [])
         seller_items_updated = False
+        # NOTE: Use actual datetime instead of SERVER_TIMESTAMP sentinel inside arrays.
+        # Firestore SDK cannot serialize SERVER_TIMESTAMP sentinels nested in arrays.
+        now_utc = datetime.now(timezone.utc)
 
         for idx, item in enumerate(items):
             if item.get(Fields.SELLER_ID) == user_id:
                 items[idx][Fields.STATUS] = DeliveryStatusValues.SHIPPED
-                items[idx][Fields.SHIPPED_AT] = get_server_timestamp()
+                items[idx][Fields.SHIPPED_AT] = now_utc
                 if tracking_number:
                     items[idx][Fields.TRACKING_NUMBER] = tracking_number
                     items[idx][Fields.CARRIER] = carrier or ''
@@ -382,19 +387,28 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Update the item
     items[item_index][Fields.STATUS] = new_status
+    # NOTE: Use actual datetime instead of SERVER_TIMESTAMP sentinel inside arrays.
+    # Firestore SDK cannot serialize SERVER_TIMESTAMP sentinels nested in arrays.
+    now_utc = datetime.now(timezone.utc)
 
     if new_status == DeliveryStatusValues.SHIPPED:
-        items[item_index][Fields.SHIPPED_AT] = get_server_timestamp()
+        items[item_index][Fields.SHIPPED_AT] = now_utc
         if tracking_number:
             items[item_index][Fields.TRACKING_NUMBER] = tracking_number
             items[item_index][Fields.CARRIER] = carrier or ''
 
     elif new_status == DeliveryStatusValues.DELIVERED:
-        items[item_index][Fields.DELIVERED_AT] = get_server_timestamp()
+        items[item_index][Fields.DELIVERED_AT] = now_utc
         # Note: confirmedByBuyer is NOT set here; it's only set via capture_payment (buyer action)
 
     # Check if all items are delivered
     all_items_delivered = all(item.get(Fields.STATUS) == DeliveryStatusValues.DELIVERED for item in items)
+
+    # Check if all items are shipped (or delivered)
+    all_items_shipped = all(
+        item.get(Fields.STATUS) in [DeliveryStatusValues.SHIPPED, DeliveryStatusValues.DELIVERED]
+        for item in items
+    )
 
     # Update order
     update_data = {
@@ -402,16 +416,27 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.UPDATED_AT: get_server_timestamp()
     }
 
-    # If all items delivered, update order status
-    if all_items_delivered and order_data.get(Fields.ORDER_STATUS) != OrderStatusValues.DELIVERED:
+    # Auto-promote order status based on item statuses
+    current_order_status = order_data.get(Fields.ORDER_STATUS)
+
+    # If all items delivered, update order status to delivered
+    if all_items_delivered and current_order_status != OrderStatusValues.DELIVERED:
         update_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
         update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.DELIVERED
+
+    # If all items shipped (but not all delivered yet), promote order to shipped
+    elif all_items_shipped and not all_items_delivered and current_order_status in [
+        OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED
+    ]:
+        update_data[Fields.ORDER_STATUS] = OrderStatusValues.SHIPPED
+        update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.SHIPPED
 
     order_ref.update(update_data)
 
     return create_success_response({
         ApiKeys.ITEM_STATUS: new_status,
-        ApiKeys.ALL_ITEMS_DELIVERED: all_items_delivered
+        ApiKeys.ALL_ITEMS_DELIVERED: all_items_delivered,
+        'allItemsShipped': all_items_shipped
     })
 
 
@@ -756,8 +781,12 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
                     return 'already_refunded'
 
                 # Update item status atomically
+                # NOTE: Use datetime.now() instead of get_server_timestamp() for
+                # fields inside array elements — Firestore SDK cannot serialize
+                # SERVER_TIMESTAMP sentinels nested inside arrays.
+                now_utc = datetime.now(timezone.utc)
                 fresh_items[idx][Fields.STATUS] = DeliveryStatusValues.REFUNDED
-                fresh_items[idx][Fields.REFUNDED_AT] = get_server_timestamp()
+                fresh_items[idx][Fields.REFUNDED_AT] = now_utc
                 fresh_items[idx][Fields.REFUND_REASON] = reason
                 fresh_items[idx][Fields.REFUND_AMOUNT_CENTS] = refund_amount_cents
                 fresh_items[idx][Fields.REFUND_ID] = refund.id
@@ -817,12 +846,14 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
                     )
 
                     # Log partial reversal
+                    # NOTE: Use datetime.now() inside ArrayUnion — Firestore SDK
+                    # cannot serialize SERVER_TIMESTAMP sentinels inside arrays.
                     payout_doc.reference.update({
                         Fields.PARTIAL_REVERSALS: get_firestore().ArrayUnion([{
                             Fields.REVERSAL_ID: reversal.id,
                             Fields.AMOUNT_CENTS: reversal_amount_cents,
                             Fields.PRODUCT_ID: product_id,
-                            Fields.CREATED_AT: get_server_timestamp()
+                            Fields.CREATED_AT: datetime.now(timezone.utc)
                         }]),
                         Fields.UPDATED_AT: get_server_timestamp()
                     })
@@ -897,7 +928,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # Validate authorization is still valid before modifying payment
         expires_at = order_data.get(Fields.EXPIRES_AT)
-        if expires_at and isinstance(expires_at, datetime) and expires_at < datetime.now():
+        if expires_at and isinstance(expires_at, datetime) and expires_at < datetime.now(timezone.utc):
             raise https_fn.HttpsError(
                 'failed-precondition',
                 'Payment authorization has expired. Order must be re-created.'

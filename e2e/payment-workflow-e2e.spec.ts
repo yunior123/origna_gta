@@ -273,17 +273,18 @@ test.describe('B. Single-Seller Checkout', () => {
     expect(orderB).toBeTruthy();
     const order = await waitForOrderStatus(orderB!.orderId, ['confirmed'], 'orderStatus', 60_000);
     expect(order).toBeTruthy();
-    expect(order.paymentStatus).toBe('authorized');
+    expect(order.paymentStatus).toBe('captured');
     expect(order.stripePaymentIntentId).toBeTruthy();
     console.log(`✅ B.4 Webhook processed: status=${order.orderStatus}, payment=${order.paymentStatus}`);
   });
 
   test('B.5 Stock was decremented after checkout', async () => {
-    // product_007 had stockQuantity: 60, we bought 1
+    // product_007 stock was reset to 500 before each run; checkout purchases decrement it
     const doc = await readDoc('products/product_007');
     const product = parseDoc(doc);
-    expect(product.stockQuantity).toBeLessThan(60);
-    console.log(`✅ B.5 Stock for product_007: ${product.stockQuantity} (was 60)`);
+    expect(product.stockQuantity).toBeLessThan(500);
+    expect(product.stockQuantity).toBeGreaterThan(0);
+    console.log(`✅ B.5 Stock for product_007: ${product.stockQuantity} (was 500, decremented after checkout)`);
   });
 });
 
@@ -395,7 +396,7 @@ test.describe('C. Multi-Seller Checkout', () => {
     expect(orderC).toBeTruthy();
     const order = await waitForOrderStatus(orderC!.orderId, ['confirmed'], 'orderStatus', 60_000);
     expect(order).toBeTruthy();
-    expect(order.paymentStatus).toBe('authorized');
+    expect(order.paymentStatus).toBe('captured');
     console.log(`✅ C.4 Multi-seller order confirmed: ${order.items.length} items from ${order.sellerIds.length} sellers`);
   });
 
@@ -477,9 +478,11 @@ test.describe('D. Order Status Lifecycle', () => {
 
   test('D.5 Order delivered', async () => {
     expect(orderD).toBeTruthy();
+    // Admin marks as delivered (sellers cannot mark orders as delivered)
+    const adminAuth = await signIn('yr62813@gmail.com', '960227Y#y');
     const result = await callCallable('update_order_status', {
       orderId: orderD!.orderId, newStatus: 'delivered',
-    }, orderD!.sellerToken);
+    }, adminAuth.idToken);
     expect(result.success || result.newStatus === 'delivered').toBeTruthy();
 
     const doc = await readDoc(`orders/${orderD!.orderId}`);
