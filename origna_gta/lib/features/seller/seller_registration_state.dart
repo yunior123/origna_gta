@@ -1,11 +1,13 @@
 // seller_registration_state.dart
+import 'package:origna_gta/core/schema/schema_constants.dart';
+
 class SellerRegistrationState {
   final bool isLoading;
   final String? error;
   final String? successMessage;
   final String paymentProvider;
 
-  SellerRegistrationState({this.isLoading = false, this.error, this.successMessage, this.paymentProvider = 'stripe'});
+  SellerRegistrationState({this.isLoading = false, this.error, this.successMessage, this.paymentProvider = PaymentProviderValues.stripe});
 
   SellerRegistrationState copyWith({bool? isLoading, String? error, String? successMessage, String? paymentProvider}) {
     return SellerRegistrationState(

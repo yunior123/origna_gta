@@ -19,13 +19,7 @@ class AddressManagementScreen extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [Colors.grey[900]!, Colors.grey[800]!]
-              : [const Color(0xFFF0F2FF), Colors.white],
-        ),
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'My Address'),

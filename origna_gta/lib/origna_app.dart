@@ -33,7 +33,7 @@ import 'package:origna_gta/utils/design_tokens.dart';
 /// Handle initial route from URL (critical for web redirects from Stripe)
 List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   if (kDebugMode) {
-    print('🔗 Initial route: $initialRoute');
+    debugPrint('🔗 Initial route: $initialRoute');
   }
   final uri = Uri.tryParse(initialRoute);
   if (kDebugMode && uri != null) {

@@ -2,6 +2,8 @@
 Rate Limiter for Cloud Functions
 Protects against abuse and DDoS
 """
+import logging
+logger = logging.getLogger(__name__)
 import os
 from datetime import UTC, datetime, timedelta
 
@@ -92,7 +94,7 @@ class RateLimiter:
             return check_and_increment(transaction, ref)
 
         except Exception as e:
-            print(f"⚠️ Rate limiter error: {e}")
+            logger.warning(f"⚠️ Rate limiter error: {e}")
 
             # SECURITY FIX: Fail-closed for high-stakes actions
             if fail_closed:

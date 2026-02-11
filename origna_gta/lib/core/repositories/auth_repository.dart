@@ -45,7 +45,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
     // Call the collective delete function which handles Firestore, Auth, and Stripe
     await _functions.httpsCallable('delete_account').call({
-      'confirmation': 'DELETE_MY_ACCOUNT',
+      Fields.confirmation: 'DELETE_MY_ACCOUNT',
     });
   }
 
@@ -61,23 +61,27 @@ class FirebaseAuthRepository implements AuthRepository {
     try {
       await user.reload();
     } catch (e) {
-      debugPrint('⚠️ Could not reload user: $e');
+      if (kDebugMode) debugPrint('⚠️ Could not reload user: $e');
     }
     final freshUser = _auth.currentUser;
     if (freshUser == null) return;
 
     // Only create document if email is verified (or in emulator mode)
     if (!freshUser.emailVerified && !EnvConfig().isEmulator) {
-      debugPrint(
-        '⚠️ Email not verified for ${freshUser.email}, skipping Firestore document creation',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '⚠️ Email not verified for ${freshUser.email}, skipping Firestore document creation',
+        );
+      }
       return;
     }
 
     await _createUserDocumentIfNeeded(freshUser);
-    debugPrint(
-      '✅ Firestore document ensured for verified user ${freshUser.email}',
-    );
+    if (kDebugMode) {
+      debugPrint(
+        '✅ Firestore document ensured for verified user ${freshUser.email}',
+      );
+    }
   }
 
   @override
@@ -90,7 +94,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
     // Bypass in emulator mode — emulator Auth doesn't persist emailVerified
     if (EnvConfig().isEmulator) {
-      debugPrint('🔧 EMULATOR: Bypassing email verification for ${user.email}');
+      if (kDebugMode) debugPrint('🔧 EMULATOR: Bypassing email verification for ${user.email}');
       return true;
     }
 
@@ -123,7 +127,7 @@ class FirebaseAuthRepository implements AuthRepository {
     // Firestore document will only be created after email verification
     if (userCredential.user != null) {
       await userCredential.user!.updateDisplayName(name);
-      debugPrint('✅ Display name "$name" saved to Firebase Auth profile');
+      if (kDebugMode) debugPrint('✅ Display name "$name" saved to Firebase Auth profile');
     }
 
     // AUTO-SEND VERIFICATION EMAIL after registration
@@ -131,23 +135,27 @@ class FirebaseAuthRepository implements AuthRepository {
     if (userCredential.user != null) {
       try {
         await userCredential.user!.sendEmailVerification();
-        debugPrint(
-          '✅ Verification email sent to $trimmedEmail during registration',
-        );
-        debugPrint(
-          '⚠️ Firestore document will be created after email verification',
-        );
-        debugPrint('');
-        debugPrint('📧 EMULATOR MODE: No real email sent!');
-        debugPrint('   To verify email, open: http://localhost:4000/auth');
-        debugPrint(
-          '   Find user "$trimmedEmail" and toggle "Email Verified" ON',
-        );
-        debugPrint('');
+        if (kDebugMode) {
+          debugPrint(
+            '✅ Verification email sent to $trimmedEmail during registration',
+          );
+          debugPrint(
+            '⚠️ Firestore document will be created after email verification',
+          );
+          debugPrint('');
+          debugPrint('📧 EMULATOR MODE: No real email sent!');
+          debugPrint('   To verify email, open: http://localhost:4000/auth');
+          debugPrint(
+            '   Find user "$trimmedEmail" and toggle "Email Verified" ON',
+          );
+          debugPrint('');
+        }
       } catch (e) {
-        debugPrint(
-          '⚠️  Failed to send verification email during registration: $e',
-        );
+        if (kDebugMode) {
+          debugPrint(
+            '⚠️  Failed to send verification email during registration: $e',
+          );
+        }
         // Don't fail registration if email send fails - user can request resend later
       }
     }
@@ -181,20 +189,22 @@ class FirebaseAuthRepository implements AuthRepository {
     }
 
     if (user.emailVerified) {
-      debugPrint('✅ Email already verified for ${user.email}');
+      if (kDebugMode) debugPrint('✅ Email already verified for ${user.email}');
       return;
     }
 
     try {
       await user.sendEmailVerification();
-      debugPrint('✅ Verification email sent to ${user.email}');
-      debugPrint('');
-      debugPrint('📧 EMULATOR MODE: Check Emulator UI for verification link');
-      debugPrint('   Open: http://localhost:4000/auth');
-      debugPrint('   Or toggle "Email Verified" manually');
-      debugPrint('');
+      if (kDebugMode) {
+        debugPrint('✅ Verification email sent to ${user.email}');
+        debugPrint('');
+        debugPrint('📧 EMULATOR MODE: Check Emulator UI for verification link');
+        debugPrint('   Open: http://localhost:4000/auth');
+        debugPrint('   Or toggle "Email Verified" manually');
+        debugPrint('');
+      }
     } catch (e) {
-      debugPrint('❌ Failed to send verification email: $e');
+      if (kDebugMode) debugPrint('❌ Failed to send verification email: $e');
       rethrow;
     }
   }
@@ -217,9 +227,11 @@ class FirebaseAuthRepository implements AuthRepository {
       // Don't expose if email exists or not
       if (e.code == 'user-not-found') {
         // Log for monitoring but return success to client
-        debugPrint(
-          '[SECURITY] Password reset attempted for non-existent email',
-        );
+        if (kDebugMode) {
+          debugPrint(
+            '[SECURITY] Password reset attempted for non-existent email',
+          );
+        }
         // Don't throw - client sees success either way
         return;
       }
@@ -248,13 +260,17 @@ class FirebaseAuthRepository implements AuthRepository {
     // ✅ Only create Firestore document if email is verified
     if (userCredential.user != null && userCredential.user!.emailVerified) {
       await _createUserDocumentIfNeeded(userCredential.user);
-      debugPrint(
-        '✅ Email verified - Firestore document created/updated for $trimmedEmail',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '✅ Email verified - Firestore document created/updated for $trimmedEmail',
+        );
+      }
     } else {
-      debugPrint(
-        '⚠️ Email NOT verified - Firestore document NOT created for $trimmedEmail',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '⚠️ Email NOT verified - Firestore document NOT created for $trimmedEmail',
+        );
+      }
     }
 
     return userCredential;
@@ -298,9 +314,11 @@ class FirebaseAuthRepository implements AuthRepository {
       if (freshUser != null &&
           !freshUser.emailVerified &&
           !EnvConfig().isEmulator) {
-        debugPrint(
-          'ℹ️ User ${freshUser.email} email not verified - skipping Firestore profile check',
-        );
+        if (kDebugMode) {
+          debugPrint(
+            'ℹ️ User ${freshUser.email} email not verified - skipping Firestore profile check',
+          );
+        }
         return true;
       }
 
@@ -310,9 +328,11 @@ class FirebaseAuthRepository implements AuthRepository {
           .doc(user.uid)
           .get();
       if (!doc.exists) {
-        debugPrint(
-          '⚠️ Verified user profile not found in Firestore, signing out stale session',
-        );
+        if (kDebugMode) {
+          debugPrint(
+            '⚠️ Verified user profile not found in Firestore, signing out stale session',
+          );
+        }
         await signOut();
         return false;
       }
@@ -323,17 +343,19 @@ class FirebaseAuthRepository implements AuthRepository {
       if (e.code == 'user-not-found' ||
           e.code == 'user-disabled' ||
           e.code == 'user-token-expired') {
-        debugPrint(
-          '⚠️ User account no longer exists (${e.code}), signing out stale session',
-        );
+        if (kDebugMode) {
+          debugPrint(
+            '⚠️ User account no longer exists (${e.code}), signing out stale session',
+          );
+        }
         await signOut();
         return false;
       }
       // Network error - don't sign out, could be temporary
-      debugPrint('⚠️ Error validating user: ${e.code}');
+      if (kDebugMode) debugPrint('⚠️ Error validating user: ${e.code}');
       return true;
     } catch (e) {
-      debugPrint('⚠️ Unexpected error validating user: $e');
+      if (kDebugMode) debugPrint('⚠️ Unexpected error validating user: $e');
       return true; // Don't sign out on unexpected errors
     }
   }

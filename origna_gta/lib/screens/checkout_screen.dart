@@ -144,7 +144,7 @@ class _AddressSection extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 15,
                   height: 1.6,
-                  color: isDark ? Colors.grey[300] : Colors.grey[700],
+                  color: isDark ? DesignTokens.outline : DesignTokens.textPrimary,
                 ),
               ),
               if (address.phoneNumber != null) ...[
@@ -160,7 +160,7 @@ class _AddressSection extends StatelessWidget {
                     Text(
                       address.phoneNumber!,
                       style: TextStyle(
-                        color: isDark ? Colors.grey[300] : Colors.grey[700],
+                        color: isDark ? DesignTokens.outline : DesignTokens.textPrimary,
                       ),
                     ),
                   ],
@@ -211,7 +211,7 @@ class _CheckoutButton extends ConsumerWidget {
       ),
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.dark
-            ? Colors.grey[900]
+            ? DesignTokens.textPrimary
             : Colors.white,
         boxShadow: [
           BoxShadow(
@@ -237,7 +237,7 @@ class _CheckoutButton extends ConsumerWidget {
   Future<void> _redirectToStripe(String url) async {
     final uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      debugPrint('Could not redirect to Stripe');
+      // Stripe redirect failed — user will see unchanged UI
     }
   }
 
@@ -259,7 +259,7 @@ class _CheckoutButton extends ConsumerWidget {
         messenger.showSnackBar(
           SnackBar(
             content: Text('Checkout error: $message'),
-            backgroundColor: Colors.red,
+            backgroundColor: DesignTokens.error,
             duration: const Duration(seconds: 5),
           ),
         );
@@ -267,7 +267,7 @@ class _CheckoutButton extends ConsumerWidget {
         messenger.showSnackBar(
           SnackBar(
             content: Text('Order already exists: $existingOrderId'),
-            backgroundColor: const Color(0xFF667EEA),
+            backgroundColor: DesignTokens.primary,
           ),
         );
     }
@@ -315,8 +315,8 @@ class _CheckoutContent extends ConsumerWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                isDark ? Colors.grey[900]! : Colors.grey[50]!,
-                isDark ? Colors.grey[800]! : Colors.white,
+                isDark ? DesignTokens.textPrimary : DesignTokens.surface,
+                isDark ? DesignTokens.textPrimary : Colors.white,
               ],
             ),
           ),
@@ -341,8 +341,8 @@ class _CheckoutContent extends ConsumerWidget {
                                 'Digital delivery — no shipping or address required',
                                 style: TextStyle(
                                   color: isDark
-                                      ? Colors.grey[200]
-                                      : Colors.grey[700],
+                                      ? DesignTokens.outline
+                                      : DesignTokens.textPrimary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -394,8 +394,8 @@ class _CheckoutContent extends ConsumerWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            isDark ? Colors.grey[900]! : Colors.grey[50]!,
-            isDark ? Colors.grey[800]! : Colors.white,
+            isDark ? DesignTokens.textPrimary : DesignTokens.surface,
+            isDark ? DesignTokens.textPrimary : Colors.white,
           ],
         ),
       ),
@@ -436,8 +436,8 @@ class _CheckoutContent extends ConsumerWidget {
                               'Digital delivery — no shipping required',
                               style: TextStyle(
                                 color: isDark
-                                    ? Colors.grey[200]
-                                    : Colors.grey[700],
+                                    ? DesignTokens.outline
+                                    : DesignTokens.textPrimary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -603,13 +603,13 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? const Color(0xFF667EEA).withValues(alpha: 0.08)
+                      ? DesignTokens.primary.withValues(alpha: 0.08)
                       : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isSelected
-                        ? const Color(0xFF667EEA)
-                        : Colors.grey.shade200,
+                        ? DesignTokens.primary
+                        : DesignTokens.outlineVariant,
                     width: isSelected ? 1.5 : 1,
                   ),
                   boxShadow: [
@@ -631,8 +631,8 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: isSelected
-                                ? const Color(0xFF667EEA)
-                                : Colors.grey.shade300,
+                                ? DesignTokens.primary
+                                : DesignTokens.outline,
                             width: 2,
                           ),
                         ),
@@ -643,7 +643,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                                   height: 12,
                                   decoration: const BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: Color(0xFF667EEA),
+                                    color: DesignTokens.primary,
                                   ),
                                 ),
                               )
@@ -662,8 +662,8 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
                                     color: isAvailable
-                                        ? Colors.black
-                                        : Colors.grey.shade500,
+                                        ? DesignTokens.textPrimary
+                                        : DesignTokens.textSecondary,
                                   ),
                                 ),
                                 if (speed == DeliverySpeed.sameDay) ...[
@@ -674,7 +674,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.green.shade50,
+                                      color: DesignTokens.success,
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -682,7 +682,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.green.shade700,
+                                        color: DesignTokens.success,
                                       ),
                                     ),
                                   ),
@@ -694,7 +694,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                               speed.estimatedTime,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey.shade500,
+                                color: DesignTokens.textSecondary,
                               ),
                             ),
                             if (!isAvailable && speed == DeliverySpeed.sameDay)
@@ -704,7 +704,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                                   'Only available for local orders within 50km',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: const Color(0xFFFF6B6B),
+                                    color: DesignTokens.tertiary,
                                     fontStyle: FontStyle.italic,
                                   ),
                                 ),
@@ -721,8 +721,8 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                           color: totalCost > 0
-                              ? Colors.black87
-                              : Colors.green.shade700,
+                              ? DesignTokens.textPrimary
+                              : DesignTokens.success,
                         ),
                       ),
                     ],
@@ -771,7 +771,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.green.shade50,
+                              color: DesignTokens.success,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -779,7 +779,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.green.shade700,
+                                color: DesignTokens.success,
                               ),
                             ),
                           ),
@@ -791,7 +791,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                       speed.estimatedTime,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey.shade600,
+                        color: DesignTokens.textSecondary,
                       ),
                     ),
                     if (speed == DeliverySpeed.sameDay)
@@ -799,7 +799,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                         'Available for local orders within 50km radius',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade500,
+                          color: DesignTokens.textSecondary,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -812,8 +812,8 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: surcharge > 0
-                            ? Colors.grey.shade700
-                            : Colors.green.shade700,
+                            ? DesignTokens.textPrimary
+                            : DesignTokens.success,
                       ),
                     ),
                   ],
@@ -846,7 +846,7 @@ class _NoAddressView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.location_off, size: 80, color: Colors.grey[400]),
+            Icon(Icons.location_off, size: 80, color: DesignTokens.textDisabled),
             const SizedBox(height: 24),
             const Text(
               'No Delivery Address',
@@ -856,7 +856,7 @@ class _NoAddressView extends StatelessWidget {
             Text(
               'Please add a delivery address to continue with checkout',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: DesignTokens.textSecondary),
             ),
             const SizedBox(height: 32),
             Semantics(
@@ -872,7 +872,7 @@ class _NoAddressView extends StatelessWidget {
               icon: const Icon(Icons.add_location),
               label: const Text('Add Address'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF667EEA),
+                backgroundColor: DesignTokens.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
@@ -973,14 +973,14 @@ class _OrderSummary extends ConsumerWidget {
                 children: [
                   const Text(
                     'Estimated Shipping',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: DesignTokens.textSecondary),
                   ),
                   if (isCalculating)
                     const ModernLoadingIndicator.small()
                   else if (shippingError != null)
                     Text(
                       shippingError,
-                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                      style: const TextStyle(color: DesignTokens.error, fontSize: 12),
                     )
                   else
                     Text(
@@ -996,7 +996,7 @@ class _OrderSummary extends ConsumerWidget {
                     'Final shipping cost will be confirmed by seller before charge',
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.grey[500],
+                      color: DesignTokens.textSecondary,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -1015,7 +1015,7 @@ class _OrderSummary extends ConsumerWidget {
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF667EEA),
+                      color: DesignTokens.primary,
                     ),
                   ),
                 ],
@@ -1025,7 +1025,7 @@ class _OrderSummary extends ConsumerWidget {
                 'Taxes and total will be confirmed at payment.',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey,
+                  color: DesignTokens.textSecondary,
                   fontStyle: FontStyle.italic,
                 ),
               ),
@@ -1048,11 +1048,11 @@ class _OrderSummary extends ConsumerWidget {
           children: [
             Text(
               '$taxName (Est. ${(rate * 100).toStringAsFixed(2)}%)',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
             ),
             Text(
               '\$${taxAmount.toStringAsFixed(2)}',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
             ),
           ],
         ),
@@ -1096,7 +1096,7 @@ class _PaymentProviderSection extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           'Secure checkout powered by Stripe.',
-          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12),
         ),
       ],
     );
@@ -1109,14 +1109,14 @@ class _SecurityInfo extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: DesignTokens.info,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.blue.shade200, width: 1),
+        border: Border.all(color: DesignTokens.info, width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lock_outline, color: Colors.blue.shade700, size: 20),
+          Icon(Icons.lock_outline, color: DesignTokens.info, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1125,7 +1125,7 @@ class _SecurityInfo extends StatelessWidget {
                 Text(
                   'Secure Payment',
                   style: TextStyle(
-                    color: Colors.blue.shade900,
+                    color: DesignTokens.info,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1134,7 +1134,7 @@ class _SecurityInfo extends StatelessWidget {
                 Text(
                   'Powered by Stripe. Your payment information is encrypted and secure.',
                   style: TextStyle(
-                    color: Colors.blue.shade700,
+                    color: DesignTokens.info,
                     fontSize: 12,
                     height: 1.4,
                   ),
@@ -1160,10 +1160,10 @@ class _TermsText extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          color: DesignTokens.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: termsAccepted ? Colors.grey.shade200 : Colors.red.shade100,
+            color: termsAccepted ? DesignTokens.outlineVariant : DesignTokens.error,
             width: 1,
           ),
         ),
@@ -1183,8 +1183,8 @@ class _TermsText extends ConsumerWidget {
                         value ?? false,
                 side: BorderSide(
                   color: termsAccepted
-                      ? Colors.grey.shade400
-                      : Colors.red.shade300,
+                      ? DesignTokens.textDisabled
+                      : DesignTokens.error,
                 ),
               ),
               ),
@@ -1195,7 +1195,7 @@ class _TermsText extends ConsumerWidget {
                 text: TextSpan(
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade700,
+                    color: DesignTokens.textPrimary,
                     height: 1.4,
                   ),
                   children: [
@@ -1210,10 +1210,10 @@ class _TermsText extends ConsumerWidget {
                           'Terms & Conditions',
                           style: TextStyle(
                             fontSize: 13,
-                            color: const Color(0xFF667EEA),
+                            color: DesignTokens.primary,
                             fontWeight: FontWeight.w600,
                             decoration: TextDecoration.underline,
-                            decorationColor: const Color(0xFF667EEA),
+                            decorationColor: DesignTokens.primary,
                           ),
                         ),
                       ),
@@ -1230,10 +1230,10 @@ class _TermsText extends ConsumerWidget {
                           'Privacy Policy',
                           style: TextStyle(
                             fontSize: 13,
-                            color: const Color(0xFF667EEA),
+                            color: DesignTokens.primary,
                             fontWeight: FontWeight.w600,
                             decoration: TextDecoration.underline,
-                            decorationColor: const Color(0xFF667EEA),
+                            decorationColor: DesignTokens.primary,
                           ),
                         ),
                       ),

@@ -11,6 +11,7 @@ import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/models/models.dart';
 import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/utils/constants.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
@@ -498,7 +499,7 @@ void showLoginPrompt(
             );
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF667EEA),
+            backgroundColor: DesignTokens.primary,
             foregroundColor: Colors.white,
           ),
           child: const Text('Sign In'),
@@ -544,15 +545,15 @@ void showEmailVerificationDialog(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFF667EEA).withValues(alpha: 0.08),
+                color: DesignTokens.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
                 user!.email!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF667EEA),
+                  color: DesignTokens.primary,
                 ),
               ),
             ),
@@ -610,9 +611,9 @@ void showEmailVerificationDialog(
               onResend();
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                SnackBar(
                   content: Text('Verification email sent! Check your inbox.'),
-                  backgroundColor: Color(0xFF667EEA),
+                  backgroundColor: DesignTokens.primary,
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -620,13 +621,13 @@ void showEmailVerificationDialog(
             icon: const Icon(Icons.send, size: 16),
             label: const Text('Resend Email'),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF667EEA),
+              foregroundColor: DesignTokens.primary,
             ),
           ),
         ElevatedButton(
           onPressed: () => Navigator.pop(ctx),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF667EEA),
+            backgroundColor: DesignTokens.primary,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),

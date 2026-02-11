@@ -44,22 +44,18 @@ class SessionTimeoutService {
     if (_auth.currentUser == null) return;
 
     _resetTimer(context);
-    debugPrint('🔒 Session timeout monitoring started (15min inactivity)');
   }
 
   /// Stop monitoring (when user logs out manually)
   void stopMonitoring() {
     _timeoutTimer?.cancel();
     _timeoutTimer = null;
-    debugPrint('🔓 Session timeout monitoring stopped');
   }
 
   /// Handle timeout event - sign out user
   Future<void> _handleTimeout(BuildContext context) async {
     final user = _auth.currentUser;
     if (user == null) return;
-
-    debugPrint('⏰ Session timeout! Auto-signing out user ${user.uid}');
 
     try {
       await _auth.signOut();
@@ -75,7 +71,7 @@ class SessionTimeoutService {
         );
       }
     } catch (e) {
-      debugPrint('❌ Error during auto-logout: $e');
+      // Auto-logout failed — user will need to re-authenticate manually
     }
   }
 

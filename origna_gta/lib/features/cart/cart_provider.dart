@@ -4,6 +4,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/cart_repository.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 final cartControllerProvider = Provider.autoDispose<CartController>((ref) {
   return CartController(ref);
@@ -24,21 +25,17 @@ final cartItemDateProvider = Provider.autoDispose.family<Timestamp?, String>((re
 });
 
 /// Family provider for individual cart item details - cached by Riverpod
+/// AUDIT FIX: Reads from batch-fetched cache instead of making individual
+/// Firestore reads per item (N+1 query elimination).
 final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailModel?, String>((ref, productId) async {
-  final firestore = ref.watch(firestoreProvider);
   final createdAt = ref.watch(cartItemDateProvider(productId));
   if (createdAt == null) return null;
 
-  // Quantity is NOT watched here. CartItemScreen has its own Consumer that
-  // watches cartItemQuantityProvider directly for the +/- controls.
-  // Previously, watching quantity here caused the entire item card (image,
-  // name, price) to rebuild on every +/- press AND triggered a redundant
-  // Firestore product re-fetch each time.
+  // Pull from batch-fetched product cache (single whereIn query for all cart items)
+  final productCache = await ref.watch(_cartProductsBatchProvider.future);
+  final productData = productCache[productId];
+  if (productData == null) return null;
 
-  final productDoc = await firestore.collection(Collections.products).doc(productId).get();
-  if (!productDoc.exists) return null;
-
-  final productData = productDoc.data()!;
   return CartItemDetailModel(
     productId: productId,
     name: productData[Fields.name] ?? '',
@@ -68,6 +65,42 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
     freeShipping: productData[Fields.freeShipping] ?? false,
     isDigital: productData[Fields.isDigital] ?? false,
   );
+});
+
+// ============================================================================
+// BATCH PRODUCT CACHE — fetches all cart product docs in one whereIn query
+// ============================================================================
+
+/// Internal provider that batch-fetches product documents for all cart items.
+/// Returns a `Map<productId, productData>` for O(1) lookup by [cartItemDetailProvider].
+final _cartProductsBatchProvider = FutureProvider.autoDispose<Map<String, Map<String, dynamic>>>((ref) async {
+  final firestore = ref.watch(firestoreProvider);
+  final cartItems = ref.watch(cartItemsProvider);
+
+  final productIds = cartItems.maybeWhen(
+    data: (items) => items.map((i) => i.productId).toList(),
+    orElse: () => <String>[],
+  );
+
+  if (productIds.isEmpty) return {};
+
+  final Map<String, Map<String, dynamic>> cache = {};
+
+  // Firestore whereIn limit is 30 — batch accordingly
+  for (int i = 0; i < productIds.length; i += 30) {
+    final chunk = productIds.skip(i).take(30).toList();
+    final snapshot = await firestore
+        .collection(Collections.products)
+        .where(FieldPath.documentId, whereIn: chunk)
+        .get();
+    for (final doc in snapshot.docs) {
+      if (doc.exists) {
+        cache[doc.id] = doc.data();
+      }
+    }
+  }
+
+  return cache;
 });
 
 // ============================================================================
@@ -196,7 +229,8 @@ class CartController {
       final sellerId = await _repository.getProductSellerId(productId);
       if (sellerId == null) return false;
       return sellerId != userId;
-    } catch (e) {
+    } catch (e, st) {
+      Sentry.captureException(e, stackTrace: st);
       return false;
     }
   }
@@ -213,7 +247,8 @@ class CartController {
       
       await _repository.addToCart(userId, productId, quantity);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      Sentry.captureException(e, stackTrace: st);
       return false;
     }
   }

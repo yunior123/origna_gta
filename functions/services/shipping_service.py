@@ -1,4 +1,6 @@
 
+import logging
+logger = logging.getLogger(__name__)
 import requests
 
 from config import GEOAPIFY_API_KEY
@@ -375,7 +377,7 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
     Server-side shipping calculation matching frontend logic.
     """
     if not buyer_address or buyer_address.get(Fields.LATITUDE) is None or buyer_address.get(Fields.LONGITUDE) is None:
-        print("⚠️ Buyer address missing coordinates — using province-based fallback")
+        logger.warning("⚠️ Buyer address missing coordinates — using province-based fallback")
         # Use province-based fallback instead of free shipping
         if not buyer_address:
             return ShippingTiers.DEFAULT_MIN_COST
@@ -404,12 +406,12 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
     for seller_id, seller_items in items_by_seller.items():
         # CRITICAL FIX: Defensive checks to prevent crashes on corrupted data
         if not seller_items:
-            print(f"⚠️ Skipping seller {seller_id}: Empty items list")
+            logger.warning(f"⚠️ Skipping seller {seller_id}: Empty items list")
             continue
 
         seller_address = seller_items[0].get(Fields.SELLER_ADDRESS)
         if not seller_address or not isinstance(seller_address, dict):
-            print(f"⚠️ Skipping seller {seller_id}: Missing or invalid seller address")
+            logger.warning(f"⚠️ Skipping seller {seller_id}: Missing or invalid seller address")
             continue
 
         seller_lat = seller_address.get(Fields.LATITUDE)
@@ -432,7 +434,7 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
                 f"These products are only available for local delivery within {seller_state}."
             )
         if has_perishable and seller_state != buyer_state:
-            print(f"⚠️ Perishable item across province: {seller_state} -> {buyer_state}")
+            logger.warning(f"⚠️ Perishable item across province: {seller_state} -> {buyer_state}")
             total_shipping += ShippingTiers.PERISHABLE_CROSS_PROVINCE
 
         # Try to find seller fixed price for this speed
@@ -479,7 +481,7 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
                     total_shipping += _calculate_tiered_shipping(distance_km, chargeable_items, speed)
                     continue
             except Exception as e:
-                print(f"⚠️ Geoapify error: {str(e)}")
+                logger.warning(f"⚠️ Geoapify error: {str(e)}")
 
         # Fallback
         item_count = sum(item.get(Fields.QUANTITY, 1) for item in chargeable_items)

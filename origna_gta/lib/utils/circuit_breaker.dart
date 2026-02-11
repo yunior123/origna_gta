@@ -113,7 +113,7 @@ class CircuitBreaker {
       if (lastFailure != null &&
           DateTime.now().difference(lastFailure) > config.resetTimeout) {
         _transitionTo(CircuitState.halfOpen);
-        debugPrint('CircuitBreaker[$name]: OPEN → HALF_OPEN (testing recovery)');
+        if (kDebugMode) debugPrint('CircuitBreaker[$name]: OPEN → HALF_OPEN');
       } else {
         throw CircuitBreakerOpenException(
           serviceName: name,
@@ -142,13 +142,12 @@ class CircuitBreaker {
       _successCount++;
       if (_successCount >= config.successThreshold) {
         _transitionTo(CircuitState.closed);
-        debugPrint('CircuitBreaker[$name]: HALF_OPEN → CLOSED (recovered)');
+        if (kDebugMode) debugPrint('CircuitBreaker[$name]: HALF_OPEN → CLOSED');
       }
     } else {
       // In closed state, reset failure count on success
       if (_failureCount > 0) {
         _failureCount = 0;
-        debugPrint('CircuitBreaker[$name]: Failure count reset');
       }
     }
   }
@@ -160,10 +159,10 @@ class CircuitBreaker {
     if (_state == CircuitState.halfOpen) {
       // Any failure in half-open goes back to open
       _transitionTo(CircuitState.open);
-        debugPrint('CircuitBreaker[$name]: HALF_OPEN → OPEN (recovery failed)');
+        if (kDebugMode) debugPrint('CircuitBreaker[$name]: HALF_OPEN → OPEN');
     } else if (_failureCount >= config.failureThreshold) {
       _transitionTo(CircuitState.open);
-        debugPrint('CircuitBreaker[$name]: CLOSED → OPEN ($_failureCount failures)');
+        if (kDebugMode) debugPrint('CircuitBreaker[$name]: CLOSED → OPEN ($_failureCount failures)');
     }
   }
 
@@ -188,7 +187,6 @@ class CircuitBreaker {
   void reset() {
     _transitionTo(CircuitState.closed);
     _lastFailureTime = null;
-    debugPrint('CircuitBreaker[$name]: Manually reset');
   }
 
   /// Get current metrics for monitoring

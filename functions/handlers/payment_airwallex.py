@@ -10,6 +10,8 @@ HttpsError('unavailable') at runtime since Airwallex is not enabled.
 TODO(post-launch): Evaluate Airwallex activation or remove entirely.
 """
 
+import logging
+logger = logging.getLogger(__name__)
 from typing import Any
 
 from firebase_functions import https_fn
@@ -130,7 +132,7 @@ def airwallex_create_seller_account(req: https_fn.CallableRequest) -> dict[str, 
         return utils.create_success_response({'accountId': account_id})
 
     except Exception as e:
-        print(f'Airwallex create_seller_account error: {type(e).__name__}: {str(e)}')
+        logger.error(f'Airwallex create_seller_account error: {type(e).__name__}: {str(e)}')
         raise https_fn.HttpsError('internal', 'Failed to create seller account') from e
 
 
@@ -213,7 +215,7 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         return utils.create_success_response(result)
 
     except Exception as e:
-        print(f'Airwallex process_payment error: {type(e).__name__}: {str(e)}')
+        logger.error(f'Airwallex process_payment error: {type(e).__name__}: {str(e)}')
         raise https_fn.HttpsError('internal', 'Payment processing failed') from e
 
 
@@ -349,7 +351,7 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
                 Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
                 Fields.UPDATED_AT: get_server_timestamp(),
             })
-        print(f'Airwallex capture_payment error: {type(e).__name__}: {str(e)}')
+        logger.error(f'Airwallex capture_payment error: {type(e).__name__}: {str(e)}')
         raise https_fn.HttpsError('internal', 'Payment capture failed') from e
 
 
@@ -386,7 +388,7 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
     )
 
     if not allowed:
-        print(f'⚠️ Airwallex webhook rate limit exceeded for IP: {client_ip[:10]}...')  # Sanitized log
+        logger.warning(f'⚠️ Airwallex webhook rate limit exceeded for IP: {client_ip[:10]}...')  # Sanitized log
         return https_fn.Response('Rate limit exceeded', status=429)
 
     # SECURITY FIX #2: Get raw payload for signature verification
@@ -395,7 +397,7 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
     ts_header = req.headers.get('x-timestamp') or req.headers.get('X-Timestamp')
 
     if not sig_header or not ts_header:
-        print(f'⚠️ Airwallex webhook missing signature/timestamp from IP: {client_ip[:10]}...')
+        logger.warning(f'⚠️ Airwallex webhook missing signature/timestamp from IP: {client_ip[:10]}...')
         return https_fn.Response('Missing signature', status=400)
 
     # SECURITY: Verify signature BEFORE parsing JSON. Never accept signing secrets from request headers.
@@ -407,20 +409,20 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
             timestamp=ts_header,
         )
         if not is_valid:
-            print(f'⚠️ Airwallex webhook invalid signature from IP: {client_ip[:10]}...')
+            logger.warning(f'⚠️ Airwallex webhook invalid signature from IP: {client_ip[:10]}...')
             return https_fn.Response('Invalid signature', status=400)
     except ValueError as e:
-        print(f'⚠️ Airwallex webhook signature verification failed: {str(e)[:50]}...')  # Sanitized
+        logger.warning(f'⚠️ Airwallex webhook signature verification failed: {str(e)[:50]}...')  # Sanitized
         return https_fn.Response('Signature verification failed', status=400)
     except Exception as e:
-        print(f'⚠️ Airwallex webhook signature error: {type(e).__name__}')  # Sanitized (no details)
+        logger.warning(f'⚠️ Airwallex webhook signature error: {type(e).__name__}')  # Sanitized (no details)
         return https_fn.Response('Signature verification error', status=500)
 
     # SECURITY FIX #4: Parse JSON only AFTER signature verification
     try:
         event = json.loads(payload)
     except json.JSONDecodeError:
-        print(f'⚠️ Airwallex webhook invalid JSON from IP: {client_ip[:10]}...')
+        logger.warning(f'⚠️ Airwallex webhook invalid JSON from IP: {client_ip[:10]}...')
         return https_fn.Response('Invalid JSON', status=400)
 
     event_id = event.get('id')
@@ -431,7 +433,7 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
 
     event_type = event.get(Fields.NAME)
     if not event_id or not event_type:
-        print('⚠️ Airwallex webhook missing event_id or event_type')
+        logger.warning('⚠️ Airwallex webhook missing event_id or event_type')
         return https_fn.Response('Invalid event format', status=400)
 
     # SECURITY FIX #6: Idempotency check (prevent duplicate processing)
@@ -439,7 +441,7 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
     webhook_doc = webhook_ref.get()
 
     if webhook_doc.exists:
-        print(f'✓ Airwallex webhook already processed: {event_type} (event: {event_id[:16]}...)')  # Sanitized
+        logger.info(f'✓ Airwallex webhook already processed: {event_type} (event: {event_id[:16]}...)')  # Sanitized
         return https_fn.Response('Already processed', status=200)
 
     # SECURITY FIX #7: Log webhook with client IP for audit trail
@@ -454,7 +456,7 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
             Fields.EVENT_ID: event_id
         })
     except Exception as e:
-        print(f'⚠️ Failed to log webhook: {type(e).__name__}')  # Sanitized (no sensitive data)
+        logger.warning(f'⚠️ Failed to log webhook: {type(e).__name__}')  # Sanitized (no sensitive data)
 
     # Process event
     try:
@@ -510,12 +512,12 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
                     Fields.UPDATED_AT: get_server_timestamp()
                 })
 
-        print(f'✓ Airwallex webhook processed successfully: {event_type}')
+        logger.info(f'✓ Airwallex webhook processed successfully: {event_type}')
         return https_fn.Response('Success', status=200)
 
     except Exception as e:
         # SECURITY FIX #8: Sanitized error logging (no sensitive data exposure)
         error_type = type(e).__name__
-        print(f'❌ Error processing Airwallex webhook: {error_type} for event_type: {event_type}')
+        logger.error(f'❌ Error processing Airwallex webhook: {error_type} for event_type: {event_type}')
         # Don't expose internal error details to webhook caller
         return https_fn.Response('Internal processing error', status=500)

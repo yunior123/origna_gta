@@ -2,6 +2,8 @@
 Airwallex Payment Service - Complete Implementation
 P2.1-P2.5: Account, Backend, Payment, Payout, Webhooks
 """
+import logging
+logger = logging.getLogger(__name__)
 import base64
 import hashlib
 import hmac
@@ -477,7 +479,7 @@ class AirwallexService:
 
         # CRITICAL FIX: Validate next_action exists to prevent crash on malformed events
         if not next_action or not isinstance(next_action, dict):
-            print(f"⚠️  Payment {payment_id} requires action but next_action missing")
+            logger.warning(f"⚠️  Payment {payment_id} requires action but next_action missing")
             return {Fields.STATUS: WebhookResponseStatus.ERROR, 'message': 'Missing next_action in event data'}
 
         action_type = next_action.get(Fields.TYPE)  # Usually 'redirect_to_url' for 3DS
@@ -486,7 +488,7 @@ class AirwallexService:
         from google.cloud import firestore
         db = firestore.Client()
 
-        print(f"⚠️  Payment {payment_id} requires action: {action_type}")
+        logger.warning(f"⚠️  Payment {payment_id} requires action: {action_type}")
 
         if order_id:
             db.collection(Collections.ORDERS).document(order_id).update({
@@ -510,9 +512,9 @@ class AirwallexService:
                         authentication_url=action_url,
                         amount=order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0)
                     )
-                    print("  ✅ 3DS authentication email sent")
+                    logger.info("  ✅ 3DS authentication email sent")
             except Exception as email_error:
-                print(f"  ⚠️  Failed to send 3DS email: {str(email_error)}")
+                logger.warning(f"  ⚠️  Failed to send 3DS email: {str(email_error)}")
 
         return {Fields.STATUS: WebhookResponseStatus.PROCESSED, 'order_id': order_id, 'action_required': action_type, 'url': action_url}
 
@@ -525,7 +527,7 @@ class AirwallexService:
         from google.cloud import firestore
         db = firestore.Client()
 
-        print(f"❌ Seller account verification failed: {account_id}")
+        logger.error(f"❌ Seller account verification failed: {account_id}")
 
         if seller_id:
             # Update seller status
@@ -547,7 +549,7 @@ class AirwallexService:
                 Fields.TIMESTAMP: firestore.SERVER_TIMESTAMP
             })
 
-            print(f"  🔒 Seller {seller_id} payouts disabled due to failed verification")
+            logger.error(f"  🔒 Seller {seller_id} payouts disabled due to failed verification")
 
         return {Fields.STATUS: WebhookResponseStatus.PROCESSED, 'seller_id': seller_id, Fields.ERROR: failure_reason}
 

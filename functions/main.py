@@ -46,6 +46,8 @@ from handlers.cron_jobs import (  # noqa: E402
     check_expired_authorizations,
     cleanup_orphaned_r2_images,
     cleanup_stale_rate_limits,
+    cleanup_stale_security_alerts,
+    cleanup_stale_webhook_events,
     monitor_algolia_sync,
 )
 
@@ -122,6 +124,10 @@ from services.shipping_service import calculate_shipping_cost  # noqa: E402, F81
 # Only initialize if not already initialized (for testing)
 if not firebase_admin._apps:
     firebase_admin.initialize_app()
+
+# Initialize Sentry for production error monitoring
+from config import init_sentry  # noqa: E402
+init_sentry()
 
 
 def get_secret(secret_id: str) -> str:

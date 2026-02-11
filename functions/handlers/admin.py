@@ -6,6 +6,8 @@ Admin & User Management Handlers
 - Account deletion
 """
 
+import logging
+logger = logging.getLogger(__name__)
 import hashlib
 import hmac
 import secrets
@@ -208,7 +210,7 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
         custom_claims = {role: role in new_roles for role in UserRoleValues.ALL}
         auth.set_custom_user_claims(target_user_id, custom_claims)
     except Exception as e:
-        print(f'Failed to set custom claims: {str(e)}')
+        logger.error(f'Failed to set custom claims: {str(e)}')
 
     # Log security alert
     get_db().collection(Collections.SECURITY_ALERTS).add({
@@ -628,7 +630,7 @@ def admin_update_product_stock(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.UPDATED_AT: get_server_timestamp()
     })
 
-    print(f'Admin {admin_id} updated stock for product {product_id}: '
+    logger.info(f'Admin {admin_id} updated stock for product {product_id}: '
           f'{old_quantity} -> {quantity}. Reason: {reason}')
 
     return create_success_response({
@@ -793,7 +795,7 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
             # Lock out after max failures
             attempt_update[Fields.MFA_LOCKOUT_UNTIL] = datetime.now(UTC) + timedelta(minutes=BusinessRules.MFA_LOCKOUT_MINUTES)
             attempt_update[Fields.MFA_FAILED_ATTEMPTS] = 0
-            print(f'SECURITY: MFA lockout triggered for user {user_id}')
+            logger.info(f'SECURITY: MFA lockout triggered for user {user_id}')
         user_ref.update(attempt_update)
         raise https_fn.HttpsError('unauthenticated', 'Invalid MFA code')
 
@@ -965,7 +967,7 @@ def admin_mfa_verify_backup(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if not code_found:
         # Log failed attempt
-        print(f'SECURITY: Invalid backup code attempt for user {user_id}')
+        logger.info(f'SECURITY: Invalid backup code attempt for user {user_id}')
         raise https_fn.HttpsError('invalid-argument', 'Invalid backup code')
 
     # Remove used code (one-time use)
@@ -1073,7 +1075,7 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
     if stripe_account_id:
         try:
             stripe.Account.delete(stripe_account_id)
-            print(f'GDPR: Deleted Stripe Connect account {stripe_account_id} for user {user_id}')
+            logger.info(f'GDPR: Deleted Stripe Connect account {stripe_account_id} for user {user_id}')
         except Exception as stripe_err:
             # Log but don't block — Stripe cleanup is best-effort, flag for manual review
             get_db().collection(Collections.SECURITY_ALERTS).add({
@@ -1084,7 +1086,7 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
                 Fields.TIMESTAMP: get_server_timestamp(),
                 Fields.RESOLVED: False
             })
-            print(f'WARNING: Failed to delete Stripe account {stripe_account_id}: {stripe_err}')
+            logger.error(f'WARNING: Failed to delete Stripe account {stripe_account_id}: {stripe_err}')
 
     # GDPR: Delete user files from Firebase Storage
     try:
@@ -1095,9 +1097,9 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             for blob in blobs:
                 blob.delete()
             if blobs:
-                print(f'GDPR: Deleted {len(blobs)} files from {prefix}')
+                logger.info(f'GDPR: Deleted {len(blobs)} files from {prefix}')
     except Exception as storage_err:
-        print(f'WARNING: Storage cleanup failed for user {user_id}: {storage_err}')
+        logger.error(f'WARNING: Storage cleanup failed for user {user_id}: {storage_err}')
 
     user_ref.update({
         Fields.EMAIL: f'deleted_{user_id}@anonymized.local',
@@ -1156,7 +1158,7 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
         orders_batch.commit()
 
     if orders_count > 0:
-        print(f'GDPR: Anonymized {orders_count} orders for deleted user {user_id}')
+        logger.info(f'GDPR: Anonymized {orders_count} orders for deleted user {user_id}')
 
     # Deactivate and anonymize products (GDPR: remove seller PII)
     products = get_db().collection(Collections.PRODUCTS)\
@@ -1192,9 +1194,9 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
         try:
             from services.algolia_service import delete_products_from_algolia
             delete_products_from_algolia(product_ids_to_remove)
-            print(f'GDPR: Removed {len(product_ids_to_remove)} products from Algolia')
+            logger.info(f'GDPR: Removed {len(product_ids_to_remove)} products from Algolia')
         except Exception as algolia_err:
-            print(f'WARNING: Algolia cleanup failed: {algolia_err}')
+            logger.error(f'WARNING: Algolia cleanup failed: {algolia_err}')
 
     # GDPR: Anonymize payout records (keep for accounting, remove PII)
     user_payouts = get_db().collection(Collections.PAYOUTS)\
@@ -1220,7 +1222,7 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
         payout_batch.commit()
 
     if payout_count > 0:
-        print(f'GDPR: Anonymized {payout_count} payout records for deleted user {user_id}')
+        logger.info(f'GDPR: Anonymized {payout_count} payout records for deleted user {user_id}')
 
     # Delete cart and favorites (with limits)
     cart_docs = get_db().collection(Collections.USERS).document(user_id).collection(Collections.CART).limit(500).stream()
@@ -1263,11 +1265,11 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.TYPE: SecurityAlertTypes.AUTH_DELETION_FAILED,
             Fields.SEVERITY: SeverityLevels.HIGH,
             Fields.USER_ID: user_id,
-            Fields.ERROR_MESSAGE: str(e),
+            Fields.ERROR_MESSAGE: f'{type(e).__name__}: Auth deletion failed. Check logs.',
             Fields.TIMESTAMP: get_server_timestamp(),
             Fields.RESOLVED: False
         })
-        print(f'CRITICAL: Failed to delete Auth user {user_id}: {str(e)}')
+        logger.critical(f'CRITICAL: Failed to delete Auth user {user_id}: {str(e)}')
         raise https_fn.HttpsError(
             'internal',
             'Account data anonymized but auth deletion failed. Contact support.'

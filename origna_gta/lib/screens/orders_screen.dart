@@ -38,7 +38,7 @@ class _StatusConfig {
 _StatusConfig _orderStatusConfig(OrderStatus status) {
   switch (status) {
     case OrderStatus.pending:
-      return const _StatusConfig(color: Color(0xFF764BA2), icon: Icons.hourglass_empty, label: 'Pending', description: 'Awaiting confirmation');
+      return _StatusConfig(color: DesignTokens.secondary, icon: Icons.hourglass_empty, label: 'Pending', description: 'Awaiting confirmation');
     case OrderStatus.confirmed:
       return _StatusConfig(color: DesignTokens.info, icon: Icons.verified_outlined, label: 'Confirmed', description: 'Payment confirmed');
     case OrderStatus.processing:
@@ -54,7 +54,7 @@ _StatusConfig _orderStatusConfig(OrderStatus status) {
     case OrderStatus.failed:
       return _StatusConfig(color: DesignTokens.error, icon: Icons.error_outline, label: 'Failed', description: 'Something went wrong');
     case OrderStatus.expired:
-      return const _StatusConfig(color: Color(0xFF6B7280), icon: Icons.timer_off, label: 'Expired', description: 'Order has expired');
+      return _StatusConfig(color: DesignTokens.textSecondary, icon: Icons.timer_off, label: 'Expired', description: 'Order has expired');
     case OrderStatus.refunded:
       return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'Refunded', description: 'Full refund issued');
     case OrderStatus.partiallyRefunded:
@@ -84,7 +84,7 @@ _StatusConfig _itemStatusConfig(String status) {
     return _StatusConfig(color: DesignTokens.error, icon: Icons.gavel, label: 'Disputed', description: 'Payment dispute opened');
   } else {
     // 'pending' or unknown
-    return const _StatusConfig(color: Color(0xFF764BA2), icon: Icons.hourglass_empty, label: 'Pending', description: 'Awaiting preparation');
+    return _StatusConfig(color: DesignTokens.secondary, icon: Icons.hourglass_empty, label: 'Pending', description: 'Awaiting preparation');
   }
 }
 
@@ -134,13 +134,7 @@ class OrdersScreen extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-              : [const Color(0xFFF0F2FF), Colors.white],
-        ),
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'My Orders'),
@@ -209,7 +203,7 @@ class OrdersScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          Text('Loading your orders...', style: TextStyle(color: Colors.grey[500], fontSize: 15, fontWeight: FontWeight.w500)),
+          Text('Loading your orders...', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 15, fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -248,11 +242,11 @@ class OrdersScreen extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.grey[900],
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[500], fontSize: 14, height: 1.5)),
+            Text(message, textAlign: TextAlign.center, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, height: 1.5)),
             const SizedBox(height: 28),
             ModernButton(onPressed: () => ref.invalidate(buyerOrdersProvider), label: 'Retry', icon: Icons.refresh),
           ],
@@ -291,7 +285,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E32) : Colors.white,
+        color: isDark ? DesignTokens.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius20),
         border: Border.all(
           color: isDark ? Colors.white.withValues(alpha: 0.08) : DesignTokens.primary.withValues(alpha: 0.12),
@@ -304,7 +298,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+            color: DesignTokens.textPrimary.withValues(alpha: isDark ? 0.3 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -365,7 +359,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
           // ─── DIVIDER ────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Divider(height: 1, color: (isDark ? Colors.white : Colors.grey).withValues(alpha: 0.1)),
+            child: Divider(height: 1, color: (isDark ? Colors.white : DesignTokens.textSecondary).withValues(alpha: 0.1)),
           ),
 
           // ─── ITEMS LIST ─────────────────────────────────────
@@ -373,7 +367,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Text(
               '${order.items.length} item${order.items.length > 1 ? 's' : ''}',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[500], letterSpacing: 0.5),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary, letterSpacing: 0.5),
             ),
           ),
           ...order.items.map((item) => Padding(
@@ -455,8 +449,8 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                 ShaderMask(
                   shaderCallback: (bounds) => LinearGradient(
                     colors: [
-                      isDark ? Colors.white : Colors.grey[900]!,
-                      isDark ? Colors.grey[300]! : Colors.grey[700]!,
+                      isDark ? Colors.white : DesignTokens.textPrimary,
+                      isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
                     ],
                   ).createShader(bounds),
                   child: Text(
@@ -467,7 +461,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                 const SizedBox(height: 4),
                 Text(
                   DateFormat('MMMM dd, yyyy · h:mm a').format(order.createdAt),
-                  style: TextStyle(color: Colors.grey[500], fontSize: 12, fontWeight: FontWeight.w500),
+                  style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -553,10 +547,10 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey[50],
+        color: isDark ? Colors.white.withValues(alpha: 0.04) : DesignTokens.surfaceVariant,
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
         border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.withValues(alpha: 0.1),
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.textSecondary.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -580,7 +574,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
-                        color: isDark ? Colors.white : Colors.grey[900],
+                        color: isDark ? Colors.white : DesignTokens.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -656,7 +650,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
             Container(
               padding: const EdgeInsets.only(top: 14),
               decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+                border: Border(top: BorderSide(color: DesignTokens.textSecondary.withValues(alpha: 0.1))),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -706,10 +700,10 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.08),
+        color: isDark ? Colors.white.withValues(alpha: 0.08) : DesignTokens.textSecondary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(text, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600)),
+      child: Text(text, style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontWeight: FontWeight.w600)),
     );
   }
 
@@ -790,11 +784,11 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Delivery Address', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[500], letterSpacing: 0.3)),
+                Text('Delivery Address', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary, letterSpacing: 0.3)),
                 const SizedBox(height: 4),
                 Text(
                   address.formattedAddress,
-                  style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.4),
+                  style: TextStyle(fontSize: 13, color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary, height: 1.4),
                 ),
               ],
             ),
@@ -838,7 +832,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                 const SizedBox(height: 4),
                 Text(
                   instructions,
-                  style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.4),
+                  style: TextStyle(fontSize: 13, color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary, height: 1.4),
                 ),
               ],
             ),
@@ -853,7 +847,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
   // ──────────────────────────────────────────────────────────────────────────
 
   Widget _buildPaymentStatusBanner(bool isPendingApproval) {
-    final (bannerColor, bannerIcon) = isPendingApproval ? (const Color(0xFF764BA2), Icons.pending_actions) : (DesignTokens.primary, Icons.credit_card);
+    final (bannerColor, bannerIcon) = isPendingApproval ? (DesignTokens.secondary, Icons.pending_actions) : (DesignTokens.primary, Icons.credit_card);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -902,10 +896,10 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     if (!mounted) return;
 
     if (success) {
-      messenger.showSnackBar(const SnackBar(content: Text('Receipt confirmed! Seller will be paid.'), backgroundColor: Colors.green));
+      messenger.showSnackBar(const SnackBar(content: Text('Receipt confirmed! Seller will be paid.'), backgroundColor: DesignTokens.success));
     } else {
       final error = ref.read(buyerOrdersViewModelProvider).errorMessage ?? 'Failed to confirm receipt';
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
     }
 
     setState(() {
@@ -947,7 +941,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
       height: size,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: DesignTokens.textPrimary.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
@@ -962,12 +956,12 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
             height: size,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.grey[200]!, Colors.grey[300]!],
+                colors: [DesignTokens.outlineVariant, DesignTokens.outline],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
-            child: const Icon(Icons.broken_image_outlined, size: 28, color: Colors.grey),
+            child: const Icon(Icons.broken_image_outlined, size: 28, color: DesignTokens.textSecondary),
           ),
         ),
       ),
@@ -994,11 +988,11 @@ class _OrderStatusTimeline extends StatelessWidget {
   ];
 
   static const _stepColors = [
-    Color(0xFF3B82F6), // confirmed - blue
-    Color(0xFF667EEA), // processing - primary
+    DesignTokens.info, // confirmed - blue
+    DesignTokens.primary, // processing - primary
     Color(0xFF06B6D4), // shipped - cyan
     Color(0xFF14B8A6), // in transit - teal
-    Color(0xFF10B981), // delivered - green
+    DesignTokens.success, // delivered - green
   ];
 
   @override
@@ -1053,7 +1047,7 @@ class _OrderStatusTimeline extends StatelessWidget {
           child: Icon(
             isCompleted ? Icons.check_rounded : step.icon,
             size: isCurrent ? 18 : 14,
-            color: isActive ? Colors.white : (isDark ? Colors.grey[600] : Colors.grey[400]),
+            color: isActive ? Colors.white : (isDark ? DesignTokens.textSecondary : DesignTokens.textDisabled),
           ),
         ),
         const SizedBox(height: 6),
@@ -1063,7 +1057,7 @@ class _OrderStatusTimeline extends StatelessWidget {
           style: TextStyle(
             fontSize: 9,
             fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-            color: isActive ? color : (isDark ? Colors.grey[600] : Colors.grey[400]),
+            color: isActive ? color : (isDark ? DesignTokens.textSecondary : DesignTokens.textDisabled),
             letterSpacing: 0.2,
           ),
         ),
@@ -1132,7 +1126,7 @@ class _ImageShimmerState extends State<_ImageShimmer> with SingleTickerProviderS
           height: widget.size,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.grey[200]!, Colors.grey[100]!, Colors.grey[200]!],
+              colors: [DesignTokens.outlineVariant, DesignTokens.surfaceVariant, DesignTokens.outlineVariant],
               stops: [0.0, _controller.value, 1.0],
               begin: const Alignment(-1.5, -0.5),
               end: const Alignment(1.5, 0.5),

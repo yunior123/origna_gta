@@ -6,6 +6,8 @@ Order Lifecycle Management Handlers
 - Order cancellation
 """
 
+import logging
+logger = logging.getLogger(__name__)
 from datetime import UTC, datetime
 from typing import Any
 
@@ -17,6 +19,7 @@ from schema_constants import (
     ApiKeys,
     BusinessRules,
     Collections,
+    DeliveryItemStatusTransitions,
     DeliveryStatusValues,
     Fields,
     OrderStatusValues,
@@ -28,7 +31,12 @@ from schema_constants import (
 from services.email_service import (
     get_order_cancelled_email,
     get_order_delivered_email,
+    get_order_in_transit_email,
+    get_order_partially_refunded_email,
+    get_order_processing_email,
+    get_order_refunded_email,
     get_order_shipped_email,
+    get_seller_notification_email,
     send_email,
 )
 from utils.function_options import DEFAULT_OPTIONS
@@ -248,7 +256,6 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 
             if all_shipped:
                 update_data[Fields.ORDER_STATUS] = OrderStatusValues.SHIPPED
-                update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.SHIPPED
                 update_data[Fields.SHIPPED_AT] = get_server_timestamp()
                 if tracking_number:
                     update_data[Fields.TRACKING_NUMBER] = tracking_number
@@ -275,7 +282,6 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     if new_status == OrderStatusValues.SHIPPED and tracking_number:
         update_data[Fields.TRACKING_NUMBER] = tracking_number
         update_data[Fields.CARRIER] = carrier or ''
-        update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.SHIPPED
         update_data[Fields.SHIPPED_AT] = get_server_timestamp()
 
     order_ref.update(update_data)
@@ -391,15 +397,9 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
             'Sellers cannot mark items as delivered. Buyer must confirm receipt.'
         )
 
-    # Per-item state machine validation
+    # Per-item state machine validation (centralized in schema_constants.py)
     current_item_status = items[item_index].get(Fields.STATUS, DeliveryStatusValues.PENDING)
-    valid_item_transitions = {
-        DeliveryStatusValues.PENDING: [DeliveryStatusValues.SHIPPED],
-        DeliveryStatusValues.SHIPPED: [DeliveryStatusValues.DELIVERED],
-        DeliveryStatusValues.DELIVERED: [DeliveryStatusValues.REFUNDED],
-        DeliveryStatusValues.REFUNDED: [],  # Terminal
-    }
-    allowed_next = valid_item_transitions.get(current_item_status, [])
+    allowed_next = DeliveryItemStatusTransitions.VALID_TRANSITIONS.get(current_item_status, [])
     # Admins can bypass state machine for edge cases
     if not is_admin and new_status not in allowed_next:
         raise https_fn.HttpsError(
@@ -431,15 +431,9 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         if fresh_item_index is None:
             raise https_fn.HttpsError('not-found', f'Product {product_id} not found in order')
 
-        # Re-validate state transition against fresh data
+        # Re-validate state transition against fresh data (centralized)
         fresh_item_status = fresh_items[fresh_item_index].get(Fields.STATUS, DeliveryStatusValues.PENDING)
-        valid_item_transitions = {
-            DeliveryStatusValues.PENDING: [DeliveryStatusValues.SHIPPED],
-            DeliveryStatusValues.SHIPPED: [DeliveryStatusValues.DELIVERED],
-            DeliveryStatusValues.DELIVERED: [DeliveryStatusValues.REFUNDED],
-            DeliveryStatusValues.REFUNDED: [],
-        }
-        allowed_next = valid_item_transitions.get(fresh_item_status, [])
+        allowed_next = DeliveryItemStatusTransitions.VALID_TRANSITIONS.get(fresh_item_status, [])
         if not is_admin and new_status not in allowed_next:
             raise https_fn.HttpsError(
                 'failed-precondition',
@@ -474,12 +468,10 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         if all_delivered and current_order_status != OrderStatusValues.DELIVERED:
             update_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
-            update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.DELIVERED
         elif all_shipped and not all_delivered and current_order_status in [
             OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED
         ]:
             update_data[Fields.ORDER_STATUS] = OrderStatusValues.SHIPPED
-            update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.SHIPPED
 
         transaction.update(order_ref, update_data)
         return all_delivered, all_shipped
@@ -622,7 +614,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
             # CRITICAL: Refund failed — mark for manual review, do NOT silently continue
             order_ref.update({
                 Fields.REQUIRES_MANUAL_REVIEW: True,
-                Fields.MANUAL_REVIEW_REASON: f'Refund failed during cancellation: {str(e)}',
+                Fields.MANUAL_REVIEW_REASON: f'Refund failed during cancellation ({type(e).__name__}). Check logs.',
                 Fields.PAYMENT_STATUS: payment_status,  # Restore original payment status
                 Fields.UPDATED_AT: get_server_timestamp(),
             })
@@ -640,7 +632,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
             new_payment_status = PaymentStatusValues.CANCELLED
         except stripe.error.StripeError as e:
-            print(f'PaymentIntent cancel failed: {str(e)}')
+            logger.error(f'PaymentIntent cancel failed: {str(e)}')
 
     # AUDIT FIX: Atomic batch — stock restore + final cancel status in ONE commit
     # Prevents double-restore if process crashes between stock restore and status update
@@ -832,7 +824,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
             idempotency_key=f'refund_{order_id}_{product_id}'
         )
     except stripe.error.StripeError as e:
-        print(f'ERROR: Refund failed for order {order_id}, product {product_id}: {e}')
+        logger.error(f'ERROR: Refund failed for order {order_id}, product {product_id}: {e}')
         raise https_fn.HttpsError('internal', 'Refund failed. Please try again or contact support.') from e
 
     # Restore stock for this item
@@ -936,7 +928,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
                     })
             except stripe.error.StripeError as e:
                 # Log failed reversal but don't fail the refund
-                print(f'Transfer reversal failed for {seller_id}: {str(e)}')
+                logger.error(f'Transfer reversal failed for {seller_id}: {str(e)}')
 
     # Order items already updated atomically in _apply_refund_atomically transaction
 
@@ -960,6 +952,16 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+
+    # AUDIT FIX: Rate limit shipping approval to prevent abuse
+    from services.rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid, action='approve_shipping_cost',
+        max_requests=10, window_minutes=1
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
 
     user_id = req.auth.uid
     data = req.data
@@ -1038,7 +1040,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                         amount=new_total_cents
                     )
                 except stripe.error.StripeError as e:
-                    print(f'Failed to update payment amount: {str(e)}')
+                    logger.error(f'Failed to update payment amount: {str(e)}')
     else:
         # Buyer rejected, cancel order
         cancel_payment_status = order_data.get(Fields.PAYMENT_STATUS)
@@ -1053,7 +1055,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                 )
                 cancel_payment_status = PaymentStatusValues.CANCELLED
             except stripe.error.StripeError as e:
-                print(f'PaymentIntent cancel failed on shipping rejection: {str(e)}')
+                logger.error(f'PaymentIntent cancel failed on shipping rejection: {str(e)}')
 
         order_ref.update({
             f'{Fields.SHIPPING_APPROVAL}.{Fields.STATUS}': ShippingApprovalStatusValues.REJECTED,
@@ -1099,7 +1101,7 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=req.auth.uid, action='update_shipping_cost',
-        max_requests=10, window_minutes=1, fail_closed=False
+        max_requests=10, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError('resource-exhausted', msg)
@@ -1187,7 +1189,7 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                     import stripe as _stripe
                     _stripe.PaymentIntent.modify(payment_intent_id, amount=new_total_cents)
                 except Exception as e:
-                    print(f'Failed to update Stripe PI amount: {str(e)}')
+                    logger.error(f'Failed to update Stripe PI amount: {str(e)}')
 
         order_ref.update(update_data)
 
@@ -1225,14 +1227,22 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
             if buyer_doc.exists:
                 buyer_email = buyer_doc.to_dict().get(Fields.EMAIL)
         except Exception as e:
-            print(f'Failed to fetch buyer email for order {order_id}: {str(e)}')
+            logger.error(f'Failed to fetch buyer email for order {order_id}: {str(e)}')
 
     if not buyer_email:
-        print(f'⚠️ No email found for user {user_id}, skipping notification for order {order_id}')
+        logger.warning(f'⚠️ No email found for user {user_id}, skipping notification for order {order_id}')
         return
 
     try:
-        if new_status == OrderStatusValues.SHIPPED:
+        if new_status == OrderStatusValues.PROCESSING:
+            processing_html = get_order_processing_email(after_data, order_id)
+            send_email(
+                to_email=buyer_email,
+                subject=f'Order #{order_id[:8]} Is Being Processed - Origna',
+                html_content=processing_html
+            )
+
+        elif new_status == OrderStatusValues.SHIPPED:
             tracking_number = after_data.get(Fields.TRACKING_NUMBER, 'N/A')
             carrier = after_data.get(Fields.CARRIER, 'N/A')
 
@@ -1244,7 +1254,7 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 html_content=shipped_html
             )
 
-            # Also notify sellers that shipment confirmed
+            # Also notify sellers that shipment confirmed — filtered to their items only
             seller_ids = set(item.get(Fields.SELLER_ID) for item in after_data.get(Fields.ITEMS, []))
             for sid in seller_ids:
                 try:
@@ -1252,13 +1262,24 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                     if seller_doc.exists:
                         seller_email = seller_doc.to_dict().get(Fields.EMAIL)
                         if seller_email:
+                            # Use seller notification with seller_id filter (multi-seller privacy)
+                            seller_shipped_html = get_seller_notification_email(after_data, order_id, sid)
                             send_email(
                                 to_email=seller_email,
                                 subject=f'Order {order_id[:8]} Shipped Successfully - Origna',
-                                html_content=shipped_html
+                                html_content=seller_shipped_html
                             )
                 except Exception as e:
-                    print(f'⚠️ Failed to send shipped notification to seller {sid}: {str(e)}')
+                    logger.warning(f'⚠️ Failed to send shipped notification to seller {sid}: {str(e)}')
+
+        elif new_status == OrderStatusValues.IN_TRANSIT:
+            # Email buyer — in transit update with tracking info
+            in_transit_html = get_order_in_transit_email(after_data, order_id)
+            send_email(
+                to_email=buyer_email,
+                subject=f'Order #{order_id[:8]} Is In Transit - Origna',
+                html_content=in_transit_html
+            )
 
         elif new_status == OrderStatusValues.DELIVERED:
             # Email buyer — branded template with receipt + confirm receipt CTA
@@ -1278,5 +1299,23 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 html_content=cancelled_html
             )
 
+        elif new_status == OrderStatusValues.REFUNDED:
+            refund_amount = after_data.get(Fields.CUMULATIVE_REFUNDED_CENTS, 0)
+            refunded_html = get_order_refunded_email(after_data, order_id, refund_amount)
+            send_email(
+                to_email=buyer_email,
+                subject=f'Refund Processed for Order #{order_id[:8]} - Origna',
+                html_content=refunded_html
+            )
+
+        elif new_status == OrderStatusValues.PARTIALLY_REFUNDED:
+            refund_amount = after_data.get(Fields.PARTIAL_REFUND_AMOUNT_CENTS, 0)
+            partial_html = get_order_partially_refunded_email(after_data, order_id, refund_amount)
+            send_email(
+                to_email=buyer_email,
+                subject=f'Partial Refund for Order #{order_id[:8]} - Origna',
+                html_content=partial_html
+            )
+
     except Exception as e:
-        print(f'🚨 Failed to send order status email for order {order_id}: {str(e)}')
+        logger.error(f'🚨 Failed to send order status email for order {order_id}: {str(e)}')

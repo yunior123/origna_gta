@@ -521,7 +521,7 @@ class _TermsBodyState extends State<_TermsBody> {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                          color: isDark ? Colors.white : DesignTokens.textPrimary,
                           letterSpacing: -0.2,
                         ),
                       ),

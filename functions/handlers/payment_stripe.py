@@ -6,6 +6,8 @@ Stripe Payment Handlers
 - Connect account management
 """
 
+import logging
+logger = logging.getLogger(__name__)
 import contextlib
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -50,6 +52,7 @@ from schema_constants import (
     WebhookStatusValues,
 )
 from services.email_service import get_order_confirmation_email, get_seller_notification_email, send_email
+from services.pdf_invoice_service import generate_invoice_pdf
 from services.rate_limiter import RateLimiter
 from services.shipping_service import calculate_shipping_cost, get_tax_rate
 from utils.function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS
@@ -200,7 +203,7 @@ def _rollback_checkout(validated_items: list, order_ref) -> None:
         transaction = get_db().transaction()
         rollback_stock(transaction)
     except Exception as rollback_err:
-        print(f'🚨 CRITICAL: Stock rollback failed during checkout rollback: {rollback_err}')
+        logger.critical(f'🚨 CRITICAL: Stock rollback failed during checkout rollback: {rollback_err}')
 
     # Mark order as failed (keep for audit trail instead of deleting)
     try:
@@ -212,7 +215,7 @@ def _rollback_checkout(validated_items: list, order_ref) -> None:
             Fields.UPDATED_AT: get_server_timestamp(),
         })
     except Exception as order_err:
-        print(f'🚨 CRITICAL: Order status rollback failed: {order_err}')
+        logger.critical(f'🚨 CRITICAL: Order status rollback failed: {order_err}')
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -430,7 +433,7 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
         return tax_amount_cents, tax_breakdown, item_taxes, is_reverse_charge
 
     except Exception as e:
-        print(f'Stripe Tax API error: {e}')
+        logger.error(f'Stripe Tax API error: {e}')
         # Fall back to manual calculation
         return None, None, None, False
 
@@ -686,7 +689,6 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.CATEGORY_ID: product_data.get(Fields.CATEGORY_ID, 0),
             Fields.TAX_CODE: get_tax_code_for_category(product_data.get(Fields.CATEGORY_ID, 0)),
             Fields.STATUS: DeliveryStatusValues.PENDING,  # Per-item status: pending | shipped | delivered | refunded
-            Fields.DELIVERY_STATUS: DeliveryStatusValues.PENDING,  # Parallel field (both are written for consistency)
             Fields.TRACKING_NUMBER: None,
             Fields.CARRIER: None,
             Fields.SHIPPED_AT: None,
@@ -732,7 +734,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         shipping_cost_dollars = calculate_shipping_cost(validated_items, shipping_address, speed=delivery_speed)
         shipping_cost_cents = round(shipping_cost_dollars * 100)
     except Exception as e:
-        print(f'Shipping calculation error: {str(e)}')
+        logger.error(f'Shipping calculation error: {str(e)}')
         raise https_fn.HttpsError('internal', 'Shipping calculation failed. Please try again.') from e
 
     # Calculate taxes per-item (server-side) - all in cents to avoid rounding errors
@@ -747,12 +749,12 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
             # Log if Stripe applied reverse charge (B2B exemption)
             if is_reverse_charge:
-                print(f'✅ Stripe applied B2B reverse charge for user {user_id} with GST {gst_number[:6]}****')
+                logger.info(f'✅ Stripe applied B2B reverse charge for user {user_id} with GST {gst_number[:6]}****')
         else:
             # SECURITY FIX: Fall back to manual calculation on Stripe Tax API error
             # IMPORTANT: Do NOT apply B2B exemption (GST-based) in fallback mode
             # because we cannot validate the GST number without Stripe
-            print(f'⚠️ Stripe Tax API failed, falling back to manual calculation for user {user_id}')
+            logger.warning(f'⚠️ Stripe Tax API failed, falling back to manual calculation for user {user_id}')
 
             tax_amount_cents = 0
             item_taxes = []
@@ -864,7 +866,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     except https_fn.HttpsError:
         raise  # Re-raise HttpsErrors (already safe messages)
     except Exception as e:
-        print(f'Stock reservation error: {str(e)}')
+        logger.error(f'Stock reservation error: {str(e)}')
         raise https_fn.HttpsError('internal', 'Could not reserve stock. Please try again.') from e
 
     # Create order in Firestore — all amounts in cents
@@ -1069,14 +1071,14 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('unavailable', 'Could not connect to payment service. Please check your connection and try again.') from None
     except stripe.error.StripeError as e:
         _rollback_checkout(validated_items, order_ref)
-        print(f'Stripe error in checkout: {str(e)}')
+        logger.error(f'Stripe error in checkout: {str(e)}')
         raise https_fn.HttpsError('internal', 'Payment processing failed. Please try again.') from e
     except https_fn.HttpsError:
         # Re-raise already-safe HttpsErrors (from validation, stock checks, etc.)
         raise
     except Exception as e:
         _rollback_checkout(validated_items, order_ref)
-        print(f'Unexpected checkout error: {str(e)}')
+        logger.error(f'Unexpected checkout error: {str(e)}')
         raise https_fn.HttpsError('internal', 'An unexpected error occurred. Please try again.') from e
 
 
@@ -1135,7 +1137,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         )
 
         if not allowed:
-            print(f'⚠️ Stripe webhook rate limit exceeded for IP: {client_ip[:10]}...')  # Sanitized log
+            logger.warning(f'⚠️ Stripe webhook rate limit exceeded for IP: {client_ip[:10]}...')  # Sanitized log
             return https_fn.Response('Rate limit exceeded', status=429)
 
     # SECURITY FIX #2: Get payload and signature
@@ -1143,7 +1145,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     sig_header = req.headers.get('Stripe-Signature')
 
     if not sig_header:
-        print(f'⚠️ Stripe webhook missing signature from IP: {client_ip[:10]}...')
+        logger.warning(f'⚠️ Stripe webhook missing signature from IP: {client_ip[:10]}...')
         return https_fn.Response('Missing signature', status=400)
 
     try:
@@ -1152,14 +1154,14 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             payload, sig_header, STRIPE_WEBHOOK_SECRET
         )
     except ValueError:
-        print(f'⚠️ Stripe webhook invalid payload from IP: {client_ip[:10]}...')  # Sanitized
+        logger.warning(f'⚠️ Stripe webhook invalid payload from IP: {client_ip[:10]}...')  # Sanitized
         return https_fn.Response('Invalid payload', status=400)
     except Exception as e:
         # Handle SignatureVerificationError and other exceptions
         if 'SignatureVerificationError' in str(type(e).__name__):
-            print(f'⚠️ Stripe webhook invalid signature from IP: {client_ip[:10]}...')  # Sanitized
+            logger.warning(f'⚠️ Stripe webhook invalid signature from IP: {client_ip[:10]}...')  # Sanitized
             return https_fn.Response('Invalid signature', status=400)
-        print(f'⚠️ Stripe webhook verification error: {type(e).__name__}')  # Sanitized (no details)
+        logger.warning(f'⚠️ Stripe webhook verification error: {type(e).__name__}')  # Sanitized (no details)
         return https_fn.Response('Signature verification error', status=500)
 
     event_id = event['id']
@@ -1173,7 +1175,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     current_time = int(_time.time())
     event_age_seconds = current_time - event_created
     if not IS_EMULATOR and event_age_seconds > BusinessRules.WEBHOOK_MAX_AGE_SECONDS:
-        print(f'⚠️ Rejecting stale webhook: {event_type} age={event_age_seconds}s (event: {event_id[:16]}...)')
+        logger.warning(f'⚠️ Rejecting stale webhook: {event_type} age={event_age_seconds}s (event: {event_id[:16]}...)')
         return https_fn.Response('Event too old', status=400)
 
     # SECURITY FIX #4: Atomic idempotency check using create() to prevent race conditions.
@@ -1198,16 +1200,16 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             if webhook_doc.exists:
                 existing_status = webhook_doc.to_dict().get(Fields.STATUS, WebhookStatusValues.COMPLETED)
                 if existing_status == WebhookStatusValues.COMPLETED:
-                    print(f'✓ Stripe webhook already processed: {event_type} (event: {event_id[:16]}...)')
+                    logger.info(f'✓ Stripe webhook already processed: {event_type} (event: {event_id[:16]}...)')
                     return https_fn.Response('Event already processed', status=200)
                 # Allow retry of failed events
-                print(f'♻️ Retrying failed webhook: {event_type} (event: {event_id[:16]}...)')
+                logger.error(f'♻️ Retrying failed webhook: {event_type} (event: {event_id[:16]}...)')
                 webhook_ref.update({
                     Fields.STATUS: WebhookStatusValues.PROCESSING,
                     Fields.TIMESTAMP: get_server_timestamp(),
                 })
         except Exception as e:
-            print(f'⚠️ Idempotency check error: {type(e).__name__}')
+            logger.warning(f'⚠️ Idempotency check error: {type(e).__name__}')
 
     # Route event to appropriate handler
     try:
@@ -1240,13 +1242,13 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         elif event_type == 'account.updated':
             process_account_updated(event['data']['object'])
         else:
-            print(f'ℹ️ Unhandled Stripe event type: {event_type}')
+            logger.info(f'ℹ️ Unhandled Stripe event type: {event_type}')
 
         # Mark as completed
         with contextlib.suppress(Exception):
             webhook_ref.update({Fields.STATUS: WebhookStatusValues.COMPLETED})
 
-        print(f'✓ Stripe webhook processed successfully: {event_type}')
+        logger.info(f'✓ Stripe webhook processed successfully: {event_type}')
         return https_fn.Response('Success', status=200)
 
     except Exception as e:
@@ -1256,7 +1258,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
 
         # SECURITY FIX #6: Sanitized error logging (no sensitive data exposure)
         error_type = type(e).__name__
-        print(f'❌ Error processing Stripe webhook: {error_type} for event_type: {event_type}')
+        logger.error(f'❌ Error processing Stripe webhook: {error_type} for event_type: {event_type}')
         # Don't expose internal error details to webhook caller
         return https_fn.Response('Internal processing error', status=500)
 
@@ -1269,20 +1271,20 @@ def process_checkout_session_completed(session: dict) -> str | None:
     # SECURITY: For async payment methods (bank transfers, Interac), the session
     # completes before payment arrives. Defer to async_payment_succeeded webhook.
     if session.get('payment_status') != 'paid':
-        print(f'Session {session.get("id")} payment_status={session.get("payment_status")}, deferring to async_payment webhook')
+        logger.info(f'Session {session.get("id")} payment_status={session.get("payment_status")}, deferring to async_payment webhook')
         return None
 
     order_id = session.get('metadata', {}).get(Fields.ORDER_ID)
 
     if not order_id:
-        print('No orderId in session metadata')
+        logger.info('No orderId in session metadata')
         return None
 
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
 
     if not order_doc.exists:
-        print(f'Order {order_id} not found')
+        logger.info(f'Order {order_id} not found')
         return None
 
     order_data = order_doc.to_dict()
@@ -1290,14 +1292,14 @@ def process_checkout_session_completed(session: dict) -> str | None:
     # SECURITY: Verify current order state — don't overwrite cancelled/expired orders
     current_status = order_data.get(Fields.ORDER_STATUS)
     if current_status != OrderStatusValues.PENDING:
-        print(f'Order {order_id} status is {current_status}, not PENDING — skipping')
+        logger.info(f'Order {order_id} status is {current_status}, not PENDING — skipping')
         return f'Order {order_id} skipped (status: {current_status})'
 
     # SECURITY: Verify payment amount matches order amount
     session_amount = session.get('amount_total', 0)
     expected_amount = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0)
     if session_amount != expected_amount:
-        print(f'AMOUNT MISMATCH: session={session_amount}, expected={expected_amount} for {order_id}')
+        logger.info(f'AMOUNT MISMATCH: session={session_amount}, expected={expected_amount} for {order_id}')
         _restore_stock_and_cancel_order(order_id, order_data, f'Amount mismatch: paid {session_amount} expected {expected_amount}')
         return f'Order {order_id} cancelled - amount mismatch'
 
@@ -1313,13 +1315,13 @@ def process_checkout_session_completed(session: dict) -> str | None:
         product_doc = product_ref.get()
 
         if not product_doc.exists:
-            print(f'⚠️ Product {product_id} no longer exists, cancelling order {order_id}')
+            logger.warning(f'⚠️ Product {product_id} no longer exists, cancelling order {order_id}')
             _restore_stock_and_cancel_order(order_id, order_data, f'Product {product_id} removed')
             return f'Order {order_id} cancelled - product removed'
 
         product_data = product_doc.to_dict()
         if not product_data.get(Fields.IS_ACTIVE, False):
-            print(f'⚠️ Product {product_id} deactivated, cancelling order {order_id}')
+            logger.warning(f'⚠️ Product {product_id} deactivated, cancelling order {order_id}')
             _restore_stock_and_cancel_order(order_id, order_data, f'Product {product_id} deactivated')
             return f'Order {order_id} cancelled - product deactivated'
 
@@ -1327,7 +1329,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
         seller_ref = get_db().collection(Collections.USERS).document(seller_id)
         seller_doc = seller_ref.get()
         if seller_doc.exists and seller_doc.to_dict().get(Fields.SUSPENDED, False):
-            print(f'⚠️ Seller {seller_id} suspended, cancelling order {order_id}')
+            logger.warning(f'⚠️ Seller {seller_id} suspended, cancelling order {order_id}')
             _restore_stock_and_cancel_order(order_id, order_data, f'Seller {seller_id} suspended')
             return f'Order {order_id} cancelled - seller suspended'
 
@@ -1351,13 +1353,30 @@ def process_checkout_session_completed(session: dict) -> str | None:
 
         if buyer_email:
             buyer_email_html = get_order_confirmation_email(order_data, order_id)
+
+            # Generate PDF invoice attachment
+            pdf_attachments = None
+            try:
+                import base64
+                pdf_bytes = generate_invoice_pdf(order_data, order_id)
+                if pdf_bytes:
+                    short_oid = order_id[:8] if len(order_id) > 8 else order_id
+                    pdf_attachments = [{
+                        "ContentType": "application/pdf",
+                        "Filename": f"Origna_Invoice_{short_oid}.pdf",
+                        "Base64Content": base64.b64encode(pdf_bytes).decode('utf-8'),
+                    }]
+            except Exception as e:
+                logger.warning(f'PDF invoice generation failed (non-critical): {str(e)}')
+
             send_email(
                 to_email=buyer_email,
                 subject='Order Confirmation - Origna',
-                html_content=buyer_email_html
+                html_content=buyer_email_html,
+                attachments=pdf_attachments,
             )
 
-        # Email to sellers
+        # Email to sellers — filter items per seller (multi-seller privacy)
         sellers = set(item[Fields.SELLER_ID] for item in order_data[Fields.ITEMS])
         for seller_id in sellers:
             # Get seller email from user document
@@ -1373,13 +1392,13 @@ def process_checkout_session_completed(session: dict) -> str | None:
                         html_content=seller_email_html
                     )
     except Exception as e:
-        print(f'Failed to send confirmation emails: {str(e)}')
+        logger.error(f'Failed to send confirmation emails: {str(e)}')
 
     # Clear user's cart
     try:
         _clear_user_cart(order_data[Fields.USER_ID])
     except Exception as e:
-        print(f'Failed to clear cart: {str(e)}')
+        logger.error(f'Failed to clear cart: {str(e)}')
 
     return f'Order {order_id} confirmed'
 
@@ -1515,16 +1534,16 @@ def _restore_stock_and_cancel_order(order_id: str, order_data: dict, reason: str
                 )
                 refund_succeeded = True
             else:
-                print(f'⚠️ PI {payment_intent_id} in unexpected state: {pi.status}, skipping refund/cancel')
+                logger.warning(f'⚠️ PI {payment_intent_id} in unexpected state: {pi.status}, skipping refund/cancel')
         except stripe.error.StripeError as e:
-            print(f'🚨 CRITICAL: Failed to refund/cancel PI for invalidated order {order_id}: {str(e)}')
+            logger.critical(f'🚨 CRITICAL: Failed to refund/cancel PI for invalidated order {order_id}: {str(e)}')
             # SECURITY FIX: If refund fails, flag for manual review — buyer must not lose money
             get_db().collection(Collections.SECURITY_ALERTS).add({
                 Fields.TYPE: SecurityAlertTypes.REFUND_FAILED,
                 Fields.SEVERITY: SeverityLevels.CRITICAL,
                 Fields.ORDER_ID: order_id,
                 Fields.PAYMENT_INTENT_ID: payment_intent_id,
-                Fields.REASON: f'Refund/cancel failed during post-payment validation: {str(e)}',
+                Fields.REASON: f'Refund/cancel failed during post-payment validation ({type(e).__name__}). Check logs.',
                 Fields.TIMESTAMP: get_server_timestamp(),
                 Fields.RESOLVED: False,
             })
@@ -1605,7 +1624,7 @@ def process_payment_intent_succeeded(payment_intent: dict) -> str | None:
 
     # For manual capture mode (authorized state), do NOT overwrite to captured.
     # The capture_payment function handles this transition properly.
-    print(f'ℹ️ payment_intent.succeeded for order {order_id} skipped: current status={current_status}')
+    logger.info(f'ℹ️ payment_intent.succeeded for order {order_id} skipped: current status={current_status}')
     return f'Order {order_id} status unchanged (current: {current_status})'
 
 
@@ -1709,7 +1728,7 @@ def process_charge_refunded(charge: dict) -> str | None:
         # This prevents the race condition where refund + capture execute simultaneously.
         current_payment_status = order_data.get(Fields.PAYMENT_STATUS, '')
         if current_payment_status in (PaymentStatusValues.CAPTURING, PaymentStatusValues.CANCELLING):
-            print(f'⚠️ Refund webhook for order {order_id} blocked — payment status is {current_payment_status}')
+            logger.warning(f'⚠️ Refund webhook for order {order_id} blocked — payment status is {current_payment_status}')
             # Return 500-equivalent to trigger Stripe retry (status will resolve by then)
             raise Exception(f'Order {order_id} has transitional payment status: {current_payment_status}. Retry later.')
 
@@ -1717,7 +1736,7 @@ def process_charge_refunded(charge: dict) -> str | None:
         # was already processed to prevent duplicate reversals on webhook retry.
         previously_refunded = order_data.get(Fields.CUMULATIVE_REFUNDED_CENTS, 0)
         if previously_refunded >= amount_refunded:
-            print(f'ℹ️ Refund for order {order_id} already processed (cumulative={previously_refunded}, current={amount_refunded})')
+            logger.info(f'ℹ️ Refund for order {order_id} already processed (cumulative={previously_refunded}, current={amount_refunded})')
             return f'Order {order_id} refund already processed (idempotent)'
 
         # AUDIT FIX (CRITICAL-019): Reverse transfers to sellers on refund.
@@ -1744,7 +1763,7 @@ def process_charge_refunded(charge: dict) -> str | None:
             max_reversible = payout_net - already_reversed_cents
 
             if max_reversible <= 0:
-                print(f'ℹ️ Payout {payout_doc.id} fully reversed already, skipping')
+                logger.info(f'ℹ️ Payout {payout_doc.id} fully reversed already, skipping')
                 continue
 
             try:
@@ -1785,11 +1804,11 @@ def process_charge_refunded(charge: dict) -> str | None:
                     Fields.CUMULATIVE_REVERSED_CENTS: new_cumulative,
                 })
                 reversed_count += 1
-                print(f'✓ Reversed transfer {transfer_id} for refund on order {order_id} (amount={actual_reversed})')
+                logger.info(f'✓ Reversed transfer {transfer_id} for refund on order {order_id} (amount={actual_reversed})')
 
             except Exception as e:
-                print(f'⚠️ Failed to reverse transfer {transfer_id} on refund: {str(e)}')
-                reversal_errors.append({Fields.TRANSFER_ID: transfer_id, Fields.ERROR: str(e)})
+                logger.warning(f'⚠️ Failed to reverse transfer {transfer_id} on refund: {str(e)}')
+                reversal_errors.append({Fields.TRANSFER_ID: transfer_id, Fields.ERROR: type(e).__name__})
 
         # Log security alert and auto-suspend sellers if any reversals failed
         if reversal_errors:
@@ -1822,7 +1841,7 @@ def process_charge_refunded(charge: dict) -> str | None:
                                 Fields.SUSPENSION_REASON: f'Transfer reversal failed for order {order_id}. Manual review required.',
                                 Fields.SUSPENDED_AT: get_server_timestamp(),
                             })
-                            print(f'🚫 Auto-suspended seller {fp_seller_id} due to failed transfer reversal')
+                            logger.error(f'🚫 Auto-suspended seller {fp_seller_id} due to failed transfer reversal')
 
         if is_full_refund:
             order_ref.update({
@@ -1876,7 +1895,7 @@ def process_dispute_created(dispute: dict) -> str | None:
     })
 
     if not payment_intent_id:
-        print(f'⚠️ Dispute {dispute.get("id")} has no payment_intent, cannot find order')
+        logger.warning(f'⚠️ Dispute {dispute.get("id")} has no payment_intent, cannot find order')
         return f'Dispute logged for charge {charge_id}, no payment_intent to look up order'
 
     # CRITICAL: Auto-reverse all transfers linked to this payment intent
@@ -1909,7 +1928,7 @@ def process_dispute_created(dispute: dict) -> str | None:
 
             if not transfer_id:
                 # AUDIT FIX (D1-1): Alert on missing transfer ID instead of silent skip
-                print(f'🚨 DISPUTE: Payout {payout_doc.id} has no stripeTransferId — cannot reverse')
+                logger.error(f'🚨 DISPUTE: Payout {payout_doc.id} has no stripeTransferId — cannot reverse')
                 # NOTE: Use datetime.now() inside ArrayUnion — Firestore SDK
                 # cannot serialize SERVER_TIMESTAMP sentinels inside arrays.
                 alert_ref[1].update({
@@ -1937,7 +1956,7 @@ def process_dispute_created(dispute: dict) -> str | None:
                 already_reversed_cents = payout_data.get(Fields.CUMULATIVE_REVERSED_CENTS, 0)
                 max_reversible = payout_net - already_reversed_cents
                 if max_reversible <= 0:
-                    print(f'✓ Transfer {transfer_id} already fully reversed (idempotent skip)')
+                    logger.info(f'✓ Transfer {transfer_id} already fully reversed (idempotent skip)')
                     continue
 
                 if dispute_amount and order_total and dispute_amount < order_total:
@@ -1968,25 +1987,26 @@ def process_dispute_created(dispute: dict) -> str | None:
                 })
 
                 reversed_count += 1
-                print(f'✓ Reversed transfer {transfer_id} due to dispute ({reversal_amount}¢)')
+                logger.info(f'✓ Reversed transfer {transfer_id} due to dispute ({reversal_amount}¢)')
 
             except stripe.error.InvalidRequestError as e:
                 # AUDIT FIX (D1-2): Handle specific Stripe errors (already reversed, insufficient funds)
                 error_code = getattr(e, 'code', 'unknown')
-                print(f'⚠️ Stripe error reversing transfer {transfer_id}: {error_code} - {str(e)}')
+                logger.warning(f'⚠️ Stripe error reversing transfer {transfer_id}: {error_code} - {str(e)}')
+                is_insufficient = 'insufficient' in str(e).lower()
                 alert_ref[1].update({
                     Fields.REVERSAL_ERRORS: get_firestore().ArrayUnion([{
                         Fields.TRANSFER_ID: transfer_id,
-                        Fields.ERROR: str(e),
+                        Fields.ERROR: f'{type(e).__name__}: {error_code}',
                         Fields.ERROR_CODE: error_code,
-                        Fields.SEVERITY: SeverityLevels.CRITICAL if 'insufficient' in str(e).lower() else SeverityLevels.HIGH,
+                        Fields.SEVERITY: SeverityLevels.CRITICAL if is_insufficient else SeverityLevels.HIGH,
                         Fields.TIMESTAMP: datetime.now(UTC)
                     }])
                 })
 
                 # AUDIT FIX (CRITICAL-016): Auto-suspend seller on insufficient funds
                 # This means the seller withdrew funds — block further payouts
-                if 'insufficient' in str(e).lower():
+                if is_insufficient:
                     seller_id_from_payout = payout_data.get(Fields.SELLER_ID)
                     if seller_id_from_payout:
                         with contextlib.suppress(Exception):
@@ -1995,15 +2015,15 @@ def process_dispute_created(dispute: dict) -> str | None:
                                 Fields.SUSPENSION_REASON: f'Dispute reversal failed (insufficient funds) for dispute {dispute.get("id")}. Manual review required.',
                                 Fields.SUSPENDED_AT: get_server_timestamp(),
                             })
-                            print(f'🚫 Auto-suspended seller {seller_id_from_payout} due to insufficient funds during dispute reversal')
+                            logger.info(f'🚫 Auto-suspended seller {seller_id_from_payout} due to insufficient funds during dispute reversal')
 
             except Exception as e:
                 # Log failure but continue processing other transfers
-                print(f'⚠️ Failed to reverse transfer {transfer_id}: {str(e)}')
+                logger.warning(f'⚠️ Failed to reverse transfer {transfer_id}: {str(e)}')
                 alert_ref[1].update({
                     Fields.REVERSAL_ERRORS: get_firestore().ArrayUnion([{
                         Fields.TRANSFER_ID: transfer_id,
-                        Fields.ERROR: str(e),
+                        Fields.ERROR: type(e).__name__,
                         Fields.TIMESTAMP: datetime.now(UTC)
                     }])
                 })
@@ -2101,20 +2121,22 @@ def process_dispute_closed(dispute: dict) -> str | None:
                             Fields.UPDATED_AT: get_server_timestamp(),
                         })
                         re_transferred += 1
-                        print(f'\u2713 Re-transferred {reversed_cents}\u00a2 to seller after dispute won')
+                        logger.info(f'\u2713 Re-transferred {reversed_cents}\u00a2 to seller after dispute won')
                     except Exception as e:
-                        print(f'\u26a0\ufe0f Failed to re-transfer to seller: {e}')
+                        logger.error(f'\u26a0\ufe0f Failed to re-transfer to seller: {e}')
+                        # AUDIT FIX: Sanitize exception before storing in Firestore
+                        error_type = type(e).__name__
                         get_db().collection(Collections.SECURITY_ALERTS).add({
                             Fields.TYPE: SecurityAlertTypes.DISPUTE_CREATED,
                             Fields.SEVERITY: SeverityLevels.CRITICAL,
                             Fields.ORDER_ID: order_id,
-                            Fields.ERROR_MESSAGE: f'Re-transfer failed after dispute won: {e}',
+                            Fields.ERROR_MESSAGE: f'Re-transfer failed after dispute won ({error_type}). Check logs.',
                             Fields.TIMESTAMP: get_server_timestamp(),
                             Fields.RESOLVED: False
                         })
 
                 if re_transferred > 0:
-                    print(f'Dispute won: re-transferred {re_transferred} payouts for order {order_id}')
+                    logger.info(f'Dispute won: re-transferred {re_transferred} payouts for order {order_id}')
 
             order_doc.reference.update(update_data)
 
@@ -2195,21 +2217,21 @@ def process_account_updated(account: dict) -> None:
     Updates the user's Firestore document when their Stripe account status changes.
     This is critical for enabling sellers after they complete onboarding.
     """
-    print("\n🏪 Processing: account.updated")
+    logger.info("\n🏪 Processing: account.updated")
 
     account_id = account.get('id')
     if not account_id:
-        print("  ⚠️ No account ID in event")
+        logger.warning("  ⚠️ No account ID in event")
         return
 
-    print(f"  Account ID: {account_id}")
-    print(f"  Charges Enabled: {account.get('charges_enabled')}")
-    print(f"  Payouts Enabled: {account.get('payouts_enabled')}")
-    print(f"  Details Submitted: {account.get('details_submitted')}")
+    logger.info(f"  Account ID: {account_id}")
+    logger.info(f"  Charges Enabled: {account.get('charges_enabled')}")
+    logger.info(f"  Payouts Enabled: {account.get('payouts_enabled')}")
+    logger.info(f"  Details Submitted: {account.get('details_submitted')}")
     requirements = account.get('requirements', {})
     currently_due = requirements.get('currently_due', []) or []
     if currently_due:
-        print(f"  Requirements Due: {currently_due}")
+        logger.info(f"  Requirements Due: {currently_due}")
 
     # Find user with this Stripe account
     users = get_db().collection(Collections.USERS).where(
@@ -2217,14 +2239,14 @@ def process_account_updated(account: dict) -> None:
     ).limit(1).get()
 
     if not users:
-        print(f"  ⚠️ No user found with Stripe account {account_id}")
+        logger.warning(f"  ⚠️ No user found with Stripe account {account_id}")
         return
 
     user_ref = users[0].reference
     user_id = user_ref.id
     user_data = users[0].to_dict()
 
-    print(f"  User ID: {user_id}")
+    logger.info(f"  User ID: {user_id}")
 
     # Pending requirements already extracted above for logging
     eventually_due = requirements.get('eventually_due', []) or []
@@ -2246,10 +2268,10 @@ def process_account_updated(account: dict) -> None:
         current_roles = user_data.get(Fields.ROLES, [])
         if UserRoleValues.SELLER not in current_roles:
             update_data[Fields.ROLES] = admin_firestore.ArrayUnion([UserRoleValues.SELLER])
-            print(f"  ✅ Adding seller role to user {user_id} (KYC fully approved)")
+            logger.info(f"  ✅ Adding seller role to user {user_id} (KYC fully approved)")
 
     user_ref.update(update_data)
-    print(f"  ✅ Updated user {user_id} Stripe account status")
+    logger.info(f"  ✅ Updated user {user_id} Stripe account status")
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -2342,7 +2364,7 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
         return {ApiKeys.SUCCESS: True, ApiKeys.ACCOUNT_ID: account.id}
 
     except stripe.error.InvalidRequestError as e:
-        print(f'Stripe InvalidRequestError creating account: {e}')
+        logger.error(f'Stripe InvalidRequestError creating account: {e}')
         raise https_fn.HttpsError('invalid-argument', 'Invalid request. Please check your information and try again.') from e
     except stripe.error.AuthenticationError:
         raise https_fn.HttpsError('internal', 'Payment service configuration error. Please contact support.') from None
@@ -2350,7 +2372,7 @@ def create_connect_account(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('unavailable', 'Could not connect to payment service. Please try again later.') from None
     except stripe.error.StripeError as e:
         # Log the full error for debugging
-        print(f'Stripe error creating account: {str(e)}')
+        logger.error(f'Stripe error creating account: {str(e)}')
         raise https_fn.HttpsError('internal', 'Could not create seller account. Please try again later.') from e
 
 
@@ -2361,6 +2383,15 @@ def create_account_link(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
     user_id = req.auth.uid
+
+    # Rate limit: 5/min — each call creates a Stripe AccountLink (API cost)
+    _limiter = get_rate_limiter()
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action='create_account_link',
+        max_requests=5, window_minutes=1, fail_closed=True
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
 
     # Build URLs from server-side config only — never trust client URLs
     # This prevents open redirect attacks via malicious refreshUrl/returnUrl
@@ -2399,7 +2430,7 @@ def create_account_link(req: https_fn.CallableRequest) -> dict[str, Any]:
     except stripe.error.APIConnectionError:
         raise https_fn.HttpsError('unavailable', 'Could not connect to payment service. Please try again later.') from None
     except Exception as e:
-        print(f'Account link creation error: {e}')
+        logger.error(f'Account link creation error: {e}')
         raise https_fn.HttpsError('internal', 'Could not create onboarding link. Please try again later.') from e
 
 
@@ -2410,6 +2441,15 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
     user_id = req.auth.uid
+
+    # Rate limit: 10/min — each call hits Stripe API + Firestore write
+    _limiter = get_rate_limiter()
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action='get_connect_account_status',
+        max_requests=10, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
 
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
@@ -2459,7 +2499,7 @@ def get_connect_account_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     except stripe.error.APIConnectionError:
         raise https_fn.HttpsError('unavailable', 'Could not connect to payment service. Please try again later.') from None
     except Exception as e:
-        print(f'Account status error: {str(e)}')
+        logger.error(f'Account status error: {str(e)}')
         raise https_fn.HttpsError('internal', 'Could not retrieve account status. Please try again later.') from e
 
 
@@ -2544,7 +2584,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                         pi_obj = stripe.PaymentIntent.retrieve(pi_id)
                         charge_id = pi_obj.latest_charge
                     except Exception as pi_err:
-                        print(f'\u26a0\ufe0f Failed to retrieve PaymentIntent for charge_id: {pi_err}')
+                        logger.error(f'\u26a0\ufe0f Failed to retrieve PaymentIntent for charge_id: {pi_err}')
 
                 for seller_id, amount_cents in sellers_total.items():
                     platform_fee_cents = round(amount_cents * fee_rate)
@@ -2585,13 +2625,13 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                                         Fields.STATUS: PayoutStatusValues.COMPLETED,
                                     })
                                 except Exception as transfer_err:
-                                    print(f'⚠️ Transfer to seller {seller_id} failed: {transfer_err}')
+                                    logger.warning(f'⚠️ Transfer to seller {seller_id} failed: {transfer_err}')
                                     payout_ref.update({
                                         Fields.STATUS: PayoutStatusValues.FAILED,
                                         Fields.FAILURE_REASON: str(transfer_err),
                                     })
         except Exception as payout_err:
-            print(f'⚠️ Failed to create payout records for already-captured order {order_id}: {payout_err}')
+            logger.warning(f'⚠️ Failed to create payout records for already-captured order {order_id}: {payout_err}')
 
         return {
             ApiKeys.SUCCESS: True,
@@ -2772,7 +2812,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                 # SECURITY: Warn if account changed since checkout (potential fraud)
                 live_account_id = seller_data.get(Fields.STRIPE_ACCOUNT_ID)
                 if snapshot_account_id and live_account_id and snapshot_account_id != live_account_id:
-                    print(f'🚨 SECURITY: Seller {seller_id} Stripe account changed since checkout! '
+                    logger.error(f'🚨 SECURITY: Seller {seller_id} Stripe account changed since checkout! '
                           f'Using snapshot: {snapshot_account_id[:12]}..., live: {live_account_id[:12]}...')
                     get_db().collection(Collections.SECURITY_ALERTS).add({
                         Fields.TYPE: SecurityAlertTypes.SELLER_ACCOUNT_CHANGED,
@@ -2788,7 +2828,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                 # CRITICAL SECURITY: Re-verify seller is not suspended at capture time
                 # Prevents race condition where seller suspended after checkout but before capture
                 if seller_data.get(Fields.SUSPENDED, False):
-                    print(f'⚠️ Skipping payout to suspended seller {seller_id} for order {order_id}')
+                    logger.warning(f'⚠️ Skipping payout to suspended seller {seller_id} for order {order_id}')
                     # Mark for manual review
                     order_ref.update({
                         Fields.REQUIRES_MANUAL_REVIEW: True,
@@ -2798,12 +2838,12 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
 
                 # Verify seller has valid Stripe account
                 if not stripe_account_id:
-                    print(f'⚠️ Seller {seller_id} has no Stripe account for order {order_id}')
+                    logger.warning(f'⚠️ Seller {seller_id} has no Stripe account for order {order_id}')
                     continue
 
                 # Verify seller account is enabled for charges
                 if not seller_data.get(Fields.CHARGES_ENABLED, False):
-                    print(f'⚠️ Seller {seller_id} account not enabled for charges for order {order_id}')
+                    logger.warning(f'⚠️ Seller {seller_id} account not enabled for charges for order {order_id}')
                     order_ref.update({
                         Fields.REQUIRES_MANUAL_REVIEW: True,
                         Fields.MANUAL_REVIEW_REASON: f'Seller {seller_id} account not charges_enabled'
@@ -2872,13 +2912,13 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                                 break
                             except Exception as fs_err:
                                 import time as _time
-                                print(f"⚠️ Payout record update attempt {payout_attempt + 1}/3 failed for order {order_id}, seller {seller_id}: {str(fs_err)}")
+                                logger.warning(f"⚠️ Payout record update attempt {payout_attempt + 1}/3 failed for order {order_id}, seller {seller_id}: {str(fs_err)}")
                                 if payout_attempt < 2:
                                     _time.sleep(2 ** payout_attempt)
                         if not payout_recorded:
                             # Transfer succeeded but COMPLETED status not recorded.
                             # PENDING record still exists with seller/order info for reconciliation.
-                            print(f"🚨 CRITICAL: Payout record stuck in PENDING for order {order_id}, seller {seller_id}, transfer {transfer.id}")
+                            logger.critical(f"🚨 CRITICAL: Payout record stuck in PENDING for order {order_id}, seller {seller_id}, transfer {transfer.id}")
                             with contextlib.suppress(Exception):
                                 get_db().collection(Collections.SECURITY_ALERTS).add({
                                     Fields.TYPE: SecurityAlertTypes.PAYOUT_RECORD_INCOMPLETE,
@@ -2892,8 +2932,8 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                                     Fields.RESOLVED: False
                                 })
                     except Exception as e:
-                        print(f"Transfer error to seller {seller_id}: {str(e)}")
-                        transfer_errors.append({Fields.SELLER_ID: seller_id, Fields.ERROR: str(e)})
+                        logger.error(f"Transfer error to seller {seller_id}: {str(e)}")
+                        transfer_errors.append({Fields.SELLER_ID: seller_id, Fields.ERROR: type(e).__name__})
 
         # Update order status AFTER transfers to ensure consistency
         update_data = {
@@ -2910,7 +2950,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
             # Log errors but still mark captured (since money was taken), but add flag
             update_data[Fields.PAYOUT_ERRORS] = transfer_errors
             update_data[Fields.REQUIRES_MANUAL_REVIEW] = True
-            print(f"Payout errors for order {order_id}: {transfer_errors}")
+            logger.error(f"Payout errors for order {order_id}: {transfer_errors}")
 
         order_ref.update(update_data)
 
@@ -2938,7 +2978,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                 Fields.UPDATED_AT: get_server_timestamp(),
             })
         error_msg = str(e).lower()
-        print(f'Capture payment error: {str(e)}')
+        logger.error(f'Capture payment error: {str(e)}')
 
         # Handle Stripe-specific errors by checking exception type name
         exc_type_name = type(e).__name__
@@ -2960,7 +3000,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # Handle other Stripe API errors
         if exc_type_name in ('InvalidRequestError', 'StripeError'):
-            print(f'Stripe error during capture: {e}')
+            logger.error(f'Stripe error during capture: {e}')
             raise https_fn.HttpsError('failed-precondition', 'Payment capture failed. Please contact support.') from e
 
         raise https_fn.HttpsError('internal', 'Could not capture payment. Please try again.') from e

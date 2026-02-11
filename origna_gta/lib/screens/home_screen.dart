@@ -222,7 +222,7 @@ class _CategoryChips extends ConsumerWidget {
                     : null,
                 color: !isSelected ? DesignTokens.surface : null,
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                border: Border.all(color: isSelected ? DesignTokens.primary : Colors.grey.withValues(alpha: 0.3), width: 1.5),
+                border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.textSecondary.withValues(alpha: 0.3), width: 1.5),
                 boxShadow: isSelected ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))] : [],
               ),
               child: Material(
@@ -239,7 +239,7 @@ class _CategoryChips extends ConsumerWidget {
                       child: Text(
                         isAll ? 'All' : category!.name,
                         style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.grey[700],
+                          color: isSelected ? Colors.white : DesignTokens.textPrimary,
                           fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                           fontSize: 13,
                         ),
@@ -296,7 +296,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
-                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        color: isDark ? DesignTokens.textDisabled : DesignTokens.textSecondary,
                         fontWeight: FontWeight.w400,
                         height: 1.3,
                       ),
@@ -329,7 +329,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                     child: Column(
                       children: [
-                        Divider(color: Colors.grey.withValues(alpha: 0.2)),
+                        Divider(color: DesignTokens.textSecondary.withValues(alpha: 0.2)),
                         const SizedBox(height: 12),
                         Wrap(
                           alignment: WrapAlignment.center,
@@ -351,7 +351,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ),
                               ),
                             ),
-                            Text('|', style: TextStyle(color: Colors.grey.withValues(alpha: 0.4), fontSize: 13)),
+                            Text('|', style: TextStyle(color: DesignTokens.textSecondary.withValues(alpha: 0.4), fontSize: 13)),
                             Semantics(
                               label: 'btn-home-terms-of-service',
                               button: true,
@@ -373,7 +373,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const SizedBox(height: 8),
                         Text(
                           '© 2026 Origna GTA. All rights reserved.',
-                          style: TextStyle(color: isDark ? Colors.grey[600] : DesignTokens.textSecondary, fontSize: 11),
+                          style: TextStyle(color: DesignTokens.textSecondary, fontSize: 11),
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -493,11 +493,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: TextField(
           controller: _searchController,
           onChanged: homeNotifier.onSearchChanged,
-          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+          style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary),
           cursorColor: DesignTokens.primary,
           decoration: InputDecoration(
             hintText: 'Search products...',
-            hintStyle: TextStyle(color: Colors.grey[500]),
+            hintStyle: TextStyle(color: DesignTokens.textSecondary),
             prefixIcon: Icon(Icons.search, color: DesignTokens.primary),
             suffixIcon: _searchController.text.isNotEmpty
                 ? Semantics(
@@ -508,7 +508,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         _searchController.clear();
                         homeNotifier.onSearchChanged('');
                       },
-                      child: Icon(Icons.close, color: Colors.grey[500]),
+                      child: Icon(Icons.close, color: DesignTokens.textSecondary),
                     ),
                   )
                 : null,
@@ -517,7 +517,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12), borderSide: BorderSide.none),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
-            borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2), width: 1),
+            borderSide: BorderSide(color: DesignTokens.textSecondary.withValues(alpha: 0.2), width: 1),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(DesignTokens.radius12),
@@ -619,10 +619,10 @@ class _ProductGrid extends ConsumerWidget {
                 const SizedBox(height: 24),
                 Text(
                   'No products found',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.grey[700]),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary),
                 ),
                 const SizedBox(height: 8),
-                Text('Try adjusting your filters or search terms', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+                Text('Try adjusting your filters or search terms', style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary)),
               ],
             ),
           ),
@@ -739,8 +739,8 @@ class _ShimmerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-      highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+      baseColor: isDark ? DesignTokens.darkOutline : DesignTokens.outline,
+      highlightColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.outlineVariant,
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,

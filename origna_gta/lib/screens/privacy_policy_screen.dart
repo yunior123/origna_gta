@@ -131,7 +131,7 @@ For privacy-related questions, data requests, or concerns:
 17. Privacy Officer (Quebec Law 25 Compliance)
 As required by Quebec's Law 25 (Act respecting the protection of personal information in the private sector), Origna Ventures Inc. has designated a Privacy Officer responsible for ensuring compliance with all applicable Canadian privacy legislation:
 - Privacy Officer: Yunior Rodriguez Osorio
-- Email: privacy@orignaventures.ca
+- Email: support@orignaventures.ca
 - Mailing Address: Origna Ventures Inc., 200 University Ave W, Suite 300, Waterloo, ON N2L 3G1, Canada
 The Privacy Officer is responsible for:
 - Overseeing compliance with PIPEDA, Quebec Law 25, and all provincial privacy legislation.
@@ -147,7 +147,7 @@ Origna GTA uses cloud services that may process or store data outside of Canada:
 - Algolia: Search indexing may occur on servers located in the United States and Europe.
 - Cloudflare R2: Image storage may be distributed across Cloudflare's global network.
 - Mailjet: Email delivery is processed by Mailjet SAS (France/EU).
-By using Origna GTA, you consent to the transfer of your personal information to these third-party processors. All transfers are governed by contractual data protection agreements that provide a level of protection equivalent to Canadian privacy law. You may withdraw this consent at any time by contacting privacy@orignaventures.ca, though this may limit your ability to use certain platform features.
+By using Origna GTA, you consent to the transfer of your personal information to these third-party processors. All transfers are governed by contractual data protection agreements that provide a level of protection equivalent to Canadian privacy law. You may withdraw this consent at any time by contacting support@orignaventures.ca, though this may limit your ability to use certain platform features.
 
 19. Data Breach Response Plan (PIPEDA Compliance)
 In accordance with PIPEDA's mandatory data breach notification requirements (in effect since November 1, 2018), Origna Ventures Inc. maintains a Data Breach Response Plan:

@@ -8,6 +8,24 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'seller_registration_state.dart';
 
+/// Provider to fetch backend payment provider configuration status.
+/// Uses firebaseFunctionsProvider instead of direct FirebaseFunctions.instance.
+final paymentProviderStatusProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  try {
+    final functions = ref.read(firebaseFunctionsProvider);
+    final callable = functions.httpsCallable('get_provider_status');
+    final result = await callable.call();
+    final data = Map<String, dynamic>.from(result.data as Map);
+    if (data[ApiKeys.success] == true && data[ApiKeys.providers] != null) {
+      return Map<String, dynamic>.from(data[ApiKeys.providers] as Map);
+    }
+    return {};
+  } catch (e) {
+    // On error, return empty map (all providers will show from static config)
+    return {};
+  }
+});
+
 final sellerRegistrationViewModelProvider = StateNotifierProvider.autoDispose<SellerRegistrationViewModel, SellerRegistrationState>((ref) {
   return SellerRegistrationViewModel(ref);
 });
@@ -28,7 +46,6 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
   bool _canProceed() {
     // Already in progress
     if (_isOperationInProgress || state.isLoading) {
-      debugPrint('⚠️ Operation blocked: already in progress');
       return false;
     }
     
@@ -36,7 +53,6 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
     if (_lastOperationTime != null) {
       final elapsed = DateTime.now().difference(_lastOperationTime!);
       if (elapsed < _minOperationInterval) {
-        debugPrint('⚠️ Operation blocked: rate limited (${elapsed.inMilliseconds}ms < ${_minOperationInterval.inMilliseconds}ms)');
         return false;
       }
     }
@@ -91,7 +107,6 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
       state = state.copyWith(error: _cleanErrorMessage(e, 'Failed to refresh account status'));
     } catch (e) {
       // Silently fail on background refresh - don't show errors for background operations
-      debugPrint('Background refresh failed: $e');
     }
   }
 
@@ -116,19 +131,16 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
 
     try {
       final functions = _ref.read(firebaseFunctionsProvider);
-      if (state.paymentProvider == 'airwallex') {
+      if (state.paymentProvider == PaymentProviderValues.airwallex) {
         final createAccount = functions.httpsCallable('airwallex_create_seller_account');
-        final result = await createAccount.call();
-        debugPrint(result.data.toString());
+        await createAccount.call();
         state = state.copyWith(isLoading: false, successMessage: 'Airwallex account connected');
         _isOperationInProgress = false;
       } else {
         final createAccount = functions.httpsCallable('create_connect_account');
 
-        final result = await createAccount.call();
-        final data = result.data as Map<String, dynamic>;
-        debugPrint(data.toString());
-        // Whether it's new or existing, we proceed to onboarding
+        await createAccount.call();
+        // Result contains account data — proceed to onboarding
         // Note: _continueOnboarding will handle its own cleanup
         await _continueOnboarding();
       }

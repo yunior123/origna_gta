@@ -7,16 +7,17 @@ Product Management Handlers
 - Rating submission
 """
 
+import logging
+logger = logging.getLogger(__name__)
 import uuid
 from typing import Any
 
 import boto3
 from botocore.config import Config
-from firebase_functions import firestore_fn, https_fn, options
+from firebase_functions import firestore_fn, https_fn
 
 from config import R2_ACCESS_KEY_NEW, R2_ACCOUNT_ID_NEW, R2_SECRET_KEY_NEW, R2Config, get_r2_credentials
 from schema_constants import (
-    AppConfig,
     CategoryIds,
     Collections,
     DeliveryTypeValues,
@@ -199,7 +200,7 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
         return create_success_response({'uploadUrls': upload_urls})
 
     except Exception as e:
-        print(f'ERROR: Failed to generate upload URLs: {e}')
+        logger.error(f'ERROR: Failed to generate upload URLs: {e}')
         raise https_fn.HttpsError('internal', 'Failed to generate upload URLs. Please try again.') from e
 
 
@@ -224,6 +225,16 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     user_id = req.auth.uid
     product_id = req.data.get(Fields.PRODUCT_ID)
+
+    # Rate limit: 10/min — prevent mass-deletion abuse
+    from services.rate_limiter import RateLimiter as _RL
+    _limiter = _RL(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action='delete_product',
+        max_requests=10, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
 
     if not product_id:
         raise https_fn.HttpsError('invalid-argument', 'productId required')
@@ -284,7 +295,7 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     try:
         algolia_delete_product(product_id)
     except Exception as e:
-        print(f'Failed to delete from Algolia: {str(e)}')
+        logger.error(f'Failed to delete from Algolia: {str(e)}')
 
     return create_success_response({'message': 'Product deleted successfully'})
 
@@ -430,12 +441,12 @@ def on_product_created(event: firestore_fn.Event) -> None:
     product_data = event.data.to_dict()
 
     if not product_data:
-        print(f'No data for product {product_id}')
+        logger.info(f'No data for product {product_id}')
         return
 
     # Only index active products
     if not product_data.get(Fields.IS_ACTIVE, True):
-        print(f'Product {product_id} is not active, skipping indexing')
+        logger.info(f'Product {product_id} is not active, skipping indexing')
         return
 
     # ── SECURITY: SERVER-SIDE VALIDATION (products written from Flutter) ──
@@ -448,7 +459,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         if seller_doc.exists:
             seller_data = seller_doc.to_dict()
             if seller_data.get(Fields.SUSPENDED, False):
-                print(f'SECURITY: Product {product_id} from suspended seller {seller_id} — deactivating')
+                logger.info(f'SECURITY: Product {product_id} from suspended seller {seller_id} — deactivating')
                 get_db().collection(Collections.PRODUCTS).document(product_id).update({
                     Fields.IS_ACTIVE: False,
                     Fields.DEACTIVATION_REASON: 'Seller is suspended',
@@ -458,7 +469,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
     # CRITICAL: Validate price > 0 and <= 100000 CAD
     price = product_data.get(Fields.PRICE)
     if price is None or not isinstance(price, (int, float)) or price <= 0 or price > 100000:
-        print(f'SECURITY: Product {product_id} has invalid price ({price}) — deactivating')
+        logger.info(f'SECURITY: Product {product_id} has invalid price ({price}) — deactivating')
         get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
             Fields.DEACTIVATION_REASON: f'Invalid price: {price}',
@@ -468,7 +479,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
     # CRITICAL: Validate stock quantity >= 0
     stock = product_data.get(Fields.STOCK_QUANTITY, 0)
     if not isinstance(stock, (int, float)) or stock < 0:
-        print(f'SECURITY: Product {product_id} has invalid stock ({stock}) — deactivating')
+        logger.info(f'SECURITY: Product {product_id} has invalid stock ({stock}) — deactivating')
         get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
             Fields.DEACTIVATION_REASON: f'Invalid stock: {stock}',
@@ -480,7 +491,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
     seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
     country = (seller_address.get(Fields.COUNTRY) or '')
     if not country:
-        print(f'SECURITY: Product {product_id} has empty seller country — deactivating')
+        logger.info(f'SECURITY: Product {product_id} has empty seller country — deactivating')
         get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
             Fields.DEACTIVATION_REASON: 'Missing seller country',
@@ -495,7 +506,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
     # CRITICAL: Validate categoryId against allowed categories
     category_id = product_data.get(Fields.CATEGORY_ID)
     if category_id is not None and (not isinstance(category_id, (int, float)) or int(category_id) < CategoryIds.MIN or int(category_id) > CategoryIds.MAX):
-        print(f'SECURITY: Product {product_id} has invalid categoryId ({category_id}) — deactivating')
+        logger.info(f'SECURITY: Product {product_id} has invalid categoryId ({category_id}) — deactivating')
         get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
             Fields.DEACTIVATION_REASON: f'Invalid categoryId: {category_id}',
@@ -505,10 +516,10 @@ def on_product_created(event: firestore_fn.Event) -> None:
     sanitized_desc = sanitized_text(description)
     if sanitized_name != name:
         xss_patches[Fields.NAME] = sanitized_name
-        print(f'SECURITY: Sanitized XSS in product {product_id} name')
+        logger.info(f'SECURITY: Sanitized XSS in product {product_id} name')
     if sanitized_desc != description:
         xss_patches[Fields.DESCRIPTION] = sanitized_desc
-        print(f'SECURITY: Sanitized XSS in product {product_id} description')
+        logger.info(f'SECURITY: Sanitized XSS in product {product_id} description')
     if xss_patches:
         get_db().collection(Collections.PRODUCTS).document(product_id).update(xss_patches)
         product_data.update(xss_patches)
@@ -520,7 +531,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
     is_digital = product_data.get(Fields.IS_DIGITAL, False)
     if is_digital and not product_data.get(Fields.FREE_SHIPPING, False):
         patches[Fields.FREE_SHIPPING] = True
-        print(f'FIX: Product {product_id} is digital but freeShipping=false → patching to true')
+        logger.info(f'FIX: Product {product_id} is digital but freeShipping=false → patching to true')
 
     # Bug #2: Local-only products should have a pickup delivery option
     is_local_only = product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False)
@@ -528,23 +539,23 @@ def on_product_created(event: firestore_fn.Event) -> None:
     if is_local_only and not any(opt.get(Fields.TYPE) == DeliveryTypeValues.PICKUP for opt in delivery_options if isinstance(opt, dict)):
         pickup_option = {Fields.TYPE: DeliveryTypeValues.PICKUP, Fields.DESCRIPTION: 'Local Pickup', Fields.ESTIMATED_DAYS: 0, Fields.COST: 0.0}
         patches[Fields.DELIVERY_OPTIONS] = [pickup_option] + delivery_options
-        print(f'FIX: Product {product_id} is local-only but missing pickup option → patching')
+        logger.info(f'FIX: Product {product_id} is local-only but missing pickup option → patching')
 
     # Bug #4: Physical products with no delivery options (and not local-only) → add standard
     if not is_digital and not is_local_only and not delivery_options:
         standard_option = {Fields.TYPE: DeliveryTypeValues.STANDARD, Fields.DESCRIPTION: 'Standard Delivery', Fields.ESTIMATED_DAYS: 5, Fields.COST: 0.0}
         patches[Fields.DELIVERY_OPTIONS] = [standard_option]
-        print(f'FIX: Product {product_id} has no delivery options → adding standard')
+        logger.info(f'FIX: Product {product_id} has no delivery options → adding standard')
 
     # Apply patches if any
     if patches:
         try:
             get_db().collection(Collections.PRODUCTS).document(product_id).update(patches)
-            print(f'Applied {len(patches)} fix(es) to product {product_id}')
+            logger.info(f'Applied {len(patches)} fix(es) to product {product_id}')
             # Update local copy for indexing
             product_data.update(patches)
         except Exception as e:
-            print(f'WARNING: Failed to apply patches to product {product_id}: {str(e)}')
+            logger.error(f'WARNING: Failed to apply patches to product {product_id}: {str(e)}')
 
     # FOOD SAFETY: Perishable products should have local delivery or same-day option
     is_perishable = product_data.get(Fields.IS_PERISHABLE, False)
@@ -561,7 +572,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         ) if delivery_options else product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False)
 
         if not has_local_or_same_day:
-            print(f'WARNING: Perishable product {product_id} should have local/same-day delivery')
+            logger.warning(f'WARNING: Perishable product {product_id} should have local/same-day delivery')
 
     try:
         # Add document ID to product data
@@ -572,9 +583,9 @@ def on_product_created(event: firestore_fn.Event) -> None:
         if Fields.DESCRIPTION in product_data:
             product_data[Fields.DESCRIPTION] = sanitized_text(product_data[Fields.DESCRIPTION])
         index_product(product_id, product_data)
-        print(f'Product {product_id} indexed to Algolia')
+        logger.info(f'Product {product_id} indexed to Algolia')
     except Exception as e:
-        print(f'Failed to index product {product_id}: {str(e)}')
+        logger.error(f'Failed to index product {product_id}: {str(e)}')
 
 
 @firestore_fn.on_document_updated(document="products/{productId}", **DEFAULT_OPTIONS)
@@ -586,16 +597,16 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     product_data = event.data.after.to_dict()
 
     if not product_data:
-        print(f'No data for product {product_id}')
+        logger.info(f'No data for product {product_id}')
         return
 
     # If product is inactive, delete from index
     if not product_data.get(Fields.IS_ACTIVE, True):
         try:
             algolia_delete_product(product_id)
-            print(f'Product {product_id} removed from Algolia (inactive)')
+            logger.info(f'Product {product_id} removed from Algolia (inactive)')
         except Exception as e:
-            print(f'Failed to delete from Algolia: {str(e)}')
+            logger.error(f'Failed to delete from Algolia: {str(e)}')
         return
 
     # ── SERVER-SIDE VALIDATION on update (same as on_product_created) ──
@@ -608,7 +619,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         if seller_doc.exists:
             seller_data = seller_doc.to_dict()
             if seller_data.get(Fields.SUSPENDED, False):
-                print(f'SECURITY: Product {product_id} from suspended seller {seller_id} — deactivating')
+                logger.info(f'SECURITY: Product {product_id} from suspended seller {seller_id} — deactivating')
                 get_db().collection(Collections.PRODUCTS).document(product_id).update({
                     Fields.IS_ACTIVE: False,
                     Fields.DEACTIVATION_REASON: 'Seller is suspended',
@@ -618,7 +629,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     # Validate price > 0 and <= 100000 CAD
     price = product_data.get(Fields.PRICE)
     if price is not None and (not isinstance(price, (int, float)) or price <= 0 or price > 100000):
-        print(f'SECURITY: Product {product_id} updated with invalid price ({price}) — deactivating')
+        logger.info(f'SECURITY: Product {product_id} updated with invalid price ({price}) — deactivating')
         get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
         })
@@ -627,7 +638,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     # Validate stock quantity >= 0
     stock = product_data.get(Fields.STOCK_QUANTITY, 0)
     if not isinstance(stock, (int, float)) or stock < 0:
-        print(f'SECURITY: Product {product_id} updated with invalid stock ({stock}) — deactivating')
+        logger.info(f'SECURITY: Product {product_id} updated with invalid stock ({stock}) — deactivating')
         get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
         })
@@ -637,7 +648,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
     country = (seller_address.get(Fields.COUNTRY) or '')
     if not country:
-        print(f'SECURITY: Product {product_id} updated with empty seller country — deactivating')
+        logger.info(f'SECURITY: Product {product_id} updated with empty seller country — deactivating')
         get_db().collection(Collections.PRODUCTS).document(product_id).update({
             Fields.IS_ACTIVE: False,
         })
@@ -660,9 +671,9 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     try:
         product_data['id'] = product_id
         index_product(product_id, product_data)
-        print(f'Product {product_id} updated in Algolia')
+        logger.info(f'Product {product_id} updated in Algolia')
     except Exception as e:
-        print(f'Failed to update product {product_id} in Algolia: {str(e)}')
+        logger.error(f'Failed to update product {product_id} in Algolia: {str(e)}')
 
 
 @firestore_fn.on_document_deleted(document="products/{productId}", **DEFAULT_OPTIONS)
@@ -674,9 +685,9 @@ def on_product_deleted(event: firestore_fn.Event) -> None:
 
     try:
         algolia_delete_product(product_id)
-        print(f'Product {product_id} deleted from Algolia')
+        logger.info(f'Product {product_id} deleted from Algolia')
     except Exception as e:
-        print(f'Failed to delete product {product_id} from Algolia: {str(e)}')
+        logger.error(f'Failed to delete product {product_id} from Algolia: {str(e)}')
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -702,12 +713,22 @@ def configure_algolia(req: https_fn.CallableRequest) -> dict:
     if UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
         raise https_fn.HttpsError('permission-denied', 'Admin only')
 
+    # AUDIT FIX: Rate limit admin endpoint
+    from services.rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action='configure_algolia',
+        max_requests=3, window_minutes=60
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
     try:
         from services.algolia_service import configure_algolia_index
         configure_algolia_index()
         return create_success_response({'message': 'Algolia index configured'})
     except Exception as e:
-        print(f'ERROR: Algolia configuration failed: {e}')
+        logger.error(f'ERROR: Algolia configuration failed: {e}')
         raise https_fn.HttpsError('internal', 'Failed to configure Algolia. Please try again.') from e
 
 
@@ -733,6 +754,17 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
             totalFetched: number
         }
     """
+    # AUDIT FIX: Rate limit read endpoint to prevent scraping
+    if req.auth:
+        from services.rate_limiter import RateLimiter
+        _limiter = RateLimiter(get_db())
+        allowed, msg = _limiter.check_rate_limit(
+            identifier=req.auth.uid, action='get_products',
+            max_requests=30, window_minutes=1, fail_closed=False
+        )
+        if not allowed:
+            raise https_fn.HttpsError('resource-exhausted', msg)
+
     data = req.data or {}
 
     # Paramètres de pagination
@@ -808,7 +840,7 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
         })
 
     except Exception as e:
-        print(f'ERROR: Failed to fetch products: {e}')
+        logger.error(f'ERROR: Failed to fetch products: {e}')
         raise https_fn.HttpsError('internal', 'Failed to fetch products. Please try again.') from e
 
 
@@ -832,6 +864,17 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> dict[str, An
             totalFetched: number
         }
     """
+    # AUDIT FIX: Rate limit read endpoint to prevent scraping
+    if req.auth:
+        from services.rate_limiter import RateLimiter
+        _limiter = RateLimiter(get_db())
+        allowed, msg = _limiter.check_rate_limit(
+            identifier=req.auth.uid, action='get_seller_products',
+            max_requests=30, window_minutes=1, fail_closed=False
+        )
+        if not allowed:
+            raise https_fn.HttpsError('resource-exhausted', msg)
+
     data = req.data or {}
 
     seller_id = data.get(Fields.SELLER_ID)
@@ -909,7 +952,7 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> dict[str, An
         })
 
     except Exception as e:
-        print(f'ERROR: Failed to fetch seller products: {e}')
+        logger.error(f'ERROR: Failed to fetch seller products: {e}')
         raise https_fn.HttpsError('internal', 'Failed to fetch seller products. Please try again.') from e
 
 
@@ -932,6 +975,17 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
             totalFetched: number
         }
     """
+    # AUDIT FIX: Rate limit read endpoint to prevent scraping
+    if req.auth:
+        from services.rate_limiter import RateLimiter
+        _limiter = RateLimiter(get_db())
+        allowed, msg = _limiter.check_rate_limit(
+            identifier=req.auth.uid, action='get_product_ratings',
+            max_requests=30, window_minutes=1, fail_closed=False
+        )
+        if not allowed:
+            raise https_fn.HttpsError('resource-exhausted', msg)
+
     data = req.data or {}
 
     product_id = data.get(Fields.PRODUCT_ID)
@@ -1023,5 +1077,5 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
         })
 
     except Exception as e:
-        print(f'ERROR: Failed to fetch ratings: {e}')
+        logger.error(f'ERROR: Failed to fetch ratings: {e}')
         raise https_fn.HttpsError('internal', 'Failed to fetch ratings. Please try again.') from e

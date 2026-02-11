@@ -14,7 +14,6 @@ final sellerAccountStatusProvider = StreamProvider.autoDispose<SellerAccountStat
   }
 
   // Watch Firestore in realtime - updates automatically when webhook changes data
-  debugPrint('📊 Watching seller status from Firestore for ${user.uid}');
   return ref.read(userRepositoryProvider).watchSellerAccountStatus(user.uid);
 });
 
@@ -26,8 +25,6 @@ final refreshSellerStatusProvider = FutureProvider.family.autoDispose<SellerAcco
     throw Exception('Please log in to continue');
   }
 
-  debugPrint('🔄 Manually syncing seller status from Stripe backend...');
-  
   try {
     final functions = ref.read(firebaseFunctionsProvider);
     final callable = functions.httpsCallable('get_connect_account_status');
@@ -41,7 +38,9 @@ final refreshSellerStatusProvider = FutureProvider.family.autoDispose<SellerAcco
         .map((e) => e.toString())
         .toList();
     
-    debugPrint('📊 Stripe Status - charges: $chargesEnabled, payouts: $payoutsEnabled, detailsSubmitted: $detailsSubmitted, requirements: $requirementsDue');
+    if (kDebugMode) {
+      debugPrint('Stripe Status - charges: $chargesEnabled, payouts: $payoutsEnabled');
+    }
     
     // Invalidate main provider so it refetches from Firestore (now updated by backend)
     ref.invalidate(sellerAccountStatusProvider);
@@ -54,7 +53,9 @@ final refreshSellerStatusProvider = FutureProvider.family.autoDispose<SellerAcco
       pendingRequirements: requirementsDue,
     );
   } catch (e) {
-    debugPrint('❌ Error syncing status from backend: $e');
+    if (kDebugMode) {
+      debugPrint('Error syncing status from backend: $e');
+    }
     rethrow;
   }
 });

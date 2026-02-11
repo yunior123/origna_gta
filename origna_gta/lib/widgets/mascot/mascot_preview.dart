@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 import 'package:origna_gta/widgets/mascot/canadian_moose.dart';
 import 'package:origna_gta/widgets/mascot/mascot_provider.dart';
@@ -38,7 +39,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         title: const Text('Mascot Preview'),
-        backgroundColor: const Color(0xFF667EEA),
+        backgroundColor: DesignTokens.primary,
       ),
       body: Column(
         children: [

@@ -121,7 +121,7 @@ CONSENT_TIMESTAMP = "consentTimestamp"
 CONSENT_METHOD = "consentMethod"      # "registration", "checkout", "settings"
 MARKETING_OPT_IN = "marketingOptIn"   # boolean, default false
 PRIVACY_OFFICER_NAME = "Yunior Rodriguez Osorio"
-PRIVACY_OFFICER_EMAIL = "privacy@orignaventures.ca"
+PRIVACY_OFFICER_EMAIL = "support@orignaventures.ca"  # Using support@ until dedicated privacy@ mailbox is provisioned
 ```
 
 ---

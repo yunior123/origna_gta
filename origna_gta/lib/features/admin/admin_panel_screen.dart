@@ -284,7 +284,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                       const SizedBox(width: 12),
                       Text(
                         _tabs[_selectedIndex].label,
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF1a1a2e)),
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary),
                       ),
                       const Spacer(),
                       Text(

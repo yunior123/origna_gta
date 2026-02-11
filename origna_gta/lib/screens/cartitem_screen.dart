@@ -47,7 +47,7 @@ class CartItemScreen extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
         padding: const EdgeInsets.all(DesignTokens.spacing12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E32) : Colors.white,
+          color: isDark ? DesignTokens.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
           border: Border.all(
             color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.outline.withValues(alpha: 0.5),

@@ -84,13 +84,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [Colors.grey[900]!, Colors.grey[800]!]
-              : [const Color(0xFFF0F2FF), Colors.white],
-        ),
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: widget.address == null ? 'Add Address' : 'Edit Address'),
@@ -230,7 +224,14 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                             label: 'Postal Code',
                             icon: Icons.markunread_mailbox_outlined,
                             textCapitalization: TextCapitalization.characters,
-                            validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                            validator: (v) {
+                              if (v == null || v.isEmpty) return 'Required';
+                              final cleaned = v.replaceAll(' ', '').toUpperCase();
+                              if (!RegExp(r'^[A-Z]\d[A-Z]\d[A-Z]\d$').hasMatch(cleaned)) {
+                                return 'Enter a valid Canadian postal code (e.g., M5V 2T6)';
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: DesignTokens.spacing16),
                           _buildTextField(
@@ -238,7 +239,14 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                             label: 'Phone Number',
                             icon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
-                            validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                            validator: (v) {
+                              if (v == null || v.isEmpty) return 'Required';
+                              final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+                              if (digits.length < 10 || digits.length > 15) {
+                                return 'Enter a valid phone number (10-15 digits)';
+                              }
+                              return null;
+                            },
                           ),
                         ],
                       ),

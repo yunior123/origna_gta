@@ -106,7 +106,8 @@ final termsProvider = FutureProvider<String>((ref) async {
       return content;
     }
   } catch (e) {
-    // Return default if remote config fails
+    // Remote config unavailable — use default terms content
+    // This is expected on first launch or when offline
   }
   return _defaultTermsContent;
 });

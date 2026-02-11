@@ -264,6 +264,49 @@ AIRWALLEX_WEBHOOK_SECRET = _load_secret("AIRWALLEX_WEBHOOK_SECRET", required=Fal
 AIRWALLEX_BASE_URL = os.environ.get("AIRWALLEX_BASE_URL", "https://api.airwallex.com/api/v1")
 
 # ============================================================================
+# SENTRY ERROR MONITORING
+# ============================================================================
+
+SENTRY_DSN = _load_secret("SENTRY_DSN_BACKEND", required=False)
+
+def init_sentry():
+    """Initialize Sentry SDK for backend error monitoring (production only)."""
+    if IS_EMULATOR or not SENTRY_DSN:
+        return
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[FlaskIntegration()],
+            traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
+            environment="production",
+            release=os.environ.get("K_REVISION", "unknown"),
+            # Scrub sensitive data
+            send_default_pii=False,
+            before_send=_sentry_before_send,
+        )
+        print("✅ Sentry initialized for backend monitoring")
+    except Exception as e:
+        print(f"⚠️ Sentry init failed: {type(e).__name__}")
+
+def _sentry_before_send(event, hint):
+    """Scrub sensitive data before sending to Sentry."""
+    # Remove any accidentally captured secrets
+    if 'exception' in event:
+        for exception in event.get('exception', {}).get('values', []):
+            for frame in exception.get('stacktrace', {}).get('frames', []):
+                # Redact variables that might contain secrets
+                if 'vars' in frame:
+                    for key in list(frame['vars'].keys()):
+                        key_lower = key.lower()
+                        if any(s in key_lower for s in ('secret', 'key', 'token', 'password', 'dsn', 'api_key')):
+                            frame['vars'][key] = '[REDACTED]'
+    return event
+
+
+# ============================================================================
 # OTHER CONFIGURATION
 # ============================================================================
 

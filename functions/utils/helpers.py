@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 import html
 import re
 from typing import Any
@@ -239,44 +241,15 @@ def is_valid_order_status_transition(current_status: str, new_status: str) -> bo
     """
     CRITICAL BUSINESS LOGIC: Validate order status transitions
 
-    Prevents data corruption from invalid state changes.
-    This mirrors the Firestore rules validation.
-
-    Valid transitions:
-    - pending -> [confirmed, cancelled, failed, expired]
-    - confirmed -> [processing, cancelled, expired]
-    - processing -> [shipped, cancelled]
-    - shipped -> [in_transit, delivered]
-    - in_transit -> [delivered, cancelled]
-    - delivered -> [refunded, partially_refunded, disputed]
-    - cancelled -> [] (terminal)
-    - failed -> [pending] (retry)
-    - expired -> [pending] (retry)
-    - refunded -> [] (terminal)
-    - partially_refunded -> [refunded]
-    - disputed -> [refunded] (after dispute resolution)
+    Uses centralized VALID_TRANSITIONS from OrderStatusValues (schema_constants.py).
+    This is the single source of truth — firestore.rules must be kept in sync manually.
     """
-    valid_transitions = {
-        OrderStatusValues.PENDING: [OrderStatusValues.CONFIRMED, OrderStatusValues.CANCELLED, OrderStatusValues.FAILED, OrderStatusValues.EXPIRED],
-        OrderStatusValues.CONFIRMED: [OrderStatusValues.PROCESSING, OrderStatusValues.CANCELLED, OrderStatusValues.EXPIRED],
-        OrderStatusValues.PROCESSING: [OrderStatusValues.SHIPPED, OrderStatusValues.CANCELLED],
-        OrderStatusValues.SHIPPED: [OrderStatusValues.IN_TRANSIT, OrderStatusValues.DELIVERED],
-        OrderStatusValues.IN_TRANSIT: [OrderStatusValues.DELIVERED, OrderStatusValues.CANCELLED],
-        OrderStatusValues.DELIVERED: [OrderStatusValues.REFUNDED, OrderStatusValues.PARTIALLY_REFUNDED, OrderStatusValues.DISPUTED],
-        OrderStatusValues.CANCELLED: [],
-        OrderStatusValues.FAILED: [OrderStatusValues.PENDING],
-        OrderStatusValues.EXPIRED: [OrderStatusValues.PENDING],
-        OrderStatusValues.REFUNDED: [],
-        OrderStatusValues.PARTIALLY_REFUNDED: [OrderStatusValues.REFUNDED],
-        OrderStatusValues.DISPUTED: [OrderStatusValues.REFUNDED],
-    }
-
-    allowed_next_states = valid_transitions.get(current_status, [])
+    allowed_next_states = OrderStatusValues.VALID_TRANSITIONS.get(current_status, [])
     is_valid = new_status in allowed_next_states
 
     if not is_valid:
-        print(f"❌ INVALID STATE TRANSITION: {current_status} → {new_status}")
+        logger.error(f"❌ INVALID STATE TRANSITION: {current_status} → {new_status}")
     else:
-        print(f"✅ Valid state transition: {current_status} → {new_status}")
+        logger.info(f"✅ Valid state transition: {current_status} → {new_status}")
 
     return is_valid

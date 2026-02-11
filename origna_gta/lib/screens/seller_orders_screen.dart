@@ -26,13 +26,7 @@ class SellerOrdersScreen extends ConsumerWidget {
     if (user == null) {
       return Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark
-                ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-                : [const Color(0xFFF0F2FF), Colors.white],
-          ),
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
         ),
         child: Scaffold(
           appBar: AppBarFactory.simple(title: 'Seller Orders'),
@@ -49,13 +43,7 @@ class SellerOrdersScreen extends ConsumerWidget {
     if (userProfile?.suspended == true) {
       return Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark
-                ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-                : [const Color(0xFFF0F2FF), Colors.white],
-          ),
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
         ),
         child: Scaffold(
           appBar: AppBarFactory.simple(title: 'Seller Orders'),
@@ -92,13 +80,7 @@ class SellerOrdersScreen extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-              : [const Color(0xFFF0F2FF), Colors.white],
-        ),
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'Seller Orders'),

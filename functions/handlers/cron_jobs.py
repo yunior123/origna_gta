@@ -7,6 +7,8 @@ Scheduled Cron Jobs
 - Archive old orders (every 12 hours)
 """
 
+import logging
+logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta
 
 import stripe
@@ -68,12 +70,12 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
     - Also auto-confirms SHIPPED orders after AUTO_CONFIRM_DAYS if buyer
       doesn't manually confirm receipt (marks as DELIVERED for payout).
     """
-    print('Running auto_capture_confirmed_receipts cron job (auto-payout mode)')
+    logger.info('Running auto_capture_confirmed_receipts cron job (auto-payout mode)')
 
     # Check if Stripe is enabled before processing
     from handlers.payment_providers import PaymentProvider, is_provider_enabled
     if not is_provider_enabled(PaymentProvider.STRIPE):
-        print('Stripe payments are disabled, skipping auto-payout')
+        logger.info('Stripe payments are disabled, skipping auto-payout')
         return
 
     cutoff_date = datetime.now() - timedelta(days=AUTO_CONFIRM_DAYS)
@@ -109,7 +111,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
         payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
 
         if not payment_intent_id:
-            print(f'Order {order_id} has no payment intent, skipping')
+            logger.info(f'Order {order_id} has no payment intent, skipping')
             continue
 
         # Skip orders that already have completed payouts
@@ -126,10 +128,10 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                 .limit(1).get()
 
             if len(dispute_alerts) > 0:
-                print(f'⚠️ Order {order_id} has active dispute, skipping auto-payout')
+                logger.warning(f'⚠️ Order {order_id} has active dispute, skipping auto-payout')
                 continue
         except Exception as e:
-            print(f'⚠️ Failed to check disputes for order {order_id}: {str(e)}, skipping for safety')
+            logger.warning(f'⚠️ Failed to check disputes for order {order_id}: {str(e)}, skipping for safety')
             continue
 
         # FIX S23: Verify actual delivery/ship time before payout.
@@ -147,7 +149,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                     latest_event_time = ts
 
         if latest_event_time and latest_event_time > cutoff_date:
-            print(f'Order {order_id} item-level timestamp too recent ({latest_event_time}), skipping')
+            logger.info(f'Order {order_id} item-level timestamp too recent ({latest_event_time}), skipping')
             continue
 
         # Auto-confirm SHIPPED orders as DELIVERED after cutoff
@@ -164,7 +166,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                 Fields.UPDATED_AT: get_server_timestamp(),
             })
             order_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
-            print(f'Auto-confirmed order {order_id} as delivered (was shipped, {AUTO_CONFIRM_DAYS}+ days)')
+            logger.info(f'Auto-confirmed order {order_id} as delivered (was shipped, {AUTO_CONFIRM_DAYS}+ days)')
 
         try:
             # Payment is already captured — just mark payout in progress
@@ -207,7 +209,7 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                     seller_charges_ok = seller_data.get(Fields.CHARGES_ENABLED, False)
 
                     if seller_suspended:
-                        print(f'⚠️ Skipping auto-payout to suspended seller {seller_id} for order {order_id}')
+                        logger.warning(f'⚠️ Skipping auto-payout to suspended seller {seller_id} for order {order_id}')
                         order_doc.reference.update({
                             Fields.REQUIRES_MANUAL_REVIEW: True,
                             Fields.MANUAL_REVIEW_REASON: f'Seller {seller_id} suspended at auto-capture',
@@ -223,10 +225,10 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                                 pi = stripe.PaymentIntent.retrieve(payment_intent_id)
                                 charge_id = pi.latest_charge
                             except stripe.error.StripeError as pi_err:
-                                print(f'Failed to retrieve charge for PI {payment_intent_id}: {str(pi_err)}')
+                                logger.error(f'Failed to retrieve charge for PI {payment_intent_id}: {str(pi_err)}')
 
                             if not charge_id:
-                                print(f'⚠️ No charge found for PI {payment_intent_id}, skipping transfer for seller {seller_id}')
+                                logger.warning(f'⚠️ No charge found for PI {payment_intent_id}, skipping transfer for seller {seller_id}')
                                 order_doc.reference.update({
                                     Fields.REQUIRES_MANUAL_REVIEW: True,
                                     Fields.MANUAL_REVIEW_REASON: f'No charge ID found for auto-payout to seller {seller_id}',
@@ -268,13 +270,16 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                             })
 
                         except stripe.error.StripeError as e:
-                            print(f'Payout failed for seller {seller_id}: {str(e)}')
+                            logger.error(f'Payout failed for seller {seller_id}: {str(e)}')
+
+                            # AUDIT FIX: Sanitize Stripe error before storing in Firestore
+                            safe_error = f'{type(e).__name__}: {getattr(e, "code", "unknown")}'
 
                             # Update existing payout record to FAILED
                             try:
                                 payout_ref.update({
                                     Fields.STATUS: PayoutStatusValues.FAILED,
-                                    Fields.FAILURE_REASON: str(e),
+                                    Fields.FAILURE_REASON: safe_error,
                                 })
                             except Exception:
                                 # Fallback: create a new failure record if payout_ref wasn't set
@@ -285,13 +290,13 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
                                     Fields.PLATFORM_FEE_CENTS: platform_fee_cents,
                                     Fields.NET_AMOUNT_CENTS: net_amount_cents,
                                     Fields.STATUS: PayoutStatusValues.FAILED,
-                                    Fields.FAILURE_REASON: str(e),
+                                    Fields.FAILURE_REASON: safe_error,
                                     Fields.AUTO_CAPTURED: True,
                                     Fields.CREATED_AT: get_server_timestamp()
                                 })
 
             payout_count += 1
-            print(f'Auto-payout completed for order {order_id}')
+            logger.info(f'Auto-payout completed for order {order_id}')
 
             # Mark order payout as completed so it's not reprocessed next cron run
             order_doc.reference.update({
@@ -301,15 +306,15 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
 
         except stripe.error.StripeError as e:
             failed_count += 1
-            print(f'Failed to process payout for order {order_id}: {str(e)}')
+            logger.error(f'Failed to process payout for order {order_id}: {str(e)}')
 
             order_doc.reference.update({
                 Fields.PAYOUT_STATUS: PayoutStatusValues.FAILED,
-                Fields.LAST_CAPTURE_ERROR: str(e),
+                Fields.LAST_CAPTURE_ERROR: f'{type(e).__name__}: {getattr(e, "code", "unknown")}',
                 Fields.UPDATED_AT: get_server_timestamp()
             })
 
-    print(f'Auto-payout completed: {payout_count} paid out, {failed_count} failed')
+    logger.error(f'Auto-payout completed: {payout_count} paid out, {failed_count} failed')
 
 
 @scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
@@ -325,7 +330,7 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
       that were never paid and are older than AUTHORIZATION_VALID_DAYS.
     - Restores stock for these abandoned orders.
     """
-    print('Running check_expired_authorizations cron job (stale order cleanup)')
+    logger.info('Running check_expired_authorizations cron job (stale order cleanup)')
 
     cutoff_date = datetime.now() - timedelta(days=AUTHORIZATION_VALID_DAYS)
 
@@ -366,16 +371,16 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
         try:
             expire_result = try_expire_order(get_db().transaction())
         except Exception as e:
-            print(f'⚠️ Failed to lock order {order_id} for expiry: {str(e)}')
+            logger.warning(f'⚠️ Failed to lock order {order_id} for expiry: {str(e)}')
             continue
 
         if expire_result != 'locked':
-            print(f'Order {order_id} cannot be expired: {expire_result}')
+            logger.info(f'Order {order_id} cannot be expired: {expire_result}')
             continue
 
         # Skip if stock already restored (idempotency)
         if order_data.get(Fields.STOCK_RESTORED, False):
-            print(f'Stock already restored for expired order {order_id}')
+            logger.info(f'Stock already restored for expired order {order_id}')
         else:
             # Use batch write for atomicity across multiple product stock updates
             stock_batch = get_db().batch()
@@ -387,7 +392,7 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
             try:
                 stock_batch.commit()
             except Exception as e:
-                print(f'Failed to restore stock batch for order {order_id}: {str(e)}')
+                logger.error(f'Failed to restore stock batch for order {order_id}: {str(e)}')
 
         # Update order with remaining fields NOT set in the transaction
         # NOTE: ORDER_STATUS and PAYMENT_STATUS are already set in the transaction.
@@ -399,9 +404,9 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
         })
 
         expired_count += 1
-        print(f'Expired order {order_id}')
+        logger.info(f'Expired order {order_id}')
 
-    print(f'Stale order cleanup completed: {expired_count} orders expired')
+    logger.info(f'Stale order cleanup completed: {expired_count} orders expired')
 
 
 @scheduler_fn.on_schedule(schedule="every 12 hours", **CRON_OPTIONS)
@@ -416,7 +421,7 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
     - Updated 30+ days ago
     - Mark as archived
     """
-    print('Running auto_archive_old_orders cron job')
+    logger.info('Running auto_archive_old_orders cron job')
 
     cutoff_date = datetime.now() - timedelta(days=BusinessRules.ARCHIVE_AFTER_DAYS)
 
@@ -453,7 +458,7 @@ def auto_archive_old_orders(event: scheduler_fn.ScheduledEvent) -> None:
     if archived_count % 500 != 0:
         batch.commit()
 
-    print(f'Archive completed: {archived_count} orders archived')
+    logger.info(f'Archive completed: {archived_count} orders archived')
 
 
 @scheduler_fn.on_schedule(schedule="every 15 minutes", **CRON_OPTIONS)
@@ -468,7 +473,7 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
     - Count products in Algolia
     - Alert if mismatch > 5%
     """
-    print('Running monitor_algolia_sync cron job')
+    logger.info('Running monitor_algolia_sync cron job')
 
     try:
         # Count active products in Firestore using count aggregation
@@ -486,7 +491,7 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
 
         # Check for significant mismatch
         if firestore_count == 0:
-            print('No products in Firestore')
+            logger.info('No products in Firestore')
             return
 
         mismatch_percent = abs(firestore_count - algolia_count) / firestore_count
@@ -502,12 +507,12 @@ def monitor_algolia_sync(event: scheduler_fn.ScheduledEvent) -> None:
                 Fields.RESOLVED: False
             })
 
-            print(f'ALERT: Algolia sync mismatch: Firestore={firestore_count}, Algolia={algolia_count}')
+            logger.info(f'ALERT: Algolia sync mismatch: Firestore={firestore_count}, Algolia={algolia_count}')
         else:
-            print(f'Algolia sync healthy: Firestore={firestore_count}, Algolia={algolia_count}')
+            logger.info(f'Algolia sync healthy: Firestore={firestore_count}, Algolia={algolia_count}')
 
     except Exception as e:
-        print(f'Failed to monitor Algolia sync: {str(e)}')
+        logger.error(f'Failed to monitor Algolia sync: {str(e)}')
 
 
 @scheduler_fn.on_schedule(schedule="every 30 minutes", **CRON_OPTIONS)
@@ -521,7 +526,7 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
     - Find rate_limits with last_request > 1 hour ago
     - Delete documents
     """
-    print('Running cleanup_stale_rate_limits cron job')
+    logger.info('Running cleanup_stale_rate_limits cron job')
 
     cutoff_time = datetime.now() - timedelta(hours=1)
 
@@ -547,7 +552,7 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
     if deleted_count % 500 != 0:
         batch.commit()
 
-    print(f'Rate limit cleanup completed: {deleted_count} documents deleted')
+    logger.info(f'Rate limit cleanup completed: {deleted_count} documents deleted')
 
 
 @scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
@@ -568,7 +573,7 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
 
     from config import R2Config, get_r2_credentials
 
-    print('Running cleanup_orphaned_r2_images cron job')
+    logger.info('Running cleanup_orphaned_r2_images cron job')
 
     # Collect all image URLs currently referenced by products
     referenced_keys = set()
@@ -590,7 +595,7 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
                         referenced_keys.add(key)
                         break
 
-    print(f'  Found {len(referenced_keys)} referenced image keys')
+    logger.info(f'  Found {len(referenced_keys)} referenced image keys')
 
     # List R2 objects
     r2_creds = get_r2_credentials()
@@ -599,7 +604,7 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
     r2_account_id = r2_creds.get("account_id")
 
     if not all([r2_access_key, r2_secret_key, r2_account_id]):
-        print('  ⚠️ R2 credentials not configured, skipping cleanup')
+        logger.warning('  ⚠️ R2 credentials not configured, skipping cleanup')
         return
 
     s3_client = boto3.client(
@@ -631,7 +636,7 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
         try:
             response = s3_client.list_objects_v2(**list_kwargs)
         except Exception as e:
-            print(f'  ⚠️ R2 list error: {e}')
+            logger.warning(f'  ⚠️ R2 list error: {e}')
             return
 
         for obj in response.get('Contents', []):
@@ -649,7 +654,7 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
             break
         continuation_token = response.get('NextContinuationToken')
 
-    print(f'  Found {len(orphaned_keys)} orphaned images to delete')
+    logger.info(f'  Found {len(orphaned_keys)} orphaned images to delete')
 
     # Delete orphaned objects in batches of 100
     deleted_count = 0
@@ -662,8 +667,82 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
             )
             deleted_count += len(batch_keys)
         except Exception as e:
-            print(f'  ⚠️ R2 delete error for batch {i}: {e}')
+            logger.warning(f'  ⚠️ R2 delete error for batch {i}: {e}')
 
-    print(f'  R2 orphan cleanup completed: {deleted_count} files deleted')
+    logger.info(f'  R2 orphan cleanup completed: {deleted_count} files deleted')
 
 
+@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+def cleanup_stale_webhook_events(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    Removes processed webhook event records older than 7 days.
+
+    Runs: Daily
+
+    Logic:
+    - The webhook_events collection stores event IDs for deduplication
+    - Old records (>7 days) are no longer needed — Stripe won't replay them
+    - Clean up to prevent unbounded collection growth
+    """
+    logger.info('Running cleanup_stale_webhook_events cron job')
+
+    cutoff_time = datetime.now() - timedelta(days=7)
+
+    webhook_docs = get_db().collection(Collections.WEBHOOK_EVENTS)\
+        .where(Fields.CREATED_AT, '<=', cutoff_time)\
+        .limit(500)\
+        .stream()
+
+    deleted_count = 0
+    batch = get_db().batch()
+
+    for doc in webhook_docs:
+        batch.delete(doc.reference)
+        deleted_count += 1
+
+        if deleted_count % 500 == 0:
+            batch.commit()
+            batch = get_db().batch()
+
+    if deleted_count % 500 != 0:
+        batch.commit()
+
+    logger.info(f'Webhook event cleanup completed: {deleted_count} documents deleted')
+
+
+@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+def cleanup_stale_security_alerts(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    Archives resolved security alerts older than 90 days.
+
+    Runs: Daily
+
+    Logic:
+    - Resolved alerts older than 90 days are deleted to prevent unbounded growth
+    - Unresolved alerts are NEVER cleaned up (require manual resolution)
+    """
+    logger.info('Running cleanup_stale_security_alerts cron job')
+
+    cutoff_time = datetime.now() - timedelta(days=90)
+
+    alert_docs = get_db().collection(Collections.SECURITY_ALERTS)\
+        .where(Fields.RESOLVED, '==', True)\
+        .where(Fields.TIMESTAMP, '<=', cutoff_time)\
+        .limit(500)\
+        .stream()
+
+    deleted_count = 0
+    batch = get_db().batch()
+
+    for doc in alert_docs:
+        batch.delete(doc.reference)
+        deleted_count += 1
+
+        if deleted_count % 500 == 0:
+            batch.commit()
+            batch = get_db().batch()
+
+    if deleted_count % 500 != 0:
+        batch.commit()
+
+    logger.info(f'Security alert cleanup completed: {deleted_count} resolved alerts deleted')

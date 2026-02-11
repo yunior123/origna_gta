@@ -1,7 +1,6 @@
 // seller_registration_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -13,27 +12,10 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import '../features/seller/seller_registration_state.dart';
 import '../features/seller/seller_registration_view_model.dart';
 
-/// Provider to fetch backend payment provider configuration status
-final paymentProviderStatusProvider = FutureProvider<Map<String, dynamic>>((ref) async {
-  try {
-    final callable = FirebaseFunctions.instance.httpsCallable('get_provider_status');
-    final result = await callable.call();
-    final data = Map<String, dynamic>.from(result.data as Map);
-    if (data[ApiKeys.success] == true && data[ApiKeys.providers] != null) {
-      return Map<String, dynamic>.from(data[ApiKeys.providers] as Map);
-    }
-    return {};
-  } catch (e) {
-    // On error, return empty map (all providers will show from static config)
-    debugPrint('Error fetching provider status: $e');
-    return {};
-  }
-});
-
 /// Available payment providers - add new providers here
 const List<PaymentProviderConfig> availablePaymentProviders = [
   PaymentProviderConfig(
-    id: 'stripe',
+    id: PaymentProviderValues.stripe,
     name: 'Stripe',
     icon: Icons.flash_on,
     primaryColor: Color(0xFF635BFF),
@@ -43,7 +25,7 @@ const List<PaymentProviderConfig> availablePaymentProviders = [
     recommendedFor: 'Recommended for local Canadian sellers.',
   ),
   PaymentProviderConfig(
-    id: 'airwallex',
+    id: PaymentProviderValues.airwallex,
     name: 'Airwallex',
     icon: Icons.public,
     primaryColor: Color(0xFF0066FF),
@@ -59,7 +41,7 @@ const List<PaymentProviderConfig> availablePaymentProviders = [
     recommendedFor: 'Ideal for dropshipping & international suppliers.',
   ),
   PaymentProviderConfig(
-    id: 'paypal',
+    id: 'paypal', // Not in PaymentProviderValues — future provider
     name: 'PayPal',
     icon: Icons.account_balance_wallet,
     primaryColor: Color(0xFF003087),
@@ -70,7 +52,7 @@ const List<PaymentProviderConfig> availablePaymentProviders = [
     comingSoon: true,
   ),
   PaymentProviderConfig(
-    id: 'wise',
+    id: 'wise', // Not in PaymentProviderValues — future provider
     name: 'Wise (TransferWise)',
     icon: Icons.swap_horiz,
     primaryColor: Color(0xFF9FE870),
@@ -350,7 +332,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
     final isLoading = viewState.isLoading;
     final paymentProvider = viewState.paymentProvider;
     
-    if (paymentProvider == 'airwallex') {
+    if (paymentProvider == PaymentProviderValues.airwallex) {
       final hasAirwallex = user.airwallexAccountId != null && user.airwallexAccountId!.isNotEmpty;
       // Disable button if terms not accepted (unless already connected)
       final canProceed = _termsAccepted || hasAirwallex;

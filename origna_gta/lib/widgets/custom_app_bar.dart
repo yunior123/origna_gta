@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 /// Factory methods for common AppBar configurations
@@ -75,9 +76,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF667EEA), Color(0xFF764BA2)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        gradient: DesignTokens.primaryGradient,
         borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
-        boxShadow: [BoxShadow(color: const Color(0xFF667EEA).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: SafeArea(
         child: Padding(
@@ -155,7 +156,7 @@ class _CartBadge extends ConsumerWidget {
               constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
               child: Text(
                 cartCount > 99 ? '99+' : cartCount.toString(),
-                style: const TextStyle(color: Color(0xFF667EEA), fontSize: 10, fontWeight: FontWeight.bold),
+                style: TextStyle(color: DesignTokens.primary, fontSize: 10, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
             ),

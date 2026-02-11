@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart';
 
 /// Safely parse a dynamic value (Timestamp, String, DateTime) to DateTime?
@@ -895,7 +896,7 @@ class UserModel {
     this.onboardingCompleted = false,
     this.suspended = false,
     this.suspendedAt,
-    this.paymentProvider = 'stripe',
+    this.paymentProvider = PaymentProviderValues.stripe,
     this.airwallexAccountId,
     this.airwallexCustomerId,
     this.airwallexStatus,
@@ -927,7 +928,7 @@ class UserModel {
       onboardingCompleted: map[Fields.onboardingCompleted] ?? map['stripeOnboardingComplete'] ?? false,
       suspended: map[Fields.suspended] ?? false,
       suspendedAt: _parseDateTime(map[Fields.suspendedAt]),
-      paymentProvider: map[Fields.paymentProvider] ?? 'stripe',
+      paymentProvider: map[Fields.paymentProvider] ?? PaymentProviderValues.stripe,
       airwallexAccountId: map[Fields.airwallexAccountId] as String?,
       airwallexCustomerId: map[Fields.airwallexCustomerId] as String?,
       airwallexStatus: map[Fields.airwallexStatus] as String?,

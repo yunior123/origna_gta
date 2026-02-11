@@ -438,6 +438,15 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow create, update, delete: if false;
     }
+
+    // ================================================================
+    // CATCH-ALL: Deny access to any unmatched collections
+    // This prevents accidental data exposure if new collections are
+    // added without explicit rules. Defense-in-depth.
+    // ================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
     
     // ================================================================
     // VALIDATION FUNCTIONS

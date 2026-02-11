@@ -24,13 +24,7 @@ class AuthRequiredGate extends ConsumerWidget {
     return authState.when(
       loading: () => Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark
-                ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-                : [const Color(0xFFF0F2FF), Colors.white],
-          ),
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
         ),
         child: Scaffold(
           backgroundColor: Colors.transparent,
@@ -52,13 +46,7 @@ class AuthRequiredGate extends ConsumerWidget {
         if (user == null) {
           return Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: isDark
-                    ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-                    : [const Color(0xFFF0F2FF), Colors.white],
-              ),
+              gradient: DesignTokens.backgroundGradient(isDark: isDark),
             ),
             child: Scaffold(
               appBar: AppBarFactory.simple(title: 'Sign In Required'),
@@ -175,13 +163,7 @@ class ErrorScreen extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-              : [const Color(0xFFF0F2FF), Colors.white],
-        ),
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'Error'),
@@ -280,13 +262,7 @@ class _EmailVerificationRequiredScreenState
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-              : [const Color(0xFFF0F2FF), Colors.white],
-        ),
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'Email Verification'),
@@ -556,9 +532,9 @@ class _EmailVerificationRequiredScreenState
       await ref.read(authRepositoryProvider).sendEmailVerification();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('✅ Verification email sent! Check your inbox.'),
-            backgroundColor: Color(0xFF667EEA),
+            backgroundColor: DesignTokens.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );

@@ -24,13 +24,7 @@ class OrderSuccessGate extends ConsumerWidget {
     return orderAsync.when(
       loading: () => Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark
-                ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-                : [const Color(0xFFF0F2FF), Colors.white],
-          ),
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
         ),
         child: Scaffold(
           backgroundColor: Colors.transparent,
@@ -75,13 +69,7 @@ class OrderSuccessGate extends ConsumerWidget {
         if (order == null) {
           return Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: isDark
-                    ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-                    : [const Color(0xFFF0F2FF), Colors.white],
-              ),
+              gradient: DesignTokens.backgroundGradient(isDark: isDark),
             ),
             child: Scaffold(
               backgroundColor: Colors.transparent,
@@ -139,13 +127,7 @@ class PaymentCanceledScreen extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-              : [const Color(0xFFF0F2FF), Colors.white],
-        ),
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
         appBar: AppBarFactory.simple(title: 'Payment Canceled'),

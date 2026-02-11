@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/products/product_rating_viewmodel.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Shows the rating dialog
@@ -72,7 +73,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
           label: 'Submit rating',
           child: ElevatedButton(
           onPressed: (_selectedRating == 0 || _isSubmitting) ? null : _submitRating,
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF667EEA), foregroundColor: Colors.white),
+          style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
           child: _isSubmitting
               ? const ModernLoadingIndicator.small(color: Colors.white)
               : const Text('Submit'),

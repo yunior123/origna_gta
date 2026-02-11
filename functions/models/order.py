@@ -37,7 +37,7 @@ class OrderItem(BaseModel):
                     Fields.POSTAL_CODE: "M5V 3A8",
                     Fields.COUNTRY: "Canada"
                 },
-                Fields.DELIVERY_STATUS: "pending"
+                Fields.DELIVERY_STATUS: "pending",  # Deprecated — use 'status' instead
             }
         }
     )
@@ -50,7 +50,7 @@ class OrderItem(BaseModel):
     imageUrls: list[str] = Field(..., min_length=1, description="Product image URLs")
     sellerId: str = Field(..., min_length=1)
     sellerAddress: Address
-    deliveryStatus: DeliveryStatusEnum = Field(default=DeliveryStatusEnum.PENDING)
+    deliveryStatus: DeliveryStatusEnum = Field(default=DeliveryStatusEnum.PENDING, deprecated=True, description="Deprecated: use 'status' field instead")
     trackingNumber: str | None = Field(default=None, max_length=100)
     carrier: str | None = Field(default=None, max_length=100)
     confirmedByBuyer: bool = Field(default=False)

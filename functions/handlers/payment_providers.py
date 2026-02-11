@@ -12,6 +12,8 @@ Providers Supported:
 - airwallex: Airwallex payment processing (international)
 """
 
+import logging
+logger = logging.getLogger(__name__)
 from typing import Any, ClassVar
 
 from firebase_functions import https_fn
@@ -28,6 +30,7 @@ from schema_constants import (
     UserRoleValues,
 )
 from utils.function_options import DEFAULT_OPTIONS
+from services.rate_limiter import RateLimiter
 
 # ============================================================================
 # LAZY INITIALIZATION
@@ -152,7 +155,7 @@ def is_provider_enabled(provider: str) -> bool:
         return provider_config.get(ApiKeys.ENABLED, DEFAULT_PROVIDER_CONFIG.get(provider, {}).get(ApiKeys.ENABLED, False))
 
     except Exception as e:
-        print(f"Error checking provider status: {str(e)}")
+        logger.error(f"Error checking provider status: {str(e)}")
         # Fail open for stripe (essential), closed for others
         return provider == PaymentProvider.STRIPE
 
@@ -187,7 +190,7 @@ def get_enabled_providers() -> list:
         return enabled
 
     except Exception as e:
-        print(f"Error getting enabled providers: {str(e)}")
+        logger.error(f"Error getting enabled providers: {str(e)}")
         # Default to stripe only
         return [PaymentProvider.STRIPE]
 
@@ -264,6 +267,15 @@ def get_payment_providers(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     admin_id, _ = _require_admin(req)
 
+    # Rate limit: 30/min for admin reads
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=admin_id, action='get_payment_providers',
+        max_requests=30, window_minutes=1, fail_closed=True
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
     try:
         config_ref = get_db().collection(Collections.CONFIG).document(Documents.PAYMENT_PROVIDERS)
         config_doc = config_ref.get()
@@ -291,7 +303,7 @@ def get_payment_providers(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
 
     except Exception as e:
-        print(f"get_payment_providers error: {str(e)}")
+        logger.error(f"get_payment_providers error: {str(e)}")
         raise https_fn.HttpsError("internal", "Failed to get provider config") from e
 
 
@@ -309,6 +321,15 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
         {success: True, provider: "stripe", enabled: true}
     """
     admin_id, _ = _require_admin(req)
+
+    # Rate limit: 5/min for admin writes (critical operation)
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=admin_id, action='update_payment_provider',
+        max_requests=5, window_minutes=1, fail_closed=True
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
 
     provider = req.data.get(ApiKeys.PROVIDER)
     enabled = req.data.get(ApiKeys.ENABLED)
@@ -416,7 +437,7 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
     except https_fn.HttpsError:
         raise
     except Exception as e:
-        print(f"update_payment_provider error: {str(e)}")
+        logger.error(f"update_payment_provider error: {str(e)}")
         raise https_fn.HttpsError("internal", "Failed to update provider") from e
 
 
@@ -439,6 +460,15 @@ def get_provider_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
+    # Rate limit: 30/min per user (anti-scraping)
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid, action='get_provider_status',
+        max_requests=30, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
     try:
         providers = {}
 
@@ -459,5 +489,5 @@ def get_provider_status(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
 
     except Exception as e:
-        print(f"get_provider_status error: {str(e)}")
+        logger.error(f"get_provider_status error: {str(e)}")
         raise https_fn.HttpsError("internal", "Failed to get provider status") from e

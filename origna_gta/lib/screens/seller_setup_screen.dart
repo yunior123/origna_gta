@@ -86,13 +86,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
     if (_isRefreshing) {
       return Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark
-                ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-                : [const Color(0xFFF0F2FF), Colors.white],
-          ),
+          gradient: DesignTokens.backgroundGradient(isDark: isDark),
         ),
         child: Scaffold(
           backgroundColor: Colors.transparent,
@@ -125,13 +119,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-              : [const Color(0xFFF0F2FF), Colors.white],
-        ),
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -227,7 +215,6 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
       await ref.read(refreshSellerStatusProvider(null).future);
     } catch (e) {
       // Ignore errors - we'll still navigate home
-      debugPrint('Error syncing status before going home: $e');
     }
 
     // Refresh user profile to get updated seller status from Firestore
@@ -325,7 +312,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                 Navigator.of(context).pushReplacementNamed(AppRoutes.sellerRegistration);
               },
               height: 54,
-              backgroundColor: const Color(0xFFF59E0B),
+              backgroundColor: DesignTokens.warning,
             ),
           ),
           const SizedBox(height: DesignTokens.spacing12),
@@ -468,13 +455,7 @@ class SellerSetupRefreshScreen extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [const Color(0xFF0F0F1E), const Color(0xFF1A1A2E)]
-              : [const Color(0xFFF0F2FF), Colors.white],
-        ),
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,

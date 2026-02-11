@@ -928,8 +928,9 @@ test.describe('J. Shipping Cost Management', () => {
 
   test('J.2 Digital product has zero shipping cost in checkout', async () => {
     // Digital products should never incur shipping charges
+    // product_010 is seeded by mega-seed.ts as a digital product
     if (!PRODUCT_DIGITAL) {
-      test.skip(true, 'No digital product available in seed data');
+      test.skip(!PRODUCT_DIGITAL, 'PRODUCT_DIGITAL config not set — check TEST_PRODUCTS.DIGITAL in api-helpers.ts');
       return;
     }
 

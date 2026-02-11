@@ -6,13 +6,6 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
-/// Payment provider names
-class PaymentProviders {
-  static const String stripe = 'stripe';
-  static const String airwallex = 'airwallex';
-  static const List<String> all = [stripe, airwallex];
-}
-
 /// Admin tab for managing payment providers
 class AdminPaymentProvidersTab extends ConsumerStatefulWidget {
   const AdminPaymentProvidersTab({super.key});
@@ -124,7 +117,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                     // Provider cards
                     if (_providersData != null) ...[
                       _buildProviderCard(
-                        provider: PaymentProviders.stripe,
+                        provider: PaymentProviderValues.stripe,
                         name: 'Stripe',
                         icon: Icons.credit_card,
                         description: 'Primary payment processor for credit/debit cards, Apple Pay, Google Pay.',
@@ -132,7 +125,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                       ),
                       const SizedBox(height: 16),
                       _buildProviderCard(
-                        provider: PaymentProviders.airwallex,
+                        provider: PaymentProviderValues.airwallex,
                         name: 'Airwallex',
                         icon: Icons.language,
                         description: 'International payment processor with support for Alipay and WeChat Pay.',

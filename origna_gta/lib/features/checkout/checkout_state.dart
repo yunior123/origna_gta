@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -60,7 +61,7 @@ class CheckoutState {
     this.isProcessing = false,
     this.idempotencyKey,
     this.checkoutError,
-    this.paymentProvider = 'stripe',
+    this.paymentProvider = PaymentProviderValues.stripe,
   });
 
   /// Total shipping cost including delivery speed surcharge

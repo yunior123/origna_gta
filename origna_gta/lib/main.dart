@@ -90,7 +90,7 @@ void main() {
          try {
            await FirebaseFirestore.instance.enablePersistence(const PersistenceSettings(synchronizeTabs: true));
          } catch(e) {
-           print('Persistence init error: $e');
+           debugPrint('Persistence init error: $e');
          }
       }
       */

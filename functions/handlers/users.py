@@ -7,6 +7,8 @@ NOTE: Stripe Tax handles GST validation and B2B exemption automatically.
 We only store the GST number - Stripe validates it during checkout.
 """
 
+import logging
+logger = logging.getLogger(__name__)
 from typing import Any
 
 from firebase_functions import https_fn
@@ -103,7 +105,7 @@ def update_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
             address = Address(**data[Fields.ADDRESS])
             update_data[Fields.ADDRESS] = address.model_dump()
         except Exception as e:
-            print(f'Address validation error: {e}')
+            logger.error(f'Address validation error: {e}')
             raise https_fn.HttpsError('invalid-argument', 'Invalid address. Please check all fields and try again.') from e
 
     # Handle name update

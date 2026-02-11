@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/services/algolia_service.dart';
 import 'package:origna_gta/utils/constants.dart';
@@ -28,9 +29,11 @@ class AlgoliaProductRepository implements ProductRepository {
       );
     }
     try {
+      // AUDIT FIX: Sanitize product data before Firestore write (removes client-controlled productId, normalizes timestamps)
+      final firestoreData = sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
       final docRef = await _firestore
           .collection(Collections.products)
-          .add(product.toJson());
+          .add(firestoreData);
       if (kDebugMode) debugPrint('REPO: Local write returned ID: ${docRef.id}');
 
       // Force server synchronization verification
@@ -64,7 +67,8 @@ class AlgoliaProductRepository implements ProductRepository {
   @override
   Future<void> addProductWithId(String productId, Product product) async {
     if (kDebugMode) debugPrint('REPO: [AlgoliaProductRepository] Adding product with ID: $productId');
-    final firestoreData = product.toJson();
+    // AUDIT FIX: Sanitize product data before Firestore write
+    final firestoreData = sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
     firestoreData[Fields.productId] = productId;
     await _firestore.collection(Collections.products).doc(productId).set(firestoreData);
   }
@@ -76,7 +80,8 @@ class AlgoliaProductRepository implements ProductRepository {
 
   @override
   Future<void> deleteProduct(String productId) async {
-    await _firestore.collection(Collections.products).doc(productId).delete();
+    // AUDIT FIX: Use Cloud Function for deletion — validates pending orders, syncs Algolia, etc.
+    await _functions.httpsCallable('delete_product').call({Fields.productId: productId});
   }
 
   @override
@@ -214,10 +219,12 @@ class AlgoliaProductRepository implements ProductRepository {
     String productId,
     Map<String, dynamic> updates,
   ) async {
+    // AUDIT FIX: Sanitize updates before Firestore write
+    final sanitized = sanitizeProductForFirestore(updates);
     await _firestore
         .collection(Collections.products)
         .doc(productId)
-        .update(updates);
+        .update(sanitized);
   }
 
   @override
@@ -246,7 +253,7 @@ class AlgoliaProductRepository implements ProductRepository {
     DocumentSnapshot? lastDocument,
     int pageSize = 20,
   }) async {
-    if (kDebugMode) print('📍 Using Firestore fallback');
+    if (kDebugMode) debugPrint('📍 Using Firestore fallback');
 
     Query<Map<String, dynamic>> query = _firestore.collection(
       Collections.products,
@@ -312,7 +319,7 @@ class AlgoliaProductRepository implements ProductRepository {
       }).toList();
 
       if (kDebugMode) {
-        print('✅ Algolia search returned ${products.length} products');
+        debugPrint('✅ Algolia search returned ${products.length} products');
       }
 
       return ProductQueryResult(
@@ -323,7 +330,7 @@ class AlgoliaProductRepository implements ProductRepository {
         lastDocument: null,
       );
     } catch (e) {
-      if (kDebugMode) print('❌ Algolia search failed: $e');
+      if (kDebugMode) debugPrint('❌ Algolia search failed: $e');
       rethrow;
     }
   }

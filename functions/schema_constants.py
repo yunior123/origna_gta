@@ -89,7 +89,8 @@ class EmailConfig:
     UNSUBSCRIBE_URL_PROD = "https://orignagta.ca/unsubscribe"
     UNSUBSCRIBE_URL_DEV = "http://localhost:5005/unsubscribe"
     # Privacy Officer contact — REQUIRED by Quebec Law 25 (since Sept 2022)
-    PRIVACY_OFFICER_EMAIL = "privacy@orignaventures.ca"
+    # NOTE: Using support@ until dedicated privacy@ mailbox is provisioned
+    PRIVACY_OFFICER_EMAIL = "support@orignaventures.ca"
     PRIVACY_OFFICER_NAME = "Yunior Rodriguez Osorio"
 
 
@@ -475,6 +476,43 @@ class OrderStatusValues:
         PENDING, CONFIRMED, PROCESSING, SHIPPED, IN_TRANSIT,
         DELIVERED, CANCELLED, FAILED, EXPIRED, REFUNDED, PARTIALLY_REFUNDED, DISPUTED
     })
+
+    # =========================================================================
+    # CENTRALIZED STATE MACHINE — Single source of truth for order transitions
+    # Used by: helpers.py, firestore.rules (must be manually kept in sync),
+    #          orders.py update_order_status, cancel_order
+    # =========================================================================
+    VALID_TRANSITIONS: dict[str, list[str]] = {
+        "pending": ["confirmed", "cancelled", "failed", "expired"],
+        "confirmed": ["processing", "cancelled", "expired"],
+        "processing": ["shipped", "cancelled"],
+        "shipped": ["in_transit", "delivered"],
+        "in_transit": ["delivered", "cancelled"],
+        "delivered": ["refunded", "partially_refunded", "disputed"],
+        "cancelled": [],       # Terminal
+        "failed": ["pending"],  # Retry
+        "expired": ["pending"],  # Retry
+        "refunded": [],        # Terminal
+        "partially_refunded": ["refunded"],
+        "disputed": ["refunded"],  # After dispute resolution
+    }
+
+    # Terminal states — no further transitions allowed
+    TERMINAL_STATES: frozenset[str] = frozenset({
+        "cancelled", "refunded",
+    })
+
+
+class DeliveryItemStatusTransitions:
+    """Centralized per-item delivery status transitions.
+    Used by: orders.py update_item_status (inside and outside transaction).
+    """
+    VALID_TRANSITIONS: dict[str, list[str]] = {
+        "pending": ["shipped"],
+        "shipped": ["delivered"],
+        "delivered": ["refunded"],
+        "refunded": [],  # Terminal
+    }
 
 
 class PaymentStatusValues:

@@ -44,12 +44,12 @@ class HomeViewModel extends StateNotifier<HomeState> {
       // Log which repository is being used
       if (kDebugMode) {
         final repoType = repository.runtimeType.toString();
-        print('🔍 Using repository: $repoType');
+        debugPrint('🔍 Using repository: $repoType');
         if (state.searchQuery.isNotEmpty) {
-          print('   Search query: "${state.searchQuery}"');
+          debugPrint('   Search query: "${state.searchQuery}"');
         }
         if (state.selectedCategoryId != null) {
-          print('   Category filter: ${state.selectedCategoryId}');
+          debugPrint('   Category filter: ${state.selectedCategoryId}');
         }
       }
       
@@ -59,7 +59,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
         lastDocument: state.lastDocument,
       );
 
-      if (kDebugMode) print('✅ Loaded ${result.products.length} products');
+      if (kDebugMode) debugPrint('✅ Loaded ${result.products.length} products');
 
       if (!mounted) return; // Check mounted after async operation
 
@@ -83,7 +83,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
         isLoadingMore: false,
       );
     } catch (e) {
-      if (kDebugMode) print('❌ Error loading products: $e');
+      if (kDebugMode) debugPrint('❌ Error loading products: $e');
       if (!mounted) return; // Check mounted after async operation
       // On error with empty products, set hasMore=false to prevent infinite
       // scroll-triggered retry loops. Category/search changes reset hasMore.

@@ -3,6 +3,8 @@ Algolia indexing service for products
 Handles syncing Firestore products to Algolia search index
 """
 
+import logging
+logger = logging.getLogger(__name__)
 import asyncio
 import concurrent.futures
 from typing import Union
@@ -62,7 +64,7 @@ def format_product_for_algolia(product_id: str, product_data: Union[dict, Produc
             data = product.model_dump(exclude_none=True)
         except ValidationError:
             # Fallback to raw dict if validation fails
-            print(f"⚠️  Product {product_id} validation failed, using raw data")
+            logger.warning(f"⚠️  Product {product_id} validation failed, using raw data")
             data = product_data
 
     # Algolia requires objectID field
@@ -120,9 +122,9 @@ def _log_sync_failure(product_id: str, action: str, error: str, retries: int):
             Fields.RETRIES: retries,
             Fields.RESOLVED: False,
         })
-        print(f"  📝 Logged sync failure for {product_id} to dead letter queue")
+        logger.info(f"  📝 Logged sync failure for {product_id} to dead letter queue")
     except Exception as dlq_err:
-        print(f"  ❌ Failed to log to dead letter queue: {dlq_err}")
+        logger.error(f"  ❌ Failed to log to dead letter queue: {dlq_err}")
 
 
 def index_product(product_id: str, product_data: dict, max_retries: int = AppConfig.ALGOLIA_MAX_RETRIES) -> bool:
@@ -141,12 +143,12 @@ def index_product(product_id: str, product_data: dict, max_retries: int = AppCon
     import time
 
     if not products_index:
-        print("⚠️  Algolia not configured - skipping indexing")
+        logger.warning("⚠️  Algolia not configured - skipping indexing")
         return False
 
     # Only index active products
     if not product_data.get(Fields.IS_ACTIVE, True):
-        print(f"  ⏭️  Product {product_id} is inactive - removing from index if exists")
+        logger.info(f"  ⏭️  Product {product_id} is inactive - removing from index if exists")
         delete_product(product_id)
         return True
 
@@ -156,12 +158,12 @@ def index_product(product_id: str, product_data: dict, max_retries: int = AppCon
     for attempt in range(max_retries):
         try:
             _run_async(products_index.save_object(index_name=_get_index_name(), body=algolia_object))
-            print(f"  ✅ Indexed product {product_id} to Algolia (index={_get_index_name()})")
+            logger.info(f"  ✅ Indexed product {product_id} to Algolia (index={_get_index_name()})")
             return True
         except Exception as e:
             last_error = e
             wait = 2 ** attempt
-            print(f"  ⚠️  Algolia index attempt {attempt + 1}/{max_retries} failed for {product_id}: {e}")
+            logger.warning(f"  ⚠️  Algolia index attempt {attempt + 1}/{max_retries} failed for {product_id}: {e}")
             if attempt < max_retries - 1:
                 time.sleep(wait)
 
@@ -185,7 +187,7 @@ def delete_product(product_id: str, max_retries: int = AppConfig.ALGOLIA_MAX_RET
     import time
 
     if not products_index:
-        print("⚠️  Algolia not configured - skipping deletion")
+        logger.warning("⚠️  Algolia not configured - skipping deletion")
         return False
 
     last_error = None
@@ -193,12 +195,12 @@ def delete_product(product_id: str, max_retries: int = AppConfig.ALGOLIA_MAX_RET
     for attempt in range(max_retries):
         try:
             _run_async(products_index.delete_object(index_name=_get_index_name(), object_id=product_id))
-            print(f"  ✅ Deleted product {product_id} from Algolia (index={_get_index_name()})")
+            logger.info(f"  ✅ Deleted product {product_id} from Algolia (index={_get_index_name()})")
             return True
         except Exception as e:
             last_error = e
             wait = 2 ** attempt
-            print(f"  ⚠️  Algolia delete attempt {attempt + 1}/{max_retries} failed for {product_id}: {e}")
+            logger.warning(f"  ⚠️  Algolia delete attempt {attempt + 1}/{max_retries} failed for {product_id}: {e}")
             if attempt < max_retries - 1:
                 time.sleep(wait)
 
@@ -216,7 +218,7 @@ def get_index_stats() -> int:
         Number of records in the index, or 0 if unavailable.
     """
     if not products_index:
-        print("⚠️  Algolia not configured - cannot get index stats")
+        logger.warning("⚠️  Algolia not configured - cannot get index stats")
         return 0
 
     try:
@@ -228,7 +230,7 @@ def get_index_stats() -> int:
         ))
         return search_result.nb_hits or 0
     except Exception as e:
-        print(f"  ❌ Failed to get Algolia index stats: {str(e)}")
+        logger.error(f"  ❌ Failed to get Algolia index stats: {str(e)}")
         return 0
 
 
@@ -243,7 +245,7 @@ def batch_index_products(products: list) -> tuple:
         Tuple of (success_count, failure_count)
     """
     if not products_index:
-        print("⚠️  Algolia not configured - skipping batch indexing")
+        logger.warning("⚠️  Algolia not configured - skipping batch indexing")
         return (0, len(products))
 
     try:
@@ -255,12 +257,12 @@ def batch_index_products(products: list) -> tuple:
 
         if algolia_objects:
             _run_async(products_index.save_objects(index_name=_get_index_name(), objects=algolia_objects))
-            print(f"  ✅ Batch indexed {len(algolia_objects)} products to Algolia (index={_get_index_name()})")
+            logger.info(f"  ✅ Batch indexed {len(algolia_objects)} products to Algolia (index={_get_index_name()})")
             return (len(algolia_objects), len(products) - len(algolia_objects))
 
         return (0, len(products))
     except Exception as e:
-        print(f"  ❌ Failed to batch index products: {str(e)}")
+        logger.error(f"  ❌ Failed to batch index products: {str(e)}")
         return (0, len(products))
 
 
@@ -270,12 +272,12 @@ def configure_algolia_index():
     Should be run once during setup or when index configuration changes
     """
     if not products_index:
-        print("⚠️  Algolia not configured - skipping index configuration")
+        logger.warning("⚠️  Algolia not configured - skipping index configuration")
         return False
 
     try:
         index_name = _get_index_name()
-        print(f"  🔧 Configuring Algolia index: {index_name}")
+        logger.info(f"  🔧 Configuring Algolia index: {index_name}")
         # Set searchable attributes with priority
         _run_async(products_index.set_settings(index_name=index_name, index_settings={
             'searchableAttributes': [
@@ -325,10 +327,10 @@ def configure_algolia_index():
             'highlightPostTag': '</mark>',
             'hitsPerPage': AppConfig.ALGOLIA_HITS_PER_PAGE,
         }))
-        print(f"  ✅ Configured Algolia index settings for '{index_name}'")
+        logger.info(f"  ✅ Configured Algolia index settings for '{index_name}'")
         return True
     except Exception as e:
-        print(f"  ❌ Failed to configure Algolia index '{_get_index_name()}': {str(e)}")
+        logger.error(f"  ❌ Failed to configure Algolia index '{_get_index_name()}': {str(e)}")
         return False
 
 

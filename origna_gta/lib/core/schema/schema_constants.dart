@@ -396,6 +396,11 @@ abstract final class Fields {
   static const HST = 'HST';
   // ignore: constant_identifier_names
   static const QST = 'QST';
+
+  // === API REQUEST/RESPONSE FIELDS ===
+  static const fileName = 'fileName';
+  static const uploadUrl = 'uploadUrl';
+  static const confirmation = 'confirmation';
 }
 
 // =============================================================================
@@ -430,6 +435,37 @@ abstract final class OrderStatusValues {
     refunded,
     partiallyRefunded,
     disputed,
+  };
+
+  /// Centralized state machine — single source of truth for order transitions.
+  /// Must match schema_constants.py OrderStatusValues.VALID_TRANSITIONS.
+  static const validTransitions = <String, List<String>>{
+    pending: [confirmed, cancelled, failed, expired],
+    confirmed: [processing, cancelled, expired],
+    processing: [shipped, cancelled],
+    shipped: [inTransit, delivered],
+    inTransit: [delivered, cancelled],
+    delivered: [refunded, partiallyRefunded, disputed],
+    cancelled: [], // Terminal
+    failed: [pending], // Retry
+    expired: [pending], // Retry
+    refunded: [], // Terminal
+    partiallyRefunded: [refunded],
+    disputed: [refunded], // After dispute resolution
+  };
+
+  /// Terminal states — no further transitions allowed.
+  static const terminalStates = {cancelled, refunded};
+}
+
+/// Centralized per-item delivery status transitions.
+/// Must match schema_constants.py DeliveryItemStatusTransitions.VALID_TRANSITIONS.
+abstract final class DeliveryItemStatusTransitions {
+  static const validTransitions = <String, List<String>>{
+    DeliveryStatusValues.pending: [DeliveryStatusValues.shipped],
+    DeliveryStatusValues.shipped: [DeliveryStatusValues.delivered],
+    DeliveryStatusValues.delivered: [DeliveryStatusValues.refunded],
+    DeliveryStatusValues.refunded: [], // Terminal
   };
 }
 
@@ -569,6 +605,14 @@ abstract final class UserRoleValues {
   static const all = {admin, seller, buyer};
 }
 
+/// Valid values for payment provider
+abstract final class PaymentProviderValues {
+  static const stripe = 'stripe';
+  static const airwallex = 'airwallex';
+
+  static const all = {stripe, airwallex};
+}
+
 /// Valid values for product status field
 abstract final class ProductStatusValues {
   static const draft = 'draft';
@@ -647,7 +691,8 @@ abstract final class EmailConfig {
   static const unsubscribeUrl = 'https://orignagta.ca/unsubscribe';
 
   /// Privacy Officer contact — REQUIRED by Quebec Law 25
-  static const privacyOfficerEmail = 'privacy@orignaventures.ca';
+  /// NOTE: Using support@ until dedicated privacy@ mailbox is provisioned
+  static const privacyOfficerEmail = 'support@orignaventures.ca';
   static const privacyOfficerName = 'Yunior Rodriguez Osorio';
 }
 

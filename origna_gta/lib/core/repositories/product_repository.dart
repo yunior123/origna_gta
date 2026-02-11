@@ -18,7 +18,7 @@ class FirebaseProductRepository implements ProductRepository {
   Future<String> addProduct(Product product) async {
     if (kDebugMode) debugPrint('REPO: Attempting to add product: ${product.name}');
     try {
-      final firestoreData = _sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
+      final firestoreData = sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
       final docRef = await _firestore.collection(Collections.products).add(firestoreData);
       if (kDebugMode) debugPrint('REPO: Product added successfully locally with ID: ${docRef.id}');
 
@@ -57,7 +57,7 @@ class FirebaseProductRepository implements ProductRepository {
   @override
   Future<void> addProductWithId(String productId, Product product) async {
     if (kDebugMode) debugPrint('REPO: Adding product with ID: $productId');
-    final firestoreData = _sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
+    final firestoreData = sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
     firestoreData[Fields.productId] = productId;
     await _firestore.collection(Collections.products).doc(productId).set(firestoreData);
     if (kDebugMode) debugPrint('REPO: Product added with predetermined ID: $productId');
@@ -138,8 +138,8 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Future<String?> getUploadUrl(String fileName) async {
-    final result = await _functions.httpsCallable('get_r2_presigned_url').call({'fileName': fileName});
-    return result.data['uploadUrl'];
+    final result = await _functions.httpsCallable('get_r2_presigned_url').call({Fields.fileName: fileName});
+    return result.data[Fields.uploadUrl];
   }
 
   @override
@@ -164,7 +164,7 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Future<void> updateProduct(String productId, Map<String, dynamic> data) async {
-    final sanitized = _sanitizeProductForFirestore(data);
+    final sanitized = sanitizeProductForFirestore(data);
     await _firestore.collection(Collections.products).doc(productId).update(sanitized);
   }
 
@@ -183,36 +183,8 @@ class FirebaseProductRepository implements ProductRepository {
     return _firestore.collection(Collections.users).doc(userId).collection(Collections.favorites).snapshots().map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
   }
 
-  Map<String, dynamic> _deepToJsonEncodableMap(Map<String, dynamic> data) {
-    final encoded = jsonEncode(data);
-    final decoded = jsonDecode(encoded);
-    return (decoded as Map).cast<String, dynamic>();
-  }
-
-  Map<String, dynamic> _sanitizeProductForFirestore(Map<String, dynamic> rawData, {bool ensureDateCreated = false}) {
-    final data = _deepToJsonEncodableMap(rawData);
-
-    // productId is derived from document id; avoid storing a client-controlled field.
-    data.remove(Fields.productId);
-
-    // Ensure createdAt is stored as a Firestore Timestamp (not ISO string)
-    if (data.containsKey(Fields.createdAt) || ensureDateCreated) {
-      final createdAt = data[Fields.createdAt];
-      if (createdAt is String) {
-        try {
-          data[Fields.createdAt] = Timestamp.fromDate(DateTime.parse(createdAt));
-        } catch (_) {
-          data[Fields.createdAt] = Timestamp.now();
-        }
-      } else if (createdAt is DateTime) {
-        data[Fields.createdAt] = Timestamp.fromDate(createdAt);
-      } else if (createdAt == null && ensureDateCreated) {
-        data[Fields.createdAt] = Timestamp.now();
-      }
-    }
-
-    return data;
-  }
+  // Sanitization is now handled by the shared top-level
+  // sanitizeProductForFirestore() function in this file.
 
   Future<String?> _uploadSingleImage(Uint8List bytes, String productId, int index) async {
     const maxRetries = 3;
@@ -244,6 +216,35 @@ class ProductQueryResult {
   final bool hasMore;
 
   ProductQueryResult({required this.products, this.lastDocument, required this.hasMore});
+}
+
+/// Shared sanitization for product data before writing to Firestore.
+/// Used by both [FirebaseProductRepository] and [AlgoliaProductRepository].
+Map<String, dynamic> sanitizeProductForFirestore(Map<String, dynamic> rawData, {bool ensureDateCreated = false}) {
+  final encoded = jsonEncode(rawData);
+  final decoded = jsonDecode(encoded);
+  final data = (decoded as Map).cast<String, dynamic>();
+
+  // productId is derived from document id; avoid storing a client-controlled field.
+  data.remove(Fields.productId);
+
+  // Ensure createdAt is stored as a Firestore Timestamp (not ISO string)
+  if (data.containsKey(Fields.createdAt) || ensureDateCreated) {
+    final createdAt = data[Fields.createdAt];
+    if (createdAt is String) {
+      try {
+        data[Fields.createdAt] = Timestamp.fromDate(DateTime.parse(createdAt));
+      } catch (_) {
+        data[Fields.createdAt] = Timestamp.now();
+      }
+    } else if (createdAt is DateTime) {
+      data[Fields.createdAt] = Timestamp.fromDate(createdAt);
+    } else if (createdAt == null && ensureDateCreated) {
+      data[Fields.createdAt] = Timestamp.now();
+    }
+  }
+
+  return data;
 }
 
 abstract class ProductRepository {

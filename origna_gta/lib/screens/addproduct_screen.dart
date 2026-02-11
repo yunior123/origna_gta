@@ -750,7 +750,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                       children: [
                         Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface, letterSpacing: -0.3)),
                         const SizedBox(height: 2),
-                        Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+                        Text(subtitle, style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
                       ],
                     ),
                   ),
@@ -803,7 +803,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           title: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface, letterSpacing: -0.3)),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 2),
-            child: Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+            child: Text(subtitle, style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
           ),
           children: children,
         ),
@@ -847,8 +847,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5)),
         errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: DesignTokens.error)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+        labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+        hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 13),
       ),
     );
   }
@@ -869,7 +869,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3))),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+        labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
       ),
       items: items,
       onChanged: onChanged,
@@ -899,14 +899,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         ),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: value ? DesignTokens.primary : Colors.grey[500]),
+            Icon(icon, size: 20, color: value ? DesignTokens.primary : DesignTokens.textSecondary),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: value ? DesignTokens.primary : Colors.grey[700])),
-                  if (subtitle != null) Text(subtitle, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                  Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: value ? DesignTokens.primary : DesignTokens.textPrimary)),
+                  if (subtitle != null) Text(subtitle, style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
                 ],
               ),
             ),
@@ -947,7 +947,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3))),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+        labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
       ),
       items: productCategories.map((c) => DropdownMenuItem(
         value: c.categoryId.toString(),
@@ -987,17 +987,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             padding: const EdgeInsets.fromLTRB(12, 4, 4, 0),
             child: Row(
               children: [
-                Icon(icon, size: 20, color: isEnabled ? color : Colors.grey[400]),
+                Icon(icon, size: 20, color: isEnabled ? color : DesignTokens.textDisabled),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isEnabled ? color : Colors.grey[500])),
+                  child: Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isEnabled ? color : DesignTokens.textSecondary)),
                 ),
                 if (infoTitle != null && infoBody != null)
                   GestureDetector(
                     onTap: () => _showInfoSheet(infoTitle, infoBody),
                     child: Padding(
                       padding: const EdgeInsets.only(right: 4),
-                      child: Icon(Icons.info_outline_rounded, size: 16, color: isEnabled ? color.withValues(alpha: 0.5) : Colors.grey[400]),
+                      child: Icon(Icons.info_outline_rounded, size: 16, color: isEnabled ? color.withValues(alpha: 0.5) : DesignTokens.textDisabled),
                     ),
                   ),
                 Switch.adaptive(
@@ -1043,12 +1043,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                   'Bulk Shipping Discounts',
                   'Encourage bigger orders by offering progressive shipping discounts.\n\nHow tiers work:\n• 3+ items: A percentage off shipping (e.g. 20% off)\n• 5+ items: A bigger percentage (e.g. 50% off)\n• 10+ items: Free shipping entirely\n\nAdditional item cost: Extra shipping per item beyond the first (e.g. \$1.50/item for heavier products).\n\nMax per shipment: Limit items per package. Set to 0 for unlimited. If a buyer orders more, multiple shipments are created automatically.',
                 ),
-                child: Icon(Icons.info_outline_rounded, size: 18, color: Colors.grey[400]),
+                child: Icon(Icons.info_outline_rounded, size: 18, color: DesignTokens.textDisabled),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          Text('Encourage larger orders with shipping savings', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+          Text('Encourage larger orders with shipping savings', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12)),
           const SizedBox(height: 16),
           _buildShippingDiscountTier(label: '3+ items', controller: _shippingDiscount3Controller, hint: '20'),
           const SizedBox(height: 8),
@@ -1085,7 +1085,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       children: [
         SizedBox(
           width: 80,
-          child: Text(label, style: TextStyle(color: Colors.grey[700], fontSize: 13, fontWeight: FontWeight.w500)),
+          child: Text(label, style: TextStyle(color: DesignTokens.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
         ),
         Expanded(
           child: TextFormField(
@@ -1163,7 +1163,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Profit Margin', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+                    Text('Profit Margin', style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500)),
                     const SizedBox(height: 2),
                     Text(
                       '\$${profit.toStringAsFixed(2)} per unit',
@@ -1184,7 +1184,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 '\u26a0 Supplier cost in $_selectedSupplierCurrency \u2014 margin is approximate until converted to CAD.',
-                style: TextStyle(fontSize: 11, color: Colors.grey[500], fontStyle: FontStyle.italic),
+                style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontStyle: FontStyle.italic),
               ),
             ),
         ],
@@ -1220,7 +1220,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 const SizedBox(height: 2),
                 Text(
                   '${config.region} · ${deliveryRange.minDays}-${deliveryRange.maxDays} days · ${config.country}',
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary),
                 ),
               ],
             ),
@@ -1339,13 +1339,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(color: DesignTokens.surfaceVariant, shape: BoxShape.circle),
-                    child: const Icon(Icons.close_rounded, size: 16, color: Colors.grey),
+                    child: const Icon(Icons.close_rounded, size: 16, color: DesignTokens.textSecondary),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            Text(body, style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.6)),
+            Text(body, style: TextStyle(fontSize: 14, color: DesignTokens.textPrimary, height: 1.6)),
             const SizedBox(height: 8),
           ],
         ),
@@ -1362,8 +1362,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           children: [
             Icon(Icons.info_outline_rounded, size: 14, color: DesignTokens.info.withValues(alpha: 0.6)),
             const SizedBox(width: 6),
-            Expanded(child: Text(shortText, style: TextStyle(fontSize: 11, color: Colors.grey[500]))),
-            Icon(Icons.chevron_right_rounded, size: 14, color: Colors.grey[400]),
+            Expanded(child: Text(shortText, style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary))),
+            Icon(Icons.chevron_right_rounded, size: 14, color: DesignTokens.textDisabled),
           ],
         ),
       ),
@@ -1381,7 +1381,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         height: 56,
         decoration: BoxDecoration(
           gradient: state.isLoading ? null : DesignTokens.primaryGradient,
-          color: state.isLoading ? Colors.grey[300] : null,
+          color: state.isLoading ? DesignTokens.outline : null,
           borderRadius: BorderRadius.circular(16),
           boxShadow: state.isLoading
               ? []

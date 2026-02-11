@@ -35,8 +35,8 @@ class ProfileScreen extends ConsumerWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              isDark ? Colors.grey[900]! : Colors.grey[50]!,
-              isDark ? Colors.grey[800]! : Colors.white,
+              isDark ? DesignTokens.darkSurface : DesignTokens.surface,
+              isDark ? DesignTokens.darkSurfaceVariant : Colors.white,
             ],
           ),
         ),
@@ -59,11 +59,11 @@ class ProfileScreen extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, size: 80, color: Colors.red[300]),
+                Icon(Icons.error_outline, size: 80, color: DesignTokens.error),
                 const SizedBox(height: 16),
                 Text(
                   'Error loading profile',
-                  style: TextStyle(color: Colors.grey[600]),
+                  style: TextStyle(color: DesignTokens.textSecondary),
                 ),
               ],
             ),
@@ -104,7 +104,7 @@ class ProfileScreen extends ConsumerWidget {
                       const SizedBox(height: 16),
                       Text(
                         'Setting up your profile...',
-                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: 16, color: DesignTokens.textSecondary),
                       ),
                     ],
                   ),
@@ -114,11 +114,11 @@ class ProfileScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.lock_outline, size: 80, color: Colors.grey[400]),
+                    Icon(Icons.lock_outline, size: 80, color: DesignTokens.textDisabled),
                     const SizedBox(height: 16),
                     Text(
                       'Please sign in to access settings',
-                      style: TextStyle(fontSize: 18, color: Colors.grey[700]),
+                      style: TextStyle(fontSize: 18, color: DesignTokens.textPrimary),
                     ),
                     const SizedBox(height: 16),
                     Semantics(
@@ -335,7 +335,7 @@ class ProfileScreen extends ConsumerWidget {
                                     child: Text(
                                       'Delete Account',
                                       style: TextStyle(
-                                        color: Colors.red[600],
+                                        color: DesignTokens.error,
                                         fontSize: 15,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -375,7 +375,7 @@ class ProfileScreen extends ConsumerWidget {
         color: isDark ? Colors.grey[800]!.withValues(alpha: 0.5) : Colors.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(
-          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+          color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant,
           width: 1,
         ),
         boxShadow: [
@@ -427,7 +427,7 @@ class ProfileScreen extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : Colors.grey[900],
+                          color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
                         ),
                       ),
                       if (subtitle != null) ...[
@@ -436,14 +436,14 @@ class ProfileScreen extends ConsumerWidget {
                           subtitle,
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[500],
+                            color: DesignTokens.textSecondary,
                           ),
                         ),
                       ],
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right, color: Colors.grey[400], size: 20),
+                Icon(Icons.chevron_right, color: DesignTokens.textDisabled, size: 20),
               ],
             ),
           ),
@@ -555,7 +555,7 @@ class ProfileScreen extends ConsumerWidget {
           borderRadius: BorderRadius.circular(DesignTokens.radius20),
         ),
         backgroundColor: Theme.of(context).brightness == Brightness.dark
-            ? Colors.grey[900]
+            ? DesignTokens.darkSurface
             : Colors.white,
         title: Text(
           'Contact Us',
@@ -563,8 +563,8 @@ class ProfileScreen extends ConsumerWidget {
             fontSize: 20,
             fontWeight: FontWeight.w700,
             color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white
-                : Colors.grey[900],
+                ? DesignTokens.textOnDark
+                : DesignTokens.textPrimary,
           ),
         ),
         content: Column(
@@ -573,7 +573,7 @@ class ProfileScreen extends ConsumerWidget {
           children: [
             Text(
               'Have questions or need help? Reach out to us!',
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+              style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 16),
             Semantics(
@@ -705,14 +705,14 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Account deleted successfully'),
-            backgroundColor: Colors.green[600],
+            backgroundColor: DesignTokens.success,
           ),
         );
       } else if (next.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(next.errorMessage!),
-            backgroundColor: Colors.red[400],
+            backgroundColor: DesignTokens.error,
           ),
         );
       }
@@ -722,17 +722,17 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(DesignTokens.radius20),
       ),
-      backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+      backgroundColor: isDark ? DesignTokens.darkSurface : Colors.white,
       title: Row(
         children: [
-          Icon(Icons.warning_rounded, color: Colors.red[400], size: 28),
+          Icon(Icons.warning_rounded, color: DesignTokens.error, size: 28),
           const SizedBox(width: 12),
           Text(
             'Delete Account',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white : Colors.grey[900],
+              color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
             ),
           ),
         ],
@@ -745,7 +745,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
             Text(
               'This action cannot be undone. All your data will be permanently deleted.',
               style: TextStyle(
-                color: Colors.red[400],
+                color: DesignTokens.error,
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
               ),
@@ -753,7 +753,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
             const SizedBox(height: 16),
             Text(
               'Type DELETE to confirm:',
-              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -773,7 +773,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+          child: Text('Cancel', style: TextStyle(color: DesignTokens.textSecondary)),
         ),
         ModernButton(
           onPressed:
@@ -783,8 +783,8 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
           label: 'Delete Account',
           isLoading: profileState.isLoading,
           backgroundColor: confirmController.text == 'DELETE'
-              ? Colors.red[400]
-              : Colors.grey[400],
+              ? DesignTokens.error
+              : DesignTokens.textDisabled,
         ),
       ],
     );
@@ -858,7 +858,7 @@ class _EmailVerificationRequiredViewState
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : Colors.grey[900],
+                    color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
                   ),
                 ),
               ),
@@ -892,10 +892,10 @@ class _EmailVerificationRequiredViewState
                   decoration: BoxDecoration(
                     color: isDark
                         ? Colors.grey[800]!.withValues(alpha: 0.5)
-                        : Colors.grey[50],
+                        : DesignTokens.surface,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+                      color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant,
                     ),
                   ),
                   child: Column(
@@ -905,7 +905,7 @@ class _EmailVerificationRequiredViewState
                         'To access your settings and use all features, please verify your email:',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: DesignTokens.textSecondary,
                           height: 1.5,
                         ),
                       ),
@@ -961,11 +961,11 @@ class _EmailVerificationRequiredViewState
                       ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
                     }
                   },
-                  icon: Icon(Icons.logout, size: 16, color: Colors.grey[500]),
+                  icon: Icon(Icons.logout, size: 16, color: DesignTokens.textSecondary),
                   label: Text(
                     'Sign in with a different account',
                     style: TextStyle(
-                      color: Colors.grey[500],
+                      color: DesignTokens.textSecondary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1010,7 +1010,7 @@ class _EmailVerificationRequiredViewState
               text,
               style: TextStyle(
                 fontSize: 14,
-                color: isDark ? Colors.grey[300] : Colors.grey[700],
+                color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
                 height: 1.4,
               ),
             ),
@@ -1034,7 +1034,7 @@ class _EmailVerificationRequiredViewState
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('🎉 Email verified! Your profile is ready.'),
-                backgroundColor: Colors.green,
+                backgroundColor: DesignTokens.success,
                 behavior: SnackBarBehavior.floating,
               ),
             );
@@ -1048,7 +1048,7 @@ class _EmailVerificationRequiredViewState
                 content: const Text(
                   'Email not verified yet. Check your inbox and click the verification link.',
                 ),
-                backgroundColor: Colors.orange[700],
+                backgroundColor: DesignTokens.warning,
                 behavior: SnackBarBehavior.floating,
               ),
             );
@@ -1060,7 +1060,7 @@ class _EmailVerificationRequiredViewState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Error checking verification. Please try again.'),
-            backgroundColor: Colors.red,
+            backgroundColor: DesignTokens.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1076,9 +1076,9 @@ class _EmailVerificationRequiredViewState
       await ref.read(authRepositoryProvider).sendEmailVerification();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('✅ Verification email sent! Check your inbox.'),
-            backgroundColor: Color(0xFF667EEA),
+            backgroundColor: DesignTokens.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1092,7 +1092,7 @@ class _EmailVerificationRequiredViewState
                   ? 'Please wait before requesting another email.'
                   : 'Failed to send email. Please try again later.',
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: DesignTokens.error,
             behavior: SnackBarBehavior.floating,
           ),
         );

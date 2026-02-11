@@ -8,9 +8,9 @@
  *
  *   Step 1 → Checkout + Stripe payment  → Order Confirmation email (buyer)
  *                                        → Seller Notification email (seller)
- *   Step 2 → Seller → processing        → (no email currently)
+ *   Step 2 → Seller → processing        → Processing email (buyer)
  *   Step 3 → Seller → shipped           → Shipped email (buyer + seller)
- *   Step 4 → Seller → in_transit        → (no email currently)
+ *   Step 4 → Seller → in_transit        → In Transit email (buyer)
  *   Step 5 → Admin  → delivered         → Delivered email (buyer)
  *   Step 6 → Buyer confirms receipt     → Payment captured
  *
@@ -350,7 +350,7 @@ test.describe.serial('Yahoo Buyer Full Lifecycle — Email Verification', () => 
     expect(order.orderStatus).toBe('processing');
 
     console.log('   ✅ Order is now: processing');
-    console.log('   ℹ️  No email sent for processing transition (not yet implemented)');
+    console.log('   ✉️  EMAIL: Processing notification sent to buyer');
   });
 
   // ── STEP 3: Seller → shipped ─────────────────────────────────────
@@ -401,7 +401,7 @@ test.describe.serial('Yahoo Buyer Full Lifecycle — Email Verification', () => 
     expect(order.orderStatus).toBe('in_transit');
 
     console.log('   ✅ Order is now: in_transit');
-    console.log('   ℹ️  No email sent for in_transit transition (not yet implemented)');
+    console.log('   ✉️  EMAIL: In Transit notification sent to buyer');
   });
 
   // ── STEP 5: Admin → delivered ────────────────────────────────────
@@ -479,14 +479,14 @@ test.describe.serial('Yahoo Buyer Full Lifecycle — Email Verification', () => 
     console.log('║  ───────────────────────────────────────────────────────     ║');
     console.log('║  ✉️  #1  Order Confirmation         → Yahoo (buyer)         ║');
     console.log('║  ✉️  #2  New Order Notification      → seller1 (seller)     ║');
-    console.log('║  ✉️  #3  Order Shipped               → Yahoo (buyer)        ║');
-    console.log('║  ✉️  #4  Shipment Confirmed          → seller1 (seller)     ║');
-    console.log('║  ✉️  #5  Order Delivered              → Yahoo (buyer)        ║');
+    console.log('║  ✉️  #3  Processing Update           → Yahoo (buyer)        ║');
+    console.log('║  ✉️  #4  Order Shipped               → Yahoo (buyer)        ║');
+    console.log('║  ✉️  #5  Shipment Confirmed          → seller1 (seller)     ║');
+    console.log('║  ✉️  #6  In Transit Update           → Yahoo (buyer)        ║');
+    console.log('║  ✉️  #7  Order Delivered              → Yahoo (buyer)        ║');
     console.log('║  ───────────────────────────────────────────────────────     ║');
-    console.log('║  ⚠️  NOT SENT (missing templates):                          ║');
-    console.log('║      • processing transition                                ║');
-    console.log('║      • in_transit transition                                ║');
-    console.log('║      • refunded / partially_refunded                        ║');
+    console.log('║  ⚠️  NOT SENT:                                              ║');
+    console.log('║      • refunded / partially_refunded (not triggered)        ║');
     console.log('╚══════════════════════════════════════════════════════════════╝');
     console.log('\n');
 

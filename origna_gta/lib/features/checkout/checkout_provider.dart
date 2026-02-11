@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/utils/circuit_breaker.dart';
@@ -150,8 +150,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       if (user?.address != null) {
         state = state.copyWith(address: user!.address);
       }
-    } catch (e) {
-      debugPrint('Error initializing checkout: $e');
+    } catch (e, st) {
+      // Initialization error - non-critical, continue without address
+      AppError.log(e, stackTrace: st, context: 'checkout_initialize');
     }
   }
 
@@ -168,7 +169,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 
   void setPaymentProvider(String provider) {
-    if (provider == 'stripe' || provider == 'airwallex') {
+    if (provider == PaymentProviderValues.stripe || provider == PaymentProviderValues.airwallex) {
       state = state.copyWith(paymentProvider: provider);
     }
   }
@@ -202,7 +203,6 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         return CheckoutError(message: 'Please verify your email before checkout', code: 'email-not-verified');
       }
     } catch (e) {
-      debugPrint('⚠️  Error checking email verification: $e');
       // SECURITY: Block checkout if we can't verify email status
       return CheckoutError(
         message: 'Unable to verify email status. Please try again.', 
@@ -254,8 +254,6 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         Fields.deliveryInstructions: deliveryInstructions,
       };
 
-      debugPrint('Sending checkout request for user: $userId');
-
       // Use circuit breaker for Stripe checkout calls
       final result = await _stripeCircuitBreaker.execute(
         () => _orderRepository.createCheckoutSession(orderData),
@@ -297,9 +295,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       _ref.invalidate(cartItemsProvider);
 
       return CheckoutSuccess(checkoutUrl: checkoutUrl, orderId: orderId, sessionId: sessionId);
-    } on CircuitBreakerOpenException catch (e) {
+    } on CircuitBreakerOpenException {
       // Service is temporarily unavailable (circuit breaker open)
-      debugPrint('⚠️ Checkout service temporarily unavailable: $e');
       if (!mounted) {
         return CheckoutError(message: 'Operation cancelled');
       }
@@ -312,7 +309,6 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         code: 'service-unavailable',
       );
     } catch (e) {
-      debugPrint('Checkout error: $e');
       if (!mounted) {
         return CheckoutError(message: 'Operation cancelled');
       }
