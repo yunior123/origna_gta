@@ -52,13 +52,13 @@ class FavoritesScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text('Loading favorites...', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)),
+                Text('favorites.loading_favorites'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)),
               ],
             ),
           ),
           error: (error, stack) => AnimatedEmptyState(
             icon: Icons.error_outline_rounded,
-            title: 'Unable to load favorites',
+            title: 'favorites.unable_to_load'.tr(),
             subtitle: '$error',
           ),
           data: (products) {

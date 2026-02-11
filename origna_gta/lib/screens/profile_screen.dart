@@ -193,8 +193,8 @@ class ProfileScreen extends ConsumerWidget {
                             _buildMenuItem(
                               context,
                               icon: Icons.shopping_bag_outlined,
-                              title: 'My Orders',
-                              subtitle: 'View your purchases',
+                              title: 'profile.my_orders'.tr(),
+                              subtitle: 'profile.view_purchases'.tr(),
                               onTap: () => Navigator.pushNamed(
                                 context,
                                 AppRoutes.orders,
@@ -204,8 +204,8 @@ class ProfileScreen extends ConsumerWidget {
                               _buildMenuItem(
                                 context,
                                 icon: Icons.store_outlined,
-                                title: 'Seller Orders',
-                                subtitle: 'Manage your sales',
+                                title: 'profile.seller_orders'.tr(),
+                                subtitle: 'profile.manage_sales'.tr(),
                                 onTap: () => Navigator.pushNamed(
                                   context,
                                   AppRoutes.sellerOrders,
@@ -214,8 +214,8 @@ class ProfileScreen extends ConsumerWidget {
                               _buildMenuItem(
                                 context,
                                 icon: Icons.dashboard_outlined,
-                                title: 'Seller Dashboard',
-                                subtitle: 'Manage products & account',
+                                title: 'profile.seller_dashboard'.tr(),
+                                subtitle: 'profile.manage_products_account'.tr(),
                                 onTap: () => Navigator.pushNamed(
                                   context,
                                   AppRoutes.sellerRegistration,
@@ -225,8 +225,8 @@ class ProfileScreen extends ConsumerWidget {
                               _buildMenuItem(
                                 context,
                                 icon: Icons.storefront,
-                                title: 'Become a Seller',
-                                subtitle: 'Start selling on OrignaGta',
+                                title: 'profile.become_seller'.tr(),
+                                subtitle: 'profile.start_selling'.tr(),
                                 onTap: () => Navigator.pushNamed(
                                   context,
                                   AppRoutes.sellerRegistration,
@@ -236,8 +236,8 @@ class ProfileScreen extends ConsumerWidget {
                               _buildMenuItem(
                                 context,
                                 icon: Icons.admin_panel_settings,
-                                title: 'Admin Panel',
-                                subtitle: 'Platform management',
+                                title: 'profile.admin_panel'.tr(),
+                                subtitle: 'profile.platform_management'.tr(),
                                 onTap: () => Navigator.pushNamed(
                                   context,
                                   AppRoutes.adminPanel,
@@ -256,8 +256,8 @@ class ProfileScreen extends ConsumerWidget {
                             _buildMenuItem(
                               context,
                               icon: Icons.favorite_outline,
-                              title: 'Favorites',
-                              subtitle: 'Your saved products',
+                              title: 'favorites.my_favorites'.tr(),
+                              subtitle: 'profile.your_saved_products'.tr(),
                               onTap: () => Navigator.pushNamed(
                                 context,
                                 AppRoutes.favorites,
@@ -266,8 +266,8 @@ class ProfileScreen extends ConsumerWidget {
                             _buildMenuItem(
                               context,
                               icon: Icons.location_on_outlined,
-                              title: 'Address',
-                              subtitle: 'Manage delivery address',
+                              title: 'profile.address'.tr(),
+                              subtitle: 'profile.manage_delivery_address'.tr(),
                               onTap: () => Navigator.pushNamed(
                                 context,
                                 AppRoutes.addressManagement,
@@ -276,22 +276,22 @@ class ProfileScreen extends ConsumerWidget {
                             _buildMenuItem(
                               context,
                               icon: Icons.description_outlined,
-                              title: 'Terms & Conditions',
-                              subtitle: 'Legal agreements',
+                              title: 'profile.terms_conditions'.tr(),
+                              subtitle: 'profile.legal_agreements'.tr(),
                               onTap: () => openTermsOfService(context),
                             ),
                             _buildMenuItem(
                               context,
                               icon: Icons.lock_outline,
-                              title: 'Privacy Policy',
-                              subtitle: 'How we protect your data',
+                              title: 'profile.privacy_policy'.tr(),
+                              subtitle: 'profile.how_we_protect'.tr(),
                               onTap: () => openPrivacyPolicy(context),
                             ),
                             _buildMenuItem(
                               context,
                               icon: Icons.mail_outline,
-                              title: 'Contact Us',
-                              subtitle: 'Get in touch with support',
+                              title: 'profile.contact_us'.tr(),
+                              subtitle: 'profile.get_in_touch'.tr(),
                               onTap: () => _showContactDialog(context),
                             ),
                           ],
@@ -668,7 +668,7 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Close', style: TextStyle(color: DesignTokens.primary)),
+            child: Text('common.close'.tr(), style: TextStyle(color: DesignTokens.primary)),
           ),
         ],
       ),
@@ -753,14 +753,14 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Type DELETE to confirm:',
+              'profile.type_delete'.tr(),
               style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: confirmController,
               decoration: InputDecoration(
-                hintText: 'Type DELETE',
+                hintText: 'profile.type_delete_hint'.tr(),
                 prefixIcon: const Icon(Icons.lock_outline),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(DesignTokens.radius12),
@@ -774,7 +774,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('Cancel', style: TextStyle(color: DesignTokens.textSecondary)),
+          child: Text('common.cancel'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
         ),
         ModernButton(
           onPressed:
@@ -1033,8 +1033,8 @@ class _EmailVerificationRequiredViewState
           await ref.read(authRepositoryProvider).ensureUserDocumentExists();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('🎉 Email verified! Your profile is ready.'),
+              SnackBar(
+                content: Text('🎉 ${'profile.email_verified_snackbar'.tr()}'),
                 backgroundColor: DesignTokens.success,
                 behavior: SnackBarBehavior.floating,
               ),
@@ -1059,8 +1059,8 @@ class _EmailVerificationRequiredViewState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error checking verification. Please try again.'),
+          SnackBar(
+            content: Text('errors.verification_error'.tr()),
             backgroundColor: DesignTokens.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -1078,7 +1078,7 @@ class _EmailVerificationRequiredViewState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ Verification email sent! Check your inbox.'),
+            content: Text('profile.verification_sent'.tr()),
             backgroundColor: DesignTokens.primary,
             behavior: SnackBarBehavior.floating,
           ),

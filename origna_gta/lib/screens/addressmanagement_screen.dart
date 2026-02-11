@@ -35,21 +35,21 @@ class AddressManagementScreen extends ConsumerWidget {
                   child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
                 ),
                 const SizedBox(height: 16),
-                Text('Loading address...', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)),
+                Text('address.loading'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)),
               ],
             ),
           ),
           error: (error, stack) => AnimatedEmptyState(
             icon: Icons.error_outline_rounded,
-            title: 'Error loading address',
+            title: 'address.error_loading'.tr(),
             subtitle: '$error',
           ),
           data: (userModel) {
             if (userModel == null) {
-              return const AnimatedEmptyState(
+              return AnimatedEmptyState(
                 icon: Icons.lock_outline_rounded,
-                title: 'Sign in to view address',
-                subtitle: 'Your saved addresses will appear here.',
+                title: 'address.sign_in_to_view'.tr(),
+                subtitle: 'address.saved_appear_here'.tr(),
               );
             }
 
@@ -58,15 +58,15 @@ class AddressManagementScreen extends ConsumerWidget {
             if (address == null) {
               return AnimatedEmptyState(
                 icon: Icons.location_off_outlined,
-                title: 'No address saved',
-                subtitle: 'Add a delivery address to speed up checkout.',
+                title: 'address.no_address'.tr(),
+                subtitle: 'address.add_to_speed_up'.tr(),
                 action: SizedBox(
                   width: 220,
                   child: Semantics(
                     button: true,
                     label: 'btn-add-address',
                     child: ModernButton(
-                    label: 'Add Address',
+                    label: 'address.add_address'.tr(),
                     icon: Icons.add_location_alt_outlined,
                     onPressed: () {
                       Navigator.pushNamed(context, AppRoutes.addEditAddress);
@@ -158,7 +158,7 @@ class AddressManagementScreen extends ConsumerWidget {
                       children: [
                         Icon(Icons.edit_outlined, size: 16, color: DesignTokens.primary),
                         const SizedBox(width: 6),
-                        Text('Edit', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600, fontSize: 13)),
+                        Text('common.edit'.tr(), style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600, fontSize: 13)),
                       ],
                     ),
                   ),

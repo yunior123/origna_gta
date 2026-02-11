@@ -259,7 +259,7 @@ class _CheckoutButton extends ConsumerWidget {
       case CheckoutError(:final message):
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Checkout error: $message'),
+            content: Text('checkout.checkout_error'.tr(namedArgs: {'message': message})),
             backgroundColor: DesignTokens.error,
             duration: const Duration(seconds: 5),
           ),
@@ -267,7 +267,7 @@ class _CheckoutButton extends ConsumerWidget {
       case CheckoutAlreadyProcessed(:final existingOrderId):
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Order already exists: $existingOrderId'),
+            content: Text('checkout.order_already_exists'.tr(namedArgs: {'id': existingOrderId})),
             backgroundColor: DesignTokens.primary,
           ),
         );
@@ -494,7 +494,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 Center(child: Text(AppError.getMessage(error))),
             data: (userProfile) {
               if (userProfile == null) {
-                return const Center(child: Text('Please log in to checkout'));
+                return Center(child: Text('checkout.please_login'.tr()));
               }
               return _CheckoutContent(
                 items: widget.items,
@@ -575,7 +575,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
               icon: const Icon(Icons.info_outline, size: 20),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              tooltip: 'Learn more about delivery options',
+              tooltip: 'checkout.delivery_options_tooltip'.tr(),
             ),
           ],
         ),
@@ -742,7 +742,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delivery Options'),
+        title: Text('checkout.delivery_options'.tr()),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -826,7 +826,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            child: Text('common.close'.tr()),
           ),
         ],
       ),
@@ -871,7 +871,7 @@ class _NoAddressView extends StatelessWidget {
                 ).then((_) => onRefreshShipping());
               },
               icon: const Icon(Icons.add_location),
-              label: const Text('Add Address'),
+              label: Text('checkout.add_address'.tr()),
               style: ElevatedButton.styleFrom(
                 backgroundColor: DesignTokens.primary,
                 foregroundColor: Colors.white,
@@ -959,7 +959,7 @@ class _OrderSummary extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Subtotal', style: TextStyle(fontSize: 16)),
+                  Text('cart.subtotal'.tr(), style: TextStyle(fontSize: 16)),
                   Text(
                     '\$${subtotal.toStringAsFixed(2)}',
                     style: const TextStyle(fontSize: 16),
@@ -1088,7 +1088,7 @@ class _PaymentProviderSection extends StatelessWidget {
         Row(
           children: [
             ChoiceChip(
-              label: const Text('Stripe'),
+              label: Text('payment.stripe'.tr()),
               selected: true,
               onSelected: (_) {},
             ),

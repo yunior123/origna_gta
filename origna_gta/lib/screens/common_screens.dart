@@ -124,7 +124,7 @@ class AuthRequiredGate extends ConsumerWidget {
                               context,
                             ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
                             child: Text(
-                              'Go Home',
+                              'seller.go_home'.tr(),
                               style: TextStyle(
                                 color: DesignTokens.primary,
                                 fontWeight: FontWeight.w600,
@@ -167,7 +167,7 @@ class ErrorScreen extends StatelessWidget {
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
-        appBar: AppBarFactory.simple(title: 'Error'),
+        appBar: AppBarFactory.simple(title: 'errors.error_title'.tr()),
         backgroundColor: Colors.transparent,
         body: Center(
           child: ConstrainedBox(
@@ -225,7 +225,7 @@ class ErrorScreen extends StatelessWidget {
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 150),
                     child: ModernButton(
-                      label: 'Go Home',
+                      label: 'seller.go_home'.tr(),
                       icon: Icons.home_outlined,
                       onPressed: () => Navigator.of(
                         context,
@@ -266,7 +266,7 @@ class _EmailVerificationRequiredScreenState
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
-        appBar: AppBarFactory.simple(title: 'Email Verification'),
+        appBar: AppBarFactory.simple(title: 'email_verification.title'.tr()),
         backgroundColor: Colors.transparent,
         body: Center(
           child: ConstrainedBox(
@@ -489,7 +489,7 @@ class _EmailVerificationRequiredScreenState
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text('🎉 Email verified successfully! Welcome!'),
+                content: Text('🎉 ${'email_verification.verified_success'.tr()}'),
                 backgroundColor: DesignTokens.success,
                 behavior: SnackBarBehavior.floating,
               ),
@@ -516,7 +516,7 @@ class _EmailVerificationRequiredScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Error checking verification. Please try again.'),
+            content: Text('errors.verification_error'.tr()),
             backgroundColor: DesignTokens.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -534,7 +534,7 @@ class _EmailVerificationRequiredScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ Verification email sent! Check your inbox.'),
+            content: Text('✅ ${'email_verification.sent_success'.tr()}'),
             backgroundColor: DesignTokens.primary,
             behavior: SnackBarBehavior.floating,
           ),

@@ -125,7 +125,7 @@ class OrdersScreen extends ConsumerWidget {
         body: AnimatedEmptyState(
           icon: Icons.lock_outline_rounded,
           title: 'auth.sign_in_required'.tr(),
-          subtitle: 'Your order history will appear here.',
+          subtitle: 'orders.order_history_desc'.tr(),
         ),
       );
     }
@@ -784,7 +784,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Delivery Address', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary, letterSpacing: 0.3)),
+                Text('orders.delivery_address'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary, letterSpacing: 0.3)),
                 const SizedBox(height: 4),
                 Text(
                   address.formattedAddress,
@@ -828,7 +828,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Instructions de livraison', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.info, letterSpacing: 0.3)),
+                Text('common.delivery_instructions'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.info, letterSpacing: 0.3)),
                 const SizedBox(height: 4),
                 Text(
                   instructions,
@@ -896,7 +896,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     if (!mounted) return;
 
     if (success) {
-      messenger.showSnackBar(const SnackBar(content: Text('Receipt confirmed! Seller will be paid.'), backgroundColor: DesignTokens.success));
+      messenger.showSnackBar(SnackBar(content: Text('orders.receipt_confirmed'.tr()), backgroundColor: DesignTokens.success));
     } else {
       final error = ref.read(buyerOrdersViewModelProvider).errorMessage ?? 'Failed to confirm receipt';
       messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));

@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,7 +36,7 @@ class ProductDetailScreen extends ConsumerWidget {
                 children: [
                   Icon(Icons.error_outline, size: 80, color: DesignTokens.textDisabled),
                   const SizedBox(height: 16),
-                  Text('Product not found', style: TextStyle(fontSize: 18, color: DesignTokens.textSecondary)),
+                  Text('product.not_found'.tr(), style: TextStyle(fontSize: 18, color: DesignTokens.textSecondary)),
                 ],
               ),
             );
@@ -100,7 +101,7 @@ class ProductDetailScreen extends ConsumerWidget {
                               border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
                             ),
                             child: IconButton(
-                              tooltip: 'Go back',
+                              tooltip: 'product.go_back'.tr(),
                               icon: const Icon(Icons.arrow_back, color: Colors.white),
                               onPressed: () => Navigator.pop(context),
                             ),
@@ -240,7 +241,7 @@ class ProductDetailScreen extends ConsumerWidget {
               TextButton.icon(
                 onPressed: () => ref.invalidate(productByIdProvider(productId)),
                 icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+                label: Text('common.retry'.tr()),
               ),
             ],
           ),
@@ -287,7 +288,7 @@ class ProductDetailScreen extends ConsumerWidget {
                 child: Container(
                   decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
                   child: IconButton(
-                    tooltip: 'Close',
+                    tooltip: 'common.close'.tr(),
                     icon: const Icon(Icons.close, color: Colors.white, size: 28),
                     onPressed: () => Navigator.pop(context),
                   ),

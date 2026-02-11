@@ -33,7 +33,7 @@ class CartScreen extends ConsumerWidget {
         body: AnimatedEmptyState(
           icon: Icons.lock_outline_rounded,
           title: 'auth.sign_in_required'.tr(),
-          subtitle: 'Your cart items will be saved to your account.',
+          subtitle: 'cart.sign_in_subtitle'.tr(),
         ),
       );
     }
@@ -100,7 +100,7 @@ class CartScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Loading cart...',
+                      'cart.loading_cart'.tr(),
                       style: TextStyle(
                         color: DesignTokens.textSecondary,
                         fontSize: 14,
@@ -112,7 +112,7 @@ class CartScreen extends ConsumerWidget {
               ),
               error: (error, stack) => AnimatedEmptyState(
                 icon: Icons.error_outline_rounded,
-                title: 'Unable to load cart',
+                title: 'cart.unable_to_load'.tr(),
                 subtitle: '$error',
               ),
               data: (productIds) {
@@ -120,11 +120,11 @@ class CartScreen extends ConsumerWidget {
                   return AnimatedEmptyState(
                     icon: Icons.shopping_cart_outlined,
                     title: 'cart.empty_cart'.tr(),
-                    subtitle: 'Looks like you haven\'t added any items yet.',
+                    subtitle: 'cart.empty_cart_desc'.tr(),
                     action: SizedBox(
                       width: 200,
                       child: ModernButton(
-                        label: 'Start Shopping',
+                        label: 'common.go_shopping'.tr(),
                         icon: Icons.arrow_back,
                         onPressed: () {
                           if (Navigator.canPop(context)) {
@@ -346,7 +346,7 @@ class _CartTotalDisplay extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Subtotal:',
+                '${'cart.subtotal'.tr()}:',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -408,7 +408,7 @@ class _CartTotalDisplay extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Frais de service',
+                  'cart.service_fees'.tr(),
                   style: TextStyle(
                     fontSize: 14,
                     color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
@@ -426,20 +426,15 @@ class _CartTotalDisplay extends ConsumerWidget {
               const SizedBox(width: 4),
               Tooltip(
                 message:
-                    'Frais de plateforme de ${(BusinessRules.platformFeePercent * 100).toStringAsFixed(1)}% pour maintenir le service sécurisé et fiable.',
+                    'cart.service_fee_tooltip'.tr(namedArgs: {'percent': (BusinessRules.platformFeePercent * 100).toStringAsFixed(1)}),
                 child: Semantics(
                   button: true,
                   label: 'btn-info-service-fee',
                   child: InkWell(
                     onTap: () => _showInfoSheet(
                       context,
-                      'Frais de Service',
-                    'Une commission de ${(BusinessRules.platformFeePercent * 100).toStringAsFixed(1)}% est appliquée sur chaque transaction pour couvrir:\n\n'
-                        '• Paiements sécurisés via Stripe\n'
-                        '• Protection acheteur et vendeur\n'
-                        '• Infrastructure technique\n'
-                        '• Support client\n\n'
-                        'Ce montant est déduit automatiquement du paiement au vendeur.',
+                      'cart.service_fees'.tr(),
+                    'cart.service_fee_info'.tr(namedArgs: {'percent': (BusinessRules.platformFeePercent * 100).toStringAsFixed(1)}),
                   ),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
@@ -469,7 +464,7 @@ class _CartTotalDisplay extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Estimation taxes et frais',
+                  'cart.tax_estimate'.tr(),
                   style: TextStyle(
                     fontSize: 14,
                     color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
@@ -478,23 +473,15 @@ class _CartTotalDisplay extends ConsumerWidget {
               ),
               Tooltip(
                 message:
-                    'Les taxes (GST/HST/PST) seront calculées lors du paiement selon votre province.',
+                    'cart.tax_tooltip'.tr(),
                 child: Semantics(
                   button: true,
                   label: 'btn-info-tax-estimate',
                   child: InkWell(
                     onTap: () => _showInfoSheet(
                       context,
-                      'Estimation des Taxes',
-                    'Les taxes sont calculées automatiquement lors du paiement en fonction de:\n\n'
-                        '• Votre province de livraison\n'
-                        '• Le type de produits (certaines catégories sont exonérées)\n\n'
-                        'Taxes applicables:\n'
-                        '• GST (5%) : Toutes les provinces\n'
-                        '• PST (6-7%) : BC, MB, SK\n'
-                        '• QST (9.975%) : QC\n'
-                        '• HST (13-15%) : ON (13%), NS (14%), NB, NL, PE (15%)\n\n'
-                        'Les produits pour enfants et certaines denrées alimentaires peuvent être exonérés de PST selon la province.',
+                      'cart.tax_estimate_title'.tr(),
+                    'cart.tax_info'.tr(),
                   ),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
@@ -554,7 +541,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Instructions de livraison',
+                          'common.delivery_instructions'.tr(),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -575,7 +562,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                           )
                         else
                           Text(
-                            'Ajouter des instructions (optionnel)',
+                            'cart.add_instructions_optional'.tr(),
                             style: TextStyle(
                               fontSize: 12,
                               color: isDark
@@ -669,7 +656,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text('Compris', style: TextStyle(fontSize: 16)),
+                child: Text('common.understood'.tr(), style: const TextStyle(fontSize: 16)),
               ),
             ),
           ],
@@ -695,7 +682,7 @@ class _CartTotalDisplay extends ConsumerWidget {
           children: [
             Icon(Icons.edit_note_outlined, color: DesignTokens.primary),
             const SizedBox(width: 12),
-            const Text('Instructions de livraison'),
+            Text('common.delivery_instructions'.tr()),
           ],
         ),
         content: Column(
@@ -703,7 +690,7 @@ class _CartTotalDisplay extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Ajoutez des instructions spéciales pour la livraison (optionnel) :',
+              'cart.delivery_instructions_desc'.tr(),
               style: TextStyle(
                 fontSize: 14,
                 color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
@@ -715,8 +702,7 @@ class _CartTotalDisplay extends ConsumerWidget {
               maxLines: 4,
               maxLength: 500,
               decoration: InputDecoration(
-                hintText:
-                    "Ex: Laissez le colis sur le porche\nSonner à l'interphone, appartement 12\nLivraison après 14h uniquement",
+                hintText: 'cart.delivery_hint'.tr(),
                 hintStyle: TextStyle(
                   fontSize: 13,
                   color: isDark ? DesignTokens.textSecondary : DesignTokens.textDisabled,
@@ -746,7 +732,7 @@ class _CartTotalDisplay extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: Text('common.cancel'.tr()),
           ),
           ElevatedButton(
             onPressed: () {
@@ -762,7 +748,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text('Enregistrer'),
+            child: Text('common.save'.tr()),
           ),
         ],
       ),
@@ -777,7 +763,7 @@ class _CheckoutButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ModernButton(
-      label: 'Proceed to Checkout',
+      label: 'cart.proceed_to_checkout'.tr(),
       onPressed: () {
         final cartDetails = ref.read(cartWithDetailsProvider);
         cartDetails.whenData((itemsWithDetails) {

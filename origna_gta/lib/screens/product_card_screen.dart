@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -268,14 +269,14 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                     IconButton(
                       icon: Icon(Icons.edit, color: DesignTokens.primary, size: iconSize),
                       onPressed: () => _editProduct(context),
-                      tooltip: 'Edit Product',
+                      tooltip: 'product.edit_product'.tr(),
                       padding: EdgeInsets.all(isCompact ? 4 : 8),
                       constraints: BoxConstraints(minWidth: isCompact ? 32 : 48, minHeight: isCompact ? 32 : 48),
                     ),
                     IconButton(
                       icon: Icon(Icons.delete, color: DesignTokens.error, size: iconSize),
                       onPressed: () => _showDeleteConfirmation(context),
-                      tooltip: 'Delete Product',
+                      tooltip: 'product.delete_product'.tr(),
                       padding: EdgeInsets.all(isCompact ? 4 : 8),
                       constraints: BoxConstraints(minWidth: isCompact ? 32 : 48, minHeight: isCompact ? 32 : 48),
                     ),
@@ -313,7 +314,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
     if (!mounted) return;
 
     if (success) {
-      messenger.showSnackBar(const SnackBar(content: Text('Product deleted successfully'), backgroundColor: DesignTokens.success));
+      messenger.showSnackBar(SnackBar(content: Text('product.deleted_success'.tr()), backgroundColor: DesignTokens.success));
     } else {
       final error = ref.read(productActionsViewModelProvider).errorMessage ?? 'Error deleting product';
       messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
@@ -328,17 +329,17 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Product'),
-        content: Text('Are you sure you want to delete "${widget.product.name}"? This action cannot be undone.'),
+        title: Text('product.delete_product'.tr()),
+        content: Text('product.delete_confirm'.tr(namedArgs: {'name': widget.product.name})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text('common.cancel'.tr())),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(dialogContext);
               _deleteProduct();
             },
             style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.error, foregroundColor: Colors.white),
-            child: const Text('Delete'),
+            child: Text('common.delete'.tr()),
           ),
         ],
       ),
@@ -360,7 +361,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
       await ref.read(favoritesControllerProvider).toggleFavorite(widget.productId);
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(const SnackBar(content: Text('Failed to update favorites'), backgroundColor: DesignTokens.error));
+        messenger.showSnackBar(SnackBar(content: Text('favorites.update_failed'.tr()), backgroundColor: DesignTokens.error));
       }
     }
   }

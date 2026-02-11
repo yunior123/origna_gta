@@ -118,7 +118,7 @@ class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProvide
               return Transform.scale(
                 scale: _scaleAnimation.value,
                 child: IconButton(
-                  tooltip: 'Shopping cart',
+                  tooltip: 'home.shopping_cart'.tr(),
                   icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
                   onPressed: () async {
                     _triggerAnimation();
@@ -623,7 +623,7 @@ class _ProductGrid extends ConsumerWidget {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary),
                 ),
                 const SizedBox(height: 8),
-                Text('Try adjusting your filters or search terms', style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary)),
+                Text('home.try_adjusting'.tr(), style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary)),
               ],
             ),
           ),
@@ -698,7 +698,7 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton> with SingleTic
           return Transform.rotate(
             angle: _rotationAnimation.value * 3.14159,
             child: IconButton(
-              tooltip: 'Settings',
+              tooltip: 'home.settings'.tr(),
               icon: const Icon(Icons.settings_outlined, color: Colors.white),
               onPressed: () {
                 _triggerAnimation();
