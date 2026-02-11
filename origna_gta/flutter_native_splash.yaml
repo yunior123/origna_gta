@@ -32,16 +32,15 @@ flutter_native_splash:
 
   #! FOR ALL PLATFORM, except Android 12+:
 
-  # Modern gradient background (2100 aesthetic)
-  # Purple gradient for light mode, deep space for dark mode
-  color: "#667eea"  ##====================================[REQUIRED]==========
+  # Clean white background for splash screen
+  color: "#FFFFFF"  ##====================================[REQUIRED]==========
   color_dark: "#1a1a2e"
   # platform-specific color overrides:
-  color_android: "#667eea"
+  color_android: "#FFFFFF"
   color_dark_android: "#1a1a2e"
-  color_ios: "#667eea"
+  color_ios: "#FFFFFF"
   color_dark_ios: "#1a1a2e"
-  color_web: "#667eea"
+  color_web: "#FFFFFF"
   color_dark_web: "#1a1a2e"
 
   # general background_image for all platform (except android 12+)
@@ -129,8 +128,8 @@ flutter_native_splash:
   
   #! ANDROID 12+ configuration:
   android_12:
-    # Modern gradient purple for light mode, deep space for dark mode
-    color: "#667eea"
+    # Clean white for light mode, deep space for dark mode
+    color: "#FFFFFF"
     color_dark: "#1a1a2e"
 
     # center-logo
@@ -142,8 +141,8 @@ flutter_native_splash:
     image: images/33.png    
     image_dark: images/33.png
 
-    # center-logo background color (transparent for modern look)
-    icon_background_color: "#667eea"
+    # center-logo background color
+    icon_background_color: "#FFFFFF"
     icon_background_color_dark: "#1a1a2e"
 
     # branding:

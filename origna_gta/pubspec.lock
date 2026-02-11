@@ -97,6 +97,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.13.2"
+  app_links:
+    dependency: "direct main"
+    description:
+      name: app_links
+      sha256: "5f88447519add627fe1cbcab4fd1da3d4fed15b9baf29f28b22535c95ecee3e8"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.4.1"
+  app_links_linux:
+    dependency: transitive
+    description:
+      name: app_links_linux
+      sha256: f5f7173a78609f3dfd4c2ff2c95bd559ab43c80a87dc6a095921d96c05688c81
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.3"
+  app_links_platform_interface:
+    dependency: transitive
+    description:
+      name: app_links_platform_interface
+      sha256: "05f5379577c513b534a29ddea68176a4d4802c46180ee8e2e966257158772a3f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.2"
+  app_links_web:
+    dependency: transitive
+    description:
+      name: app_links_web
+      sha256: af060ed76183f9e2b87510a9480e56a5352b6c249778d07bd2c95fc35632a555
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.4"
   archive:
     dependency: transitive
     description:
@@ -409,6 +441,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.1"
+  dispose_scope:
+    dependency: transitive
+    description:
+      name: dispose_scope
+      sha256: "48ec38ca2631c53c4f8fa96b294c801e55c335db5e3fb9f82cede150cfe5a2af"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.0"
   easy_localization:
     dependency: "direct main"
     description:
@@ -553,6 +593,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.0"
+  firebase_messaging:
+    dependency: "direct main"
+    description:
+      name: firebase_messaging
+      sha256: "06fad40ea14771e969a8f2bbce1944aa20ee2f4f57f4eca5b3ba346b65f3f644"
+      url: "https://pub.dev"
+    source: hosted
+    version: "16.1.1"
+  firebase_messaging_platform_interface:
+    dependency: transitive
+    description:
+      name: firebase_messaging_platform_interface
+      sha256: "6c49e901c77e6e10e86d98e32056a087eb1ca1b93acdf58524f1961e617657b7"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.7.6"
+  firebase_messaging_web:
+    dependency: transitive
+    description:
+      name: firebase_messaging_web
+      sha256: "2756f8fea583ffb9d294d15ddecb3a9ad429b023b70c9990c151fc92c54a32b3"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.1.2"
   firebase_remote_config:
     dependency: "direct main"
     description:
@@ -767,6 +831,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.2"
+  gtk:
+    dependency: transitive
+    description:
+      name: gtk
+      sha256: e8ce9ca4b1df106e4d72dad201d345ea1a036cc12c360f1a7d5a758f78ffa42c
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.0"
   hive:
     dependency: transitive
     description:
@@ -1164,6 +1236,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.0"
+  patrol:
+    dependency: "direct dev"
+    description:
+      name: patrol
+      sha256: "0688a00e0fda2e42f102863bbac969b7b5ea836d4dc365b750e0e5aed59d34b0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.1.1"
+  patrol_finders:
+    dependency: transitive
+    description:
+      name: patrol_finders
+      sha256: ac0bfaf3eaaa6cc3d49c8a365329cc7f4361a5f486f1adb45edc96dbfc854da9
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.0"
+  patrol_log:
+    dependency: transitive
+    description:
+      name: patrol_log
+      sha256: "26af8e1a8bbea313c82664d4eff1cace4fc8acbc2893799dd67fe4c5d3fa47df"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.0"
   petitparser:
     dependency: transitive
     description:

@@ -69,11 +69,22 @@ export async function waitForFlutter(page: Page, timeout = 90000): Promise<void>
 
   // 4) Activate semantics tree — if ensureSemantics() wasn't baked into the build,
   //    the placeholder button or a Tab key press will trigger it.
+  //    Flutter 3.19+ uses a visible "Enable accessibility" <button> instead of
+  //    the old <flt-semantics-placeholder> element.
+  const enableA11yBtn = page.locator('button:has-text("Enable accessibility")');
   const placeholder = page.locator('flt-semantics-placeholder');
-  if ((await placeholder.count()) > 0) {
+  if ((await enableA11yBtn.count()) > 0) {
+    await enableA11yBtn.first().click({ force: true }).catch(() => {});
+    console.log(`   ✅ Semantics activated via "Enable accessibility" button (${Date.now() - startTime}ms)`);
+    await page.waitForTimeout(2_000); // Allow semantics tree to build
+  } else if ((await placeholder.count()) > 0) {
     await placeholder.first().click({ force: true }).catch(() => {});
     await page.keyboard.press('Tab');
     console.log(`   ✅ Semantics activated via placeholder (${Date.now() - startTime}ms)`);
+  } else {
+    // Try Tab key as last resort to trigger semantics
+    await page.keyboard.press('Tab');
+    console.log(`   ℹ️ No accessibility button found — pressed Tab to trigger semantics (${Date.now() - startTime}ms)`);
   }
 
   // 5) Wait for semantics tree to appear

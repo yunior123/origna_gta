@@ -9,6 +9,21 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ],
+      "comment": "FIX 2026-02-11: Index for products filtered by isActive ordered by createdAt (home page)"
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "keywords",
           "arrayConfig": "CONTAINS"
         },

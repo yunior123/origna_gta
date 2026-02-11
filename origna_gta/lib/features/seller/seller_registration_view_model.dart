@@ -185,10 +185,11 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
       if (url != null) {
         final uri = Uri.parse(url);
         if (await canLaunchUrl(uri)) {
-          // Use inAppBrowserView on mobile, platformDefault on web to stay in same tab
+          // Use external browser for Stripe Connect onboarding — SFSafariViewController
+          // can have issues with OAuth redirects and bank authentication flows on iOS
           await launchUrl(
             uri,
-            mode: LaunchMode.platformDefault,
+            mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
             webOnlyWindowName: '_self', // Opens in same tab on web
           );
           state = state.copyWith(isLoading: false);

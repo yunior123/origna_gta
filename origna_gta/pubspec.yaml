@@ -55,6 +55,8 @@ dependencies:
   cloud_functions: ^6.0.6
   url_launcher: ^6.3.2
   firebase_remote_config: ^6.1.4
+  firebase_messaging: ^16.1.1
+  app_links: ^6.4.0
   image: ^4.7.2
   sentry_flutter: ^9.10.0
   flutter_riverpod: ^2.6.1
@@ -88,7 +90,13 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
- 
+  patrol: ^4.1.1
+
+patrol:
+  app_name: OrignaGTA
+  test_directory: patrol_test
+  ios:
+    bundle_id: ca.orignagta.app
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

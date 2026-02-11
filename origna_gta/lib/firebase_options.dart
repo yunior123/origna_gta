@@ -64,7 +64,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '935641055788',
     projectId: 'orignagta',
     storageBucket: 'orignagta.firebasestorage.app',
-    iosBundleId: 'com.example.orignaGta',
+    iosBundleId: 'ca.orignagta.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -73,7 +73,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '935641055788',
     projectId: 'orignagta',
     storageBucket: 'orignagta.firebasestorage.app',
-    iosBundleId: 'com.example.orignaGta',
+    iosBundleId: 'ca.orignagta.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

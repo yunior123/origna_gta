@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_links/app_links.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -362,6 +363,8 @@ class OrignaApp extends ConsumerStatefulWidget {
 class _OrignaAppState extends ConsumerState<OrignaApp> {
   final _sessionTimeout = SessionTimeoutService();
   StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<Uri>? _deepLinkSubscription;
+  final _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
@@ -370,6 +373,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
       onTap: () => _sessionTimeout.recordActivity(context),
       onPanDown: (_) => _sessionTimeout.recordActivity(context),
       child: MaterialApp(
+        navigatorKey: _navigatorKey,
         // === i18n: easy_localization (Quebec Bill 96 / Loi 96 compliance) ===
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
@@ -464,6 +468,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
   @override
   void dispose() {
     _authSubscription?.cancel();
+    _deepLinkSubscription?.cancel();
     _sessionTimeout.stopMonitoring();
     super.dispose();
   }
@@ -471,6 +476,24 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
   @override
   void initState() {
     super.initState();
+
+    // Listen for incoming deep links (Universal Links / URL schemes on iOS)
+    if (!kIsWeb) {
+      final appLinks = AppLinks();
+      _deepLinkSubscription = appLinks.uriLinkStream.listen((Uri uri) {
+        if (kDebugMode) {
+          debugPrint('🔗 Incoming deep link: $uri');
+        }
+        final navigator = _navigatorKey.currentState;
+        if (navigator != null) {
+          // Route the deep link through the existing route handler
+          final path = uri.path.isNotEmpty ? uri.path : '/';
+          final query = uri.query.isNotEmpty ? '?${uri.query}' : '';
+          navigator.pushNamed('$path$query');
+        }
+      });
+    }
+
     // Listen to auth state changes — store subscription for cleanup
     _authSubscription = ref.read(firebaseAuthProvider).authStateChanges().listen((user) async {
       if (user != null && mounted) {

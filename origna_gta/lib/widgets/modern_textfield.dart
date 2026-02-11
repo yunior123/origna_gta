@@ -61,7 +61,10 @@ class _ModernTextFieldState extends State<ModernTextField> {
           ),
           const SizedBox(height: DesignTokens.spacing8),
         ],
-        TextFormField(
+        Semantics(
+          label: widget.label,
+          textField: true,
+          child: TextFormField(
           controller: widget.controller,
           focusNode: _focusNode,
           keyboardType: widget.keyboardType,
@@ -116,6 +119,7 @@ class _ModernTextFieldState extends State<ModernTextField> {
             counterText: widget.showCounter ? null : '',
           ),
           style: TextStyle(fontSize: 15, color: isDark ? Colors.white : DesignTokens.textPrimary),
+        ),
         ),
       ],
     );
