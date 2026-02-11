@@ -37,7 +37,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
               TextField(
                 decoration: InputDecoration(
                   hintText: 'Search by name or email...',
-                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                  hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 14),
                   prefixIcon: Icon(Icons.search_rounded, color: DesignTokens.primary),
                   filled: true,
                   fillColor: DesignTokens.surfaceVariant,
@@ -110,9 +110,9 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.filter_alt_off_rounded, size: 40, color: Colors.grey[300]),
+                          Icon(Icons.filter_alt_off_rounded, size: 40, color: DesignTokens.outlineVariant),
                           const SizedBox(height: 12),
-                          Text('No users match your filters', style: TextStyle(color: Colors.grey[500])),
+                          Text('No users match your filters', style: TextStyle(color: DesignTokens.textSecondary)),
                         ],
                       ),
                     );
@@ -152,7 +152,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
             child: Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.white : Colors.grey[600],
+                color: isSelected ? Colors.white : DesignTokens.textSecondary,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 fontSize: 12,
               ),
@@ -236,15 +236,15 @@ class _UserCard extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 3),
-                  Text(email, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                  Text('Joined ${_formatDate(createdAt)}', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                  Text(email, style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
+                  Text('Joined ${_formatDate(createdAt)}', style: TextStyle(fontSize: 11, color: DesignTokens.textDisabled)),
                 ],
               ),
             ),
             // Actions
             PopupMenuButton<String>(
               onSelected: (value) => _handleAction(context, ref, value),
-              icon: Icon(Icons.more_vert_rounded, color: Colors.grey[400]),
+              icon: Icon(Icons.more_vert_rounded, color: DesignTokens.textDisabled),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
               itemBuilder: (context) => [
                 if (!roles.contains(UserRoles.seller))
@@ -332,6 +332,6 @@ class _UserCard extends ConsumerWidget {
   Color _roleColor(String role) {
     if (role == UserRoles.admin) return DesignTokens.secondary;
     if (role == UserRoles.seller) return DesignTokens.info;
-    return Colors.grey;
+    return DesignTokens.textSecondary;
   }
 }

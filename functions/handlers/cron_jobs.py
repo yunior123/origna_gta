@@ -8,6 +8,7 @@ Scheduled Cron Jobs
 """
 
 import logging
+
 logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta
 
@@ -16,8 +17,10 @@ from firebase_functions import scheduler_fn
 
 from config import AUTHORIZATION_VALID_DAYS, AUTO_CONFIRM_DAYS, PLATFORM_FEE_PERCENT, STRIPE_SECRET_KEY
 from schema_constants import (
+    AlgoliaActionValues,
     BusinessRules,
     Collections,
+    CronLockStatusValues,
     DeliveryStatusValues,
     Fields,
     OrderStatusValues,
@@ -56,6 +59,50 @@ def get_server_timestamp():
     return get_firestore().SERVER_TIMESTAMP
 
 
+def acquire_cron_lock(job_name: str, ttl_minutes: int = 30) -> bool:
+    """
+    Distributed lock using Firestore document.
+    Prevents concurrent execution of cron jobs across Cloud Function instances.
+
+    Returns True if lock acquired, False if another instance is running.
+    """
+    lock_ref = get_db().collection(Collections.CRON_LOCKS).document(job_name)
+    now = datetime.now()
+    cutoff = now - timedelta(minutes=ttl_minutes)
+
+    @get_firestore().transactional
+    def _try_acquire(transaction):
+        doc = lock_ref.get(transaction=transaction)
+        if doc.exists:
+            lock_data = doc.to_dict()
+            locked_at = lock_data.get(Fields.LOCKED_AT)
+            if locked_at and locked_at > cutoff:
+                return False  # Lock is still held by another instance
+        transaction.set(lock_ref, {
+            Fields.LOCKED_AT: now,
+            Fields.LOCKED_BY: f'cron_{job_name}',
+            Fields.STATUS: CronLockStatusValues.RUNNING,
+        })
+        return True
+
+    try:
+        return _try_acquire(get_db().transaction())
+    except Exception as e:
+        logger.warning(f'⚠️ Failed to acquire cron lock for {job_name}: {type(e).__name__}')
+        return False
+
+
+def release_cron_lock(job_name: str) -> None:
+    """Release a distributed cron lock."""
+    try:
+        get_db().collection(Collections.CRON_LOCKS).document(job_name).update({
+            Fields.STATUS: CronLockStatusValues.COMPLETED,
+            Fields.COMPLETED_AT: datetime.now(),
+        })
+    except Exception as e:
+        logger.warning(f'⚠️ Failed to release cron lock for {job_name}: {type(e).__name__}')
+
+
 @scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
 def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
     """
@@ -71,6 +118,20 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
       doesn't manually confirm receipt (marks as DELIVERED for payout).
     """
     logger.info('Running auto_capture_confirmed_receipts cron job (auto-payout mode)')
+
+    # SECURITY FIX #16: Distributed lock prevents concurrent execution
+    if not acquire_cron_lock('auto_capture_confirmed_receipts'):
+        logger.info('auto_capture_confirmed_receipts: Lock held by another instance, skipping')
+        return
+
+    try:
+        _run_auto_capture()
+    finally:
+        release_cron_lock('auto_capture_confirmed_receipts')
+
+
+def _run_auto_capture() -> None:
+    """Inner implementation of auto-capture (extracted for lock management)."""
 
     # Check if Stripe is enabled before processing
     from handlers.payment_providers import PaymentProvider, is_provider_enabled
@@ -331,6 +392,20 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     - Restores stock for these abandoned orders.
     """
     logger.info('Running check_expired_authorizations cron job (stale order cleanup)')
+
+    # SECURITY FIX #16: Distributed lock prevents concurrent execution
+    if not acquire_cron_lock('check_expired_authorizations'):
+        logger.info('check_expired_authorizations: Lock held by another instance, skipping')
+        return
+
+    try:
+        _run_expired_authorizations()
+    finally:
+        release_cron_lock('check_expired_authorizations')
+
+
+def _run_expired_authorizations() -> None:
+    """Inner implementation of expired authorization cleanup."""
 
     cutoff_date = datetime.now() - timedelta(days=AUTHORIZATION_VALID_DAYS)
 
@@ -686,7 +761,7 @@ def cleanup_stale_webhook_events(event: scheduler_fn.ScheduledEvent) -> None:
     """
     logger.info('Running cleanup_stale_webhook_events cron job')
 
-    cutoff_time = datetime.now() - timedelta(days=7)
+    cutoff_time = datetime.now() - timedelta(days=BusinessRules.WEBHOOK_EVENT_RETENTION_DAYS)
 
     webhook_docs = get_db().collection(Collections.WEBHOOK_EVENTS)\
         .where(Fields.CREATED_AT, '<=', cutoff_time)\
@@ -723,7 +798,7 @@ def cleanup_stale_security_alerts(event: scheduler_fn.ScheduledEvent) -> None:
     """
     logger.info('Running cleanup_stale_security_alerts cron job')
 
-    cutoff_time = datetime.now() - timedelta(days=90)
+    cutoff_time = datetime.now() - timedelta(days=BusinessRules.SECURITY_ALERT_RETENTION_DAYS)
 
     alert_docs = get_db().collection(Collections.SECURITY_ALERTS)\
         .where(Fields.RESOLVED, '==', True)\
@@ -746,3 +821,88 @@ def cleanup_stale_security_alerts(event: scheduler_fn.ScheduledEvent) -> None:
         batch.commit()
 
     logger.info(f'Security alert cleanup completed: {deleted_count} resolved alerts deleted')
+
+
+@scheduler_fn.on_schedule(schedule="every 1 hours", **CRON_OPTIONS)
+def retry_failed_algolia_syncs(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    Retries failed Algolia sync operations from the Dead Letter Queue.
+
+    Runs: Every hour
+
+    Logic:
+    - Reads unresolved entries from algolia_sync_failures collection
+    - Retries up to 3 times with exponential backoff tracking
+    - Marks as resolved after successful retry or max attempts
+    - Prevents unbounded DLQ growth
+    """
+    logger.info('Running retry_failed_algolia_syncs cron job')
+
+    from services.algolia_service import delete_product as algolia_delete_product
+    from services.algolia_service import index_product as algolia_index_product
+
+    # Fetch unresolved sync failures (max 50 per run)
+    failures = get_db().collection(Collections.ALGOLIA_SYNC_FAILURES)\
+        .where(Fields.RESOLVED, '==', False)\
+        .limit(50)\
+        .stream()
+
+    retried = 0
+    resolved = 0
+    max_retries = BusinessRules.ALGOLIA_DLQ_MAX_RETRIES
+
+    for failure_doc in failures:
+        failure_data = failure_doc.to_dict()
+        product_id = failure_data.get(Fields.PRODUCT_ID)
+        action = failure_data.get(Fields.ACTION, AlgoliaActionValues.INDEX)
+        retry_count = failure_data.get(Fields.RETRY_COUNT, 0)
+
+        if not product_id:
+            failure_doc.reference.update({Fields.RESOLVED: True})
+            resolved += 1
+            continue
+
+        # Max retries exceeded — mark as resolved (needs manual intervention)
+        if retry_count >= max_retries:
+            failure_doc.reference.update({
+                Fields.RESOLVED: True,
+                Fields.MAX_RETRIES_EXCEEDED: True,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
+            resolved += 1
+            logger.warning(f'Algolia sync for {product_id} exceeded max retries — marking as resolved')
+            continue
+
+        try:
+            if action == AlgoliaActionValues.DELETE:
+                algolia_delete_product(product_id)
+            else:
+                # Re-fetch product data from Firestore
+                product_doc = get_db().collection(Collections.PRODUCTS).document(product_id).get()
+                if not product_doc.exists:
+                    # Product was deleted — try to delete from Algolia instead
+                    algolia_delete_product(product_id)
+                else:
+                    product_data = product_doc.to_dict()
+                    if product_data.get(Fields.IS_ACTIVE, True):
+                        algolia_index_product(product_id, product_data)
+                    else:
+                        algolia_delete_product(product_id)
+
+            # Success — resolve the failure
+            failure_doc.reference.update({
+                Fields.RESOLVED: True,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
+            resolved += 1
+            retried += 1
+        except Exception as e:
+            # Increment retry count
+            failure_doc.reference.update({
+                Fields.RETRY_COUNT: retry_count + 1,
+                Fields.LAST_RETRY_ERROR: type(e).__name__,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
+            logger.warning(f'Algolia retry failed for {product_id}: {type(e).__name__}')
+
+    logger.info(f'Algolia DLQ retry completed: {retried} retried, {resolved} resolved')

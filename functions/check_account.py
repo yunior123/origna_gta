@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Check Mailjet account status, limits, and quota."""
-import os, sys, json
+import os
+import sys
+
 from dotenv import load_dotenv
+
 load_dotenv()
 os.environ['FUNCTIONS_EMULATOR'] = 'true'
 sys.path.insert(0, os.path.dirname(__file__))
 
 from mailjet_rest import Client
+
 from config import MAILJET_API_KEY, MAILJET_SECRET_KEY
 
 mj = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3')
@@ -19,7 +23,7 @@ if r.status_code == 200:
     for k in ['Email', 'Firstname', 'Lastname', 'CompanyName', 'JobTitle']:
         print(f"  {k}: {d.get(k, 'N/A')}")
 
-# 2. API Key info  
+# 2. API Key info
 print("\n=== API KEY INFO ===")
 r = mj.apikey.get()
 if r.status_code == 200:

@@ -105,12 +105,12 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                                       imageUrl: isValidImageUrl(imageUrls[index]) ? imageUrls[index] : '',
                                       fit: BoxFit.cover,
                                       placeholder: (context, url) => Shimmer.fromColors(
-                                        baseColor: Colors.grey[300]!,
-                                        highlightColor: Colors.grey[100]!,
+                                        baseColor: DesignTokens.outlineVariant,
+                                        highlightColor: DesignTokens.surface,
                                         child: Container(color: Colors.white),
                                       ),
                                       errorWidget: (context, url, error) => Container(
-                                        color: Colors.grey[200],
+                                        color: DesignTokens.outlineVariant,
                                         child: Icon(Icons.image_not_supported, size: isCompact ? 30 : 50),
                                       ),
                                     );
@@ -135,7 +135,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                               ],
                             )
                           : Container(
-                              color: Colors.grey[200],
+                              color: DesignTokens.outlineVariant,
                               child: Icon(Icons.image_not_supported, size: isCompact ? 30 : 50),
                             ),
                       ),
@@ -160,7 +160,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                               padding: EdgeInsets.all(isCompact ? 6 : 8),
                               child: Icon(
                                 isFavorite ? Icons.favorite : Icons.favorite_border,
-                                color: isFavorite ? Colors.red : Colors.grey[600],
+                                color: isFavorite ? DesignTokens.error : DesignTokens.textSecondary,
                                 size: favIconSize,
                               ),
                             ),
@@ -188,7 +188,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: titleFontSize,
-                          color: isDark ? Colors.white : Colors.grey[900],
+                          color: isDark ? Colors.white : DesignTokens.textPrimary,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -260,7 +260,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
             if (canManageProduct)
               Container(
                 decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey[200]!)),
+                  border: Border(top: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.08) : DesignTokens.outlineVariant)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -273,7 +273,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                       constraints: BoxConstraints(minWidth: isCompact ? 32 : 48, minHeight: isCompact ? 32 : 48),
                     ),
                     IconButton(
-                      icon: Icon(Icons.delete, color: Colors.red, size: iconSize),
+                      icon: Icon(Icons.delete, color: DesignTokens.error, size: iconSize),
                       onPressed: () => _showDeleteConfirmation(context),
                       tooltip: 'Delete Product',
                       padding: EdgeInsets.all(isCompact ? 4 : 8),
@@ -337,7 +337,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
               Navigator.pop(dialogContext);
               _deleteProduct();
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.error, foregroundColor: Colors.white),
             child: const Text('Delete'),
           ),
         ],

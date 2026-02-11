@@ -105,7 +105,7 @@
 		{
 			"label": "Stripe: Forward Webhooks to Emulator",
 			"type": "shell",
-			"command": "stripe listen --forward-to localhost:5001/orignagta/us-central1/stripe_webhook",
+			"command": "stripe listen --forward-to localhost:5001/orignagta/us-central1/stripe_webhook --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded,charge.dispute.created,charge.dispute.updated,charge.dispute.closed,charge.dispute.funds_reinstated,transfer.reversed,payout.failed,refund.failed,account.updated",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
@@ -133,6 +133,7 @@
 			"args": [
 				"listen",
 				"--forward-to", "localhost:5001/orignagta/us-central1/stripe_webhook",
+				"--events", "checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded,charge.dispute.created,charge.dispute.updated,charge.dispute.closed,charge.dispute.funds_reinstated,transfer.reversed,payout.failed,refund.failed,account.updated",
 				"--print-secret"
 			],
 			"options": {

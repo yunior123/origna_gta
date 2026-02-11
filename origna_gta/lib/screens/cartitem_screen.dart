@@ -87,7 +87,7 @@ class CartItemScreen extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: isDark ? Colors.white : Colors.grey[900],
+                      color: isDark ? Colors.white : DesignTokens.textPrimary,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -118,7 +118,7 @@ class CartItemScreen extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
                           '\$${unitPrice.toStringAsFixed(2)} each',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w500),
+                          style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
                         ),
                       );
                     },
@@ -165,7 +165,7 @@ class CartItemScreen extends StatelessWidget {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 14,
-                                  color: isDark ? Colors.white : Colors.grey[900],
+                                  color: isDark ? Colors.white : DesignTokens.textPrimary,
                                 ),
                               ),
                             ),
@@ -201,8 +201,8 @@ class CartItemScreen extends StatelessWidget {
   Widget _buildImage(List<String> imageUrlsList, bool isDark) {
     if (imageUrlsList.isEmpty) {
       return Container(
-        color: isDark ? const Color(0xFF2A2A3E) : Colors.grey[100],
-        child: Icon(Icons.image_not_supported_outlined, color: Colors.grey[400]),
+        color: isDark ? const Color(0xFF2A2A3E) : DesignTokens.surface,
+        child: Icon(Icons.image_not_supported_outlined, color: DesignTokens.textDisabled),
       );
     }
 
@@ -211,13 +211,13 @@ class CartItemScreen extends StatelessWidget {
         imageUrl: imageUrlsList[0],
         fit: BoxFit.cover,
         placeholder: (context, url) => Shimmer.fromColors(
-          baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-          highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
-          child: Container(color: isDark ? Colors.grey[900] : Colors.white),
+          baseColor: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant,
+          highlightColor: isDark ? DesignTokens.textPrimary : DesignTokens.surface,
+          child: Container(color: isDark ? DesignTokens.textPrimary : Colors.white),
         ),
         errorWidget: (context, url, error) => Container(
-          color: isDark ? const Color(0xFF2A2A3E) : Colors.grey[100],
-          child: Icon(Icons.image_not_supported_outlined, color: Colors.grey[400]),
+          color: isDark ? const Color(0xFF2A2A3E) : DesignTokens.surface,
+          child: Icon(Icons.image_not_supported_outlined, color: DesignTokens.textDisabled),
         ),
       );
     }
@@ -232,13 +232,13 @@ class CartItemScreen extends StatelessWidget {
               imageUrl: imageUrlsList[index],
               fit: BoxFit.cover,
               placeholder: (context, url) => Shimmer.fromColors(
-                baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-                highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
-                child: Container(color: isDark ? Colors.grey[900] : Colors.white),
+                baseColor: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant,
+                highlightColor: isDark ? DesignTokens.textPrimary : DesignTokens.surface,
+                child: Container(color: isDark ? DesignTokens.textPrimary : Colors.white),
               ),
               errorWidget: (context, url, error) => Container(
-                color: isDark ? const Color(0xFF2A2A3E) : Colors.grey[100],
-                child: Icon(Icons.image_not_supported_outlined, size: 24, color: Colors.grey[400]),
+                color: isDark ? const Color(0xFF2A2A3E) : DesignTokens.surface,
+                child: Icon(Icons.image_not_supported_outlined, size: 24, color: DesignTokens.textDisabled),
               ),
             );
           },
@@ -295,7 +295,7 @@ class _QuantityButton extends StatelessWidget {
             child: Icon(
               icon,
               size: 18,
-              color: isDisabled ? Colors.grey[400] : (isDark ? Colors.white70 : DesignTokens.primary),
+              color: isDisabled ? DesignTokens.textDisabled : (isDark ? Colors.white70 : DesignTokens.primary),
             ),
           ),
         ),

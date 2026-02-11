@@ -108,7 +108,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                     ),
                   ),
                   const SizedBox(height: DesignTokens.spacing20),
-                  Text('Checking status...', style: TextStyle(fontSize: 15, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                  Text('Checking status...', style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
@@ -147,7 +147,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                           ),
                         ),
                         const SizedBox(height: DesignTokens.spacing20),
-                        Text('Verifying your seller account...', style: TextStyle(fontSize: 15, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                        Text('Verifying your seller account...', style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ),
@@ -262,10 +262,10 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                 ? 'Stripe needs to verify your identity before you can start selling. Please submit the required documents.'
                 : 'You need to finish providing your information to Stripe before you can start selling.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 15, color: Colors.grey[600], height: 1.6),
+            style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.6),
           ),
+          const SizedBox(height: DesignTokens.spacing24),
           if (requirementsDescription.isNotEmpty) ...[
-            const SizedBox(height: DesignTokens.spacing24),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -296,7 +296,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                   const SizedBox(height: 10),
                   Text(
                     '• $requirementsDescription',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.5),
+                    style: TextStyle(fontSize: 14, color: DesignTokens.textPrimary, height: 1.5),
                   ),
                 ],
               ),
@@ -350,7 +350,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           Text(
             'Stripe is reviewing your identity documents. This usually takes a few minutes but can take up to 2 business days.\n\nYou will be able to add products once your verification is complete.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 15, color: Colors.grey[600], height: 1.6),
+            style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.6),
           ),
           const SizedBox(height: DesignTokens.spacing40),
           SizedBox(
@@ -427,7 +427,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           Text(
             'Your account is set up and you can now start selling products.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 15, color: Colors.grey[600], height: 1.5),
+            style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.5),
           ),
           const SizedBox(height: DesignTokens.spacing40),
           SizedBox(
@@ -488,7 +488,7 @@ class SellerSetupRefreshScreen extends StatelessWidget {
                       Text(
                         'Your seller account setup needs to be completed. Please continue to finish setting up your account.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 15, color: Colors.grey[600], height: 1.6),
+                        style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.6),
                       ),
                       const SizedBox(height: DesignTokens.spacing40),
                       SizedBox(

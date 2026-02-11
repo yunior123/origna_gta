@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
@@ -483,7 +484,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final userProfileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
-      appBar: AppBarFactory.simple(title: 'Checkout'),
+      appBar: AppBarFactory.simple(title: 'checkout.checkout'.tr()),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),

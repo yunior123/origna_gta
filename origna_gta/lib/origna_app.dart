@@ -4,30 +4,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
-import 'package:origna_gta/features/admin/admin_panel_screen.dart';
+// Deferred imports for code splitting — reduces initial JS bundle on Flutter Web
+import 'package:origna_gta/features/admin/admin_panel_screen.dart' deferred as admin_panel;
 import 'package:origna_gta/models/models.dart' show Address;
-import 'package:origna_gta/screens/addproduct_screen.dart';
+import 'package:origna_gta/screens/addproduct_screen.dart' deferred as add_product;
 import 'package:origna_gta/screens/addressmanagement_screen.dart';
 import 'package:origna_gta/screens/authwrapper_screen.dart';
 import 'package:origna_gta/screens/cart_screen.dart';
-import 'package:origna_gta/screens/checkout_screen.dart';
+import 'package:origna_gta/screens/checkout_screen.dart' deferred as checkout;
 import 'package:origna_gta/screens/common_screens.dart';
 import 'package:origna_gta/screens/editaddress_screen.dart';
-import 'package:origna_gta/screens/editproduct_screen.dart';
+import 'package:origna_gta/screens/editproduct_screen.dart' deferred as edit_product;
 import 'package:origna_gta/screens/favorites_screen.dart';
 import 'package:origna_gta/screens/login_screen.dart';
 import 'package:origna_gta/screens/orders_screen.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
 import 'package:origna_gta/screens/payment_screens.dart';
-import 'package:origna_gta/screens/privacy_policy_screen.dart';
+import 'package:origna_gta/screens/privacy_policy_screen.dart' deferred as privacy;
 import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:origna_gta/screens/profile_screen.dart';
-import 'package:origna_gta/screens/seller_orders_screen.dart';
-import 'package:origna_gta/screens/seller_registration_screen.dart';
+import 'package:origna_gta/screens/seller_orders_screen.dart' deferred as seller_orders;
+import 'package:origna_gta/screens/seller_registration_screen.dart' deferred as seller_reg;
 import 'package:origna_gta/screens/seller_setup_screen.dart';
-import 'package:origna_gta/screens/shipping_approval_screen.dart';
-import 'package:origna_gta/screens/terms_of_service_screen.dart';
+import 'package:origna_gta/screens/shipping_approval_screen.dart' deferred as shipping_approval;
+import 'package:origna_gta/screens/terms_of_service_screen.dart' deferred as terms;
 import 'package:origna_gta/services/session_timeout_service.dart';
+import 'package:origna_gta/utils/deferred_widget.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 
 /// Handle initial route from URL (critical for web redirects from Stripe)
@@ -64,13 +66,13 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   if (uri != null && uri.path == AppRoutes.privacyPolicy) {
     return [
       MaterialPageRoute(builder: (_) => const AuthWrapper()),
-      MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+      MaterialPageRoute(builder: (_) => DeferredWidget(loader: privacy.loadLibrary, builder: () => privacy.PrivacyPolicyScreen())),
     ];
   }
   if (uri != null && uri.path == AppRoutes.termsOfService) {
     return [
       MaterialPageRoute(builder: (_) => const AuthWrapper()),
-      MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()),
+      MaterialPageRoute(builder: (_) => DeferredWidget(loader: terms.loadLibrary, builder: () => terms.TermsOfServiceScreen())),
     ];
   }
 
@@ -125,10 +127,10 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Handle privacy policy route
   if (uri.path == AppRoutes.privacyPolicy) {
-    return MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen());
+    return MaterialPageRoute(builder: (_) => DeferredWidget(loader: privacy.loadLibrary, builder: () => privacy.PrivacyPolicyScreen()));
   }
   if (uri.path == AppRoutes.termsOfService) {
-    return MaterialPageRoute(builder: (_) => const TermsOfServiceScreen());
+    return MaterialPageRoute(builder: (_) => DeferredWidget(loader: terms.loadLibrary, builder: () => terms.TermsOfServiceScreen()));
   }
 
   // Handle payment success deep link
@@ -205,7 +207,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.addProduct) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => const AuthRequiredGate(child: AddProductScreen()),
+      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: add_product.loadLibrary, builder: () => add_product.AddProductScreen())),
     );
   }
 
@@ -220,7 +222,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     }
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => AuthRequiredGate(child: EditProductScreen(product: args.product)),
+      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: edit_product.loadLibrary, builder: () => edit_product.EditProductScreen(product: args.product))),
     );
   }
 
@@ -271,9 +273,12 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return MaterialPageRoute(
       settings: settings,
       builder: (_) => AuthRequiredGate(
-        child: CheckoutScreen(
-          items: args.items,
-          total: args.total,
+        child: DeferredWidget(
+          loader: checkout.loadLibrary,
+          builder: () => checkout.CheckoutScreen(
+            items: args.items,
+            total: args.total,
+          ),
         ),
       ),
     );
@@ -298,7 +303,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.shippingApproval) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => const AuthRequiredGate(child: ShippingApprovalScreen()),
+      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: shipping_approval.loadLibrary, builder: () => shipping_approval.ShippingApprovalScreen())),
     );
   }
 
@@ -306,7 +311,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.sellerRegistration) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => const AuthRequiredGate(child: SellerRegistrationScreen()),
+      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: seller_reg.loadLibrary, builder: () => seller_reg.SellerRegistrationScreen())),
     );
   }
 
@@ -314,7 +319,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.sellerOrders) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => const AuthRequiredGate(child: SellerOrdersScreen()),
+      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: seller_orders.loadLibrary, builder: () => seller_orders.SellerOrdersScreen())),
     );
   }
 
@@ -322,7 +327,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.adminPanel) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => const AuthRequiredGate(child: AdminPanelScreen()),
+      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: admin_panel.loadLibrary, builder: () => admin_panel.AdminPanelScreen())),
     );
   }
 
@@ -420,11 +425,11 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(color: DesignTokens.outlineVariant),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(color: DesignTokens.outlineVariant),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -443,7 +448,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
             surfaceTintColor: Colors.transparent,
           ),
           dividerTheme: DividerThemeData(
-            color: Colors.grey[200],
+            color: DesignTokens.outlineVariant,
             thickness: 1,
             space: 1,
           ),

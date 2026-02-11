@@ -45,6 +45,7 @@ class Collections:
     ADMIN_LOGS = "admin_logs"
     PRODUCT_RATINGS = "product_ratings"
     ALGOLIA_SYNC_FAILURES = "algolia_sync_failures"
+    CRON_LOCKS = "_cron_locks"
 
 
     # Subcollections
@@ -445,6 +446,15 @@ class Fields:
     # === FAVORITES FIELDS ===
     DATE_FAVORITED = 'dateFavorited'
 
+    # === CRON LOCK FIELDS ===
+    LOCKED_AT = "lockedAt"
+    LOCKED_BY = "lockedBy"
+
+    # === ALGOLIA SYNC FAILURE FIELDS ===
+    RETRY_COUNT = "retryCount"
+    MAX_RETRIES_EXCEEDED = "maxRetriesExceeded"
+    LAST_RETRY_ERROR = "lastRetryError"
+
     # === ALTERNATE FIELD NAMES (used in Firestore deserialization fallbacks) ===
     BUYER_CONFIRMED = "buyerConfirmed"       # Alternate for CONFIRMED_BY_BUYER
     LOCAL_DELIVERY_ONLY = "localDeliveryOnly" # Alternate for IS_LOCAL_DELIVERY_ONLY
@@ -691,6 +701,18 @@ class SupplierCurrencyValues:
     })
 
 
+class CronLockStatusValues:
+    """Valid values for cron lock status field."""
+    RUNNING = "running"
+    COMPLETED = "completed"
+
+
+class AlgoliaActionValues:
+    """Valid values for Algolia sync failure action field."""
+    INDEX = "index"
+    DELETE = "delete"
+
+
 class AdminActionValues:
     """Valid values for admin log action field."""
     PAYMENT_PROVIDER_UPDATE = "payment_provider_update"
@@ -890,6 +912,11 @@ class BusinessRules:
 
     # Algolia monitoring
     ALGOLIA_SYNC_MISMATCH_THRESHOLD = 0.05  # 5%
+    ALGOLIA_DLQ_MAX_RETRIES = 5  # Max retries for failed Algolia syncs in DLQ
+
+    # Retention periods (cleanup cron jobs)
+    WEBHOOK_EVENT_RETENTION_DAYS = 7  # Stripe won't replay events older than this
+    SECURITY_ALERT_RETENTION_DAYS = 90  # Resolved alerts older than this are deleted
 
     # Tax rates by province
     TAX_RATES: dict[str, dict[str, float]] = {

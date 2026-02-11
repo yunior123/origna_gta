@@ -257,6 +257,16 @@ abstract final class Fields {
   static const refundId = 'refundId';
   static const confirmedByBuyer = 'confirmedByBuyer';
 
+  // === DELIVERY / SHIPPING SUB-FIELDS ===
+  static const shippingDays = 'shippingDays';
+  static const hasTracking = 'hasTracking';
+  static const maxItemsPerShipment = 'maxItemsPerShipment';
+  static const additionalItemCost = 'additionalItemCost';
+  static const quantityDiscounts = 'quantityDiscounts';
+  static const discountType = 'discountType';
+  static const discountValue = 'discountValue';
+  static const minQuantity = 'minQuantity';
+
   /// Parallel status field alongside [status] (both are written for consistency)
   static const deliveryStatus = 'deliveryStatus';
 

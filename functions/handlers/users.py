@@ -8,6 +8,7 @@ We only store the GST number - Stripe validates it during checkout.
 """
 
 import logging
+
 logger = logging.getLogger(__name__)
 from typing import Any
 

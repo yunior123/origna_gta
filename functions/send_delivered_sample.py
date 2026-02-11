@@ -4,6 +4,7 @@ import os
 import sys
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 os.environ['FUNCTIONS_EMULATOR'] = 'true'
@@ -11,8 +12,8 @@ os.environ['FORCE_REAL_EMAIL'] = 'true'
 sys.path.insert(0, os.path.dirname(__file__))
 
 from mailjet_rest import Client
+
 from config import MAILJET_API_KEY, MAILJET_SECRET_KEY
-from schema_constants import EmailConfig
 from services.email_service import get_order_delivered_email
 
 # Use the verified Gmail sender (the only one that works without SPF/DKIM)

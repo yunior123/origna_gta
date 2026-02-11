@@ -31,19 +31,19 @@ class _AdminOrderCard extends StatelessWidget {
     Color statusColor;
     switch (paymentStatus) {
       case PaymentStatus.paid:
-        statusColor = Colors.green;
+        statusColor = DesignTokens.success;
         break;
       case PaymentStatus.authorized:
-        statusColor = Colors.blue;
+        statusColor = DesignTokens.info;
         break;
       case PaymentStatus.refunded:
-        statusColor = Colors.purple;
+        statusColor = DesignTokens.secondary;
         break;
       case PaymentStatus.paymentFailed:
-        statusColor = Colors.red;
+        statusColor = DesignTokens.error;
         break;
       default:
-        statusColor = Colors.orange;
+        statusColor = DesignTokens.warning;
     }
 
     return Card(
@@ -73,7 +73,7 @@ class _AdminOrderCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Text(customerEmail, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            Text(customerEmail, style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
             const SizedBox(height: 4),
             Row(
               children: [
@@ -86,7 +86,7 @@ class _AdminOrderCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(DateFormat('MMM dd, yyyy').format(createdAt), style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                Text(DateFormat('MMM dd, yyyy').format(createdAt), style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
               ],
             ),
           ],
@@ -121,7 +121,7 @@ class _AdminOrderCard extends StatelessWidget {
                         onPressed: () => _showRefundDialog(context),
                         icon: const Icon(Icons.undo, size: 18),
                         label: const Text('Refund'),
-                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        style: TextButton.styleFrom(foregroundColor: DesignTokens.error),
                       ),
                     TextButton.icon(
                       onPressed: () => _viewOrderDetails(context),
@@ -146,7 +146,7 @@ class _AdminOrderCard extends StatelessWidget {
         children: [
           SizedBox(
             width: 120,
-            child: Text(label, style: TextStyle(color: Colors.grey[600])),
+            child: Text(label, style: TextStyle(color: DesignTokens.textSecondary)),
           ),
           Expanded(
             child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
@@ -221,7 +221,7 @@ class _AdminOrderCard extends StatelessWidget {
                 child: Container(
                   width: 40,
                   height: 4,
-                  decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(color: DesignTokens.outlineVariant, borderRadius: BorderRadius.circular(2)),
                 ),
               ),
               const SizedBox(height: 24),
@@ -310,13 +310,13 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
           decoration: BoxDecoration(
             color: isSelected ? DesignTokens.primary : Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: isSelected ? DesignTokens.primary : Colors.grey.withValues(alpha: 0.2)),
+            border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.outlineVariant.withValues(alpha: 0.5)),
             boxShadow: isSelected ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 2))] : [],
           ),
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.white : Colors.grey[600],
+              color: isSelected ? Colors.white : DesignTokens.textSecondary,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               fontSize: 13,
             ),

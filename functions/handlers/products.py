@@ -8,7 +8,6 @@ Product Management Handlers
 """
 
 import logging
-logger = logging.getLogger(__name__)
 import uuid
 from typing import Any
 
@@ -30,10 +29,23 @@ from services.algolia_service import index_product
 from utils.function_options import DEFAULT_OPTIONS
 from utils.helpers import create_success_response
 
+logger = logging.getLogger(__name__)
+
 # Constants
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
 CDN_BASE_URL = "https://cdn.origna.ca"
+
+# SECURITY FIX #6: Magic bytes for image format validation
+# Prevents serving non-image files via CDN even if MIME type is spoofed
+IMAGE_MAGIC_BYTES = {
+    b'\xff\xd8\xff': 'image/jpeg',       # JPEG
+    b'\x89PNG\r\n\x1a\n': 'image/png',   # PNG
+    b'RIFF': 'image/webp',               # WebP (RIFF container)
+    b'GIF87a': 'image/gif',              # GIF87a
+    b'GIF89a': 'image/gif',              # GIF89a
+}
+MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB absolute max
 
 _db = None
 _firestore = None
@@ -431,6 +443,38 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     raise https_fn.HttpsError('not-found', 'Product not found')
 
 
+def validate_image_magic_bytes(image_url: str) -> bool:
+    """
+    SECURITY FIX #6: Validate uploaded image by checking magic bytes.
+    Downloads first 16 bytes and verifies against known image signatures.
+    Returns True if valid image, False if malicious/invalid.
+    """
+    import requests as http_requests
+    try:
+        resp = http_requests.get(image_url, stream=True, timeout=5)
+        if resp.status_code != 200:
+            logger.warning(f'⚠️ Image validation failed: HTTP {resp.status_code} for {image_url}')
+            return False
+
+        # Read only first 16 bytes for magic byte check
+        header_bytes = resp.raw.read(16)
+        resp.close()
+
+        if not header_bytes:
+            return False
+
+        for magic, _mime in IMAGE_MAGIC_BYTES.items():
+            if header_bytes[:len(magic)] == magic:
+                return True
+
+        logger.warning(f'⚠️ SECURITY: Image {image_url} has invalid magic bytes: {header_bytes[:8].hex()}')
+        return False
+    except Exception as e:
+        logger.warning(f'⚠️ Image validation error for {image_url}: {type(e).__name__}')
+        # Fail open for CDN timeout issues; rely on MIME type validation
+        return True
+
+
 @firestore_fn.on_document_created(document="products/{productId}", **DEFAULT_OPTIONS)
 def on_product_created(event: firestore_fn.Event) -> None:
     """
@@ -559,6 +603,19 @@ def on_product_created(event: firestore_fn.Event) -> None:
 
     # FOOD SAFETY: Perishable products should have local delivery or same-day option
     is_perishable = product_data.get(Fields.IS_PERISHABLE, False)
+
+    # SECURITY FIX #6: Validate image magic bytes for uploaded product images
+    # Check each image URL to ensure it's a real image (not a malicious file)
+    image_urls = product_data.get(Fields.IMAGE_URLS, [])
+    for img_url in image_urls:
+        if isinstance(img_url, str) and img_url.startswith(CDN_BASE_URL) and not validate_image_magic_bytes(img_url):
+            logger.warning(f'SECURITY: Product {product_id} has invalid image — deactivating: {img_url[:80]}')
+            get_db().collection(Collections.PRODUCTS).document(product_id).update({
+                Fields.IS_ACTIVE: False,
+                Fields.DEACTIVATION_REASON: 'Image validation failed (invalid file type)',
+            })
+            return
+
     if is_perishable:
         delivery_options = product_data.get(Fields.DELIVERY_OPTIONS, [])
         has_local_or_same_day = any(
@@ -755,15 +812,26 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
     """
     # AUDIT FIX: Rate limit read endpoint to prevent scraping
+    from services.rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+
     if req.auth:
-        from services.rate_limiter import RateLimiter
-        _limiter = RateLimiter(get_db())
         allowed, msg = _limiter.check_rate_limit(
             identifier=req.auth.uid, action='get_products',
             max_requests=30, window_minutes=1, fail_closed=False
         )
         if not allowed:
             raise https_fn.HttpsError('resource-exhausted', msg)
+    else:
+        # IP-based rate limiting for unauthenticated requests (anti-scraping)
+        client_ip = (req.raw_request.headers.get('X-Forwarded-For', '') or '').split(',')[0].strip()
+        if client_ip:
+            allowed, msg = _limiter.check_rate_limit(
+                identifier=f'ip:{client_ip}', action='get_products',
+                max_requests=15, window_minutes=1, fail_closed=False
+            )
+            if not allowed:
+                raise https_fn.HttpsError('resource-exhausted', msg)
 
     data = req.data or {}
 
@@ -772,9 +840,22 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
     start_after_id = data.get('startAfter')
     category = data.get('category')
     seller_id = data.get(Fields.SELLER_ID)
-    is_active = data.get(Fields.IS_ACTIVE, True)
     order_by = data.get('orderBy', Fields.CREATED_AT)
     order_direction = data.get('orderDirection', 'desc')
+
+    # SECURITY FIX #14: Force isActive=True for public API — only admins can list inactive products
+    # Prevents client-side bypass where isActive=false exposes deleted/hidden products
+    is_admin = False
+    if req.auth:
+        user_doc = get_db().collection(Collections.USERS).document(req.auth.uid).get()
+        if user_doc.exists:
+            roles = user_doc.to_dict().get(Fields.ROLES, [])
+            is_admin = UserRoleValues.ADMIN in roles
+
+    is_active = True  # Public always sees active products only
+    if is_admin:
+        # Admins can optionally filter by isActive
+        is_active = data.get(Fields.IS_ACTIVE, True)
 
     # Validation
     if order_by not in [Fields.CREATED_AT, Fields.PRICE, Fields.RATING, Fields.RATING_COUNT, Fields.NAME]:

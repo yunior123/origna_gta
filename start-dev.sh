@@ -91,7 +91,9 @@ fi
 echo -e "${YELLOW}Starting Stripe webhook forwarding...${NC}"
 
 STRIPE_LOG="/tmp/stripe-listen-$$.log"
-stripe listen --forward-to "$STRIPE_WEBHOOK_URL" > "$STRIPE_LOG" 2>&1 &
+stripe listen --forward-to "$STRIPE_WEBHOOK_URL" \
+  --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded,charge.dispute.created,charge.dispute.updated,charge.dispute.closed,charge.dispute.funds_reinstated,transfer.reversed,payout.failed,refund.failed,account.updated \
+  > "$STRIPE_LOG" 2>&1 &
 STRIPE_PID=$!
 
 # Wait for Stripe to output the webhook signing secret

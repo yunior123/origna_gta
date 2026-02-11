@@ -33,9 +33,9 @@ class ProductDetailScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 80, color: Colors.grey[400]),
+                  Icon(Icons.error_outline, size: 80, color: DesignTokens.textDisabled),
                   const SizedBox(height: 16),
-                  Text('Product not found', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+                  Text('Product not found', style: TextStyle(fontSize: 18, color: DesignTokens.textSecondary)),
                 ],
               ),
             );
@@ -48,7 +48,7 @@ class ProductDetailScreen extends ConsumerWidget {
                 pinned: true,
                 floating: true,
                 expandedHeight: 340,
-                backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+                backgroundColor: isDark ? DesignTokens.textPrimary : Colors.white,
                 flexibleSpace: FlexibleSpaceBar(
                   background: Container(
                     decoration: BoxDecoration(
@@ -77,19 +77,19 @@ class ProductDetailScreen extends ConsumerWidget {
                                         imageUrl: imageUrls[index],
                                         fit: BoxFit.cover,
                                         placeholder: (context, url) => Shimmer.fromColors(
-                                          baseColor: Colors.grey[300]!,
-                                          highlightColor: Colors.grey[100]!,
+                                          baseColor: DesignTokens.outlineVariant,
+                                          highlightColor: DesignTokens.surface,
                                           child: Container(color: Colors.white),
                                         ),
                                         errorWidget: (context, url, error) =>
-                                            Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported, size: 100)),
+                                            Container(color: DesignTokens.outlineVariant, child: const Icon(Icons.image_not_supported, size: 100)),
                                       ),
                                     ),
                                   ),
                                   );
                                 },
                               )
-                            : Container(color: Colors.grey[200], child: const Icon(Icons.image_not_supported, size: 100)),
+                            : Container(color: DesignTokens.outlineVariant, child: const Icon(Icons.image_not_supported, size: 100)),
                         Positioned(
                           top: MediaQuery.of(context).padding.top + 8,
                           left: 12,
@@ -115,7 +115,7 @@ class ProductDetailScreen extends ConsumerWidget {
                   preferredSize: const Size.fromHeight(20),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[900] : Colors.white,
+                      color: isDark ? DesignTokens.textPrimary : Colors.white,
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, -4))],
                     ),
@@ -153,7 +153,7 @@ class ProductDetailScreen extends ConsumerWidget {
                                 decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.star, size: 18, color: Colors.amber[600]),
+                                    Icon(Icons.star, size: 18, color: DesignTokens.warning),
                                     const SizedBox(width: 4),
                                     Text(
                                       product.rating.toStringAsFixed(1),
@@ -196,13 +196,13 @@ class ProductDetailScreen extends ConsumerWidget {
                           const SizedBox(height: 28),
                           Text(
                             'Description',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.grey[900]),
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
                           ),
                           const SizedBox(height: 12),
                           GlassContainer(
                             child: Text(
                               product.description,
-                              style: TextStyle(fontSize: 15, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.6, fontWeight: FontWeight.w400),
+                              style: TextStyle(fontSize: 15, color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary, height: 1.6, fontWeight: FontWeight.w400),
                             ),
                           ),
                           const SizedBox(height: 28),
@@ -252,7 +252,7 @@ class ProductDetailScreen extends ConsumerWidget {
   void _showImageDialog(BuildContext context, List<String> imageUrls, int initialIndex) {
     showDialog(
       context: context,
-      barrierColor: Colors.black87,
+      barrierColor: DesignTokens.textPrimary,
       builder: (BuildContext context) {
         return Dialog(
           backgroundColor: Colors.transparent,
@@ -271,8 +271,8 @@ class ProductDetailScreen extends ConsumerWidget {
                         imageUrl: imageUrls[index],
                         fit: BoxFit.contain,
                         placeholder: (context, url) => Shimmer.fromColors(
-                          baseColor: Colors.grey[300]!,
-                          highlightColor: Colors.grey[100]!,
+                          baseColor: DesignTokens.outlineVariant,
+                          highlightColor: DesignTokens.surface,
                           child: Container(color: Colors.white),
                         ),
                         errorWidget: (context, url, error) => const Icon(Icons.image_not_supported, size: 100, color: Colors.white),
@@ -328,7 +328,7 @@ class _AddToCartButton extends ConsumerWidget {
             'You cannot purchase your own products',
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey[600],
+              color: DesignTokens.textSecondary,
               fontStyle: FontStyle.italic,
             ),
           ),
@@ -405,7 +405,7 @@ class _DeliveryInfoCard extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 'Delivery Information',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.grey[900]),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary),
               ),
             ],
           ),
@@ -550,7 +550,7 @@ class _QuantityButton extends StatelessWidget {
           splashColor: DesignTokens.primary.withValues(alpha: 0.3),
           child: Padding(
             padding: const EdgeInsets.all(8),
-            child: Icon(icon, color: onPressed != null ? DesignTokens.primary : Colors.grey[400], size: 20),
+            child: Icon(icon, color: onPressed != null ? DesignTokens.primary : DesignTokens.textDisabled, size: 20),
           ),
         ),
       ),
@@ -571,7 +571,7 @@ class _QuantitySelector extends ConsumerWidget {
       children: [
         Text(
           'Quantity:',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.grey[900]),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary),
         ),
         const SizedBox(width: 20),
         GlassContainer(

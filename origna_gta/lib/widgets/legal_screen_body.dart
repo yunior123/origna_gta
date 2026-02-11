@@ -309,7 +309,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.5,
-              color: isDark ? Colors.white38 : Colors.grey.shade400,
+              color: isDark ? Colors.white38 : DesignTokens.textDisabled,
             ),
           ),
         ),
@@ -445,7 +445,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                     Icon(
                       section.icon,
                       size: 20,
-                      color: isDark ? Colors.white38 : Colors.grey.shade400,
+                      color: isDark ? Colors.white38 : DesignTokens.textDisabled,
                     ),
                     const SizedBox(width: 8),
                     AnimatedRotation(
@@ -456,7 +456,7 @@ class _LegalScreenBodyState extends State<LegalScreenBody> {
                         size: 22,
                         color: isExpanded
                             ? DesignTokens.primary
-                            : (isDark ? Colors.white30 : Colors.grey.shade400),
+                            : (isDark ? Colors.white30 : DesignTokens.textDisabled),
                       ),
                     ),
                   ],

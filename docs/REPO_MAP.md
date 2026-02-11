@@ -11,16 +11,17 @@
 |------|---------|----------------|
 | `main.py` | All Cloud Functions | Function registration, Stripe init, validation helpers |
 
-### Handlers — `functions/handlers/`
+### Handlers — `functions/handlers/` (57 Cloud Functions total)
 | File | Key Functions | Responsibility |
 |------|---------------|----------------|
-| `payment_stripe.py` | `create_checkout_session`, `capture_payment`, `refund_payment`, `stripe_webhook`, `handle_dispute_created`, `create_stripe_connect_account` | All Stripe payment operations: checkout, capture, refund, webhooks, Connect onboarding |
-| `payment_airwallex.py` | Airwallex equivalents | Alternative payment provider (future) |
-| `payment_providers.py` | Provider factory | Abstraction layer for payment providers |
-| `orders.py` | `create_order`, `update_order_status`, `get_order`, `get_buyer_orders`, `get_seller_orders` | Order CRUD, state machine transitions, stock management |
-| `products.py` | `create_product`, `update_product`, `delete_product`, `get_product`, `search_products` | Product CRUD, Algolia sync, image management, stock |
-| `admin.py` | `register_user`, `update_user_roles`, `toggle_mfa`, `suspend_user`, `gdpr_export`, `gdpr_delete` | User management, roles, MFA, GDPR, seller onboarding |
-| `cron_jobs.py` | `auto_confirm_delivery`, `check_expired_authorizations`, `archive_old_orders`, `cleanup_rate_limiter` | Scheduled background tasks |
+| `payment_stripe.py` | `create_checkout_session`, `verify_cart_prices`, `stripe_webhook`, `capture_payment`, `create_connect_account`, `get_connect_account_status`, `create_account_link`, `process_charge_refunded`, `process_dispute_created`, `process_dispute_closed`, `process_dispute_updated`, `process_dispute_funds_reinstated` | Stripe payments: checkout, capture, webhooks, Connect onboarding, dispute handling |
+| `payment_airwallex.py` | `airwallex_create_seller_account`, `airwallex_process_payment`, `airwallex_capture_payment`, `airwallex_webhook` | Alternative payment provider (gated, post-launch) |
+| `payment_providers.py` | `get_payment_providers`, `update_payment_provider`, `get_provider_status` | Admin payment provider management (enable/disable) |
+| `orders.py` | `confirm_order_receipt`, `update_order_status`, `update_item_status`, `refund_order_item`, `cancel_order`, `approve_shipping_cost`, `update_shipping_cost`, `on_order_status_changed` | Order state machine, item status, refunds, shipping approval. Note: orders are created in `create_checkout_session` |
+| `products.py` | `upload_product_images`, `delete_product`, `submit_product_rating`, `configure_algolia`, `get_products_paginated`, `get_seller_products_paginated`, `get_product_ratings_paginated`, `on_product_created`, `on_product_updated`, `on_product_deleted` | Product management, Algolia sync triggers, image upload, ratings. Note: product create/update via Firestore triggers |
+| `admin.py` | `update_user_roles`, `suspend_seller`, `unsuspend_seller`, `admin_update_product_stock`, `admin_mfa_enroll`, `admin_mfa_verify`, `admin_mfa_verify_backup`, `admin_mfa_disable`, `delete_account`, `export_my_data`, `unsubscribe_email` | Role management, seller suspension, MFA (4 endpoints), CASL/PIPEDA compliance (export, unsubscribe, delete) |
+| `users.py` | `update_user_profile`, `get_user_profile`, `update_email_consent` | User profile CRUD, email consent management |
+| `cron_jobs.py` | `auto_capture_confirmed_receipts`, `check_expired_authorizations`, `auto_archive_old_orders`, `monitor_algolia_sync`, `cleanup_stale_rate_limits`, `cleanup_orphaned_r2_images`, `cleanup_stale_webhook_events`, `cleanup_stale_security_alerts`, `retry_failed_algolia_syncs` | 9 scheduled cron jobs: payment capture, authorization expiry, archiving, Algolia monitoring, cleanup tasks |
 
 ### Models — `functions/models/`
 | File | Classes | Fields of Note |
@@ -34,7 +35,7 @@
 | File | Responsibility |
 |------|----------------|
 | `schema_constants.py` | All Firestore field names, collection names, enum values (525 lines) |
-| `shipping_service.py` | Shipping cost calculation: distance, province, tiers, weight surcharge |
+| `shipping_service.py` | Shipping cost calculation: distance, province, tiers, weight surcharge. Exports `calculate_shipping_cost` Cloud Function |
 | `email_service.py` | Mailjet email sending, all HTML templates (~733 lines) |
 | `algolia_service.py` | Algolia index sync |
 | `rate_limiter.py` | API rate limiting by IP/user |
@@ -94,21 +95,21 @@
 ### Screens — `lib/screens/` (28 screens)
 | Screen | ViewModel/Provider | Backend Handler |
 |--------|-------------------|-----------------|
-| `login_screen.dart` | `login_viewmodel` | `admin.register_user` |
-| `home_screen.dart` | `home_viewmodel` | `products.search_products` |
-| `productdetails_screen.dart` | `product_detail_viewmodel` | `products.get_product` |
-| `addproduct_screen.dart` | `add_product_viewmodel` | `products.create_product` |
-| `editproduct_screen.dart` | `edit_product_viewmodel` | `products.update_product` |
-| `cart_screen.dart` | `cart_provider` | — (local state) |
+| `login_screen.dart` | `login_viewmodel` | Firebase Auth (direct) |
+| `home_screen.dart` | `home_viewmodel` | Algolia (direct search) |
+| `productdetails_screen.dart` | `product_detail_viewmodel` | Firestore (direct read) |
+| `addproduct_screen.dart` | `add_product_viewmodel` | Firestore write → `on_product_created` trigger |
+| `editproduct_screen.dart` | `edit_product_viewmodel` | Firestore write → `on_product_updated` trigger |
+| `cart_screen.dart` | `cart_provider` | — (local Firestore) |
 | `checkout_screen.dart` | `checkout_provider` | `payment_stripe.create_checkout_session` |
-| `orders_screen.dart` | `buyer_orders_viewmodel` | `orders.get_buyer_orders` |
-| `seller_orders_screen.dart` | `seller_orders_viewmodel` | `orders.get_seller_orders` |
-| `shipping_approval_screen.dart` | `shipping_approval_viewmodel` | `orders.update_order_status` |
+| `orders_screen.dart` | `buyer_orders_viewmodel` | Firestore query (direct) |
+| `seller_orders_screen.dart` | `seller_orders_viewmodel` | `orders.update_shipping_cost`, `orders.capture_payment` |
+| `shipping_approval_screen.dart` | `shipping_approval_viewmodel` | `orders.approve_shipping_cost` |
 | `ordersuccess_screen.dart` | — | — |
-| `seller_registration_screen.dart` | `seller_registration_view_model` | `admin.register_seller` |
-| `profile_screen.dart` | — | `admin.get_user` |
-| `addressmanagement_screen.dart` | — | user_repository |
-| `favorites_screen.dart` | — | product_repository |
+| `seller_registration_screen.dart` | `seller_registration_view_model` | `payment_stripe.create_connect_account` |
+| `profile_screen.dart` | — | `users.get_user_profile` |
+| `addressmanagement_screen.dart` | — | user_repository (Firestore) |
+| `favorites_screen.dart` | — | product_repository (Firestore) |
 
 ### Models — `lib/models/`
 | File | Classes | Note |

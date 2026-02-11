@@ -52,14 +52,14 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                         children: [
                           const Text('Multi-Factor Authentication', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                           const SizedBox(height: 2),
-                          Text('Admin account protection', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                          Text('Admin account protection', style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
                         ],
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: _mfaEnabled ? DesignTokens.success.withValues(alpha: 0.12) : Colors.grey.withValues(alpha: 0.12),
+                        color: _mfaEnabled ? DesignTokens.success.withValues(alpha: 0.12) : DesignTokens.outlineVariant.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -68,12 +68,12 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                           Icon(
                             _mfaEnabled ? Icons.check_circle_rounded : Icons.cancel_rounded,
                             size: 14,
-                            color: _mfaEnabled ? DesignTokens.success : Colors.grey,
+                            color: _mfaEnabled ? DesignTokens.success : DesignTokens.textSecondary,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             _mfaEnabled ? 'ENABLED' : 'DISABLED',
-                            style: TextStyle(color: _mfaEnabled ? DesignTokens.success : Colors.grey, fontWeight: FontWeight.w700, fontSize: 11),
+                            style: TextStyle(color: _mfaEnabled ? DesignTokens.success : DesignTokens.textSecondary, fontWeight: FontWeight.w700, fontSize: 11),
                           ),
                         ],
                       ),
@@ -84,7 +84,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                 const Text(
                   'Protect your admin account with time-based one-time passwords (TOTP). '
                   'Required for high-risk admin actions: suspend/unsuspend sellers, update user roles, configure search.',
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                  style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14),
                 ),
                 const SizedBox(height: 20),
                 if (!_mfaEnabled)
@@ -130,7 +130,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   const Text(
                     'Use an authenticator app (Google Authenticator, Microsoft Authenticator, Authy, etc.) '
                     'to scan this QR code:',
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                    style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 16),
                   Center(
@@ -145,14 +145,14 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                               errorBuilder: (context, error, stackTrace) => Container(
                                 width: 250,
                                 height: 250,
-                                color: Colors.grey[300],
+                                color: DesignTokens.outlineVariant,
                                 child: const Center(child: Text('QR Code\nUnavailable')),
                               ),
                             )
                           : Container(
                               width: 250,
                               height: 250,
-                              color: Colors.grey[300],
+                              color: DesignTokens.outlineVariant,
                               child: const ModernLoadingIndicator.fullScreen(),
                             ),
                     ),
@@ -164,7 +164,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      border: Border.all(color: Colors.grey[300]!),
+                      border: Border.all(color: DesignTokens.outlineVariant),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -186,7 +186,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   const SizedBox(height: 24),
                   const Text('Step 2: Verify Code', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
-                  const Text('Enter the 6-digit code from your authenticator app:', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  const Text('Enter the 6-digit code from your authenticator app:', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _mfaCodeController,
@@ -219,15 +219,15 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   const Text(
                     'If you lose access to your authenticator, use these backup codes to regain access. '
                     'Each code can be used once.',
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                    style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 12),
                   if (_backupCodes.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        border: Border.all(color: Colors.amber),
+                        color: DesignTokens.warning.withValues(alpha: 0.08),
+                        border: Border.all(color: DesignTokens.warning),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Column(
@@ -240,7 +240,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                                 padding: const EdgeInsets.symmetric(vertical: 4),
                                 child: Row(
                                   children: [
-                                    Text('${index + 1}.', style: const TextStyle(color: Colors.grey)),
+                                    Text('${index + 1}.', style: const TextStyle(color: DesignTokens.textSecondary)),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(_backupCodes[index], style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
@@ -307,21 +307,42 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
   }
 
   Future<void> _disableMfa() async {
+    final disableMfaController = TextEditingController();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Disable MFA?'),
-        content: const Text(
-          'Are you sure? This will remove multi-factor authentication from your admin account. '
-          'You will no longer need to enter a code for sensitive admin actions.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Enter your current TOTP code to confirm disabling multi-factor authentication.',
+            ),
+            const SizedBox(height: 16),
+            Semantics(
+              label: 'textfield-disable-mfa-code',
+              child: TextField(
+                controller: disableMfaController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: const InputDecoration(
+                  labelText: 'TOTP Code',
+                  hintText: '000000',
+                  counterText: '',
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
           TextButton(
             onPressed: () async {
+              final code = disableMfaController.text.trim();
+              if (code.length != 6) return;
               Navigator.pop(dialogContext);
               final viewModel = ref.read(adminActionsViewModelProvider.notifier);
-              final success = await viewModel.disableAdminMfa();
+              final success = await viewModel.disableAdminMfa(code);
               if (success && mounted) {
                 setState(() {
                   _mfaEnabled = false;
@@ -329,10 +350,10 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   _qrCodeUri = null;
                   _backupCodes = [];
                 });
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('MFA disabled'), backgroundColor: Colors.grey[800]));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('MFA disabled'), backgroundColor: DesignTokens.textPrimary));
               }
             },
-            child: const Text('Disable', style: TextStyle(color: Colors.red)),
+            child: const Text('Disable', style: TextStyle(color: DesignTokens.error)),
           ),
         ],
       ),
@@ -367,7 +388,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
       });
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('MFA enabled successfully! Save your backup codes in a secure location.'), backgroundColor: Colors.green));
+      ).showSnackBar(const SnackBar(content: Text('MFA enabled successfully! Save your backup codes in a secure location.'), backgroundColor: DesignTokens.success));
     }
   }
 }

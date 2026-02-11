@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Send a single test email and track its delivery status."""
-import os, sys, time, json
+import json
+import os
+import sys
+import time
+
 from dotenv import load_dotenv
+
 load_dotenv()
 os.environ['FUNCTIONS_EMULATOR'] = 'true'
 sys.path.insert(0, os.path.dirname(__file__))
 
 from mailjet_rest import Client
+
 from config import MAILJET_API_KEY, MAILJET_SECRET_KEY
 from schema_constants import EmailConfig
 

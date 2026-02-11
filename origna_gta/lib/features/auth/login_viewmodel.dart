@@ -135,8 +135,12 @@ class LoginViewModel extends StateNotifier<LoginState> {
     state = state.copyWith(acceptedTerms: value);
   }
 
+  void setMarketingOptIn(bool value) {
+    state = state.copyWith(marketingOptIn: value);
+  }
+
   void toggleAuthMode() {
-    state = state.copyWith(isLogin: !state.isLogin, acceptedTerms: false);
+    state = state.copyWith(isLogin: !state.isLogin, acceptedTerms: false, marketingOptIn: false);
   }
 
   void toggleObscurePassword() {

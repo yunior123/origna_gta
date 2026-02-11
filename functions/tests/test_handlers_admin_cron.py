@@ -18,10 +18,14 @@ from firebase_functions import https_fn, scheduler_fn
 class TestAdminHandlers:
     """Test admin user management functions"""
 
+    @patch('services.rate_limiter.RateLimiter')
     @patch('handlers.admin.get_db')
-    def test_update_user_roles_requires_admin(self, mock_get_db):
+    def test_update_user_roles_requires_admin(self, mock_get_db, mock_rate_limiter_cls):
         """SECURITY: Test only admins can update user roles"""
         from handlers.admin import update_user_roles
+
+        # Mock rate limiter to allow requests
+        mock_rate_limiter_cls.return_value.check_rate_limit.return_value = (True, '')
 
         # Mock requesting user (not admin)
         mock_requester_doc = Mock()
@@ -46,10 +50,14 @@ class TestAdminHandlers:
 
         assert exc.value.code == 'permission-denied'
 
+    @patch('services.rate_limiter.RateLimiter')
     @patch('handlers.admin.get_db')
-    def test_update_user_roles_requires_mfa(self, mock_get_db):
+    def test_update_user_roles_requires_mfa(self, mock_get_db, mock_rate_limiter_cls):
         """SECURITY: Test admin role changes require MFA verification"""
         from handlers.admin import update_user_roles
+
+        # Mock rate limiter to allow requests
+        mock_rate_limiter_cls.return_value.check_rate_limit.return_value = (True, '')
 
         # Mock admin without MFA
         mock_admin_doc = Mock()
@@ -77,11 +85,15 @@ class TestAdminHandlers:
         assert exc.value.code in ['permission-denied', 'failed-precondition']
         assert 'mfa' in str(exc.value).lower()
 
+    @patch('services.rate_limiter.RateLimiter')
     @patch('handlers.admin.create_success_response')
     @patch('handlers.admin.get_db')
-    def test_update_user_roles_success_with_mfa(self, mock_get_db, mock_create_response):
+    def test_update_user_roles_success_with_mfa(self, mock_get_db, mock_create_response, mock_rate_limiter_cls):
         """Test successful role update by verified admin"""
         from handlers.admin import update_user_roles
+
+        # Mock rate limiter to allow requests
+        mock_rate_limiter_cls.return_value.check_rate_limit.return_value = (True, '')
 
         mock_create_response.return_value = {'success': True}
 

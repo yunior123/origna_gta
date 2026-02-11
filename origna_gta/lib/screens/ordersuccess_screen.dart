@@ -76,7 +76,7 @@ class OrderSuccessScreen extends StatelessWidget {
                         ),
                         child: Text(
                           'Order ID: $orderId',
-                          style: TextStyle(fontSize: 13, color: Colors.grey[500], fontWeight: FontWeight.w500),
+                          style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
                         ),
                       ),
                     ),
@@ -88,7 +88,7 @@ class OrderSuccessScreen extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[500],
+                          color: DesignTokens.textSecondary,
                           height: 1.5,
                         ),
                       ),
@@ -96,26 +96,34 @@ class OrderSuccessScreen extends StatelessWidget {
                     const SizedBox(height: 48),
                     FadeSlideIn(
                       delay: const Duration(milliseconds: 250),
-                      child: ModernButton(
-                        label: 'Continue Shopping',
-                        icon: Icons.shopping_bag_outlined,
-                        onPressed: () => Navigator.of(context).pop(),
+                      child: Semantics(
+                        button: true,
+                        label: 'btn-continue-shopping',
+                        child: ModernButton(
+                          label: 'Continue Shopping',
+                          icon: Icons.shopping_bag_outlined,
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
                     FadeSlideIn(
                       delay: const Duration(milliseconds: 300),
-                      child: ModernButton(
-                        label: 'View My Orders',
-                        icon: Icons.receipt_long_outlined,
-                        isPrimary: false,
-                        isOutlined: true,
-                        onPressed: () {
-                          Navigator.of(context).pushNamedAndRemoveUntil(
-                            AppRoutes.orders,
-                            (route) => route.isFirst,
-                          );
-                        },
+                      child: Semantics(
+                        button: true,
+                        label: 'btn-view-my-orders',
+                        child: ModernButton(
+                          label: 'View My Orders',
+                          icon: Icons.receipt_long_outlined,
+                          isPrimary: false,
+                          isOutlined: true,
+                          onPressed: () {
+                            Navigator.of(context).pushNamedAndRemoveUntil(
+                              AppRoutes.orders,
+                              (route) => route.isFirst,
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ],

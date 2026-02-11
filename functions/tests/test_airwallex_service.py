@@ -2,6 +2,10 @@
 Comprehensive unit tests for services/airwallex_service.py
 Tests all Airwallex payment service methods with mocked HTTP responses.
 
+Note: Airwallex is DEAD CODE FOR LAUNCH — Stripe-only at launch.
+These tests are kept to ensure the Airwallex code remains functional
+for potential post-launch activation.
+
 Run: pytest tests/test_airwallex_service.py -v --cov=services.airwallex_service
 """
 

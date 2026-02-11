@@ -12,6 +12,7 @@
 // - Products are always priced and sold in CAD to Canadian buyers
 
 import 'package:flutter/material.dart';
+import 'package:origna_gta/utils/design_tokens.dart';
 
 /// The ONLY currency allowed for selling products on the platform
 const String kSellingCurrency = 'CAD';
@@ -494,7 +495,7 @@ List<DropdownMenuItem<String>> getSupplierDropdownItems() {
               Flexible(child: Text(e.value.displayName, overflow: TextOverflow.ellipsis)),
               if (e.value.country.isNotEmpty) ...[
                 const SizedBox(width: 4),
-                Text('(${e.value.country})', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                Text('(${e.value.country})', style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
               ],
             ],
           ),

@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """Diagnose why Mailjet emails aren't being delivered."""
+import json
 import os
 import sys
-import json
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 os.environ['FUNCTIONS_EMULATOR'] = 'true'
 sys.path.insert(0, os.path.dirname(__file__))
 
 from mailjet_rest import Client
+
 from config import MAILJET_API_KEY, MAILJET_SECRET_KEY
 from schema_constants import EmailConfig
 
@@ -77,7 +79,7 @@ else:
 # 4. Try sending a minimal plain test email
 print("\n4️⃣  Sending MINIMAL test email...")
 print(f"   From: {EmailConfig.SUPPORT_EMAIL}")
-print(f"   To: yr628132@gmail.com, yuniorrodriguezo4601@yahoo.com")
+print("   To: yr628132@gmail.com, yuniorrodriguezo4601@yahoo.com")
 
 mailjet_send = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
 data = {

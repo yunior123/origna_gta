@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,13 +58,13 @@ class _AddProductButton extends ConsumerWidget {
 
     return IconButton(
       key: const Key('home_add_product_button'),
-      tooltip: 'Add product',
+      tooltip: 'home.add_product'.tr(),
       icon: const Icon(Icons.add_box_outlined, color: Colors.white),
       onPressed: () {
         if (isSuspended) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Seller account suspended. Contact support.'), 
+            SnackBar(
+              content: Text('auth.seller_suspended'.tr()), 
               backgroundColor: DesignTokens.primary,
             ),
           );
@@ -71,8 +72,8 @@ class _AddProductButton extends ConsumerWidget {
         }
         if (!canAddProducts) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Complete Stripe identity verification first to add products.'), 
+            SnackBar(
+              content: Text('auth.complete_stripe_verification'.tr()), 
               backgroundColor: DesignTokens.primary,
             ),
           );
@@ -292,7 +293,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: Text(
-                      'Your marketplace for buying and selling across the Greater Toronto Area and all of Canada.',
+                      'home.tagline'.tr(),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
@@ -496,7 +497,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary),
           cursorColor: DesignTokens.primary,
           decoration: InputDecoration(
-            hintText: 'Search products...',
+            hintText: 'home.search_products'.tr(),
             hintStyle: TextStyle(color: DesignTokens.textSecondary),
             prefixIcon: Icon(Icons.search, color: DesignTokens.primary),
             suffixIcon: _searchController.text.isNotEmpty
@@ -618,7 +619,7 @@ class _ProductGrid extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'No products found',
+                  'home.no_products_found'.tr(),
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary),
                 ),
                 const SizedBox(height: 8),

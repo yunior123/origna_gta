@@ -37,7 +37,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                         child: Icon(Icons.error_outline_rounded, size: 36, color: DesignTokens.error),
                       ),
                       const SizedBox(height: 16),
-                      Text(_error!, style: TextStyle(color: Colors.red[700])),
+                      Text(_error!, style: TextStyle(color: DesignTokens.error)),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: _loadProviders,
@@ -84,7 +84,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                             Text(
                               'Control which payment providers are available in the app. '
                               'Disabling a provider will prevent new payments and captures.',
-                              style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                              style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
                             ),
                             const SizedBox(height: 8),
                             Container(
@@ -208,10 +208,10 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isEnabled ? DesignTokens.primary.withValues(alpha: 0.1) : Colors.grey[100],
+                    color: isEnabled ? DesignTokens.primary.withValues(alpha: 0.1) : DesignTokens.surface,
                     borderRadius: BorderRadius.circular(DesignTokens.radius12),
                   ),
-                  child: Icon(icon, size: 28, color: isEnabled ? DesignTokens.primary : Colors.grey),
+                  child: Icon(icon, size: 28, color: isEnabled ? DesignTokens.primary : DesignTokens.textSecondary),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -232,12 +232,12 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.orange[100],
+                                color: DesignTokens.warning.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 'Not configured',
-                                style: TextStyle(fontSize: 10, color: Colors.orange[800], fontWeight: FontWeight.w600),
+                                style: TextStyle(fontSize: 10, color: DesignTokens.warning, fontWeight: FontWeight.w600),
                               ),
                             ),
                         ],
@@ -247,7 +247,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                         description,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey[600],
+                          color: DesignTokens.textSecondary,
                         ),
                       ),
                     ],
@@ -269,20 +269,20 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.orange[50],
+                  color: DesignTokens.warning.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange[200]!),
+                  border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.orange[700], size: 20),
+                    Icon(Icons.warning_amber_rounded, color: DesignTokens.warning, size: 20),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         missingKeys.isNotEmpty 
                             ? 'Missing: ${missingKeys.join(", ")}' 
                             : 'API keys not configured. Set up $name account first.',
-                        style: TextStyle(fontSize: 12, color: Colors.orange[800]),
+                        style: TextStyle(fontSize: 12, color: DesignTokens.warning),
                       ),
                     ),
                   ],
@@ -301,9 +301,9 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                     (feature) => Chip(
                       label: Text(
                         feature,
-                        style: TextStyle(fontSize: 12, color: isEnabled ? DesignTokens.primary : Colors.grey),
+                        style: TextStyle(fontSize: 12, color: isEnabled ? DesignTokens.primary : DesignTokens.textSecondary),
                       ),
-                      backgroundColor: isEnabled ? DesignTokens.primary.withValues(alpha: 0.08) : Colors.grey[100],
+                      backgroundColor: isEnabled ? DesignTokens.primary.withValues(alpha: 0.08) : DesignTokens.surface,
                       side: BorderSide.none,
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                     ),
@@ -378,7 +378,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
         builder: (context) => AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange[700]),
+              Icon(Icons.warning_amber_rounded, color: DesignTokens.warning),
               const SizedBox(width: 12),
               Text('$name Not Configured'),
             ],
@@ -389,7 +389,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
             children: [
               Text(
                 'You need to set up your $name account before enabling it.',
-                style: TextStyle(color: Colors.grey[700]),
+                style: TextStyle(color: DesignTokens.textPrimary),
               ),
               const SizedBox(height: 16),
               Text(
@@ -402,7 +402,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                 '2. Get your API keys from the $name dashboard\n'
                 '3. Add the keys to Firebase secrets\n'
                 '4. Redeploy the Cloud Functions',
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
               ),
             ],
           ),
@@ -435,7 +435,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                   ? 'This will allow new payments through $name.'
                   : 'This will prevent new payments and captures through $name. '
                       'Existing authorized payments may fail to capture.',
-              style: TextStyle(color: Colors.grey[700]),
+              style: TextStyle(color: DesignTokens.textPrimary),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -499,7 +499,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$name ${enable ? 'enabled' : 'disabled'} successfully'),
-          backgroundColor: Colors.green,
+          backgroundColor: DesignTokens.success,
         ),
       );
     } catch (e) {
@@ -519,7 +519,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorMessage),
-          backgroundColor: Colors.red,
+          backgroundColor: DesignTokens.error,
           duration: const Duration(seconds: 5),
         ),
       );

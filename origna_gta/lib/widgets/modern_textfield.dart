@@ -57,7 +57,7 @@ class _ModernTextFieldState extends State<ModernTextField> {
         if (widget.label != null) ...[
           Text(
             widget.label!,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87, letterSpacing: 0.3),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary, letterSpacing: 0.3),
           ),
           const SizedBox(height: DesignTokens.spacing8),
         ],
@@ -74,7 +74,7 @@ class _ModernTextFieldState extends State<ModernTextField> {
           cursorColor: DesignTokens.primary,
           decoration: InputDecoration(
             hintText: widget.hint,
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+            hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 14),
             filled: true,
             fillColor: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.surfaceVariant.withValues(alpha: 0.7),
             prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon, color: DesignTokens.primary, size: 20) : null,
@@ -115,7 +115,7 @@ class _ModernTextFieldState extends State<ModernTextField> {
             contentPadding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing16, vertical: DesignTokens.spacing12),
             counterText: widget.showCounter ? null : '',
           ),
-          style: TextStyle(fontSize: 15, color: isDark ? Colors.white : Colors.black87),
+          style: TextStyle(fontSize: 15, color: isDark ? Colors.white : DesignTokens.textPrimary),
         ),
       ],
     );

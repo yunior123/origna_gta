@@ -1159,4 +1159,95 @@ Pour toute question ou problème:
 ---
 
 **Dernière mise à jour:** 3 février 2026  
-**Version de l'API:** 1.0
+**Version de l'API:** 1.1
+
+---
+
+## Appendix A — Endpoints Complets
+
+### Stripe: Vérification de Panier
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `verify_cart_prices` | ✅ | Vérifie les prix du panier vs Firestore avant checkout |
+
+### Stripe: Webhooks Internes (Non-callable)
+
+| Handler | Déclenché par | Description |
+|---------|---------------|-------------|
+| `process_charge_refunded` | `charge.refunded` | Met à jour le statut de remboursement |
+| `process_dispute_created` | `charge.dispute.created` | Reverse les transferts + alerte sécurité |
+| `process_dispute_updated` | `charge.dispute.updated` | Log l'évolution du litige |
+| `process_dispute_closed` | `charge.dispute.closed` | Résolution: restaure statut ou annule |
+| `process_dispute_funds_reinstated` | `charge.dispute.funds_reinstated` | Fonds réinstaurés après litige gagné |
+
+### Produits — Endpoints Complémentaires
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `get_product_ratings_paginated` | ❌ | Évaluations paginées d'un produit |
+| `get_seller_products_paginated` | ❌ | Produits d'un vendeur spécifique |
+| `submit_product_rating` | ✅ | Soumettre une évaluation (acheteur vérifié) |
+
+### Produits — Triggers Firestore (Non-callable)
+
+| Trigger | Événement | Description |
+|---------|-----------|-------------|
+| `on_product_created` | Document créé | Sync Algolia + validation magic bytes |
+| `on_product_updated` | Document modifié | Mise à jour index Algolia |
+| `on_product_deleted` | Document supprimé | Suppression de l'index Algolia |
+
+### Commandes — Endpoints Complémentaires
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `update_item_status` | ✅ Vendeur | Mettre à jour le statut d'un article + tracking number |
+| `refund_order_item` | ✅ Admin/Vendeur | Rembourser un article spécifique |
+| `update_shipping_cost` | ✅ Vendeur | Mettre à jour le coût de livraison réel |
+| `on_order_status_changed` | Trigger | Notifications automatiques sur changement de statut |
+
+### Administration — Endpoints Complémentaires
+
+| Endpoint | Auth | MFA | Description |
+|----------|------|-----|-------------|
+| `unsuspend_seller` | ✅ Admin | ✅ | Réactiver un vendeur suspendu |
+| `admin_update_product_stock` | ✅ Admin | ✅ | Modifier le stock d'un produit |
+| `admin_mfa_verify_backup` | ✅ Admin | — | Vérifier un code de secours MFA |
+| `export_my_data` | ✅ | — | Export PIPEDA: toutes les données utilisateur |
+| `unsubscribe_email` | ✅ | — | Désinscription CASL marketing emails |
+
+### Profil Utilisateur
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `update_user_profile` | ✅ | Mettre à jour le profil (nom, adresse, etc.) |
+| `get_user_profile` | ✅ | Récupérer le profil complet |
+| `update_email_consent` | ✅ | Mettre à jour le consentement email |
+
+### Fournisseurs de Paiement
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `get_payment_providers` | ✅ Admin | Liste des fournisseurs et leur statut |
+| `update_payment_provider` | ✅ Admin | Activer/désactiver un fournisseur |
+| `get_provider_status` | ✅ Admin | Statut détaillé d'un fournisseur |
+
+### Livraison
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `calculate_shipping_cost` | ✅ | Calculer le coût de livraison (distance + province) |
+
+### Tâches Planifiées (Cron) — Liste Complète
+
+| Task | Fréquence | Description |
+|------|-----------|-------------|
+| `auto_capture_confirmed_receipts` | 15 min | Capture les paiements autorisés après confirmation |
+| `check_expired_authorizations` | 1h | Annule les autorisations Stripe expirées (>6j) |
+| `auto_archive_old_orders` | 24h | Archive les commandes complétées >90j |
+| `monitor_algolia_sync` | 15 min | Vérifie la cohérence Firestore↔Algolia (>5% = alerte) |
+| `cleanup_stale_rate_limits` | 30 min | Supprime les rate limits >1h |
+| `cleanup_orphaned_r2_images` | 24h | Supprime les images R2 non référencées (>24h) |
+| `cleanup_stale_webhook_events` | 24h | Supprime les events webhook >7j |
+| `cleanup_stale_security_alerts` | 24h | Archive les alertes résolues >90j |
+| `retry_failed_algolia_syncs` | 1h | Retry DLQ Algolia (max 5 tentatives) |

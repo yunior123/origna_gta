@@ -38,7 +38,7 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.transparent,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200.withValues(alpha: 0.3), width: 0.5)),
+        border: Border(bottom: BorderSide(color: DesignTokens.outlineVariant.withValues(alpha: 0.3), width: 0.5)),
       ),
       child: AppBar(
         elevation: 0,
@@ -69,7 +69,7 @@ class ModernBottomNavBar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? DesignTokens.darkSurface.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
-        border: Border(top: BorderSide(color: Colors.grey.shade200.withValues(alpha: 0.3), width: 0.5)),
+        border: Border(top: BorderSide(color: DesignTokens.outlineVariant.withValues(alpha: 0.3), width: 0.5)),
         boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, -4))],
       ),
       child: SafeArea(
@@ -113,7 +113,7 @@ class _NavBarItem extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(item.icon, color: isActive ? Colors.white : Colors.grey.shade500, size: 20),
+            Icon(item.icon, color: isActive ? Colors.white : DesignTokens.textSecondary, size: 20),
             if (isActive) ...[
               const SizedBox(width: DesignTokens.spacing8),
               Text(

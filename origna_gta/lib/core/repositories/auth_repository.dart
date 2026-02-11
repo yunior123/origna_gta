@@ -390,6 +390,11 @@ class FirebaseAuthRepository implements AuthRepository {
         Fields.consentMethod: 'signup',
         Fields.dataProcessingConsent: true,
         Fields.emailConsent: true,
+        // FIX #7-8: Add missing PIPEDA fields (version tracking + granular marketing opt-in)
+        Fields.marketingOptIn: false, // CASL requires explicit opt-in, default false
+        Fields.privacyPolicyVersion: '1.0',
+        Fields.termsVersion: '1.0',
+        Fields.preferredLanguage: 'en', // Bill 96 — track user language preference
       });
     } else {
       final data = docSnapshot.data();

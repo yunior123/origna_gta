@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/models/generated/models.dart';
@@ -70,12 +71,12 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       if (next.isSuccess) {
         _onUpdateSuccess();
       } else if (next.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: DesignTokens.error));
       }
     });
 
     return Scaffold(
-      appBar: AppBarFactory.simple(title: 'Edit Product'),
+      appBar: AppBarFactory.simple(title: 'product.edit_product'.tr()),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -409,7 +410,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   Widget _buildDeliveryOptions(EditProductState state, EditProductViewModel viewModel) {
     return Card(
       elevation: 0,
-      color: Colors.grey[100],
+      color: DesignTokens.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -519,7 +520,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
               top: 0,
               right: 8,
               child: IconButton(
-                icon: const Icon(Icons.remove_circle, color: Colors.red),
+                icon: const Icon(Icons.remove_circle, color: DesignTokens.error),
                 tooltip: 'Remove image',
                 onPressed: () => viewModel.removeExistingImage(index),
               ),
@@ -621,7 +622,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   }
 
   void _onUpdateSuccess() {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product updated successfully'), backgroundColor: Colors.green));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product updated successfully'), backgroundColor: DesignTokens.success));
     Navigator.pop(context, true);
   }
 

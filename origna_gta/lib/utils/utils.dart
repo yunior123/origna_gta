@@ -144,9 +144,9 @@ Future<bool> addToCart({
   if (quantity <= 0) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid quantity'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('Invalid quantity'),
+          backgroundColor: DesignTokens.error,
         ),
       );
     }
@@ -198,9 +198,9 @@ Future<bool> addToCart({
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cart updated'),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: const Text('Cart updated'),
+          backgroundColor: DesignTokens.success,
         ),
       );
     }
@@ -562,7 +562,7 @@ void showEmailVerificationDialog(
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[600],
+              color: DesignTokens.textSecondary,
               height: 1.5,
             ),
           ),
@@ -574,22 +574,22 @@ void showEmailVerificationDialog(
               children: [
                 Text(
                   '  1. Check your email inbox',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '  2. Look in spam/junk folder if not found',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '  3. Click the verification link',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '  4. Return here and try again',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary),
                 ),
               ],
             ),
@@ -598,7 +598,7 @@ void showEmailVerificationDialog(
             const SizedBox(height: 16),
             Text(
               "Didn't receive the email?",
-              style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary),
             ),
           ],
         ],
@@ -874,7 +874,7 @@ class AppError {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(userMessage),
-        backgroundColor: Colors.red,
+        backgroundColor: DesignTokens.error,
         duration: duration,
         action: SnackBarAction(
           label: 'Dismiss',

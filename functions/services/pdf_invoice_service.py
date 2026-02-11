@@ -7,23 +7,23 @@ Dependencies: reportlab (add to requirements.txt)
 """
 import io
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
+
+from schema_constants import AppConfig, EmailConfig, Fields
 
 logger = logging.getLogger(__name__)
 
 try:
     from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
     from reportlab.lib.pagesizes import letter
-    from reportlab.lib.units import inch, mm
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer, Paragraph, HRFlowable
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
     HAS_REPORTLAB = True
 except ImportError:
     HAS_REPORTLAB = False
     logger.warning("reportlab not installed — PDF invoice generation disabled. Run: pip install reportlab")
-
-from schema_constants import AppConfig, EmailConfig, Fields
 
 
 def generate_invoice_pdf(order_data: dict, order_id: str) -> bytes | None:

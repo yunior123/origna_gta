@@ -388,7 +388,7 @@ class _TermsBodyState extends State<_TermsBody> {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.5,
-              color: isDark ? Colors.white38 : Colors.grey.shade400,
+              color: DesignTokens.textDisabled,
             ),
           ),
         ),
@@ -530,7 +530,7 @@ class _TermsBodyState extends State<_TermsBody> {
                     Icon(
                       section.icon,
                       size: 20,
-                      color: isDark ? Colors.white38 : Colors.grey.shade400,
+                      color: DesignTokens.textDisabled,
                     ),
                     const SizedBox(width: 8),
                     // Expand indicator
@@ -542,7 +542,7 @@ class _TermsBodyState extends State<_TermsBody> {
                         size: 22,
                         color: isExpanded
                             ? DesignTokens.primary
-                            : (isDark ? Colors.white30 : Colors.grey.shade400),
+                            : DesignTokens.textDisabled,
                       ),
                     ),
                   ],
@@ -619,7 +619,7 @@ class _TermsBodyState extends State<_TermsBody> {
                     style: TextStyle(
                       fontSize: 13.5,
                       height: 1.6,
-                      color: isDark ? Colors.white70 : const Color(0xFF4A4A5A),
+                      color: isDark ? DesignTokens.textSecondary : const Color(0xFF4A4A5A),
                     ),
                   ),
                 ),
@@ -652,7 +652,7 @@ class _TermsBodyState extends State<_TermsBody> {
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.55,
-                      color: isDark ? Colors.white54 : const Color(0xFF6A6A7A),
+                      color: isDark ? DesignTokens.textSecondary : const Color(0xFF6A6A7A),
                     ),
                   ),
                 ),
@@ -669,7 +669,7 @@ class _TermsBodyState extends State<_TermsBody> {
               style: TextStyle(
                 fontSize: 13.5,
                 height: 1.65,
-                color: isDark ? Colors.white70 : const Color(0xFF4A4A5A),
+                color: isDark ? DesignTokens.textSecondary : const Color(0xFF4A4A5A),
               ),
             ),
           ),

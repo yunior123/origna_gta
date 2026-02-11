@@ -62,7 +62,7 @@ class AdminSellersTab extends ConsumerWidget {
           const SizedBox(height: 16),
           const Text('Error Fetching from Database', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
-          Text('Pull to refresh or try again later', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+          Text('Pull to refresh or try again later', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
         ],
       ),
     );
@@ -118,7 +118,7 @@ class _SellersSummaryBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(count, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: color)),
-              Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+              Text(label, style: TextStyle(fontSize: 10, color: DesignTokens.textSecondary)),
             ],
           ),
         ],
@@ -199,7 +199,7 @@ class _SellerCard extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 2),
-                      Text(email, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                      Text(email, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
                     ],
                   ),
                 ),
@@ -221,12 +221,12 @@ class _SellerCard extends ConsumerWidget {
                   _infoChip(
                     icon: Icons.tag_rounded,
                     label: stripeAccountId.length > 14 ? '${stripeAccountId.substring(0, 14)}...' : stripeAccountId,
-                    color: Colors.grey,
+                    color: DesignTokens.textSecondary,
                   ),
                 _infoChip(
                   icon: Icons.calendar_today_rounded,
                   label: 'Joined ${_formatDate(createdAt)}',
-                  color: Colors.grey,
+                  color: DesignTokens.textSecondary,
                 ),
               ],
             ),
@@ -352,10 +352,10 @@ class _SellerCard extends ConsumerWidget {
     final success = await ref.read(adminActionsViewModelProvider.notifier).setUserSuspended(userId, false);
     if (context.mounted) {
       if (success) {
-        messenger.showSnackBar(const SnackBar(content: Text('Seller unsuspended'), backgroundColor: Colors.green));
+        messenger.showSnackBar(const SnackBar(content: Text('Seller unsuspended'), backgroundColor: DesignTokens.success));
       } else {
         final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to unsuspend seller';
-        messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+        messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
       }
     }
   }
@@ -430,7 +430,7 @@ class _SellerProductsScreen extends ConsumerWidget {
                       title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: Text(
                         'Stock: $stock • \$${price.toStringAsFixed(2)}',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                        style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
                       ),
                       trailing: stock == 0
                           ? Container(

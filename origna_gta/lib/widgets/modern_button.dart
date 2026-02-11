@@ -80,7 +80,7 @@ class _ModernButtonState extends State<ModernButton>
                     ? Colors.transparent
                     : (!widget.isPrimary
                           ? DesignTokens.surface
-                          : (isDisabled ? Colors.grey[400] : null))),
+                          : (isDisabled ? DesignTokens.textDisabled : null))),
             borderRadius: BorderRadius.circular(DesignTokens.radius16),
             border: widget.isOutlined
                 ? Border.all(color: DesignTokens.primary, width: 1.5)

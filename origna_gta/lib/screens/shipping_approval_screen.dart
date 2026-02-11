@@ -24,7 +24,7 @@ class ShippingApprovalScreen extends ConsumerWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [isDark ? Colors.grey[900]! : Colors.grey[50]!, isDark ? Colors.grey[800]! : Colors.white],
+          colors: [isDark ? DesignTokens.textPrimary : DesignTokens.surface, isDark ? DesignTokens.textPrimary : Colors.white],
         ),
       ),
       child: Scaffold(
@@ -46,7 +46,7 @@ class ShippingApprovalScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Text(
                   'Loading approvals...',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -65,23 +65,23 @@ class ShippingApprovalScreen extends ConsumerWidget {
                       height: 120,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.green[300]!.withValues(alpha: 0.2), Colors.green[400]!.withValues(alpha: 0.1)],
+                          colors: [DesignTokens.success.withValues(alpha: 0.2), DesignTokens.success.withValues(alpha: 0.1)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.check_circle_outline, size: 60, color: Colors.green[600]),
+                      child: Icon(Icons.check_circle_outline, size: 60, color: DesignTokens.success),
                     ),
                     const SizedBox(height: 24),
                     Text(
                       'No pending approvals',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.grey[900]),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Orders requiring shipping approval will appear here',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -133,8 +133,8 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            isDark ? Colors.grey[800]!.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.8),
-            isDark ? Colors.grey[900]!.withValues(alpha: 0.4) : Colors.grey[50]!.withValues(alpha: 0.6),
+            isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.8),
+            isDark ? DesignTokens.darkSurface.withValues(alpha: 0.4) : DesignTokens.surface.withValues(alpha: 0.6),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -165,7 +165,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                     const SizedBox(height: 6),
                     Text(
                       DateFormat('MMM dd, yyyy').format(order.createdAt),
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w500),
+                      style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
@@ -192,7 +192,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             ),
 
             const SizedBox(height: 20),
-            Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
+            Divider(height: 1, color: DesignTokens.outlineVariant.withValues(alpha: 0.5)),
             const SizedBox(height: 20),
 
             // Shipping cost comparison
@@ -229,19 +229,19 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                         children: [
                           Text(
                             'Estimated',
-                            style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w500),
+                            style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 4),
                           Text('\$${estimatedShipping.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                         ],
                       ),
-                      Icon(Icons.arrow_forward, color: Colors.grey[400]),
+                      Icon(Icons.arrow_forward, color: DesignTokens.textDisabled),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
                             'Actual',
-                            style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w500),
+                            style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -256,13 +256,13 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [Colors.red[200]!.withValues(alpha: 0.3), Colors.red[300]!.withValues(alpha: 0.1)]),
+                      gradient: LinearGradient(colors: [DesignTokens.error.withValues(alpha: 0.2), DesignTokens.error.withValues(alpha: 0.1)]),
                       borderRadius: BorderRadius.circular(DesignTokens.radius8),
-                      border: Border.all(color: Colors.red[400]!.withValues(alpha: 0.3)),
+                      border: Border.all(color: DesignTokens.error.withValues(alpha: 0.3)),
                     ),
                     child: Text(
                       '+\$${shippingDifference.toStringAsFixed(2)} (+$percentIncrease%)',
-                      style: TextStyle(color: Colors.red[600], fontWeight: FontWeight.w700, fontSize: 13),
+                      style: TextStyle(color: DesignTokens.error, fontWeight: FontWeight.w700, fontSize: 13),
                     ),
                   ),
                 ],
@@ -290,7 +290,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                         ),
                         Text(
                           '\$${(item.price * item.quantity).toStringAsFixed(2)}',
-                          style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w600),
+                          style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -301,12 +301,12 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   '+ ${items.length - 3} more items',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 12, fontWeight: FontWeight.w500),
+                  style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                 ),
               ),
 
             const SizedBox(height: 20),
-            Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
+            Divider(height: 1, color: DesignTokens.outlineVariant.withValues(alpha: 0.5)),
             const SizedBox(height: 20),
 
             // Total comparison
@@ -318,12 +318,12 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   children: [
                     Text(
                       'Original Total',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w500),
+                      style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '\$${originalTotal.toStringAsFixed(2)}',
-                      style: TextStyle(fontSize: 16, color: Colors.grey[500], decoration: TextDecoration.lineThrough, fontWeight: FontWeight.w600),
+                      style: TextStyle(fontSize: 16, color: DesignTokens.textSecondary, decoration: TextDecoration.lineThrough, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -332,7 +332,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   children: [
                     Text(
                       'New Total',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[700]),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -364,9 +364,9 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [Colors.red[300]!.withValues(alpha: 0.2), Colors.red[400]!.withValues(alpha: 0.1)]),
+                        gradient: LinearGradient(colors: [DesignTokens.error.withValues(alpha: 0.2), DesignTokens.error.withValues(alpha: 0.1)]),
                         borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                        border: Border.all(color: Colors.red[400]!.withValues(alpha: 0.4)),
+                        border: Border.all(color: DesignTokens.error.withValues(alpha: 0.4)),
                       ),
                       child: Semantics(
                         button: true,
@@ -381,7 +381,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                             child: Center(
                               child: Text(
                                 'Reject & Cancel',
-                                style: TextStyle(color: Colors.red[600], fontWeight: FontWeight.w700, fontSize: 14),
+                                style: TextStyle(color: DesignTokens.error, fontWeight: FontWeight.w700, fontSize: 14),
                               ),
                             ),
                           ),
@@ -416,11 +416,11 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
 
     if (success) {
       messenger.showSnackBar(
-        SnackBar(content: Text(approved ? 'Shipping approved' : 'Order cancelled'), backgroundColor: approved ? Colors.green : DesignTokens.warning),
+        SnackBar(content: Text(approved ? 'Shipping approved' : 'Order cancelled'), backgroundColor: approved ? DesignTokens.success : DesignTokens.warning),
       );
     } else {
       final error = ref.read(shippingApprovalViewModelProvider).errorMessage ?? 'Failed to update shipping approval';
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
     }
 
     setState(() => _isProcessing = false);
@@ -432,30 +432,30 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius20)),
-        backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+        backgroundColor: isDark ? DesignTokens.textPrimary : Colors.white,
         title: Row(
           children: [
             Icon(Icons.warning_rounded, color: DesignTokens.warning, size: 28),
             const SizedBox(width: 12),
             Text(
               'Cancel Order?',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.grey[900]),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
             ),
           ],
         ),
         content: Text(
           'Rejecting the shipping cost will cancel your order. '
           'The payment authorization will be released and you will not be charged.',
-          style: TextStyle(color: Colors.grey[600], fontSize: 13, height: 1.6),
+          style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13, height: 1.6),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text('Go Back', style: TextStyle(color: Colors.grey[600])),
+            child: Text('Go Back', style: TextStyle(color: DesignTokens.textSecondary)),
           ),
           Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [Colors.red[400]!.withValues(alpha: 0.9), Colors.red[500]!.withValues(alpha: 0.9)]),
+              gradient: LinearGradient(colors: [DesignTokens.error.withValues(alpha: 0.9), DesignTokens.error.withValues(alpha: 0.85)]),
               borderRadius: BorderRadius.circular(DesignTokens.radius12),
             ),
             child: Material(

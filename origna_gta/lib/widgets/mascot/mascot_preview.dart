@@ -105,7 +105,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: DesignTokens.outlineVariant),
               ),
               child: Stack(
                 children: [
@@ -122,7 +122,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
                       height: 20,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                        border: Border.all(color: DesignTokens.error.withValues(alpha: 0.3)),
                       ),
                     ),
                   ),
@@ -133,7 +133,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
                     right: 20,
                     child: Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                        border: Border.all(color: DesignTokens.error.withValues(alpha: 0.3)),
                       ),
                       child: _showSparky
                           ? ShopMascot(
@@ -173,7 +173,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
           // Instructions
           Container(
             padding: const EdgeInsets.all(16),
-            color: Colors.grey.shade100,
+            color: DesignTokens.surface,
             child: const Column(
               children: [
                 Text(
@@ -189,7 +189,7 @@ class _MascotPreviewScreenState extends ConsumerState<MascotPreviewScreen> {
                 SizedBox(height: 8),
                 Text(
                   'Command to run: flutter run -t lib/widgets/mascot/mascot_preview.dart',
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                  style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary),
                 ),
               ],
             ),
@@ -204,7 +204,7 @@ class GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.grey.withValues(alpha: 0.2)
+      ..color = DesignTokens.outlineVariant.withValues(alpha: 0.5)
       ..strokeWidth = 1;
 
     const gridSize = 20.0;

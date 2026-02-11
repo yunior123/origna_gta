@@ -159,7 +159,7 @@ def decrypt_mfa_secret(encrypted_secret: str, associated_data: str | None = None
     try:
         plaintext_bytes = aesgcm.decrypt(nonce, ciphertext, aad)
         return plaintext_bytes.decode('utf-8')
-    except Exception:
+    except Exception as e:
         # If v2 decryption with AAD fails, try without AAD (legacy migration)
         if aad:
             try:
@@ -168,4 +168,4 @@ def decrypt_mfa_secret(encrypted_secret: str, associated_data: str | None = None
                 return plaintext_bytes.decode('utf-8')
             except Exception as e2:
                 raise RuntimeError(f'Failed to decrypt MFA secret (wrong key or tampered data): {e2}') from e2
-        raise RuntimeError('Failed to decrypt MFA secret (wrong key or tampered data)')
+        raise RuntimeError('Failed to decrypt MFA secret (wrong key or tampered data)') from e

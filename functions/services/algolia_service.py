@@ -4,6 +4,7 @@ Handles syncing Firestore products to Algolia search index
 """
 
 import logging
+
 logger = logging.getLogger(__name__)
 import asyncio
 import concurrent.futures

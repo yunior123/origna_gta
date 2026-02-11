@@ -8,11 +8,14 @@ Collections:
 - config/payment_providers: Global payment provider settings
 
 Providers Supported:
-- stripe: Stripe payment processing
-- airwallex: Airwallex payment processing (international)
+- stripe: Stripe payment processing (ACTIVE at launch)
+- airwallex: Airwallex payment processing (DEAD CODE FOR LAUNCH — post-launch)
+
+TODO(post-launch): Evaluate Airwallex activation or remove entirely.
 """
 
 import logging
+
 logger = logging.getLogger(__name__)
 from typing import Any, ClassVar
 
@@ -29,8 +32,8 @@ from schema_constants import (
     SeverityLevels,
     UserRoleValues,
 )
-from utils.function_options import DEFAULT_OPTIONS
 from services.rate_limiter import RateLimiter
+from utils.function_options import DEFAULT_OPTIONS
 
 # ============================================================================
 # LAZY INITIALIZATION

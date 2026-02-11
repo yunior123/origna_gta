@@ -7,17 +7,18 @@ Admin & User Management Handlers
 """
 
 import logging
+
 logger = logging.getLogger(__name__)
 import hashlib
 import hmac
 import secrets
 import string
-import stripe
 import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pyotp
+import stripe
 from firebase_admin import auth
 from firebase_functions import https_fn
 
@@ -135,6 +136,17 @@ def update_user_roles(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
     admin_id = req.auth.uid
+
+    # AUDIT FIX #39: Rate limit role changes to prevent abuse
+    from services.rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=admin_id, action='update_user_roles',
+        max_requests=10, window_minutes=5, fail_closed=True
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
     data = req.data
 
     # Accept both 'targetUserId' and 'userId' as parameter names
@@ -771,8 +783,7 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
     if mfa_lockout_until:
         # Ensure timezone-aware comparison (Firestore timestamps are UTC)
         if hasattr(mfa_lockout_until, 'tzinfo') and mfa_lockout_until.tzinfo is None:
-            from datetime import timezone
-            mfa_lockout_until = mfa_lockout_until.replace(tzinfo=timezone.utc)
+            mfa_lockout_until = mfa_lockout_until.replace(tzinfo=UTC)
         if datetime.now(UTC) < mfa_lockout_until:
             raise https_fn.HttpsError('permission-denied', 'Too many failed MFA attempts. Try again later.')
 
@@ -959,11 +970,9 @@ def admin_mfa_verify_backup(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Check if code matches using constant-time comparison
     code_found = False
-    matched_index = -1
-    for idx, stored_hash in enumerate(stored_hashed_codes):
+    for _idx, stored_hash in enumerate(stored_hashed_codes):
         if hmac.compare_digest(hashed_input, stored_hash):
             code_found = True
-            matched_index = idx
 
     if not code_found:
         # Log failed attempt
@@ -1276,3 +1285,114 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
         ) from e
 
     return create_success_response({ApiKeys.MESSAGE: 'Account deleted successfully'})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def export_my_data(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    PIPEDA compliance: Export all user data.
+
+    Returns all personal data stored about the requesting user,
+    including profile, orders, favorites, and consent history.
+    Required by PIPEDA for data subject access requests (DSAR).
+    """
+    if not req.auth:
+        raise https_fn.HttpsError('unauthenticated', 'Authentication required')
+
+    user_id = req.auth.uid
+
+    # Rate limit to prevent abuse
+    from services.rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action='export_data',
+        max_requests=3, window_minutes=60, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
+    # Collect all user data
+    user_doc = get_db().collection(Collections.USERS).document(user_id).get()
+    if not user_doc.exists:
+        raise https_fn.HttpsError('not-found', 'User not found')
+
+    user_data = user_doc.to_dict()
+    # Remove internal fields
+    for internal_field in [Fields.MFA_SECRET, Fields.MFA_SECRET_TEMP, Fields.MFA_BACKUP_CODES,
+                           Fields.MFA_BACKUP_CODES_SALT, Fields.MFA_BACKUP_CODES_TEMP]:
+        user_data.pop(internal_field, None)
+
+    # Collect orders
+    orders = []
+    order_docs = get_db().collection(Collections.ORDERS)\
+        .where(Fields.BUYER_ID, '==', user_id)\
+        .limit(500)\
+        .stream()
+    for order_doc in order_docs:
+        order_data = order_doc.to_dict()
+        order_data['orderId'] = order_doc.id
+        # Serialize datetime objects
+        for key, val in order_data.items():
+            if hasattr(val, 'isoformat'):
+                order_data[key] = val.isoformat()
+        orders.append(order_data)
+
+    # Collect favorites
+    favorites = []
+    fav_docs = get_db().collection(Collections.USERS).document(user_id)\
+        .collection(Collections.FAVORITES).stream()
+    for fav_doc in fav_docs:
+        favorites.append(fav_doc.id)
+
+    # Serialize user data datetime fields
+    for key, val in user_data.items():
+        if hasattr(val, 'isoformat'):
+            user_data[key] = val.isoformat()
+
+    return create_success_response({
+        'profile': user_data,
+        'orders': orders,
+        'favorites': favorites,
+        'exportedAt': datetime.now(UTC).isoformat(),
+    })
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def unsubscribe_email(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    CASL compliance: Unsubscribe from all marketing emails.
+
+    Updates user document to set marketingOptIn=false and emailConsent=false.
+    Records the unsubscription timestamp for CASL audit trail.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError('unauthenticated', 'Authentication required')
+
+    user_id = req.auth.uid
+
+    # Rate limit unsubscribe to prevent abuse
+    from services.rate_limiter import RateLimiter
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action='unsubscribe_email',
+        max_requests=5, window_minutes=10, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
+    user_doc = user_ref.get()
+
+    if not user_doc.exists:
+        raise https_fn.HttpsError('not-found', 'User not found')
+
+    user_ref.update({
+        Fields.MARKETING_OPT_IN: False,
+        Fields.EMAIL_CONSENT: False,
+        Fields.UNSUBSCRIBED_AT: get_server_timestamp(),
+        Fields.UPDATED_AT: get_server_timestamp(),
+    })
+
+    logger.info(f'User {user_id} unsubscribed from marketing emails (CASL)')
+
+    return create_success_response({ApiKeys.MESSAGE: 'Successfully unsubscribed from marketing emails'})

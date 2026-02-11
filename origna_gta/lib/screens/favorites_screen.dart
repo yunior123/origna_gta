@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
@@ -23,7 +24,7 @@ class FavoritesScreen extends ConsumerWidget {
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
-        appBar: AppBarFactory.simple(title: 'Favorites'),
+        appBar: AppBarFactory.simple(title: 'favorites.my_favorites'.tr()),
         backgroundColor: Colors.transparent,
         body: favoritesAsync.when(
           loading: () => Center(
@@ -51,7 +52,7 @@ class FavoritesScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text('Loading favorites...', style: TextStyle(color: Colors.grey[500], fontSize: 14, fontWeight: FontWeight.w500)),
+                Text('Loading favorites...', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)),
               ],
             ),
           ),
@@ -62,10 +63,10 @@ class FavoritesScreen extends ConsumerWidget {
           ),
           data: (products) {
             if (products.isEmpty) {
-              return const AnimatedEmptyState(
+              return AnimatedEmptyState(
                 icon: Icons.favorite_outline_rounded,
-                title: 'No favorites yet',
-                subtitle: 'Tap the heart icon on products\nto save them here.',
+                title: 'favorites.empty_favorites'.tr(),
+                subtitle: 'favorites.empty_favorites_desc'.tr(),
               );
             }
 

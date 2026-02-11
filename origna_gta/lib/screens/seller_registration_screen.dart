@@ -1,4 +1,4 @@
-// seller_registration_screen.dart
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
@@ -12,7 +12,10 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import '../features/seller/seller_registration_state.dart';
 import '../features/seller/seller_registration_view_model.dart';
 
-/// Available payment providers - add new providers here
+/// Available payment providers - add new providers here.
+/// NOTE: Airwallex is included in the UI for post-launch readiness but
+/// is disabled at launch. Backend handlers are gated via
+/// `require_provider_enabled`. See payment_airwallex.py for details.
 const List<PaymentProviderConfig> availablePaymentProviders = [
   PaymentProviderConfig(
     id: PaymentProviderValues.stripe,
@@ -117,11 +120,11 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [isDark ? Colors.grey[900]! : Colors.grey[50]!, isDark ? Colors.grey[800]! : Colors.white],
+          colors: [isDark ? DesignTokens.textPrimary : DesignTokens.surface, isDark ? DesignTokens.textPrimary : Colors.white],
         ),
       ),
       child: Scaffold(
-        appBar: AppBarFactory.simple(title: 'Become a Seller'),
+        appBar: AppBarFactory.simple(title: 'seller.become_seller'.tr()),
         backgroundColor: Colors.transparent,
         body: userProfileAsync.when(
           loading: () => Center(
@@ -139,7 +142,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                 const SizedBox(height: 16),
                 Text(
                   'Loading...',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -184,18 +187,18 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                           padding: const EdgeInsets.all(16),
                           margin: const EdgeInsets.only(bottom: 20),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [Colors.red[300]!.withValues(alpha: 0.2), Colors.red[400]!.withValues(alpha: 0.1)]),
+                            gradient: LinearGradient(colors: [DesignTokens.error.withValues(alpha: 0.2), DesignTokens.error.withValues(alpha: 0.1)]),
                             borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                            border: Border.all(color: Colors.red[400]!.withValues(alpha: 0.3)),
+                            border: Border.all(color: DesignTokens.error.withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.error_outline, color: Colors.red[400], size: 20),
+                              Icon(Icons.error_outline, color: DesignTokens.error, size: 20),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   viewState.error!,
-                                  style: TextStyle(color: Colors.red[600], fontSize: 13, fontWeight: FontWeight.w500),
+                                  style: TextStyle(color: DesignTokens.error, fontSize: 13, fontWeight: FontWeight.w500),
                                 ),
                               ),
                             ],
@@ -213,7 +216,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                         subtitle: !_termsAccepted
                             ? Text(
                                 'You must accept the terms to create a seller account',
-                                style: TextStyle(color: Colors.orange[700], fontSize: 12),
+                                style: TextStyle(color: DesignTokens.warning, fontSize: 12),
                               )
                             : null,
                         controlAffinity: ListTileControlAffinity.leading,
@@ -289,7 +292,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       title = 'Identity Verification Pending';
       message = 'Stripe is reviewing your identity documents. This usually takes a few minutes but can take up to 2 business days. You\'ll be able to add products once verified.';
       icon = Icons.hourglass_empty;
-      color = Colors.orange;
+      color = DesignTokens.warning;
     } else {
       return const SizedBox.shrink();
     }
@@ -318,7 +321,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                 const SizedBox(height: 4),
                 Text(
                   message,
-                  style: TextStyle(color: Colors.grey[700], fontSize: 13, height: 1.4),
+                  style: TextStyle(color: DesignTokens.textPrimary, fontSize: 13, height: 1.4),
                 ),
               ],
             ),
@@ -426,8 +429,8 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            isDark ? Colors.grey[800]!.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.8),
-            isDark ? Colors.grey[900]!.withValues(alpha: 0.4) : Colors.grey[50]!.withValues(alpha: 0.6),
+            isDark ? DesignTokens.textPrimary.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.8),
+            isDark ? DesignTokens.textPrimary.withValues(alpha: 0.4) : DesignTokens.surface.withValues(alpha: 0.6),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -531,24 +534,24 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
             ],
           ),
           const SizedBox(height: 8),
-          Text(config.features.map((f) => '• $f').join('\n'), style: TextStyle(color: Colors.grey[700], fontSize: 12, height: 1.5)),
+          Text(config.features.map((f) => '• $f').join('\n'), style: TextStyle(color: DesignTokens.textPrimary, fontSize: 12, height: 1.5)),
           if (isDisabled) ...[
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: DesignTokens.warning.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.orange.shade200),
+                border: Border.all(color: DesignTokens.warning.withValues(alpha: 0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.schedule, size: 14, color: Colors.orange.shade700),
+                  Icon(Icons.schedule, size: 14, color: DesignTokens.warning),
                   const SizedBox(width: 4),
                   Text(
                     'Coming Soon - Join waitlist',
-                    style: TextStyle(fontSize: 11, color: Colors.orange.shade700, fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 11, color: DesignTokens.warning, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
@@ -602,17 +605,17 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                     label: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(config.icon, size: 16, color: isSelected ? Colors.white : (isDisabled ? Colors.grey : config.primaryColor)),
+                        Icon(config.icon, size: 16, color: isSelected ? Colors.white : (isDisabled ? DesignTokens.textSecondary : config.primaryColor)),
                         const SizedBox(width: 6),
                         Text(config.name),
                         if (isDisabled) ...[
                           const SizedBox(width: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(color: Colors.orange.shade100, borderRadius: BorderRadius.circular(4)),
+                            decoration: BoxDecoration(color: DesignTokens.warning.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
                             child: Text(
                               'Soon',
-                              style: TextStyle(fontSize: 9, color: Colors.orange.shade800, fontWeight: FontWeight.w600),
+                              style: TextStyle(fontSize: 9, color: DesignTokens.warning, fontWeight: FontWeight.w600),
                             ),
                           ),
                         ],
@@ -625,8 +628,8 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                             if (selected) viewModel.setPaymentProvider(config.id);
                           },
                     selectedColor: config.primaryColor,
-                    backgroundColor: isDisabled ? Colors.grey.shade200 : null,
-                    labelStyle: TextStyle(color: isSelected && !isDisabled ? Colors.white : (isDisabled ? Colors.grey : null)),
+                    backgroundColor: isDisabled ? DesignTokens.outlineVariant : null,
+                    labelStyle: TextStyle(color: isSelected && !isDisabled ? Colors.white : (isDisabled ? DesignTokens.textSecondary : null)),
                   ),
                 ],
               );
@@ -636,7 +639,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
           // Dynamic payment timing info card based on selected provider
           _buildProviderInfoCard(selectedConfig),
           const SizedBox(height: 8),
-          Text(selectedConfig.recommendedFor, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+          Text(selectedConfig.recommendedFor, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12)),
         ],
       ),
     );

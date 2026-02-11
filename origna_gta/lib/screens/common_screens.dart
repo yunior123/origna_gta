@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -49,7 +50,7 @@ class AuthRequiredGate extends ConsumerWidget {
               gradient: DesignTokens.backgroundGradient(isDark: isDark),
             ),
             child: Scaffold(
-              appBar: AppBarFactory.simple(title: 'Sign In Required'),
+              appBar: AppBarFactory.simple(title: 'auth.sign_in_required'.tr()),
               backgroundColor: Colors.transparent,
               body: Center(
                 child: ConstrainedBox(
@@ -88,7 +89,7 @@ class AuthRequiredGate extends ConsumerWidget {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
-                              color: isDark ? Colors.white : Colors.grey[900],
+                              color: isDark ? Colors.white : DesignTokens.textPrimary,
                             ),
                           ),
                         ),
@@ -99,7 +100,7 @@ class AuthRequiredGate extends ConsumerWidget {
                             'You need an account to access this page.',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey[500],
+                              color: DesignTokens.textSecondary,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -108,7 +109,7 @@ class AuthRequiredGate extends ConsumerWidget {
                         FadeSlideIn(
                           delay: const Duration(milliseconds: 150),
                           child: ModernButton(
-                            label: 'Sign In',
+                            label: 'auth.sign_in'.tr(),
                             icon: Icons.login_rounded,
                             onPressed: () => Navigator.of(context).pushNamed(
                               AppRoutes.login,
@@ -203,7 +204,7 @@ class ErrorScreen extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white : Colors.grey[900],
+                        color: isDark ? Colors.white : DesignTokens.textPrimary,
                       ),
                     ),
                   ),
@@ -215,7 +216,7 @@ class ErrorScreen extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey[500],
+                        color: DesignTokens.textSecondary,
                         height: 1.5,
                       ),
                     ),
@@ -302,7 +303,7 @@ class _EmailVerificationRequiredScreenState
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
-                        color: isDark ? Colors.white : Colors.grey[900],
+                        color: isDark ? Colors.white : DesignTokens.textPrimary,
                       ),
                     ),
                   ),
@@ -337,11 +338,11 @@ class _EmailVerificationRequiredScreenState
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: isDark
-                            ? Colors.grey[800]!.withValues(alpha: 0.5)
-                            : Colors.grey[50],
+                            ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5)
+                            : DesignTokens.surface,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+                          color: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant,
                         ),
                       ),
                       child: Column(
@@ -351,7 +352,7 @@ class _EmailVerificationRequiredScreenState
                             'To protect your account and enable all features, please verify your email address:',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey[600],
+                              color: DesignTokens.textSecondary,
                               height: 1.5,
                             ),
                           ),
@@ -415,12 +416,12 @@ class _EmailVerificationRequiredScreenState
                       icon: Icon(
                         Icons.logout,
                         size: 16,
-                        color: Colors.grey[500],
+                        color: DesignTokens.textSecondary,
                       ),
                       label: Text(
                         'Sign in with a different account',
                         style: TextStyle(
-                          color: Colors.grey[500],
+                          color: DesignTokens.textSecondary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -466,7 +467,7 @@ class _EmailVerificationRequiredScreenState
               text,
               style: TextStyle(
                 fontSize: 14,
-                color: isDark ? Colors.grey[300] : Colors.grey[700],
+                color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
                 height: 1.4,
               ),
             ),
@@ -487,9 +488,9 @@ class _EmailVerificationRequiredScreenState
           await ref.read(authRepositoryProvider).ensureUserDocumentExists();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('🎉 Email verified successfully! Welcome!'),
-                backgroundColor: Colors.green,
+              SnackBar(
+                content: const Text('🎉 Email verified successfully! Welcome!'),
+                backgroundColor: DesignTokens.success,
                 behavior: SnackBarBehavior.floating,
               ),
             );
@@ -504,7 +505,7 @@ class _EmailVerificationRequiredScreenState
                 content: const Text(
                   'Email not verified yet. Please check your inbox and click the verification link.',
                 ),
-                backgroundColor: Colors.orange[700],
+                backgroundColor: DesignTokens.warning,
                 behavior: SnackBarBehavior.floating,
               ),
             );
@@ -514,9 +515,9 @@ class _EmailVerificationRequiredScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error checking verification. Please try again.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Error checking verification. Please try again.'),
+            backgroundColor: DesignTokens.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -548,7 +549,7 @@ class _EmailVerificationRequiredScreenState
                   ? 'Please wait before requesting another email.'
                   : 'Failed to send email. Please try again later.',
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: DesignTokens.error,
             behavior: SnackBarBehavior.floating,
           ),
         );

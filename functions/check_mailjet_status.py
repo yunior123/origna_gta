@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Check delivery status of recent Mailjet messages."""
-import os, sys, json
+import os
+import sys
+
 from dotenv import load_dotenv
+
 load_dotenv()
 os.environ['FUNCTIONS_EMULATOR'] = 'true'
 sys.path.insert(0, os.path.dirname(__file__))
 
 from mailjet_rest import Client
+
 from config import MAILJET_API_KEY, MAILJET_SECRET_KEY
 
 mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3')
@@ -28,7 +32,7 @@ if result.status_code == 200:
             d = detail.json().get('Data', [{}])
             if d:
                 subj = d[0].get('Subject', '')[:44]
-        
+
         emoji = {'sent': '✅', 'opened': '📬', 'deferred': '⏳', 'bounced': '🔙', 'blocked': '🚫'}.get(status, '❓')
         print(f"{emoji} {status:<10} {mid:<22} {subj:<45} {arrived}")
 else:

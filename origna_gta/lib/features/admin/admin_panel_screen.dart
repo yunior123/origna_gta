@@ -51,7 +51,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                 child: ModernLoadingIndicator(size: 48, strokeWidth: 3, color: DesignTokens.primary, centered: false),
               ),
               const SizedBox(height: 16),
-              Text('Loading admin panel...', style: TextStyle(color: Colors.grey[500], fontSize: 14)),
+              Text('Loading admin panel...', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
             ],
           ),
         ),
@@ -86,7 +86,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                   const SizedBox(height: 24),
                   const Text('Access Denied', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('Admin privileges required to view this page', style: TextStyle(color: Colors.grey[600])),
+                  Text('Admin privileges required to view this page', style: TextStyle(color: DesignTokens.textSecondary)),
                   const SizedBox(height: 24),
                   FilledButton.icon(
                     onPressed: () => Navigator.of(context).pop(),
@@ -289,7 +289,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                       const Spacer(),
                       Text(
                         'Origna GTA Admin',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                        style: TextStyle(color: DesignTokens.textDisabled, fontSize: 13),
                       ),
                     ],
                   ),

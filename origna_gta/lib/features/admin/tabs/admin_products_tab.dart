@@ -37,7 +37,7 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
               TextField(
                 decoration: InputDecoration(
                   hintText: 'Search products...',
-                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                  hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 14),
                   prefixIcon: Icon(Icons.search_rounded, color: DesignTokens.primary),
                   filled: true,
                   fillColor: DesignTokens.surfaceVariant,
@@ -133,12 +133,12 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
           decoration: BoxDecoration(
             color: isSelected ? DesignTokens.primary : Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: isSelected ? DesignTokens.primary : Colors.grey.withValues(alpha: 0.2)),
+            border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.outlineVariant.withValues(alpha: 0.5)),
             boxShadow: isSelected ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 2))] : [],
           ),
           child: Text(
             label,
-            style: TextStyle(color: isSelected ? Colors.white : Colors.grey[600], fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400, fontSize: 12),
+            style: TextStyle(color: isSelected ? Colors.white : DesignTokens.textSecondary, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400, fontSize: 12),
           ),
         ),
       ),
@@ -194,18 +194,18 @@ class _ProductCard extends ConsumerWidget {
                       placeholder: (context, url) => Container(
                         width: 70, height: 70,
                         decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
-                        child: Icon(Icons.image_rounded, color: Colors.grey[400]),
+                        child: Icon(Icons.image_rounded, color: DesignTokens.textDisabled),
                       ),
                       errorWidget: (context, url, error) => Container(
                         width: 70, height: 70,
                         decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
-                        child: Icon(Icons.broken_image_rounded, color: Colors.grey[400]),
+                        child: Icon(Icons.broken_image_rounded, color: DesignTokens.textDisabled),
                       ),
                     )
                   : Container(
                       width: 70, height: 70,
                       decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
-                      child: Icon(Icons.image_rounded, color: Colors.grey[400]),
+                      child: Icon(Icons.image_rounded, color: DesignTokens.textDisabled),
                     ),
             ),
             const SizedBox(width: 14),
@@ -238,7 +238,7 @@ class _ProductCard extends ConsumerWidget {
             // Actions
             PopupMenuButton<String>(
               onSelected: (value) => _handleAction(context, ref, value),
-              icon: Icon(Icons.more_vert_rounded, color: Colors.grey[400]),
+              icon: Icon(Icons.more_vert_rounded, color: DesignTokens.textDisabled),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
               itemBuilder: (context) => [
                 _menuItem('set_stock', Icons.edit_rounded, 'Set Stock', DesignTokens.primary),
@@ -278,12 +278,12 @@ class _ProductCard extends ConsumerWidget {
       messenger.showSnackBar(
         SnackBar(
           content: Text(quantity == 0 ? 'Product marked as out of stock' : 'Stock updated to $quantity'),
-          backgroundColor: quantity == 0 ? Colors.orange : Colors.green,
+          backgroundColor: quantity == 0 ? DesignTokens.warning : DesignTokens.success,
         ),
       );
     } else {
       final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to update stock';
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
     }
   }
 
@@ -401,7 +401,7 @@ class _ProductCard extends ConsumerWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(width: 60, child: Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 13))),
+        SizedBox(width: 60, child: Text(label, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13))),
         Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13))),
       ],
     );

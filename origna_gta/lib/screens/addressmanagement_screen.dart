@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,7 +23,7 @@ class AddressManagementScreen extends ConsumerWidget {
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
-        appBar: AppBarFactory.simple(title: 'My Address'),
+        appBar: AppBarFactory.simple(title: 'profile.addresses'.tr()),
         backgroundColor: Colors.transparent,
         body: userProfileAsync.when(
           loading: () => Center(
@@ -34,7 +35,7 @@ class AddressManagementScreen extends ConsumerWidget {
                   child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
                 ),
                 const SizedBox(height: 16),
-                Text('Loading address...', style: TextStyle(color: Colors.grey[500], fontSize: 14, fontWeight: FontWeight.w500)),
+                Text('Loading address...', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)),
               ],
             ),
           ),
@@ -97,7 +98,7 @@ class AddressManagementScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(DesignTokens.spacing20),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[800]!.withValues(alpha: 0.5) : Colors.white,
+        color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : Colors.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius20),
         border: Border.all(
           color: isDark ? Colors.white.withValues(alpha: 0.08) : DesignTokens.primary.withValues(alpha: 0.15),
@@ -180,7 +181,7 @@ class AddressManagementScreen extends ConsumerWidget {
                 Icon(Icons.location_on_outlined, size: 20, color: DesignTokens.primary.withValues(alpha: 0.7)),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(address.formattedAddress, style: TextStyle(fontSize: 14, height: 1.6, color: isDark ? Colors.grey[300] : Colors.grey[700])),
+                  child: Text(address.formattedAddress, style: TextStyle(fontSize: 14, height: 1.6, color: DesignTokens.textSecondary)),
                 ),
               ],
             ),
@@ -198,7 +199,7 @@ class AddressManagementScreen extends ConsumerWidget {
                 children: [
                   Icon(Icons.phone_outlined, size: 18, color: DesignTokens.primary.withValues(alpha: 0.7)),
                   const SizedBox(width: 12),
-                  Text(address.phoneNumber!, style: TextStyle(fontSize: 14, color: isDark ? Colors.grey[300] : Colors.grey[700], fontWeight: FontWeight.w500)),
+                  Text(address.phoneNumber!, style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),

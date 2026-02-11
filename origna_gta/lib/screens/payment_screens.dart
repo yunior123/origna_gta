@@ -55,9 +55,9 @@ class OrderSuccessGate extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text('Confirming your payment...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.grey[900])),
+                  Text('Confirming your payment...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary)),
                   const SizedBox(height: 8),
-                  Text('This may take a few moments', style: TextStyle(color: Colors.grey[500], fontSize: 14)),
+                  Text('This may take a few moments', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
                 ],
               ),
             ),
@@ -100,9 +100,9 @@ class OrderSuccessGate extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      Text('Processing your payment...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.grey[900])),
+                      Text('Processing your payment...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary)),
                       const SizedBox(height: 8),
-                      Text('This may take a few moments', style: TextStyle(color: Colors.grey[500], fontSize: 14)),
+                      Text('This may take a few moments', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
                     ],
                   ),
                 ),
@@ -158,7 +158,7 @@ class PaymentCanceledScreen extends StatelessWidget {
                     delay: const Duration(milliseconds: 100),
                     child: Text(
                       'Payment Canceled',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.grey[900]),
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: isDark ? Colors.white : DesignTokens.textPrimary),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -167,18 +167,22 @@ class PaymentCanceledScreen extends StatelessWidget {
                     child: Text(
                       'Your payment was canceled.\nYour cart items are still saved.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 15, color: Colors.grey[500], height: 1.5),
+                      style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.5),
                     ),
                   ),
                   const SizedBox(height: 40),
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 200),
-                    child: ModernButton(
-                      label: 'Back to Shopping',
-                      icon: Icons.shopping_bag_outlined,
-                      onPressed: () {
-                        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
-                      },
+                    child: Semantics(
+                      button: true,
+                      label: 'btn-back-to-shopping',
+                      child: ModernButton(
+                        label: 'Back to Shopping',
+                        icon: Icons.shopping_bag_outlined,
+                        onPressed: () {
+                          Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                        },
+                      ),
                     ),
                   ),
                 ],

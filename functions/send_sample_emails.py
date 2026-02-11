@@ -10,6 +10,7 @@ import time
 
 # Load .env
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Force real email sending even if in emulator mode
@@ -19,6 +20,7 @@ os.environ['FUNCTIONS_EMULATOR'] = 'true'
 sys.path.insert(0, os.path.dirname(__file__))
 
 from mailjet_rest import Client
+
 from config import MAILJET_API_KEY, MAILJET_SECRET_KEY
 from schema_constants import EmailConfig
 
@@ -99,11 +101,11 @@ def main():
 
     # Import email generators
     from services.email_service import (
-        get_order_confirmation_email,
-        get_seller_notification_email,
-        get_order_shipped_email,
-        get_order_delivered_email,
         get_order_cancelled_email,
+        get_order_confirmation_email,
+        get_order_delivered_email,
+        get_order_shipped_email,
+        get_seller_notification_email,
     )
 
     # ── 1. Order Confirmation (Buyer) ───────────────────────────────
@@ -163,7 +165,7 @@ def main():
     # ── 6. Payment Capture Failed ───────────────────────────────────
     print("\n6/7  ⚠️ Payment Capture Failed...")
     # This one builds its own full HTML internally, so we call the generator part manually
-    from services.email_service import _casl_compliant_footer, APP_BASE_URL, UNSUBSCRIBE_URL
+    from services.email_service import APP_BASE_URL, _casl_compliant_footer
 
     customer_name = "Yunior Rodriguez"
     amount = 864.29

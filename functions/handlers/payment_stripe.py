@@ -7,13 +7,14 @@ Stripe Payment Handlers
 """
 
 import logging
+
 logger = logging.getLogger(__name__)
 import contextlib
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import stripe
-from firebase_functions import https_fn, options
+from firebase_functions import https_fn
 
 from config import (
     AUTHORIZATION_VALID_DAYS,
@@ -1099,9 +1100,12 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
     - checkout.session.expired: Session expired
     - payment_intent.succeeded: Payment succeeded
     - payment_intent.payment_failed: Payment failed
+    - payment_intent.canceled: Payment intent canceled
     - charge.refunded: Refund issued
     - charge.dispute.created: Dispute opened
+    - charge.dispute.updated: Dispute updated (evidence/status change)
     - charge.dispute.closed: Dispute resolved
+    - charge.dispute.funds_reinstated: Dispute funds reinstated to seller
     - transfer.reversed: Payout reversed
     - payout.failed: Payout failed
     - refund.failed: Refund failed
@@ -1229,8 +1233,12 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             process_charge_refunded(event['data']['object'])
         elif event_type == 'charge.dispute.created':
             process_dispute_created(event['data']['object'])
+        elif event_type == 'charge.dispute.updated':
+            process_dispute_updated(event['data']['object'])
         elif event_type == 'charge.dispute.closed':
             process_dispute_closed(event['data']['object'])
+        elif event_type == 'charge.dispute.funds_reinstated':
+            process_dispute_funds_reinstated(event['data']['object'])
         elif event_type == 'transfer.reversed':
             process_transfer_reversed(event['data']['object'])
         elif event_type == 'payout.failed':
@@ -1835,13 +1843,15 @@ def process_charge_refunded(charge: dict) -> str | None:
                 for fp_doc in failed_payout:
                     fp_seller_id = fp_doc.to_dict().get(Fields.SELLER_ID)
                     if fp_seller_id:
-                        with contextlib.suppress(Exception):
+                        try:
                             get_db().collection(Collections.USERS).document(fp_seller_id).update({
                                 Fields.SUSPENDED: True,
                                 Fields.SUSPENSION_REASON: f'Transfer reversal failed for order {order_id}. Manual review required.',
                                 Fields.SUSPENDED_AT: get_server_timestamp(),
                             })
                             logger.error(f'🚫 Auto-suspended seller {fp_seller_id} due to failed transfer reversal')
+                        except Exception as suspend_err:
+                            logger.critical(f'🚨 CRITICAL: Failed to suspend seller {fp_seller_id} after transfer reversal failure: {type(suspend_err).__name__}')
 
         if is_full_refund:
             order_ref.update({
@@ -2009,13 +2019,15 @@ def process_dispute_created(dispute: dict) -> str | None:
                 if is_insufficient:
                     seller_id_from_payout = payout_data.get(Fields.SELLER_ID)
                     if seller_id_from_payout:
-                        with contextlib.suppress(Exception):
+                        try:
                             get_db().collection(Collections.USERS).document(seller_id_from_payout).update({
                                 Fields.SUSPENDED: True,
                                 Fields.SUSPENSION_REASON: f'Dispute reversal failed (insufficient funds) for dispute {dispute.get("id")}. Manual review required.',
                                 Fields.SUSPENDED_AT: get_server_timestamp(),
                             })
                             logger.info(f'🚫 Auto-suspended seller {seller_id_from_payout} due to insufficient funds during dispute reversal')
+                        except Exception as suspend_err:
+                            logger.critical(f'🚨 CRITICAL: Failed to suspend seller {seller_id_from_payout} after dispute reversal failure: {type(suspend_err).__name__}')
 
             except Exception as e:
                 # Log failure but continue processing other transfers
@@ -2039,7 +2051,113 @@ def process_dispute_created(dispute: dict) -> str | None:
             Fields.UPDATED_AT: get_server_timestamp(),
         })
 
+    # AUDIT FIX #32: Send dispute notification emails to affected sellers
+    try:
+        if order_doc and order_doc.exists:
+            order_data = order_doc.to_dict()
+            seller_ids = set(item.get(Fields.SELLER_ID) for item in order_data.get(Fields.ITEMS, []))
+            for seller_id in seller_ids:
+                if not seller_id:
+                    continue
+                seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
+                if seller_doc.exists:
+                    seller_email = seller_doc.to_dict().get(Fields.EMAIL)
+                    if seller_email:
+                        send_email(
+                            to_email=seller_email,
+                            subject='⚠️ Payment Dispute Received - Origna',
+                            html_content=f'''
+                            <h2>A payment dispute has been filed</h2>
+                            <p>A buyer has filed a dispute for an order containing your products.</p>
+                            <p><strong>Order ID:</strong> {order_id}</p>
+                            <p><strong>Dispute reason:</strong> {dispute.get('reason', 'Not specified')}</p>
+                            <p><strong>Amount:</strong> ${dispute.get('amount', 0) / 100:.2f} {dispute.get('currency', 'CAD').upper()}</p>
+                            <p>Your seller transfers for this order have been reversed pending dispute resolution.</p>
+                            <p>Please review your order records and prepare any evidence (shipping confirmation, delivery proof, communication) that may help resolve this dispute.</p>
+                            <p>— Origna Team</p>
+                            ''',
+                        )
+    except Exception as e:
+        logger.error(f'Failed to send dispute notification emails: {type(e).__name__}')
+
     return f'Dispute logged for charge {charge_id}, reversed {reversed_count} transfers'
+
+
+def process_dispute_updated(dispute: dict) -> str | None:
+    """
+    Handles charge.dispute.updated — logs evidence updates and status changes.
+
+    Stripe sends this when:
+    - Evidence is submitted
+    - Dispute status changes (e.g., needs_response → under_review)
+    - Evidence due date changes
+    """
+    dispute_id = dispute.get('id')
+    charge_id = dispute.get('charge')
+    payment_intent_id = dispute.get('payment_intent')
+    status = dispute.get(Fields.STATUS)
+    reason = dispute.get(Fields.REASON)
+
+    logger.info(f'Dispute updated: {dispute_id} status={status} reason={reason}')
+
+    # Update security alert with latest dispute status
+    if charge_id:
+        alerts = get_db().collection(Collections.SECURITY_ALERTS)\
+            .where(Fields.CHARGE_ID, '==', charge_id)\
+            .where(Fields.TYPE, '==', SecurityAlertTypes.DISPUTE_CREATED)\
+            .limit(1)\
+            .stream()
+
+        for alert_doc in alerts:
+            alert_doc.reference.update({
+                Fields.STATUS: status,
+                Fields.REASON: reason,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
+
+    # Update order dispute status
+    if payment_intent_id:
+        orders = get_db().collection(Collections.ORDERS)\
+            .where(Fields.STRIPE_PAYMENT_INTENT_ID, '==', payment_intent_id)\
+            .limit(1)\
+            .stream()
+
+        for order_doc in orders:
+            order_doc.reference.update({
+                Fields.DISPUTE_STATUS: status,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
+
+    return f'Dispute updated: {dispute_id} → {status}'
+
+
+def process_dispute_funds_reinstated(dispute: dict) -> str | None:
+    """
+    Handles charge.dispute.funds_reinstated — funds returned after dispute won.
+
+    This is sent when Stripe returns funds to the platform after a won dispute.
+    We log it and ensure the order/payout state is correct.
+    """
+    dispute_id = dispute.get('id')
+    charge_id = dispute.get('charge')
+    payment_intent_id = dispute.get('payment_intent')
+    amount_reinstated = dispute.get(Fields.AMOUNT, 0)
+
+    logger.info(f'Dispute funds reinstated: {dispute_id} amount={amount_reinstated}')
+
+    # Log security alert for audit trail
+    get_db().collection(Collections.SECURITY_ALERTS).add({
+        Fields.TYPE: SecurityAlertTypes.DISPUTE_CREATED,
+        Fields.SEVERITY: SeverityLevels.INFO if amount_reinstated > 0 else SeverityLevels.HIGH,
+        Fields.CHARGE_ID: charge_id,
+        Fields.PAYMENT_INTENT_ID: payment_intent_id,
+        Fields.AMOUNT: amount_reinstated,
+        'event': 'funds_reinstated',
+        Fields.TIMESTAMP: get_server_timestamp(),
+        Fields.RESOLVED: True,
+    })
+
+    return f'Funds reinstated for dispute {dispute_id}: {amount_reinstated} cents'
 
 
 def process_dispute_closed(dispute: dict) -> str | None:
@@ -2096,7 +2214,6 @@ def process_dispute_closed(dispute: dict) -> str | None:
                 for payout_doc in payouts:
                     payout_data = payout_doc.to_dict()
                     seller_stripe_id = payout_data.get(Fields.STRIPE_ACCOUNT_ID)
-                    net_amount = payout_data.get(Fields.NET_AMOUNT_CENTS, 0)
                     reversed_cents = payout_data.get(Fields.CUMULATIVE_REVERSED_CENTS, 0)
 
                     if not seller_stripe_id or reversed_cents <= 0:
@@ -2140,6 +2257,30 @@ def process_dispute_closed(dispute: dict) -> str | None:
 
             order_doc.reference.update(update_data)
 
+            # AUDIT FIX #33: Send dispute resolution notification to sellers
+            try:
+                seller_ids = set(item.get(Fields.SELLER_ID) for item in order_data.get(Fields.ITEMS, []))
+                outcome = 'won (funds restored)' if status == 'won' else 'lost (order cancelled)'
+                for seller_id in seller_ids:
+                    if not seller_id:
+                        continue
+                    seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
+                    if seller_doc.exists:
+                        seller_email = seller_doc.to_dict().get(Fields.EMAIL)
+                        if seller_email:
+                            send_email(
+                                to_email=seller_email,
+                                subject=f'Dispute Resolved ({status.title()}) - Origna',
+                                html_content=f'''
+                                <h2>Dispute Resolution Update</h2>
+                                <p>The dispute for order <strong>{order_doc.id}</strong> has been <strong>{outcome}</strong>.</p>
+                                {'<p>Your seller transfers have been restored.</p>' if status == 'won' else '<p>The order has been cancelled and no further action is needed.</p>'}
+                                <p>— Origna Team</p>
+                                ''',
+                            )
+            except Exception as e:
+                logger.error(f'Failed to send dispute resolution emails: {type(e).__name__}')
+
     return f'Dispute closed: {status}'
 
 
@@ -2167,7 +2308,7 @@ def process_transfer_reversed(transfer: dict) -> str | None:
 def process_payout_failed(payout: dict) -> None:
     """Handles failed payouts — creates security alert AND updates payout records."""
     destination = payout.get(Fields.DESTINATION)
-    payout_id = payout.get('id')
+    _payout_id = payout.get('id')
 
     # Create security alert
     get_db().collection(Collections.SECURITY_ALERTS).add({
@@ -2548,12 +2689,14 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
     if payment_status == PaymentStatusValues.CAPTURED:
         # Ensure buyer receipt confirmation is persisted (best-effort)
         if not order_data.get(Fields.CONFIRMED_BY_CLIENT):
-            with contextlib.suppress(Exception):
+            try:
                 order_ref.update({
                     Fields.CONFIRMED_BY_CLIENT: True,
                     Fields.CONFIRMED_AT: get_server_timestamp(),
                     Fields.UPDATED_AT: get_server_timestamp(),
                 })
+            except Exception as confirm_err:
+                logger.warning(f'⚠️ Failed to persist confirmed_by_client: {type(confirm_err).__name__}')
 
         # AUTO-CAPTURE MODE: Create seller payout records if none exist yet.
         # With automatic capture, payment is captured at checkout (not at delivery).
@@ -2919,7 +3062,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                             # Transfer succeeded but COMPLETED status not recorded.
                             # PENDING record still exists with seller/order info for reconciliation.
                             logger.critical(f"🚨 CRITICAL: Payout record stuck in PENDING for order {order_id}, seller {seller_id}, transfer {transfer.id}")
-                            with contextlib.suppress(Exception):
+                            try:
                                 get_db().collection(Collections.SECURITY_ALERTS).add({
                                     Fields.TYPE: SecurityAlertTypes.PAYOUT_RECORD_INCOMPLETE,
                                     Fields.SEVERITY: SeverityLevels.CRITICAL,
@@ -2931,6 +3074,8 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                                     Fields.TIMESTAMP: get_server_timestamp(),
                                     Fields.RESOLVED: False
                                 })
+                            except Exception as alert_err:
+                                logger.critical(f"🚨 Failed to create security alert for stuck payout: {type(alert_err).__name__}")
                     except Exception as e:
                         logger.error(f"Transfer error to seller {seller_id}: {str(e)}")
                         transfer_errors.append({Fields.SELLER_ID: seller_id, Fields.ERROR: type(e).__name__})
@@ -2964,19 +3109,23 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     except https_fn.HttpsError:
         # Rollback 'capturing' state to 'authorized' so the order isn't stuck
-        with contextlib.suppress(Exception):
+        try:
             order_ref.update({
                 Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
                 Fields.UPDATED_AT: get_server_timestamp(),
             })
+        except Exception as rollback_err:
+            logger.critical(f'🚨 CRITICAL: Failed to rollback capture state for order: {type(rollback_err).__name__}')
         raise
     except Exception as e:
         # Rollback 'capturing' state to 'authorized' so the order isn't stuck
-        with contextlib.suppress(Exception):
+        try:
             order_ref.update({
                 Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
                 Fields.UPDATED_AT: get_server_timestamp(),
             })
+        except Exception as rollback_err:
+            logger.critical(f'🚨 CRITICAL: Failed to rollback capture state for order: {type(rollback_err).__name__}')
         error_msg = str(e).lower()
         logger.error(f'Capture payment error: {str(e)}')
 

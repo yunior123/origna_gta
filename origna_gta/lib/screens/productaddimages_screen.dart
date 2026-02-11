@@ -25,7 +25,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: _imageModels.length >= 5 ? DesignTokens.warning : Colors.grey[500],
+                color: _imageModels.length >= 5 ? DesignTokens.warning : DesignTokens.textSecondary,
               ),
             ),
             if (_imageModels.length >= 5) ...[

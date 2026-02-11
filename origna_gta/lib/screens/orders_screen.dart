@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/orders/buyer_orders_viewmodel.dart';
@@ -121,10 +121,10 @@ class OrdersScreen extends ConsumerWidget {
 
     if (user == null) {
       return Scaffold(
-        appBar: AppBarFactory.simple(title: 'My Orders'),
-        body: const AnimatedEmptyState(
+        appBar: AppBarFactory.simple(title: 'orders.my_orders'.tr()),
+        body: AnimatedEmptyState(
           icon: Icons.lock_outline_rounded,
-          title: 'Sign in to view orders',
+          title: 'auth.sign_in_required'.tr(),
           subtitle: 'Your order history will appear here.',
         ),
       );
@@ -137,7 +137,7 @@ class OrdersScreen extends ConsumerWidget {
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
-        appBar: AppBarFactory.simple(title: 'My Orders'),
+        appBar: AppBarFactory.simple(title: 'orders.my_orders'.tr()),
         backgroundColor: Colors.transparent,
         body: ordersAsync.when(
           loading: () => _buildLoadingState(),
@@ -203,17 +203,17 @@ class OrdersScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          Text('Loading your orders...', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 15, fontWeight: FontWeight.w500)),
+          Text('home.loading_your_orders'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 15, fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 
   Widget _buildEmptyState(bool isDark) {
-    return const AnimatedEmptyState(
+    return AnimatedEmptyState(
       icon: Icons.shopping_bag_outlined,
-      title: 'No orders yet',
-      subtitle: 'Your paid orders will appear here.\nStart shopping to see them!',
+      title: 'orders.no_orders'.tr(),
+      subtitle: 'orders.no_orders_desc'.tr(),
     );
   }
 

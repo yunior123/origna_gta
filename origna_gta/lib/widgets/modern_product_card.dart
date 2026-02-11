@@ -76,9 +76,9 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                                 widget.imageUrl,
                                 fit: BoxFit.cover,
                                 semanticLabel: '${widget.productName} product image',
-                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 48),
+                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported_outlined, color: DesignTokens.textSecondary, size: 48),
                               )
-                            : const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 48),
+                            : const Icon(Icons.image_not_supported_outlined, color: DesignTokens.textSecondary, size: 48),
                       ),
                       // Badge (optional)
                       Positioned(
@@ -111,18 +111,18 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                           const SizedBox(height: DesignTokens.spacing4),
                           Text(
                             widget.sellerName,
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
+                            style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
                           ),
                           const Spacer(),
                           // Rating
                           Row(
                             children: [
-                              Icon(Icons.star_rounded, size: 14, color: Colors.amber.shade500),
+                              Icon(Icons.star_rounded, size: 14, color: DesignTokens.warning),
                               const SizedBox(width: 4),
                               Text(widget.rating.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                               if (widget.reviewCount > 0) ...[
                                 const SizedBox(width: 4),
-                                Text('(${widget.reviewCount})', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                                Text('(${widget.reviewCount})', style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
                               ],
                             ],
                           ),

@@ -1,7 +1,7 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
@@ -29,7 +29,7 @@ class SellerOrdersScreen extends ConsumerWidget {
           gradient: DesignTokens.backgroundGradient(isDark: isDark),
         ),
         child: Scaffold(
-          appBar: AppBarFactory.simple(title: 'Seller Orders'),
+          appBar: AppBarFactory.simple(title: 'seller.manage_orders'.tr()),
           backgroundColor: Colors.transparent,
           body: const AnimatedEmptyState(
             icon: Icons.login_rounded,
@@ -46,7 +46,7 @@ class SellerOrdersScreen extends ConsumerWidget {
           gradient: DesignTokens.backgroundGradient(isDark: isDark),
         ),
         child: Scaffold(
-          appBar: AppBarFactory.simple(title: 'Seller Orders'),
+          appBar: AppBarFactory.simple(title: 'seller.manage_orders'.tr()),
           backgroundColor: Colors.transparent,
           body: Center(
             child: ConstrainedBox(
@@ -66,7 +66,7 @@ class SellerOrdersScreen extends ConsumerWidget {
                     const SizedBox(height: DesignTokens.spacing20),
                     const Text('Seller Account Suspended', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                     const SizedBox(height: DesignTokens.spacing8),
-                    Text('Contact support to restore access.', style: TextStyle(color: Colors.grey[600])),
+                    Text('Contact support to restore access.', style: TextStyle(color: DesignTokens.textSecondary)),
                   ],
                 ),
               ),
@@ -83,7 +83,7 @@ class SellerOrdersScreen extends ConsumerWidget {
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
-        appBar: AppBarFactory.simple(title: 'Seller Orders'),
+        appBar: AppBarFactory.simple(title: 'seller.manage_orders'.tr()),
         backgroundColor: Colors.transparent,
         body: ordersAsync.when(
           loading: () => Center(
@@ -158,7 +158,7 @@ class _SellerOrderCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: isDark ? DesignTokens.darkSurfaceVariant : Colors.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey[200]!),
+        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.outlineVariant),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Padding(
@@ -174,7 +174,7 @@ class _SellerOrderCard extends ConsumerWidget {
                   children: [
                     Text('Order #${order.orderId.substring(0, 8).toUpperCase()}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                     const SizedBox(height: 2),
-                    Text(DateFormat('MMM dd, yyyy').format(order.createdAt), style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                    Text(DateFormat('MMM dd, yyyy').format(order.createdAt), style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
                   ],
                 ),
                 Container(
@@ -202,23 +202,23 @@ class _SellerOrderCard extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[500]),
+                  Icon(Icons.location_on_outlined, size: 14, color: DesignTokens.textSecondary),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       order.shippingAddress.formattedAddress,
-                      style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                      style: TextStyle(fontSize: 12, color: isDark ? DesignTokens.textDisabled : DesignTokens.textSecondary),
                     ),
                   ),
                 ],
               ),
             ),
-            Divider(height: 28, color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey[200]),
+            Divider(height: 28, color: isDark ? Colors.white.withValues(alpha: 0.08) : DesignTokens.outlineVariant),
             if (order.paymentStatus == PaymentStatus.awaitingPayment) _buildAuthorizationBanner(context, ref, isDark),
             // Delivery instructions from buyer
             if (order.deliveryInstructions != null && order.deliveryInstructions!.isNotEmpty)
               _buildDeliveryInstructionsBanner(isDark),
-            Text('Your Items', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? Colors.white : Colors.grey[800])),
+            Text('Your Items', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? Colors.white : DesignTokens.textPrimary)),
             const SizedBox(height: 8),
             ...sellerItems.map((item) => _buildSellerItem(context, ref, item, isDark)),
           ],
@@ -259,7 +259,7 @@ class _SellerOrderCard extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   order.deliveryInstructions!,
-                  style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.4),
+                  style: TextStyle(fontSize: 13, color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary, height: 1.4),
                 ),
               ],
             ),
@@ -309,7 +309,7 @@ class _SellerOrderCard extends ConsumerWidget {
             actualShipping <= 0.0
                 ? 'Enter actual shipping cost to capture payment.'
                 : (approvalStatus == ShippingApprovalStatus.pending ? 'Waiting for buyer approval.' : 'Ready to capture.'),
-            style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+            style: TextStyle(fontSize: 12, color: isDark ? DesignTokens.textDisabled : DesignTokens.textSecondary),
           ),
           if (actualShipping <= 0.0) ...[
             const SizedBox(height: 12),
@@ -342,7 +342,7 @@ class _SellerOrderCard extends ConsumerWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius8)),
-            child: Icon(Icons.image_outlined, color: Colors.grey[400], size: 20),
+            child: Icon(Icons.image_outlined, color: DesignTokens.textDisabled, size: 20),
           )),
         ),
         title: Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
@@ -351,12 +351,12 @@ class _SellerOrderCard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Text('Qty: ${item.quantity}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                Text('Qty: ${item.quantity}', style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
                 const SizedBox(width: 8),
                 _buildStatusChip(statusStr),
               ],
             ),
-            if (item.carrier != null) Text('Carrier: ${item.carrier}', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+            if (item.carrier != null) Text('Carrier: ${item.carrier}', style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
             if (item.refundedAt != null) Text('Refunded: ${DateFormat.yMd().format(item.refundedAt!)}', style: TextStyle(fontSize: 11, color: DesignTokens.warning)),
           ],
         ),
@@ -397,7 +397,7 @@ class _SellerOrderCard extends ConsumerWidget {
     } else if (status == DeliveryStatusValues.refunded) {
       color = DesignTokens.warning;
     } else {
-      color = Colors.grey;
+      color = DesignTokens.textSecondary;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -459,7 +459,7 @@ class _SellerOrderCard extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+            child: Text('Cancel', style: TextStyle(color: DesignTokens.textSecondary)),
           ),
           SizedBox(
             width: 120,
@@ -545,7 +545,7 @@ class _SellerOrderCard extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+            child: Text('Cancel', style: TextStyle(color: DesignTokens.textSecondary)),
           ),
           SizedBox(
             width: 120,

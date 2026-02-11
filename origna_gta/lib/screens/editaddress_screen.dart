@@ -115,15 +115,15 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                           selected: isSelected,
                           onSelected: (selected) => viewModel.setLabel(label),
                           selectedColor: DesignTokens.primary,
-                          backgroundColor: isDark ? Colors.grey[800] : Colors.white,
+                          backgroundColor: isDark ? DesignTokens.textPrimary : Colors.white,
                           labelStyle: TextStyle(
-                            color: isSelected ? Colors.white : (isDark ? Colors.white : Colors.grey[700]),
+                            color: isSelected ? Colors.white : (isDark ? Colors.white : DesignTokens.textPrimary),
                             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(DesignTokens.radius12),
                             side: BorderSide(
-                              color: isSelected ? DesignTokens.primary : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                              color: isSelected ? DesignTokens.primary : (isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant),
                             ),
                           ),
                           elevation: isSelected ? 2 : 0,
@@ -153,7 +153,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                             Container(
                               margin: const EdgeInsets.only(top: 8, bottom: 8),
                               decoration: BoxDecoration(
-                                color: isDark ? Colors.grey[800] : Colors.white,
+                                color: isDark ? DesignTokens.textPrimary : Colors.white,
                                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
                                 boxShadow: DesignTokens.shadowMd,
                               ),
@@ -167,7 +167,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                                     leading: Icon(Icons.location_on, color: DesignTokens.primary, size: 20),
                                     title: Text(
                                       s['properties']?['formatted'] ?? '',
-                                      style: TextStyle(fontSize: 13, color: isDark ? Colors.white : Colors.grey[800]),
+                                      style: TextStyle(fontSize: 13, color: isDark ? Colors.white : DesignTokens.textPrimary),
                                     ),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius8)),
                                     onTap: () {
@@ -202,18 +202,18 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                               prefixIcon: Icon(Icons.map_outlined, color: DesignTokens.primary.withValues(alpha: 0.7)),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                                borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                                borderSide: BorderSide(color: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                                borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                                borderSide: BorderSide(color: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
                                 borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
                               ),
                               filled: true,
-                              fillColor: isDark ? Colors.grey[850] : Colors.white,
+                              fillColor: isDark ? DesignTokens.textPrimary : Colors.white,
                             ),
                             items: _canadianProvinces.map((code) => DropdownMenuItem(value: code, child: Text('${_provinceNames[code]} ($code)'))).toList(),
                             onChanged: (v) => viewModel.setProvince(v!),
@@ -305,7 +305,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
         const SizedBox(width: 12),
         Text(
           title,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.grey[900]),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
         ),
       ],
     );
@@ -327,24 +327,24 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
       textCapitalization: textCapitalization,
       onChanged: onChanged,
       validator: validator,
-      style: TextStyle(color: isDark ? Colors.white : Colors.grey[900]),
+      style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: icon != null ? Icon(icon, color: DesignTokens.primary.withValues(alpha: 0.7)) : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DesignTokens.radius12),
-          borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+          borderSide: BorderSide(color: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DesignTokens.radius12),
-          borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+          borderSide: BorderSide(color: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DesignTokens.radius12),
           borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
         ),
         filled: true,
-        fillColor: isDark ? Colors.grey[850] : Colors.white,
+        fillColor: isDark ? DesignTokens.textPrimary : Colors.white,
       ),
     );
   }

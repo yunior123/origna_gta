@@ -1,6 +1,6 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/core/routes.dart';
@@ -8,6 +8,7 @@ import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/screens/cartitem_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
@@ -28,10 +29,10 @@ class CartScreen extends ConsumerWidget {
 
     if (user == null) {
       return Scaffold(
-        appBar: AppBarFactory.simple(title: 'Shopping Cart'),
-        body: const AnimatedEmptyState(
+        appBar: AppBarFactory.simple(title: 'cart.your_cart'.tr()),
+        body: AnimatedEmptyState(
           icon: Icons.lock_outline_rounded,
-          title: 'Sign in to view cart',
+          title: 'auth.sign_in_required'.tr(),
           subtitle: 'Your cart items will be saved to your account.',
         ),
       );
@@ -46,7 +47,7 @@ class CartScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBarFactory.simple(title: 'Shopping Cart'),
+      appBar: AppBarFactory.simple(title: 'cart.your_cart'.tr()),
       backgroundColor: Colors.transparent,
       body: Container(
         decoration: BoxDecoration(
@@ -54,7 +55,15 @@ class CartScreen extends ConsumerWidget {
         ),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
+            constraints: BoxConstraints(
+              maxWidth: ResponsiveBreakpoints.getValue(
+                context: context,
+                mobile: double.infinity,
+                mobilePlus: double.infinity,
+                tablet: 700,
+                desktop: 800,
+              ),
+            ),
             child: productIdsAsync.when(
               loading: () => Center(
                 child: Column(
@@ -93,7 +102,7 @@ class CartScreen extends ConsumerWidget {
                     Text(
                       'Loading cart...',
                       style: TextStyle(
-                        color: Colors.grey[500],
+                        color: DesignTokens.textSecondary,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -110,7 +119,7 @@ class CartScreen extends ConsumerWidget {
                 if (productIds.isEmpty) {
                   return AnimatedEmptyState(
                     icon: Icons.shopping_cart_outlined,
-                    title: 'Your cart is empty',
+                    title: 'cart.empty_cart'.tr(),
                     subtitle: 'Looks like you haven\'t added any items yet.',
                     action: SizedBox(
                       width: 200,
@@ -196,7 +205,7 @@ class _CartItemWidget extends ConsumerWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: DesignTokens.outlineVariant,
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
               ),
             ),
@@ -210,7 +219,7 @@ class _CartItemWidget extends ConsumerWidget {
                     width: 120,
                     height: 14,
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
+                      color: DesignTokens.outlineVariant,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -219,7 +228,7 @@ class _CartItemWidget extends ConsumerWidget {
                     width: 60,
                     height: 14,
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
+                      color: DesignTokens.outlineVariant,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -341,7 +350,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : Colors.grey[900],
+                  color: isDark ? Colors.white : DesignTokens.textPrimary,
                 ),
               ),
               // Only this Consumer rebuilds when the subtotal value changes
@@ -402,7 +411,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                   'Frais de service',
                   style: TextStyle(
                     fontSize: 14,
-                    color: isDark ? Colors.grey[300] : Colors.grey[700],
+                    color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
                   ),
                 ),
               ),
@@ -411,7 +420,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: isDark ? Colors.grey[300] : Colors.grey[700],
+                  color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
                 ),
               ),
               const SizedBox(width: 4),
@@ -455,7 +464,7 @@ class _CartTotalDisplay extends ConsumerWidget {
               Icon(
                 Icons.receipt_long_outlined,
                 size: 16,
-                color: Colors.orange.withValues(alpha: 0.7),
+                color: DesignTokens.warning.withValues(alpha: 0.7),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -463,7 +472,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                   'Estimation taxes et frais',
                   style: TextStyle(
                     fontSize: 14,
-                    color: isDark ? Colors.grey[300] : Colors.grey[700],
+                    color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
                   ),
                 ),
               ),
@@ -522,7 +531,7 @@ class _CartTotalDisplay extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: isDark
                     ? Colors.white.withValues(alpha: 0.05)
-                    : Colors.grey[50],
+                    : DesignTokens.surface,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: deliveryInstructions.isNotEmpty
@@ -537,7 +546,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                     size: 20,
                     color: deliveryInstructions.isNotEmpty
                         ? DesignTokens.primary
-                        : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                        : (isDark ? DesignTokens.textDisabled : DesignTokens.textSecondary),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -549,7 +558,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.white : Colors.grey[900],
+                            color: isDark ? Colors.white : DesignTokens.textPrimary,
                           ),
                         ),
                         if (deliveryInstructions.isNotEmpty)
@@ -560,8 +569,8 @@ class _CartTotalDisplay extends ConsumerWidget {
                             style: TextStyle(
                               fontSize: 12,
                               color: isDark
-                                  ? Colors.grey[400]
-                                  : Colors.grey[600],
+                                  ? DesignTokens.textDisabled
+                                  : DesignTokens.textSecondary,
                             ),
                           )
                         else
@@ -570,8 +579,8 @@ class _CartTotalDisplay extends ConsumerWidget {
                             style: TextStyle(
                               fontSize: 12,
                               color: isDark
-                                  ? Colors.grey[500]
-                                  : Colors.grey[500],
+                                  ? DesignTokens.textSecondary
+                                  : DesignTokens.textSecondary,
                               fontStyle: FontStyle.italic,
                             ),
                           ),
@@ -581,7 +590,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                   Icon(
                     Icons.edit_outlined,
                     size: 18,
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    color: isDark ? DesignTokens.textDisabled : DesignTokens.textSecondary,
                   ),
                 ],
               ),
@@ -614,7 +623,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: DesignTokens.outlineVariant,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -634,7 +643,7 @@ class _CartTotalDisplay extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.grey[900],
+                      color: isDark ? Colors.white : DesignTokens.textPrimary,
                     ),
                   ),
                 ),
@@ -646,7 +655,7 @@ class _CartTotalDisplay extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 15,
                 height: 1.6,
-                color: isDark ? Colors.grey[300] : Colors.grey[700],
+                color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
               ),
             ),
             const SizedBox(height: 24),
@@ -697,7 +706,7 @@ class _CartTotalDisplay extends ConsumerWidget {
               'Ajoutez des instructions spéciales pour la livraison (optionnel) :',
               style: TextStyle(
                 fontSize: 14,
-                color: isDark ? Colors.grey[300] : Colors.grey[700],
+                color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
@@ -710,12 +719,12 @@ class _CartTotalDisplay extends ConsumerWidget {
                     "Ex: Laissez le colis sur le porche\nSonner à l'interphone, appartement 12\nLivraison après 14h uniquement",
                 hintStyle: TextStyle(
                   fontSize: 13,
-                  color: isDark ? Colors.grey[500] : Colors.grey[400],
+                  color: isDark ? DesignTokens.textSecondary : DesignTokens.textDisabled,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
-                    color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                    color: isDark ? DesignTokens.textPrimary : DesignTokens.outlineVariant,
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -725,11 +734,11 @@ class _CartTotalDisplay extends ConsumerWidget {
                 filled: true,
                 fillColor: isDark
                     ? Colors.white.withValues(alpha: 0.05)
-                    : Colors.grey[50],
+                    : DesignTokens.surface,
               ),
               style: TextStyle(
                 fontSize: 14,
-                color: isDark ? Colors.white : Colors.grey[900],
+                color: isDark ? Colors.white : DesignTokens.textPrimary,
               ),
             ),
           ],

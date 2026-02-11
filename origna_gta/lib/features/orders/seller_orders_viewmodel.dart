@@ -18,9 +18,37 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
     final repository = _ref.read(orderRepositoryProvider);
     
     try {
+      // Step 1: Update shipping cost
       await repository.updateShippingCost(orderId, actualShipping, 'Actual carrier cost');
-      await repository.capturePayment(orderId);
       
+      // Step 2: Capture payment — if this fails, shipping is updated but payment not captured.
+      // The seller can retry capture separately. Cron job auto_capture_confirmed_receipts
+      // will also catch it if receipt is confirmed.
+      try {
+        await repository.capturePayment(orderId);
+      } catch (captureError) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: AppError.getMessage(captureError, 'Shipping updated but payment capture failed. Please retry capture.'),
+        );
+        return;
+      }
+
+      // Step 3: Store tracking number if provided
+      if (trackingNumber.isNotEmpty) {
+        try {
+          // Update the first item with tracking info (seller ships entire order)
+          await repository.updateItemStatus(
+            orderId,
+            'all', // Convention: 'all' means entire order
+            'shipped',
+            trackingNumber: trackingNumber,
+          );
+        } catch (_) {
+          // Non-critical: shipping + capture succeeded, tracking is best-effort
+        }
+      }
+
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to update shipping cost'));

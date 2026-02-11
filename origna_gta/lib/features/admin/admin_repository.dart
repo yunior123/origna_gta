@@ -5,7 +5,7 @@ import 'package:origna_gta/utils/utils.dart';
 
 abstract class AdminRepository {
   Future<void> deleteProduct(String productId);
-  Future<void> disableAdminMfa();
+  Future<void> disableAdminMfa(String code);
   Future<Map<String, dynamic>> enableAdminMfa();
   Future<UserModel?> fetchUserById(String userId);
   Future<Map<String, dynamic>> getPaymentProviders();
@@ -34,8 +34,8 @@ class FirebaseAdminRepository implements AdminRepository {
   }
 
   @override
-  Future<void> disableAdminMfa() async {
-    await _functions.httpsCallable('admin_mfa_disable').call();
+  Future<void> disableAdminMfa(String code) async {
+    await _functions.httpsCallable('admin_mfa_disable').call({ApiKeys.code: code});
   }
 
   @override

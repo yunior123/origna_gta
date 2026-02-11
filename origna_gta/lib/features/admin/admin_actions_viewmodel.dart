@@ -38,10 +38,10 @@ class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
     }
   }
 
-  Future<bool> disableAdminMfa() async {
+  Future<bool> disableAdminMfa(String code) async {
     state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
     try {
-      await _repository.disableAdminMfa();
+      await _repository.disableAdminMfa(code);
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
     } catch (e) {

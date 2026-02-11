@@ -32,7 +32,9 @@ from handlers.admin import (  # noqa: E402
     admin_mfa_verify_backup,
     admin_update_product_stock,
     delete_account,
+    export_my_data,
     suspend_seller,
+    unsubscribe_email,
     unsuspend_seller,
     update_user_roles,
 )
@@ -49,6 +51,7 @@ from handlers.cron_jobs import (  # noqa: E402
     cleanup_stale_security_alerts,
     cleanup_stale_webhook_events,
     monitor_algolia_sync,
+    retry_failed_algolia_syncs,
 )
 
 # ===============================================
@@ -88,6 +91,8 @@ from handlers.payment_stripe import (  # noqa: E402
     process_charge_refunded,
     process_dispute_closed,
     process_dispute_created,
+    process_dispute_funds_reinstated,
+    process_dispute_updated,
     stripe_webhook,
     verify_cart_prices,
 )
@@ -127,6 +132,7 @@ if not firebase_admin._apps:
 
 # Initialize Sentry for production error monitoring
 from config import init_sentry  # noqa: E402
+
 init_sentry()
 
 
@@ -180,6 +186,13 @@ __all__ = [
     'get_connect_account_status',
     'create_account_link',
 
+    # Dispute handlers
+    'process_charge_refunded',
+    'process_dispute_created',
+    'process_dispute_closed',
+    'process_dispute_updated',
+    'process_dispute_funds_reinstated',
+
     # Airwallex payments
     'airwallex_create_seller_account',
     'airwallex_process_payment',
@@ -218,6 +231,8 @@ __all__ = [
     'admin_mfa_verify_backup',
     'admin_mfa_disable',
     'delete_account',
+    'export_my_data',
+    'unsubscribe_email',
 
     # User Profile
     'update_user_profile',
@@ -236,6 +251,12 @@ __all__ = [
     'monitor_algolia_sync',
     'cleanup_stale_rate_limits',
     'cleanup_orphaned_r2_images',
+    'cleanup_stale_webhook_events',
+    'cleanup_stale_security_alerts',
+    'retry_failed_algolia_syncs',
+
+    # Shipping
+    'calculate_shipping_cost',
 ]
 
 print(f"""

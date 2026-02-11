@@ -235,6 +235,62 @@
           "required": false,
           "description": "MFA lockout expiry after too many failed attempts"
         },
+        "emailConsent": {
+          "type": "boolean",
+          "default": false,
+          "description": "User accepted transactional emails (CASL)"
+        },
+        "marketingOptIn": {
+          "type": "boolean",
+          "default": false,
+          "description": "Explicit opt-in for marketing emails (CASL)"
+        },
+        "unsubscribedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When user unsubscribed from marketing emails (CASL audit trail)"
+        },
+        "privacyPolicyVersion": {
+          "type": "string",
+          "required": false,
+          "description": "Version of privacy policy accepted by user"
+        },
+        "termsVersion": {
+          "type": "string",
+          "required": false,
+          "description": "Version of terms of service accepted by user"
+        },
+        "preferredLanguage": {
+          "type": "string",
+          "required": false,
+          "default": "en",
+          "description": "User preferred language code (en, fr)"
+        },
+        "consentTimestamp": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When user gave consent (PIPEDA)"
+        },
+        "consentMethod": {
+          "type": "string",
+          "required": false,
+          "description": "How consent was obtained (e.g., 'registration', 'settings')"
+        },
+        "dataProcessingConsent": {
+          "type": "boolean",
+          "default": false,
+          "description": "Consent for data processing per PIPEDA"
+        },
+        "privacyAcceptedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When privacy policy was accepted"
+        },
+        "termsAcceptedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When terms of service were accepted"
+        },
         "deleted": {
           "type": "boolean",
           "default": false,
@@ -834,6 +890,32 @@
           "required": false,
           "description": "Reason for cancellation"
         },
+        "disputeId": {
+          "type": "string",
+          "required": false,
+          "description": "Stripe dispute ID if order is disputed"
+        },
+        "preDisputeStatus": {
+          "type": "string",
+          "required": false,
+          "description": "Order status before dispute was filed (for restoration on dispute won)"
+        },
+        "disputedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When the dispute was filed"
+        },
+        "disputeResolvedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When the dispute was resolved"
+        },
+        "disputeResolution": {
+          "type": "string",
+          "required": false,
+          "description": "Dispute outcome (won, lost)",
+          "values": ["won", "lost"]
+        },
         "requiresManualReview": {
           "type": "boolean",
           "default": false,
@@ -1149,26 +1231,47 @@
     },
 
     "security_alerts": {
-      "description": "Security alert records for suspicious activity",
+      "description": "Security alert records for suspicious activity, payment issues, and system health",
       "documentId": "{auto-generated}",
       "fields": {
-        "userId": { "type": "string", "required": true, "description": "Affected user ID" },
-        "alertType": { "type": "string", "required": true, "description": "Alert type: suspicious_login, rate_limit_exceeded, etc." },
+        "type": { "type": "string", "required": true, "description": "Alert type (SecurityAlertTypes constant)", "values": ["algolia_sync_issue", "dispute_created", "role_change", "seller_suspended", "seller_unsuspended", "payment_provider_disabled", "refund_reversal_failed", "payout_failed", "refund_failed", "seller_account_changed", "payout_record_incomplete", "mfa_low_backup_codes", "seller_kyc_failed", "invalid_gst_attempt", "blocked_gst_attempt", "shared_gst_number", "tax_exemption_pending_review", "suspicious_tax_exemption", "auth_deletion_failed"] },
         "severity": { "type": "string", "required": true, "values": ["low", "medium", "high", "critical"], "description": "Alert severity" },
-        "details": { "type": "map", "required": false, "description": "Alert details" },
         "resolved": { "type": "boolean", "default": false, "description": "Whether alert has been resolved" },
-        "createdAt": { "type": "timestamp", "required": true, "description": "Alert creation time" }
+        "resolvedAt": { "type": "timestamp", "required": false, "description": "When the alert was resolved" },
+        "resolution": { "type": "string", "required": false, "description": "Resolution description" },
+        "timestamp": { "type": "timestamp", "required": true, "description": "Alert creation timestamp (SERVER_TIMESTAMP)" },
+        "orderId": { "type": "string", "required": false, "description": "Associated order ID (for dispute/payout alerts)" },
+        "sellerId": { "type": "string", "required": false, "description": "Associated seller ID" },
+        "userId": { "type": "string", "required": false, "description": "Affected user ID" },
+        "chargeId": { "type": "string", "required": false, "description": "Stripe charge ID (dispute alerts)" },
+        "accountId": { "type": "string", "required": false, "description": "Stripe account ID" },
+        "reason": { "type": "string", "required": false, "description": "Alert reason" },
+        "paymentIntentId": { "type": "string", "required": false, "description": "Stripe Payment Intent ID" },
+        "destination": { "type": "string", "required": false, "description": "Transfer destination account" },
+        "failureMessage": { "type": "string", "required": false, "description": "Failure detail message" },
+        "firestoreCount": { "type": "integer", "required": false, "description": "Firestore product count (Algolia sync alerts)" },
+        "algoliaCount": { "type": "integer", "required": false, "description": "Algolia product count (Algolia sync alerts)" },
+        "mismatchPercent": { "type": "number", "required": false, "description": "Mismatch percentage (Algolia sync alerts)" },
+        "adminId": { "type": "string", "required": false, "description": "Admin who triggered action (role_change alerts)" },
+        "targetUserId": { "type": "string", "required": false, "description": "User targeted by admin action" },
+        "oldRoles": { "type": "array<string>", "required": false, "description": "Previous roles (role_change alerts)" },
+        "newRoles": { "type": "array<string>", "required": false, "description": "New roles (role_change alerts)" },
+        "productsDeactivated": { "type": "integer", "required": false, "description": "Count of products deactivated (seller_suspended alerts)" },
+        "ordersCancelled": { "type": "integer", "required": false, "description": "Count of orders cancelled (seller_suspended alerts)" },
+        "errorCode": { "type": "string", "required": false, "description": "Error code from Stripe or other service" },
+        "payoutId": { "type": "string", "required": false, "description": "Payout document ID" },
+        "transferId": { "type": "string", "required": false, "description": "Stripe Transfer ID" },
+        "reversalErrors": { "type": "array<string>", "required": false, "description": "List of reversal error messages" }
       }
     },
 
     "rate_limits": {
-      "description": "Rate limiting records for API protection",
+      "description": "Rate limiting records for API protection. Cleaned up by cleanup_stale_rate_limits cron every 30 min.",
       "documentId": "{identifier}",
       "fields": {
-        "identifier": { "type": "string", "required": true, "description": "Rate limit key (IP, user ID, etc.)" },
         "count": { "type": "integer", "required": true, "description": "Request count in current window" },
-        "windowStart": { "type": "timestamp", "required": true, "description": "Start of rate limit window" },
-        "blocked": { "type": "boolean", "default": false, "description": "Whether identifier is blocked" }
+        "first_request": { "type": "timestamp", "required": true, "description": "Start of rate limit window" },
+        "last_request": { "type": "timestamp", "required": true, "description": "Most recent request in window (used by cleanup cron)" }
       }
     },
 
@@ -1206,6 +1309,32 @@
         "rating": { "type": "number", "required": true, "description": "Rating value (1-5)" },
         "comment": { "type": "string", "required": false, "description": "Review text" },
         "createdAt": { "type": "timestamp", "required": true, "description": "Rating timestamp" }
+      }
+    },
+
+    "_cron_locks": {
+      "description": "Distributed locks for cron jobs to prevent concurrent execution across Cloud Function instances",
+      "documentId": "{jobName} - cron job function name",
+      "fields": {
+        "lockedAt": { "type": "timestamp", "required": true, "description": "When the lock was acquired" },
+        "lockedBy": { "type": "string", "required": true, "description": "Identifier of the instance holding the lock (cron_{jobName})" },
+        "status": { "type": "string", "required": true, "values": ["running", "completed"], "description": "Lock status" },
+        "completedAt": { "type": "timestamp", "required": false, "description": "When the job finished and released the lock" }
+      }
+    },
+
+    "algolia_sync_failures": {
+      "description": "Dead Letter Queue for failed Algolia sync operations, retried hourly up to max retries",
+      "documentId": "{auto-generated}",
+      "fields": {
+        "productId": { "type": "string", "required": true, "description": "Product ID that failed to sync" },
+        "action": { "type": "string", "required": true, "values": ["index", "delete"], "description": "Sync action that failed" },
+        "resolved": { "type": "boolean", "default": false, "description": "Whether the failure has been resolved (retried or max retries exceeded)" },
+        "retryCount": { "type": "integer", "default": 0, "description": "Number of retry attempts" },
+        "maxRetriesExceeded": { "type": "boolean", "default": false, "description": "True if retry limit reached without success" },
+        "lastRetryError": { "type": "string", "required": false, "description": "Error type from most recent retry attempt" },
+        "createdAt": { "type": "timestamp", "required": true, "description": "When the failure was first recorded" },
+        "updatedAt": { "type": "timestamp", "required": false, "description": "Last retry or resolution timestamp" }
       }
     }
   },

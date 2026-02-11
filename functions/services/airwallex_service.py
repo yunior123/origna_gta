@@ -1,8 +1,17 @@
 """
-Airwallex Payment Service - Complete Implementation
+Airwallex Payment Service — DEAD CODE FOR LAUNCH
+=============================================
+Complete implementation kept for post-launch international seller support.
+Stripe is the sole payment provider at launch (March 2026).
+This service is only called by payment_airwallex.py handlers, which are
+gated behind `require_provider_enabled(PaymentProvider.AIRWALLEX)`.
+
 P2.1-P2.5: Account, Backend, Payment, Payout, Webhooks
+
+TODO(post-launch): Evaluate Airwallex activation or remove entirely.
 """
 import logging
+
 logger = logging.getLogger(__name__)
 import base64
 import hashlib

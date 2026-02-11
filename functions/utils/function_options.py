@@ -3,6 +3,7 @@ Global configuration options for Firebase Cloud Functions
 Optimized for FREE TIER - minimal resource usage, reasonable timeouts
 """
 from firebase_functions import options
+
 from schema_constants import AppConfig
 
 # Canonical CORS policy — applied to all on_call functions

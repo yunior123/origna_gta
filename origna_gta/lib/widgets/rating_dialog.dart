@@ -50,14 +50,14 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 16),
-          const Text('How would you rate this product?', style: TextStyle(color: Colors.grey)),
+          const Text('How would you rate this product?', style: TextStyle(color: DesignTokens.textSecondary)),
           const SizedBox(height: 16),
           _buildStarRating(),
           const SizedBox(height: 8),
           Center(
             child: Text(
               _getRatingText(),
-              style: TextStyle(color: _selectedRating > 0 ? Colors.amber[700] : Colors.grey, fontWeight: FontWeight.w500),
+              style: TextStyle(color: _selectedRating > 0 ? DesignTokens.warning : DesignTokens.textSecondary, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -97,7 +97,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
             },
             child: Padding(
               padding: const EdgeInsets.all(4), // WCAG 2.5.8: 4+40+4=48dp touch target
-              child: Icon(starNumber <= _selectedRating ? Icons.star : Icons.star_border, color: Colors.amber[700], size: 40),
+              child: Icon(starNumber <= _selectedRating ? Icons.star : Icons.star_border, color: DesignTokens.warning, size: 40),
             ),
           ),
         );
@@ -134,11 +134,11 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
 
     if (success) {
       navigator.pop();
-      messenger.showSnackBar(const SnackBar(content: Text('Thank you for your rating!'), backgroundColor: Colors.green));
+      messenger.showSnackBar(const SnackBar(content: Text('Thank you for your rating!'), backgroundColor: DesignTokens.success));
       widget.onRatingSubmitted?.call();
     } else {
       final error = ref.read(productRatingViewModelProvider).errorMessage ?? 'Error submitting rating';
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
       setState(() => _isSubmitting = false);
     }
   }

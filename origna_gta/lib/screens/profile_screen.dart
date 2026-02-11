@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,7 +29,7 @@ class ProfileScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBarFactory.simple(title: 'Settings & Profile'),
+      appBar: AppBarFactory.simple(title: 'profile.settings'.tr()),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -117,7 +118,7 @@ class ProfileScreen extends ConsumerWidget {
                     Icon(Icons.lock_outline, size: 80, color: DesignTokens.textDisabled),
                     const SizedBox(height: 16),
                     Text(
-                      'Please sign in to access settings',
+                      'profile.sign_in_prompt'.tr(),
                       style: TextStyle(fontSize: 18, color: DesignTokens.textPrimary),
                     ),
                     const SizedBox(height: 16),
@@ -130,7 +131,7 @@ class ProfileScreen extends ConsumerWidget {
                         AppRoutes.login,
                       ),
                       icon: const Icon(Icons.login_rounded),
-                      label: const Text('Sign In'),
+                      label: Text('auth.sign_in'.tr()),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: DesignTokens.primary,
                         foregroundColor: Colors.white,
@@ -304,7 +305,7 @@ class ProfileScreen extends ConsumerWidget {
                         child: Column(
                           children: [
                             ModernButton(
-                              label: 'Sign Out',
+                              label: 'auth.sign_out'.tr(),
                               onPressed: () async {
                                 await viewModel.signOut();
                                 if (context.mounted) {
@@ -326,7 +327,7 @@ class ProfileScreen extends ConsumerWidget {
                                 onTap: () =>
                                     _showDeleteAccountDialog(context, ref),
                                 borderRadius: BorderRadius.circular(12),
-                                splashColor: Colors.red.withValues(alpha: 0.1),
+                                splashColor: DesignTokens.error.withValues(alpha: 0.1),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 12,
@@ -372,7 +373,7 @@ class ProfileScreen extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[800]!.withValues(alpha: 0.5) : Colors.white,
+        color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : Colors.white,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(
           color: isDark ? DesignTokens.darkOutline : DesignTokens.outlineVariant,
@@ -704,7 +705,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Account deleted successfully'),
+            content: Text('auth.account_deleted'.tr()),
             backgroundColor: DesignTokens.success,
           ),
         );
@@ -891,7 +892,7 @@ class _EmailVerificationRequiredViewState
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.grey[800]!.withValues(alpha: 0.5)
+                        ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5)
                         : DesignTokens.surface,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(

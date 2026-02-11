@@ -7,6 +7,7 @@ Order Lifecycle Management Handlers
 """
 
 import logging
+
 logger = logging.getLogger(__name__)
 from datetime import UTC, datetime
 from typing import Any
@@ -808,6 +809,17 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
     if not payment_intent_id:
         raise https_fn.HttpsError('failed-precondition', 'No payment intent found')
+
+    # SECURITY FIX #15: Pre-check refund status BEFORE calling Stripe
+    # Prevents issuing a Stripe refund only to discover item is already refunded in Firestore.
+    # The idempotency key f'refund_{order_id}_{product_id}' also protects against double-refund
+    # but this check avoids unnecessary Stripe API calls.
+    for pre_item in order_data.get(Fields.ITEMS, []):
+        if pre_item.get(Fields.PRODUCT_ID) == product_id:
+            if pre_item.get(Fields.STATUS) == DeliveryStatusValues.REFUNDED:
+                logger.info(f'Item {product_id} in order {order_id} already refunded (pre-check)')
+                return create_success_response({'alreadyRefunded': True, Fields.ORDER_ID: order_id})
+            break
 
     try:
         refund = stripe.Refund.create(
