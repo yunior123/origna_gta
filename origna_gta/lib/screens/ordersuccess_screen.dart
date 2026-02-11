@@ -1,4 +1,5 @@
 // OrderSuccessScreen
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -58,9 +59,9 @@ class OrderSuccessScreen extends StatelessWidget {
                       delay: const Duration(milliseconds: 100),
                       child: ShaderMask(
                         shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                        child: const Text(
-                          'Order Placed Successfully!',
-                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white),
+                        child: Text(
+                          'orders.order_placed'.tr(),
+                          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -75,7 +76,7 @@ class OrderSuccessScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(DesignTokens.radius12),
                         ),
                         child: Text(
-                          'Order ID: $orderId',
+                          'orders.order_id_label'.tr(namedArgs: {'id': orderId}),
                           style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
                         ),
                       ),
@@ -84,7 +85,7 @@ class OrderSuccessScreen extends StatelessWidget {
                     FadeSlideIn(
                       delay: const Duration(milliseconds: 200),
                       child: Text(
-                        'Thank you for your purchase!\nYou will receive a confirmation email shortly.',
+                        'orders.thank_you'.tr(),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 14,
@@ -100,9 +101,9 @@ class OrderSuccessScreen extends StatelessWidget {
                         button: true,
                         label: 'btn-continue-shopping',
                         child: ModernButton(
-                          label: 'Continue Shopping',
+                          label: 'orders.continue_shopping'.tr(),
                           icon: Icons.shopping_bag_outlined,
-                          onPressed: () => Navigator.of(context).pop(),
+                          onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
                         ),
                       ),
                     ),
@@ -113,7 +114,7 @@ class OrderSuccessScreen extends StatelessWidget {
                         button: true,
                         label: 'btn-view-my-orders',
                         child: ModernButton(
-                          label: 'View My Orders',
+                          label: 'orders.view_my_orders'.tr(),
                           icon: Icons.receipt_long_outlined,
                           isPrimary: false,
                           isOutlined: true,

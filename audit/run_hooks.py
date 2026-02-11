@@ -53,6 +53,8 @@ from hooks.hook_extended import (
     OrdersHook, ErrorHandlingHook, SellerHook,
 )
 from hooks.hook_tax import TaxHook
+from hooks.hook_infra import InfraHook
+from hooks.hook_qa import QAHook
 from hooks.base import get_all_hooks
 from hooks.runner import HookRunner
 
@@ -74,6 +76,8 @@ Available hooks:
   errors        🛡️  Error handling (retries, graceful degradation, Sentry)
   seller        🏪 Seller onboarding (Stripe Connect, verification, payouts)
   tax           🧾 Tax compliance (GST/HST/PST/QST, Stripe Tax, CRA compliance)
+  infra         🏗️  Infrastructure verification (Functions, Rules, Indexes, Stripe, Secrets)
+  qa            🧪 QA Engineer (test coverage, gap detection, framework recommendations)
         """,
     )
 

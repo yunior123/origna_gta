@@ -3,12 +3,13 @@
 Cross-Stack Audit — Sends matched frontend↔backend file pairs to Kimi K2.5
 for deep analysis of inconsistencies at the stack boundary.
 
-Usage: python3 audit/audit_cross_stack.py
+Usage: python3 audit/runners/audit_cross_stack.py
 """
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+_audit_dir = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_audit_dir))
 from common import bundle_targeted_files, run_streaming_audit, save_report
 
 WORKFLOW_NAME = "Cross-Stack Consistency"

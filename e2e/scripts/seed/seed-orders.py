@@ -3,7 +3,7 @@
 Seed Orders — Creates realistic test orders in Firestore emulator.
 Creates 8 orders at various statuses for UI testing.
 
-Usage: python3 e2e/seed-orders.py
+Usage: python3 e2e/scripts/seed/seed-orders.py
 """
 
 import json

@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 from mailjet_rest import Client
 
-from config import IS_EMULATOR, MAILJET_API_KEY, MAILJET_SECRET_KEY
+from config import IS_EMULATOR, MAILJET_API_KEY, MAILJET_SECRET_KEY, UNSUBSCRIBE_HMAC_SECRET
 from schema_constants import AppConfig, EmailConfig, Fields
 
 # Allow real email sending in emulator mode for E2E testing
@@ -23,7 +23,8 @@ APP_BASE_URL = EmailConfig.DEV_URL if IS_EMULATOR else EmailConfig.PROD_URL
 UNSUBSCRIBE_URL = EmailConfig.UNSUBSCRIBE_URL_DEV if IS_EMULATOR else EmailConfig.UNSUBSCRIBE_URL_PROD
 
 # HMAC secret for signed unsubscribe tokens (prevents unauthorized unsubscription)
-_UNSUBSCRIBE_SECRET = os.environ.get('UNSUBSCRIBE_HMAC_SECRET', 'origna-unsub-default-dev-key')
+# Loaded from GCP Secret Manager in production, from .env in emulator
+_UNSUBSCRIBE_SECRET = UNSUBSCRIBE_HMAC_SECRET or 'origna-unsub-default-dev-key'
 
 
 def _generate_unsubscribe_token(email: str) -> str:
@@ -348,7 +349,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
     shipping = 0  # Shipping is charged to buyer, not split per seller
     taxes = 0  # Taxes apply to the buyer's total, not per-seller
     total = seller_subtotal  # Seller revenue = subtotal of their items only
-    num_items = sum(item.get(Fields.QUANTITY, 1) for item in order_data.get(Fields.ITEMS, []))
+    # AUDIT FIX: Removed duplicate num_items that was overwriting seller-only count with full order count
 
     delivery_info = order_data.get(Fields.SHIPPING_ADDRESS, {})
     addr_parts = [
@@ -1179,6 +1180,11 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
         logger.info(f"EMULATOR: Would send capture failure email for order {order_id[:8]}")
         return
 
+    # AUDIT FIX: Guard against missing Mailjet credentials (prevents crash)
+    if not MAILJET_API_KEY or not MAILJET_SECRET_KEY:
+        MAILJET_CREDENTIAL_REDACTED('Mailjet not configured — skipping capture failure email')
+        return
+
     # Sanitize user-controlled inputs before HTML injection
     safe_name = html.escape(str(customer_name or ''))
     safe_error = html.escape(str(error_message or 'Unknown error'))
@@ -1302,6 +1308,17 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
     """
     if not customer_email or not authentication_url:
         logger.warning("⚠️ Cannot send 3DS email: missing customer_email or authentication_url")
+        return
+
+    # AUDIT FIX: Validate authentication URL domain to prevent phishing
+    from urllib.parse import urlparse
+    parsed_url = urlparse(authentication_url)
+    ALLOWED_3DS_DOMAINS = {
+        'checkout.airwallex.com', 'pci-host.airwallex.com',
+        'pci-api.airwallex.com', 'api.airwallex.com',
+    }
+    if parsed_url.hostname not in ALLOWED_3DS_DOMAINS:
+        logger.critical(f'SECURITY: Blocked suspicious 3DS URL domain: {parsed_url.hostname}')
         return
 
     if IS_EMULATOR and not FORCE_REAL_EMAIL:

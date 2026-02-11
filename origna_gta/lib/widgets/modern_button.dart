@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../utils/design_tokens.dart';
+import 'modern_loading_indicator.dart';
 
 /// Modern 2100 Button with gradient and smooth interactions
 class ModernButton extends StatefulWidget {
@@ -96,17 +97,11 @@ class _ModernButtonState extends State<ModernButton>
               borderRadius: BorderRadius.circular(DesignTokens.radius16),
               child: Center(
                 child: widget.isLoading
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation(
-                            widget.isPrimary && !widget.isOutlined
-                                ? Colors.white
-                                : DesignTokens.primary,
-                          ),
-                        ),
+                    ? ModernLoadingIndicator(
+                        size: 20,
+                        color: widget.isPrimary && !widget.isOutlined
+                            ? Colors.white
+                            : DesignTokens.primary,
                       )
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,

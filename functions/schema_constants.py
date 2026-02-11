@@ -1010,6 +1010,7 @@ class ApiKeys:
     NEW_SHIPPING_COST = "newShippingCost"
     SUBTOTAL = "subtotal"
     ITEM_IDS = "itemIds"
+    IDEMPOTENCY_KEY = "idempotencyKey"
 
     # === RESPONSE KEYS (returned from Cloud Functions) ===
     SUCCESS = "success"

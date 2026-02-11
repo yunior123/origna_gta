@@ -17,6 +17,10 @@ import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
+/// Keep the semantics handle alive so it doesn't get GC'd in release mode.
+/// Without this, ensureSemantics() has no lasting effect.
+SemanticsHandle? _semanticsHandle;
+
 void main() {
   // Use path URL strategy (no # in URLs) for cleaner web URLs
   usePathUrlStrategy();
@@ -32,8 +36,9 @@ void main() {
       // Force semantic tree on web for accessibility + E2E Playwright testing.
       // Flutter Web renders to <canvas> — this generates a parallel <flt-semantics>
       // DOM tree with ARIA attributes that Playwright can target.
+      // IMPORTANT: Store the handle — if it's GC'd, semantics gets disabled.
       if (kIsWeb) {
-        SemanticsBinding.instance.ensureSemantics();
+        _semanticsHandle = SemanticsBinding.instance.ensureSemantics();
       }
 
       await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);

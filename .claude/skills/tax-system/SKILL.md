@@ -82,7 +82,7 @@ Source of truth: [CRA GST/HST rates](https://www.canada.ca/en/revenue-agency/ser
 | `functions/tests/test_critical_flow_scenarios.py` | Province rates + fallback tests |
 | `functions/tests/test_handlers_payment_stripe.py` | Checkout flow tax tests |
 | `origna_gta/test/unit/business_logic_test.dart` | Frontend tax calculation tests |
-| `e2e/seed-orders.py` | `make_taxes()` seeder function |
+| `e2e/scripts/seed/seed-orders.py` | `make_taxes()` seeder function |
 
 ---
 
@@ -96,7 +96,7 @@ When changing ANY tax rate or tax logic:
 4. **`functions/services/shipping_service.py`** → Update `_TAX_RATES_CACHE` (combined decimal)
 5. **`functions/handlers/payment_stripe.py`** → `_PROVINCE_TAX_BREAKDOWN` is auto-derived ✅
 6. **`docs/database_schema.json`** → Update tax rates in business rules section
-7. **`e2e/seed-orders.py`** → Update `make_taxes()` function
+7. **`e2e/scripts/seed/seed-orders.py`** → Update `make_taxes()` function
 8. **ALL tests** → Update expected values
 
 **`_PROVINCE_TAX_BREAKDOWN` in payment_stripe.py** is auto-derived from `BusinessRules.TAX_RATES` — no manual update needed.
@@ -225,7 +225,7 @@ When auditing the tax system, verify:
 - [ ] Rate limiting on GST number updates (3/day)
 - [ ] Refund includes proportional tax refund
 - [ ] `database_schema.json` rates match code
-- [ ] `e2e/seed-orders.py` covers all 13 provinces/territories
+- [ ] `e2e/scripts/seed/seed-orders.py` covers all 13 provinces/territories
 - [ ] Cart screen info text shows correct rate ranges
 - [ ] Tests cover all provinces and edge cases
 

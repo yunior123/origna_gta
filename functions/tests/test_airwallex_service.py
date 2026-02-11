@@ -264,11 +264,21 @@ class TestPaymentIntents:
 
     def test_create_payment_intent_negative_amount_raises(self, service):
         """Should reject negative amounts."""
-        with pytest.raises(ValueError, match="non-negative"):
+        with pytest.raises(ValueError, match="positive"):
             service.create_payment_intent_for_checkout(
                 amount_cents=-100,
                 currency="cad",
                 order_id="order_neg",
+                return_url="https://origna.ca/return",
+            )
+
+    def test_create_payment_intent_zero_amount_raises(self, service):
+        """Should reject zero amounts — no $0 payments allowed."""
+        with pytest.raises(ValueError, match="positive"):
+            service.create_payment_intent_for_checkout(
+                amount_cents=0,
+                currency="cad",
+                order_id="order_zero",
                 return_url="https://origna.ca/return",
             )
 

@@ -499,7 +499,7 @@ class TestThreeDSAuthenticationEmail:
                 "order_3ds_prod",
                 "buyer@prod.ca",
                 "Marie Dupont",
-                "https://secure.bank.com/3ds/xyz",
+                "https://checkout.airwallex.com/3ds/xyz",
                 199.99,
             )
             mock_client.send.create.assert_called_once()
@@ -507,7 +507,7 @@ class TestThreeDSAuthenticationEmail:
             msg = call_data["Messages"][0]
             assert msg["To"][0]["Email"] == "buyer@prod.ca"
             assert "Verify Your Payment" in msg["Subject"]
-            assert "https://secure.bank.com/3ds/xyz" in msg["HTMLPart"]
+            assert "https://checkout.airwallex.com/3ds/xyz" in msg["HTMLPart"]
             assert msg["From"]["Name"] == EmailConfig.SENDER_NAME_SECURITY
         finally:
             mod.IS_EMULATOR = original_emulator

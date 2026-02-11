@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -323,11 +326,11 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     );
   }
 
-  // Admin Panel screen
+  // Admin Panel screen — requires admin role verification
   if (uri.path == AppRoutes.adminPanel) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: admin_panel.loadLibrary, builder: () => admin_panel.AdminPanelScreen())),
+      builder: (_) => AuthRequiredGate(child: AdminRequiredGate(child: DeferredWidget(loader: admin_panel.loadLibrary, builder: () => admin_panel.AdminPanelScreen()))),
     );
   }
 
@@ -358,6 +361,7 @@ class OrignaApp extends ConsumerStatefulWidget {
 
 class _OrignaAppState extends ConsumerState<OrignaApp> {
   final _sessionTimeout = SessionTimeoutService();
+  StreamSubscription<User?>? _authSubscription;
 
   @override
   Widget build(BuildContext context) {
@@ -459,6 +463,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
 
   @override
   void dispose() {
+    _authSubscription?.cancel();
     _sessionTimeout.stopMonitoring();
     super.dispose();
   }
@@ -466,12 +471,12 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
   @override
   void initState() {
     super.initState();
-    // Listen to auth state changes
-    ref.read(firebaseAuthProvider).authStateChanges().listen((user) async {
+    // Listen to auth state changes — store subscription for cleanup
+    _authSubscription = ref.read(firebaseAuthProvider).authStateChanges().listen((user) async {
       if (user != null && mounted) {
         _sessionTimeout.startMonitoring(context);
 
-        // ✅ Ensure Firestore document exists for verified users
+        // Ensure Firestore document exists for verified users
         await ref.read(authRepositoryProvider).ensureUserDocumentExists();
       } else {
         _sessionTimeout.stopMonitoring();

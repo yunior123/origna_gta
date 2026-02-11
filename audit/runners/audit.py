@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Code auditor using Qwen3 Coder 480B via NVIDIA NIM API.
-Specialized in code logic vulnerabilities and app functionality bugs.
-Reads NVIDIA_NIM_QWEN_API_KEY from functions/.env or environment.
+Code auditor using Kimi 2.5 via NVIDIA NIM API.
+Reads NVIDIA_NIM_API_KEY from functions/.env or environment.
 """
 import os
 import sys
@@ -11,21 +10,23 @@ import requests
 from datetime import datetime
 from pathlib import Path
 
-# Resolve project root (parent of audit/)
+# Resolve project root (grandparent: runners/ → audit/ → project root)
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent
+AUDIT_DIR = SCRIPT_DIR.parent
+PROJECT_ROOT = AUDIT_DIR.parent
 
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(AUDIT_DIR))
+sys.path.insert(0, str(AUDIT_DIR / "prompts"))
 from collect_files import collect_project_files, bundle_files
-from prompt_qwen import AUDIT_PROMPT_QWEN
+from prompt import AUDIT_PROMPT
 
 API_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
-MODEL = "qwen/qwen3-coder-480b-a35b-instruct"
+MODEL = "moonshotai/kimi-k2.5"
 
 
 def load_api_key():
     """Load API key from environment or functions/.env file."""
-    key = os.getenv("NVIDIA_NIM_QWEN_API_KEY")
+    key = os.getenv("NVIDIA_NIM_API_KEY")
     if key:
         return key
 
@@ -36,10 +37,10 @@ def load_api_key():
             if line.startswith("#") or "=" not in line:
                 continue
             k, v = line.split("=", 1)
-            if k.strip() == "NVIDIA_NIM_QWEN_API_KEY":
+            if k.strip() == "NVIDIA_NIM_API_KEY":
                 return v.strip()
 
-    print("ERROR: NVIDIA_NIM_QWEN_API_KEY not found.")
+    print("ERROR: NVIDIA_NIM_API_KEY not found.")
     print("Set it as env var or add it to functions/.env")
     sys.exit(1)
 
@@ -58,12 +59,11 @@ def run_audit(project_root):
         "messages": [
             {
                 "role": "user",
-                "content": AUDIT_PROMPT_QWEN + project_text,
+                "content": AUDIT_PROMPT + project_text,
             }
         ],
-        "temperature": 0.7,
-        "top_p": 0.8,
-        "max_tokens": 4096,
+        "temperature": 0.3,
+        "max_tokens": 8192,
         "stream": True,
     }
 
@@ -103,12 +103,12 @@ def main():
     output_dir.mkdir(exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    report_path = output_dir / f"qwen_report_{timestamp}.md"
+    report_path = output_dir / f"report_{timestamp}.md"
 
     # Also write latest
-    latest_path = output_dir / "qwen_report.md"
+    latest_path = output_dir / "report.md"
 
-    header = f"# Qwen3 Coder Audit Report\n\n**Generated:** {datetime.now().isoformat()}\n**Model:** {MODEL}\n**Focus:** Code Logic & Functionality Vulnerabilities\n\n---\n\n"
+    header = f"# Audit Report\n\n**Generated:** {datetime.now().isoformat()}\n**Model:** {MODEL}\n\n---\n\n"
     full_report = header + report
 
     report_path.write_text(full_report)

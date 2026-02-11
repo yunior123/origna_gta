@@ -24,6 +24,7 @@ class ShippingApprovalViewModel extends StateNotifier<ShippingApprovalState> {
   ShippingApprovalViewModel(this._ref) : super(ShippingApprovalState());
 
   Future<bool> approveShippingCost(String orderId, bool approved) async {
+    if (state.isLoading) return false;
     state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
     try {
       await _ref.read(orderRepositoryProvider).approveShippingCost(orderId, approved);

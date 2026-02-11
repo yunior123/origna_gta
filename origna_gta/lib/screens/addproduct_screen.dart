@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -184,7 +185,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                     children: [
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        tooltip: 'Go back',
+                        tooltip: 'product.go_back'.tr(),
                         icon: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -194,9 +195,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                           child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
                         ),
                       ),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'New Product',
+                          'product.new_product'.tr(),
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
@@ -250,26 +251,26 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                 _buildSectionCard(
                                   index: 0,
                                   icon: Icons.shopping_bag_rounded,
-                                  title: 'Product Details',
-                                  subtitle: 'Name, description & pricing',
+                                  title: 'product.product_details'.tr(),
+                                  subtitle: 'product.name_desc_pricing'.tr(),
                                   children: [
                                     _buildGlassTextField(
                                       key: const Key('product_name_field'),
                                       controller: _nameController,
-                                      label: 'Product Name',
+                                      label: 'product.product_name'.tr(),
                                       icon: Icons.sell_rounded,
-                                      hint: 'Enter product name',
-                                      validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                                      hint: 'product.enter_product_name'.tr(),
+                                      validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
                                     ),
                                     const SizedBox(height: 16),
                                     _buildGlassTextField(
                                       key: const Key('product_description_field'),
                                       controller: _descriptionController,
-                                      label: 'Description',
+                                      label: 'product.description'.tr(),
                                       icon: Icons.notes_rounded,
-                                      hint: 'Describe your product...',
+                                      hint: 'product.describe_product'.tr(),
                                       maxLines: 3,
-                                      validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                                      validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
                                     ),
                                     const SizedBox(height: 16),
                                     Row(
@@ -278,11 +279,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           child: _buildGlassTextField(
                                             key: const Key('product_price_field'),
                                             controller: _priceController,
-                                            label: 'Price (CAD)',
+                                            label: 'product.price_cad'.tr(),
                                             icon: Icons.attach_money_rounded,
                                             keyboardType: TextInputType.number,
                                             prefixText: '\$ ',
-                                            validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                                            validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
                                           ),
                                         ),
                                         const SizedBox(width: 12),
@@ -290,10 +291,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           child: _buildGlassTextField(
                                             key: const Key('product_stock_field'),
                                             controller: _stockController,
-                                            label: 'Stock',
+                                            label: 'product.stock'.tr(),
                                             icon: Icons.inventory_2_rounded,
                                             keyboardType: TextInputType.number,
-                                            validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                                            validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
                                           ),
                                         ),
                                       ],
@@ -304,10 +305,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         Expanded(
                                           child: _buildGlassTextField(
                                             controller: _minOrderController,
-                                            label: 'Min Order Qty',
+                                            label: 'product.min_order_qty'.tr(),
                                             icon: Icons.format_list_numbered_rounded,
                                             keyboardType: TextInputType.number,
-                                            validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                                            validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
                                             onChanged: (v) => viewModel.setMinimumOrderQuantity(int.tryParse(v) ?? 1),
                                           ),
                                         ),
@@ -315,12 +316,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         if (!state.isDigital)
                                           Expanded(
                                             child: _buildGlassToggle(
-                                              label: 'Free Shipping',
+                                              label: 'product.free_shipping'.tr(),
                                               icon: Icons.local_shipping_rounded,
                                               value: state.freeShipping,
                                               onChanged: viewModel.toggleFreeShipping,
-                                              infoTitle: 'Free Shipping',
-                                              infoBody: 'When enabled, the buyer pays \$0 for shipping — you absorb the cost.\n\nThis is great for increasing conversions, especially for lightweight or high-margin products.\n\nTip: You can also offer free shipping only for bulk orders (10+ items) in the Delivery section below.',
+                                              infoTitle: 'product.free_shipping'.tr(),
+                                              infoBody: 'product.free_shipping_info_body'.tr(),
                                             ),
                                           ),
                                       ],
@@ -330,15 +331,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                     const SizedBox(height: 12),
                                     _buildGlassTextField(
                                       controller: _taxCodeController,
-                                      label: 'Tax Code (optional)',
+                                      label: 'product.tax_code_label'.tr(),
                                       icon: Icons.receipt_long_rounded,
-                                      hint: 'txcd_########',
-                                      validator: (v) => isValidTaxCode(v) ? null : 'Invalid tax code',
+                                      hint: 'product.tax_code_hint'.tr(),
+                                      validator: (v) => isValidTaxCode(v) ? null : 'product.invalid_tax_code'.tr(),
                                     ),
                                     _buildTappableInfoHint(
-                                      'What is a tax code? Tap to learn more',
-                                      'Stripe Tax Codes',
-                                      'Tax codes tell Stripe which tax rate to apply at checkout.\n\nFormat: txcd_ followed by 8 digits (e.g. txcd_99999999).\n\nCommon codes:\n• txcd_99999999 — General tangible goods\n• txcd_10000000 — General services\n• txcd_10201000 — Software as a Service (SaaS)\n• txcd_35010000 — Clothing & apparel\n\nLeave empty to use Stripe\'s default tax behavior. Find the full list at stripe.com/docs/tax/tax-codes.',
+                                      'product.tax_code_learn_more'.tr(),
+                                      'product.stripe_tax_codes'.tr(),
+                                      'product.stripe_tax_codes_body'.tr(),
                                     ),
                                   ],
                                 ),
@@ -348,8 +349,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                 _buildSectionCard(
                                   index: 1,
                                   icon: Icons.photo_library_rounded,
-                                  title: 'Product Images',
-                                  subtitle: 'Up to 5 photos',
+                                  title: 'product.product_images'.tr(),
+                                  subtitle: 'product.up_to_5_photos'.tr(),
                                   children: [
                                     ProductAddImages(imageModels: state.imageModels, onImagesChanged: viewModel.updateImages),
                                   ],
@@ -360,23 +361,23 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                 _buildSectionCard(
                                   index: 2,
                                   icon: Icons.local_shipping_rounded,
-                                  title: 'Delivery & Shipping',
-                                  subtitle: 'Options, packaging & discounts',
+                                  title: 'product.delivery_shipping'.tr(),
+                                  subtitle: 'product.shipping_options'.tr(),
                                   children: [
                                     _buildGlassToggle(
-                                      label: 'Digital Product',
-                                      subtitle: 'No shipping needed',
+                                      label: 'product.digital_product_label'.tr(),
+                                      subtitle: 'product.no_shipping_needed'.tr(),
                                       icon: Icons.cloud_download_rounded,
                                       value: state.isDigital,
                                       onChanged: viewModel.toggleDigital,
-                                      infoTitle: 'Digital Products',
-                                      infoBody: 'Enable this for products delivered electronically — e-books, software, digital art, courses, etc.\n\nWhat happens:\n• Shipping is automatically set to free\n• Delivery tiers and package dimensions are hidden\n• No physical address is needed from the buyer\n\nThe buyer will receive the product through your delivery method (email, download link, etc.).',
+                                      infoTitle: 'product.digital_info_title'.tr(),
+                                      infoBody: 'product.digital_info_body'.tr(),
                                     ),
                                     if (state.isDigital)
                                       Padding(
                                         padding: const EdgeInsets.only(top: 8),
                                         child: _buildInfoBanner(
-                                          'Digital products skip shipping and delivery options.',
+                                          'product.digital_skip_shipping'.tr(),
                                           Icons.info_outline_rounded,
                                           DesignTokens.info,
                                         ),
@@ -384,28 +385,28 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                     if (!state.isDigital) ...[
                                       const SizedBox(height: 12),
                                       _buildGlassToggle(
-                                        label: 'Perishable Item',
+                                        label: 'product.perishable_item'.tr(),
                                         icon: Icons.thermostat_rounded,
                                         value: state.isPerishable,
                                         onChanged: viewModel.togglePerishable,
-                                        infoTitle: 'Perishable Items',
-                                        infoBody: 'Mark products that are temperature-sensitive or have a short shelf life — food, flowers, cosmetics, etc.\n\nWhat this does:\n• Flags the product for priority handling\n• Buyers are informed about special shipping conditions\n• Express or Same-Day delivery is recommended\n\nTip: Consider enabling Same-Day Delivery below for perishable items to ensure freshness.',
+                                        infoTitle: 'product.perishable_info_title'.tr(),
+                                        infoBody: 'product.perishable_info_body'.tr(),
                                       ),
                                       const SizedBox(height: 16),
                                       _buildDeliveryTierCard(
-                                        title: 'Standard Delivery',
+                                        title: 'product.standard_delivery'.tr(),
                                         icon: Icons.local_shipping_outlined,
                                         isEnabled: state.standardEnabled,
                                         onChanged: viewModel.setStandardEnabled,
                                         color: DesignTokens.primary,
-                                        infoTitle: 'Standard Delivery',
-                                        infoBody: 'The base shipping option for your product.\n\nPricing:\n• Set Price to \$0 for free standard shipping\n• Or set your own flat rate (e.g. \$5.99)\n• If left at \$0 and Free Shipping is off, distance-based rates apply\n\nDays: Estimated business days for delivery (shown to buyers).\n\nAt least one delivery tier must be enabled for physical products.',
+                                        infoTitle: 'product.standard_delivery'.tr(),
+                                        infoBody: 'product.standard_delivery_info_body'.tr(),
                                         children: [
                                           Row(
                                             children: [
-                                              Expanded(child: _buildGlassTextField(controller: _standardDaysController, label: 'Days', keyboardType: TextInputType.number)),
+                                              Expanded(child: _buildGlassTextField(controller: _standardDaysController, label: 'product.days_label'.tr(), keyboardType: TextInputType.number)),
                                               const SizedBox(width: 12),
-                                              Expanded(child: _buildGlassTextField(controller: _standardPriceController, label: 'Price (\$)', keyboardType: TextInputType.number, hint: '0 = Free')),
+                                              Expanded(child: _buildGlassTextField(controller: _standardPriceController, label: 'product.price_dollar'.tr(), keyboardType: TextInputType.number, hint: 'product.free_hint'.tr())),
                                             ],
                                           ),
                                         ],
@@ -416,7 +417,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         Padding(
                                           padding: const EdgeInsets.only(top: 12),
                                           child: _buildInfoBanner(
-                                            'Free shipping is enabled — Express and Same-Day tiers are hidden. Standard delivery will be offered at no cost to the buyer.',
+                                            'product.free_shipping_banner'.tr(),
                                             Icons.local_shipping_rounded,
                                             DesignTokens.success,
                                           ),
@@ -424,34 +425,34 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       if (!state.freeShipping) ...[
                                         const SizedBox(height: 10),
                                         _buildDeliveryTierCard(
-                                          title: 'Express Delivery',
+                                          title: 'product.express_delivery'.tr(),
                                           icon: Icons.bolt_rounded,
                                           isEnabled: state.expressEnabled,
                                           onChanged: viewModel.setExpressEnabled,
                                           color: DesignTokens.warning,
-                                          infoTitle: 'Express Delivery',
-                                          infoBody: 'Offer faster shipping at a premium price.\n\nDefault surcharge: \$9.99 on top of standard shipping.\n\nWhen a buyer selects Express at checkout:\n• Your price here is the base rate shown\n• An additional express surcharge is applied automatically\n• You keep the shipping revenue minus platform fees\n\nTypical express timeframe: 1-2 business days.',
+                                          infoTitle: 'product.express_delivery'.tr(),
+                                          infoBody: 'product.express_delivery_info_body'.tr(),
                                           children: [
                                             Row(
                                               children: [
-                                                Expanded(child: _buildGlassTextField(controller: _expressDaysController, label: 'Days', keyboardType: TextInputType.number)),
+                                                Expanded(child: _buildGlassTextField(controller: _expressDaysController, label: 'product.days_label'.tr(), keyboardType: TextInputType.number)),
                                                 const SizedBox(width: 12),
-                                                Expanded(child: _buildGlassTextField(controller: _expressPriceController, label: 'Price (\$)', keyboardType: TextInputType.number)),
+                                                Expanded(child: _buildGlassTextField(controller: _expressPriceController, label: 'product.price_dollar'.tr(), keyboardType: TextInputType.number)),
                                               ],
                                             ),
                                           ],
                                         ),
                                         const SizedBox(height: 10),
                                         _buildDeliveryTierCard(
-                                          title: 'Same-Day Delivery',
+                                          title: 'product.same_day_delivery'.tr(),
                                           icon: Icons.rocket_launch_rounded,
                                           isEnabled: state.sameDayEnabled,
                                           onChanged: viewModel.setSameDayEnabled,
                                           color: DesignTokens.success,
-                                          infoTitle: 'Same-Day Delivery',
-                                          infoBody: 'Offer same-day delivery for local buyers.\n\nDefault surcharge: \$14.99 on top of base shipping.\n\nHow it works:\n• Only available for buyers within your delivery area\n• Orders must be placed before your cutoff time\n• Best for perishable items, gifts, or urgent needs\n\nIdeal for food, flowers, and time-sensitive products.',
+                                          infoTitle: 'product.same_day_delivery'.tr(),
+                                          infoBody: 'product.same_day_delivery_info_body'.tr(),
                                           children: [
-                                            _buildGlassTextField(controller: _sameDayPriceController, label: 'Price (\$)', keyboardType: TextInputType.number),
+                                            _buildGlassTextField(controller: _sameDayPriceController, label: 'product.price_dollar'.tr(), keyboardType: TextInputType.number),
                                           ],
                                         ),
                                         const SizedBox(height: 16),
@@ -467,47 +468,47 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                   _buildSectionCard(
                                     index: 3,
                                     icon: Icons.location_on_rounded,
-                                    title: 'Package & Location',
-                                    subtitle: 'Dimensions and pickup address',
+                                    title: 'product.package_location'.tr(),
+                                    subtitle: 'product.dimensions_pickup'.tr(),
                                     children: [
                                       _buildGlassToggle(
-                                        label: 'Local Pickup Only',
+                                        label: 'product.local_pickup_only'.tr(),
                                         icon: Icons.store_rounded,
                                         value: state.isLocalDeliveryOnly,
                                         onChanged: viewModel.setLocalDeliveryOnly,
-                                        infoTitle: 'Local Pickup Only',
-                                        infoBody: 'Enable this if the product can only be picked up in person — no shipping.\n\nWhat happens:\n• Shipping cost is \$0 for the buyer\n• Package weight and dimensions fields are hidden\n• A "pickup" delivery option is automatically created\n• The buyer sees your address as the pickup location\n\nPerfect for: furniture, large items, fresh food, or any product you don\'t want to ship.',
+                                        infoTitle: 'product.local_pickup_only'.tr(),
+                                        infoBody: 'product.local_pickup_info_body'.tr(),
                                       ),
                                       if (!state.isLocalDeliveryOnly) ...[
                                         const SizedBox(height: 16),
-                                        _buildGlassTextField(controller: _weightController, label: 'Weight (kg)', icon: Icons.scale_rounded, keyboardType: TextInputType.number),
+                                        _buildGlassTextField(controller: _weightController, label: 'product.weight'.tr(), icon: Icons.scale_rounded, keyboardType: TextInputType.number),
                                         const SizedBox(height: 12),
                                         // Dimensions row
                                         Row(
                                           children: [
-                                            Expanded(child: _buildGlassTextField(controller: _lengthController, label: 'L (cm)', keyboardType: TextInputType.number)),
+                                            Expanded(child: _buildGlassTextField(controller: _lengthController, label: 'product.length_cm'.tr(), keyboardType: TextInputType.number)),
                                             const SizedBox(width: 8),
-                                            Expanded(child: _buildGlassTextField(controller: _widthController, label: 'W (cm)', keyboardType: TextInputType.number)),
+                                            Expanded(child: _buildGlassTextField(controller: _widthController, label: 'product.width_cm'.tr(), keyboardType: TextInputType.number)),
                                             const SizedBox(width: 8),
-                                            Expanded(child: _buildGlassTextField(controller: _heightController, label: 'H (cm)', keyboardType: TextInputType.number)),
+                                            Expanded(child: _buildGlassTextField(controller: _heightController, label: 'product.height_cm'.tr(), keyboardType: TextInputType.number)),
                                           ],
                                         ),
                                         _buildTappableInfoHint(
-                                          'How weight & dimensions affect shipping cost',
-                                          'Package Weight & Dimensions',
-                                          'Accurate weight and dimensions help calculate fair shipping rates.\n\nHow pricing works:\n• Carriers use the greater of actual weight vs dimensional weight\n• Dimensional weight = (L × W × H) ÷ 5000 (in cm/kg)\n• Example: A box 40×30×20 cm = 4.8 kg dimensional\n\nIf your product is light but bulky, you may pay more than expected. Enter accurate dimensions to avoid surprises.\n\nTip: Measure the packaged product, not just the product itself.',
+                                          'product.weight_dimensions_learn_more'.tr(),
+                                          'product.weight_dimensions_info_title'.tr(),
+                                          'product.weight_dimensions_info_body'.tr(),
                                         ),
                                       ],
                                       const SizedBox(height: 20),
                                       // Location fields
-                                      _buildSubSectionHeader('Pickup Address', Icons.pin_drop_rounded),
+                                      _buildSubSectionHeader('product.pickup_address'.tr(), Icons.pin_drop_rounded),
                                       const SizedBox(height: 12),
                                       _buildGlassTextField(
                                         controller: _streetController,
-                                        label: 'Street Address',
+                                        label: 'product.street_address'.tr(),
                                         icon: Icons.home_rounded,
                                         onChanged: viewModel.onStreetChanged,
-                                        validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                                        validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
                                       ),
                                       if (state.showSuggestions && state.addressSuggestions.isNotEmpty)
                                         _buildAddressSuggestions(state, viewModel),
@@ -515,15 +516,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       // FIX: Add apartment field UI (was declared but not rendered)
                                       _buildGlassTextField(
                                         controller: _apartmentController,
-                                        label: 'Apartment / Unit (Optional)',
+                                        label: 'product.apartment_unit'.tr(),
                                         icon: Icons.apartment_rounded,
-                                        hint: 'e.g., Suite 100, Unit 5B',
+                                        hint: 'product.apartment_hint'.tr(),
                                       ),
                                       const SizedBox(height: 12),
                                       _buildGlassTextField(
                                         controller: _cityController,
-                                        label: 'City',
-                                        validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                                        label: 'product.city'.tr(),
+                                        validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
                                         onChanged: (_) => viewModel.clearCoordinates(),
                                       ),
                                       const SizedBox(height: 12),
@@ -531,7 +532,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         children: [
                                           Expanded(
                                             child: _buildGlassDropdown(
-                                              label: 'Province',
+                                              label: 'product.province'.tr(),
                                               value: state.selectedProvince,
                                               items: _provinceNames.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.key))).toList(),
                                               onChanged: (v) => viewModel.setProvince(v!),
@@ -541,7 +542,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           Expanded(
                                             child: _buildGlassTextField(
                                               controller: _postalCodeController,
-                                              label: 'Postal Code',
+                                              label: 'product.postal_code'.tr(),
                                               textCapitalization: TextCapitalization.characters,
                                               validator: _validatePostalCode,
                                               onChanged: (_) => viewModel.clearCoordinates(),
@@ -557,13 +558,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                 _buildCollapsibleSection(
                                   index: 4,
                                   icon: Icons.business_center_rounded,
-                                  title: 'Supplier & Inventory',
-                                  subtitle: 'Cost tracking, margins & stock settings',
+                                  title: 'product.supplier_inventory'.tr(),
+                                  subtitle: 'product.cost_margins_stock'.tr(),
                                   children: [
-                                    _buildSubSectionHeader('Supplier Info', Icons.storefront_rounded),
+                                    _buildSubSectionHeader('product.supplier_info'.tr(), Icons.storefront_rounded),
                                     const SizedBox(height: 12),
                                     _buildGlassDropdown(
-                                      label: 'Supplier Platform',
+                                      label: 'product.supplier_platform'.tr(),
                                       value: _selectedSupplierType,
                                       items: getSupplierDropdownItems(),
                                       onChanged: (v) {
@@ -581,13 +582,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       const SizedBox(height: 12),
                                       _buildGlassTextField(
                                         controller: _customSupplierNameController,
-                                        label: 'Custom Supplier Name',
+                                        label: 'product.custom_supplier_name'.tr(),
                                         icon: Icons.edit_rounded,
                                       ),
                                     ],
                                     const SizedBox(height: 12),
                                     _buildInfoBanner(
-                                      'Track supplier cost below. Selling prices are always in CAD.',
+                                      'product.supplier_cost_banner'.tr(),
                                       Icons.info_outline_rounded,
                                       DesignTokens.info,
                                     ),
@@ -598,7 +599,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           flex: 2,
                                           child: _buildGlassTextField(
                                             controller: _costController,
-                                            label: 'Supplier Cost',
+                                            label: 'product.supplier_cost'.tr(),
                                             icon: Icons.payments_rounded,
                                             keyboardType: TextInputType.number,
                                           ),
@@ -606,7 +607,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: _buildGlassDropdown(
-                                            label: 'Currency',
+                                            label: 'product.currency_label'.tr(),
                                             value: _selectedSupplierCurrency,
                                             items: getSupplierConfig(_selectedSupplierType).supportedCurrencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                                             onChanged: (v) => setState(() => _selectedSupplierCurrency = v ?? 'USD'),
@@ -617,65 +618,65 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                     // Margin preview
                                     if (_costController.text.isNotEmpty && _priceController.text.isNotEmpty) _buildMarginPreview(),
                                     const SizedBox(height: 12),
-                                    _buildGlassTextField(controller: _supplierSkuController, label: 'Supplier SKU', icon: Icons.qr_code_2_rounded),
+                                    _buildGlassTextField(controller: _supplierSkuController, label: 'product.supplier_sku'.tr(), icon: Icons.qr_code_2_rounded),
                                     const SizedBox(height: 12),
-                                    _buildGlassTextField(controller: _supplierUrlController, label: 'Supplier URL', icon: Icons.link_rounded, keyboardType: TextInputType.url),
+                                    _buildGlassTextField(controller: _supplierUrlController, label: 'product.supplier_url'.tr(), icon: Icons.link_rounded, keyboardType: TextInputType.url),
                                     const SizedBox(height: 12),
                                     Row(
                                       children: [
-                                        Expanded(child: _buildGlassTextField(controller: _supplierShippingDaysController, label: 'Ship Days', icon: Icons.schedule_rounded)),
+                                        Expanded(child: _buildGlassTextField(controller: _supplierShippingDaysController, label: 'product.ship_days'.tr(), icon: Icons.schedule_rounded)),
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: _buildGlassToggle(
-                                            label: 'Has Tracking',
+                                            label: 'product.has_tracking'.tr(),
                                             icon: Icons.gps_fixed_rounded,
                                             value: _hasTracking,
                                             onChanged: (v) => setState(() => _hasTracking = v),
-                                            infoTitle: 'Supplier Tracking',
-                                            infoBody: 'Does your supplier provide tracking numbers?\n\nWhen enabled:\n• You can enter tracking numbers for each order\n• Buyers receive shipping updates automatically\n• Helps reduce "where is my order?" inquiries\n\nMost suppliers (AliExpress, Amazon, etc.) provide tracking. Smaller local suppliers may not.',
+                                            infoTitle: 'product.supplier_tracking_title'.tr(),
+                                            infoBody: 'product.supplier_tracking_body'.tr(),
                                           ),
                                         ),
                                       ],
                                     ),
                                     const SizedBox(height: 12),
-                                    _buildGlassTextField(controller: _supplierNotesController, label: 'Internal Notes', icon: Icons.sticky_note_2_rounded, maxLines: 2),
+                                    _buildGlassTextField(controller: _supplierNotesController, label: 'product.internal_notes'.tr(), icon: Icons.sticky_note_2_rounded, maxLines: 2),
                                     const SizedBox(height: 24),
-                                    _buildSubSectionHeader('Inventory Settings', Icons.warehouse_rounded),
+                                    _buildSubSectionHeader('product.inventory_settings'.tr(), Icons.warehouse_rounded),
                                     const SizedBox(height: 12),
                                     _buildGlassToggle(
-                                      label: 'Manage Inventory',
-                                      subtitle: 'Off for dropship products',
+                                      label: 'product.manage_inventory'.tr(),
+                                      subtitle: 'product.manage_inventory_subtitle'.tr(),
                                       icon: Icons.inventory_rounded,
                                       value: _inventoryManaged,
                                       onChanged: (v) => setState(() => _inventoryManaged = v),
-                                      infoTitle: 'Inventory Management',
-                                      infoBody: 'Controls whether stock levels are tracked for this product.\n\nON (recommended for most):\n• Stock decreases automatically on each sale\n• Low stock alerts notify you when to restock\n• Product is hidden when stock reaches 0\n\nOFF (for dropship products):\n• Stock is never tracked — unlimited availability\n• Your supplier fulfills orders directly\n\nTip: Turn OFF if using AliExpress or similar dropship suppliers.',
+                                      infoTitle: 'product.inventory_management_title'.tr(),
+                                      infoBody: 'product.inventory_management_body'.tr(),
                                     ),
                                     if (_inventoryManaged) ...[
                                       const SizedBox(height: 8),
                                       _buildGlassToggle(
-                                        label: 'Track Quantity',
-                                        subtitle: 'Off = unlimited stock',
+                                        label: 'product.stock_quantity'.tr(),
+                                        subtitle: 'product.track_quantity_subtitle'.tr(),
                                         icon: Icons.numbers_rounded,
                                         value: _trackQuantity,
                                         onChanged: (v) => setState(() => _trackQuantity = v),
-                                        infoTitle: 'Track Quantity',
-                                        infoBody: 'When ON, stock counts down with each sale and the product becomes unavailable at 0.\n\nWhen OFF, the product always shows as "in stock" regardless of orders. Useful for made-to-order or digital-like physical products.\n\nNote: Only applies when Manage Inventory is also ON.',
+                                        infoTitle: 'product.stock_quantity'.tr(),
+                                        infoBody: 'product.track_quantity_info_body'.tr(),
                                       ),
                                       const SizedBox(height: 8),
                                       _buildGlassToggle(
-                                        label: 'Allow Backorders',
-                                        subtitle: 'Accept when out of stock',
+                                        label: 'product.allow_backorders'.tr(),
+                                        subtitle: 'product.allow_backorders_subtitle'.tr(),
                                         icon: Icons.replay_rounded,
                                         value: _allowBackorder,
                                         onChanged: (v) => setState(() => _allowBackorder = v),
-                                        infoTitle: 'Allow Backorders',
-                                        infoBody: 'When enabled, buyers can still place orders even when stock is 0.\n\nThis is useful if:\n• You can restock quickly from your supplier\n• You accept pre-orders\n• You manufacture on demand\n\nThe buyer will NOT be warned — update your product description if fulfillment may be delayed.',
+                                        infoTitle: 'product.allow_backorders'.tr(),
+                                        infoBody: 'product.allow_backorders_info_body'.tr(),
                                       ),
                                       const SizedBox(height: 12),
                                       _buildGlassTextField(
                                         controller: _lowStockThresholdController,
-                                        label: 'Low Stock Alert',
+                                        label: 'product.low_stock_alert'.tr(),
                                         icon: Icons.warning_amber_rounded,
                                         keyboardType: TextInputType.number,
                                       ),
@@ -1037,43 +1038,43 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 child: Icon(Icons.local_offer_rounded, color: DesignTokens.success, size: 18),
               ),
               const SizedBox(width: 10),
-              const Expanded(child: Text('Bulk Shipping Discounts', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
+              Expanded(child: Text('product.bulk_shipping_discounts'.tr(), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
               GestureDetector(
                 onTap: () => _showInfoSheet(
-                  'Bulk Shipping Discounts',
-                  'Encourage bigger orders by offering progressive shipping discounts.\n\nHow tiers work:\n• 3+ items: A percentage off shipping (e.g. 20% off)\n• 5+ items: A bigger percentage (e.g. 50% off)\n• 10+ items: Free shipping entirely\n\nAdditional item cost: Extra shipping per item beyond the first (e.g. \$1.50/item for heavier products).\n\nMax per shipment: Limit items per package. Set to 0 for unlimited. If a buyer orders more, multiple shipments are created automatically.',
+                  'product.bulk_shipping_discounts'.tr(),
+                  'product.bulk_discount_info_body'.tr(),
                 ),
                 child: Icon(Icons.info_outline_rounded, size: 18, color: DesignTokens.textDisabled),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          Text('Encourage larger orders with shipping savings', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12)),
+          Text('product.encourage_larger_orders'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12)),
           const SizedBox(height: 16),
-          _buildShippingDiscountTier(label: '3+ items', controller: _shippingDiscount3Controller, hint: '20'),
+          _buildShippingDiscountTier(label: 'product.three_plus_items'.tr(), controller: _shippingDiscount3Controller, hint: '20'),
           const SizedBox(height: 8),
-          _buildShippingDiscountTier(label: '5+ items', controller: _shippingDiscount5Controller, hint: '50'),
+          _buildShippingDiscountTier(label: 'product.five_plus_items'.tr(), controller: _shippingDiscount5Controller, hint: '50'),
           const SizedBox(height: 8),
           _buildGlassToggle(
-            label: '10+ items: Free Shipping',
+            label: 'product.ten_plus_free'.tr(),
             icon: Icons.celebration_rounded,
             value: state.freeShippingAt10Plus,
             onChanged: viewModel.setFreeShippingAt10Plus,
-            infoTitle: 'Bulk Free Shipping',
-            infoBody: 'When enabled, buyers who order 10 or more units get completely free shipping.\n\nThis is a powerful incentive for wholesale and repeat customers. Stacks with your 3+ and 5+ discount tiers.\n\nNote: At least one delivery tier (Standard, Express, or Same-Day) must be enabled for this to take effect.',
+            infoTitle: 'product.bulk_free_shipping_title'.tr(),
+            infoBody: 'product.bulk_free_shipping_body'.tr(),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _buildGlassTextField(controller: _additionalItemCostController, label: 'Cost/extra item', prefixText: '\$', keyboardType: TextInputType.number)),
+              Expanded(child: _buildGlassTextField(controller: _additionalItemCostController, label: 'product.cost_extra_item'.tr(), prefixText: '\$', keyboardType: TextInputType.number)),
               const SizedBox(width: 12),
-              Expanded(child: _buildGlassTextField(controller: _maxItemsPerShipmentController, label: 'Max per shipment', keyboardType: TextInputType.number, hint: '0 = unlimited')),
+              Expanded(child: _buildGlassTextField(controller: _maxItemsPerShipmentController, label: 'product.max_per_shipment'.tr(), keyboardType: TextInputType.number, hint: 'product.unlimited_hint'.tr())),
             ],
           ),
           _buildTappableInfoHint(
-            'What do these multi-item fields mean?',
-            'Multi-Item Shipping',
-            'Cost per extra item: Additional shipping charge for each item beyond the first (e.g. \$1.50). Set to \$0 if no extra cost.\n\nMax per shipment: Maximum items that fit in one package. Set to 0 for unlimited. If a buyer orders more, multiple shipments are created automatically.\n\nExample: Max 5/shipment + \$1.50/extra → 7 items = 2 shipments, first at base + 4×\$1.50, second at base + 1×\$1.50.',
+            'product.multi_item_learn_more'.tr(),
+            'product.multi_item_shipping_title'.tr(),
+            'product.multi_item_shipping_body'.tr(),
           ),
         ],
       ),
@@ -1095,12 +1096,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             validator: (v) {
               if (v == null || v.isEmpty) return null; // optional field
               final val = double.tryParse(v);
-              if (val == null || val < 0 || val > 100) return '0-100%';
+              if (val == null || val < 0 || val > 100) return 'product.discount_range'.tr();
               return null;
             },
             decoration: InputDecoration(
               hintText: hint,
-              suffixText: '% off',
+              suffixText: 'product.percent_off'.tr(),
               isDense: true,
               filled: true,
               fillColor: Colors.white,
@@ -1163,10 +1164,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Profit Margin', style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500)),
+                    Text('product.profit_margin'.tr(), style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500)),
                     const SizedBox(height: 2),
                     Text(
-                      '\$${profit.toStringAsFixed(2)} per unit',
+                      'product.per_unit'.tr(namedArgs: {'amount': profit.toStringAsFixed(2)}),
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color),
                     ),
                   ],
@@ -1183,7 +1184,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                '\u26a0 Supplier cost in $_selectedSupplierCurrency \u2014 margin is approximate until converted to CAD.',
+                'product.margin_warning'.tr(namedArgs: {'currency': _selectedSupplierCurrency}),
                 style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontStyle: FontStyle.italic),
               ),
             ),
@@ -1232,7 +1233,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 gradient: LinearGradient(colors: [DesignTokens.info.withValues(alpha: 0.15), DesignTokens.info.withValues(alpha: 0.05)]),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Text('INT\'L', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: DesignTokens.info)),
+              child: Text('product.intl_label'.tr(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: DesignTokens.info)),
             ),
         ],
       ),
@@ -1399,8 +1400,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                     final discount5 = double.tryParse(_shippingDiscount5Controller.text);
                     if (discount3 != null && discount5 != null && discount5 < discount3) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('5+ items discount must be ≥ 3+ items discount'),
+                        SnackBar(
+                          content: Text('product.discount_validation'.tr()),
                           backgroundColor: DesignTokens.error,
                         ),
                       );
@@ -1462,13 +1463,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             child: Center(
               child: state.isLoading
                   ? const ModernLoadingIndicator(size: 24, strokeWidth: 2.5, color: Colors.white, centered: false)
-                  : const Row(
+                  : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 20),
-                        SizedBox(width: 10),
+                        const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 20),
+                        const SizedBox(width: 10),
                         Text(
-                          'Publish Product',
+                          'product.publish_product'.tr(),
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5),
                         ),
                       ],
@@ -1564,11 +1565,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   void _onSuccess() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
+        content: Row(
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
             SizedBox(width: 10),
-            Text('Product published successfully!', style: TextStyle(fontWeight: FontWeight.w600)),
+            Text('product.published_success'.tr(), style: TextStyle(fontWeight: FontWeight.w600)),
           ],
         ),
         backgroundColor: DesignTokens.success,
@@ -1581,10 +1582,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   }
 
   String? _validatePostalCode(String? v) {
-    if (v == null || v.isEmpty) return 'Required';
+    if (v == null || v.isEmpty) return 'common.required'.tr();
     final normalized = v.toUpperCase().replaceAll(' ', '').trim();
     final reg = RegExp(r'^[A-Z]\d[A-Z]\d[A-Z]\d$');
-    if (!reg.hasMatch(normalized)) return 'Invalid (A1A 1A1)';
+    if (!reg.hasMatch(normalized)) return 'product.invalid_postal'.tr();
     return null;
   }
 

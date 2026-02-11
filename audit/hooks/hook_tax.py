@@ -42,7 +42,7 @@ class TaxHook(BaseHook):
         "origna_gta/lib/features/checkout/checkout_state.dart",
         "origna_gta/lib/screens/checkout_screen.dart",
         "origna_gta/lib/screens/cart_screen.dart",
-        "e2e/seed-orders.py",
+        "e2e/scripts/seed/seed-orders.py",
         "docs/TAX_SECURITY.md",
     ]
 

@@ -104,10 +104,53 @@ Change a field → update ALL 6 layers: `schema_constants.py` → `schema_consta
 
 ## E2E Testing
 
-- 279 tests (9 Playwright files) + 288 backend pytest — 266 passing, 12 conditional skip, 1 flaky
+- 259 tests across 11 Playwright spec files + 288 backend pytest
+- **6 workers locally, 4 in CI** — configured in `e2e/playwright.config.ts`
+- Override with `E2E_WORKERS=8 npx playwright test`
+- Flutter UI tests use **serial mode + shared page** (load Flutter ONCE, not per-test)
 - `api-helpers.ts` = canonical module. NEVER duplicate helpers.
+- `flutter-helpers.ts` exports `waitForFlutter()` — NEVER duplicate locally
 - `mega-seed.ts` seeds 76 users, 30 products, 8 orders
 - Startup: emulators → seed → (optional) stripe listen → test
+- `page.locator('canvas')` does NOT pierce Flutter Shadow DOM → use `page.evaluate()`
+- Firestore trigger decorators: use `FIRESTORE_TRIGGER_OPTIONS` (no CORS), NOT `DEFAULT_OPTIONS`
+- Firebase SDK bug: `firestore_fn.py` line 137 `KeyError: 'authtype'` — patched with `.get()` in venv
+
+### Version Alignment
+- **Python**: venv 3.13 = `functions/runtime.txt` (`python313`) = CI (`3.13`)
+- Always keep all three in sync when upgrading
+
+---
+
+## Specialized AI Agents
+
+### 🏗️ Infra Verification Agent
+Validates production readiness — compares project files vs live APIs.
+```bash
+# Full verification (CLI + LLM)
+python audit/run_hooks.py --hook infra
+
+# Quick CLI-only check (free, no LLM cost)
+python audit/scripts/verify_infra.py
+python audit/scripts/verify_infra.py --domain stripe
+python audit/scripts/verify_infra.py --domain firestore
+python audit/scripts/verify_infra.py --domain functions
+python audit/scripts/verify_infra.py --domain secrets
+```
+**Checks:** Cloud Functions deployed, Firestore rules/indexes, Stripe webhooks, GCP secrets, storage rules, hosting config.
+
+### 🧪 QA Engineer Agent
+AI QA specialist — coverage analysis, gap detection, framework recommendations.
+```bash
+# Full QA analysis (local scan + LLM)
+python audit/run_hooks.py --hook qa
+
+# Quick local scan (free, no LLM cost)
+python audit/scripts/qa_scanner.py
+python audit/scripts/qa_scanner.py --run-tests
+python audit/scripts/qa_scanner.py --generate-plan
+```
+**Covers:** Test coverage metrics, untested handlers, missing critical flows, framework gaps (Patrol, Maestro, golden tests), cross-browser, accessibility.
 
 ---
 

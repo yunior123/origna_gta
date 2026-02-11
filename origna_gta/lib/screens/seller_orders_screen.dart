@@ -123,7 +123,7 @@ class SellerOrdersScreen extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final order = orders[index];
                     return FadeSlideIn(
-                      delay: Duration(milliseconds: 50 * index),
+                      delay: Duration(milliseconds: 50 * index.clamp(0, 8)),
                       child: _SellerOrderCard(order: order, sellerId: user.uid),
                     );
                   },
@@ -150,7 +150,8 @@ class _SellerOrderCard extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final sellerTotal = sellerItems.fold<double>(0.0, (acc, item) => acc + (item.price * item.quantity));
-    final platformFee = sellerTotal * 0.025; // 2.5% platform fee
+    // Platform fee and seller net are computed by the backend — display from order data
+    final platformFee = order.platformFeeTotal > 0 ? (order.platformFeeTotal / 100.0) : sellerTotal * 0.025;
     final sellerNet = sellerTotal - platformFee;
 
     return Container(
@@ -253,7 +254,7 @@ class _SellerOrderCard extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Instructions de livraison',
+                  'seller.delivery_instructions'.tr(),
                   style: TextStyle(fontWeight: FontWeight.w700, color: DesignTokens.info, fontSize: 13),
                 ),
                 const SizedBox(height: 4),
@@ -299,7 +300,7 @@ class _SellerOrderCard extends ConsumerWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                'Payment Authorized',
+                'seller.payment_authorized'.tr(),
                 style: TextStyle(fontWeight: FontWeight.w700, color: DesignTokens.primary, fontSize: 14),
               ),
             ],
@@ -307,8 +308,8 @@ class _SellerOrderCard extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             actualShipping <= 0.0
-                ? 'Enter actual shipping cost to capture payment.'
-                : (approvalStatus == ShippingApprovalStatus.pending ? 'Waiting for buyer approval.' : 'Ready to capture.'),
+                ? 'seller.enter_shipping_cost'.tr()
+                : (approvalStatus == ShippingApprovalStatus.pending ? 'seller.waiting_buyer_approval'.tr() : 'seller.ready_to_capture'.tr()),
             style: TextStyle(fontSize: 12, color: isDark ? DesignTokens.textDisabled : DesignTokens.textSecondary),
           ),
           if (actualShipping <= 0.0) ...[
@@ -360,7 +361,7 @@ class _SellerOrderCard extends ConsumerWidget {
             if (item.refundedAt != null) Text('${'seller.refunded_prefix'.tr()} ${DateFormat.yMd().format(item.refundedAt!)}', style: TextStyle(fontSize: 11, color: DesignTokens.warning)),
           ],
         ),
-        trailing: !isAuthorized && statusStr != DeliveryStatusValues.delivered && !isRefunded
+        trailing: !isAuthorized && statusStr == DeliveryStatusValues.pending && !isRefunded
             ? Container(
                 decoration: BoxDecoration(
                   color: DesignTokens.primary.withValues(alpha: 0.1),
@@ -368,18 +369,14 @@ class _SellerOrderCard extends ConsumerWidget {
                 ),
                 child: IconButton(
                   icon: Icon(
-                    statusStr == DeliveryStatusValues.shipped ? Icons.check_circle_rounded : Icons.local_shipping_rounded,
+                    Icons.local_shipping_rounded,
                     color: DesignTokens.primary,
                     size: 22,
                   ),
-                  tooltip: statusStr == DeliveryStatusValues.pending ? 'Mark as shipped' : 'Mark as delivered',
+                  tooltip: 'seller.mark_shipped'.tr(),
                   onPressed: () {
                     HapticFeedback.lightImpact();
-                    if (statusStr == DeliveryStatusValues.pending) {
-                      _showMarkAsShippedDialog(context, ref, item);
-                    } else {
-                      ref.read(sellerOrdersViewModelProvider.notifier).updateItemStatus(order.orderId, item.productId, DeliveryStatusValues.delivered);
-                    }
+                    _showMarkAsShippedDialog(context, ref, item);
                   },
                 ),
               )

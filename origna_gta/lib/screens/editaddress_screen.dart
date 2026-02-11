@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -64,7 +65,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Address saved successfully'),
+            content: Text('address.saved_success'.tr()),
             backgroundColor: DesignTokens.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
@@ -87,7 +88,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
-        appBar: AppBarFactory.simple(title: widget.address == null ? 'Add Address' : 'Edit Address'),
+        appBar: AppBarFactory.simple(title: widget.address == null ? 'address.add_address'.tr() : 'address.edit_address'.tr()),
         backgroundColor: Colors.transparent,
         body: Center(
           child: ConstrainedBox(
@@ -100,18 +101,19 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Address Label Section
-                    _buildSectionTitle('Address Label', Icons.label_outlined),
+                    _buildSectionTitle('address.label'.tr(), Icons.label_outlined),
                     const SizedBox(height: DesignTokens.spacing12),
                     Wrap(
                       spacing: 10,
                       children: ['Home', 'Work', 'Other'].map((label) {
                         final isSelected = state.selectedLabel == label;
+                        final displayLabel = label == 'Home' ? 'address.home'.tr() : label == 'Work' ? 'address.work'.tr() : 'address.other'.tr();
                         return Semantics(
                           button: true,
                           label: 'chip-address-label-${label.toLowerCase()}',
                           selected: isSelected,
                           child: ChoiceChip(
-                          label: Text(label),
+                          label: Text(displayLabel),
                           selected: isSelected,
                           onSelected: (selected) => viewModel.setLabel(label),
                           selectedColor: DesignTokens.primary,
@@ -136,7 +138,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                     const SizedBox(height: DesignTokens.spacing24),
 
                     // Address Details Section
-                    _buildSectionTitle('Address Details', Icons.location_on_outlined),
+                    _buildSectionTitle('address.details'.tr(), Icons.location_on_outlined),
                     const SizedBox(height: DesignTokens.spacing12),
 
                     GlassContainer(
@@ -144,10 +146,10 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                         children: [
                           _buildTextField(
                             controller: _streetController,
-                            label: 'Street Address',
+                            label: 'address.street'.tr(),
                             icon: Icons.location_on_outlined,
                             onChanged: viewModel.onStreetChanged,
-                            validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                            validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
                           ),
                           if (state.showSuggestions && state.addressSuggestions.isNotEmpty)
                             Container(
@@ -183,22 +185,22 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                           const SizedBox(height: DesignTokens.spacing16),
                           _buildTextField(
                             controller: _apartmentController,
-                            label: 'Apartment/Suite (Optional)',
+                            label: 'address.apartment_optional'.tr(),
                             icon: Icons.apartment_outlined,
                           ),
                           const SizedBox(height: DesignTokens.spacing16),
                           _buildTextField(
                             controller: _cityController,
-                            label: 'City',
+                            label: 'address.city'.tr(),
                             icon: Icons.location_city_outlined,
-                            validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                            validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
                           ),
                           const SizedBox(height: DesignTokens.spacing16),
                           DropdownButtonFormField<String>(
                             key: ValueKey(state.selectedProvince),
                             initialValue: state.selectedProvince,
                             decoration: InputDecoration(
-                              labelText: 'Province',
+                              labelText: 'address.province'.tr(),
                               prefixIcon: Icon(Icons.map_outlined, color: DesignTokens.primary.withValues(alpha: 0.7)),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
@@ -221,14 +223,14 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                           const SizedBox(height: DesignTokens.spacing16),
                           _buildTextField(
                             controller: _postalCodeController,
-                            label: 'Postal Code',
+                            label: 'address.postal_code'.tr(),
                             icon: Icons.markunread_mailbox_outlined,
                             textCapitalization: TextCapitalization.characters,
                             validator: (v) {
-                              if (v == null || v.isEmpty) return 'Required';
+                              if (v == null || v.isEmpty) return 'common.required'.tr();
                               final cleaned = v.replaceAll(' ', '').toUpperCase();
                               if (!RegExp(r'^[A-Z]\d[A-Z]\d[A-Z]\d$').hasMatch(cleaned)) {
-                                return 'Enter a valid Canadian postal code (e.g., M5V 2T6)';
+                                return 'address.valid_postal'.tr();
                               }
                               return null;
                             },
@@ -236,14 +238,14 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                           const SizedBox(height: DesignTokens.spacing16),
                           _buildTextField(
                             controller: _phoneController,
-                            label: 'Phone Number',
+                            label: 'address.phone'.tr(),
                             icon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
                             validator: (v) {
-                              if (v == null || v.isEmpty) return 'Required';
+                              if (v == null || v.isEmpty) return 'common.required'.tr();
                               final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
                               if (digits.length < 10 || digits.length > 15) {
-                                return 'Enter a valid phone number (10-15 digits)';
+                                return 'address.valid_phone'.tr();
                               }
                               return null;
                             },
@@ -258,7 +260,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                       button: true,
                       label: 'btn-save-address',
                       child: ModernButton(
-                      label: state.isLoading ? 'Saving...' : 'Save Address',
+                      label: state.isLoading ? 'address.saving'.tr() : 'address.save_address'.tr(),
                       icon: Icons.save_outlined,
                       isLoading: state.isLoading,
                       onPressed: state.isLoading

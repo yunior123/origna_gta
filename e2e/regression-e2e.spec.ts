@@ -9,8 +9,8 @@
  *
  * Prerequisites:
  * 1. Emulators running: firebase emulators:start
- * 2. Seed data: npx ts-node mega-seed.ts && python3 seed-orders.py
- * 3. SPA server: python3 e2e/spa-server.py
+ * 2. Seed data: npx ts-node mega-seed.ts && python3 e2e/scripts/seed/seed-orders.py
+ * 3. SPA server: python3 e2e/scripts/servers/spa-server.py
  * 4. Run: npx playwright test regression-e2e.spec.ts
  */
 import { test, expect } from '@playwright/test';
@@ -279,6 +279,8 @@ test.describe('E: Cart Quantity Operations', () => {
     });
     expect(ok).toBe(true);
 
+    // Brief settle time for Firestore emulator
+    await new Promise(r => setTimeout(r, 500));
     const doc = await readDoc(`users/${buyerUid}/cart`, 'product_001');
     const parsed = parseDoc(doc);
     expect(parsed.quantity).toBe(3);

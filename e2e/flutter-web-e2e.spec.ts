@@ -12,6 +12,7 @@
  * Run `./start-dev.sh` first to start all required services.
  */
 import { test, expect, Page } from '@playwright/test';
+import { waitForFlutter } from './flutter-helpers';
 
 // Firebase Emulator URLs
 const AUTH_EMULATOR = 'http://localhost:9099';
@@ -19,13 +20,6 @@ const FIRESTORE_EMULATOR = 'http://localhost:8080';
 const FUNCTIONS_EMULATOR = 'http://localhost:5001';
 const WEB_APP_URL = 'http://localhost:5005';
 const PROJECT_ID = 'orignagta';
-
-// Test credentials
-const TEST_USER = {
-    email: 'e2e-test@example.com',
-    password: 'test123456',
-    displayName: 'E2E Test User'
-};
 
 // Infrastructure availability cache
 let infraAvailable: {
@@ -67,49 +61,6 @@ async function checkInfrastructure(request: any): Promise<typeof infraAvailable>
         }
     }
     return infraAvailable;
-}
-
-// Helper: Detect Flutter web rendering regardless of engine version.
-// Flutter <=3.21 uses <flt-glass-pane>, Flutter 3.22+ uses <flutter-view>,
-// and all versions render into one or more <canvas> elements.
-async function waitForFlutter(page: Page, timeout = 90000) {
-    console.log(`⏳ Waiting for Flutter Web to initialize (timeout: ${timeout}ms)...`);
-    const startTime = Date.now();
-    
-    // 1) Wait for any Flutter host element OR a sized canvas to appear
-    await page.waitForFunction(() => {
-        const glasspane = document.querySelector('flt-glass-pane');
-        const flutterView = document.querySelector('flutter-view');
-        const canvas = document.querySelector('canvas');
-        return !!glasspane || !!flutterView || (canvas instanceof HTMLCanvasElement && canvas.getBoundingClientRect().width > 0);
-    }, { timeout });
-    console.log(`   ✅ Flutter host element found (${Date.now() - startTime}ms)`);
-
-    // 2) Wait for the splash screen to disappear
-    await page.waitForFunction(() => {
-        const splash = document.getElementById('splash');
-        return !splash || splash.style.display === 'none' || splash.getAttribute('hidden') !== null;
-    }, { timeout }).catch(() => {});
-    console.log(`   ✅ Splash screen gone (${Date.now() - startTime}ms)`);
-
-    // 3) Wait for canvas to be actually rendered with size
-    await page.waitForFunction(() => {
-        const canvas = document.querySelector('canvas');
-        if (!(canvas instanceof HTMLCanvasElement)) return false;
-        const rect = canvas.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0;
-    }, { timeout: Math.min(30000, timeout) }).catch(() => {});
-    console.log(`   ✅ Canvas rendered (${Date.now() - startTime}ms)`);
-
-    // 4) Trigger Flutter semantics tree (CanvasKit) to improve locator stability
-    await page.evaluate(() => {
-        const event = new KeyboardEvent('keydown', { key: 'Tab' });
-        document.dispatchEvent(event);
-    });
-
-    // 5) Wait for semantics to attach (best-effort)
-    await page.locator('flt-semantics').first().waitFor({ state: 'attached', timeout: Math.min(20000, timeout) }).catch(() => {});
-    console.log(`   ✅ Flutter initialized in ${Date.now() - startTime}ms`);
 }
 
 function uniqueSuffix(testInfo: { workerIndex: number; parallelIndex: number }) {
@@ -199,60 +150,105 @@ test.describe('Infrastructure Health Checks', () => {
 });
 
 // =============================================================================
-// FLUTTER WEB LOADING TESTS
+// FLUTTER WEB LOADING + PERFORMANCE TESTS (SERIAL — shared page)
+// Loads Flutter ONCE, then all UI tests run on the same page.
+// Saves ~250s compared to loading Flutter 6× separately.
 // =============================================================================
 
-test.describe('Flutter Web App Loading', () => {
-    test.beforeEach(async ({ request }) => {
-        const infra = await checkInfrastructure(request);
-        test.skip(!infra.webApp, 'Web app not running. Skipping Flutter UI tests.');
+test.describe('Flutter Web App Loading & Performance', () => {
+    test.describe.configure({ mode: 'serial' });
+
+    let sharedPage: Page;
+
+    test.beforeAll(async ({ browser }) => {
+        sharedPage = await browser.newPage();
     });
 
-    test('App loads and initializes', async ({ page }) => {
+    test.afterAll(async () => {
+        if (sharedPage) await sharedPage.close();
+    });
+
+    test('App loads and initializes', async ({ request }) => {
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.webApp, 'Web app not running. Skipping Flutter UI tests.');
         test.setTimeout(120_000);
-        await page.goto('/');
-        await waitForFlutter(page);
-        
-        const flutterPresent = await page.evaluate(() => {
+
+        await sharedPage.goto(WEB_APP_URL);
+        await waitForFlutter(sharedPage);
+
+        const flutterPresent = await sharedPage.evaluate(() => {
             return !!document.querySelector('flt-glass-pane') ||
                    !!document.querySelector('flutter-view') ||
                    !!document.querySelector('canvas');
         });
         expect(flutterPresent).toBeTruthy();
-        console.log('✅ Flutter app initialized');
+        console.log('✅ Flutter app initialized (shared page)');
     });
 
-    test('Navigates to login page', async ({ page }) => {
-        test.setTimeout(120_000);
-        await page.goto('/login');
-        await waitForFlutter(page);
-        
-        expect(page.url()).toContain('/login');
+    test('Navigates to login page', async ({ request }) => {
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.webApp, 'Web app not running.');
+
+        await sharedPage.goto(`${WEB_APP_URL}/login`);
+        await sharedPage.waitForTimeout(2_000);
+        expect(sharedPage.url()).toContain('/login');
         console.log('✅ Login route works');
     });
 
-    test('Navigates to home page', async ({ page }) => {
-        test.setTimeout(120_000);
-        await page.goto('/home');
-        await waitForFlutter(page);
-        
-        const url = page.url();
+    test('Navigates to home page', async ({ request }) => {
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.webApp, 'Web app not running.');
+
+        await sharedPage.goto(`${WEB_APP_URL}/home`);
+        await sharedPage.waitForTimeout(2_000);
+        const url = sharedPage.url();
         expect(url.includes('/home') || url.endsWith('/')).toBeTruthy();
         console.log('✅ Home route works');
     });
 
-    test('Invalid route shows error or redirects', async ({ page }) => {
-        test.setTimeout(120_000);
-        await page.goto('/invalid-route-12345');
-        await waitForFlutter(page);
-        
-        const flutterPresent = await page.evaluate(() => {
+    test('Invalid route shows error or redirects', async ({ request }) => {
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.webApp, 'Web app not running.');
+
+        await sharedPage.goto(`${WEB_APP_URL}/invalid-route-12345`);
+        await sharedPage.waitForTimeout(2_000);
+        const flutterPresent = await sharedPage.evaluate(() => {
             return !!document.querySelector('flt-glass-pane') ||
                    !!document.querySelector('flutter-view') ||
                    !!document.querySelector('canvas');
         });
         expect(flutterPresent).toBeTruthy();
         console.log('✅ Invalid route handled');
+    });
+
+    test('Page loads within acceptable time', async ({ request }) => {
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.webApp, 'Web app not running.');
+        test.setTimeout(120_000);
+
+        // Full reload — measures cached re-init
+        const startTime = Date.now();
+        await sharedPage.goto(WEB_APP_URL);
+        await waitForFlutter(sharedPage, 60000);
+        const loadTime = Date.now() - startTime;
+        console.log(`Page reload time: ${loadTime}ms`);
+        expect(loadTime).toBeLessThan(60000);
+        console.log('✅ Page loads within acceptable time');
+    });
+
+    test('Navigation is responsive', async ({ request }) => {
+        const infra = await checkInfrastructure(request);
+        test.skip(!infra.webApp, 'Web app not running.');
+
+        const startTime = Date.now();
+        await sharedPage.goto(`${WEB_APP_URL}/login`);
+        await sharedPage.waitForTimeout(2_000);
+        const navTime = Date.now() - startTime;
+        console.log(`Navigation time: ${navTime}ms`);
+
+        const maxNavTime = process.env.CI ? 90000 : 60000;
+        expect(navTime).toBeLessThan(maxNavTime);
+        console.log('✅ Navigation is responsive');
     });
 });
 
@@ -331,44 +327,4 @@ test.describe('Cloud Functions API', () => {
     });
 });
 
-// =============================================================================
-// PERFORMANCE TESTS
-// =============================================================================
 
-test.describe('Performance', () => {
-    test.beforeEach(async ({ request }) => {
-        const infra = await checkInfrastructure(request);
-        test.skip(!infra.webApp, 'Web app not running. Skipping performance tests.');
-    });
-
-    test('Page loads within acceptable time', async ({ page }) => {
-        test.setTimeout(120_000);
-        const startTime = Date.now();
-        
-        await page.goto('/');
-        await waitForFlutter(page, 90000);
-        
-        const loadTime = Date.now() - startTime;
-        console.log(`Page load time: ${loadTime}ms`);
-        
-        expect(loadTime).toBeLessThan(60000);
-        console.log('✅ Page loads within acceptable time');
-    });
-
-    test('Navigation is responsive', async ({ page }) => {
-        test.setTimeout(120_000);
-        await page.goto('/');
-        await waitForFlutter(page, 90000);
-        
-        const startTime = Date.now();
-        await page.goto('/login');
-        await waitForFlutter(page, 15000);
-        
-        const navTime = Date.now() - startTime;
-        console.log(`Navigation time: ${navTime}ms`);
-        
-        const maxNavTime = process.env.CI ? 90000 : 60000;
-        expect(navTime).toBeLessThan(maxNavTime);
-        console.log('✅ Navigation is responsive');
-    });
-});

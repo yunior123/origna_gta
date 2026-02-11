@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/widgets/legal_screen_body.dart';
 
@@ -99,11 +100,11 @@ class TermsOfServiceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       body: LegalScreenBody(
         rawContent: _termsOfServiceContent,
-        heroTitle: 'Terms of\nService',
-        heroBadge: 'Legal Agreement',
+        heroTitle: 'legal.terms_of_service_hero'.tr(),
+        heroBadge: 'legal.legal_agreement'.tr(),
         heroBadgeIcon: Icons.verified_outlined,
       ),
     );

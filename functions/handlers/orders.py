@@ -40,7 +40,7 @@ from services.email_service import (
     get_seller_notification_email,
     send_email,
 )
-from utils.function_options import DEFAULT_OPTIONS
+from utils.function_options import DEFAULT_OPTIONS, FIRESTORE_TRIGGER_OPTIONS
 from utils.helpers import create_success_response, is_valid_order_status_transition
 
 stripe.api_key = STRIPE_SECRET_KEY
@@ -633,7 +633,18 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
             new_payment_status = PaymentStatusValues.CANCELLED
         except stripe.error.StripeError as e:
+            # AUDIT FIX: PI cancel failed — buyer funds remain held!
+            # Flag for manual review and block cancellation to prevent orphaned authorization
             logger.error(f'PaymentIntent cancel failed: {str(e)}')
+            order_ref.update({
+                Fields.REQUIRES_MANUAL_REVIEW: True,
+                Fields.MANUAL_REVIEW_REASON: f'PI cancel failed during cancellation: {type(e).__name__}. Buyer funds may still be held.',
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
+            raise https_fn.HttpsError(
+                'internal',
+                'Order cancellation failed: payment release unsuccessful. Flagged for manual review.'
+            ) from e
 
     # AUDIT FIX: Atomic batch — stock restore + final cancel status in ONE commit
     # Prevents double-restore if process crashes between stock restore and status update
@@ -1069,7 +1080,11 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
             except stripe.error.StripeError as e:
                 logger.error(f'PaymentIntent cancel failed on shipping rejection: {str(e)}')
 
-        order_ref.update({
+        # AUDIT FIX: Use atomic batch for order cancel + stock restore
+        # Prevents stock leakage if process crashes between order update and stock restore
+        reject_batch = get_db().batch()
+
+        reject_batch.update(order_ref, {
             f'{Fields.SHIPPING_APPROVAL}.{Fields.STATUS}': ShippingApprovalStatusValues.REJECTED,
             f'{Fields.SHIPPING_APPROVAL}.{Fields.RESPONDED_AT}': get_server_timestamp(),
             Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
@@ -1079,12 +1094,15 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.UPDATED_AT: get_server_timestamp()
         })
 
-        # Restore stock using atomic Increment (prevents race conditions)
+        # Restore stock atomically with order cancellation
         for item in order_data[Fields.ITEMS]:
             product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-            product_ref.update({
-                Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY])
+            reject_batch.update(product_ref, {
+                Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY]),
+                Fields.UPDATED_AT: get_server_timestamp()
             })
+
+        reject_batch.commit()
 
     return create_success_response({ApiKeys.APPROVED: approved})
 
@@ -1164,6 +1182,10 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
         increase_ratio = (new_shipping_cents - original_shipping_cents) / original_shipping_cents
         if increase_ratio > SHIPPING_APPROVAL_THRESHOLD:
             approval_required = True
+    elif original_shipping_cents == 0 and new_shipping_cents > 0:
+        # AUDIT FIX: Free shipping orders — ANY cost addition requires buyer approval
+        # Prevents seller from adding arbitrary shipping charges without consent
+        approval_required = True
 
     if approval_required:
         # Set pending approval — buyer must approve before shipping can proceed
@@ -1208,7 +1230,7 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
     return create_success_response({ApiKeys.APPROVAL_REQUIRED: approval_required})
 
 
-@firestore_fn.on_document_updated(document="orders/{orderId}", **DEFAULT_OPTIONS)
+@firestore_fn.on_document_updated(document="orders/{orderId}", **FIRESTORE_TRIGGER_OPTIONS)
 def on_order_status_changed(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Sends email notifications when order status changes.

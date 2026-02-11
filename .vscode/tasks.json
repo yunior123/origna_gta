@@ -303,7 +303,7 @@
 		{
 			"label": "Run Kimi Code Audit",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit.py",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit.py",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
@@ -320,7 +320,7 @@
 		{
 			"label": "Run Qwen3 Coder Audit",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_qwen.py",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_qwen.py",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
@@ -337,7 +337,7 @@
 		{
 			"label": "🔍 Audit: Product Lifecycle",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_product.py",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_product.py",
 			"options": { "cwd": "${workspaceFolder}" },
 			"problemMatcher": [],
 			"group": "build",
@@ -346,7 +346,7 @@
 		{
 			"label": "💳 Audit: Payment System",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_payment.py",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_payment.py",
 			"options": { "cwd": "${workspaceFolder}" },
 			"problemMatcher": [],
 			"group": "build",
@@ -355,7 +355,7 @@
 		{
 			"label": "📋 Audit: Order Lifecycle",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_orders.py",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_orders.py",
 			"options": { "cwd": "${workspaceFolder}" },
 			"problemMatcher": [],
 			"group": "build",
@@ -364,7 +364,7 @@
 		{
 			"label": "🏪 Audit: Seller Onboarding",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_seller.py",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_seller.py",
 			"options": { "cwd": "${workspaceFolder}" },
 			"problemMatcher": [],
 			"group": "build",
@@ -373,7 +373,7 @@
 		{
 			"label": "🔐 Audit: Auth & Security",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_auth.py",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_auth.py",
 			"options": { "cwd": "${workspaceFolder}" },
 			"problemMatcher": [],
 			"group": "build",
@@ -385,7 +385,7 @@
 		{
 			"label": "🔄 Audit: Data Flow & Schema",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_dataflow.py",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_dataflow.py",
 			"options": { "cwd": "${workspaceFolder}" },
 			"problemMatcher": [],
 			"group": "build",
@@ -394,7 +394,7 @@
 		{
 			"label": "🛡️ Audit: Error Handling",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_error_handling.py",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_error_handling.py",
 			"options": { "cwd": "${workspaceFolder}" },
 			"problemMatcher": [],
 			"group": "build",
@@ -403,7 +403,7 @@
 		{
 			"label": "⚡ Audit: Performance & Scaling",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_performance.py",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_performance.py",
 			"options": { "cwd": "${workspaceFolder}" },
 			"problemMatcher": [],
 			"group": "build",
@@ -412,7 +412,7 @@
 		{
 			"label": "🧠 Audit: State Management",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_state_mgmt.py",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_state_mgmt.py",
 			"options": { "cwd": "${workspaceFolder}" },
 			"problemMatcher": [],
 			"group": "build",
@@ -421,7 +421,7 @@
 		{
 			"label": "🔒 Audit: API Security",
 			"type": "shell",
-			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/audit_api_security.py",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/runners/audit_api_security.py",
 			"options": { "cwd": "${workspaceFolder}" },
 			"problemMatcher": [],
 			"group": "build",
@@ -590,6 +590,98 @@
 			"problemMatcher": [],
 			"group": "build",
 			"presentation": { "reveal": "always", "panel": "dedicated", "group": "audit" }
+		},
+		{
+			"label": "🏗️ Infra: Full Verification (CLI + LLM)",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook infra",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "infra" }
+		},
+		{
+			"label": "🏗️ Infra: Quick CLI Check (Free)",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/verify_infra.py",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "infra" }
+		},
+		{
+			"label": "🏗️ Infra: Verify Stripe Only",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/verify_infra.py --domain stripe",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "infra" }
+		},
+		{
+			"label": "🏗️ Infra: Verify Firestore Only",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/verify_infra.py --domain firestore",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "infra" }
+		},
+		{
+			"label": "🏗️ Infra: Verify Cloud Functions Only",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/verify_infra.py --domain functions",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "infra" }
+		},
+		{
+			"label": "🏗️ Infra: Verify GCP Secrets Only",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/verify_infra.py --domain secrets",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "infra" }
+		},
+		{
+			"label": "🧪 QA: Full Analysis (Local + LLM)",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/run_hooks.py --hook qa",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "qa" }
+		},
+		{
+			"label": "🧪 QA: Quick Coverage Scan (Free)",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/qa_scanner.py",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "qa" }
+		},
+		{
+			"label": "🧪 QA: Scan + Run All Tests",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/qa_scanner.py --run-tests",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "test",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "qa" }
+		},
+		{
+			"label": "🧪 QA: Generate Test Plan",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/qa_scanner.py --generate-plan",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "qa" }
+		},
+		{
+			"label": "🏗️🧪 Pre-Deploy: Full Verification (Infra + QA)",
+			"type": "shell",
+			"command": "cd ${workspaceFolder} && source functions/venv/bin/activate && python audit/scripts/verify_infra.py && python audit/scripts/qa_scanner.py --run-tests",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": { "reveal": "always", "panel": "dedicated", "group": "deploy" }
 		}
 	]
 }

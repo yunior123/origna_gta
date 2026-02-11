@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -106,7 +107,7 @@ class TermsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'Loading Terms...',
+              'legal.loading_terms'.tr(),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.7),
                 fontSize: 14,
@@ -141,20 +142,20 @@ class TermsScreen extends ConsumerWidget {
               child: const Icon(Icons.error_outline, size: 48, color: DesignTokens.error),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Unable to load terms',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+            Text(
+              'legal.unable_to_load'.tr(),
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
-              'Please check your connection and try again.',
+              'legal.check_connection'.tr(),
               style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
             ),
             const SizedBox(height: 28),
             TextButton.icon(
               onPressed: () => Navigator.pop(context),
               icon: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
-              label: const Text('Go Back', style: TextStyle(color: Colors.white)),
+              label: Text('seller.go_back'.tr(), style: const TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -249,7 +250,7 @@ class _TermsBodyState extends State<_TermsBody> {
       stretch: true,
       backgroundColor: DesignTokens.gradientMiddle,
       leading: IconButton(
-        tooltip: 'Back',
+        tooltip: 'common.back'.tr(),
         icon: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
@@ -328,7 +329,7 @@ class _TermsBodyState extends State<_TermsBody> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Legal Agreement',
+                              'legal.legal_agreement'.tr(),
                               style: TextStyle(
                                 color: DesignTokens.accent.withValues(alpha: 0.9),
                                 fontSize: 12,
@@ -343,9 +344,9 @@ class _TermsBodyState extends State<_TermsBody> {
                     const SizedBox(height: 12),
                     FadeSlideIn(
                       delay: const Duration(milliseconds: 100),
-                      child: const Text(
-                        'Terms &\nConditions',
-                        style: TextStyle(
+                      child: Text(
+                        'legal.terms_conditions_title'.tr(),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 32,
                           fontWeight: FontWeight.w800,
@@ -383,7 +384,7 @@ class _TermsBodyState extends State<_TermsBody> {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
           child: Text(
-            'JUMP TO SECTION',
+            'legal.jump_to_section'.tr(),
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,

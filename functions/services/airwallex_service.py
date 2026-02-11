@@ -140,8 +140,8 @@ class AirwallexService:
         NOTE: Airwallex APIs evolve; keep payload minimal and rely on `merchant_order_id`
         + metadata to correlate to Firestore orders.
         """
-        if amount_cents < 0:
-            raise ValueError("amount_cents must be non-negative")
+        if amount_cents <= 0:
+            raise ValueError("amount_cents must be positive")
 
         payload = {
             # Idempotency-style request id
@@ -519,7 +519,8 @@ class AirwallexService:
                         customer_email=order_data.get(Fields.CUSTOMER_EMAIL),
                         customer_name=order_data.get(Fields.CUSTOMER_NAME, 'Customer'),
                         authentication_url=action_url,
-                        amount=order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0)
+                        # AUDIT FIX: Convert cents to dollars for email display
+                        amount=order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
                     )
                     logger.info("  ✅ 3DS authentication email sent")
             except Exception as email_error:

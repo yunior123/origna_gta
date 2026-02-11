@@ -1,5 +1,8 @@
 import 'package:origna_gta/utils/utils.dart';
 
+/// Sentinel value used to distinguish "not provided" from "explicitly set to null".
+const _sentinel = Object();
+
 class EditProductState {
   final bool isLoading;
   final String? errorMessage;
@@ -56,8 +59,8 @@ class EditProductState {
     List<Map<String, dynamic>>? addressSuggestions,
     bool? showSuggestions,
     String? selectedProvince,
-    double? latitude,
-    double? longitude,
+    Object? latitude = _sentinel,
+    Object? longitude = _sentinel,
     bool? standardEnabled,
     bool? expressEnabled,
     bool? sameDayEnabled,
@@ -77,8 +80,8 @@ class EditProductState {
       addressSuggestions: addressSuggestions ?? this.addressSuggestions,
       showSuggestions: showSuggestions ?? this.showSuggestions,
       selectedProvince: selectedProvince ?? this.selectedProvince,
-      latitude: latitude ?? this.latitude,
-      longitude: longitude ?? this.longitude,
+      latitude: latitude == _sentinel ? this.latitude : latitude as double?,
+      longitude: longitude == _sentinel ? this.longitude : longitude as double?,
       standardEnabled: standardEnabled ?? this.standardEnabled,
       expressEnabled: expressEnabled ?? this.expressEnabled,
       sameDayEnabled: sameDayEnabled ?? this.sameDayEnabled,

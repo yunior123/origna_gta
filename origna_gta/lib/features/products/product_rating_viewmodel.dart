@@ -24,6 +24,11 @@ class ProductRatingViewModel extends StateNotifier<ProductRatingState> {
   ProductRatingViewModel(this._ref) : super(ProductRatingState());
 
   Future<bool> submitRating(String orderId, String productId, int rating) async {
+    if (state.isLoading) return false;
+    if (rating < 1 || rating > 5) {
+      state = state.copyWith(errorMessage: 'Rating must be between 1 and 5');
+      return false;
+    }
     state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
     try {
       await _ref.read(productRepositoryProvider).submitRating(orderId, productId, rating);

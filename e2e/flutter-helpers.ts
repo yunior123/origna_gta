@@ -67,11 +67,20 @@ export async function waitForFlutter(page: Page, timeout = 90000): Promise<void>
     .catch(() => {});
   console.log(`   ✅ Canvas rendered (${Date.now() - startTime}ms)`);
 
-  // 4) Wait for semantics tree (always-on via ensureSemantics)
+  // 4) Activate semantics tree — if ensureSemantics() wasn't baked into the build,
+  //    the placeholder button or a Tab key press will trigger it.
+  const placeholder = page.locator('flt-semantics-placeholder');
+  if ((await placeholder.count()) > 0) {
+    await placeholder.first().click({ force: true }).catch(() => {});
+    await page.keyboard.press('Tab');
+    console.log(`   ✅ Semantics activated via placeholder (${Date.now() - startTime}ms)`);
+  }
+
+  // 5) Wait for semantics tree to appear
   await page
     .locator('flt-semantics')
     .first()
-    .waitFor({ state: 'attached', timeout: Math.min(20000, timeout) })
+    .waitFor({ state: 'attached', timeout: Math.min(30000, timeout) })
     .catch(() => {});
   console.log(`   ✅ Flutter initialized in ${Date.now() - startTime}ms`);
 }

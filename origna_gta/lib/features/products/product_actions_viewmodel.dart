@@ -24,6 +24,7 @@ class ProductActionsViewModel extends StateNotifier<ProductActionsState> {
   ProductActionsViewModel(this._ref) : super(ProductActionsState());
 
   Future<bool> deleteProduct(String productId) async {
+    if (state.isLoading) return false;
     state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
     try {
       await _ref.read(productRepositoryProvider).deleteProduct(productId);

@@ -201,6 +201,12 @@ except (ValueError, RuntimeError) as e:
         raise
 
 # ============================================================================
+# UNSUBSCRIBE HMAC SECRET (email unsubscribe link signing)
+# ============================================================================
+
+UNSUBSCRIBE_HMAC_SECRET = _load_secret("UNSUBSCRIBE_HMAC_SECRET", required=False)
+
+# ============================================================================
 # GEOAPIFY CONFIGURATION
 # ============================================================================
 

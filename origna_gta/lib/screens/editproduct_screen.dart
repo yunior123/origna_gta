@@ -87,18 +87,18 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildSectionTitle('Basic Information'),
+                  _buildSectionTitle('product.basic_information'.tr()),
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Product Name', prefixIcon: Icon(Icons.shopping_bag_outlined)),
-                    validator: (value) => value?.isEmpty ?? true ? 'Please enter product name' : null,
+                    decoration: InputDecoration(labelText: 'product.product_name'.tr(), prefixIcon: const Icon(Icons.shopping_bag_outlined)),
+                    validator: (value) => value?.isEmpty ?? true ? 'product.please_enter_name'.tr() : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _descriptionController,
                     maxLines: 3,
-                    decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.description_outlined)),
-                    validator: (value) => value?.isEmpty ?? true ? 'Please enter description' : null,
+                    decoration: InputDecoration(labelText: 'product.description'.tr(), prefixIcon: const Icon(Icons.description_outlined)),
+                    validator: (value) => value?.isEmpty ?? true ? 'product.please_enter_description'.tr() : null,
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -107,8 +107,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                         child: TextFormField(
                           controller: _priceController,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: const InputDecoration(labelText: 'Price', prefixIcon: Icon(Icons.attach_money_outlined)),
-                          validator: (value) => value?.isEmpty ?? true ? 'Please enter price' : null,
+                          decoration: InputDecoration(labelText: 'product.price'.tr(), prefixIcon: const Icon(Icons.attach_money_outlined)),
+                          validator: (value) => value?.isEmpty ?? true ? 'product.please_enter_price'.tr() : null,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -118,17 +118,17 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                           keyboardType: TextInputType.number,
                           enabled: !state.isSoldOut,
                           decoration: InputDecoration(
-                            labelText: 'Stock',
+                            labelText: 'product.stock'.tr(),
                             prefixIcon: const Icon(Icons.inventory_2_outlined),
-                            suffixText: state.isSoldOut ? 'Sold Out' : null,
+                            suffixText: state.isSoldOut ? 'product.sold_out'.tr() : null,
                           ),
-                          validator: (value) => !state.isSoldOut && (value == null || value.isEmpty) ? 'Enter quantity' : null,
+                          validator: (value) => !state.isSoldOut && (value == null || value.isEmpty) ? 'product.enter_quantity'.tr() : null,
                         ),
                       ),
                     ],
                   ),
                   SwitchListTile(
-                    title: const Text('Mark as Sold Out'),
+                    title: Text('product.mark_sold_out'.tr()),
                     value: state.isSoldOut,
                     activeTrackColor: DesignTokens.primary,
                     contentPadding: EdgeInsets.zero,
@@ -138,8 +138,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     },
                   ),
                   SwitchListTile(
-                    title: const Text('Digital Product (No Shipping)'),
-                    subtitle: const Text('Hide shipping options and deliver digitally'),
+                    title: Text('product.digital_product'.tr()),
+                    subtitle: Text('product.digital_subtitle'.tr()),
                     value: state.isDigital,
                     activeTrackColor: DesignTokens.primary,
                     contentPadding: EdgeInsets.zero,
@@ -147,26 +147,26 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   ),
                   DropdownButtonFormField<String>(
                     initialValue: _categoryController.text.isNotEmpty ? _categoryController.text : null,
-                    decoration: const InputDecoration(labelText: 'Category', prefixIcon: Icon(Icons.category_outlined)),
+                    decoration: InputDecoration(labelText: 'product.category'.tr(), prefixIcon: const Icon(Icons.category_outlined)),
                     items: productCategories.map((c) => DropdownMenuItem(value: c.categoryId.toString(), child: Text(c.name))).toList(),
                     onChanged: (v) => setState(() => _categoryController.text = v ?? ''),
-                    validator: (v) => v == null ? 'Select category' : null,
+                    validator: (v) => v == null ? 'product.select_category'.tr() : null,
                   ),
                   const SizedBox(height: 24),
 
                   if (!state.isDigital) ...[
-                    _buildSectionTitle('Shipping & Delivery'),
+                    _buildSectionTitle('product.shipping_delivery'.tr()),
                     SwitchListTile(
-                      title: const Text('Local Delivery Only'),
-                      subtitle: const Text('Restrict to buyers within 50km'),
+                      title: Text('product.local_delivery_only'.tr()),
+                      subtitle: Text('product.restrict_50km'.tr()),
                       value: state.isLocalDeliveryOnly,
                       activeTrackColor: DesignTokens.primary,
                       contentPadding: EdgeInsets.zero,
                       onChanged: viewModel.toggleLocalDelivery,
                     ),
                     SwitchListTile(
-                      title: const Text('Perishable Item'),
-                      subtitle: const Text('Food, flowers, etc. (Requires same-day)'),
+                      title: Text('product.perishable_item'.tr()),
+                      subtitle: Text('product.perishable_subtitle'.tr()),
                       value: state.isPerishable,
                       activeTrackColor: DesignTokens.primary,
                       contentPadding: EdgeInsets.zero,
@@ -180,7 +180,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                             child: TextFormField(
                               controller: _weightController,
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              decoration: const InputDecoration(labelText: 'Weight (kg)', prefixIcon: Icon(Icons.scale_outlined)),
+                              decoration: InputDecoration(labelText: 'product.weight'.tr(), prefixIcon: const Icon(Icons.scale_outlined)),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -188,7 +188,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                             child: TextFormField(
                               controller: _shipDaysController,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Ship Days', prefixIcon: Icon(Icons.schedule_outlined)),
+                              decoration: InputDecoration(labelText: 'product.ship_days'.tr(), prefixIcon: const Icon(Icons.schedule_outlined)),
                             ),
                           ),
                         ],
@@ -199,21 +199,21 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                           Expanded(
                             child: TextFormField(
                               controller: _lengthController,
-                              decoration: const InputDecoration(labelText: 'L (cm)'),
+                              decoration: InputDecoration(labelText: 'product.length_cm'.tr()),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: TextFormField(
                               controller: _widthController,
-                              decoration: const InputDecoration(labelText: 'W (cm)'),
+                              decoration: InputDecoration(labelText: 'product.width_cm'.tr()),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: TextFormField(
                               controller: _heightController,
-                              decoration: const InputDecoration(labelText: 'H (cm)'),
+                              decoration: InputDecoration(labelText: 'product.height_cm'.tr()),
                             ),
                           ),
                         ],
@@ -225,8 +225,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                             child: TextFormField(
                               controller: _minOrderController,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Min Order Qty', prefixIcon: Icon(Icons.format_list_numbered)),
-                              validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                              decoration: InputDecoration(labelText: 'product.min_order_qty'.tr(), prefixIcon: const Icon(Icons.format_list_numbered)),
+                              validator: (value) => value?.isEmpty ?? true ? 'common.required'.tr() : null,
                               onChanged: (v) => viewModel.setMinimumOrderQuantity(int.tryParse(v) ?? 1),
                             ),
                           ),
@@ -234,7 +234,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                           Expanded(
                             child: SwitchListTile(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text('Free Shipping'),
+                              title: Text('product.free_shipping'.tr()),
                               value: state.freeShipping,
                               activeTrackColor: DesignTokens.primary,
                               onChanged: viewModel.toggleFreeShipping,
@@ -248,12 +248,12 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     const SizedBox(height: 24),
                   ],
 
-                  _buildSectionTitle('Product Location'),
+                  _buildSectionTitle('product.product_location'.tr()),
                   TextFormField(
                     controller: _streetController,
-                    decoration: const InputDecoration(labelText: 'Street Address', prefixIcon: Icon(Icons.location_on_outlined)),
+                    decoration: InputDecoration(labelText: 'product.street_address'.tr(), prefixIcon: const Icon(Icons.location_on_outlined)),
                     onChanged: viewModel.onStreetChanged,
-                    validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                    validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
                   ),
                   if (state.showSuggestions && state.addressSuggestions.isNotEmpty) _buildAddressSuggestions(state, viewModel),
                   const SizedBox(height: 12),
@@ -262,15 +262,15 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       Expanded(
                         child: TextFormField(
                           controller: _cityController,
-                          decoration: const InputDecoration(labelText: 'City', prefixIcon: Icon(Icons.location_city_outlined)),
-                          validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                          decoration: InputDecoration(labelText: 'product.city'.tr(), prefixIcon: const Icon(Icons.location_city_outlined)),
+                          validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
                           initialValue: state.selectedProvince,
-                          decoration: const InputDecoration(labelText: 'Province'),
+                          decoration: InputDecoration(labelText: 'product.province'.tr()),
                           items: _provinceNames.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.key))).toList(),
                           onChanged: (v) => viewModel.setProvince(v!),
                         ),
@@ -280,12 +280,12 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _postalCodeController,
-                    decoration: const InputDecoration(labelText: 'Postal Code', prefixIcon: Icon(Icons.pin_outlined)),
+                    decoration: InputDecoration(labelText: 'product.postal_code'.tr(), prefixIcon: const Icon(Icons.pin_outlined)),
                     validator: _validatePostalCode,
                   ),
                   const SizedBox(height: 24),
 
-                  _buildSectionTitle('Images'),
+                  _buildSectionTitle('product.images'.tr()),
                   _buildImageGrid(state, viewModel),
                   const SizedBox(height: 12),
                   ProductAddImages(imageModels: state.newImages),
@@ -305,7 +305,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                         ),
                         child: state.isLoading
                             ? const ModernLoadingIndicator(color: Colors.white, centered: false)
-                            : const Text('Save Changes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            : Text('product.save_changes'.tr(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ),
@@ -417,28 +417,28 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         child: Column(
           children: [
             _buildDeliveryTile(
-              'Standard Delivery',
+              'product.standard_delivery'.tr(),
               state.standardEnabled,
               (v) => viewModel.setStandardEnabled(v),
               _standardDaysController,
               _standardPriceController,
-              'Days',
+              'product.days_label'.tr(),
             ),
             _buildDeliveryTile(
-              'Express Delivery',
+              'product.express_delivery'.tr(),
               state.expressEnabled,
               (v) => viewModel.setExpressEnabled(v),
               _expressDaysController,
               _expressPriceController,
-              'Days',
+              'product.days_label'.tr(),
             ),
             _buildDeliveryTile(
-              'Same Day Delivery',
+              'product.same_day_delivery'.tr(),
               state.sameDayEnabled,
               (v) => viewModel.setSameDayEnabled(v),
               null,
               _sameDayPriceController,
-              'Price (\$)',
+              'product.price_dollar'.tr(),
             ),
           ],
         ),
@@ -489,7 +489,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   child: TextFormField(
                     controller: priceController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Price (\$)', isDense: true),
+                    decoration: InputDecoration(labelText: 'product.price_dollar'.tr(), isDense: true),
                   ),
                 ),
               ],
@@ -521,7 +521,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
               right: 8,
               child: IconButton(
                 icon: const Icon(Icons.remove_circle, color: DesignTokens.error),
-                tooltip: 'Remove image',
+                tooltip: 'product.remove_image'.tr(),
                 onPressed: () => viewModel.removeExistingImage(index),
               ),
             ),
@@ -622,14 +622,14 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   }
 
   void _onUpdateSuccess() {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product updated successfully'), backgroundColor: DesignTokens.success));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('product.updated_success'.tr()), backgroundColor: DesignTokens.success));
     Navigator.pop(context, true);
   }
 
   String? _validatePostalCode(String? v) {
-    if (v == null || v.isEmpty) return 'Required';
+    if (v == null || v.isEmpty) return 'common.required'.tr();
     final reg = RegExp(r'^[A-Z]\d[A-Z] \d[A-Z]\d$');
-    if (!reg.hasMatch(v.toUpperCase().trim())) return 'Invalid (A1A 1A1)';
+    if (!reg.hasMatch(v.toUpperCase().trim())) return 'product.invalid_postal'.tr();
     return null;
   }
 }

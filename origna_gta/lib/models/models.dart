@@ -432,9 +432,12 @@ class OrderModel {
       );
     }).toList();
 
-    // Parse seller payouts
+    // Parse seller payouts (safe cast — skip malformed entries)
     final payoutsData = data[Fields.sellerPayouts] as List<dynamic>? ?? [];
-    final sellerPayouts = payoutsData.map((p) => SellerPayout.fromMap(p as Map<String, dynamic>)).toList();
+    final sellerPayouts = payoutsData
+        .whereType<Map<String, dynamic>>()
+        .map((p) => SellerPayout.fromMap(p))
+        .toList();
 
     // Money — all cents
     final totalAmountCents = (data[Fields.totalAmountCents] as num?)?.toInt() ?? 0;
@@ -503,9 +506,12 @@ class OrderModel {
       );
     }).toList();
 
-    // Parse seller payouts
+    // Parse seller payouts (safe cast — skip malformed entries)
     final payoutsData = data[Fields.sellerPayouts] as List<dynamic>? ?? [];
-    final sellerPayouts = payoutsData.map((p) => SellerPayout.fromMap(p as Map<String, dynamic>)).toList();
+    final sellerPayouts = payoutsData
+        .whereType<Map<String, dynamic>>()
+        .map((p) => SellerPayout.fromMap(p))
+        .toList();
 
     // Money — all cents
     final totalAmountCents = (data[Fields.totalAmountCents] as num?)?.toInt() ?? 0;

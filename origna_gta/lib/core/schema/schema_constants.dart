@@ -824,6 +824,7 @@ abstract final class ApiKeys {
   static const newShippingCost = 'newShippingCost';
   static const subtotal = 'subtotal';
   static const itemIds = 'itemIds';
+  static const idempotencyKey = 'idempotencyKey';
 
   // === RESPONSE KEYS (returned from Cloud Functions) ===
   static const success = 'success';

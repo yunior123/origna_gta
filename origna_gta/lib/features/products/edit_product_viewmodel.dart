@@ -82,10 +82,10 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
 
   void toggleDigital(bool value) => state = state.copyWith(
     isDigital: value,
-    freeShipping: value ? true : state.freeShipping, // Bug #1: digital products MUST have freeShipping
+    freeShipping: value ? true : state.freeShipping,
     isPerishable: value ? false : state.isPerishable,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
-    standardEnabled: value ? false : (state.standardEnabled || true), // Re-enable standard when going back to physical
+    standardEnabled: value ? false : _product.deliveryOptions.any((o) => o.type == _standardType),
     expressEnabled: value ? false : state.expressEnabled,
     sameDayEnabled: value ? false : state.sameDayEnabled,
   );
@@ -115,6 +115,9 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     required int shipDays,
     required List<models.SellerDeliveryOption> deliveryOptions,
   }) async {
+    // Guard: prevent double-submit
+    if (state.isLoading) return;
+
     if (name.trim().isEmpty) {
       state = state.copyWith(errorMessage: 'Product name is required');
       return;
@@ -127,6 +130,10 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       state = state.copyWith(errorMessage: 'Price must be greater than 0');
       return;
     }
+    if (price > 100000) {
+      state = state.copyWith(errorMessage: 'Price cannot exceed \$100,000');
+      return;
+    }
     if (stock < 0) {
       state = state.copyWith(errorMessage: 'Stock cannot be negative');
       return;
@@ -135,13 +142,16 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       state = state.copyWith(errorMessage: 'Category is required');
       return;
     }
-    if (street.trim().isEmpty || city.trim().isEmpty || postalCode.trim().isEmpty || state.selectedProvince.trim().isEmpty) {
-      state = state.copyWith(errorMessage: 'Complete product address is required');
-      return;
-    }
-    if (state.latitude == null || state.longitude == null) {
-      state = state.copyWith(errorMessage: 'Select a valid address from suggestions');
-      return;
+    // Address validation only for physical products
+    if (!state.isDigital) {
+      if (street.trim().isEmpty || city.trim().isEmpty || postalCode.trim().isEmpty || state.selectedProvince.trim().isEmpty) {
+        state = state.copyWith(errorMessage: 'Complete product address is required');
+        return;
+      }
+      if (state.latitude == null || state.longitude == null) {
+        state = state.copyWith(errorMessage: 'Select a valid address from suggestions');
+        return;
+      }
     }
     if ((weight ?? 0) < 0 || (length ?? 0) < 0 || (width ?? 0) < 0 || (height ?? 0) < 0) {
       state = state.copyWith(errorMessage: 'Package dimensions must be positive');
@@ -162,7 +172,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       return;
     }
 
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    state = state.copyWith(isLoading: true, errorMessage: null, isSuccess: false);
 
     try {
       final keywords = generateSearchKeywords(name);

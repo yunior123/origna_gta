@@ -5,7 +5,9 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(SCRIPT_DIR))
+AUDIT_DIR = SCRIPT_DIR.parent
+sys.path.insert(0, str(AUDIT_DIR))
+sys.path.insert(0, str(AUDIT_DIR / "prompts"))
 
 from common import run_enriched_audit
 from prompt_state_mgmt import STATE_MGMT_AUDIT_PROMPT

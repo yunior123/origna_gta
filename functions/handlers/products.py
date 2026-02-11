@@ -26,7 +26,7 @@ from schema_constants import (
 )
 from services.algolia_service import delete_product as algolia_delete_product
 from services.algolia_service import index_product
-from utils.function_options import DEFAULT_OPTIONS
+from utils.function_options import DEFAULT_OPTIONS, FIRESTORE_TRIGGER_OPTIONS
 from utils.helpers import create_success_response
 
 logger = logging.getLogger(__name__)
@@ -475,7 +475,7 @@ def validate_image_magic_bytes(image_url: str) -> bool:
         return True
 
 
-@firestore_fn.on_document_created(document="products/{productId}", **DEFAULT_OPTIONS)
+@firestore_fn.on_document_created(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)
 def on_product_created(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Indexes product to Algolia when created.
@@ -645,7 +645,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         logger.error(f'Failed to index product {product_id}: {str(e)}')
 
 
-@firestore_fn.on_document_updated(document="products/{productId}", **DEFAULT_OPTIONS)
+@firestore_fn.on_document_updated(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)
 def on_product_updated(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Updates product in Algolia when modified.
@@ -733,7 +733,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         logger.error(f'Failed to update product {product_id} in Algolia: {str(e)}')
 
 
-@firestore_fn.on_document_deleted(document="products/{productId}", **DEFAULT_OPTIONS)
+@firestore_fn.on_document_deleted(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)
 def on_product_deleted(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Removes product from Algolia when deleted.

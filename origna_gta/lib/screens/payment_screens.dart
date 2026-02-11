@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
@@ -10,109 +13,172 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
-/// Gate that waits for order to be confirmed after Stripe payment
-class OrderSuccessGate extends ConsumerWidget {
+/// Gate that waits for order to be confirmed after Stripe payment.
+/// Includes a timeout to prevent infinite spinner if webhook is delayed/failed.
+class OrderSuccessGate extends ConsumerStatefulWidget {
   final String sessionId;
 
   const OrderSuccessGate({super.key, required this.sessionId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final orderAsync = ref.watch(paidOrderBySessionProvider(sessionId));
+  ConsumerState<OrderSuccessGate> createState() => _OrderSuccessGateState();
+}
+
+class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
+  static const _timeoutDuration = Duration(seconds: 45);
+  Timer? _timeoutTimer;
+  bool _timedOut = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timeoutTimer = Timer(_timeoutDuration, () {
+      if (mounted) setState(() => _timedOut = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timeoutTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final orderAsync = ref.watch(paidOrderBySessionProvider(widget.sessionId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return orderAsync.when(
-      loading: () => Container(
-        decoration: BoxDecoration(
-          gradient: DesignTokens.backgroundGradient(isDark: isDark),
-        ),
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          body: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
+      loading: () => _timedOut
+          ? _buildTimeoutFallback(isDark)
+          : _ConfirmingPaymentView(message: 'payment.confirming'.tr(), isDark: isDark),
+      error: (error, _) => ErrorScreen(message: 'payment.error_loading_order'.tr(namedArgs: {'error': error.toString()})),
+      data: (order) {
+        if (order == null) {
+          return _timedOut
+              ? _buildTimeoutFallback(isDark)
+              : _ConfirmingPaymentView(message: 'payment.processing'.tr(), isDark: isDark);
+        }
+        _timeoutTimer?.cancel();
+        return OrderSuccessScreen(orderId: order.orderId);
+      },
+    );
+  }
+
+  Widget _buildTimeoutFallback(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Padding(
+              padding: const EdgeInsets.all(DesignTokens.spacing24),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
-                      ),
-                    ),
-                    child: Center(
-                      child: ShaderMask(
-                        shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                        child: const SizedBox(
-                          width: 40,
-                          height: 40,
-                          child: ModernLoadingIndicator(size: 40, strokeWidth: 3, color: Colors.white, centered: false),
+                  FadeSlideIn(
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [DesignTokens.warning.withValues(alpha: 0.15), DesignTokens.warning.withValues(alpha: 0.08)],
                         ),
                       ),
+                      child: Icon(Icons.hourglass_top_rounded, size: 40, color: DesignTokens.warning),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text('Confirming your payment...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary)),
+                  Text(
+                    'payment.verification_delayed'.tr(),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 8),
-                  Text('This may take a few moments', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
+                  Text(
+                    'payment.check_orders_later'.tr(),
+                    style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  ModernButton(
+                    label: 'orders.view_my_orders'.tr(),
+                    icon: Icons.receipt_long_outlined,
+                    onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.orders, (route) => route.isFirst),
+                  ),
+                  const SizedBox(height: 12),
+                  ModernButton(
+                    label: 'payment.back_to_shopping'.tr(),
+                    icon: Icons.home_outlined,
+                    isPrimary: false,
+                    isOutlined: true,
+                    onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                  ),
                 ],
               ),
             ),
           ),
         ),
       ),
-      error: (error, _) => ErrorScreen(message: 'Error loading order: $error'),
-      data: (order) {
-        if (order == null) {
-          return Container(
-            decoration: BoxDecoration(
-              gradient: DesignTokens.backgroundGradient(isDark: isDark),
-            ),
-            child: Scaffold(
-              backgroundColor: Colors.transparent,
-              body: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
-                          ),
-                        ),
-                        child: Center(
-                          child: ShaderMask(
-                            shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                            child: const SizedBox(
-                              width: 40,
-                              height: 40,
-                              child: ModernLoadingIndicator(size: 40, strokeWidth: 3, color: Colors.white, centered: false),
-                            ),
-                          ),
-                        ),
+    );
+  }
+}
+
+/// Reusable confirming payment view to avoid duplication
+class _ConfirmingPaymentView extends StatelessWidget {
+  final String message;
+  final bool isDark;
+
+  const _ConfirmingPaymentView({required this.message, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: DesignTokens.backgroundGradient(isDark: isDark),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [DesignTokens.primary.withValues(alpha: 0.15), DesignTokens.secondary.withValues(alpha: 0.15)],
+                    ),
+                  ),
+                  child: Center(
+                    child: ShaderMask(
+                      shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
+                      child: const SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: ModernLoadingIndicator(size: 40, strokeWidth: 3, color: Colors.white, centered: false),
                       ),
-                      const SizedBox(height: 20),
-                      Text('Processing your payment...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary)),
-                      const SizedBox(height: 8),
-                      Text('This may take a few moments', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 20),
+                Text(message, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary)),
+                const SizedBox(height: 8),
+                Text('payment.may_take_moments'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
+              ],
             ),
-          );
-        }
-
-        return OrderSuccessScreen(orderId: order.orderId);
-      },
+          ),
+        ),
+      ),
     );
   }
 }
@@ -130,7 +196,7 @@ class PaymentCanceledScreen extends StatelessWidget {
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
-        appBar: AppBarFactory.simple(title: 'Payment Canceled'),
+        appBar: AppBarFactory.simple(title: 'payment.canceled'.tr()),
         backgroundColor: Colors.transparent,
         body: Center(
           child: ConstrainedBox(
@@ -157,7 +223,7 @@ class PaymentCanceledScreen extends StatelessWidget {
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 100),
                     child: Text(
-                      'Payment Canceled',
+                      'payment.canceled'.tr(),
                       style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: isDark ? Colors.white : DesignTokens.textPrimary),
                     ),
                   ),
@@ -165,7 +231,7 @@ class PaymentCanceledScreen extends StatelessWidget {
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 150),
                     child: Text(
-                      'Your payment was canceled.\nYour cart items are still saved.',
+                      'payment.canceled_body'.tr(),
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.5),
                     ),
@@ -177,7 +243,7 @@ class PaymentCanceledScreen extends StatelessWidget {
                       button: true,
                       label: 'btn-back-to-shopping',
                       child: ModernButton(
-                        label: 'Back to Shopping',
+                        label: 'payment.back_to_shopping'.tr(),
                         icon: Icons.shopping_bag_outlined,
                         onPressed: () {
                           Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);

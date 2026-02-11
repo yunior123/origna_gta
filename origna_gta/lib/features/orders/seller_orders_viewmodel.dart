@@ -13,7 +13,8 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
   SellerOrdersViewModel(this._ref) : super(SellerOrdersState());
 
   Future<void> updateShippingAndCapture(String orderId, double actualShipping, String trackingNumber) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    if (state.isLoading) return;
+    state = state.copyWith(isLoading: true, errorMessage: null, isSuccess: false);
     
     final repository = _ref.read(orderRepositoryProvider);
     
@@ -56,7 +57,8 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
   }
 
   Future<void> updateItemStatus(String orderId, String itemId, String status, {String? trackingNumber}) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    if (state.isLoading) return;
+    state = state.copyWith(isLoading: true, errorMessage: null, isSuccess: false);
     
     final repository = _ref.read(orderRepositoryProvider);
     

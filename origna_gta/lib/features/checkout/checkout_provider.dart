@@ -248,10 +248,12 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
             .toList(),
         ApiKeys.subtotal: subtotal,
         Fields.shippingAddress: state.address?.toMap() ?? {},
-        // Bug #9: Send delivery speed so backend applies correct multiplier
+        // Send delivery speed so backend applies correct multiplier
         Fields.deliverySpeed: state.deliverySpeed.value,
         // Delivery instructions for sellers
         Fields.deliveryInstructions: deliveryInstructions,
+        // Idempotency key — prevents double-charges on retry/race
+        ApiKeys.idempotencyKey: idempotencyKey,
       };
 
       // Use circuit breaker for Stripe checkout calls

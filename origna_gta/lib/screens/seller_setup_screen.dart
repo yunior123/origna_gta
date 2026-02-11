@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
@@ -108,7 +109,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                     ),
                   ),
                   const SizedBox(height: DesignTokens.spacing20),
-                  Text('Checking status...', style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500)),
+                  Text('seller.checking_status'.tr(), style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
@@ -147,11 +148,11 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                           ),
                         ),
                         const SizedBox(height: DesignTokens.spacing20),
-                        Text('Verifying your seller account...', style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500)),
+                        Text('seller.verifying_account'.tr(), style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ),
-                  error: (error, _) => _buildError(context, 'Failed to verify seller account. Please try again.'),
+                  error: (error, _) => _buildError(context, 'seller.failed_verify'.tr()),
                   data: (status) {
                     if (status.isComplete) {
                       return _buildSuccess(context);
@@ -190,7 +191,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           SizedBox(
             width: double.infinity,
             child: ModernButton(
-              label: 'Retry',
+              label: 'common.retry'.tr(),
               onPressed: _checkStatusAgain,
               height: 52,
             ),
@@ -198,7 +199,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           const SizedBox(height: DesignTokens.spacing12),
           TextButton(
             onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
-            child: Text('Go Home', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
+            child: Text('seller.go_home'.tr(), style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -251,16 +252,16 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           const SizedBox(height: DesignTokens.spacing32),
           Text(
             hasDocumentRequirements 
-                ? 'Identity Verification Required' 
-                : 'Complete Your Setup',
+                ? 'seller.identity_verification_required'.tr() 
+                : 'seller.complete_your_setup'.tr(),
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: DesignTokens.spacing16),
           Text(
             hasDocumentRequirements
-                ? 'Stripe needs to verify your identity before you can start selling. Please submit the required documents.'
-                : 'You need to finish providing your information to Stripe before you can start selling.',
+                ? 'seller.stripe_verify_body'.tr()
+                : 'seller.stripe_finish_body'.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.6),
           ),
@@ -288,7 +289,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        'Still needed:',
+                        'seller.still_needed'.tr(),
                         style: TextStyle(fontWeight: FontWeight.w700, color: DesignTokens.warning, fontSize: 14),
                       ),
                     ],
@@ -306,7 +307,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           SizedBox(
             width: double.infinity,
             child: ModernButton(
-              label: hasDocumentRequirements ? 'Submit Documents' : 'Continue Setup',
+              label: hasDocumentRequirements ? 'seller.submit_documents'.tr() : 'seller.continue_setup'.tr(),
               icon: Icons.arrow_forward_rounded,
               onPressed: () {
                 Navigator.of(context).pushReplacementNamed(AppRoutes.sellerRegistration);
@@ -318,7 +319,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           const SizedBox(height: DesignTokens.spacing12),
           TextButton(
             onPressed: _goToHome,
-            child: Text('Go to Home', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
+            child: Text('seller.go_to_home'.tr(), style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -341,14 +342,14 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
             child: Icon(Icons.hourglass_empty_rounded, size: 72, color: DesignTokens.warning),
           ),
           const SizedBox(height: DesignTokens.spacing32),
-          const Text(
-            'Identity Verification Pending',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+          Text(
+            'seller.identity_pending'.tr(),
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: DesignTokens.spacing16),
           Text(
-            'Stripe is reviewing your identity documents. This usually takes a few minutes but can take up to 2 business days.\n\nYou will be able to add products once your verification is complete.',
+            'seller.identity_pending_body'.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.6),
           ),
@@ -356,7 +357,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           SizedBox(
             width: double.infinity,
             child: ModernButton(
-              label: 'Go to Home',
+              label: 'seller.go_to_home'.tr(),
               onPressed: _goToHome,
               height: 54,
             ),
@@ -364,7 +365,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           const SizedBox(height: DesignTokens.spacing12),
           TextButton(
             onPressed: _checkStatusAgain,
-            child: Text('Check Verification Status', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
+            child: Text('seller.check_verification'.tr(), style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
           ),
           if (_statusMessage != null) ...[
             const SizedBox(height: DesignTokens.spacing16),
@@ -417,15 +418,15 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           const SizedBox(height: DesignTokens.spacing32),
           ShaderMask(
             shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-            child: const Text(
-              'Seller Account Ready!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.3),
+            child: Text(
+              'seller.account_ready'.tr(),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.3),
               textAlign: TextAlign.center,
             ),
           ),
           const SizedBox(height: DesignTokens.spacing16),
           Text(
-            'Your account is set up and you can now start selling products.',
+            'seller.account_ready_body'.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.5),
           ),
@@ -433,7 +434,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           SizedBox(
             width: double.infinity,
             child: ModernButton(
-              label: 'Start Selling',
+              label: 'seller.start_selling'.tr(),
               icon: Icons.storefront_rounded,
               onPressed: _goToHome,
               height: 54,
@@ -479,14 +480,14 @@ class SellerSetupRefreshScreen extends StatelessWidget {
                         child: Icon(Icons.refresh_rounded, size: 72, color: DesignTokens.info),
                       ),
                       const SizedBox(height: DesignTokens.spacing32),
-                      const Text(
-                        'Continue Your Setup',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                      Text(
+                        'seller.continue_setup_title'.tr(),
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: DesignTokens.spacing16),
                       Text(
-                        'Your seller account setup needs to be completed. Please continue to finish setting up your account.',
+                        'seller.continue_setup_body'.tr(),
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.6),
                       ),
@@ -494,7 +495,7 @@ class SellerSetupRefreshScreen extends StatelessWidget {
                       SizedBox(
                         width: double.infinity,
                         child: ModernButton(
-                          label: 'Continue Setup',
+                          label: 'seller.continue_setup'.tr(),
                           icon: Icons.arrow_forward_rounded,
                           onPressed: () {
                             Navigator.of(context).pushReplacementNamed(AppRoutes.sellerRegistration);
@@ -505,7 +506,7 @@ class SellerSetupRefreshScreen extends StatelessWidget {
                       const SizedBox(height: DesignTokens.spacing12),
                       TextButton(
                         onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
-                        child: Text('Back to Home', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
+                        child: Text('seller.back_to_home'.tr(), style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
                       ),
                     ],
                   ),

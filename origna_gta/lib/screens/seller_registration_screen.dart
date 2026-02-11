@@ -141,18 +141,18 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Loading...',
+                  'seller.loading'.tr(),
                   style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
           ),
           error: (error, stack) => Center(
-            child: Padding(padding: const EdgeInsets.all(24), child: Text('Error loading profile: $error')),
+            child: Padding(padding: const EdgeInsets.all(24), child: Text('seller.error_loading_profile'.tr(namedArgs: {'error': error.toString()}))),
           ),
           data: (userModel) {
             if (userModel == null) {
-              return const Center(child: Text('Please log in to continue'));
+              return Center(child: Text('seller.please_login'.tr()));
             }
 
             return SingleChildScrollView(
@@ -212,10 +212,10 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                         child: CheckboxListTile(
                         value: _termsAccepted,
                         onChanged: (value) => setState(() => _termsAccepted = value ?? false),
-                        title: const Text('I accept the Terms and Conditions'),
+                        title: Text('seller.accept_terms'.tr()),
                         subtitle: !_termsAccepted
                             ? Text(
-                                'You must accept the terms to create a seller account',
+                                'seller.accept_terms_required'.tr(),
                                 style: TextStyle(color: DesignTokens.warning, fontSize: 12),
                               )
                             : null,
@@ -284,13 +284,13 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
     Color color;
     
     if (!onboardingCompleted) {
-      title = 'Complete Your Setup';
-      message = 'Click the button below to finish providing your information to Stripe.';
+      title = 'seller.complete_your_setup'.tr();
+      message = 'seller.complete_setup_card_body'.tr();
       icon = Icons.assignment_outlined;
       color = DesignTokens.primary;
     } else if (!chargesEnabled || !payoutsEnabled) {
-      title = 'Identity Verification Pending';
-      message = 'Stripe is reviewing your identity documents. This usually takes a few minutes but can take up to 2 business days. You\'ll be able to add products once verified.';
+      title = 'seller.identity_pending'.tr();
+      message = 'seller.identity_pending_card_body'.tr();
       icon = Icons.hourglass_empty;
       color = DesignTokens.warning;
     } else {
@@ -346,7 +346,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
             : () {
                 viewModel.startRegistration();
               },
-        label: hasAirwallex ? 'Airwallex Connected' : 'Connect Airwallex',
+        label: hasAirwallex ? 'seller.airwallex_connected'.tr() : 'seller.connect_airwallex'.tr(),
         isLoading: isLoading,
         icon: Icons.public,
       );
@@ -362,27 +362,27 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
 
     if (canReceivePayouts) {
       // Already set up - can manage without accepting terms again
-      buttonText = 'Manage Stripe Account';
+      buttonText = 'seller.manage_stripe'.tr();
       onPressed = viewModel.openStripeDashboard;
     } else if (hasAccount && onboardingCompleted && user.hasPendingRequirements && !hasError) {
       // Has account, submitted details, but still has requirements to complete
-      buttonText = 'Complete Required Documents';
+      buttonText = 'seller.complete_documents'.tr();
       onPressed = viewModel.continueOnboarding;
     } else if (hasAccount && onboardingCompleted && !hasError) {
       // Has account, submitted all details, waiting for Stripe verification
-      buttonText = 'Check Verification Status';
+      buttonText = 'seller.check_verification'.tr();
       onPressed = viewModel.openStripeDashboard;
     } else if (hasAccount && !onboardingCompleted && !hasError) {
       // Has account but hasn't finished providing info to Stripe
-      buttonText = 'Complete Stripe Setup';
+      buttonText = 'seller.complete_stripe_setup'.tr();
       onPressed = viewModel.continueOnboarding;
     } else if (hasAccount && hasError) {
       // Has account but onboarding link failed - allow retry
-      buttonText = 'Retry Stripe Setup';
+      buttonText = 'seller.retry_stripe_setup'.tr();
       onPressed = viewModel.continueOnboarding;
     } else {
       // New registration - MUST accept terms
-      buttonText = 'Start Seller Registration';
+      buttonText = 'seller.start_registration'.tr();
       onPressed = _termsAccepted ? viewModel.startRegistration : null;
     }
 
@@ -444,19 +444,19 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
         children: [
           ShaderMask(
             shaderCallback: (bounds) => LinearGradient(colors: [DesignTokens.primary, DesignTokens.secondary]).createShader(bounds),
-            child: const Text(
-              'Why sell with us?',
+            child: Text(
+              'seller.why_sell_with_us'.tr(),
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),
           const SizedBox(height: 20),
-          _buildBenefitItem(Icons.people, 'Access thousands of customers'),
+          _buildBenefitItem(Icons.people, 'seller.access_customers'.tr()),
           const SizedBox(height: 12),
-          _buildBenefitItem(Icons.credit_card, 'Secure payment processing'),
+          _buildBenefitItem(Icons.credit_card, 'seller.secure_processing'.tr()),
           const SizedBox(height: 12),
-          _buildBenefitItem(Icons.speed, 'Fast payouts via Stripe'),
+          _buildBenefitItem(Icons.speed, 'seller.fast_payouts'.tr()),
           const SizedBox(height: 12),
-          _buildBenefitItem(Icons.analytics, 'Track your sales easily'),
+          _buildBenefitItem(Icons.analytics, 'seller.track_sales'.tr()),
         ],
       ),
     );
@@ -483,14 +483,14 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
             child: Icon(Icons.store, size: 50, color: Colors.white),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Sell on OrignaGTA',
+          Text(
+            'seller.sell_on_origna'.tr(),
             style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           Text(
-            'Reach customers across the GTA and grow your business',
+            'seller.reach_customers'.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14, height: 1.5),
           ),
@@ -528,7 +528,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
               Icon(config.icon, size: 18, color: config.primaryColor),
               const SizedBox(width: 8),
               Text(
-                'Payout: ${config.payoutTiming}',
+                'seller.payout_timing'.tr(namedArgs: {'timing': config.payoutTiming}),
                 style: TextStyle(fontWeight: FontWeight.w600, color: config.primaryColor),
               ),
             ],
@@ -550,7 +550,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                   Icon(Icons.schedule, size: 14, color: DesignTokens.warning),
                   const SizedBox(width: 4),
                   Text(
-                    'Coming Soon - Join waitlist',
+                    'seller.coming_soon'.tr(),
                     style: TextStyle(fontSize: 11, color: DesignTokens.warning, fontWeight: FontWeight.w500),
                   ),
                 ],
@@ -574,7 +574,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Payment Provider',
+            'seller.payment_provider'.tr(),
             style: TextStyle(fontWeight: FontWeight.w700, color: DesignTokens.primary),
           ),
           const SizedBox(height: 12),
@@ -614,7 +614,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                             decoration: BoxDecoration(color: DesignTokens.warning.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
                             child: Text(
-                              'Soon',
+                              'seller.soon_badge'.tr(),
                               style: TextStyle(fontSize: 9, color: DesignTokens.warning, fontWeight: FontWeight.w600),
                             ),
                           ),

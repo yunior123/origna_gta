@@ -4,7 +4,6 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/screens/main_screen.dart';
 
 // Splash removal is handled entirely by index.html JS (flutter-first-frame + 5s fallback).
-// Old Dart splash files backed up in lib/screens/backup/
 
 class AuthWrapper extends ConsumerWidget {
   const AuthWrapper({super.key});

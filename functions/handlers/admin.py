@@ -520,35 +520,38 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
     })
 
     # Reactivate seller's products that were suspended (not manually deleted)
-    products = get_db().collection(Collections.PRODUCTS)\
-        .where(Fields.SELLER_ID, '==', seller_id)\
-        .where(Fields.IS_ACTIVE, '==', False)\
-        .limit(500)\
-        .stream()
-
+    # Paginate in batches of 500 (Firestore batch write limit)
     product_count = 0
-    batch = get_db().batch()
-    batch_count = 0
+    while True:
+        products = list(get_db().collection(Collections.PRODUCTS)
+            .where(Fields.SELLER_ID, '==', seller_id)
+            .where(Fields.IS_ACTIVE, '==', False)
+            .limit(500)
+            .stream())
 
-    for product_doc in products:
-        product_data = product_doc.to_dict()
-        # Only reactivate products that were suspended (not explicitly deleted)
-        if product_data.get(Fields.SUSPENDED_AT) and not product_data.get(Fields.DELETED_AT):
-            batch.update(product_doc.reference, {
-                Fields.IS_ACTIVE: True,
-                Fields.SUSPENDED_AT: get_delete_field(),
-                Fields.UPDATED_AT: get_server_timestamp()
-            })
-            product_count += 1
-            batch_count += 1
+        if not products:
+            break
 
-            if batch_count >= 500:
-                batch.commit()
-                batch = get_db().batch()
-                batch_count = 0
+        batch = get_db().batch()
+        batch_count = 0
 
-    if batch_count > 0:
-        batch.commit()
+        for product_doc in products:
+            product_data = product_doc.to_dict()
+            # Only reactivate products that were suspended (not explicitly deleted)
+            if product_data.get(Fields.SUSPENDED_AT) and not product_data.get(Fields.DELETED_AT):
+                batch.update(product_doc.reference, {
+                    Fields.IS_ACTIVE: True,
+                    Fields.SUSPENDED_AT: get_delete_field(),
+                    Fields.UPDATED_AT: get_server_timestamp()
+                })
+                product_count += 1
+                batch_count += 1
+
+        if batch_count > 0:
+            batch.commit()
+        else:
+            # No eligible products in this batch — all were deleted, not suspended
+            break
 
     # Log security alert
     get_db().collection(Collections.SECURITY_ALERTS).add({
@@ -1137,65 +1140,56 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Create anonymized identifier that can't be reversed
     anonymized_id = f'deleted_{hashlib.sha256(user_id.encode()).hexdigest()[:16]}'
 
-    user_orders = get_db().collection(Collections.ORDERS)\
-        .where(Fields.USER_ID, '==', user_id)\
-        .limit(500)\
-        .stream()
-
-    orders_batch = get_db().batch()
+    # Anonymize all orders (paginated — Firestore batch limit is 500)
+    # Each iteration changes userId, so query converges naturally
     orders_count = 0
-    batch_size = 0
+    while True:
+        user_orders = list(get_db().collection(Collections.ORDERS)
+            .where(Fields.USER_ID, '==', user_id)
+            .limit(500)
+            .stream())
 
-    for order_doc in user_orders:
-        # Anonymize PII in order while keeping financial records
-        orders_batch.update(order_doc.reference, {
-            Fields.USER_ID: anonymized_id,
-            Fields.CUSTOMER_EMAIL: None,  # Remove email
-            Fields.SHIPPING_ADDRESS: None,  # Remove address PII
-            Fields.ANONYMIZED_AT: get_server_timestamp(),
-            Fields.ORIGINAL_USER_DELETED: True
-        })
-        orders_count += 1
-        batch_size += 1
+        if not user_orders:
+            break
 
-        if batch_size >= 500:
-            orders_batch.commit()
-            orders_batch = get_db().batch()
-            batch_size = 0
+        orders_batch = get_db().batch()
+        for order_doc in user_orders:
+            orders_batch.update(order_doc.reference, {
+                Fields.USER_ID: anonymized_id,
+                Fields.CUSTOMER_EMAIL: get_delete_field(),
+                Fields.SHIPPING_ADDRESS: get_delete_field(),
+                Fields.ANONYMIZED_AT: get_server_timestamp(),
+                Fields.ORIGINAL_USER_DELETED: True
+            })
+            orders_count += 1
 
-    if batch_size > 0:
         orders_batch.commit()
 
     if orders_count > 0:
         logger.info(f'GDPR: Anonymized {orders_count} orders for deleted user {user_id}')
 
     # Deactivate and anonymize products (GDPR: remove seller PII)
-    products = get_db().collection(Collections.PRODUCTS)\
-        .where(Fields.SELLER_ID, '==', user_id)\
-        .limit(500)\
-        .stream()
-
-    product_batch = get_db().batch()
-    product_batch_count = 0
     product_ids_to_remove = []
+    while True:
+        products = list(get_db().collection(Collections.PRODUCTS)
+            .where(Fields.SELLER_ID, '==', user_id)
+            .limit(500)
+            .stream())
 
-    for product_doc in products:
-        product_batch.update(product_doc.reference, {
-            Fields.IS_ACTIVE: False,
-            Fields.SELLER_ID: anonymized_id,
-            Fields.SELLER_NAME: '[Deleted Seller]',
-            Fields.SELLER_ADDRESS: get_delete_field(),
-            Fields.DELETED_AT: get_server_timestamp()
-        })
-        product_ids_to_remove.append(product_doc.id)
-        product_batch_count += 1
+        if not products:
+            break
 
-        if product_batch_count >= 500:
-            product_batch.commit()
-            product_batch = get_db().batch()
-            product_batch_count = 0
+        product_batch = get_db().batch()
+        for product_doc in products:
+            product_batch.update(product_doc.reference, {
+                Fields.IS_ACTIVE: False,
+                Fields.SELLER_ID: anonymized_id,
+                Fields.SELLER_NAME: '[Deleted Seller]',
+                Fields.SELLER_ADDRESS: get_delete_field(),
+                Fields.DELETED_AT: get_server_timestamp()
+            })
+            product_ids_to_remove.append(product_doc.id)
 
-    if product_batch_count > 0:
         product_batch.commit()
 
     # GDPR: Remove products from Algolia search index
@@ -1208,60 +1202,46 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             logger.error(f'WARNING: Algolia cleanup failed: {algolia_err}')
 
     # GDPR: Anonymize payout records (keep for accounting, remove PII)
-    user_payouts = get_db().collection(Collections.PAYOUTS)\
-        .where(Fields.SELLER_ID, '==', user_id)\
-        .limit(500)\
-        .stream()
-
-    payout_batch = get_db().batch()
     payout_count = 0
+    while True:
+        user_payouts = list(get_db().collection(Collections.PAYOUTS)
+            .where(Fields.SELLER_ID, '==', user_id)
+            .limit(500)
+            .stream())
 
-    for payout_doc in user_payouts:
-        payout_batch.update(payout_doc.reference, {
-            Fields.SELLER_ID: anonymized_id,
-            Fields.ANONYMIZED_AT: get_server_timestamp(),
-        })
-        payout_count += 1
-        if payout_count >= 500:
-            payout_batch.commit()
-            payout_batch = get_db().batch()
-            payout_count = 0
+        if not user_payouts:
+            break
 
-    if payout_count > 0:
+        payout_batch = get_db().batch()
+        for payout_doc in user_payouts:
+            payout_batch.update(payout_doc.reference, {
+                Fields.SELLER_ID: anonymized_id,
+                Fields.ANONYMIZED_AT: get_server_timestamp(),
+            })
+            payout_count += 1
+
         payout_batch.commit()
 
     if payout_count > 0:
         logger.info(f'GDPR: Anonymized {payout_count} payout records for deleted user {user_id}')
 
-    # Delete cart and favorites (with limits)
-    cart_docs = get_db().collection(Collections.USERS).document(user_id).collection(Collections.CART).limit(500).stream()
-    cart_batch = get_db().batch()
-    cart_count = 0
-
-    for doc in cart_docs:
-        cart_batch.delete(doc.reference)
-        cart_count += 1
-        if cart_count >= 500:
-            cart_batch.commit()
-            cart_batch = get_db().batch()
-            cart_count = 0
-
-    if cart_count > 0:
+    # Delete cart and favorites (subcollections, paginated)
+    while True:
+        cart_docs = list(get_db().collection(Collections.USERS).document(user_id).collection(Collections.CART).limit(500).stream())
+        if not cart_docs:
+            break
+        cart_batch = get_db().batch()
+        for doc in cart_docs:
+            cart_batch.delete(doc.reference)
         cart_batch.commit()
 
-    favorites_docs = get_db().collection(Collections.USERS).document(user_id).collection(Collections.FAVORITES).limit(500).stream()
-    fav_batch = get_db().batch()
-    fav_count = 0
-
-    for doc in favorites_docs:
-        fav_batch.delete(doc.reference)
-        fav_count += 1
-        if fav_count >= 500:
-            fav_batch.commit()
-            fav_batch = get_db().batch()
-            fav_count = 0
-
-    if fav_count > 0:
+    while True:
+        favorites_docs = list(get_db().collection(Collections.USERS).document(user_id).collection(Collections.FAVORITES).limit(500).stream())
+        if not favorites_docs:
+            break
+        fav_batch = get_db().batch()
+        for doc in favorites_docs:
+            fav_batch.delete(doc.reference)
         fav_batch.commit()
 
     # Delete Firebase Auth user
@@ -1325,7 +1305,7 @@ def export_my_data(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Collect orders
     orders = []
     order_docs = get_db().collection(Collections.ORDERS)\
-        .where(Fields.BUYER_ID, '==', user_id)\
+        .where(Fields.USER_ID, '==', user_id)\
         .limit(500)\
         .stream()
     for order_doc in order_docs:

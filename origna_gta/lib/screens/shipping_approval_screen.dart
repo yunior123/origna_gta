@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -28,7 +29,7 @@ class ShippingApprovalScreen extends ConsumerWidget {
         ),
       ),
       child: Scaffold(
-        appBar: AppBarFactory.simple(title: 'Shipping Approvals'),
+        appBar: AppBarFactory.simple(title: 'seller.shipping_approvals'.tr()),
         backgroundColor: Colors.transparent,
         body: approvalsAsync.when(
           loading: () => Center(
@@ -45,14 +46,14 @@ class ShippingApprovalScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Loading approvals...',
+                  'seller.loading_approvals'.tr(),
                   style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
           ),
           error: (error, stack) => Center(
-            child: Padding(padding: const EdgeInsets.all(24), child: Text('Error: $error')),
+            child: Padding(padding: const EdgeInsets.all(24), child: Text('seller.error_prefix'.tr(namedArgs: {'error': error.toString()}))),
           ),
           data: (approvals) {
             if (approvals.isEmpty) {
@@ -75,12 +76,12 @@ class ShippingApprovalScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'No pending approvals',
+                      'seller.no_pending_approvals'.tr(),
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Orders requiring shipping approval will appear here',
+                      'seller.approvals_appear_here'.tr(),
                       style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
                       textAlign: TextAlign.center,
                     ),
@@ -182,7 +183,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                       Icon(Icons.pending, size: 16, color: DesignTokens.warning),
                       const SizedBox(width: 6),
                       Text(
-                        'Approval Needed',
+                        'seller.approval_needed'.tr(),
                         style: TextStyle(color: DesignTokens.warning, fontWeight: FontWeight.w600, fontSize: 12),
                       ),
                     ],
@@ -215,7 +216,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                       Icon(Icons.local_shipping, size: 22, color: DesignTokens.primary),
                       const SizedBox(width: 12),
                       Text(
-                        'Shipping Cost Update',
+                        'seller.shipping_cost_update'.tr(),
                         style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: DesignTokens.primary),
                       ),
                     ],
@@ -228,7 +229,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Estimated',
+                            'seller.estimated'.tr(),
                             style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 4),
@@ -240,7 +241,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            'Actual',
+                            'seller.actual'.tr(),
                             style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 4),
@@ -272,7 +273,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             const SizedBox(height: 20),
 
             // Order items summary
-            Text('Items (${items.length})', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+            Text('seller.items_count'.tr(namedArgs: {'count': items.length.toString()}), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
             const SizedBox(height: 12),
             ...items
                 .take(3)
@@ -300,7 +301,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  '+ ${items.length - 3} more items',
+                  'seller.more_items'.tr(namedArgs: {'count': (items.length - 3).toString()}),
                   style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                 ),
               ),
@@ -317,7 +318,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Original Total',
+                      'seller.original_total'.tr(),
                       style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 4),
@@ -331,7 +332,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      'New Total',
+                      'seller.new_total'.tr(),
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary),
                     ),
                     const SizedBox(height: 4),
@@ -380,7 +381,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             child: Center(
                               child: Text(
-                                'Reject & Cancel',
+                                'seller.reject_cancel'.tr(),
                                 style: TextStyle(color: DesignTokens.error, fontWeight: FontWeight.w700, fontSize: 14),
                               ),
                             ),
@@ -395,7 +396,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                     child: Semantics(
                       button: true,
                       label: 'btn-approve-shipping',
-                      child: ModernButton(onPressed: () => _handleApproval(true), label: 'Approve', icon: Icons.check_circle),
+                      child: ModernButton(onPressed: () => _handleApproval(true), label: 'seller.approve'.tr(), icon: Icons.check_circle),
                     ),
                   ),
                 ],
@@ -416,10 +417,10 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
 
     if (success) {
       messenger.showSnackBar(
-        SnackBar(content: Text(approved ? 'Shipping approved' : 'Order cancelled'), backgroundColor: approved ? DesignTokens.success : DesignTokens.warning),
+        SnackBar(content: Text(approved ? 'seller.shipping_approved'.tr() : 'seller.order_cancelled'.tr()), backgroundColor: approved ? DesignTokens.success : DesignTokens.warning),
       );
     } else {
-      final error = ref.read(shippingApprovalViewModelProvider).errorMessage ?? 'Failed to update shipping approval';
+      final error = ref.read(shippingApprovalViewModelProvider).errorMessage ?? 'seller.failed_update_approval'.tr();
       messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
     }
 
@@ -438,20 +439,19 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             Icon(Icons.warning_rounded, color: DesignTokens.warning, size: 28),
             const SizedBox(width: 12),
             Text(
-              'Cancel Order?',
+              'seller.cancel_order_title'.tr(),
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
             ),
           ],
         ),
         content: Text(
-          'Rejecting the shipping cost will cancel your order. '
-          'The payment authorization will be released and you will not be charged.',
+          'seller.cancel_order_body'.tr(),
           style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13, height: 1.6),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text('Go Back', style: TextStyle(color: DesignTokens.textSecondary)),
+            child: Text('seller.go_back'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
           ),
           Container(
             decoration: BoxDecoration(
@@ -472,7 +472,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   child: Text(
-                    'Yes, Cancel Order',
+                    'seller.yes_cancel_order'.tr(),
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
                   ),
                 ),

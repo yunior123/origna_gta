@@ -3,7 +3,7 @@
 Seed Mockup Products — Creates 20 realistic Canadian marketplace products
 in the Firestore emulator for UI testing.
 
-Usage: python3 e2e/seed_mockup_products.py
+Usage: python3 e2e/scripts/seed/seed_mockup_products.py
 
 Requires: requests (pip install requests)
 Emulator must be running on localhost:8080 (Firestore) and localhost:9099 (Auth).

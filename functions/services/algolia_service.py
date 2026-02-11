@@ -63,10 +63,19 @@ def format_product_for_algolia(product_id: str, product_data: Union[dict, Produc
             # Attempt to validate as Product for consistency
             product = Product(**product_data)
             data = product.model_dump(exclude_none=True)
-        except ValidationError:
-            # Fallback to raw dict if validation fails
-            logger.warning(f"⚠️  Product {product_id} validation failed, using raw data")
+        except ValidationError as e:
+            # AUDIT FIX: Don't index unvalidated data — sanitize critical fields
+            logger.warning(f"⚠️  Product {product_id} validation failed: {e}. Sanitizing critical fields.")
             data = product_data
+            # Ensure critical fields are safe even if validation failed
+            if Fields.NAME in data and isinstance(data[Fields.NAME], str):
+                import html as html_mod
+                data[Fields.NAME] = html_mod.escape(data[Fields.NAME])[:200]
+            if Fields.PRICE in data:
+                try:
+                    data[Fields.PRICE] = max(0, float(data[Fields.PRICE]))
+                except (ValueError, TypeError):
+                    data[Fields.PRICE] = 0.0
 
     # Algolia requires objectID field
     algolia_object = {

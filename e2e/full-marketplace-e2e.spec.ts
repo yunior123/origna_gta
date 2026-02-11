@@ -308,27 +308,57 @@ test.describe.serial('Full Marketplace E2E Flow', () => {
     await page.goto('/login');
     await waitForFlutter(page);
 
-    // Strategy 1: getByRole textbox (accessible name from hintText)
-    const textboxes = page.getByRole('textbox');
-    const count = await textboxes.count();
+    // Retry loop — Flutter may still be rendering the login form after semantics attach
+    const maxRetries = 5;
+    let filled = false;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      // Strategy 1: getByRole textbox (accessible name from hintText)
+      const textboxes = page.getByRole('textbox');
+      const count = await textboxes.count();
 
-    if (count >= 2) {
-      // Login mode: 2 fields (email + password)
-      await textboxes.first().click();
-      await textboxes.first().fill(email);
-      await textboxes.nth(1).click();
-      await textboxes.nth(1).fill(password);
-    } else {
-      // Fallback: raw <input> elements inside flt-semantics
+      if (count >= 2) {
+        await textboxes.first().click();
+        await textboxes.first().fill(email);
+        await textboxes.nth(1).click();
+        await textboxes.nth(1).fill(password);
+        filled = true;
+        break;
+      }
+
+      // Strategy 2: raw <input> elements inside flt-semantics
       const inputs = page.locator('flt-semantics input, input');
       const inputCount = await inputs.count();
-      console.log(`   Fallback: found ${inputCount} input(s)`);
       if (inputCount >= 2) {
+        console.log(`   Fallback: found ${inputCount} input(s)`);
         await inputs.first().fill(email);
         await inputs.nth(1).fill(password);
-      } else {
-        throw new Error(`Login form not found: ${count} textboxes, ${inputCount} inputs`);
+        filled = true;
+        break;
       }
+
+      // Strategy 3: try aria-label based selectors for Flutter text fields
+      const emailField = page.locator('[aria-label*="email" i], [aria-label*="Email" i]').first();
+      const passwordField = page.locator('[aria-label*="password" i], [aria-label*="Password" i]').first();
+      if (await emailField.isVisible({ timeout: 2_000 }).catch(() => false) &&
+          await passwordField.isVisible({ timeout: 1_000 }).catch(() => false)) {
+        console.log('   Using aria-label selectors for login fields');
+        await emailField.fill(email);
+        await passwordField.fill(password);
+        filled = true;
+        break;
+      }
+
+      console.log(`   ⏳ Login form not ready (attempt ${attempt}/${maxRetries}): ${count} textboxes, ${inputCount} inputs`);
+      await page.waitForTimeout(3_000);
+    }
+
+    if (!filled) {
+      // Last resort: take screenshot for debugging and throw
+      const textboxes = page.getByRole('textbox');
+      const inputs = page.locator('flt-semantics input, input');
+      throw new Error(
+        `Login form not found after ${maxRetries} attempts: ${await textboxes.count()} textboxes, ${await inputs.count()} inputs`
+      );
     }
 
     // Click Sign In (ModernButton auto-generates Semantics label)

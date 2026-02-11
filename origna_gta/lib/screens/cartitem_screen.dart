@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,7 +19,7 @@ class CartItemScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     // Extract item fields using schema constants (static - won't rebuild on quantity change)
     final imageUrlsList = (item[Fields.imageUrls] as List<dynamic>?)?.cast<String>() ?? [];
-    final name = item[Fields.name] as String? ?? 'Product';
+    final name = item[Fields.name] as String? ?? 'product.product_fallback'.tr();
     final unitPrice = (item[Fields.price] ?? 0.0).toDouble();
 
     return Dismissible(
@@ -117,7 +118,7 @@ class CartItemScreen extends StatelessWidget {
                       return Padding(
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
-                          '\$${unitPrice.toStringAsFixed(2)} each',
+                          '\$${unitPrice.toStringAsFixed(2)} ${'cart.each_suffix'.tr()}',
                           style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
                         ),
                       );
@@ -183,7 +184,7 @@ class CartItemScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: DesignTokens.spacing8),
                 IconButton(
-                  tooltip: 'Remove from cart',
+                  tooltip: 'cart.remove_from_cart'.tr(),
                   icon: Icon(Icons.delete_outline_rounded, color: DesignTokens.error.withValues(alpha: 0.7), size: 20),
                   onPressed: onRemove,
                   padding: EdgeInsets.zero,

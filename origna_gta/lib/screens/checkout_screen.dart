@@ -679,11 +679,11 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
-                                      'LOCAL',
-                                      style: TextStyle(
+                                      'checkout.local'.tr(),
+                                      style: const TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
-                                        color: DesignTokens.success,
+                                        color: Colors.white,
                                       ),
                                     ),
                                   ),
@@ -702,7 +702,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Text(
-                                  'Only available for local orders within 50km',
+                                  'checkout.local_only_50km'.tr(),
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: DesignTokens.tertiary,
@@ -776,11 +776,11 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'LOCAL',
-                              style: TextStyle(
+                              'checkout.local'.tr(),
+                              style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: DesignTokens.success,
+                                color: Colors.white,
                               ),
                             ),
                           ),
@@ -797,7 +797,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                     ),
                     if (speed == DeliverySpeed.sameDay)
                       Text(
-                        'Available for local orders within 50km radius',
+                        'checkout.available_local_50km'.tr(),
                         style: TextStyle(
                           fontSize: 12,
                           color: DesignTokens.textSecondary,
@@ -972,9 +972,9 @@ class _OrderSummary extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Estimated Shipping',
-                    style: TextStyle(color: DesignTokens.textSecondary),
+                  Text(
+                    'checkout.estimated_shipping'.tr(),
+                    style: const TextStyle(color: DesignTokens.textSecondary),
                   ),
                   if (isCalculating)
                     const ModernLoadingIndicator.small()
@@ -994,7 +994,7 @@ class _OrderSummary extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
-                    'Final shipping cost will be confirmed by seller before charge',
+                    'checkout.shipping_confirmed_by_seller'.tr(),
                     style: TextStyle(
                       fontSize: 11,
                       color: DesignTokens.textSecondary,
@@ -1006,9 +1006,9 @@ class _OrderSummary extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Estimated Total',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  Text(
+                    'checkout.estimated_total'.tr(),
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   Text(
                     // GST/HST applies to shipping in Canada — match _buildTaxBreakdown base
@@ -1110,9 +1110,9 @@ class _SecurityInfo extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: DesignTokens.info,
+        color: DesignTokens.info.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: DesignTokens.info, width: 1),
+        border: Border.all(color: DesignTokens.info.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1124,7 +1124,7 @@ class _SecurityInfo extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Secure Payment',
+                  'checkout.secure_payment'.tr(),
                   style: TextStyle(
                     color: DesignTokens.info,
                     fontSize: 13,
@@ -1133,9 +1133,9 @@ class _SecurityInfo extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Powered by Stripe. Your payment information is encrypted and secure.',
+                  'checkout.stripe_secure'.tr(),
                   style: TextStyle(
-                    color: DesignTokens.info,
+                    color: DesignTokens.info.withValues(alpha: 0.8),
                     fontSize: 12,
                     height: 1.4,
                   ),

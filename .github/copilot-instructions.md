@@ -38,3 +38,8 @@
 - `docs/WORKFLOW_INDEX.md` — file groups to read together
 - `docs/REPO_MAP.md` — file inventory
 - `.github/copilot-skills.md` — learned patterns & gotchas
+
+## Specialized AI Agents
+
+- **🏗️ Infra Verification** → `python audit/run_hooks.py --hook infra` or `python audit/scripts/verify_infra.py`
+- **🧪 QA Engineer** → `python audit/run_hooks.py --hook qa` or `python audit/scripts/qa_scanner.py`

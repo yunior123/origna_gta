@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -21,7 +22,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
         Row(
           children: [
             Text(
-              '${_imageModels.length}/5 photos',
+              'product.photos_count'.tr(namedArgs: {'count': _imageModels.length.toString()}),
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -91,7 +92,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Add Photo',
+                          'product.add_photo'.tr(),
                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DesignTokens.primary),
                         ),
                       ],
@@ -112,11 +113,11 @@ class _ProductAddImagesState extends State<ProductAddImages> {
     if (_imageModels.length >= 5) {
       messenger.showSnackBar(
         SnackBar(
-          content: const Row(
+          content:  Row(
             children: [
               Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
               SizedBox(width: 8),
-              Text('Maximum 5 images allowed'),
+              Text('product.max_images'.tr()),
             ],
           ),
           backgroundColor: DesignTokens.warning,
@@ -138,7 +139,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
           if (bytes.isNotEmpty) {
             _imageModels.add(ImageModel(url: pickedFile.path, bytes: bytes));
           } else {
-            messenger.showSnackBar(SnackBar(content: Text('Selected image is empty.')));
+            messenger.showSnackBar(SnackBar(content: Text('product.empty_image'.tr())));
           }
         });
         if (bytes.isNotEmpty) {
@@ -146,7 +147,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
         }
       }
     } catch (e) {
-      messenger.showSnackBar(const SnackBar(content: Text('Failed to pick image. Please try again.')));
+      messenger.showSnackBar(SnackBar(content: Text('product.pick_image_failed'.tr())));
     }
   }
 }
@@ -201,9 +202,9 @@ class _ImageTile extends StatelessWidget {
                 gradient: DesignTokens.primaryGradient,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text(
-                'Cover',
-                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+              child: Text(
+                'product.cover'.tr(),
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
               ),
             ),
           ),

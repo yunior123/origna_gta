@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/widgets/legal_screen_body.dart';
 
@@ -178,11 +179,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       body: LegalScreenBody(
         rawContent: _privacyPolicyContent,
-        heroTitle: 'Privacy\nPolicy',
-        heroBadge: 'Your Privacy Matters',
+        heroTitle: 'legal.privacy_policy_hero'.tr(),
+        heroBadge: 'legal.your_privacy_matters'.tr(),
         heroBadgeIcon: Icons.lock_outlined,
       ),
     );

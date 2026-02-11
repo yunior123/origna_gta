@@ -892,6 +892,7 @@ test.describe('J. Shipping Cost Management', () => {
   });
 
   test('J.1 Seller can update shipping cost on an order', async () => {
+    test.setTimeout(120_000);
     // Wait for rate limit window to reset (I.* tests consumed checkout quota)
     await new Promise(r => setTimeout(r, 65_000));
 

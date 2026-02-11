@@ -17,6 +17,9 @@ DEFAULT_OPTIONS = {
     "cors": _CORS,
 }
 
+# Firestore triggers: No CORS (not HTTP-accessible). Used by on_document_*
+FIRESTORE_TRIGGER_OPTIONS: dict = {}
+
 # Webhooks: 256MB memory, 90s timeout (Stripe retries on timeout, need margin)
 WEBHOOK_OPTIONS = {
     'timeout_sec': 90,
