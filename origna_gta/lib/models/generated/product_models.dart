@@ -102,6 +102,7 @@ abstract class Product with _$Product {
     required int categoryId,
     required int stockQuantity,
     @Default(0.0) double rating,
+    @Default(0) int ratingCount,
     required DateTime createdAt,
     @Default(true) bool isActive,
     // Optional shipping metadata

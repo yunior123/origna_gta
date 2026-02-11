@@ -330,3 +330,20 @@ def configure_algolia_index():
     except Exception as e:
         print(f"  ❌ Failed to configure Algolia index '{_get_index_name()}': {str(e)}")
         return False
+
+
+def delete_products_from_algolia(product_ids: list[str]) -> int:
+    """
+    Batch delete multiple products from Algolia (GDPR account deletion).
+
+    Args:
+        product_ids: List of Firestore document IDs to remove
+
+    Returns:
+        Number of successfully deleted products
+    """
+    deleted = 0
+    for pid in product_ids:
+        if delete_product(pid):
+            deleted += 1
+    return deleted

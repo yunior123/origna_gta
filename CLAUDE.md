@@ -145,6 +145,30 @@ Be serious, audit logic, json schema, use logic, cross stack agents, check the h
 - **Test ordering** — tests within a file run sequentially and modify shared Firestore data. If test C modifies a document, test G must restore it before asserting.
 - **Stripe Checkout UI in headless** — "VerificationModal" overlay is likely Stripe's "Link" login popup (NOT 3DS — card 4242424242424242 is not enrolled). `fillStripeCheckout()` in `api-helpers.ts` handles this with modal dismissal logic.
 - **patchDoc() in E2E** — must construct `updateMask.fieldPaths` from all fields being patched, not rely on Firestore's default merge behavior (REST API ≠ SDK).
+
+### Flutter Web Semantics for Playwright E2E (Feb 2026)
+- **Root cause of 12 permanently skipped tests**: Flutter Web CanvasKit renders to `<canvas>`, NOT DOM. Standard Playwright locators (`getByRole`, `getByLabel`, `getByText`) cannot interact with Flutter widgets rendered on canvas.
+- **Solution**: Flutter generates a parallel `<flt-semantics>` DOM tree with ARIA attributes when semantics is active. `SemanticsBinding.instance.ensureSemantics()` in `main.dart` makes semantics always-on for web → no Tab key hack needed.
+- **`flutter-helpers.ts`** (280 lines) — canonical helpers for Flutter Web semantics: `waitForFlutter()`, `flutterButton(page, label)`, `flutterInput(page, label)`, `flutterCheckbox(page, label)`, `flutterByLabel()`, `flutterByExactLabel()`, `productCard(page, id)`, `addToCart()`, `fillFlutterInput()`, `clickFlutterButton()`, `waitForSemanticLabel()`, `navigateToRoute()`.
+- **ModernTextField caveat**: Does NOT use `InputDecoration.labelText` — renders label as a separate `Text()` widget above the field and uses `hintText` in InputDecoration. This means `getByRole('textbox', {name: 'Email'})` WON'T work. **Workaround**: use positional `getByRole('textbox').first()` / `.nth(1)` or `page.locator('flt-semantics input')`.
+- **ModernButton**: Auto-wraps with `Semantics(button: true, label: widget.label)` → `flutterButton(page, 'Sign In')` works.
+- **Login form pattern**: In login mode, 2 textboxes (email + password). In signup mode, 3 textboxes (name + email + password). Use `getByRole('textbox').count()` to detect mode.
+- **Rewritten tests**: `full-marketplace-e2e.spec.ts` — 12 tests now use semantics + API hybrid approach. Removed `RUN_FULL_E2E` gate. Kept conditional skip for `!infra.webApp` + `!emuInfra.auth`.
+- **J.2 NOT actually skipped**: `comprehensive-flows-e2e.spec.ts` test "Digital product has zero shipping cost" has `if (!PRODUCT_DIGITAL) { test.skip(...) }` but `PRODUCT_DIGITAL = 'product_010'` (truthy) → skip NEVER triggers. Product IS seeded with `isDigital: true` in mega-seed.
+- **Test credentials updated**: `full-marketplace-e2e.spec.ts` now uses `TEST_ACCOUNTS.SELLER1_EMAIL` / `TEST_ACCOUNTS.BUYER1_EMAIL` / `TEST_ACCOUNTS.ADMIN_EMAIL` from api-helpers (matching mega-seed), NOT the old hardcoded emails.
+- **Semantic labels per screen** (for writing new E2E tests):
+  - **login_screen**: `checkbox-accept-terms`, `btn-forgot-password`, `btn-toggle-auth-mode`; buttons: `'Sign In'`, `'Create Account'`, `'Google'`; hints: `'you@example.com'`, `'••••••••'`
+  - **home_screen**: `input-home-search`, `btn-clear-search`, `btn-home-privacy-policy`, `btn-home-terms-of-service`; tooltips: `'Add product'`, `'Shopping cart'`, `'Settings'`
+  - **profile_screen**: `btn-sign-in`, `btn-delete-account`, `menu-my-orders`, `menu-addresses`; `link-email-support`, `link-website`; button: `'Sign Out'`
+  - **seller_registration**: `chk-seller-terms`, `btn-seller-action`; buttons: `'Start Seller Registration'`, `'Retry Stripe Setup'`, `'Go to Dashboard'`
+  - **addproduct_screen**: `btn-publish-product`; TextFormField labelText: `'Product Name'`, `'Description'`, `'Price (CAD)'`, `'Stock'`
+  - **product_card**: `product-card-{productId}`, `btn-favorite-{productId}`, `btn-add-to-cart-{productId}`
+  - **productdetails**: `btn-product-qty-minus`, `btn-product-qty-plus`; button: `'Add to Cart'`
+  - **cart_screen**: `btn-info-service-fee`, `btn-info-tax-estimate`, `btn-delivery-instructions`; button: `'Proceed to Checkout'`
+  - **checkout_screen**: `btn-edit-address`, `btn-place-order`, `btn-add-address`, `chk-terms-accepted`, `link-terms-conditions`, `btn-delivery-speed-standard`/`express`/`sameDay`
+  - **orders_screen**: `btn-confirm-receipt`, `btn-rate`, `btn-pending-approvals`
+- **E2E Test Results updated**: 279 tests → 12 no longer permanently skipped, now conditional on infra.
+
 - **E2E logic-failures fixes applied**:
   - **D.2**: No `add_product` callable — products created via Firestore write + `on_product_created` trigger. Test rewritten to verify trigger deactivates product for suspended sellers.
   - **G.3**: `update_user_role` → `update_user_roles` with `{add: ['seller'], remove: [], reason: '...'}` payload.

@@ -3,14 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/seller/seller_account_status_viewmodel.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/home/home_viewmodel.dart';
-import 'package:origna_gta/screens/addproduct_screen.dart';
-import 'package:origna_gta/screens/cart_screen.dart';
 import 'package:origna_gta/screens/product_card_screen.dart';
-import 'package:origna_gta/screens/profile_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/widgets/mascot/shop_mascot.dart';
 import 'package:origna_gta/widgets/mascot/mascot_provider.dart';
@@ -19,6 +17,7 @@ import 'package:origna_gta/widgets/mascot/moose_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:shimmer/shimmer.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -79,7 +78,7 @@ class _AddProductButton extends ConsumerWidget {
           );
           return;
         }
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const AddProductScreen()));
+        Navigator.pushNamed(context, AppRoutes.addProduct);
       },
     );
   }
@@ -130,7 +129,7 @@ class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProvide
                     final verified = await checkEmailVerifiedOrPrompt(context);
                     if (!verified) return;
                     if (!context.mounted) return;
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
+                    Navigator.pushNamed(context, AppRoutes.cart);
                   },
                 ),
               );
@@ -575,7 +574,7 @@ class _PaginationLoader extends ConsumerWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ).createShader(bounds),
-              child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+              child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
             ),
           ),
         ),
@@ -706,7 +705,7 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton> with SingleTic
                   showLoginPrompt(context, text: "You need to sign in to access settings");
                   return;
                 }
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+                Navigator.pushNamed(context, AppRoutes.profile);
               },
             ),
           );

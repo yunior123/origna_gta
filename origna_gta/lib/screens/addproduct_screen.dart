@@ -8,6 +8,7 @@ import 'package:origna_gta/screens/productaddimages_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 import '../../features/products/add_product_state.dart';
 import '../../features/products/add_product_viewmodel.dart';
@@ -1460,7 +1461,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                   },
             child: Center(
               child: state.isLoading
-                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation(Colors.white)))
+                  ? const ModernLoadingIndicator(size: 24, strokeWidth: 2.5, color: Colors.white, centered: false)
                   : const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

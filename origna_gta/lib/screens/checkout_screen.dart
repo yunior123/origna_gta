@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/checkout/checkout_provider.dart';
-import 'package:origna_gta/screens/editaddress_screen.dart';
 
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -10,6 +10,7 @@ import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Provider for terms acceptance state — shared between _TermsText and _CheckoutButton
@@ -66,15 +67,12 @@ class _AddressSection extends StatelessWidget {
               color: Colors.transparent,
               child: InkWell(
                 onTap: () {
-                  Navigator.push(
+                  Navigator.pushNamed(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => AddEditAddressScreen(
-                        address: address.formattedAddress.isEmpty
-                            ? null
-                            : address,
-                      ),
-                    ),
+                    AppRoutes.addEditAddress,
+                    arguments: address.formattedAddress.isEmpty
+                        ? null
+                        : address,
                   ).then((_) => onRefreshShipping());
                 },
                 borderRadius: BorderRadius.circular(8),
@@ -490,7 +488,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
           child: userProfileAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const ModernLoadingIndicator.fullScreen(),
             error: (error, stack) =>
                 Center(child: Text(AppError.getMessage(error))),
             data: (userProfile) {
@@ -525,14 +523,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final state = ref.read(checkoutStateProvider);
     if (state.address != null) {
       await notifier.calculateShipping(widget.items);
-      notifier.calculateTaxes(widget.total);
+      final shipping = ref.read(checkoutStateProvider).shippingCost;
+      notifier.calculateTaxes(widget.total, shippingCost: shipping);
     }
   }
 
   Future<void> _refreshShipping() async {
     final notifier = ref.read(checkoutStateProvider.notifier);
     await notifier.calculateShipping(widget.items);
-    notifier.calculateTaxes(widget.total);
+    final shipping = ref.read(checkoutStateProvider).shippingCost;
+    notifier.calculateTaxes(widget.total, shippingCost: shipping);
   }
 }
 
@@ -864,11 +864,9 @@ class _NoAddressView extends StatelessWidget {
               label: 'btn-add-address',
               child: ElevatedButton.icon(
               onPressed: () {
-                Navigator.push(
+                Navigator.pushNamed(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const AddEditAddressScreen(),
-                  ),
+                  AppRoutes.addEditAddress,
                 ).then((_) => onRefreshShipping());
               },
               icon: const Icon(Icons.add_location),
@@ -978,11 +976,7 @@ class _OrderSummary extends ConsumerWidget {
                     style: TextStyle(color: Colors.grey),
                   ),
                   if (isCalculating)
-                    const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                    const ModernLoadingIndicator.small()
                   else if (shippingError != null)
                     Text(
                       shippingError,

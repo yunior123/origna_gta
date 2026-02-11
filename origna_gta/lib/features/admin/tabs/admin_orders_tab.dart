@@ -6,6 +6,7 @@ import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 class AdminOrdersTab extends ConsumerStatefulWidget {
   const AdminOrdersTab({super.key});
@@ -268,7 +269,7 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
           child: ref
               .watch(adminOrdersProvider(_statusFilter))
               .when(
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => const ModernLoadingIndicator.fullScreen(),
                 error: (error, _) => const Center(child: Text('Error Fetching from Database')),
                 data: (orders) {
                   if (orders.isEmpty) {

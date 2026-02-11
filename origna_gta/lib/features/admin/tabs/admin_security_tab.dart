@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/admin/admin_actions_viewmodel.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 class AdminSecurityTab extends ConsumerStatefulWidget {
   const AdminSecurityTab({super.key});
@@ -152,7 +153,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                               width: 250,
                               height: 250,
                               color: Colors.grey[300],
-                              child: const Center(child: CircularProgressIndicator()),
+                              child: const ModernLoadingIndicator.fullScreen(),
                             ),
                     ),
                   ),
@@ -173,6 +174,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                           child: Text(_secret!, style: const TextStyle(fontFamily: 'monospace', fontSize: 14, letterSpacing: 2)),
                         ),
                         IconButton(
+                          tooltip: 'Copy secret',
                           icon: const Icon(Icons.copy),
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Secret copied to clipboard')));
@@ -292,7 +294,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
             margin: const EdgeInsets.only(top: 16),
             padding: const EdgeInsets.all(16),
             alignment: Alignment.center,
-            child: const CircularProgressIndicator(),
+            child: const ModernLoadingIndicator(),
           ),
       ],
     );

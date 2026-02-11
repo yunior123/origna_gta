@@ -2,12 +2,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/product_actions_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
-import 'package:origna_gta/screens/editproduct_screen.dart';
-import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -56,11 +55,10 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
       label: 'product-card-${widget.productId}',
       child: GestureDetector(
       onTap: () {
-        Navigator.push(
+        Navigator.pushNamed(
           context,
-          MaterialPageRoute(
-            builder: (_) => ProductDetailScreen(productId: widget.productId, product: widget.product.toJson()),
-          ),
+          AppRoutes.productDetails,
+          arguments: ProductDetailsArgs(productId: widget.productId, product: widget.product.toJson()),
         );
       },
       child: Container(
@@ -323,7 +321,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
   }
 
   void _editProduct(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => EditProductScreen(product: widget.product)));
+    Navigator.pushNamed(context, AppRoutes.editProduct, arguments: EditProductArgs(product: widget.product));
   }
 
   void _showDeleteConfirmation(BuildContext context) {
@@ -362,7 +360,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
       await ref.read(favoritesControllerProvider).toggleFavorite(widget.productId);
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(SnackBar(content: Text('Error updating favorites: $e'), backgroundColor: DesignTokens.error));
+        messenger.showSnackBar(const SnackBar(content: Text('Failed to update favorites'), backgroundColor: DesignTokens.error));
       }
     }
   }

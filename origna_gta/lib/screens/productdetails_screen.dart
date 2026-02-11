@@ -10,6 +10,7 @@ import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:shimmer/shimmer.dart';
 
 class ProductDetailScreen extends ConsumerWidget {
@@ -225,7 +226,7 @@ class ProductDetailScreen extends ConsumerWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ).createShader(bounds),
-            child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+            child: const ModernLoadingIndicator(color: Colors.white, strokeWidth: 3, centered: false),
           ),
         ),
         error: (e, s) => Center(

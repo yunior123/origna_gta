@@ -11,6 +11,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 class AdminPanelScreen extends ConsumerStatefulWidget {
   const AdminPanelScreen({super.key});
@@ -47,10 +48,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
               SizedBox(
                 width: 48,
                 height: 48,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: DesignTokens.primary,
-                ),
+                child: ModernLoadingIndicator(size: 48, strokeWidth: 3, color: DesignTokens.primary, centered: false),
               ),
               const SizedBox(height: 16),
               Text('Loading admin panel...', style: TextStyle(color: Colors.grey[500], fontSize: 14)),

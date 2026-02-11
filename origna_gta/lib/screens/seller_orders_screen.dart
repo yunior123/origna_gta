@@ -11,6 +11,7 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/utils/constants.dart' hide PaymentStatus, ShippingApprovalStatus;
 
 class SellerOrdersScreen extends ConsumerWidget {
@@ -113,14 +114,14 @@ class SellerOrdersScreen extends ConsumerWidget {
               ),
               child: ShaderMask(
                 shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                child: const CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
               ),
             ),
           ),
-          error: (error, _) => AnimatedEmptyState(
+          error: (error, _) => const AnimatedEmptyState(
             icon: Icons.error_outline_rounded,
             title: 'Something went wrong',
-            subtitle: error.toString(),
+            subtitle: 'Could not load orders. Please try again.',
           ),
           data: (orders) {
             if (orders.isEmpty) {

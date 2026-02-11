@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/seller/seller_account_status_viewmodel.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
-import 'package:origna_gta/screens/seller_registration_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Screen shown when seller returns from Stripe Connect onboarding
 class SellerSetupCompleteScreen extends ConsumerStatefulWidget {
@@ -109,7 +110,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                     ),
                     child: ShaderMask(
                       shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                      child: const CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                      child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
                     ),
                   ),
                   const SizedBox(height: DesignTokens.spacing20),
@@ -154,7 +155,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                           ),
                           child: ShaderMask(
                             shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                            child: const CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                            child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
                           ),
                         ),
                         const SizedBox(height: DesignTokens.spacing20),
@@ -162,7 +163,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
                       ],
                     ),
                   ),
-                  error: (error, _) => _buildError(context, error.toString()),
+                  error: (error, _) => _buildError(context, 'Failed to verify seller account. Please try again.'),
                   data: (status) {
                     if (status.isComplete) {
                       return _buildSuccess(context);
@@ -208,7 +209,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
           ),
           const SizedBox(height: DesignTokens.spacing12),
           TextButton(
-            onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false),
+            onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
             child: Text('Go Home', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
           ),
         ],
@@ -234,7 +235,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
 
     if (mounted) {
       // Use pushNamedAndRemoveUntil to properly update browser URL on web
-      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
     }
   }
 
@@ -321,9 +322,7 @@ class _SellerSetupCompleteScreenState extends ConsumerState<SellerSetupCompleteS
               label: hasDocumentRequirements ? 'Submit Documents' : 'Continue Setup',
               icon: Icons.arrow_forward_rounded,
               onPressed: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const SellerRegistrationScreen()),
-                );
+                Navigator.of(context).pushReplacementNamed(AppRoutes.sellerRegistration);
               },
               height: 54,
               backgroundColor: const Color(0xFFF59E0B),
@@ -517,14 +516,14 @@ class SellerSetupRefreshScreen extends StatelessWidget {
                           label: 'Continue Setup',
                           icon: Icons.arrow_forward_rounded,
                           onPressed: () {
-                            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const SellerRegistrationScreen()));
+                            Navigator.of(context).pushReplacementNamed(AppRoutes.sellerRegistration);
                           },
                           height: 54,
                         ),
                       ),
                       const SizedBox(height: DesignTokens.spacing12),
                       TextButton(
-                        onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false),
+                        onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
                         child: Text('Back to Home', style: TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600)),
                       ),
                     ],

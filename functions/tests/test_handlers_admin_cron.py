@@ -227,7 +227,7 @@ class TestAdminHandlers:
         with pytest.raises(https_fn.HttpsError) as exc:
             admin_mfa_verify(mock_request)
 
-        assert exc.value.code == 'invalid-argument'
+        assert exc.value.code == 'unauthenticated'
         assert 'invalid' in str(exc.value).lower()
 
     @patch('handlers.admin.create_success_response')
@@ -389,7 +389,7 @@ class TestSecurityEdgeCases:
         with pytest.raises(https_fn.HttpsError) as exc:
             admin_mfa_verify(mock_request)
 
-        assert exc.value.code == 'invalid-argument'
+        assert exc.value.code == 'unauthenticated'
 
     def test_gdpr_anonymization_irreversible(self):
         """Test deleted user data cannot be recovered"""

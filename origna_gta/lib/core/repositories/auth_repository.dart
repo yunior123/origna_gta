@@ -354,12 +354,20 @@ class FirebaseAuthRepository implements AuthRepository {
     final docSnapshot = await userDoc.get();
 
     if (!docSnapshot.exists) {
+      final now = FieldValue.serverTimestamp();
       await userDoc.set({
         Fields.uid: user.uid,
         Fields.email: user.email ?? '',
         Fields.name: name ?? user.displayName ?? 'User',
         Fields.roles: [UserRoles.buyer],
-        Fields.createdAt: FieldValue.serverTimestamp(),
+        Fields.createdAt: now,
+        // PIPEDA / CASL / Law 25 consent fields
+        Fields.consentTimestamp: now,
+        Fields.termsAcceptedAt: now,
+        Fields.privacyAcceptedAt: now,
+        Fields.consentMethod: 'signup',
+        Fields.dataProcessingConsent: true,
+        Fields.emailConsent: true,
       });
     } else {
       final data = docSnapshot.data();

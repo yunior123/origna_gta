@@ -7,12 +7,13 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/orders/buyer_orders_viewmodel.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
-import 'package:origna_gta/screens/shipping_approval_screen.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart' hide Address;
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/rating_dialog.dart';
 
 // ============================================================================
@@ -202,7 +203,7 @@ class OrdersScreen extends ConsumerWidget {
                 child: const SizedBox(
                   width: 40,
                   height: 40,
-                  child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                  child: ModernLoadingIndicator(size: 40, strokeWidth: 3, color: Colors.white, centered: false),
                 ),
               ),
             ),
@@ -733,7 +734,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (isLoading)
-                SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(color)))
+                ModernLoadingIndicator(size: 14, strokeWidth: 2, color: color, centered: false)
               else if (icon != null)
                 Icon(icon, size: 16, color: color),
               const SizedBox(width: 6),
@@ -1174,7 +1175,7 @@ class _PendingApprovalsBanner extends StatelessWidget {
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
           child: InkWell(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ShippingApprovalScreen())),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.shippingApproval),
             borderRadius: BorderRadius.circular(DesignTokens.radius16),
             child: Padding(
               padding: const EdgeInsets.all(16),

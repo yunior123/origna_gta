@@ -8,6 +8,7 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart'; // For UserModel
 import 'package:origna_gta/widgets/custom_app_bar.dart'; // Assuming this exists based on your code
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 import '../features/seller/seller_registration_state.dart';
 import '../features/seller/seller_registration_view_model.dart';
@@ -150,7 +151,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                   child: SizedBox(
                     width: 50,
                     height: 50,
-                    child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white.withValues(alpha: 0.8))),
+                    child: ModernLoadingIndicator(size: 50, strokeWidth: 3, color: Colors.white.withValues(alpha: 0.8), centered: false),
                   ),
                 ),
                 const SizedBox(height: 16),

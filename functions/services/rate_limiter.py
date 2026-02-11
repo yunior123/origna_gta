@@ -115,10 +115,16 @@ class RateLimiter:
 
         # Fall back to IP
         if hasattr(req, 'headers'):
-            # Check for forwarded IP (behind proxy)
-            forwarded = req.headers.get('X-Forwarded-For', '').split(',')[0].strip()
-            if forwarded:
-                return f"ip_{forwarded}"
+            # SECURITY: Use the LAST X-Forwarded-For entry — it's added by the
+            # trusted Google Cloud load balancer. The first entry is client-supplied
+            # and can be spoofed to bypass rate limiting.
+            forwarded_header = req.headers.get('X-Forwarded-For', '')
+            if forwarded_header:
+                parts = [p.strip() for p in forwarded_header.split(',') if p.strip()]
+                # Last entry = added by trusted proxy (GCP LB)
+                trusted_ip = parts[-1] if parts else ''
+                if trusted_ip:
+                    return f"ip_{trusted_ip}"
 
             # Direct IP
             remote_addr = req.headers.get('X-Real-IP', 'unknown')

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
-import 'package:origna_gta/screens/cart_screen.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 /// Factory methods for common AppBar configurations
@@ -142,7 +142,7 @@ class _CartBadge extends ConsumerWidget {
               showLoginPrompt(context);
               return;
             }
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
+            Navigator.pushNamed(context, AppRoutes.cart);
           },
         ),
         if (cartCount > 0)

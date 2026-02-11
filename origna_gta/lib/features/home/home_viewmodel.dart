@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 import 'home_state.dart';
 
@@ -89,7 +90,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
       state = state.copyWith(
         isLoading: false,
         isLoadingMore: false,
-        errorMessage: e.toString(),
+        errorMessage: AppError.getMessage(e, 'Failed to load products'),
         hasMore: state.products.isEmpty ? false : state.hasMore,
       );
     }

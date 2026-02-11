@@ -150,13 +150,16 @@ class FirebaseProductRepository implements ProductRepository {
   @override
   Future<void> toggleFavorite(String userId, String productId) async {
     final favRef = _firestore.collection(Collections.users).doc(userId).collection(Collections.favorites).doc(productId);
-    final doc = await favRef.get();
 
-    if (doc.exists) {
-      await favRef.delete();
-    } else {
-      await favRef.set({Fields.productId: productId, Fields.dateFavorited: FieldValue.serverTimestamp()});
-    }
+    // RACE CONDITION FIX: Use transaction to prevent duplicate writes from rapid taps
+    await _firestore.runTransaction((transaction) async {
+      final doc = await transaction.get(favRef);
+      if (doc.exists) {
+        transaction.delete(favRef);
+      } else {
+        transaction.set(favRef, {Fields.productId: productId, Fields.dateFavorited: FieldValue.serverTimestamp()});
+      }
+    });
   }
 
   @override

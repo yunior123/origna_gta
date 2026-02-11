@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'seller_orders_state.dart';
 
 final sellerOrdersViewModelProvider = StateNotifierProvider.autoDispose<SellerOrdersViewModel, SellerOrdersState>((ref) {
@@ -22,7 +23,7 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
       
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to update shipping cost'));
     }
   }
 
@@ -41,7 +42,7 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
 
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to update item status'));
     }
   }
 }

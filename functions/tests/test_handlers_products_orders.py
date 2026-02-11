@@ -32,6 +32,18 @@ class TestProductHandlers:
         mock_boto_client.return_value = mock_s3_client
         mock_s3_client.generate_presigned_url.return_value = 'https://r2.example.com/upload?signature=abc'
 
+        # Mock user document with seller onboarding complete
+        mock_user_doc = Mock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {
+            'roles': ['seller'],
+            'suspended': False,
+            'onboardingCompleted': True,
+        }
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_user_doc
+
         mock_request = Mock()
         mock_request.auth = Mock(uid="seller_123")
         mock_request.data = {
@@ -61,6 +73,18 @@ class TestProductHandlers:
         mock_boto_client.return_value = mock_s3_client
         mock_s3_client.generate_presigned_url.return_value = 'https://r2.example.com/upload?signature=abc'
 
+        # Mock user document with seller onboarding complete
+        mock_user_doc = Mock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {
+            'roles': ['seller'],
+            'suspended': False,
+            'onboardingCompleted': True,
+        }
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_user_doc
+
         mock_request = Mock()
         mock_request.auth = Mock(uid="seller_123")
         mock_request.data = {
@@ -78,6 +102,18 @@ class TestProductHandlers:
     def test_upload_images_too_many_files_rejected(self, mock_get_db):
         """Test maximum 5 images per product enforced"""
         from handlers.products import upload_product_images
+
+        # Mock user document with seller onboarding complete
+        mock_user_doc = Mock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {
+            'roles': ['seller'],
+            'suspended': False,
+            'onboardingCompleted': True,
+        }
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_user_doc
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="seller_123")

@@ -131,10 +131,12 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 
   /// Calculate taxes based on address
-  void calculateTaxes(double subtotal) {
+  /// In Canada, GST/HST applies to both goods and shipping.
+  void calculateTaxes(double subtotal, {double shippingCost = 0.0}) {
     if (state.address == null) return;
 
-    final taxes = calculateDetailedTaxes(state.address, subtotal);
+    final taxableAmount = subtotal + shippingCost;
+    final taxes = calculateDetailedTaxes(state.address, taxableAmount);
     state = state.copyWith(taxBreakdown: taxes);
   }
 

@@ -1155,14 +1155,15 @@ class TestShippingCalculation:
         assert cost == 0.0
 
     def test_shipping_missing_buyer_coordinates(self):
-        """Scenario 77: Missing buyer coordinates returns $0 (graceful fallback)."""
+        """Scenario 77: Missing buyer coordinates uses province-based fallback."""
         from services.shipping_service import calculate_shipping_cost
 
         items = [{'sellerId': 's1', 'freeShipping': False, 'sellerAddress': {'state': 'ON'}}]
         buyer = {'state': 'ON'}  # No lat/lon
 
         cost = calculate_shipping_cost(items, buyer)
-        assert cost == 0.0
+        # Should use province fallback rather than 0 (same province = FALLBACK_SAME_PROVINCE)
+        assert cost > 0.0
 
     def test_shipping_empty_items(self):
         """Scenario 78: Empty items list returns $0."""

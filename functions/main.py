@@ -29,8 +29,11 @@ from handlers.admin import (  # noqa: E402
     admin_mfa_disable,
     admin_mfa_enroll,
     admin_mfa_verify,
+    admin_mfa_verify_backup,
+    admin_update_product_stock,
     delete_account,
     suspend_seller,
+    unsuspend_seller,
     update_user_roles,
 )
 
@@ -41,6 +44,7 @@ from handlers.cron_jobs import (  # noqa: E402
     auto_archive_old_orders,
     auto_capture_confirmed_receipts,
     check_expired_authorizations,
+    cleanup_orphaned_r2_images,
     cleanup_stale_rate_limits,
     monitor_algolia_sync,
 )
@@ -86,7 +90,11 @@ from handlers.payment_stripe import (  # noqa: E402
     verify_cart_prices,
 )
 from handlers.products import (  # noqa: E402
+    configure_algolia,
     delete_product,
+    get_product_ratings_paginated,
+    get_products_paginated,
+    get_seller_products_paginated,
     on_product_created,
     on_product_deleted,
     on_product_updated,
@@ -95,6 +103,7 @@ from handlers.products import (  # noqa: E402
 )
 from handlers.users import (  # noqa: E402
     get_user_profile,
+    update_email_consent,
     update_user_profile,
 )
 
@@ -156,12 +165,6 @@ def validate_postal_code(postal_code, country="Canada"):
 
 # Export all functions for Firebase deployment
 __all__ = [
-    # Validation
-    'validate_postal_code',
-
-    # Shipping
-    'calculate_shipping_cost',
-
     # Stripe payments
     'create_checkout_session',
     'verify_cart_prices',
@@ -170,9 +173,6 @@ __all__ = [
     'create_connect_account',
     'get_connect_account_status',
     'create_account_link',
-    'process_charge_refunded',
-    'process_dispute_created',
-    'process_dispute_closed',
 
     # Airwallex payments
     'airwallex_create_seller_account',
@@ -184,6 +184,10 @@ __all__ = [
     'upload_product_images',
     'delete_product',
     'submit_product_rating',
+    'configure_algolia',
+    'get_products_paginated',
+    'get_seller_products_paginated',
+    'get_product_ratings_paginated',
     'on_product_created',
     'on_product_updated',
     'on_product_deleted',
@@ -201,14 +205,18 @@ __all__ = [
     # Admin
     'update_user_roles',
     'suspend_seller',
+    'unsuspend_seller',
+    'admin_update_product_stock',
     'admin_mfa_enroll',
     'admin_mfa_verify',
+    'admin_mfa_verify_backup',
     'admin_mfa_disable',
     'delete_account',
 
     # User Profile
     'update_user_profile',
     'get_user_profile',
+    'update_email_consent',
 
     # Payment Provider Management
     'get_payment_providers',
@@ -221,6 +229,7 @@ __all__ = [
     'auto_archive_old_orders',
     'monitor_algolia_sync',
     'cleanup_stale_rate_limits',
+    'cleanup_orphaned_r2_images',
 ]
 
 print(f"""

@@ -28,12 +28,9 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> deleteProduct(String productId) async {
-    await _firestore.collection(Collections.products).doc(productId).update({
-      Fields.isActive: false,
-      Fields.deletedAt: FieldValue.serverTimestamp(),
-      Fields.stockQuantity: 0,
-      Fields.keywords: [],
-    });
+    // SECURITY FIX: Call Cloud Function instead of direct Firestore write
+    // Backend enforces ownership, pending order checks, Algolia cleanup
+    await _functions.httpsCallable('delete_product').call({Fields.productId: productId});
   }
 
   @override
@@ -63,11 +60,11 @@ class FirebaseAdminRepository implements AdminRepository {
   @override
   Future<void> setUserSuspended(String userId, bool suspended) async {
     if (suspended) {
-      // EDGE CASE FIX #1: Call backend to handle active orders
       await _functions.httpsCallable('suspend_seller').call({Fields.sellerId: userId, ApiKeys.reason: 'Suspended by admin'});
     } else {
-      // Unsuspend: just update Firestore
-      await _firestore.collection(Collections.users).doc(userId).update({Fields.suspended: false, Fields.unsuspendedAt: FieldValue.serverTimestamp()});
+      // SECURITY FIX: Call Cloud Function instead of direct Firestore write
+      // Backend enforces admin+MFA, reactivates products, logs audit
+      await _functions.httpsCallable('unsuspend_seller').call({Fields.sellerId: userId, ApiKeys.reason: 'Unsuspended by admin'});
     }
   }
 
@@ -82,7 +79,12 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> updateProductStock(String productId, int quantity) async {
-    await _firestore.collection(Collections.products).doc(productId).update({Fields.stockQuantity: quantity});
+    // SECURITY FIX: Call Cloud Function instead of direct Firestore write
+    // Backend enforces admin+MFA, validates quantity, logs audit
+    await _functions.httpsCallable('admin_update_product_stock').call({
+      Fields.productId: productId,
+      Fields.stockQuantity: quantity,
+    });
   }
 
   @override

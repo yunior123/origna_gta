@@ -7,6 +7,7 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});
@@ -50,7 +51,7 @@ class FavoritesScreen extends ConsumerWidget {
                       child: const SizedBox(
                         width: 32,
                         height: 32,
-                        child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                        child: ModernLoadingIndicator(size: 32, strokeWidth: 3, color: Colors.white, centered: false),
                       ),
                     ),
                   ),

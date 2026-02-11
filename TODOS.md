@@ -150,3 +150,5 @@ in_transit → delivered	✅	get_order_delivered_email() + reçu
 capture failed	✅	send_payment_capture_failed_email()
 3DS required	✅	send_3ds_authentication_email()
 Statuts manquants : processing, in_transit, refunded, partially_refunded. Tu veux que j'ajoute des templates pour ceux-ci ?
+
+TODO try a single playwright test with buyer yunirrodriguezo4601 for yahoo, if the process actaully work, i should be able to see all of the email notifications of the process from begining till end. tip, use semantics if u have issues with canvas in flutter, search the web for it. 2. take a look at the skipped playwright tests

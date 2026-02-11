@@ -2,12 +2,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:origna_gta/screens/login_screen.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Gate widget that requires user to be authenticated before showing child
 class AuthRequiredGate extends ConsumerWidget {
@@ -37,9 +38,10 @@ class AuthRequiredGate extends ConsumerWidget {
             child: ShaderMask(
               shaderCallback: (bounds) =>
                   DesignTokens.primaryGradient.createShader(bounds),
-              child: const CircularProgressIndicator(
+              child: const ModernLoadingIndicator(
                 color: Colors.white,
                 strokeWidth: 3,
+                centered: false,
               ),
             ),
           ),
@@ -120,10 +122,8 @@ class AuthRequiredGate extends ConsumerWidget {
                           child: ModernButton(
                             label: 'Sign In',
                             icon: Icons.login_rounded,
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const LoginScreen(),
-                              ),
+                            onPressed: () => Navigator.of(context).pushNamed(
+                              AppRoutes.login,
                             ),
                           ),
                         ),
@@ -133,7 +133,7 @@ class AuthRequiredGate extends ConsumerWidget {
                           child: TextButton(
                             onPressed: () => Navigator.of(
                               context,
-                            ).pushNamedAndRemoveUntil('/', (route) => false),
+                            ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
                             child: Text(
                               'Go Home',
                               style: TextStyle(
@@ -246,7 +246,7 @@ class ErrorScreen extends StatelessWidget {
                       icon: Icons.home_outlined,
                       onPressed: () => Navigator.of(
                         context,
-                      ).pushNamedAndRemoveUntil('/', (route) => false),
+                      ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
                     ),
                   ),
                 ],
@@ -433,7 +433,7 @@ class _EmailVerificationRequiredScreenState
                         if (context.mounted) {
                           Navigator.of(
                             context,
-                          ).pushNamedAndRemoveUntil('/', (route) => false);
+                          ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
                         }
                       },
                       icon: Icon(
@@ -519,7 +519,7 @@ class _EmailVerificationRequiredScreenState
             );
             Navigator.of(
               context,
-            ).pushNamedAndRemoveUntil('/', (route) => false);
+            ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
           }
         } else {
           if (mounted) {

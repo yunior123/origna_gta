@@ -70,7 +70,7 @@ class AddressViewModel extends StateNotifier<AddressState> {
       await _ref.read(userRepositoryProvider).updateAddress(userId, address);
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to save address'));
     }
   }
 }

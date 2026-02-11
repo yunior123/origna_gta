@@ -3,15 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/screens/cartitem_screen.dart';
-import 'package:origna_gta/screens/checkout_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Cart screen using optimized Riverpod patterns
 /// - Main screen only watches cart item IDs (lightweight)
@@ -78,9 +79,11 @@ class CartScreen extends ConsumerWidget {
                           child: const SizedBox(
                             width: 32,
                             height: 32,
-                            child: CircularProgressIndicator(
+                            child: ModernLoadingIndicator(
+                              size: 32,
                               strokeWidth: 3,
-                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                              color: Colors.white,
+                              centered: false,
                             ),
                           ),
                         ),
@@ -120,7 +123,7 @@ class CartScreen extends ConsumerWidget {
                           } else {
                             Navigator.of(
                               context,
-                            ).pushNamedAndRemoveUntil('/', (route) => false);
+                            ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
                           }
                         },
                       ),
@@ -774,12 +777,10 @@ class _CheckoutButton extends ConsumerWidget {
             0.0,
             (total, item) => total + (item.price * item.quantity),
           );
-          Navigator.push(
+          Navigator.pushNamed(
             context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  CheckoutScreen(items: itemsWithDetails, total: subtotal),
-            ),
+            AppRoutes.checkout,
+            arguments: CheckoutArgs(items: itemsWithDetails, total: subtotal),
           );
         });
       },

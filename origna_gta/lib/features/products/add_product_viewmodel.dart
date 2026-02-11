@@ -193,7 +193,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       await productRepository.addProductWithId(tempProductId, product);
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to add product'));
     }
   }
 

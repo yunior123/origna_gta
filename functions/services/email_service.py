@@ -884,7 +884,7 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
 
         customer_email = order_data.get(Fields.CUSTOMER_EMAIL)
         total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
-        items_summary = ', '.join([f"{item.get(Fields.NAME)} x{item.get(Fields.QUANTITY, 1)}"
+        items_summary = ', '.join([f"{html.escape(str(item.get(Fields.NAME, '')))} x{item.get(Fields.QUANTITY, 1)}"
                                    for item in order_data.get(Fields.ITEMS, [])[:3]])
 
         # Email to buyer
@@ -935,13 +935,16 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
     Instructs buyer to update payment method or contact support.
     """
     if not customer_email:
-        print("⚠️ Cannot send capture failure email: missing customer_email")
+        print("Cannot send capture failure email: missing customer_email")
         return
 
     if IS_EMULATOR and not FORCE_REAL_EMAIL:
-        print(f"🧪 EMULATOR: Would send capture failure email to {customer_email}")
-        print(f"   Order: {order_id}, Amount: ${amount:.2f}, Error: {error_message}")
+        print(f"EMULATOR: Would send capture failure email for order {order_id[:8]}")
         return
+
+    # Sanitize user-controlled inputs before HTML injection
+    safe_name = html.escape(str(customer_name or ''))
+    safe_error = html.escape(str(error_message or 'Unknown error'))
 
     # Initialize Mailjet client
     mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version=EmailConfig.MAILJET_API_VERSION)
@@ -979,7 +982,7 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
 
         <!-- Content -->
         <tr><td style="padding: 28px 40px;">
-            <p style="margin: 0 0 20px 0; font-size: 15px; color: #333;">Hi {customer_name},</p>
+            <p style="margin: 0 0 20px 0; font-size: 15px; color: #333;">Hi {safe_name},</p>
 
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8f9ff; border-radius: 12px; border: 1px solid #e5e8f5; margin-bottom: 24px;">
             <tr><td style="padding: 16px 20px;">
@@ -994,7 +997,7 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
                     </tr>
                     <tr>
                         <td style="padding: 4px 0; font-size: 13px; color: #888;">Issue:</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #dc2626; text-align: right; font-weight: 500;">{error_message}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #dc2626; text-align: right; font-weight: 500;">{safe_error}</td>
                     </tr>
                 </table>
             </td></tr>
@@ -1069,6 +1072,9 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
         print(f"   Order: {order_id}, Amount: ${amount:.2f}, URL: {authentication_url}")
         return
 
+    # Sanitize user-controlled values to prevent HTML injection
+    safe_name = html.escape(str(customer_name or ''))
+
     # Initialize Mailjet client
     mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version=EmailConfig.MAILJET_API_VERSION)
 
@@ -1105,7 +1111,7 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
 
         <!-- Content -->
         <tr><td style="padding: 28px 40px;">
-            <p style="margin: 0 0 20px 0; font-size: 15px; color: #333;">Hi {customer_name},</p>
+            <p style="margin: 0 0 20px 0; font-size: 15px; color: #333;">Hi {safe_name},</p>
 
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8f9ff; border-radius: 12px; border: 1px solid #e5e8f5; margin-bottom: 24px;">
             <tr><td style="padding: 16px 20px;">

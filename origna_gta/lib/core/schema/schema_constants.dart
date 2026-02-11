@@ -90,6 +90,7 @@ abstract final class Fields {
   static const suspended = 'suspended';
   static const suspendedAt = 'suspendedAt';
   static const unsuspendedAt = 'unsuspendedAt';
+  static const unsuspendedBy = 'unsuspendedBy';
   static const suspendedBy = 'suspendedBy';
   static const suspensionReason = 'suspensionReason';
   static const commissionRate = 'commissionRate';
@@ -111,6 +112,13 @@ abstract final class Fields {
   static const mfaBackupCodesSalt = 'mfaBackupCodesSalt';
   static const lastRoleUpdate = 'lastRoleUpdate';
   static const lastRoleUpdateBy = 'lastRoleUpdateBy';
+
+  // === USER PROFILE FIELDS (missing, synced from Python) ===
+  static const sellerProfile = 'sellerProfile';
+  static const businessAddress = 'businessAddress';
+  static const fullName = 'fullName';
+  static const isCorporate = 'isCorporate';
+  static const bankDetails = 'bankDetails';
 
   // === PRODUCT FIELDS ===
   static const productId = 'productId';
@@ -197,6 +205,21 @@ abstract final class Fields {
   static const cancellationReason = 'cancellationReason';
   static const respondedAt = 'respondedAt';
   static const actualCost = 'actualCost';
+  static const taxCents = 'taxCents';
+  static const taxRate = 'taxRate';
+  static const lastCaptureError = 'lastCaptureError';
+  static const sellerStripeAccounts = 'sellerStripeAccounts';
+  static const archivedAt = 'archivedAt';
+  static const updatedBy = 'updatedBy';
+  static const originalCostCents = 'originalCostCents';
+  static const newCostCents = 'newCostCents';
+  static const requestedBy = 'requestedBy';
+  static const requestedAt = 'requestedAt';
+  static const action = 'action';
+  static const customerName = 'customerName';
+  static const searchKeywords = 'searchKeywords';
+  static const deactivationReason = 'deactivationReason';
+  static const retries = 'retries';
 
   // === TAX FIELDS (new) ===
   static const itemTaxes = 'itemTaxes';
@@ -245,9 +268,20 @@ abstract final class Fields {
   static const reversalId = 'reversalId';
   static const partialReversals = 'partialReversals';
   static const disputeId = 'disputeId';
+  static const preDisputeStatus = 'preDisputeStatus';
+  static const disputeResolvedAt = 'disputeResolvedAt';
+  static const disputeResolution = 'disputeResolution';
   static const failureReason = 'failureReason';
   static const payoutDate = 'payoutDate';
   static const reversedAt = 'reversedAt';
+  static const cumulativeRefundedCents = 'cumulativeRefundedCents';
+  static const partialRefundAmountCents = 'partialRefundAmountCents';
+  static const transfersReversed = 'transfersReversed';
+  static const disputedAt = 'disputedAt';
+  static const cumulativeReversedCents = 'cumulativeReversedCents';
+  static const reversalReason = 'reversalReason';
+  static const paymentIntentId = 'paymentIntentId';
+  static const transferId = 'transferId';
 
   // === WEBHOOK FIELDS ===
   static const eventId = 'eventId';
@@ -501,12 +535,21 @@ abstract final class SecurityAlertTypes {
   static const disputeCreated = 'dispute_created';
   static const roleChange = 'role_change';
   static const sellerSuspended = 'seller_suspended';
+  static const sellerUnsuspended = 'seller_unsuspended';
   static const paymentProviderDisabled = 'payment_provider_disabled';
   static const refundReversalFailed = 'refund_reversal_failed';
   static const payoutFailed = 'payout_failed';
   static const refundFailed = 'refund_failed';
   static const sellerAccountChanged = 'seller_account_changed';
   static const payoutRecordIncomplete = 'payout_record_incomplete';
+  static const mfaLowBackupCodes = 'mfa_low_backup_codes';
+  static const sellerKycFailed = 'seller_kyc_failed';
+  static const invalidGstAttempt = 'invalid_gst_attempt';
+  static const blockedGstAttempt = 'blocked_gst_attempt';
+  static const sharedGstNumber = 'shared_gst_number';
+  static const taxExemptionPendingReview = 'tax_exemption_pending_review';
+  static const suspiciousTaxExemption = 'suspicious_tax_exemption';
+  static const authDeletionFailed = 'auth_deletion_failed';
 }
 
 /// Security alert severity levels
@@ -593,13 +636,12 @@ abstract final class EmailConfig {
   static const prodUrl = 'https://orignagta.ca';
 
   // === CASL COMPLIANCE ===
-  // TODO get Virtual business address (recommended)
   /// Physical mailing address — REQUIRED by CASL in every commercial email
   static const physicalAddress =
       'Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada';
 
   /// GST/HST Registration Number — REQUIRED on all receipts (Excise Tax Act)
-  static const gstHstNumber = '708286364RC0001'; // TODO: safety 
+  static const gstHstNumber = '708286364RC0001';
 
   /// Unsubscribe URL — REQUIRED by CASL
   static const unsubscribeUrl = 'https://orignagta.ca/unsubscribe';
@@ -770,4 +812,8 @@ abstract final class ApiKeys {
   static const configured = 'configured';
   static const missingKeys = 'missingKeys';
   static const enabledProviders = 'enabledProviders';
+
+  // === SHIPPING RESPONSE KEYS ===
+  static const allItemsShipped = 'allItemsShipped';
+  static const approvalRequired = 'approvalRequired';
 }

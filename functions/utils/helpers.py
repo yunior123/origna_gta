@@ -41,11 +41,18 @@ def sanitized_text(value: str) -> str:
     Sanitize text to prevent XSS attacks.
     Uses html.escape() (allowlist approach) per OWASP best practices.
     All HTML entities are escaped — no denylist bypasses possible.
+
+    IMPORTANT: Idempotent — unescape first to prevent double-encoding
+    and infinite Firestore trigger loops (on_product_created/updated).
     """
     if value is None:
         return ""
 
     text = str(value)
+
+    # Unescape first to prevent double-encoding on re-trigger.
+    # html.escape(html.unescape(x)) is idempotent for any x.
+    text = html.unescape(text)
 
     # html.escape handles: & < > " '
     # This is the OWASP-recommended approach — encode everything,

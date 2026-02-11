@@ -4,6 +4,7 @@ import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 import '../../features/products/edit_product_state.dart';
 import '../../features/products/edit_product_viewmodel.dart';
@@ -301,7 +302,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: state.isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? const ModernLoadingIndicator(color: Colors.white, centered: false)
                             : const Text('Save Changes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
                     ),

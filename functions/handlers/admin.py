@@ -7,8 +7,10 @@ Admin & User Management Handlers
 """
 
 import hashlib
+import hmac
 import secrets
 import string
+import stripe
 import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -301,7 +303,7 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Verify user has seller role
     if UserRoleValues.SELLER not in seller_data.get(Fields.ROLES, []):
-        raise https_fn.HttpsError('invalid-argument', 'User is not a seller')
+        raise https_fn.HttpsError('failed-precondition', 'User is not a seller')
 
     # Suspend seller
     seller_ref.update({
@@ -426,6 +428,217 @@ def suspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
+def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Unsuspends a seller account (admin only with MFA).
+
+    Actions:
+    - Marks user as not suspended
+    - Reactivates all seller's products that were suspended
+    - Creates security alert
+
+    Request data:
+        sellerId: User ID to unsuspend
+        reason: Unsuspension reason
+
+    Returns:
+        {success: True, message: "Seller unsuspended"}
+    """
+    if not req.auth:
+        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+
+    admin_id = req.auth.uid
+    data = req.data
+
+    # Rate limit
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=admin_id, action='unsuspend_seller',
+        max_requests=10, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
+    from utils.helpers import sanitized_text
+
+    seller_id_raw = data.get(Fields.SELLER_ID)
+    reason_raw = data.get(ApiKeys.REASON, 'Admin decision')
+
+    seller_id = sanitized_text(seller_id_raw) if seller_id_raw else None
+    reason = sanitized_text(reason_raw)[:500]
+
+    if not seller_id:
+        raise https_fn.HttpsError('invalid-argument', 'sellerId required')
+
+    # Check admin permissions
+    admin_ref = get_db().collection(Collections.USERS).document(admin_id)
+    admin_doc = admin_ref.get()
+
+    if not admin_doc.exists:
+        raise https_fn.HttpsError('not-found', 'Admin user not found')
+
+    admin_data = admin_doc.to_dict()
+
+    if UserRoleValues.ADMIN not in admin_data.get(Fields.ROLES, []):
+        raise https_fn.HttpsError('permission-denied', 'Admin role required')
+
+    # Require recent MFA verification
+    _require_recent_admin_mfa(admin_data)
+
+    # Get seller
+    seller_ref = get_db().collection(Collections.USERS).document(seller_id)
+    seller_doc = seller_ref.get()
+
+    if not seller_doc.exists:
+        raise https_fn.HttpsError('not-found', 'Seller not found')
+
+    seller_data = seller_doc.to_dict()
+
+    if not seller_data.get(Fields.SUSPENDED, False):
+        raise https_fn.HttpsError('failed-precondition', 'Seller is not currently suspended')
+
+    # Unsuspend seller
+    seller_ref.update({
+        Fields.SUSPENDED: False,
+        Fields.UNSUSPENDED_AT: get_server_timestamp(),
+        Fields.UNSUSPENDED_BY: admin_id,
+        Fields.UPDATED_AT: get_server_timestamp()
+    })
+
+    # Reactivate seller's products that were suspended (not manually deleted)
+    products = get_db().collection(Collections.PRODUCTS)\
+        .where(Fields.SELLER_ID, '==', seller_id)\
+        .where(Fields.IS_ACTIVE, '==', False)\
+        .limit(500)\
+        .stream()
+
+    product_count = 0
+    batch = get_db().batch()
+    batch_count = 0
+
+    for product_doc in products:
+        product_data = product_doc.to_dict()
+        # Only reactivate products that were suspended (not explicitly deleted)
+        if product_data.get(Fields.SUSPENDED_AT) and not product_data.get(Fields.DELETED_AT):
+            batch.update(product_doc.reference, {
+                Fields.IS_ACTIVE: True,
+                Fields.SUSPENDED_AT: get_delete_field(),
+                Fields.UPDATED_AT: get_server_timestamp()
+            })
+            product_count += 1
+            batch_count += 1
+
+            if batch_count >= 500:
+                batch.commit()
+                batch = get_db().batch()
+                batch_count = 0
+
+    if batch_count > 0:
+        batch.commit()
+
+    # Log security alert
+    get_db().collection(Collections.SECURITY_ALERTS).add({
+        Fields.TYPE: SecurityAlertTypes.SELLER_UNSUSPENDED,
+        Fields.SEVERITY: SeverityLevels.CRITICAL,
+        Fields.ADMIN_ID: admin_id,
+        Fields.SELLER_ID: seller_id,
+        Fields.REASON: reason,
+        Fields.PRODUCTS_DEACTIVATED: product_count,
+        Fields.TIMESTAMP: get_server_timestamp(),
+        Fields.RESOLVED: True
+    })
+
+    return create_success_response({
+        ApiKeys.MESSAGE: 'Seller unsuspended',
+        'productsReactivated': product_count
+    })
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def admin_update_product_stock(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Updates product stock quantity (admin only with MFA).
+
+    Security:
+    - Requires admin role + recent MFA
+    - Validates quantity is non-negative
+    - Logs stock change for audit trail
+
+    Request data:
+        productId: Product document ID
+        quantity: New stock quantity (0+)
+        reason: Reason for stock update
+
+    Returns:
+        {success: True, message: "Stock updated"}
+    """
+    if not req.auth:
+        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+
+    admin_id = req.auth.uid
+    data = req.data
+
+    # Rate limit
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=admin_id, action='admin_update_stock',
+        max_requests=30, window_minutes=1, fail_closed=False
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
+    product_id = data.get(Fields.PRODUCT_ID)
+    quantity = data.get(Fields.STOCK_QUANTITY)
+    reason = data.get(ApiKeys.REASON, 'Admin stock adjustment')
+
+    if not product_id:
+        raise https_fn.HttpsError('invalid-argument', 'productId required')
+
+    if quantity is None or not isinstance(quantity, int) or quantity < 0:
+        raise https_fn.HttpsError('invalid-argument', 'quantity must be a non-negative integer')
+
+    # Check admin permissions
+    admin_ref = get_db().collection(Collections.USERS).document(admin_id)
+    admin_doc = admin_ref.get()
+
+    if not admin_doc.exists:
+        raise https_fn.HttpsError('not-found', 'Admin user not found')
+
+    admin_data = admin_doc.to_dict()
+
+    if UserRoleValues.ADMIN not in admin_data.get(Fields.ROLES, []):
+        raise https_fn.HttpsError('permission-denied', 'Admin role required')
+
+    # Require recent MFA verification
+    _require_recent_admin_mfa(admin_data)
+
+    # Get product
+    product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+    product_doc = product_ref.get()
+
+    if not product_doc.exists:
+        raise https_fn.HttpsError('not-found', 'Product not found')
+
+    product_data = product_doc.to_dict()
+    old_quantity = product_data.get(Fields.STOCK_QUANTITY, 0)
+
+    # Update stock
+    product_ref.update({
+        Fields.STOCK_QUANTITY: quantity,
+        Fields.UPDATED_AT: get_server_timestamp()
+    })
+
+    print(f'Admin {admin_id} updated stock for product {product_id}: '
+          f'{old_quantity} -> {quantity}. Reason: {reason}')
+
+    return create_success_response({
+        ApiKeys.MESSAGE: 'Stock updated',
+        'oldQuantity': old_quantity,
+        'newQuantity': quantity
+    })
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Enrolls admin in MFA (TOTP).
@@ -483,7 +696,12 @@ def admin_mfa_enroll(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # AUDIT FIX: Encrypt MFA secret before storing in Firestore
     from utils.crypto_utils import encrypt_mfa_secret
-    encrypted_secret = encrypt_mfa_secret(secret)
+    encrypted_secret = encrypt_mfa_secret(secret, associated_data=user_id)
+
+    # AUDIT FIX: Race condition — check if enrollment already in progress or MFA already enabled
+    existing_mfa = user_data.get(Fields.MFA_ENABLED, False)
+    if existing_mfa:
+        raise https_fn.HttpsError('failed-precondition', 'MFA is already enabled. Disable it first to re-enroll.')
 
     # Save to Firestore (temporary, until verified)
     user_ref.update({
@@ -543,14 +761,17 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Decrypt MFA secret (rejects unencrypted plaintext)
     from utils.crypto_utils import decrypt_mfa_secret, encrypt_mfa_secret
-    secret = decrypt_mfa_secret(raw_secret)
+    secret = decrypt_mfa_secret(raw_secret, associated_data=user_id)
 
     # SECURITY: Check MFA attempt limiting (max 5 attempts per 15 min)
     mfa_attempts = user_data.get(Fields.MFA_FAILED_ATTEMPTS, 0)
     mfa_lockout_until = user_data.get(Fields.MFA_LOCKOUT_UNTIL)
     if mfa_lockout_until:
-        lockout_time = mfa_lockout_until.replace(tzinfo=None) if hasattr(mfa_lockout_until, 'replace') else mfa_lockout_until
-        if datetime.now() < lockout_time:
+        # Ensure timezone-aware comparison (Firestore timestamps are UTC)
+        if hasattr(mfa_lockout_until, 'tzinfo') and mfa_lockout_until.tzinfo is None:
+            from datetime import timezone
+            mfa_lockout_until = mfa_lockout_until.replace(tzinfo=timezone.utc)
+        if datetime.now(UTC) < mfa_lockout_until:
             raise https_fn.HttpsError('permission-denied', 'Too many failed MFA attempts. Try again later.')
 
     # Verify code with constant-time comparison protection
@@ -570,20 +791,20 @@ def admin_mfa_verify(req: https_fn.CallableRequest) -> dict[str, Any]:
         attempt_update = {Fields.MFA_FAILED_ATTEMPTS: mfa_attempts + 1}
         if mfa_attempts + 1 >= BusinessRules.MFA_MAX_ATTEMPTS:
             # Lock out after max failures
-            attempt_update[Fields.MFA_LOCKOUT_UNTIL] = datetime.now() + timedelta(minutes=BusinessRules.MFA_LOCKOUT_MINUTES)
+            attempt_update[Fields.MFA_LOCKOUT_UNTIL] = datetime.now(UTC) + timedelta(minutes=BusinessRules.MFA_LOCKOUT_MINUTES)
             attempt_update[Fields.MFA_FAILED_ATTEMPTS] = 0
             print(f'SECURITY: MFA lockout triggered for user {user_id}')
         user_ref.update(attempt_update)
-        raise https_fn.HttpsError('invalid-argument', 'Invalid MFA code')
+        raise https_fn.HttpsError('unauthenticated', 'Invalid MFA code')
 
     # Reset failed attempts on success
     if mfa_attempts > 0:
         user_ref.update({Fields.MFA_FAILED_ATTEMPTS: 0})
 
-    # Enable MFA — AUDIT FIX: re-encrypt secret for permanent storage
+    # Enable MFA — AUDIT FIX: re-encrypt secret for permanent storage with user AAD
     update_data = {
         Fields.MFA_ENABLED: True,
-        Fields.MFA_SECRET: encrypt_mfa_secret(secret),
+        Fields.MFA_SECRET: encrypt_mfa_secret(secret, associated_data=user_id),
         Fields.LAST_MFA_VERIFY: get_server_timestamp(),
         Fields.UPDATED_AT: get_server_timestamp()
     }
@@ -626,6 +847,15 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not code:
         raise https_fn.HttpsError('invalid-argument', 'code required')
 
+    # Rate limit MFA disable attempts (same protection as admin_mfa_verify)
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=user_id, action='mfa_disable',
+        max_requests=3, window_minutes=15, fail_closed=True
+    )
+    if not allowed:
+        raise https_fn.HttpsError('resource-exhausted', msg)
+
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
 
@@ -633,6 +863,11 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError('not-found', 'User not found')
 
     user_data = user_doc.to_dict()
+
+    # Verify caller has admin role
+    if UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
+        raise https_fn.HttpsError('permission-denied', 'Admin role required')
+
     raw_secret = user_data.get(Fields.MFA_SECRET)
 
     if not raw_secret:
@@ -640,13 +875,22 @@ def admin_mfa_disable(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Decrypt MFA secret (rejects unencrypted plaintext)
     from utils.crypto_utils import decrypt_mfa_secret
-    secret = decrypt_mfa_secret(raw_secret)
+    secret = decrypt_mfa_secret(raw_secret, associated_data=user_id)
 
-    # Verify code before disabling
+    # Verify code before disabling with timing protection
     totp = pyotp.TOTP(secret)
 
-    if not totp.verify(code, valid_window=1):
-        raise https_fn.HttpsError('invalid-argument', 'Invalid MFA code')
+    start_time = time.monotonic()
+    code_valid = totp.verify(code, valid_window=1)
+
+    # SECURITY: Constant-time response to prevent timing attacks
+    elapsed = time.monotonic() - start_time
+    min_response_time = 0.1  # 100ms minimum
+    if elapsed < min_response_time:
+        time.sleep(min_response_time - elapsed)
+
+    if not code_valid:
+        raise https_fn.HttpsError('unauthenticated', 'Invalid MFA code')
 
     # Disable MFA
     user_ref.update({
@@ -711,14 +955,21 @@ def admin_mfa_verify_backup(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Hash the provided code with salt
     hashed_input = hashlib.sha256((code + backup_codes_salt).encode()).hexdigest()
 
-    # Check if code matches (constant-time comparison not needed here as hash is deterministic)
-    if hashed_input not in stored_hashed_codes:
+    # Check if code matches using constant-time comparison
+    code_found = False
+    matched_index = -1
+    for idx, stored_hash in enumerate(stored_hashed_codes):
+        if hmac.compare_digest(hashed_input, stored_hash):
+            code_found = True
+            matched_index = idx
+
+    if not code_found:
         # Log failed attempt
         print(f'SECURITY: Invalid backup code attempt for user {user_id}')
         raise https_fn.HttpsError('invalid-argument', 'Invalid backup code')
 
     # Remove used code (one-time use)
-    remaining_codes = [c for c in stored_hashed_codes if c != hashed_input]
+    remaining_codes = [c for c in stored_hashed_codes if not hmac.compare_digest(c, hashed_input)]
 
     # Update last MFA verify time
     user_ref.update({
@@ -814,6 +1065,40 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Anonymize user data
     user_ref = get_db().collection(Collections.USERS).document(user_id)
+    user_doc = user_ref.get()
+    user_data = user_doc.to_dict() if user_doc.exists else {}
+
+    # GDPR: Delete Stripe Connect account before anonymizing Firestore
+    stripe_account_id = user_data.get(Fields.STRIPE_ACCOUNT_ID)
+    if stripe_account_id:
+        try:
+            stripe.Account.delete(stripe_account_id)
+            print(f'GDPR: Deleted Stripe Connect account {stripe_account_id} for user {user_id}')
+        except Exception as stripe_err:
+            # Log but don't block — Stripe cleanup is best-effort, flag for manual review
+            get_db().collection(Collections.SECURITY_ALERTS).add({
+                Fields.TYPE: SecurityAlertTypes.AUTH_DELETION_FAILED,
+                Fields.SEVERITY: SeverityLevels.HIGH,
+                Fields.USER_ID: user_id,
+                Fields.ERROR_MESSAGE: f'Stripe account deletion failed: {stripe_err}',
+                Fields.TIMESTAMP: get_server_timestamp(),
+                Fields.RESOLVED: False
+            })
+            print(f'WARNING: Failed to delete Stripe account {stripe_account_id}: {stripe_err}')
+
+    # GDPR: Delete user files from Firebase Storage
+    try:
+        from firebase_admin import storage as fb_storage
+        bucket = fb_storage.bucket()
+        for prefix in [f'products/{user_id}/', f'users/{user_id}/', f'verification/{user_id}/']:
+            blobs = list(bucket.list_blobs(prefix=prefix, max_results=500))
+            for blob in blobs:
+                blob.delete()
+            if blobs:
+                print(f'GDPR: Deleted {len(blobs)} files from {prefix}')
+    except Exception as storage_err:
+        print(f'WARNING: Storage cleanup failed for user {user_id}: {storage_err}')
+
     user_ref.update({
         Fields.EMAIL: f'deleted_{user_id}@anonymized.local',
         Fields.NAME: '[Deleted User]',
@@ -873,7 +1158,7 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
     if orders_count > 0:
         print(f'GDPR: Anonymized {orders_count} orders for deleted user {user_id}')
 
-    # Deactivate products (with limit and batch)
+    # Deactivate and anonymize products (GDPR: remove seller PII)
     products = get_db().collection(Collections.PRODUCTS)\
         .where(Fields.SELLER_ID, '==', user_id)\
         .limit(500)\
@@ -881,12 +1166,17 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     product_batch = get_db().batch()
     product_batch_count = 0
+    product_ids_to_remove = []
 
     for product_doc in products:
         product_batch.update(product_doc.reference, {
             Fields.IS_ACTIVE: False,
+            Fields.SELLER_ID: anonymized_id,
+            Fields.SELLER_NAME: '[Deleted Seller]',
+            Fields.SELLER_ADDRESS: get_delete_field(),
             Fields.DELETED_AT: get_server_timestamp()
         })
+        product_ids_to_remove.append(product_doc.id)
         product_batch_count += 1
 
         if product_batch_count >= 500:
@@ -896,6 +1186,41 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if product_batch_count > 0:
         product_batch.commit()
+
+    # GDPR: Remove products from Algolia search index
+    if product_ids_to_remove:
+        try:
+            from services.algolia_service import delete_products_from_algolia
+            delete_products_from_algolia(product_ids_to_remove)
+            print(f'GDPR: Removed {len(product_ids_to_remove)} products from Algolia')
+        except Exception as algolia_err:
+            print(f'WARNING: Algolia cleanup failed: {algolia_err}')
+
+    # GDPR: Anonymize payout records (keep for accounting, remove PII)
+    user_payouts = get_db().collection(Collections.PAYOUTS)\
+        .where(Fields.SELLER_ID, '==', user_id)\
+        .limit(500)\
+        .stream()
+
+    payout_batch = get_db().batch()
+    payout_count = 0
+
+    for payout_doc in user_payouts:
+        payout_batch.update(payout_doc.reference, {
+            Fields.SELLER_ID: anonymized_id,
+            Fields.ANONYMIZED_AT: get_server_timestamp(),
+        })
+        payout_count += 1
+        if payout_count >= 500:
+            payout_batch.commit()
+            payout_batch = get_db().batch()
+            payout_count = 0
+
+    if payout_count > 0:
+        payout_batch.commit()
+
+    if payout_count > 0:
+        print(f'GDPR: Anonymized {payout_count} payout records for deleted user {user_id}')
 
     # Delete cart and favorites (with limits)
     cart_docs = get_db().collection(Collections.USERS).document(user_id).collection(Collections.CART).limit(500).stream()
@@ -943,5 +1268,9 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.RESOLVED: False
         })
         print(f'CRITICAL: Failed to delete Auth user {user_id}: {str(e)}')
+        raise https_fn.HttpsError(
+            'internal',
+            'Account data anonymized but auth deletion failed. Contact support.'
+        ) from e
 
     return create_success_response({ApiKeys.MESSAGE: 'Account deleted successfully'})

@@ -103,7 +103,8 @@ def update_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
             address = Address(**data[Fields.ADDRESS])
             update_data[Fields.ADDRESS] = address.model_dump()
         except Exception as e:
-            raise https_fn.HttpsError('invalid-argument', f'Invalid address: {str(e)}') from e
+            print(f'Address validation error: {e}')
+            raise https_fn.HttpsError('invalid-argument', 'Invalid address. Please check all fields and try again.') from e
 
     # Handle name update
     if Fields.NAME in data:
@@ -157,4 +158,51 @@ def get_user_profile(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.ROLES: user_data.get(Fields.ROLES, [UserRoleValues.BUYER]),
         Fields.CREATED_AT: user_data.get(Fields.CREATED_AT),
         Fields.UPDATED_AT: user_data.get(Fields.UPDATED_AT),
+    })
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def update_email_consent(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    CASL compliance: Update user's email marketing consent.
+
+    Canada's Anti-Spam Legislation (CASL) requires:
+    - Express consent for commercial electronic messages (CEMs)
+    - One-click unsubscribe mechanism
+    - Record of consent timestamp and method
+
+    Transactional emails (order confirmations, security alerts) are
+    exempt from CASL and are always sent regardless of this setting.
+
+    Request data:
+        emailConsent: bool — opt-in (true) or opt-out (false)
+
+    Returns:
+        {success: True, emailConsent: bool}
+    """
+    if not req.auth:
+        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+
+    user_id = req.auth.uid
+    data = req.data
+
+    email_consent = data.get(Fields.EMAIL_CONSENT)
+    if not isinstance(email_consent, bool):
+        raise https_fn.HttpsError('invalid-argument', 'emailConsent must be a boolean')
+
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
+    user_doc = user_ref.get()
+
+    if not user_doc.exists:
+        raise https_fn.HttpsError('not-found', 'User not found')
+
+    user_ref.update({
+        Fields.EMAIL_CONSENT: email_consent,
+        Fields.CONSENT_TIMESTAMP: get_server_timestamp(),
+        Fields.CONSENT_METHOD: 'user_preference' if email_consent else 'unsubscribe',
+        Fields.UPDATED_AT: get_server_timestamp(),
+    })
+
+    return create_success_response({
+        Fields.EMAIL_CONSENT: email_consent,
     })

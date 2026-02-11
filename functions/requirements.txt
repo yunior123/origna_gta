@@ -9,7 +9,6 @@ charset-normalizer==3.4.4
 click==8.1.8
 cloudevents==1.9.0
 cryptography==46.0.3
-deprecation==2.1.0
 firebase_admin==7.1.0
 firebase-functions==0.4.0
 Flask==3.1.2
@@ -56,19 +55,11 @@ requests==2.32.5
 pyotp==2.9.0
 rsa==4.9.1
 s3transfer==0.16.0
-sendgrid==6.12.5
-six==1.17.0
-starlette==0.52.1
 stripe==14.2.0
 typing_extensions==4.15.0
 urllib3==2.6.3
-uvicorn==0.40.0
-uvicorn-worker==0.4.0
-watchdog==6.0.0
 Werkzeug==3.1.5
 algoliasearch==4.6.1
-ruff>=0.9.0
-pydantic>=2.11.0
 
 # Pydantic for data validation and schema generation
 pydantic==2.11.2

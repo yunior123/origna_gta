@@ -208,48 +208,62 @@ def update_order_status(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # SECURITY FIX: Scope seller actions to their own items only
     if is_seller and not is_admin and new_status == OrderStatusValues.SHIPPED:
-        items = order_data.get(Fields.ITEMS, [])
-        seller_items_updated = False
-        # NOTE: Use actual datetime instead of SERVER_TIMESTAMP sentinel inside arrays.
-        # Firestore SDK cannot serialize SERVER_TIMESTAMP sentinels nested in arrays.
-        now_utc = datetime.now(UTC)
+        # Use Firestore transaction to prevent concurrent seller updates from
+        # overwriting each other's item status changes
+        @get_firestore().transactional
+        def _update_seller_items(transaction):
+            fresh_doc = order_ref.get(transaction=transaction)
+            if not fresh_doc.exists:
+                return None, 'Order not found'
+            fresh_data = fresh_doc.to_dict()
 
-        for idx, item in enumerate(items):
-            if item.get(Fields.SELLER_ID) == user_id:
-                items[idx][Fields.STATUS] = DeliveryStatusValues.SHIPPED
-                items[idx][Fields.SHIPPED_AT] = now_utc
+            items = fresh_data.get(Fields.ITEMS, [])
+            seller_items_updated = False
+            # NOTE: Use actual datetime instead of SERVER_TIMESTAMP sentinel inside arrays.
+            # Firestore SDK cannot serialize SERVER_TIMESTAMP sentinels nested in arrays.
+            now_utc = datetime.now(UTC)
+
+            for idx, item in enumerate(items):
+                if item.get(Fields.SELLER_ID) == user_id:
+                    items[idx][Fields.STATUS] = DeliveryStatusValues.SHIPPED
+                    items[idx][Fields.SHIPPED_AT] = now_utc
+                    if tracking_number:
+                        items[idx][Fields.TRACKING_NUMBER] = tracking_number
+                        items[idx][Fields.CARRIER] = carrier or ''
+                    seller_items_updated = True
+
+            if not seller_items_updated:
+                return None, 'No items belong to this seller'
+
+            # Only update order-level status if ALL items from ALL sellers are shipped/delivered
+            all_shipped = all(
+                item.get(Fields.STATUS) in [DeliveryStatusValues.SHIPPED, DeliveryStatusValues.DELIVERED]
+                for item in items
+            )
+
+            update_data = {
+                Fields.ITEMS: items,
+                Fields.UPDATED_AT: get_server_timestamp()
+            }
+
+            if all_shipped:
+                update_data[Fields.ORDER_STATUS] = OrderStatusValues.SHIPPED
+                update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.SHIPPED
+                update_data[Fields.SHIPPED_AT] = get_server_timestamp()
                 if tracking_number:
-                    items[idx][Fields.TRACKING_NUMBER] = tracking_number
-                    items[idx][Fields.CARRIER] = carrier or ''
-                seller_items_updated = True
+                    update_data[Fields.TRACKING_NUMBER] = tracking_number
+                    update_data[Fields.CARRIER] = carrier or ''
 
-        if not seller_items_updated:
-            raise https_fn.HttpsError('permission-denied', 'No items belong to this seller')
+            transaction.update(order_ref, update_data)
+            return all_shipped, None
 
-        # Only update order-level status if ALL items from ALL sellers are shipped/delivered
-        all_items_shipped = all(
-            item.get(Fields.STATUS) in [DeliveryStatusValues.SHIPPED, DeliveryStatusValues.DELIVERED]
-            for item in items
-        )
-
-        update_data = {
-            Fields.ITEMS: items,
-            Fields.UPDATED_AT: get_server_timestamp()
-        }
-
-        if all_items_shipped:
-            update_data[Fields.ORDER_STATUS] = OrderStatusValues.SHIPPED
-            update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.SHIPPED
-            update_data[Fields.SHIPPED_AT] = get_server_timestamp()
-            if tracking_number:
-                update_data[Fields.TRACKING_NUMBER] = tracking_number
-                update_data[Fields.CARRIER] = carrier or ''
-
-        order_ref.update(update_data)
+        all_items_shipped, error_msg = _update_seller_items(get_db().transaction())
+        if error_msg:
+            raise https_fn.HttpsError('permission-denied', error_msg)
 
         return create_success_response({
             ApiKeys.NEW_STATUS: OrderStatusValues.SHIPPED if all_items_shipped else old_status,
-            'allItemsShipped': all_items_shipped
+            ApiKeys.ALL_ITEMS_SHIPPED: all_items_shipped
         })
 
     # Admin path: update order-level status directly
@@ -365,6 +379,10 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not (is_admin or is_item_seller):
         raise https_fn.HttpsError('permission-denied', 'Only the item seller or admin can update item status')
 
+    # Block suspended sellers from updating order status
+    if not is_admin and user_data.get(Fields.SUSPENDED, False):
+        raise https_fn.HttpsError('permission-denied', 'Suspended sellers cannot update order status')
+
     # SELLER SELF-DELIVERY PREVENTION: Sellers cannot mark their own items as DELIVERED.
     # Only buyer confirmation (capture_payment) or auto-capture cron can set DELIVERED.
     if is_item_seller and not is_admin and new_status == DeliveryStatusValues.DELIVERED:
@@ -389,58 +407,89 @@ def update_item_status(req: https_fn.CallableRequest) -> dict[str, Any]:
             f'Invalid item status transition from {current_item_status} to {new_status}'
         )
 
-    # Update the item
-    items[item_index][Fields.STATUS] = new_status
-    # NOTE: Use actual datetime instead of SERVER_TIMESTAMP sentinel inside arrays.
-    # Firestore SDK cannot serialize SERVER_TIMESTAMP sentinels nested in arrays.
-    now_utc = datetime.now(UTC)
+    # Update the item atomically using a Firestore transaction to prevent lost updates
+    # when multiple sellers update different items in the same order concurrently.
+    from firebase_admin import firestore as fs
+    txn = get_db().transaction()
 
-    if new_status == DeliveryStatusValues.SHIPPED:
-        items[item_index][Fields.SHIPPED_AT] = now_utc
-        if tracking_number:
-            items[item_index][Fields.TRACKING_NUMBER] = tracking_number
-            items[item_index][Fields.CARRIER] = carrier or ''
+    @fs.transactional
+    def update_item_atomically(transaction):
+        fresh_doc = order_ref.get(transaction=transaction)
+        if not fresh_doc.exists:
+            raise https_fn.HttpsError('not-found', 'Order not found')
 
-    elif new_status == DeliveryStatusValues.DELIVERED:
-        items[item_index][Fields.DELIVERED_AT] = now_utc
-        # Note: confirmedByBuyer is NOT set here; it's only set via capture_payment (buyer action)
+        fresh_data = fresh_doc.to_dict()
+        fresh_items = fresh_data.get(Fields.ITEMS, [])
 
-    # Check if all items are delivered
-    all_items_delivered = all(item.get(Fields.STATUS) == DeliveryStatusValues.DELIVERED for item in items)
+        # Re-find the item index in fresh data (may have shifted)
+        fresh_item_index = None
+        for idx, item in enumerate(fresh_items):
+            if item[Fields.PRODUCT_ID] == product_id:
+                fresh_item_index = idx
+                break
 
-    # Check if all items are shipped (or delivered)
-    all_items_shipped = all(
-        item.get(Fields.STATUS) in [DeliveryStatusValues.SHIPPED, DeliveryStatusValues.DELIVERED]
-        for item in items
-    )
+        if fresh_item_index is None:
+            raise https_fn.HttpsError('not-found', f'Product {product_id} not found in order')
 
-    # Update order
-    update_data = {
-        Fields.ITEMS: items,
-        Fields.UPDATED_AT: get_server_timestamp()
-    }
+        # Re-validate state transition against fresh data
+        fresh_item_status = fresh_items[fresh_item_index].get(Fields.STATUS, DeliveryStatusValues.PENDING)
+        valid_item_transitions = {
+            DeliveryStatusValues.PENDING: [DeliveryStatusValues.SHIPPED],
+            DeliveryStatusValues.SHIPPED: [DeliveryStatusValues.DELIVERED],
+            DeliveryStatusValues.DELIVERED: [DeliveryStatusValues.REFUNDED],
+            DeliveryStatusValues.REFUNDED: [],
+        }
+        allowed_next = valid_item_transitions.get(fresh_item_status, [])
+        if not is_admin and new_status not in allowed_next:
+            raise https_fn.HttpsError(
+                'failed-precondition',
+                f'Invalid item status transition from {fresh_item_status} to {new_status}'
+            )
 
-    # Auto-promote order status based on item statuses
-    current_order_status = order_data.get(Fields.ORDER_STATUS)
+        # Apply the update
+        fresh_items[fresh_item_index][Fields.STATUS] = new_status
+        now_utc = datetime.now(UTC)
 
-    # If all items delivered, update order status to delivered
-    if all_items_delivered and current_order_status != OrderStatusValues.DELIVERED:
-        update_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
-        update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.DELIVERED
+        if new_status == DeliveryStatusValues.SHIPPED:
+            fresh_items[fresh_item_index][Fields.SHIPPED_AT] = now_utc
+            if tracking_number:
+                fresh_items[fresh_item_index][Fields.TRACKING_NUMBER] = tracking_number
+                fresh_items[fresh_item_index][Fields.CARRIER] = carrier or ''
+        elif new_status == DeliveryStatusValues.DELIVERED:
+            fresh_items[fresh_item_index][Fields.DELIVERED_AT] = now_utc
 
-    # If all items shipped (but not all delivered yet), promote order to shipped
-    elif all_items_shipped and not all_items_delivered and current_order_status in [
-        OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED
-    ]:
-        update_data[Fields.ORDER_STATUS] = OrderStatusValues.SHIPPED
-        update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.SHIPPED
+        # Check aggregate statuses
+        all_delivered = all(it.get(Fields.STATUS) == DeliveryStatusValues.DELIVERED for it in fresh_items)
+        all_shipped = all(
+            it.get(Fields.STATUS) in [DeliveryStatusValues.SHIPPED, DeliveryStatusValues.DELIVERED]
+            for it in fresh_items
+        )
 
-    order_ref.update(update_data)
+        update_data = {
+            Fields.ITEMS: fresh_items,
+            Fields.UPDATED_AT: get_server_timestamp()
+        }
+
+        current_order_status = fresh_data.get(Fields.ORDER_STATUS)
+
+        if all_delivered and current_order_status != OrderStatusValues.DELIVERED:
+            update_data[Fields.ORDER_STATUS] = OrderStatusValues.DELIVERED
+            update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.DELIVERED
+        elif all_shipped and not all_delivered and current_order_status in [
+            OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED
+        ]:
+            update_data[Fields.ORDER_STATUS] = OrderStatusValues.SHIPPED
+            update_data[Fields.DELIVERY_STATUS] = DeliveryStatusValues.SHIPPED
+
+        transaction.update(order_ref, update_data)
+        return all_delivered, all_shipped
+
+    all_items_delivered, all_items_shipped = update_item_atomically(txn)
 
     return create_success_response({
         ApiKeys.ITEM_STATUS: new_status,
         ApiKeys.ALL_ITEMS_DELIVERED: all_items_delivered,
-        'allItemsShipped': all_items_shipped
+        ApiKeys.ALL_ITEMS_SHIPPED: all_items_shipped
     })
 
 
@@ -530,11 +579,11 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         fresh_data = fresh_doc.to_dict()
         fresh_payment_status = fresh_data.get(Fields.PAYMENT_STATUS)
 
-        # Block cancel if capture is already in progress
-        if fresh_payment_status == PaymentStatusValues.CAPTURING:
+        # Block cancel if capture or another cancel is already in progress
+        if fresh_payment_status in (PaymentStatusValues.CAPTURING, PaymentStatusValues.CANCELLING):
             raise https_fn.HttpsError(
                 'failed-precondition',
-                'Cannot cancel order — payment capture in progress'
+                'Cannot cancel order — operation already in progress'
             )
 
         # Re-validate order status hasn't changed concurrently
@@ -646,7 +695,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
         identifier=req.auth.uid, action='refund_order_item',
-        max_requests=5, window_minutes=1, fail_closed=False
+        max_requests=5, window_minutes=1, fail_closed=True
     )
     if not allowed:
         raise https_fn.HttpsError('resource-exhausted', msg)
@@ -783,7 +832,8 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
             idempotency_key=f'refund_{order_id}_{product_id}'
         )
     except stripe.error.StripeError as e:
-        raise https_fn.HttpsError('internal', f'Refund failed: {str(e)}') from e
+        print(f'ERROR: Refund failed for order {order_id}, product {product_id}: {e}')
+        raise https_fn.HttpsError('internal', 'Refund failed. Please try again or contact support.') from e
 
     # Restore stock for this item
     product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
@@ -868,7 +918,8 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
                             Fields.ORDER_ID: order_id,
                             Fields.PRODUCT_ID: product_id,
                             Fields.REASON: 'item_refund'
-                        }
+                        },
+                        idempotency_key=f'reversal_{order_id}_{product_id}_{seller_id}',
                     )
 
                     # Log partial reversal
@@ -941,10 +992,15 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
         new_shipping_cost_cents = round(shipping_approval.get(Fields.ACTUAL_COST, 0) * 100)
         old_shipping_cost_cents = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
 
-        # SECURITY: Validate shipping cost bounds (max +20% of original estimate)
+        # SECURITY: Validate shipping cost bounds
+        # When original was $0 (free shipping), cap at a fixed maximum to prevent fraud
         from config import SHIPPING_APPROVAL_THRESHOLD
-        max_allowed_cents = round(old_shipping_cost_cents * (1 + SHIPPING_APPROVAL_THRESHOLD))
-        if old_shipping_cost_cents > 0 and new_shipping_cost_cents > max_allowed_cents:
+        if old_shipping_cost_cents == 0:
+            # Free shipping orders: any shipping cost addition requires admin approval
+            max_allowed_cents = 0
+        else:
+            max_allowed_cents = round(old_shipping_cost_cents * (1 + SHIPPING_APPROVAL_THRESHOLD))
+        if new_shipping_cost_cents > max_allowed_cents:
             raise https_fn.HttpsError(
                 'invalid-argument',
                 f'Shipping cost ${new_shipping_cost_cents / 100:.2f} exceeds maximum allowed '

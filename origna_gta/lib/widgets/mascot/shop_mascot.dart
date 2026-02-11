@@ -297,7 +297,13 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    gradient: DesignTokens.primaryGradient.withOpacity(0.1),
+                    gradient: LinearGradient(
+                      begin: DesignTokens.primaryGradient.begin,
+                      end: DesignTokens.primaryGradient.end,
+                      colors: DesignTokens.primaryGradient.colors
+                          .map((c) => c.withValues(alpha: 0.1))
+                          .toList(),
+                    ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(

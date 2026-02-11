@@ -335,7 +335,9 @@ def _calculate_delivery_option_cost(option: dict, quantity: int) -> float:
             discount_value = 0.0
 
         if discount_type == DiscountTypeValues.PERCENT:
-            return base_cost * (1 - discount_value / 100.0)
+            # Clamp discount to 0-100% to prevent negative shipping costs
+            clamped_discount = max(0.0, min(100.0, discount_value))
+            return max(0.0, base_cost * (1 - clamped_discount / 100.0))
         if discount_type == DiscountTypeValues.FIXED:
             return max(0.0, base_cost - discount_value)
         if discount_type == DiscountTypeValues.FLAT_RATE:
@@ -373,8 +375,24 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
     Server-side shipping calculation matching frontend logic.
     """
     if not buyer_address or buyer_address.get(Fields.LATITUDE) is None or buyer_address.get(Fields.LONGITUDE) is None:
-        print("⚠️ Buyer address missing coordinates")
-        return 0.0
+        print("⚠️ Buyer address missing coordinates — using province-based fallback")
+        # Use province-based fallback instead of free shipping
+        if not buyer_address:
+            return ShippingTiers.DEFAULT_MIN_COST
+        buyer_state = buyer_address.get(Fields.STATE, 'ON')
+        total_fallback = 0.0
+        items_by_seller = {}
+        for item in items:
+            seller_id = item.get(Fields.SELLER_ID)
+            if seller_id:
+                items_by_seller.setdefault(seller_id, []).append(item)
+        for _sid, seller_items in items_by_seller.items():
+            chargeable = [i for i in seller_items if not i.get(Fields.FREE_SHIPPING) and not i.get(Fields.IS_DIGITAL)]
+            if chargeable:
+                seller_state = chargeable[0].get(Fields.SELLER_ADDRESS, {}).get(Fields.STATE, 'ON') if chargeable[0].get(Fields.SELLER_ADDRESS) else 'ON'
+                item_count = sum(i.get(Fields.QUANTITY, 1) for i in chargeable)
+                total_fallback += _calculate_fallback_shipping(item_count, seller_state, buyer_state)
+        return total_fallback
 
     total_shipping = 0.0
     items_by_seller = {}

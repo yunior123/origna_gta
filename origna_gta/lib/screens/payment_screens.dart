@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/screens/common_screens.dart';
 import 'package:origna_gta/screens/ordersuccess_screen.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Gate that waits for order to be confirmed after Stripe payment
 class OrderSuccessGate extends ConsumerWidget {
@@ -53,7 +55,7 @@ class OrderSuccessGate extends ConsumerWidget {
                         child: const SizedBox(
                           width: 40,
                           height: 40,
-                          child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                          child: ModernLoadingIndicator(size: 40, strokeWidth: 3, color: Colors.white, centered: false),
                         ),
                       ),
                     ),
@@ -104,7 +106,7 @@ class OrderSuccessGate extends ConsumerWidget {
                             child: const SizedBox(
                               width: 40,
                               height: 40,
-                              child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                              child: ModernLoadingIndicator(size: 40, strokeWidth: 3, color: Colors.white, centered: false),
                             ),
                           ),
                         ),
@@ -193,7 +195,7 @@ class PaymentCanceledScreen extends StatelessWidget {
                       label: 'Back to Shopping',
                       icon: Icons.shopping_bag_outlined,
                       onPressed: () {
-                        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
                       },
                     ),
                   ),

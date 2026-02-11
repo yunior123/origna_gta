@@ -2,9 +2,19 @@
 Global configuration options for Firebase Cloud Functions
 Optimized for FREE TIER - minimal resource usage, reasonable timeouts
 """
+from firebase_functions import options
+from schema_constants import AppConfig
+
+# Canonical CORS policy — applied to all on_call functions
+_CORS = options.CorsOptions(
+    cors_origins=AppConfig.CORS_ORIGINS,
+    cors_methods=["POST", "OPTIONS"],
+)
 
 # Default: 256MB memory, 60s timeout (Firebase defaults - FREE TIER friendly)
-DEFAULT_OPTIONS = {}
+DEFAULT_OPTIONS = {
+    "cors": _CORS,
+}
 
 # Webhooks: 256MB memory, 90s timeout (Stripe retries on timeout, need margin)
 WEBHOOK_OPTIONS = {

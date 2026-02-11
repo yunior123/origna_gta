@@ -146,7 +146,7 @@ class _ProductAddImagesState extends State<ProductAddImages> {
         }
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+      messenger.showSnackBar(const SnackBar(content: Text('Failed to pick image. Please try again.')));
     }
   }
 }

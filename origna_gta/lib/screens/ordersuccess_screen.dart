@@ -1,6 +1,6 @@
 // OrderSuccessScreen
 import 'package:flutter/material.dart';
-import 'package:origna_gta/screens/orders_screen.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
@@ -117,8 +117,8 @@ class OrderSuccessScreen extends StatelessWidget {
                         isPrimary: false,
                         isOutlined: true,
                         onPressed: () {
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const OrdersScreen()),
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            AppRoutes.orders,
                             (route) => route.isFirst,
                           );
                         },

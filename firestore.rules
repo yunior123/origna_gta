@@ -136,10 +136,11 @@ service cloud.firestore {
       
       // Users can update their own profile (limited fields only)
       // Admins can update any user profile fields
+      // SECURITY: Email is immutable for non-admin users (must match existing value)
       allow update: if isAdmin() || (isOwner(userId) &&
         request.resource.data.roles == resource.data.roles &&
+        request.resource.data.email == resource.data.email &&
         isValidName(request.resource.data.name) &&
-        isValidEmail(request.resource.data.email) &&
         (request.resource.data.address == null || isValidAddress(request.resource.data.address)) &&
         // Prevent users from modifying seller-specific fields (safe access for buyer accounts that lack these fields)
         (!resource.data.keys().hasAny(['commissionRate']) || request.resource.data.commissionRate == resource.data.commissionRate) &&
@@ -156,11 +157,19 @@ service cloud.firestore {
         ]));
       
       // Users can create their own profile with strict fields only
-      // TEMPORARILY SIMPLIFIED FOR TESTING
       allow create: if isOwner(userId) &&
         request.resource.data.uid == request.auth.uid &&
+        request.resource.data.email == request.auth.token.email &&
         request.resource.data.roles.size() == 1 &&
-        request.resource.data.roles[0] == 'buyer';
+        request.resource.data.roles[0] == 'buyer' &&
+        request.resource.data.keys().hasOnly([
+          'uid', 'email', 'name', 'roles', 'address', 'createdAt',
+          'emailConsent', 'consentTimestamp', 'consentMethod',
+          'privacyAcceptedAt', 'termsAcceptedAt',
+          'dataProcessingConsent',
+          'privacyPolicyVersion', 'termsVersion',
+          'preferredLanguage', 'platform'
+        ]);
       
       // Users can't delete their own account (use Cloud Function)
       allow delete: if false;
@@ -238,8 +247,7 @@ service cloud.firestore {
         // Sellers can be from any country — no geographic restriction on seller addresses
         request.resource.data.createdAt is timestamp &&
         request.resource.data.imageUrls is list &&
-        // Allow empty images initially to support Create -> Upload -> Update flow
-        // request.resource.data.imageUrls.size() >= 1 && request.resource.data.imageUrls.size() <= 5 &&
+        request.resource.data.imageUrls.size() >= 1 && request.resource.data.imageUrls.size() <= 5 &&
         request.resource.data.keywords is list &&
         request.resource.data.keywords.size() <= 30 &&
         // Validate categoryId is a valid integer (1-21)
@@ -418,6 +426,17 @@ service cloud.firestore {
     
     match /rate_limits/{limitId} {
       allow read, write: if false;
+    }
+
+    // Backend-only collections: payouts top-level & Algolia sync failures
+    match /payouts/{payoutId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /algolia_sync_failures/{failureId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
     }
     
     // ================================================================

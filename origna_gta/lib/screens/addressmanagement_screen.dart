@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/screens/editaddress_screen.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 class AddressManagementScreen extends ConsumerWidget {
   const AddressManagementScreen({super.key});
@@ -36,7 +37,7 @@ class AddressManagementScreen extends ConsumerWidget {
               children: [
                 ShaderMask(
                   shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                  child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                  child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
                 ),
                 const SizedBox(height: 16),
                 Text('Loading address...', style: TextStyle(color: Colors.grey[500], fontSize: 14, fontWeight: FontWeight.w500)),
@@ -73,7 +74,7 @@ class AddressManagementScreen extends ConsumerWidget {
                     label: 'Add Address',
                     icon: Icons.add_location_alt_outlined,
                     onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEditAddressScreen()));
+                      Navigator.pushNamed(context, AppRoutes.addEditAddress);
                     },
                   ),
                   ),
@@ -151,7 +152,7 @@ class AddressManagementScreen extends ConsumerWidget {
                 child: InkWell(
                   onTap: () {
                     HapticFeedback.lightImpact();
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => AddEditAddressScreen(address: address)));
+                    Navigator.pushNamed(context, AppRoutes.addEditAddress, arguments: address);
                   },
                   borderRadius: BorderRadius.circular(DesignTokens.radius8),
                   splashColor: DesignTokens.primary.withValues(alpha: 0.1),

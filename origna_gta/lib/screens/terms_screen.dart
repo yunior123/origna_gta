@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/animations.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 import '../features/terms/terms_provider.dart';
 
@@ -97,9 +98,10 @@ class TermsScreen extends ConsumerWidget {
               shaderCallback: (bounds) => const LinearGradient(
                 colors: [Colors.white, DesignTokens.accent],
               ).createShader(bounds),
-              child: const CircularProgressIndicator(
+              child: const ModernLoadingIndicator(
                 color: Colors.white,
                 strokeWidth: 2.5,
+                centered: false,
               ),
             ),
             const SizedBox(height: 20),
@@ -247,6 +249,7 @@ class _TermsBodyState extends State<_TermsBody> {
       stretch: true,
       backgroundColor: DesignTokens.gradientMiddle,
       leading: IconButton(
+        tooltip: 'Back',
         icon: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(

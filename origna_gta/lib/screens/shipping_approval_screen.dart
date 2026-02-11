@@ -7,6 +7,7 @@ import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Screen for buyers to approve or reject shipping cost changes
 /// This is shown when the seller's actual shipping cost exceeds the estimate by more than 20%
@@ -39,7 +40,7 @@ class ShippingApprovalScreen extends ConsumerWidget {
                   child: SizedBox(
                     width: 50,
                     height: 50,
-                    child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white.withValues(alpha: 0.8))),
+                    child: ModernLoadingIndicator(size: 50, strokeWidth: 3, color: Colors.white.withValues(alpha: 0.8), centered: false),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -353,7 +354,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   child: SizedBox(
                     width: 40,
                     height: 40,
-                    child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Colors.white.withValues(alpha: 0.8))),
+                    child: ModernLoadingIndicator(size: 40, strokeWidth: 3, color: Colors.white.withValues(alpha: 0.8), centered: false),
                   ),
                 ),
               )

@@ -5,6 +5,7 @@ import 'package:origna_gta/features/admin/admin_providers.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 class AdminSellersTab extends ConsumerWidget {
   const AdminSellersTab({super.key});
@@ -14,7 +15,7 @@ class AdminSellersTab extends ConsumerWidget {
     return ref
         .watch(adminSellersProvider)
         .when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const ModernLoadingIndicator.fullScreen(),
           error: (error, _) => _buildErrorState(),
           data: (sellers) {
             if (sellers.isEmpty) {
@@ -387,7 +388,7 @@ class _SellerProductsScreen extends ConsumerWidget {
       body: ref
           .watch(adminProductsProvider(sellerId))
           .when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const ModernLoadingIndicator.fullScreen(),
             error: (error, stack) => Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,

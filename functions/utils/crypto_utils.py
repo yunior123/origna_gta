@@ -59,15 +59,18 @@ def _get_encryption_key() -> bytes:
     return key_bytes
 
 
-def encrypt_mfa_secret(plaintext_secret: str) -> str:
+def encrypt_mfa_secret(plaintext_secret: str, associated_data: str | None = None) -> str:
     """
     Encrypt an MFA TOTP secret using AES-256-GCM.
 
     Args:
         plaintext_secret: The Base32-encoded TOTP secret to encrypt.
+        associated_data: Optional AAD (e.g., user_id) to bind ciphertext to user.
+                         Prevents cross-user secret swap attacks.
 
     Returns:
-        A string in format "nonce_b64:ciphertext_b64" safe for Firestore storage.
+        A string in format "v2:nonce_b64:ciphertext_b64" (with AAD) or
+        "nonce_b64:ciphertext_b64" (legacy, no AAD) safe for Firestore storage.
 
     The nonce (12 bytes) is randomly generated per encryption to ensure
     the same secret never produces the same ciphertext.
@@ -80,20 +83,28 @@ def encrypt_mfa_secret(plaintext_secret: str) -> str:
     nonce = os.urandom(12)  # 96-bit nonce for AES-GCM
 
     plaintext_bytes = plaintext_secret.encode('utf-8')
-    ciphertext = aesgcm.encrypt(nonce, plaintext_bytes, None)
+    # Use user_id as Associated Authenticated Data (AAD) to bind ciphertext
+    # to a specific user — prevents cross-user secret swap attacks.
+    aad = associated_data.encode('utf-8') if associated_data else None
+    ciphertext = aesgcm.encrypt(nonce, plaintext_bytes, aad)
 
     nonce_b64 = base64.b64encode(nonce).decode('ascii')
     ct_b64 = base64.b64encode(ciphertext).decode('ascii')
 
+    # v2 prefix indicates AAD was used during encryption
+    if aad:
+        return f'v2:{nonce_b64}:{ct_b64}'
     return f'{nonce_b64}:{ct_b64}'
 
 
-def decrypt_mfa_secret(encrypted_secret: str) -> str:
+def decrypt_mfa_secret(encrypted_secret: str, associated_data: str | None = None) -> str:
     """
     Decrypt an AES-256-GCM encrypted MFA TOTP secret.
 
     Args:
-        encrypted_secret: String in format "nonce_b64:ciphertext_b64".
+        encrypted_secret: String in format "v2:nonce_b64:ciphertext_b64" (with AAD)
+                          or "nonce_b64:ciphertext_b64" (legacy, no AAD).
+        associated_data: Optional AAD (e.g., user_id) used during encryption.
 
     Returns:
         The original Base32-encoded TOTP secret.
@@ -117,11 +128,18 @@ def decrypt_mfa_secret(encrypted_secret: str) -> str:
             'Contact admin to re-setup MFA.'
         )
 
-    parts = encrypted_secret.split(':', 1)
-    if len(parts) != 2:
-        raise ValueError('Invalid encrypted MFA secret format')
+    parts = encrypted_secret.split(':')
 
-    nonce_b64, ct_b64 = parts
+    # v2 format: "v2:nonce_b64:ct_b64" (with AAD)
+    # v1 format: "nonce_b64:ct_b64" (legacy, no AAD)
+    if parts[0] == 'v2':
+        if len(parts) != 3:
+            raise ValueError('Invalid v2 encrypted MFA secret format')
+        nonce_b64, ct_b64 = parts[1], parts[2]
+    else:
+        if len(parts) != 2:
+            raise ValueError('Invalid encrypted MFA secret format')
+        nonce_b64, ct_b64 = parts[0], parts[1]
 
     try:
         nonce = base64.b64decode(nonce_b64)
@@ -135,8 +153,19 @@ def decrypt_mfa_secret(encrypted_secret: str) -> str:
     key = _get_encryption_key()
     aesgcm = AESGCM(key)
 
+    # Use AAD for v2 secrets, None for legacy
+    aad = associated_data.encode('utf-8') if associated_data else None
+
     try:
-        plaintext_bytes = aesgcm.decrypt(nonce, ciphertext, None)
+        plaintext_bytes = aesgcm.decrypt(nonce, ciphertext, aad)
         return plaintext_bytes.decode('utf-8')
-    except Exception as e:
-        raise RuntimeError(f'Failed to decrypt MFA secret (wrong key or tampered data): {e}') from e
+    except Exception:
+        # If v2 decryption with AAD fails, try without AAD (legacy migration)
+        if aad:
+            try:
+                plaintext_bytes = aesgcm.decrypt(nonce, ciphertext, None)
+                logger.warning('Decrypted legacy MFA secret without AAD — re-encrypt with AAD on next verify')
+                return plaintext_bytes.decode('utf-8')
+            except Exception as e2:
+                raise RuntimeError(f'Failed to decrypt MFA secret (wrong key or tampered data): {e2}') from e2
+        raise RuntimeError('Failed to decrypt MFA secret (wrong key or tampered data)')

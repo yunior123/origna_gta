@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/admin/admin_providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 /// Payment provider names
 class PaymentProviders {
@@ -30,7 +32,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
     return RefreshIndicator(
       onRefresh: _loadProviders,
       child: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const ModernLoadingIndicator.fullScreen()
           : _error != null
               ? Center(
                   child: Column(
@@ -367,7 +369,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Failed to load providers: ${e.toString()}';
+          _error = 'Failed to load payment providers. Please try again.';
           _isLoading = false;
         });
       }
@@ -487,7 +489,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
+      builder: (context) => const ModernLoadingIndicator.fullScreen(),
     );
 
     try {
@@ -512,19 +514,13 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
       Navigator.pop(context); // Close loading dialog
       
       // Extract meaningful error message
-      String errorMessage = e.toString();
+      String errorMessage = AppError.getMessage(e, 'Failed to update $name');
       if (errorMessage.contains('not configured')) {
         errorMessage = '$name is not configured. Please set up your account first.';
       } else if (errorMessage.contains('Missing API keys')) {
         errorMessage = '$name API keys are missing. Configure them in Firebase secrets.';
       } else if (errorMessage.contains('Cannot disable all')) {
         errorMessage = 'At least one payment provider must remain enabled.';
-      } else if (errorMessage.contains('FirebaseFunctionsException')) {
-        // Extract the message from FirebaseFunctionsException
-        final match = RegExp(r'\[.*?\]\s*(.+)').firstMatch(errorMessage);
-        if (match != null) {
-          errorMessage = match.group(1) ?? errorMessage;
-        }
       }
       
       ScaffoldMessenger.of(context).showSnackBar(

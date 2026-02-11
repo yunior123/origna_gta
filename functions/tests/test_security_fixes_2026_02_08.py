@@ -29,6 +29,8 @@ class TestStockRevalidation:
         # Setup: Order with one item
         order_data = {
             'userId': 'buyer_123',
+            'orderStatus': 'pending',
+            'totalAmountCents': 2000,
             'items': [{
                 'productId': 'prod_123',
                 'sellerId': 'seller_123',
@@ -82,14 +84,17 @@ class TestStockRevalidation:
             mock_retrieve.return_value = Mock(status='requires_capture')
             session = {
                 'metadata': {'orderId': 'order_123'},
-                'payment_intent': 'pi_test_123'
+                'payment_intent': 'pi_test_123',
+                'payment_status': 'paid',
+                'amount_total': 2000,
             }
 
             result = process_checkout_session_completed(session)
 
             # Order should be cancelled, not confirmed
-            assert 'cancelled' in result.lower()
-            mock_order_ref.update.assert_called()
+            assert result is not None and 'cancelled' in result.lower()
+            # Stock restore + cancel now uses batch.commit(), verify batch was used
+            mock_db.batch.assert_called()
             mock_cancel.assert_called_once()
 
     def test_seller_suspended_cancels_order(self, mock_firestore_client):
@@ -100,6 +105,8 @@ class TestStockRevalidation:
 
         order_data = {
             'userId': 'buyer_123',
+            'orderStatus': 'pending',
+            'totalAmountCents': 2000,
             'items': [{
                 'productId': 'prod_123',
                 'sellerId': 'seller_123',
@@ -142,12 +149,14 @@ class TestStockRevalidation:
             mock_retrieve.return_value = Mock(status='requires_capture')
             session = {
                 'metadata': {'orderId': 'order_123'},
-                'payment_intent': 'pi_test_123'
+                'payment_intent': 'pi_test_123',
+                'payment_status': 'paid',
+                'amount_total': 2000,
             }
 
             result = process_checkout_session_completed(session)
 
-            assert 'cancelled' in result.lower()
+            assert result is not None and 'cancelled' in result.lower()
             assert 'seller suspended' in result.lower()
             mock_cancel.assert_called_once()
 
@@ -159,6 +168,8 @@ class TestStockRevalidation:
 
         order_data = {
             'userId': 'buyer_123',
+            'orderStatus': 'pending',
+            'totalAmountCents': 2000,
             'items': [{
                 'productId': 'prod_deleted',
                 'sellerId': 'seller_123',
@@ -193,12 +204,14 @@ class TestStockRevalidation:
             mock_retrieve.return_value = Mock(status='requires_capture')
             session = {
                 'metadata': {'orderId': 'order_123'},
-                'payment_intent': 'pi_test_123'
+                'payment_intent': 'pi_test_123',
+                'payment_status': 'paid',
+                'amount_total': 2000,
             }
 
             result = process_checkout_session_completed(session)
 
-            assert 'cancelled' in result.lower()
+            assert result is not None and 'cancelled' in result.lower()
             assert 'product removed' in result.lower()
 
     def test_valid_product_confirms_order(self, mock_firestore_client):
@@ -210,6 +223,8 @@ class TestStockRevalidation:
         order_data = {
             'userId': 'buyer_123',
             'customerEmail': 'buyer@example.com',
+            'orderStatus': 'pending',
+            'totalAmountCents': 1000,
             'items': [{
                 'productId': 'prod_123',
                 'sellerId': 'seller_123',
@@ -264,13 +279,15 @@ class TestStockRevalidation:
 
             session = {
                 'metadata': {'orderId': 'order_123'},
-                'payment_intent': 'pi_test_123'
+                'payment_intent': 'pi_test_123',
+                'payment_status': 'paid',
+                'amount_total': 1000,
             }
 
             result = process_checkout_session_completed(session)
 
             # Order should be confirmed
-            assert 'confirmed' in result.lower()
+            assert result is not None and 'confirmed' in result.lower()
             mock_order_ref.update.assert_called()
 
 

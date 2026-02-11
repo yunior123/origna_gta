@@ -54,11 +54,7 @@ def get_server_timestamp():
         _firestore = fs
     return _firestore.SERVER_TIMESTAMP
 
-# CORS configuration for production
-CORS_CONFIG = options.CorsOptions(
-    cors_origins=AppConfig.CORS_ORIGINS,
-    cors_methods=["POST", "OPTIONS"],
-)
+# CORS is configured in DEFAULT_OPTIONS via function_options.py
 
 
 @https_fn.on_call(secrets=[R2_ACCESS_KEY_NEW, R2_SECRET_KEY_NEW, R2_ACCOUNT_ID_NEW])
@@ -85,11 +81,26 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
 
+    user_id = req.auth.uid
+
+    # SECURITY: Verify seller onboarding is complete before allowing uploads
+    user_ref = get_db().collection(Collections.USERS).document(user_id)
+    user_doc = user_ref.get()
+    if not user_doc.exists:
+        raise https_fn.HttpsError('not-found', 'User not found')
+    user_data = user_doc.to_dict()
+    if user_data.get(Fields.SUSPENDED, False):
+        raise https_fn.HttpsError('permission-denied', 'Your account is suspended')
+    if UserRoleValues.SELLER not in user_data.get(Fields.ROLES, []) and UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
+        raise https_fn.HttpsError('permission-denied', 'Seller role required')
+    if not user_data.get(Fields.ONBOARDING_COMPLETED, False) and UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
+        raise https_fn.HttpsError('failed-precondition', 'Please complete seller onboarding before uploading products')
+
     # AUDIT FIX: Rate limit image uploads
     from services.rate_limiter import RateLimiter
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action='upload_images',
+        identifier=user_id, action='upload_images',
         max_requests=10, window_minutes=1, fail_closed=False
     )
     if not allowed:
@@ -123,6 +134,16 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Sanitize file names to prevent path traversal
     file_names = [sanitize_path(fn) for fn in file_names_raw]
 
+    # SECURITY: Validate file extensions against whitelist
+    ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp', 'gif'}
+    for fn in file_names:
+        ext = fn.rsplit('.', 1)[-1].lower() if '.' in fn else ''
+        if ext not in ALLOWED_EXTENSIONS:
+            raise https_fn.HttpsError(
+                'invalid-argument',
+                f"Invalid file extension '.{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+            )
+
     # Get R2 credentials based on environment
     r2_creds = get_r2_credentials()
     r2_access_key = r2_creds.get("access_key")
@@ -151,15 +172,17 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
             file_extension = file_name.split('.')[-1]
             unique_key = R2Config.get_image_path('products', f'{uuid.uuid4()}.{file_extension}')
 
-            # Generate presigned URL for upload (10MB max enforced via ContentLength)
-            MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
+            # Generate presigned URL for upload
+            # NOTE: ContentLength removed — it enforces EXACT size, not max.
+            # Size limit enforced by Cloudflare R2 bucket-level configuration.
             presigned_url = s3_client.generate_presigned_url(
                 'put_object',
                 Params={
                     'Bucket': bucket_name,
                     'Key': unique_key,
                     'ContentType': content_type,
-                    'ContentLength': MAX_IMAGE_SIZE_BYTES
+                    # SECURITY: Force inline display — prevents download-triggered XSS
+                    'ContentDisposition': 'inline',
                 },
                 ExpiresIn=3600  # 1 hour
             )
@@ -176,7 +199,8 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
         return create_success_response({'uploadUrls': upload_urls})
 
     except Exception as e:
-        raise https_fn.HttpsError('internal', f'Failed to generate upload URLs: {str(e)}') from e
+        print(f'ERROR: Failed to generate upload URLs: {e}')
+        raise https_fn.HttpsError('internal', 'Failed to generate upload URLs. Please try again.') from e
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -655,7 +679,7 @@ def on_product_deleted(event: firestore_fn.Event) -> None:
         print(f'Failed to delete product {product_id} from Algolia: {str(e)}')
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS, cors=CORS_CONFIG)
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def configure_algolia(req: https_fn.CallableRequest) -> dict:
     """
     One-time setup: Configures Algolia index settings.
@@ -683,10 +707,11 @@ def configure_algolia(req: https_fn.CallableRequest) -> dict:
         configure_algolia_index()
         return create_success_response({'message': 'Algolia index configured'})
     except Exception as e:
-        raise https_fn.HttpsError('internal', str(e)) from e
+        print(f'ERROR: Algolia configuration failed: {e}')
+        raise https_fn.HttpsError('internal', 'Failed to configure Algolia. Please try again.') from e
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS, cors=CORS_CONFIG)
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Récupère les produits avec pagination (lazy loading).
@@ -783,10 +808,11 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
         })
 
     except Exception as e:
-        raise https_fn.HttpsError('internal', f'Failed to fetch products: {str(e)}') from e
+        print(f'ERROR: Failed to fetch products: {e}')
+        raise https_fn.HttpsError('internal', 'Failed to fetch products. Please try again.') from e
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS, cors=CORS_CONFIG)
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def get_seller_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Récupère les produits d'un vendeur avec pagination.
@@ -883,10 +909,11 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> dict[str, An
         })
 
     except Exception as e:
-        raise https_fn.HttpsError('internal', f'Failed to fetch seller products: {str(e)}') from e
+        print(f'ERROR: Failed to fetch seller products: {e}')
+        raise https_fn.HttpsError('internal', 'Failed to fetch seller products. Please try again.') from e
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS, cors=CORS_CONFIG)
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Récupère les ratings d'un produit avec pagination (lazy loading).
@@ -996,4 +1023,5 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
         })
 
     except Exception as e:
-        raise https_fn.HttpsError('internal', f'Failed to fetch ratings: {str(e)}') from e
+        print(f'ERROR: Failed to fetch ratings: {e}')
+        raise https_fn.HttpsError('internal', 'Failed to fetch ratings. Please try again.') from e

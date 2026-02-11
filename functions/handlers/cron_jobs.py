@@ -293,6 +293,12 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
             payout_count += 1
             print(f'Auto-payout completed for order {order_id}')
 
+            # Mark order payout as completed so it's not reprocessed next cron run
+            order_doc.reference.update({
+                Fields.PAYOUT_STATUS: PayoutStatusValues.COMPLETED,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            })
+
         except stripe.error.StripeError as e:
             failed_count += 1
             print(f'Failed to process payout for order {order_id}: {str(e)}')
@@ -371,15 +377,17 @@ def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
         if order_data.get(Fields.STOCK_RESTORED, False):
             print(f'Stock already restored for expired order {order_id}')
         else:
-            # CRITICAL FIX: Use atomic Increment instead of read-then-write
+            # Use batch write for atomicity across multiple product stock updates
+            stock_batch = get_db().batch()
             for item in order_data.get(Fields.ITEMS, []):
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
-                try:
-                    product_ref.update({
-                        Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY])
-                    })
-                except Exception as e:
-                    print(f'Failed to restore stock for product {item[Fields.PRODUCT_ID]}: {str(e)}')
+                stock_batch.update(product_ref, {
+                    Fields.STOCK_QUANTITY: get_firestore().Increment(item[Fields.QUANTITY])
+                })
+            try:
+                stock_batch.commit()
+            except Exception as e:
+                print(f'Failed to restore stock batch for order {order_id}: {str(e)}')
 
         # Update order with remaining fields NOT set in the transaction
         # NOTE: ORDER_STATUS and PAYMENT_STATUS are already set in the transaction.
@@ -541,7 +549,121 @@ def cleanup_stale_rate_limits(event: scheduler_fn.ScheduledEvent) -> None:
 
     print(f'Rate limit cleanup completed: {deleted_count} documents deleted')
 
-# NOTE: check_expired_authorizations_scheduled REMOVED — it was a duplicate
-# that tried to import a non-existent function (check_and_expire_orders)
-# from check_expired_authorizations.py. The actual logic lives in
-# check_expired_authorizations() above which runs "every 24 hours".
+
+@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    Removes orphaned images from Cloudflare R2 storage.
+
+    Runs: Daily
+
+    Logic:
+    - Collect all imageUrls from active products
+    - List R2 objects in products/ prefix
+    - Delete objects not referenced by any product
+    - Safety: Only deletes images older than 24 hours (avoids race with uploads)
+    """
+    import boto3
+    from botocore.config import Config
+
+    from config import R2Config, get_r2_credentials
+
+    print('Running cleanup_orphaned_r2_images cron job')
+
+    # Collect all image URLs currently referenced by products
+    referenced_keys = set()
+    products = get_db().collection(Collections.PRODUCTS).stream()
+
+    for product_doc in products:
+        product_data = product_doc.to_dict()
+        image_urls = product_data.get(Fields.IMAGE_URLS, [])
+        for url in image_urls:
+            # Extract R2 key from CDN URL
+            # URL format: https://cdn.origna.ca/products/uuid.ext
+            if isinstance(url, str) and '/' in url:
+                # Get path after domain
+                path_parts = url.split('/')
+                # Reconstruct key: e.g. "products/uuid.ext" or "dev/products/uuid.ext"
+                for i, part in enumerate(path_parts):
+                    if part in ('products', 'dev'):
+                        key = '/'.join(path_parts[i:])
+                        referenced_keys.add(key)
+                        break
+
+    print(f'  Found {len(referenced_keys)} referenced image keys')
+
+    # List R2 objects
+    r2_creds = get_r2_credentials()
+    r2_access_key = r2_creds.get("access_key")
+    r2_secret_key = r2_creds.get("secret_key")
+    r2_account_id = r2_creds.get("account_id")
+
+    if not all([r2_access_key, r2_secret_key, r2_account_id]):
+        print('  ⚠️ R2 credentials not configured, skipping cleanup')
+        return
+
+    s3_client = boto3.client(
+        's3',
+        endpoint_url=f'https://{r2_account_id}.r2.cloudflarestorage.com',
+        aws_access_key_id=r2_access_key,
+        aws_secret_access_key=r2_secret_key,
+        config=Config(signature_version='s3v4'),
+        region_name='auto'
+    )
+
+    bucket_name = R2Config.BUCKET_NAME
+    prefix = R2Config.get_image_path('products', '').rsplit('/', 1)[0] + '/'
+
+    # List objects in products/ prefix
+    orphaned_keys = []
+    continuation_token = None
+    cutoff = datetime.now() - timedelta(hours=24)
+
+    while True:
+        list_kwargs = {
+            'Bucket': bucket_name,
+            'Prefix': prefix,
+            'MaxKeys': 1000,
+        }
+        if continuation_token:
+            list_kwargs['ContinuationToken'] = continuation_token
+
+        try:
+            response = s3_client.list_objects_v2(**list_kwargs)
+        except Exception as e:
+            print(f'  ⚠️ R2 list error: {e}')
+            return
+
+        for obj in response.get('Contents', []):
+            key = obj['Key']
+            last_modified = obj.get('LastModified')
+
+            # Safety: skip recently uploaded files (race condition with active uploads)
+            if last_modified and last_modified.replace(tzinfo=None) > cutoff:
+                continue
+
+            if key not in referenced_keys:
+                orphaned_keys.append(key)
+
+        if not response.get('IsTruncated'):
+            break
+        continuation_token = response.get('NextContinuationToken')
+
+    print(f'  Found {len(orphaned_keys)} orphaned images to delete')
+
+    # Delete orphaned objects in batches of 100
+    deleted_count = 0
+    for i in range(0, len(orphaned_keys), 100):
+        batch_keys = orphaned_keys[i:i + 100]
+        try:
+            s3_client.delete_objects(
+                Bucket=bucket_name,
+                Delete={'Objects': [{'Key': k} for k in batch_keys]}
+            )
+            deleted_count += len(batch_keys)
+        except Exception as e:
+            print(f'  ⚠️ R2 delete error for batch {i}: {e}')
+
+    print(f'  R2 orphan cleanup completed: {deleted_count} files deleted')
+
+

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/modern_textfield.dart';
 
 import '../features/auth/login_viewmodel.dart';
@@ -415,7 +416,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                           }
                         },
                   style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
-                  child: isSending ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white)) : const Text('Send'),
+                  child: isSending ? const ModernLoadingIndicator.small(color: Colors.white) : const Text('Send'),
                   ),
                 ),
               ],

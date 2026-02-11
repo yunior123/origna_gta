@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 class BuyerOrdersState {
   final bool isLoading;
@@ -29,7 +30,7 @@ class BuyerOrdersViewModel extends StateNotifier<BuyerOrdersState> {
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to confirm order receipt'));
       return false;
     }
   }

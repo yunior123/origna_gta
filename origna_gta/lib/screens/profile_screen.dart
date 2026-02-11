@@ -2,16 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/features/admin/admin_panel_screen.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/core/providers.dart';
-import 'package:origna_gta/screens/addressmanagement_screen.dart';
-import 'package:origna_gta/screens/favorites_screen.dart';
-import 'package:origna_gta/screens/login_screen.dart';
-import 'package:origna_gta/screens/orders_screen.dart';
-import 'package:origna_gta/screens/seller_orders_screen.dart';
-import 'package:origna_gta/screens/seller_registration_screen.dart';
-
-
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
@@ -20,6 +12,7 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
+import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import '../features/auth/auth_provider.dart';
@@ -55,9 +48,10 @@ class ProfileScreen extends ConsumerWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ).createShader(bounds),
-              child: const CircularProgressIndicator(
+              child: const ModernLoadingIndicator(
                 color: Colors.white,
                 strokeWidth: 3,
+                centered: false,
               ),
             ),
           ),
@@ -101,9 +95,10 @@ class ProfileScreen extends ConsumerWidget {
                             DesignTokens.secondary,
                           ],
                         ).createShader(bounds),
-                        child: const CircularProgressIndicator(
+                        child: const ModernLoadingIndicator(
                           color: Colors.white,
                           strokeWidth: 3,
+                          centered: false,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -130,9 +125,9 @@ class ProfileScreen extends ConsumerWidget {
                       button: true,
                       label: 'btn-sign-in',
                       child: ElevatedButton.icon(
-                      onPressed: () => Navigator.push(
+                      onPressed: () => Navigator.pushNamed(
                         context,
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        AppRoutes.login,
                       ),
                       icon: const Icon(Icons.login_rounded),
                       label: const Text('Sign In'),
@@ -199,11 +194,9 @@ class ProfileScreen extends ConsumerWidget {
                               icon: Icons.shopping_bag_outlined,
                               title: 'My Orders',
                               subtitle: 'View your purchases',
-                              onTap: () => Navigator.push(
+                              onTap: () => Navigator.pushNamed(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (_) => const OrdersScreen(),
-                                ),
+                                AppRoutes.orders,
                               ),
                             ),
                             if (isSeller) ...[
@@ -212,11 +205,9 @@ class ProfileScreen extends ConsumerWidget {
                                 icon: Icons.store_outlined,
                                 title: 'Seller Orders',
                                 subtitle: 'Manage your sales',
-                                onTap: () => Navigator.push(
+                                onTap: () => Navigator.pushNamed(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const SellerOrdersScreen(),
-                                  ),
+                                  AppRoutes.sellerOrders,
                                 ),
                               ),
                               _buildMenuItem(
@@ -224,12 +215,9 @@ class ProfileScreen extends ConsumerWidget {
                                 icon: Icons.dashboard_outlined,
                                 title: 'Seller Dashboard',
                                 subtitle: 'Manage products & account',
-                                onTap: () => Navigator.push(
+                                onTap: () => Navigator.pushNamed(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const SellerRegistrationScreen(),
-                                  ),
+                                  AppRoutes.sellerRegistration,
                                 ),
                               ),
                             ] else
@@ -238,12 +226,9 @@ class ProfileScreen extends ConsumerWidget {
                                 icon: Icons.storefront,
                                 title: 'Become a Seller',
                                 subtitle: 'Start selling on OrignaGta',
-                                onTap: () => Navigator.push(
+                                onTap: () => Navigator.pushNamed(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const SellerRegistrationScreen(),
-                                  ),
+                                  AppRoutes.sellerRegistration,
                                 ),
                               ),
                             if (isAdmin)
@@ -252,11 +237,9 @@ class ProfileScreen extends ConsumerWidget {
                                 icon: Icons.admin_panel_settings,
                                 title: 'Admin Panel',
                                 subtitle: 'Platform management',
-                                onTap: () => Navigator.push(
+                                onTap: () => Navigator.pushNamed(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const AdminPanelScreen(),
-                                  ),
+                                  AppRoutes.adminPanel,
                                 ),
                               ),
                           ],
@@ -274,11 +257,9 @@ class ProfileScreen extends ConsumerWidget {
                               icon: Icons.favorite_outline,
                               title: 'Favorites',
                               subtitle: 'Your saved products',
-                              onTap: () => Navigator.push(
+                              onTap: () => Navigator.pushNamed(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (_) => const FavoritesScreen(),
-                                ),
+                                AppRoutes.favorites,
                               ),
                             ),
                             _buildMenuItem(
@@ -286,12 +267,9 @@ class ProfileScreen extends ConsumerWidget {
                               icon: Icons.location_on_outlined,
                               title: 'Address',
                               subtitle: 'Manage delivery address',
-                              onTap: () => Navigator.push(
+                              onTap: () => Navigator.pushNamed(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const AddressManagementScreen(),
-                                ),
+                                AppRoutes.addressManagement,
                               ),
                             ),
                             _buildMenuItem(
@@ -331,7 +309,7 @@ class ProfileScreen extends ConsumerWidget {
                                 await viewModel.signOut();
                                 if (context.mounted) {
                                   Navigator.of(context).pushNamedAndRemoveUntil(
-                                    '/',
+                                    AppRoutes.home,
                                     (route) => false,
                                   );
                                 }
@@ -980,7 +958,7 @@ class _EmailVerificationRequiredViewState
                     if (context.mounted) {
                       Navigator.of(
                         context,
-                      ).pushNamedAndRemoveUntil('/', (route) => false);
+                      ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
                     }
                   },
                   icon: Icon(Icons.logout, size: 16, color: Colors.grey[500]),

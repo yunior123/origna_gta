@@ -1,0 +1,64 @@
+/// Named route constants and typed argument classes for the app.
+/// Used with Navigator.pushNamed() and onGenerateRoute.
+///
+/// NEVER pass raw `Map<String, dynamic>` as route arguments.
+/// Use the typed classes below — they are compile-time safe.
+library;
+
+import 'package:origna_gta/models/generated/models.dart' show Product;
+import 'package:origna_gta/models/models.dart' show CartItemDetailModel;
+
+class AppRoutes {
+  AppRoutes._(); // Prevent instantiation
+
+  static const String home = '/';
+  static const String login = '/login';
+  static const String cart = '/cart';
+  static const String profile = '/profile';
+  static const String orders = '/orders';
+  static const String addProduct = '/add-product';
+  static const String editProduct = '/edit-product';
+  static const String productDetails = '/product-details';
+  static const String addressManagement = '/addresses';
+  static const String addEditAddress = '/address/edit';
+  static const String checkout = '/checkout';
+  static const String orderSuccess = '/order-success';
+  static const String shippingApproval = '/shipping-approval';
+  static const String sellerRegistration = '/seller/register';
+  static const String sellerSetup = '/seller/setup';
+  static const String sellerOrders = '/seller/orders';
+  static const String favorites = '/favorites';
+  static const String adminPanel = '/admin';
+  static const String privacyPolicy = '/privacy-policy';
+  static const String termsOfService = '/terms-of-service';
+  static const String paymentSuccess = '/payment-success';
+  static const String paymentCancel = '/payment-cancel';
+  static const String sellerReturn = '/seller/return';
+  static const String sellerRefresh = '/seller/refresh';
+}
+
+// ─── Typed route arguments ─────────────────────────────────────────
+
+/// Arguments for [AppRoutes.productDetails].
+class ProductDetailsArgs {
+  final String productId;
+  final Map<String, dynamic>? product;
+
+  const ProductDetailsArgs({required this.productId, this.product});
+}
+
+/// Arguments for [AppRoutes.checkout].
+class CheckoutArgs {
+  final List<CartItemDetailModel> items;
+  final double total;
+
+  const CheckoutArgs({required this.items, required this.total});
+}
+
+/// Arguments for [AppRoutes.editProduct].
+/// Wraps [Product] for consistency and future extensibility.
+class EditProductArgs {
+  final Product product;
+
+  const EditProductArgs({required this.product});
+}

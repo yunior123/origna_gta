@@ -82,9 +82,9 @@ class EmailConfig:
 
     # === CASL COMPLIANCE (Canadian Anti-Spam Legislation) ===
     # Physical mailing address — REQUIRED by CASL in every commercial email
-    PHYSICAL_ADDRESS = "Origna Ventures Inc., 200 University Ave W, Suite 300, Waterloo, ON N2L 3G1, Canada"
+    PHYSICAL_ADDRESS = "Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada"
     # GST/HST Registration Number — REQUIRED on all receipts (Excise Tax Act)
-    GST_HST_NUMBER = "123456789RT0001"  # TODO: Replace with actual CRA-issued number before launch
+    GST_HST_NUMBER = "708286364RC0001"
     # Unsubscribe URL — REQUIRED by CASL
     UNSUBSCRIBE_URL_PROD = "https://orignagta.ca/unsubscribe"
     UNSUBSCRIBE_URL_DEV = "http://localhost:5005/unsubscribe"
@@ -169,6 +169,7 @@ class Fields:
     SUSPENDED = "suspended"
     SUSPENDED_AT = "suspendedAt"
     UNSUSPENDED_AT = "unsuspendedAt"
+    UNSUSPENDED_BY = "unsuspendedBy"
     SUSPENDED_BY = "suspendedBy"
     SUSPENSION_REASON = "suspensionReason"
     COMMISSION_RATE = "commissionRate"
@@ -359,6 +360,10 @@ class Fields:
     REVERSAL_ID = "reversalId"
     PARTIAL_REVERSALS = "partialReversals"
     DISPUTE_ID = "disputeId"
+    PRE_DISPUTE_STATUS = "preDisputeStatus"
+    DISPUTE_RESOLVED_AT = "disputeResolvedAt"
+    DISPUTE_RESOLUTION = "disputeResolution"
+    DISPUTED_AT = "disputedAt"
     FAILURE_REASON = "failureReason"
     PAYOUT_DATE = "payoutDate"
     REVERSED_AT = "reversedAt"
@@ -581,6 +586,7 @@ class SecurityAlertTypes:
     DISPUTE_CREATED = "dispute_created"
     ROLE_CHANGE = "role_change"
     SELLER_SUSPENDED = "seller_suspended"
+    SELLER_UNSUSPENDED = "seller_unsuspended"
     PAYMENT_PROVIDER_DISABLED = "payment_provider_disabled"
     REFUND_REVERSAL_FAILED = "refund_reversal_failed"
     PAYOUT_FAILED = "payout_failed"
@@ -675,6 +681,7 @@ class ShippingTiers:
     Benchmarked against Instacart/DoorDash/PC Express.
     """
     NATIONAL_CEILING = 26.99
+    DEFAULT_MIN_COST = 1.99  # Minimum shipping cost when coordinates unavailable
 
     # Distance thresholds (km) and base costs
     TIERS: list[tuple[float, float]] = [
@@ -943,6 +950,7 @@ class ApiKeys:
     SUCCESS = "success"
     ITEM_STATUS = "itemStatus"
     ALL_ITEMS_DELIVERED = "allItemsDelivered"
+    ALL_ITEMS_SHIPPED = "allItemsShipped"
     PROVIDER_NAME = "providerName"
     CHECKOUT_URL = "checkoutUrl"
     SESSION_ID = "sessionId"
