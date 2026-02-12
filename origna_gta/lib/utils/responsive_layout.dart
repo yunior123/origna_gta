@@ -25,8 +25,8 @@ class ResponsiveBreakpoints {
   static int getGridColumns(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
 
-    if (width < mobilePlus) return 1; // Single column on small phones
-    if (width < tablet) return 2; // 2 columns on medium phones
+    if (width < 340) return 1; // Single column only on very small phones
+    if (width < tablet) return 2; // 2 columns on most phones (iPhone SE -> Max)
     if (width < desktop) return 3; // 3 columns on tablets
     return 4; // 4+ columns on desktop
   }

@@ -148,7 +148,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   DropdownButtonFormField<String>(
                     initialValue: _categoryController.text.isNotEmpty ? _categoryController.text : null,
                     decoration: InputDecoration(labelText: 'product.category'.tr(), prefixIcon: const Icon(Icons.category_outlined)),
-                    items: productCategories.map((c) => DropdownMenuItem(value: c.categoryId.toString(), child: Text(c.name))).toList(),
+                    items: productCategories.map((c) => DropdownMenuItem(value: c.categoryId.toString(), child: Text(c.name.tr()))).toList(),
                     onChanged: (v) => setState(() => _categoryController.text = v ?? ''),
                     validator: (v) => v == null ? 'product.select_category'.tr() : null,
                   ),

@@ -92,7 +92,7 @@ class TestProductData {
 /// Wait for app to fully initialize with Firebase emulators
 Future<void> initializeApp(WidgetTester tester) async {
   await app.mainTest();
-  await tester.pumpAndSettle(const Duration(seconds: 8));
+  for (var i = 0; i < 16; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   debugPrint('✓ App initialized with Firebase emulators');
 }
 
@@ -105,7 +105,7 @@ Future<bool> waitForElement(
 }) async {
   final endTime = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(endTime)) {
-    await tester.pumpAndSettle(interval);
+    for (var i = 0; i < 10; i++) { await tester.pump(interval); }
     if (finder.evaluate().isNotEmpty) {
       return true;
     }
@@ -126,7 +126,7 @@ Future<bool> scrollToFind(
   for (int i = 0; i < maxScrolls; i++) {
     if (finder.evaluate().isNotEmpty) return true;
     await tester.drag(scrollable.first, Offset(0, scrollDelta));
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   }
   return finder.evaluate().isNotEmpty;
 }
@@ -140,7 +140,7 @@ Future<bool> performLogin(
   debugPrint('📧 Logging in as: $email');
   
   // Wait for login screen
-  await tester.pumpAndSettle(const Duration(seconds: 2));
+  for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Find text fields (email is typically first, password second)
   final emailFields = find.byType(TextField);
@@ -151,11 +151,11 @@ Future<bool> performLogin(
   if (fields.evaluate().length >= 2) {
     // Enter email
     await tester.enterText(fields.first, email);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     
     // Enter password
     await tester.enterText(fields.at(1), password);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   } else {
     debugPrint('❌ Could not find login fields');
     return false;
@@ -180,7 +180,7 @@ Future<bool> performLogin(
     }
   }
   
-  await tester.pumpAndSettle(const Duration(seconds: 5));
+  for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   debugPrint('✓ Login attempted');
   return true;
 }
@@ -194,7 +194,7 @@ Future<bool> registerUser(
 ) async {
   debugPrint('📝 Registering new user: $email');
   
-  await tester.pumpAndSettle(const Duration(seconds: 2));
+  for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Look for "Create Account" or "Sign Up" button to switch to registration mode
   final createAccountButton = find.textContaining('Create Account');
@@ -203,16 +203,16 @@ Future<bool> registerUser(
   
   if (createAccountButton.evaluate().isNotEmpty) {
     await tester.tap(createAccountButton.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   } else if (signUpButton.evaluate().isNotEmpty) {
     await tester.tap(signUpButton.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   } else if (registerText.evaluate().isNotEmpty) {
     await tester.tap(registerText.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   }
   
-  await tester.pumpAndSettle(const Duration(seconds: 1));
+  for (var i = 0; i < 2; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Find registration form fields
   final textFields = find.byType(TextField);
@@ -223,20 +223,20 @@ Future<bool> registerUser(
   if (fields.evaluate().length >= 3) {
     // Name field (first field in registration)
     await tester.enterText(fields.at(0), name);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     
     // Email field
     await tester.enterText(fields.at(1), email);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     
     // Password field
     await tester.enterText(fields.at(2), password);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     
     // Confirm password (if exists)
     if (fields.evaluate().length >= 4) {
       await tester.enterText(fields.at(3), password);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     }
   }
   
@@ -244,7 +244,7 @@ Future<bool> registerUser(
   final checkbox = find.byType(Checkbox);
   if (checkbox.evaluate().isNotEmpty) {
     await tester.tap(checkbox.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   }
   
   // Submit registration
@@ -265,7 +265,7 @@ Future<bool> registerUser(
     }
   }
   
-  await tester.pumpAndSettle(const Duration(seconds: 5));
+  for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   debugPrint('✓ Registration attempted');
   return true;
 }
@@ -287,7 +287,7 @@ Future<void> performLogout(WidgetTester tester) async {
     await tester.tap(settingsIcon.first);
   }
   
-  await tester.pumpAndSettle(const Duration(seconds: 2));
+  for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Find logout button
   final logoutButton = find.textContaining('Log Out');
@@ -302,7 +302,7 @@ Future<void> performLogout(WidgetTester tester) async {
     await tester.tap(logoutIcon.first);
   }
   
-  await tester.pumpAndSettle(const Duration(seconds: 2));
+  for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Confirm logout if dialog appears
   final confirmButton = find.textContaining('Yes');
@@ -310,10 +310,10 @@ Future<void> performLogout(WidgetTester tester) async {
   
   if (confirmButton.evaluate().isNotEmpty) {
     await tester.tap(confirmButton.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   } else if (confirmLogout.evaluate().isNotEmpty) {
     await tester.tap(confirmLogout.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   }
   
   debugPrint('✓ Logged out');
@@ -324,7 +324,7 @@ Future<void> navigateToTab(WidgetTester tester, IconData icon) async {
   final tabIcon = find.byIcon(icon);
   if (tabIcon.evaluate().isNotEmpty) {
     await tester.tap(tabIcon.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
     debugPrint('✓ Navigated to tab');
   }
 }
@@ -335,7 +335,7 @@ Future<bool> tapButtonWithText(WidgetTester tester, String text) async {
   final elevatedButton = find.widgetWithText(ElevatedButton, text);
   if (elevatedButton.evaluate().isNotEmpty) {
     await tester.tap(elevatedButton.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     return true;
   }
   
@@ -343,7 +343,7 @@ Future<bool> tapButtonWithText(WidgetTester tester, String text) async {
   final outlinedButton = find.widgetWithText(OutlinedButton, text);
   if (outlinedButton.evaluate().isNotEmpty) {
     await tester.tap(outlinedButton.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     return true;
   }
   
@@ -351,7 +351,7 @@ Future<bool> tapButtonWithText(WidgetTester tester, String text) async {
   final textButton = find.widgetWithText(TextButton, text);
   if (textButton.evaluate().isNotEmpty) {
     await tester.tap(textButton.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     return true;
   }
   
@@ -359,7 +359,7 @@ Future<bool> tapButtonWithText(WidgetTester tester, String text) async {
   final anyText = find.text(text);
   if (anyText.evaluate().isNotEmpty) {
     await tester.tap(anyText.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     return true;
   }
   
@@ -372,7 +372,7 @@ Future<bool> navigateToBecomeASeller(WidgetTester tester) async {
   
   // Try profile menu first
   await navigateToTab(tester, Icons.person);
-  await tester.pumpAndSettle(const Duration(seconds: 2));
+  for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Look for "Become a Seller" button/link
   final becomeSellerButton = find.textContaining('Become a Seller');
@@ -381,22 +381,22 @@ Future<bool> navigateToBecomeASeller(WidgetTester tester) async {
   
   if (becomeSellerButton.evaluate().isNotEmpty) {
     await tester.tap(becomeSellerButton.first);
-    await tester.pumpAndSettle(const Duration(seconds: 3));
+    for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
     return true;
   } else if (sellButton.evaluate().isNotEmpty) {
     await tester.tap(sellButton.first);
-    await tester.pumpAndSettle(const Duration(seconds: 3));
+    for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
     return true;
   } else if (sellerButton.evaluate().isNotEmpty) {
     await tester.tap(sellerButton.first);
-    await tester.pumpAndSettle(const Duration(seconds: 3));
+    for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
     return true;
   }
   
   // Try scrolling to find it
   if (await scrollToFind(tester, becomeSellerButton)) {
     await tester.tap(becomeSellerButton.first);
-    await tester.pumpAndSettle(const Duration(seconds: 3));
+    for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
     return true;
   }
   
@@ -415,14 +415,14 @@ Future<bool> completeStripeConnectOnboarding(WidgetTester tester) async {
   final stripeOption = find.textContaining('Stripe');
   if (stripeOption.evaluate().isNotEmpty) {
     await tester.tap(stripeOption.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   }
   
   // Accept terms if present
   final termsCheckbox = find.byType(Checkbox);
   if (termsCheckbox.evaluate().isNotEmpty) {
     await tester.tap(termsCheckbox.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   }
   
   // Start onboarding
@@ -438,7 +438,7 @@ Future<bool> completeStripeConnectOnboarding(WidgetTester tester) async {
     await tester.tap(connectButton.first);
   }
   
-  await tester.pumpAndSettle(const Duration(seconds: 5));
+  for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // In emulator mode, the redirect should be mocked
   // Check for success message or seller dashboard access
@@ -458,7 +458,7 @@ Future<bool> addProduct(WidgetTester tester, TestProductData product) async {
   
   // Navigate to seller dashboard or products
   await navigateToTab(tester, Icons.storefront);
-  await tester.pumpAndSettle(const Duration(seconds: 2));
+  for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Find "Add Product" button
   final addProductButton = find.byIcon(Icons.add);
@@ -476,7 +476,7 @@ Future<bool> addProduct(WidgetTester tester, TestProductData product) async {
     return false;
   }
   
-  await tester.pumpAndSettle(const Duration(seconds: 2));
+  for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Fill product form
   final textFields = find.byType(TextFormField);
@@ -484,31 +484,31 @@ Future<bool> addProduct(WidgetTester tester, TestProductData product) async {
   if (textFields.evaluate().length >= 4) {
     // Product name
     await tester.enterText(textFields.at(0), product.name);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     
     // Description
     await tester.enterText(textFields.at(1), product.description);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     
     // Price
     await tester.enterText(textFields.at(2), product.price);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     
     // Stock/Quantity
     await tester.enterText(textFields.at(3), product.stock);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   }
   
   // Select category (dropdown or chips)
   final categoryDropdown = find.textContaining('Category');
   if (categoryDropdown.evaluate().isNotEmpty) {
     await tester.tap(categoryDropdown.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     
     final categoryOption = find.textContaining(product.category);
     if (categoryOption.evaluate().isNotEmpty) {
       await tester.tap(categoryOption.first);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     }
   }
   
@@ -517,10 +517,10 @@ Future<bool> addProduct(WidgetTester tester, TestProductData product) async {
   final cameraButton = find.byIcon(Icons.camera_alt);
   if (uploadButton.evaluate().isNotEmpty) {
     await tester.tap(uploadButton.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   } else if (cameraButton.evaluate().isNotEmpty) {
     await tester.tap(cameraButton.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   }
   
   // Submit product
@@ -536,7 +536,7 @@ Future<bool> addProduct(WidgetTester tester, TestProductData product) async {
     await tester.tap(publishButton);
   }
   
-  await tester.pumpAndSettle(const Duration(seconds: 5));
+  for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Check for success
   final successMessage = find.textContaining('created');
@@ -552,7 +552,7 @@ Future<bool> browseAndAddToCart(WidgetTester tester) async {
   
   // Navigate to home/browse
   await navigateToTab(tester, Icons.home);
-  await tester.pumpAndSettle(const Duration(seconds: 3));
+  for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Find product cards
   final productCards = find.byType(Card);
@@ -564,7 +564,7 @@ Future<bool> browseAndAddToCart(WidgetTester tester) async {
   
   // Tap first product
   await tester.tap(productCards.first);
-  await tester.pumpAndSettle(const Duration(seconds: 2));
+  for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Add to cart
   final addToCartButton = find.widgetWithText(ElevatedButton, 'Add to Cart');
@@ -572,12 +572,12 @@ Future<bool> browseAndAddToCart(WidgetTester tester) async {
   
   if (addToCartButton.evaluate().isNotEmpty) {
     await tester.tap(addToCartButton);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
     debugPrint('✓ Added to cart');
     return true;
   } else if (cartIcon.evaluate().isNotEmpty) {
     await tester.tap(cartIcon.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
     debugPrint('✓ Added to cart via icon');
     return true;
   }
@@ -592,7 +592,7 @@ Future<bool> completeCheckout(WidgetTester tester) async {
   
   // Navigate to cart
   await navigateToTab(tester, Icons.shopping_cart);
-  await tester.pumpAndSettle(const Duration(seconds: 2));
+  for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Proceed to checkout
   final checkoutButton = find.widgetWithText(ElevatedButton, 'Checkout');
@@ -600,10 +600,10 @@ Future<bool> completeCheckout(WidgetTester tester) async {
   
   if (checkoutButton.evaluate().isNotEmpty) {
     await tester.tap(checkoutButton);
-    await tester.pumpAndSettle(const Duration(seconds: 3));
+    for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   } else if (proceedButton.evaluate().isNotEmpty) {
     await tester.tap(proceedButton);
-    await tester.pumpAndSettle(const Duration(seconds: 3));
+    for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   } else {
     debugPrint('⚠️ Could not find checkout button');
     return false;
@@ -615,10 +615,10 @@ Future<bool> completeCheckout(WidgetTester tester) async {
   
   if (addressField.evaluate().isNotEmpty) {
     await tester.enterText(addressField, '123 Test Street, Toronto, ON M5V 1A1');
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   } else if (streetField.evaluate().isNotEmpty) {
     await tester.enterText(streetField.first, '123 Test Street');
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   }
   
   // Select payment method (Stripe)
@@ -627,10 +627,10 @@ Future<bool> completeCheckout(WidgetTester tester) async {
   
   if (stripeOption.evaluate().isNotEmpty) {
     await tester.tap(stripeOption.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   } else if (creditCardOption.evaluate().isNotEmpty) {
     await tester.tap(creditCardOption.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   }
   
   // Enter Stripe test card details (if inline card fields)
@@ -640,17 +640,17 @@ Future<bool> completeCheckout(WidgetTester tester) async {
   
   if (cardNumberField.evaluate().isNotEmpty) {
     await tester.enterText(cardNumberField, StripeTestCards.successCard);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   }
   
   if (expiryField.evaluate().isNotEmpty) {
     await tester.enterText(expiryField, StripeTestCards.expiry);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   }
   
   if (cvcField.evaluate().isNotEmpty) {
     await tester.enterText(cvcField, StripeTestCards.cvc);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   }
   
   // Place order
@@ -666,7 +666,7 @@ Future<bool> completeCheckout(WidgetTester tester) async {
     await tester.tap(confirmButton);
   }
   
-  await tester.pumpAndSettle(const Duration(seconds: 8));
+  for (var i = 0; i < 16; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Check for success
   final successMessage = find.textContaining('Order Confirmed');
@@ -694,7 +694,7 @@ Future<bool> confirmDelivery(WidgetTester tester) async {
   
   // Navigate to orders
   await navigateToTab(tester, Icons.person);
-  await tester.pumpAndSettle(const Duration(seconds: 2));
+  for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Find and tap Orders
   final ordersButton = find.textContaining('Orders');
@@ -702,17 +702,17 @@ Future<bool> confirmDelivery(WidgetTester tester) async {
   
   if (ordersButton.evaluate().isNotEmpty) {
     await tester.tap(ordersButton.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   } else if (myOrdersButton.evaluate().isNotEmpty) {
     await tester.tap(myOrdersButton.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   }
   
   // Find first order and tap
   final orderCards = find.byType(Card);
   if (orderCards.evaluate().isNotEmpty) {
     await tester.tap(orderCards.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   }
   
   // Confirm delivery
@@ -728,13 +728,13 @@ Future<bool> confirmDelivery(WidgetTester tester) async {
     await tester.tap(confirmButton.first);
   }
   
-  await tester.pumpAndSettle(const Duration(seconds: 3));
+  for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Confirm dialog if present
   final yesButton = find.textContaining('Yes');
   if (yesButton.evaluate().isNotEmpty) {
     await tester.tap(yesButton.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   }
   
   debugPrint('✓ Delivery confirmation attempted');
@@ -747,7 +747,7 @@ Future<bool> markOrderAsShipped(WidgetTester tester) async {
   
   // Navigate to seller dashboard
   await navigateToTab(tester, Icons.storefront);
-  await tester.pumpAndSettle(const Duration(seconds: 2));
+  for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Find Orders section
   final ordersTab = find.textContaining('Orders');
@@ -755,17 +755,17 @@ Future<bool> markOrderAsShipped(WidgetTester tester) async {
   
   if (ordersTab.evaluate().isNotEmpty) {
     await tester.tap(ordersTab.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   } else if (salesTab.evaluate().isNotEmpty) {
     await tester.tap(salesTab.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   }
   
   // Find pending order and tap
   final pendingOrders = find.textContaining('Pending');
   if (pendingOrders.evaluate().isNotEmpty) {
     await tester.tap(pendingOrders.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   }
   
   // Mark as shipped
@@ -774,10 +774,10 @@ Future<bool> markOrderAsShipped(WidgetTester tester) async {
   
   if (shipButton.evaluate().isNotEmpty) {
     await tester.tap(shipButton.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   } else if (markShippedButton.evaluate().isNotEmpty) {
     await tester.tap(markShippedButton.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   }
   
   // Enter tracking number if prompted
@@ -786,7 +786,7 @@ Future<bool> markOrderAsShipped(WidgetTester tester) async {
     final trackingInputs = find.byType(TextField);
     if (trackingInputs.evaluate().isNotEmpty) {
       await tester.enterText(trackingInputs.first, 'TEST123456789');
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     }
   }
   
@@ -800,7 +800,7 @@ Future<bool> markOrderAsShipped(WidgetTester tester) async {
     await tester.tap(updateButton);
   }
   
-  await tester.pumpAndSettle(const Duration(seconds: 3));
+  for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   debugPrint('✓ Order marked as shipped');
   return true;
@@ -815,7 +815,7 @@ Future<bool> verifySellerRole(WidgetTester tester) async {
   final addProductButton = find.byIcon(Icons.add_box);
   
   await navigateToTab(tester, Icons.storefront);
-  await tester.pumpAndSettle(const Duration(seconds: 2));
+  for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // If we can access seller dashboard, user has seller role
   final productsText = find.textContaining('Products');
@@ -841,18 +841,18 @@ Future<bool> verifyProductInMarketplace(WidgetTester tester, String productName)
   
   // Navigate to home/browse
   await navigateToTab(tester, Icons.home);
-  await tester.pumpAndSettle(const Duration(seconds: 3));
+  for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Search for product
   final searchIcon = find.byIcon(Icons.search);
   if (searchIcon.evaluate().isNotEmpty) {
     await tester.tap(searchIcon.first);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     
     final searchField = find.byType(TextField);
     if (searchField.evaluate().isNotEmpty) {
       await tester.enterText(searchField.first, productName);
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
     }
   }
   
@@ -880,12 +880,12 @@ Future<bool> verifyOrderCreated(WidgetTester tester) async {
   
   // Navigate to orders
   await navigateToTab(tester, Icons.person);
-  await tester.pumpAndSettle(const Duration(seconds: 2));
+  for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   final ordersButton = find.textContaining('Orders');
   if (ordersButton.evaluate().isNotEmpty) {
     await tester.tap(ordersButton.first);
-    await tester.pumpAndSettle(const Duration(seconds: 3));
+    for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   }
   
   // Check for order cards
@@ -956,7 +956,7 @@ void main() {
       );
       
       // Verify we're logged in (should see home content)
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       expect(find.byType(Scaffold), findsWidgets);
       
       debugPrint('✅ Test 1.1: New buyer account created');
@@ -1028,7 +1028,7 @@ void main() {
       
       // Navigate to home and look for any products
       await navigateToTab(tester, Icons.home);
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       
       // Verify products are displayed
       final productCards = find.byType(Card);
@@ -1067,7 +1067,7 @@ void main() {
       
       // Navigate to browse/home
       await navigateToTab(tester, Icons.home);
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       
       // Should see product grid/list
       final products = find.byType(Card);
@@ -1150,12 +1150,12 @@ void main() {
       
       // Navigate to orders and check status
       await navigateToTab(tester, Icons.person);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       
       final ordersButton = find.textContaining('Orders');
       if (ordersButton.evaluate().isNotEmpty) {
         await tester.tap(ordersButton.first);
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       }
       
       // Order should show some status
@@ -1221,7 +1221,7 @@ void main() {
       
       // Logout
       await performLogout(tester);
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       
       // Login as buyer
       await performLogin(
@@ -1259,7 +1259,7 @@ void main() {
       
       // Logout first if needed
       await performLogout(tester);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       
       // Login as admin
       await performLogin(
@@ -1298,7 +1298,7 @@ void main() {
       
       // Navigate to seller dashboard to check earnings/payments
       await navigateToTab(tester, Icons.storefront);
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       
       // Look for earnings/revenue section
       // Finders are used to verify page loaded correctly
@@ -1330,7 +1330,7 @@ void main() {
       
       // Navigate to empty cart
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       
       // Should show empty cart message or disable checkout
       final hasEmptyState = find.textContaining('empty').evaluate().isNotEmpty ||
@@ -1348,7 +1348,7 @@ void main() {
       
       await performLogin(tester, 'invalid@email.com', 'wrongpassword');
       
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       
       // Should show error message
       final hasErrorMessage = find.textContaining('error').evaluate().isNotEmpty ||
@@ -1372,18 +1372,18 @@ void main() {
       
       // Navigate to add product
       await navigateToTab(tester, Icons.storefront);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       
       final addButton = find.byIcon(Icons.add);
       if (addButton.evaluate().isNotEmpty) {
         await tester.tap(addButton.first);
-        await tester.pumpAndSettle(const Duration(seconds: 2));
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
         
         // Try to submit empty form
         final submitButton = find.byType(ElevatedButton);
         if (submitButton.evaluate().isNotEmpty) {
           await tester.tap(submitButton.first);
-          await tester.pumpAndSettle();
+          for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
         }
         
         // Should show validation errors
@@ -1403,15 +1403,15 @@ void main() {
       
       // Navigate to cart
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       
       // Navigate to home
       await navigateToTab(tester, Icons.home);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       
       // Navigate back to cart
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       
       // Cart state should be preserved
       expect(find.byType(Scaffold), findsWidgets);

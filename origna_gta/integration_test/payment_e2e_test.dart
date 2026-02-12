@@ -31,7 +31,7 @@ void main() {
   /// Wait for app to fully initialize
   Future<void> waitForAppInit(WidgetTester tester) async {
     await app.mainTest();
-    await tester.pumpAndSettle(const Duration(seconds: 8));
+    for (var i = 0; i < 16; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   }
 
   /// Perform login with email and password
@@ -39,15 +39,15 @@ void main() {
     final emailFields = find.byType(TextField);
     if (emailFields.evaluate().length >= 2) {
       await tester.enterText(emailFields.first, email);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
       await tester.enterText(emailFields.at(1), password);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     }
 
     final loginButton = find.widgetWithText(ElevatedButton, 'Sign In');
     if (loginButton.evaluate().isNotEmpty) {
       await tester.tap(loginButton);
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       return true;
     }
     return false;
@@ -58,7 +58,7 @@ void main() {
     final tabIcon = find.byIcon(icon);
     if (tabIcon.evaluate().isNotEmpty) {
       await tester.tap(tabIcon.first);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
     }
   }
 
@@ -67,21 +67,21 @@ void main() {
     final button = find.widgetWithText(ElevatedButton, text);
     if (button.evaluate().isNotEmpty) {
       await tester.tap(button.first);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
       return true;
     }
     // Try OutlinedButton
     final outlinedButton = find.widgetWithText(OutlinedButton, text);
     if (outlinedButton.evaluate().isNotEmpty) {
       await tester.tap(outlinedButton.first);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
       return true;
     }
     // Try TextButton
     final textButton = find.widgetWithText(TextButton, text);
     if (textButton.evaluate().isNotEmpty) {
       await tester.tap(textButton.first);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
       return true;
     }
     return false;
@@ -114,7 +114,7 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Should have app bar with "Shopping Cart" or similar
       final appBar = find.byType(AppBar);
@@ -126,7 +126,7 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // If cart is empty, should show message
       final emptyMessage = find.textContaining('empty');
@@ -141,7 +141,7 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Look for price display (CAD format)
       final pricePattern = find.textContaining('\$');
@@ -154,7 +154,7 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Look for checkout button (only visible if cart has items)
       final checkoutButton = find.widgetWithText(ElevatedButton, 'Checkout');
@@ -178,7 +178,7 @@ void main() {
 
       // Without login, should show login prompt
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       final loginPrompt = find.textContaining('Sign in');
       final lockIcon = find.byIcon(Icons.lock_outline);
@@ -193,13 +193,13 @@ void main() {
 
       // Navigate to cart then attempt checkout
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // If there's a checkout button, tap it
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Look for address-related UI
         final addressText = find.textContaining('Address');
@@ -215,12 +215,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Look for payment provider UI
         final stripeText = find.textContaining('Stripe');
@@ -237,12 +237,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Look for tax-related display
         final taxText = find.textContaining('Tax');
@@ -259,12 +259,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Look for summary elements
         final subtotalText = find.textContaining('Subtotal');
@@ -280,12 +280,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Look for place order button
         final placeOrderButton = find.widgetWithText(ElevatedButton, 'Place Order');
@@ -306,12 +306,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         final stripeOption = find.textContaining('Stripe');
         // Stripe is the default payment provider
@@ -324,12 +324,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Airwallex may be available for some sellers
         final airwallexOption = find.textContaining('Airwallex');
@@ -343,12 +343,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Look for payment-related icons
         final paymentIcon = find.byIcon(Icons.payment);
@@ -369,12 +369,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Look for delivery options
         final standardText = find.textContaining('Standard');
@@ -390,12 +390,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         final shippingText = find.textContaining('Shipping');
         final freeShipping = find.textContaining('Free');
@@ -409,12 +409,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Digital delivery message
         final digitalText = find.textContaining('Digital');
@@ -437,7 +437,7 @@ void main() {
 
       // Navigate to profile/orders
       await navigateToTab(tester, Icons.person);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Look for orders button/link
       final ordersButton = find.textContaining('Orders');
@@ -445,10 +445,10 @@ void main() {
 
       if (ordersButton.evaluate().isNotEmpty) {
         await tester.tap(ordersButton.first);
-        await tester.pumpAndSettle(const Duration(seconds: 2));
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       } else if (myOrdersButton.evaluate().isNotEmpty) {
         await tester.tap(myOrdersButton.first);
-        await tester.pumpAndSettle(const Duration(seconds: 2));
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       }
 
       // Orders screen should load
@@ -460,12 +460,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.person);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final ordersButton = find.textContaining('Orders');
       if (ordersButton.evaluate().isNotEmpty) {
         await tester.tap(ordersButton.first);
-        await tester.pumpAndSettle(const Duration(seconds: 2));
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Should show orders or empty state
         final noOrders = find.textContaining('No orders');
@@ -480,18 +480,18 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.person);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final ordersButton = find.textContaining('Orders');
       if (ordersButton.evaluate().isNotEmpty) {
         await tester.tap(ordersButton.first);
-        await tester.pumpAndSettle(const Duration(seconds: 2));
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // If there are orders, tap one to see details
         final orderCard = find.byType(Card);
         if (orderCard.evaluate().isNotEmpty) {
           await tester.tap(orderCard.first);
-          await tester.pumpAndSettle(const Duration(seconds: 2));
+          for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
         }
       }
 
@@ -510,7 +510,7 @@ void main() {
 
       // Navigate to seller dashboard or orders
       await navigateToTab(tester, Icons.storefront);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Look for orders section
       final ordersText = find.textContaining('Orders');
@@ -524,7 +524,7 @@ void main() {
       await performLogin(tester, sellerEmail, sellerPassword);
 
       await navigateToTab(tester, Icons.storefront);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Status indicators
       final pendingText = find.textContaining('Pending');
@@ -540,7 +540,7 @@ void main() {
       await performLogin(tester, sellerEmail, sellerPassword);
 
       await navigateToTab(tester, Icons.storefront);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Revenue/earnings display
       final revenueText = find.textContaining('Revenue');
@@ -565,7 +565,7 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Security-related text
       final secureText = find.textContaining('Secure');
@@ -581,12 +581,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         final termsText = find.textContaining('Terms');
         final conditionsText = find.textContaining('Conditions');
@@ -601,12 +601,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Security icons
         final lockIcon = find.byIcon(Icons.lock);
@@ -629,13 +629,13 @@ void main() {
 
       // Navigate to home/products
       await navigateToTab(tester, Icons.home);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Find and tap a product card
       final productCard = find.byType(Card);
       if (productCard.evaluate().isNotEmpty) {
         await tester.tap(productCard.first);
-        await tester.pumpAndSettle(const Duration(seconds: 2));
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Look for Add to Cart button
         final addToCartButton = find.widgetWithText(ElevatedButton, 'Add to Cart');
@@ -650,12 +650,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.home);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final productCard = find.byType(Card);
       if (productCard.evaluate().isNotEmpty) {
         await tester.tap(productCard.first);
-        await tester.pumpAndSettle(const Duration(seconds: 2));
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Quantity controls
         final addIcon = find.byIcon(Icons.add);
@@ -686,7 +686,7 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final emptyMessage = find.textContaining('empty');
       final shopButton = find.textContaining('Shop');
@@ -700,12 +700,12 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       final checkoutFound = await tapButtonWithText(tester, 'Checkout') || await tapButtonWithText(tester, 'Proceed to Checkout');
 
       if (checkoutFound) {
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Address section or prompt
         final addressText = find.textContaining('Address');
@@ -720,7 +720,7 @@ void main() {
       await performLogin(tester, buyerEmail, buyerPassword);
 
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Loading indicators exist in the app
       final circularProgress = find.byType(CircularProgressIndicator);
@@ -812,15 +812,15 @@ void main() {
 
       // Navigate to cart
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Navigate away
       await navigateToTab(tester, Icons.home);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Navigate back to cart
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Cart should still be accessible
       expect(find.byType(Scaffold), findsWidgets);
@@ -833,7 +833,7 @@ void main() {
       // Cart is backed by Firestore
       // This test verifies the cart loads (which requires Firestore)
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       expect(find.byType(Scaffold), findsWidgets);
     });
@@ -844,7 +844,7 @@ void main() {
 
       // Navigate to cart
       await navigateToTab(tester, Icons.shopping_cart);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Cart badge in navigation reflects cart state
       final cartIcon = find.byIcon(Icons.shopping_cart);

@@ -22,6 +22,8 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key});
 
+  static const checkoutButtonKey = Key('cart_checkout_button');
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
@@ -763,6 +765,7 @@ class _CheckoutButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ModernButton(
+      key: CartScreen.checkoutButtonKey,
       label: 'cart.proceed_to_checkout'.tr(),
       onPressed: () {
         final cartDetails = ref.read(cartWithDetailsProvider);

@@ -715,6 +715,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(DesignTokens.radius12),
       child: InkWell(
+        key: Key('order_btn_${label.toLowerCase().replaceAll(' ', '_')}'),
         onTap: onTap,
         borderRadius: BorderRadius.circular(DesignTokens.radius12),
         child: Container(

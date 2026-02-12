@@ -118,6 +118,7 @@ class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProvide
               return Transform.scale(
                 scale: _scaleAnimation.value,
                 child: IconButton(
+                  key: const Key('home_cart_button'),
                   tooltip: 'home.shopping_cart'.tr(),
                   icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
                   onPressed: () async {
@@ -238,7 +239,7 @@ class _CategoryChips extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Center(
                       child: Text(
-                        isAll ? 'All' : category!.name,
+                        isAll ? 'home.category_all'.tr() : category!.name.tr(),
                         style: TextStyle(
                           color: isSelected ? Colors.white : DesignTokens.textPrimary,
                           fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -492,6 +493,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Semantics(
         label: 'input-home-search',
         child: TextField(
+          key: const Key('home_search_field'),
           controller: _searchController,
           onChanged: homeNotifier.onSearchChanged,
           style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary),
@@ -535,10 +537,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   double _getCardAspectRatio(BuildContext context) {
     return ResponsiveBreakpoints.getValue(
       context: context,
-      mobile: 0.6, // 320px - small phones
-      mobilePlus: 0.65, // 480px - medium phones
-      tablet: 0.7, // 768px - tablets
-      desktop: 0.75, // 1024px+ - desktop
+      mobile: 0.75, // 2 columns - shorter cards
+      mobilePlus: 0.85, // 480px - medium phones
+      tablet: 0.9, // 768px - tablets
+      desktop: 1.0, // 1024px+ - desktop
     );
   }
 
@@ -698,6 +700,7 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton> with SingleTic
           return Transform.rotate(
             angle: _rotationAnimation.value * 3.14159,
             child: IconButton(
+              key: const Key('home_settings_button'),
               tooltip: 'home.settings'.tr(),
               icon: const Icon(Icons.settings_outlined, color: Colors.white),
               onPressed: () {

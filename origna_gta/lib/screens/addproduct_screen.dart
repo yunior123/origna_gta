@@ -956,7 +956,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           children: [
             Icon(c.icon, size: 18, color: DesignTokens.primary),
             const SizedBox(width: 10),
-            Text(c.name),
+            Text(c.name.tr()),
           ],
         ),
       )).toList(),
@@ -1391,6 +1391,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         child: Material(
           color: Colors.transparent,
           child: InkWell(
+            key: const Key('addproduct_submit_button'),
             borderRadius: BorderRadius.circular(16),
             onTap: state.isLoading
                 ? null

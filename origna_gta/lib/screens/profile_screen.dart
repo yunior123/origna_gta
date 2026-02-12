@@ -126,6 +126,7 @@ class ProfileScreen extends ConsumerWidget {
                       button: true,
                       label: 'btn-sign-in',
                       child: ElevatedButton.icon(
+                      key: const Key('profile_sign_in_button'),
                       onPressed: () => Navigator.pushNamed(
                         context,
                         AppRoutes.login,
@@ -305,6 +306,7 @@ class ProfileScreen extends ConsumerWidget {
                         child: Column(
                           children: [
                             ModernButton(
+                              key: const Key('profile_sign_out_button'),
                               label: 'auth.sign_out'.tr(),
                               onPressed: () async {
                                 await viewModel.signOut();
@@ -324,6 +326,7 @@ class ProfileScreen extends ConsumerWidget {
                               child: Material(
                               color: Colors.transparent,
                               child: InkWell(
+                                key: const Key('profile_delete_account_button'),
                                 onTap: () =>
                                     _showDeleteAccountDialog(context, ref),
                                 borderRadius: BorderRadius.circular(12),

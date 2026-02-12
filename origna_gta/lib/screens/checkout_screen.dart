@@ -226,6 +226,7 @@ class _CheckoutButton extends ConsumerWidget {
         button: true,
         label: 'btn-place-order',
         child: ModernButton(
+        key: const Key('checkout_place_order_button'),
         label: isProcessing ? 'Processing...' : 'Place Order',
         onPressed: isDisabled ? null : () => _startCheckout(context, ref),
         isLoading: isProcessing,
@@ -1178,6 +1179,7 @@ class _TermsText extends ConsumerWidget {
                 label: 'chk-terms-accepted',
                 checked: termsAccepted,
                 child: Checkbox(
+                key: const Key('checkout_terms_checkbox'),
                 value: termsAccepted,
                 onChanged: (value) =>
                     ref.read(_termsAcceptedProvider.notifier).state =

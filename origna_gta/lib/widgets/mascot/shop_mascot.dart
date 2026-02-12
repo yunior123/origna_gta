@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -34,18 +35,22 @@ class MascotController extends ChangeNotifier {
 }
 
 class MascotTips {
-  static final List<String> _tips = [
-    '🛍️ Browse local GTA sellers!',
-    '💳 Secure checkout with Stripe',
-    '🚚 Ships across Canada!',
-    '⭐ Rate your sellers',
-    '🔍 Find what you need',
-    '🏷️ Filter by category',
-    '💬 Questions? Tap below!',
-    '🍁 Proudly Canadian',
+  static const List<String> _emojis = ['🛍️', '💳', '🚚', '⭐', '🔍', '🏷️', '💬', '🍁'];
+  static const List<String> _keys = [
+    'mascot.tip_browse',
+    'mascot.tip_secure',
+    'mascot.tip_ships',
+    'mascot.tip_rate',
+    'mascot.tip_find',
+    'mascot.tip_filter',
+    'mascot.tip_questions',
+    'mascot.tip_canadian',
   ];
 
-  static String getTipForIndex(int index) => _tips[index % _tips.length];
+  static String getTipForIndex(int index) {
+    final i = index % _keys.length;
+    return '${_emojis[i]} ${_keys[i].tr()}';
+  }
 }
 
 class ShopMascot extends StatefulWidget {
@@ -316,7 +321,7 @@ class _ShopMascotState extends State<ShopMascot> with TickerProviderStateMixin {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Get Help',
+                        'mascot.get_help'.tr(),
                         style: TextStyle(
                           color: DesignTokens.primary,
                           fontSize: 10,

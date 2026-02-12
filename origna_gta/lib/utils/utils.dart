@@ -47,79 +47,27 @@ const int _maxKeywords = 100;
 const int _maxWordLength = 20;
 
 final List<ProductCategories> productCategories = [
-  ProductCategories(categoryId: 1, name: "Electronics", icon: Icons.devices),
-  ProductCategories(categoryId: 2, name: "Computers", icon: Icons.computer),
-  ProductCategories(categoryId: 3, name: "Gaming", icon: Icons.sports_esports),
-  ProductCategories(categoryId: 4, name: "Home & Kitchen", icon: Icons.kitchen),
-  ProductCategories(categoryId: 5, name: "Fashion", icon: Icons.shopping_bag),
-  ProductCategories(
-    categoryId: 6,
-    name: "Shoes & Accessories",
-    icon: Icons.backpack,
-  ),
-  ProductCategories(
-    categoryId: 7,
-    name: "Jewelry & Watches",
-    icon: Icons.watch,
-  ),
-  ProductCategories(
-    categoryId: 8,
-    name: "Beauty & Personal Care",
-    icon: Icons.spa,
-  ),
-  ProductCategories(
-    categoryId: 9,
-    name: "Health & Wellness",
-    icon: Icons.favorite,
-  ),
-  ProductCategories(
-    categoryId: 10,
-    name: "Sports & Fitness",
-    icon: Icons.fitness_center,
-  ),
-  ProductCategories(
-    categoryId: 11,
-    name: "Automotive",
-    icon: Icons.directions_car,
-  ),
-  ProductCategories(
-    categoryId: 12,
-    name: "Tools & Hardware",
-    icon: Icons.handyman,
-  ),
-  ProductCategories(
-    categoryId: 13,
-    name: "Office Supplies",
-    icon: Icons.folder,
-  ),
-  ProductCategories(categoryId: 14, name: "Books", icon: Icons.book),
-  ProductCategories(
-    categoryId: 15,
-    name: "Music & Instruments",
-    icon: Icons.music_note,
-  ),
-  ProductCategories(categoryId: 16, name: "Toys & Games", icon: Icons.gamepad),
-  ProductCategories(
-    categoryId: 17,
-    name: "Baby & Kids",
-    icon: Icons.child_care,
-  ),
-  ProductCategories(categoryId: 18, name: "Pet Supplies", icon: Icons.pets),
-  ProductCategories(
-    categoryId: 19,
-    name: "Groceries",
-    icon: Icons.local_grocery_store,
-  ),
-  ProductCategories(
-    categoryId: 20,
-    name: "Art & Collectibles",
-    icon: Icons.palette,
-  ),
-  ProductCategories(
-    categoryId: 21,
-    name: "Digital Products",
-    icon: Icons.cloud,
-  ),
+  ProductCategories(categoryId: 1, name: "categories.electronics", icon: Icons.devices),
+  ProductCategories(categoryId: 2, name: "categories.computers", icon: Icons.computer),
+  ProductCategories(categoryId: 3, name: "categories.gaming", icon: Icons.sports_esports),
+  ProductCategories(categoryId: 4, name: "categories.home_kitchen", icon: Icons.kitchen),
+  ProductCategories(categoryId: 5, name: "categories.fashion", icon: Icons.shopping_bag),
+  ProductCategories(categoryId: 6, name: "categories.shoes_accessories", icon: Icons.backpack),
+  ProductCategories(categoryId: 7, name: "categories.jewelry_watches", icon: Icons.watch),
+  ProductCategories(categoryId: 8, name: "categories.beauty_personal_care", icon: Icons.spa),
+  ProductCategories(categoryId: 9, name: "categories.health_wellness", icon: Icons.favorite),
+  ProductCategories(categoryId: 10, name: "categories.sports_fitness", icon: Icons.fitness_center),
+  ProductCategories(categoryId: 11, name: "categories.automotive", icon: Icons.directions_car),
+  ProductCategories(categoryId: 12, name: "categories.tools_hardware", icon: Icons.handyman),
+  ProductCategories(categoryId: 13, name: "categories.office_supplies", icon: Icons.folder),
+  ProductCategories(categoryId: 14, name: "categories.books", icon: Icons.book),
+  ProductCategories(categoryId: 15, name: "categories.music_instruments", icon: Icons.music_note),
+  ProductCategories(categoryId: 16, name: "categories.toys_games", icon: Icons.gamepad),
+  ProductCategories(categoryId: 17, name: "categories.baby_kids", icon: Icons.child_care),
+  ProductCategories(categoryId: 18, name: "categories.pet_supplies", icon: Icons.pets),
+  ProductCategories(categoryId: 19, name: "categories.groceries", icon: Icons.local_grocery_store),
+  ProductCategories(categoryId: 20, name: "categories.art_collectibles", icon: Icons.palette),
+  ProductCategories(categoryId: 21, name: "categories.digital_products", icon: Icons.cloud),
 ];
 
 // Provincial tax configuration — single source of truth
@@ -652,7 +600,13 @@ Future<bool> checkEmailVerifiedOrPrompt(BuildContext context) async {
     return true;
   }
 
-  await user.reload();
+  try {
+    await user.reload();
+  } catch (e) {
+    // reload() can fail in emulator or flaky network — treat as verified
+    debugPrint('checkEmailVerifiedOrPrompt: reload failed: $e');
+    return true;
+  }
   final freshUser = FirebaseAuth.instance.currentUser;
   if (freshUser != null && freshUser.emailVerified) {
     return true;

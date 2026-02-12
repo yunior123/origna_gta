@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:origna_gta/main.dart' as app;
+import 'package:origna_gta/main_test.dart' as app;
 
 /// 🚀 Complete User Workflows Integration Test
 /// Tests entire user journeys from start to finish
@@ -20,14 +20,14 @@ void main() {
     testWidgets('New user: Register → Browse → Add to cart → Checkout → Payment', 
       (WidgetTester tester) async {
       // Start app
-      app.main();
-      await tester.pumpAndSettle();
+      app.mainTest();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 1. Navigate to register
       final registerButton = find.text('Sign Up');
       expect(registerButton, findsOneWidget);
       await tester.tap(registerButton);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 2. Fill registration form
       await tester.enterText(
@@ -49,46 +49,46 @@ void main() {
       
       // Accept terms
       await tester.tap(find.byKey(const Key('terms_checkbox')));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Submit registration
       await tester.tap(find.byKey(const Key('register_submit_button')));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // 3. Verify login success (should see home screen)
       expect(find.text('Home'), findsOneWidget);
 
       // 4. Browse products
       await tester.tap(find.text('Browse'));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 5. Search for product
       await tester.enterText(
         find.byKey(const Key('search_field')), 
         'organic'
       );
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Should see search results
       expect(find.byType(Card), findsWidgets);
 
       // 6. Tap first product
       await tester.tap(find.byType(Card).first);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Verify product details shown
       expect(find.text('Add to Cart'), findsOneWidget);
 
       // 7. Add to cart
       await tester.tap(find.text('Add to Cart'));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Should see success message
       expect(find.text('Added to cart'), findsOneWidget);
 
       // 8. Go to cart
       await tester.tap(find.byIcon(Icons.shopping_cart));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Verify cart has item
       expect(find.text('Cart'), findsOneWidget);
@@ -96,7 +96,7 @@ void main() {
 
       // 9. Proceed to checkout
       await tester.tap(find.text('Checkout'));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 10. Fill shipping info
       await tester.enterText(
@@ -107,11 +107,11 @@ void main() {
         find.byKey(const Key('shipping_phone_field')), 
         '+1 (416) 555-0100'
       );
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 11. Select payment method
       await tester.tap(find.text('Credit Card'));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Enter card details (test mode)
       await tester.enterText(
@@ -126,11 +126,11 @@ void main() {
         find.byKey(const Key('card_cvc_field')), 
         '123'
       );
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 12. Place order
       await tester.tap(find.text('Place Order'));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Verify order success
       expect(find.text('Order Confirmed'), findsOneWidget);
@@ -144,8 +144,8 @@ void main() {
     /// Scenario 2: Seller Product Management
     testWidgets('Seller: Login → Create 5 products → Edit → Manage inventory', 
       (WidgetTester tester) async {
-      app.main();
-      await tester.pumpAndSettle();
+      app.mainTest();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 1. Login as seller
       await tester.enterText(
@@ -157,11 +157,11 @@ void main() {
         'Test123456!'
       );
       await tester.tap(find.byKey(const Key('login_submit_button')));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // 2. Navigate to seller dashboard
       await tester.tap(find.byIcon(Icons.dashboard));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 3. Create 5 different products
       final products = [
@@ -207,7 +207,7 @@ void main() {
         
         // Click "Add Product"
         await tester.tap(find.byKey(const Key('add_product_button')));
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
         // Fill product form
         await tester.enterText(
@@ -229,17 +229,17 @@ void main() {
 
         // Select category
         await tester.tap(find.byKey(const Key('product_category_dropdown')));
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
         await tester.tap(find.text(product['category']!).last);
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
         // Upload image (mock)
         await tester.tap(find.byKey(const Key('product_image_upload')));
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
         // Submit product
         await tester.tap(find.byKey(const Key('product_submit_button')));
-        await tester.pumpAndSettle(const Duration(seconds: 2));
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Verify success
         expect(find.text('Product created'), findsOneWidget);
@@ -249,7 +249,7 @@ void main() {
 
       // 4. Edit first product
       await tester.tap(find.byIcon(Icons.edit).first);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Change price
       await tester.enterText(
@@ -257,21 +257,21 @@ void main() {
         '19.99'
       );
       await tester.tap(find.text('Save Changes'));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 5. Manage inventory
       await tester.tap(find.text('Inventory'));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Verify all products visible
       expect(find.byType(DataTable), findsOneWidget);
 
       // Update stock for one product
       await tester.tap(find.byIcon(Icons.add_circle_outline).first);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
       await tester.enterText(find.byKey(const Key('stock_update_field')), '50');
       await tester.tap(find.text('Update'));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       debugPrint('✅ Seller workflow completed successfully');
     }, timeout: const Timeout(Duration(minutes: 5)));
@@ -279,8 +279,8 @@ void main() {
     /// Scenario 3: Admin Dashboard
     testWidgets('Admin: User management → Analytics → Content moderation', 
       (WidgetTester tester) async {
-      app.main();
-      await tester.pumpAndSettle();
+      app.mainTest();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 1. Login as admin
       await tester.enterText(
@@ -292,15 +292,15 @@ void main() {
         'Admin123456!'
       );
       await tester.tap(find.byKey(const Key('login_submit_button')));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // 2. Access admin dashboard
       await tester.tap(find.byIcon(Icons.admin_panel_settings));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 3. View user list
       await tester.tap(find.text('Users'));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Should see user table
       expect(find.byType(DataTable), findsOneWidget);
@@ -310,11 +310,11 @@ void main() {
         find.byKey(const Key('user_search_field')), 
         'test'
       );
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 5. View analytics
       await tester.tap(find.text('Analytics'));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Should see charts
       expect(find.text('Total Revenue'), findsOneWidget);
@@ -323,7 +323,7 @@ void main() {
 
       // 6. Content moderation
       await tester.tap(find.text('Moderation'));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Should see flagged content
       expect(find.text('Flagged Products'), findsOneWidget);
@@ -331,11 +331,11 @@ void main() {
       // Review first flagged item
       if (find.byIcon(Icons.visibility).evaluate().isNotEmpty) {
         await tester.tap(find.byIcon(Icons.visibility).first);
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
         // Approve or reject
         await tester.tap(find.text('Approve'));
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
       }
 
       debugPrint('✅ Admin workflow completed successfully');
@@ -344,8 +344,8 @@ void main() {
     /// Scenario 4: Edge Cases & Error Handling
     testWidgets('Edge cases: Network errors, validation, concurrency', 
       (WidgetTester tester) async {
-      app.main();
-      await tester.pumpAndSettle();
+      app.mainTest();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 1. Test invalid email format
       await tester.enterText(
@@ -353,16 +353,16 @@ void main() {
         'invalid-email'
       );
       await tester.tap(find.byKey(const Key('login_submit_button')));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Should show error
       expect(find.text('Invalid email format'), findsOneWidget);
 
       // 2. Test empty required fields
       await tester.tap(find.text('Sign Up'));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
       await tester.tap(find.byKey(const Key('register_submit_button')));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Should show validation errors
       expect(find.textContaining('required'), findsWidgets);
@@ -373,7 +373,7 @@ void main() {
         '123'
       );
       await tester.tap(find.byKey(const Key('register_submit_button')));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       expect(find.textContaining('at least'), findsOneWidget);
 
@@ -392,8 +392,8 @@ void main() {
     /// Scenario 5: Responsive Design
     testWidgets('Responsive: Test on mobile, tablet, desktop sizes', 
       (WidgetTester tester) async {
-      app.main();
-      await tester.pumpAndSettle();
+      app.mainTest();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Test different screen sizes
       final sizes = [
@@ -407,7 +407,7 @@ void main() {
         await tester.binding.setSurfaceSize(
           Size(size['width'] as double, size['height'] as double)
         );
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
         // Verify layout adapts
         expect(find.byType(Scaffold), findsOneWidget);
@@ -422,12 +422,12 @@ void main() {
     /// Scenario 6: Performance Test
     testWidgets('Performance: Load 100 products quickly', 
       (WidgetTester tester) async {
-      app.main();
-      await tester.pumpAndSettle();
+      app.mainTest();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Navigate to browse
       await tester.tap(find.text('Browse'));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Measure load time
       final stopwatch = Stopwatch()..start();
@@ -438,7 +438,7 @@ void main() {
           find.byType(ListView), 
           const Offset(0, -500)
         );
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
       }
 
       stopwatch.stop();

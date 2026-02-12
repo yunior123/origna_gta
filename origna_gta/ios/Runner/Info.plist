@@ -59,21 +59,18 @@
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>
 			<false/>
-			<key>UISceneConfigurations</key>
-			<dict>
-				<key>UIWindowSceneSessionRoleApplication</key>
-				<array>
-					<dict>
-						<key>UISceneConfigurationName</key>
-						<string>Default Configuration</string>
-						<key>UISceneDelegateClassName</key>
-						<string>$(PRODUCT_MODULE_NAME).AppDelegate</string>
-						<key>UISceneStoryboardFile</key>
-						<string>Main</string>
-					</dict>
-				</array>
-			</dict>
 		</dict>
+		<key>NSAppTransportSecurity</key>
+		<dict>
+			<key>NSAllowsArbitraryLoads</key>
+			<true/>
+		</dict>
+		<key>NSLocalNetworkUsageDescription</key>
+		<string>OrignaGTA needs access to local network for development emulators</string>
+		<key>NSBonjourServices</key>
+		<array>
+			<string>_dartobservatory._tcp</string>
+		</array>
 		<key>FirebaseAppDelegateProxyEnabled</key>
 		<true/>
 		<key>CFBundleURLTypes</key>

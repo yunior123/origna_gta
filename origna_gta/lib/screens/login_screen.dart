@@ -111,6 +111,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                 children: [
                                   if (!state.isLogin) ...[
                                     ModernTextField(
+                                      key: const Key('login_name_field'),
                                       label: 'auth.full_name'.tr(),
                                       hint: 'John Doe',
                                       controller: _nameController,
@@ -169,6 +170,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                         Semantics(
                                           label: 'checkbox-accept-terms',
                                           child: Checkbox(
+                                            key: const Key('login_terms_checkbox'),
                                             value: state.acceptedTerms,
                                             onChanged: (v) => viewModel.setAcceptedTerms(v ?? false),
                                             fillColor: WidgetStateProperty.resolveWith<Color?>((states) {
@@ -279,6 +281,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                               label: 'btn-forgot-password',
                               button: true,
                               child: TextButton(
+                                key: const Key('login_forgot_password_button'),
                                 onPressed: () => _showForgotPasswordDialog(context),
                                 child: Text(
                                   'auth.forgot_password'.tr(),
@@ -302,6 +305,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                             ),
                             const SizedBox(height: 20),
                             ModernButton(
+                              key: const Key('login_google_button'),
                               label: 'Google',
                               icon: Icons.g_mobiledata,
                               isPrimary: false,
@@ -316,6 +320,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                             label: 'btn-toggle-auth-mode',
                             button: true,
                             child: GestureDetector(
+                              key: const Key('login_toggle_mode_button'),
                               onTap: state.isLoading
                                   ? null
                                   : () {

@@ -500,7 +500,11 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
         _sessionTimeout.startMonitoring(context);
 
         // Ensure Firestore document exists for verified users
-        await ref.read(authRepositoryProvider).ensureUserDocumentExists();
+        try {
+          await ref.read(authRepositoryProvider).ensureUserDocumentExists();
+        } catch (e) {
+          debugPrint('Could not ensure user document: $e');
+        }
       } else {
         _sessionTimeout.stopMonitoring();
       }

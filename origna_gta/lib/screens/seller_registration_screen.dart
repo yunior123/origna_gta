@@ -210,6 +210,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
                         label: 'chk-seller-terms',
                         checked: _termsAccepted,
                         child: CheckboxListTile(
+                        key: const Key('seller_terms_checkbox'),
                         value: _termsAccepted,
                         onChanged: (value) => setState(() => _termsAccepted = value ?? false),
                         title: Text('seller.accept_terms'.tr()),
@@ -390,6 +391,7 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
       button: true,
       label: 'btn-seller-action',
       child: ModernButton(
+      key: const Key('seller_action_button'),
       onPressed: isLoading ? null : onPressed,
       label: buttonText,
       isLoading: isLoading,

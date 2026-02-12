@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:origna_gta/main.dart' as app;
+import 'package:origna_gta/main_test.dart' as app;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -9,8 +9,8 @@ void main() {
   group('Product Creation Integration Tests', () {
     testWidgets('Login and create 10 diverse products', (WidgetTester tester) async {
       // Configuration du test
-      app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      await app.mainTest();
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // ========================================
       // ÉTAPE 1: LOGIN
@@ -18,7 +18,7 @@ void main() {
       debugPrint('📱 Step 1: Logging in...');
       
       // Attendre que l'écran de login soit chargé
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
       
       // Chercher les champs par type (car les keys ne sont pas encore ajoutées)
       final emailFields = find.byType(TextFormField);
@@ -26,11 +26,11 @@ void main() {
       
       // Entrer les credentials (email est le premier champ)
       await tester.enterText(emailFields.first, 'seller@origna.ca');
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
       
       // Mot de passe (deuxième champ en mode login)
       await tester.enterText(emailFields.at(1), 'Test123456!');
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
       
       // Trouver et cliquer sur le bouton Sign In
       final signInButton = find.text('Sign In');
@@ -38,7 +38,7 @@ void main() {
       await tester.tap(signInButton);
       
       // Attendre la navigation et le chargement
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       
       debugPrint('✅ Login successful');
 
@@ -223,7 +223,7 @@ void main() {
           await tester.tap(addProductButton);
         }
         
-        await tester.pumpAndSettle(const Duration(seconds: 2));
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
         
         // Vérifier qu'on est sur l'écran d'ajout
         expect(find.text('Add Product'), findsOneWidget);
@@ -240,70 +240,70 @@ void main() {
         
         // Scroll vers le haut pour commencer
         await tester.drag(find.byType(SingleChildScrollView), const Offset(0, 500));
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         
         // Nom du produit (généralement le premier champ)
         debugPrint('  ✏️ Entering product name...');
         await tester.enterText(formFields.first, product['name'] as String);
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         
         // Description (scroll un peu et chercher le champ suivant)
         debugPrint('  ✏️ Entering description...');
         await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -100));
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         await tester.enterText(formFields.at(1), product['description'] as String);
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         
         // Prix
         debugPrint('  ✏️ Entering price...');
         await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -100));
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         await tester.enterText(formFields.at(2), product['price'] as String);
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         
         // Stock
         debugPrint('  ✏️ Entering stock...');
         await tester.enterText(formFields.at(3), product['stock'] as String);
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         
         // Scroll pour voir plus de champs
         await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -200));
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         
         // Adresse - Rue
         debugPrint('  ✏️ Entering address...');
         final streetFieldFinder = find.widgetWithText(TextFormField, 'Street');
         if (streetFieldFinder.evaluate().isNotEmpty) {
           await tester.enterText(streetFieldFinder, product['street'] as String);
-          await tester.pumpAndSettle();
+          for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         }
         
         // Ville
         final cityFieldFinder = find.widgetWithText(TextFormField, 'City');
         if (cityFieldFinder.evaluate().isNotEmpty) {
           await tester.enterText(cityFieldFinder, product['city'] as String);
-          await tester.pumpAndSettle();
+          for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         }
         
         // Code postal
         await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -100));
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         
         final postalFieldFinder = find.widgetWithText(TextFormField, 'Postal Code');
         if (postalFieldFinder.evaluate().isNotEmpty) {
           await tester.enterText(postalFieldFinder, product['postalCode'] as String);
-          await tester.pumpAndSettle();
+          for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         }
         
         // Poids (si non digital)
         if (!(product['isDigital'] as bool)) {
           await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -150));
-          await tester.pumpAndSettle();
+          for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
           
           final weightFieldFinder = find.widgetWithText(TextFormField, 'Weight');
           if (weightFieldFinder.evaluate().isNotEmpty) {
             await tester.enterText(weightFieldFinder, product['weight'] as String);
-            await tester.pumpAndSettle();
+            for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
           }
         }
         
@@ -312,17 +312,17 @@ void main() {
           final digitalSwitch = find.widgetWithText(SwitchListTile, 'Digital Product');
           if (digitalSwitch.evaluate().isNotEmpty) {
             await tester.tap(digitalSwitch);
-            await tester.pumpAndSettle();
+            for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
           }
         }
         
         if (product['isPerishable'] as bool) {
           await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -100));
-          await tester.pumpAndSettle();
+          for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
           final perishableSwitch = find.widgetWithText(SwitchListTile, 'Perishable');
           if (perishableSwitch.evaluate().isNotEmpty) {
             await tester.tap(perishableSwitch);
-            await tester.pumpAndSettle();
+            for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
           }
         }
         
@@ -330,7 +330,7 @@ void main() {
           final freeShippingSwitch = find.widgetWithText(SwitchListTile, 'Free Shipping');
           if (freeShippingSwitch.evaluate().isNotEmpty) {
             await tester.tap(freeShippingSwitch);
-            await tester.pumpAndSettle();
+            for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
           }
         }
         
@@ -342,14 +342,14 @@ void main() {
         
         // Scroll jusqu'au bouton de soumission
         await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         
         // Chercher le bouton "Add Product"
         final submitButton = find.widgetWithText(ElevatedButton, 'Add Product');
         expect(submitButton, findsOneWidget);
         
         await tester.tap(submitButton);
-        await tester.pumpAndSettle(const Duration(seconds: 5));
+        for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
         
         // Vérifier le succès (SnackBar ou retour à l'écran principal)
         final successIndicators = [
@@ -373,7 +373,7 @@ void main() {
         }
         
         // Attendre un peu avant le prochain produit
-        await tester.pumpAndSettle(const Duration(seconds: 2));
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       }
 
       // ========================================
@@ -387,19 +387,19 @@ void main() {
 
   group('Product Creation Edge Cases', () {
     testWidgets('Create product with minimum required fields', (WidgetTester tester) async {
-      app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      await app.mainTest();
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Login (simplifié)
       final emailFields = find.byType(TextFormField);
       await tester.enterText(emailFields.first, 'seller@origna.ca');
       await tester.enterText(emailFields.at(1), 'Test123456!');
       await tester.tap(find.text('Sign In'));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Naviguer vers add product
       await tester.tap(find.byIcon(Icons.add_box_outlined));
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Remplir seulement les champs obligatoires
       final formFields = find.descendant(
@@ -414,27 +414,27 @@ void main() {
 
       // Soumettre
       await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
       await tester.tap(find.widgetWithText(ElevatedButton, 'Add Product'));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       debugPrint('✅ Minimal product test completed');
     });
 
     testWidgets('Create digital product (no shipping)', (WidgetTester tester) async {
-      app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      await app.mainTest();
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Login
       final emailFields = find.byType(TextFormField);
       await tester.enterText(emailFields.first, 'seller@origna.ca');
       await tester.enterText(emailFields.at(1), 'Test123456!');
       await tester.tap(find.text('Sign In'));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Add product
       await tester.tap(find.byIcon(Icons.add_box_outlined));
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Remplir pour produit numérique
       final formFields = find.descendant(
@@ -449,19 +449,19 @@ void main() {
 
       // Activer "Digital Product"
       await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -300));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
       
       final digitalSwitch = find.widgetWithText(SwitchListTile, 'Digital Product');
       if (digitalSwitch.evaluate().isNotEmpty) {
         await tester.tap(digitalSwitch);
-        await tester.pumpAndSettle();
+        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
       }
 
       // Soumettre
       await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
       await tester.tap(find.widgetWithText(ElevatedButton, 'Add Product'));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       debugPrint('✅ Digital product test completed');
     });

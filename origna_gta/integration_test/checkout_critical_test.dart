@@ -28,21 +28,21 @@ void main() {
 
   Future<void> initApp(WidgetTester tester) async {
     await app.mainTest();
-    await tester.pumpAndSettle(const Duration(seconds: 8));
+    for (var i = 0; i < 16; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   }
 
   Future<bool> login(WidgetTester tester, String email, String password) async {
     final textFields = find.byType(TextField);
     if (textFields.evaluate().length >= 2) {
       await tester.enterText(textFields.first, email);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
       await tester.enterText(textFields.at(1), password);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       final signInBtn = find.widgetWithText(ElevatedButton, 'Sign In');
       if (signInBtn.evaluate().isNotEmpty) {
         await tester.tap(signInBtn);
-        await tester.pumpAndSettle(const Duration(seconds: 5));
+        for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
         return true;
       }
     }
@@ -53,7 +53,7 @@ void main() {
     final cartIcon = find.byIcon(Icons.shopping_cart);
     if (cartIcon.evaluate().isNotEmpty) {
       await tester.tap(cartIcon.first);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
     }
   }
 
@@ -63,11 +63,11 @@ void main() {
 
     if (checkoutBtn.evaluate().isNotEmpty) {
       await tester.tap(checkoutBtn.first);
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       return true;
     } else if (proceedBtn.evaluate().isNotEmpty) {
       await tester.tap(proceedBtn.first);
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       return true;
     }
     return false;
@@ -103,7 +103,7 @@ void main() {
         final backButton = find.byIcon(Icons.arrow_back);
         if (backButton.evaluate().isNotEmpty) {
           await tester.tap(backButton.first);
-          await tester.pumpAndSettle();
+          for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
         }
 
         // Go back to checkout
