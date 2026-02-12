@@ -34,6 +34,9 @@ export 'package:patrol/patrol.dart';
 // Configuration
 // ──────────────────────────────────────────────────────────────────
 
+/// Emulator host: use 'localhost' for simulator, Mac's LAN IP for physical device.
+const kEmulatorHost = 'localhost';
+
 final _patrolTesterConfig = PatrolTesterConfig(printLogs: true);
 
 /// Flag to avoid double-initialising Firebase across tests.
@@ -56,10 +59,10 @@ Future<void> createApp(PatrolIntegrationTester $) async {
 
     // Connect to Firebase emulators for testing
     try {
-      await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
-      FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
-      FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
-      await FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
+      await FirebaseAuth.instance.useAuthEmulator(kEmulatorHost, 9099);
+      FirebaseFirestore.instance.useFirestoreEmulator(kEmulatorHost, 8080);
+      FirebaseFunctions.instance.useFunctionsEmulator(kEmulatorHost, 5001);
+      await FirebaseStorage.instance.useStorageEmulator(kEmulatorHost, 9199);
       debugPrint('✓ Patrol: connected to Firebase Emulators');
     } catch (e) {
       debugPrint('Patrol: emulator connection: $e');
@@ -101,36 +104,191 @@ void patrol(
 
 /// Buyer account seeded in Firebase emulator.
 const kTestBuyerEmail = 'yuniorrodriguezo460@gmail.com';
-const kTestBuyerPassword = '123456';
+const kTestBuyerPassword = 'REDACTED_TEST_PASSWORD';
+
+/// Seller account (seller1 — Mode Montréal) seeded in Firebase emulator.
+const kTestSellerEmail = 'seller1@test.origna.ca';
+const kTestSellerPassword = 'REDACTED_TEST_PASSWORD';
+
+/// Admin account seeded in Firebase emulator.
+const kTestAdminEmail = 'yr62813@gmail.com';
+const kTestAdminPassword = '960227Y#y';
+
+/// Combo account (buyer+seller) seeded in Firebase emulator.
+const kTestComboEmail = 'combo1@test.origna.ca';
+const kTestComboPassword = 'REDACTED_TEST_PASSWORD';
+
+/// Second buyer for multi-user scenarios.
+const kTestBuyer2Email = 'buyer2@test.origna.ca';
+const kTestBuyer2Password = 'REDACTED_TEST_PASSWORD';
+
+/// Suspended account for negative tests.
+const kTestSuspendedEmail = 'suspended@test.origna.ca';
+const kTestSuspendedPassword = 'REDACTED_TEST_PASSWORD';
+
+/// No-address account for address validation tests.
+const kTestNoAddressEmail = 'no-address@test.origna.ca';
+const kTestNoAddressPassword = 'REDACTED_TEST_PASSWORD';
 
 // ──────────────────────────────────────────────────────────────────
 // Reusable interaction helpers
 // ──────────────────────────────────────────────────────────────────
 
-/// Log in as the test buyer via the login screen.
-///
-/// Assumes the app has been pumped and the login screen is visible.
-Future<void> loginAsBuyer(PatrolIntegrationTester $) async {
-  // Enter email
+/// Log in with a given email/password via the login screen.
+Future<void> _loginAs(
+  PatrolIntegrationTester $,
+  String email,
+  String password,
+) async {
   final emailField = $(#login_email_field);
   if (emailField.exists) {
-    await emailField.enterText(kTestBuyerEmail);
+    await emailField.enterText(email);
   } else {
-    // Fallback: find by Key
-    await $(const Key('login_email_field')).enterText(kTestBuyerEmail);
+    await $(const Key('login_email_field')).enterText(email);
   }
 
-  // Enter password
   final passwordField = $(#login_password_field);
   if (passwordField.exists) {
-    await passwordField.enterText(kTestBuyerPassword);
+    await passwordField.enterText(password);
   } else {
-    await $(const Key('login_password_field')).enterText(kTestBuyerPassword);
+    await $(const Key('login_password_field')).enterText(password);
   }
 
-  // Tap the sign in button
   await $(const Key('login_submit_button')).tap();
-
-  // Wait for navigation to complete
   await $.pump(const Duration(seconds: 5));
+}
+
+/// Log in as the test buyer via the login screen.
+Future<void> loginAsBuyer(PatrolIntegrationTester $) async {
+  await _loginAs($, kTestBuyerEmail, kTestBuyerPassword);
+}
+
+/// Log in as the test seller (seller1 — Mode Montréal).
+Future<void> loginAsSeller(PatrolIntegrationTester $) async {
+  await _loginAs($, kTestSellerEmail, kTestSellerPassword);
+}
+
+/// Log in as admin.
+Future<void> loginAsAdmin(PatrolIntegrationTester $) async {
+  await _loginAs($, kTestAdminEmail, kTestAdminPassword);
+}
+
+/// Log in as combo user (buyer+seller).
+Future<void> loginAsCombo(PatrolIntegrationTester $) async {
+  await _loginAs($, kTestComboEmail, kTestComboPassword);
+}
+
+/// Ensure the user is logged in. If not on login screen, assume logged in.
+Future<void> ensureLoggedInAsBuyer(PatrolIntegrationTester $) async {
+  if ($(const Key('login_submit_button')).exists) {
+    await loginAsBuyer($);
+  }
+}
+
+/// Ensure logged in as seller.
+Future<void> ensureLoggedInAsSeller(PatrolIntegrationTester $) async {
+  if ($(const Key('login_submit_button')).exists) {
+    await loginAsSeller($);
+  }
+}
+
+/// Sign out the current user via Profile screen.
+Future<void> signOut(PatrolIntegrationTester $) async {
+  // Navigate to profile
+  final settingsIcon = $(Icons.settings_outlined);
+  if (settingsIcon.exists) {
+    await settingsIcon.first.tap();
+    await $.pump(const Duration(seconds: 2));
+  }
+
+  // Scroll down to find sign out and tap
+  final signOutBtn = $(Icons.logout);
+  if (signOutBtn.exists) {
+    await signOutBtn.first.tap();
+    await $.pump(const Duration(seconds: 3));
+  }
+}
+
+/// Navigate to a screen from home using the AppBar icon.
+Future<void> navigateToCart(PatrolIntegrationTester $) async {
+  final cartIcon = $(Icons.shopping_cart_outlined);
+  if (cartIcon.exists) {
+    await cartIcon.first.tap();
+  } else {
+    // Fallback to any shopping cart icon
+    final altCart = $(Icons.shopping_cart);
+    if (altCart.exists) await altCart.first.tap();
+  }
+  await $.pump(const Duration(seconds: 2));
+}
+
+/// Navigate to profile/settings screen.
+Future<void> navigateToProfile(PatrolIntegrationTester $) async {
+  final settingsIcon = $(Icons.settings_outlined);
+  if (settingsIcon.exists) {
+    await settingsIcon.first.tap();
+    await $.pump(const Duration(seconds: 2));
+  }
+}
+
+/// Navigate to add product screen (seller/admin only).
+Future<void> navigateToAddProduct(PatrolIntegrationTester $) async {
+  final addBtn = $(const Key('home_add_product_button'));
+  if (addBtn.exists) {
+    await addBtn.tap();
+  } else {
+    final addIcon = $(Icons.add_box_outlined);
+    if (addIcon.exists) await addIcon.first.tap();
+  }
+  await $.pump(const Duration(seconds: 2));
+}
+
+/// Tap the first product card on the home screen.
+Future<void> tapFirstProduct(PatrolIntegrationTester $) async {
+  final cards = $(Card);
+  if (cards.exists) {
+    await cards.first.tap();
+    await $.pump(const Duration(seconds: 2));
+  }
+}
+
+/// Wait for text to appear (with timeout).
+Future<bool> waitForText(
+  PatrolIntegrationTester $,
+  String text, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final stopwatch = Stopwatch()..start();
+  while (stopwatch.elapsed < timeout) {
+    if ($(text).exists) return true;
+    await $.pump(const Duration(milliseconds: 500));
+  }
+  return false;
+}
+
+/// Wait for a widget with a Key to appear.
+Future<bool> waitForKey(
+  PatrolIntegrationTester $,
+  String keyValue, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final stopwatch = Stopwatch()..start();
+  while (stopwatch.elapsed < timeout) {
+    if ($(Key(keyValue)).exists) return true;
+    await $.pump(const Duration(milliseconds: 500));
+  }
+  return false;
+}
+
+/// Scroll down within a scrollable to find a widget with given text.
+Future<bool> scrollToFindText(
+  PatrolIntegrationTester $,
+  String text, {
+  int maxScrolls = 10,
+}) async {
+  for (var i = 0; i < maxScrolls; i++) {
+    if ($(text).exists) return true;
+    await $.pump(const Duration(milliseconds: 500));
+  }
+  return $(text).exists;
 }
