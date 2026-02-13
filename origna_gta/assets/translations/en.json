@@ -238,6 +238,7 @@
     "perishable_item": "Perishable Item",
     "perishable_subtitle": "Food, flowers, etc. (Requires same-day)",
     "ship_days": "Ship Days",
+    "ships_from": "Ships From",
     "length_cm": "L (cm)",
     "width_cm": "W (cm)",
     "height_cm": "H (cm)",

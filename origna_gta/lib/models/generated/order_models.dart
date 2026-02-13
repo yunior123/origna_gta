@@ -185,13 +185,13 @@ abstract class Order with _$Order {
     // Shipping approval
     @Default(ShippingApprovalStatus.notRequired) ShippingApprovalStatus shippingApprovalStatus,
     @Default(false) bool shippingApprovalRequired,
-    @Default(0) int actualShippingCents,
-    @Default(0) int pendingTotalCents,
+    @Default(0.0) double actualShipping,
+    @Default(0.0) double pendingTotal,
     // Payout tracking
     @Default([]) List<SellerPayout> sellerPayouts,
     @Default(false) bool confirmedByClient,
     DateTime? confirmedAt,
-    @Default(0) int platformFeeTotalCents,
+    @Default(0.0) double platformFeeTotal,
     @Default(PayoutStatusValues.pending) String payoutStatus,
     // Ratings
     @Default([]) List<Ratings> ratings,
@@ -204,7 +204,7 @@ abstract class Order with _$Order {
     @Default(false) bool autoConfirmed,
     @Default(false) bool autoCaptured,
     // Refund tracking
-    @Default(0) int refundAmountCents,
+    @Default(0.0) double refundAmount,
     DateTime? refundedAt,
     // Cancellation tracking
     @Default(false) bool stockRestored,
@@ -350,12 +350,12 @@ abstract class Order with _$Order {
       stripeSessionId: _safeString(data[Fields.stripeSessionId]),
       shippingApprovalStatus: parseShippingApprovalStatus(data[Fields.shippingApprovalStatus]),
       shippingApprovalRequired: _safeBool(data[Fields.shippingApprovalRequired]),
-      actualShippingCents: _safeInt(data[Fields.actualShippingCents]),
-      pendingTotalCents: _safeInt(data[Fields.pendingTotalCents]),
+      actualShipping: _safeDouble(data[Fields.actualShipping]),
+      pendingTotal: _safeDouble(data[Fields.pendingTotal]),
       sellerPayouts: payouts,
       confirmedByClient: _safeBool(data[Fields.confirmedByClient]),
       confirmedAt: _parseDateTime(data[Fields.confirmedAt]),
-      platformFeeTotalCents: _safeInt(data[Fields.platformFeeTotalCents]),
+      platformFeeTotal: _safeDouble(data[Fields.platformFeeTotal]),
       payoutStatus: _safeString(data[Fields.payoutStatus], PayoutStatusValues.pending),
       ratings: ratings,
       // === AUDIT FIX: Parse 18 missing fields ===
@@ -365,7 +365,7 @@ abstract class Order with _$Order {
       expiresAt: _parseDateTime(data[Fields.expiresAt]),
       autoConfirmed: _safeBool(data[Fields.autoConfirmed]),
       autoCaptured: _safeBool(data[Fields.autoCaptured]),
-      refundAmountCents: _safeInt(data[Fields.orderRefundCents]),
+      refundAmount: _safeDouble(data[Fields.refundAmount]),
       refundedAt: _parseDateTime(data[Fields.refundedAt]),
       stockRestored: _safeBool(data[Fields.stockRestored]),
       cancelledBy: data[Fields.cancelledBy] != null ? _safeString(data[Fields.cancelledBy]) : null,
@@ -401,18 +401,6 @@ abstract class Order with _$Order {
 
   /// Tax in dollars (derived from cents)
   double get taxAmount => taxAmountCents / 100.0;
-
-  /// Actual shipping in dollars (derived from cents)
-  double get actualShipping => actualShippingCents / 100.0;
-
-  /// Pending total in dollars (derived from cents)
-  double get pendingTotal => pendingTotalCents / 100.0;
-
-  /// Platform fee total in dollars (derived from cents)
-  double get platformFee => platformFeeTotalCents / 100.0;
-
-  /// Refund amount in dollars (derived from cents)
-  double get refundAmount => refundAmountCents / 100.0;
 }
 
 // ============================================================================
@@ -553,10 +541,10 @@ abstract class Taxes with _$Taxes {
 
   factory Taxes.fromJson(Map<String, dynamic> json) {
     return Taxes(
-      gst: (json[Fields.GST] ?? 0.0).toDouble(),
-      pst: (json[Fields.PST] ?? 0.0).toDouble(),
-      hst: (json[Fields.HST] ?? 0.0).toDouble(),
-      qst: (json[Fields.QST] ?? 0.0).toDouble(),
+      gst: (json[Fields.gst] ?? json[Fields.GST] ?? 0.0).toDouble(),
+      pst: (json[Fields.pst] ?? json[Fields.PST] ?? 0.0).toDouble(),
+      hst: (json[Fields.hst] ?? json[Fields.HST] ?? 0.0).toDouble(),
+      qst: (json[Fields.qst] ?? json[Fields.QST] ?? 0.0).toDouble(),
     );
   }
 

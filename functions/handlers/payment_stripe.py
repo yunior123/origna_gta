@@ -735,6 +735,10 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     try:
         shipping_cost_dollars = calculate_shipping_cost(validated_items, shipping_address, speed=delivery_speed)
         shipping_cost_cents = round(shipping_cost_dollars * 100)
+    except ValueError as e:
+        # UX FIX: Return specific validation error (e.g., Same Day distance limit)
+        logger.warning(f"Shipping validation error: {str(e)}")
+        raise https_fn.HttpsError("invalid-argument", str(e))
     except Exception as e:
         logger.error(f"Shipping calculation error: {str(e)}")
         raise https_fn.HttpsError("internal", "Shipping calculation failed. Please try again.") from e
@@ -1324,6 +1328,36 @@ def process_checkout_session_completed(session: dict) -> str | None:
             order_id, order_data, f"Amount mismatch: paid {session_amount} expected {expected_amount}"
         )
         return f"Order {order_id} cancelled - amount mismatch"
+
+    # Fix 4: Address Injection Protection
+    # Verify that the address used in Stripe matches the one in Firestore.
+    # Prevents users from getting cheap shipping quote for Address A, then swapping to Address B in Stripe.
+    session_shipping = session.get("shipping_details", {}) or {}
+    stripe_address = session_shipping.get("address", {}) or {}
+    order_address = order_data.get(Fields.SHIPPING_ADDRESS, {})
+
+    def normalize(val):
+        return str(val).strip().lower() if val else ""
+
+    # Compare critical fields that affect shipping/tax: Country, State, Postal Code
+    # precise street match is skipped to allow minor typo corrections by user
+    mismatches = []
+    if normalize(stripe_address.get("country")) != normalize(order_address.get(Fields.COUNTRY)):
+        mismatches.append("country")
+    if normalize(stripe_address.get("state")) != normalize(order_address.get(Fields.STATE)):
+        mismatches.append("state")
+    # Fuzzy match postal code (remove spaces)
+    stripe_zip = normalize(stripe_address.get("postal_code")).replace(" ", "")
+    order_zip = normalize(order_address.get(Fields.POSTAL_CODE)).replace(" ", "")
+    if stripe_zip != order_zip:
+        mismatches.append(f"postal_code ({stripe_zip} vs {order_zip})")
+
+    if mismatches:
+        logger.warning(f"⚠️ Address mismatch for order {order_id}: {mismatches}. Cancelling.")
+        _restore_stock_and_cancel_order(
+            order_id, order_data, f"Shipping address mismatch: {', '.join(mismatches)}"
+        )
+        return f"Order {order_id} cancelled - address mismatch"
 
     # SECURITY FIX: Re-validate products before confirming order
     # Products could be deactivated or sellers suspended between checkout and payment

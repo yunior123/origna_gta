@@ -504,17 +504,39 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
                     data = response.json()
                     distance_km = max(0, data["sources_to_targets"][0][0]["distance"] / 1000.0)
 
+                    # SECURITY FIX: Enforce max distance for Same Day Delivery
+                    if speed == DeliveryTypeValues.SAME_DAY and distance_km > 50:
+                         raise ValueError(
+                            f"Same Day delivery not available: Distance {distance_km:.1f}km exceeds 50km limit."
+                        )
+
                     if has_perishable and distance_km > ShippingTiers.PERISHABLE_DISTANCE_THRESHOLD_KM:
                         total_shipping += ShippingTiers.PERISHABLE_LONG_DISTANCE
                         continue
 
                     total_shipping += _calculate_tiered_shipping(distance_km, chargeable_items, speed)
                     continue
+                else:
+                    logger.error(f"Geoapify error: Status {response.status_code}")
+                    # SECURITY FIX: Fail safely for Same Day Delivery if API fails
+                    if speed == DeliveryTypeValues.SAME_DAY:
+                        raise ValueError("Same Day delivery temporarily unavailable (location check failed).")
+
             except Exception as e:
                 logger.warning(f"⚠️ Geoapify error: {str(e)}")
+                # SECURITY FIX: Fail safely for Same Day Delivery if API errors
+                if speed == DeliveryTypeValues.SAME_DAY:
+                    raise ValueError("Same Day delivery temporarily unavailable (location check failed).") from e
 
         # Fallback
         item_count = sum(item.get(Fields.QUANTITY, 1) for item in chargeable_items)
-        total_shipping += _calculate_fallback_shipping(item_count, seller_state, buyer_state)
+        fallback_cost = _calculate_fallback_shipping(item_count, seller_state, buyer_state)
+        
+        # SECURITY FIX: Apply markup for Express fallback to prevent undercharging
+        if speed == DeliveryTypeValues.EXPRESS:
+            # Use 'regional' multiplier (1.5x) as a safe default for unverified Express
+            fallback_cost *= ShippingTiers.EXPRESS_MULTIPLIERS["regional"]
+            
+        total_shipping += fallback_cost
 
     return total_shipping

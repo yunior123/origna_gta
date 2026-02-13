@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/admin/admin_providers.dart';
 import 'package:origna_gta/features/admin/tabs/admin_orders_tab.dart';
@@ -89,9 +90,9 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                   Text('Admin privileges required to view this page', style: TextStyle(color: DesignTokens.textSecondary)),
                   const SizedBox(height: 24),
                   FilledButton.icon(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    label: const Text('Go Back'),
+                    onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                    icon: const Icon(Icons.home_rounded),
+                    label: const Text('Go Home'),
                   ),
                 ],
               ),

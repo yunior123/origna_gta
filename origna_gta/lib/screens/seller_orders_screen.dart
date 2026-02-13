@@ -150,8 +150,8 @@ class _SellerOrderCard extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final sellerTotal = sellerItems.fold<double>(0.0, (acc, item) => acc + (item.price * item.quantity));
-    // Platform fee and seller net are computed by the backend — display from order data
-    final platformFee = order.platformFeeTotalCents > 0 ? (order.platformFeeTotalCents / 100.0) : sellerTotal * 0.025;
+    // Platform fee is computed by the backend — always use server-provided value
+    final platformFee = order.platformFeeTotalCents / 100.0;
     final sellerNet = sellerTotal - platformFee;
 
     return Container(
@@ -185,7 +185,7 @@ class _SellerOrderCard extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Tooltip(
-                    message: 'Gross: \$${sellerTotal.toStringAsFixed(2)} − 2.5% fee',
+                    message: 'Gross: \$${sellerTotal.toStringAsFixed(2)} − \$${platformFee.toStringAsFixed(2)} fee',
                     child: Text(
                       '\$${sellerNet.toStringAsFixed(2)}',
                       style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 14),

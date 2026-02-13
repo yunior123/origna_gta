@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
@@ -297,6 +298,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       _ref.invalidate(cartItemsProvider);
 
       return CheckoutSuccess(checkoutUrl: checkoutUrl, orderId: orderId, sessionId: sessionId);
+      return CheckoutSuccess(checkoutUrl: checkoutUrl, orderId: orderId, sessionId: sessionId);
     } on CircuitBreakerOpenException {
       // Service is temporarily unavailable (circuit breaker open)
       if (!mounted) {
@@ -309,6 +311,19 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       return CheckoutError(
         message: 'Payment service is temporarily unavailable. Please try again in a moment.',
         code: 'service-unavailable',
+      );
+    } on FirebaseFunctionsException catch (e) {
+      // Handle known backend validation errors (e.g., "Distance > 50km")
+      if (!mounted) {
+        return CheckoutError(message: 'Operation cancelled');
+      }
+      
+      final message = e.message ?? 'An error occurred';
+      state = state.copyWith(isProcessing: false, checkoutError: message);
+      
+      return CheckoutError(
+        message: message,
+        code: e.code,
       );
     } catch (e) {
       if (!mounted) {

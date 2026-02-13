@@ -316,7 +316,9 @@ extension ProductExtension on Product {
       isInternational: isInternationalSupplier,
       hasTracking: supplier?.hasTracking ?? !isInternationalSupplier,
       estimateText: deliveryEstimateText,
-      supplierRegion: _getSupplierRegion(supplier?.type),
+      supplierRegion: isInternationalSupplier 
+          ? _getSupplierRegion(supplier?.type) 
+          : '${sellerAddress.city}, ${sellerAddress.state}',
     );
   }
 

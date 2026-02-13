@@ -285,13 +285,23 @@ def _run_auto_capture() -> None:
                 platform_fee_cents = round(amount_cents * stored_fee_rate)
                 net_amount_cents = amount_cents - platform_fee_cents
 
-                # Get seller's Stripe account
+                # Fix 3: Use snapshot of seller's Stripe account from time of checkout
+                # Prevents "Account Swap" attack where seller changes account after order to bypass limits
+                seller_stripe_accounts = order_data.get(Fields.SELLER_STRIPE_ACCOUNTS, {})
+                stripe_account_id = seller_stripe_accounts.get(seller_id)
+
+                # Get seller's current profile for suspension check
                 seller_ref = get_db().collection(Collections.USERS).document(seller_id)
                 seller_doc = seller_ref.get()
 
                 if seller_doc.exists:
                     seller_data = seller_doc.to_dict()
-                    stripe_account_id = seller_data.get(Fields.STRIPE_ACCOUNT_ID)
+                    
+                    # Fallback to current profile if snapshot missing (backward compatibility)
+                    if not stripe_account_id:
+                        stripe_account_id = seller_data.get(Fields.STRIPE_ACCOUNT_ID)
+                        if stripe_account_id:
+                           logger.warning(f"⚠️ Using current Stripe account for seller {seller_id} (snapshot missing)")
 
                     # SECURITY FIX: Check chargesEnabled (not payoutsEnabled) for consistency
                     # with capture_payment. Also check seller is not suspended.
@@ -425,7 +435,7 @@ def _run_auto_capture() -> None:
     logger.error(f"Auto-payout completed: {payout_count} paid out, {failed_count} failed")
 
 
-@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+@scheduler_fn.on_schedule(schedule="every 1 hour", **CRON_OPTIONS)
 def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Expires orders with authorizations older than 7 days.

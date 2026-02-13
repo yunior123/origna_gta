@@ -775,6 +775,16 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     if payment_status != PaymentStatusValues.CAPTURED:
         raise https_fn.HttpsError("failed-precondition", "Cannot refund uncaptured payment")
 
+    # Fix 5: Race Condition Protection
+    # Check if a payout is currently in progress (cron job running)
+    # Prevents "double spending" race where Payout + Refund happen simultaneously
+    payout_status = order_data.get(Fields.PAYOUT_STATUS)
+    if payout_status == PayoutStatusValues.PROCESSING:
+        raise https_fn.HttpsError(
+            "unavailable", 
+            "Payout calculation is currently in progress. Please try again in 5 minutes."
+        )
+
     # Find the item
     items = order_data.get(Fields.ITEMS, [])
     item_index = None
@@ -1026,6 +1036,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     order_id = data.get(Fields.ORDER_ID)
     approved = data.get(ApiKeys.APPROVED, False)
+    expected_cost_cents = data.get("expectedCostCents")  # Fix 1: Phantom Shipping protection
 
     if not order_id:
         raise https_fn.HttpsError("invalid-argument", "orderId required")
@@ -1069,6 +1080,15 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
             fresh_approval = fresh_data.get(Fields.SHIPPING_APPROVAL, {})
             if fresh_approval.get(Fields.STATUS) != ShippingApprovalStatusValues.PENDING:
                 raise https_fn.HttpsError("failed-precondition", "No pending shipping approval")
+
+            # Fix 1: Verify the cost user is approving matches the current database state
+            # Prevents bait-and-switch where cost changes while user is viewing the approval screen
+            actual_new_cost_cents = fresh_approval.get(Fields.NEW_COST_CENTS)
+            if expected_cost_cents is not None and actual_new_cost_cents != expected_cost_cents:
+                raise https_fn.HttpsError(
+                    "failed-precondition", 
+                    f"Shipping cost has changed (was ${expected_cost_cents/100:.2f}, now ${actual_new_cost_cents/100:.2f}). Please review the new cost."
+                )
 
             new_shipping_cost_cents = round(fresh_approval.get(Fields.ACTUAL_COST, 0) * 100)
             old_shipping_cost_cents = fresh_data.get(Fields.SHIPPING_COST_CENTS, 0)

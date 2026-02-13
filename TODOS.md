@@ -4,6 +4,9 @@
 - Ensure schema constants are widely used
 - Update json schema constants when database schema changes
 
+
+## TODO (Future)
+
 Console Firebase — Supprimer l'ancien app iOS com.example.orignaGta, ajouter la nouvelle avec ca.orignagta.app, re-télécharger GoogleService-Info.plist (il manquera le REVERSED_CLIENT_ID pour Google Sign-In)
 Apple Developer Portal — Créer l'App ID ca.orignagta.app, activer les capabilities Push Notifications et Associated Domains
 APNs — Créer une clé APNs (ou certificat) et l'uploader dans Firebase Console → Project Settings → Cloud Messaging → Apple app
@@ -52,3 +55,8 @@ TODO Add referrals links with 10 cad discount for friend and also the person tha
 
 -TODO add sentry to backend
 
+-TODO new tiny feature for ux. when showing products, prioritize by address if possible, ex. user lives in toronto, it should first see the products near the area as priority. if u add new index make sure to update it properly. ultrathink about this
+
+lets ultrathink again, lets make sure that international shipping is included, ex. seller in china. we need to offer best user experience. lets say that a seller in canada has 2 warehouses, then he adds the same product to database with different address twice. we need to cover those cases
+
+lets ultrathink again, we cannot give favoritism to products with canadian address either. chinese or international products should be shown to the users as well

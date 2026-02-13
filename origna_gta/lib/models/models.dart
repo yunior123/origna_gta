@@ -444,7 +444,7 @@ class OrderModel {
     final subtotalCents = (data[Fields.subtotalCents] as num?)?.toInt() ?? 0;
     final shippingCostCents = (data[Fields.shippingCostCents] as num?)?.toInt() ?? 0;
     final taxAmountCents = (data[Fields.taxAmountCents] as num?)?.toInt() ?? 0;
-    final platformFeeTotalCents = (data[Fields.platformFeeTotalCents] as num?)?.toInt() ?? (subtotalCents > 0 ? (subtotalCents * 0.025).round() : 0);
+    final platformFeeTotalCents = (data[Fields.platformFeeTotalCents] as num?)?.toInt() ?? 0;
 
     final createdAtRaw = data[Fields.createdAt];
     final createdAt = createdAtRaw is Timestamp
@@ -518,7 +518,7 @@ class OrderModel {
     final subtotalCents = (data[Fields.subtotalCents] as num?)?.toInt() ?? 0;
     final shippingCostCents = (data[Fields.shippingCostCents] as num?)?.toInt() ?? 0;
     final taxAmountCents = (data[Fields.taxAmountCents] as num?)?.toInt() ?? 0;
-    final platformFeeTotalCents = (data[Fields.platformFeeTotalCents] as num?)?.toInt() ?? (subtotalCents > 0 ? (subtotalCents * 0.025).round() : 0);
+    final platformFeeTotalCents = (data[Fields.platformFeeTotalCents] as num?)?.toInt() ?? 0;
 
     final createdAtRaw = data[Fields.createdAt];
     final createdAt = createdAtRaw is Timestamp
