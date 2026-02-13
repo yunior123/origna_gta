@@ -6,27 +6,28 @@ Tests:
 2. Standard delivery fallback behavior.
 """
 
-import sys
 import os
+import sys
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 # Add functions directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
+from schema_constants import DeliveryTypeValues, Fields, ShippingTiers
 from services import shipping_service
-from schema_constants import DeliveryTypeValues, ShippingTiers, Fields
+
 
 class TestDeliveryTypes(unittest.TestCase):
     def setUp(self):
         self.seller_address = {
-            Fields.LATITUDE: 43.6532, 
+            Fields.LATITUDE: 43.6532,
             Fields.LONGITUDE: -79.3832,
             Fields.STATE: "ON",
             Fields.CITY: "Toronto"
         }
         self.buyer_address = {
-            Fields.LATITUDE: 43.6532, 
+            Fields.LATITUDE: 43.6532,
             Fields.LONGITUDE: -79.3832,
             Fields.STATE: "ON",
             Fields.CITY: "Toronto"
@@ -38,7 +39,7 @@ class TestDeliveryTypes(unittest.TestCase):
                 Fields.QUANTITY: 1,
                 Fields.PRICE: 20.00,
                 Fields.WEIGHT_KG: 1.0,
-                Fields.DELIVERY_OPTIONS: [] 
+                Fields.DELIVERY_OPTIONS: []
             }
         ]
 
@@ -50,17 +51,17 @@ class TestDeliveryTypes(unittest.TestCase):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "sources_to_targets": [[{"distance": 100000}]] 
+            "sources_to_targets": [[{"distance": 100000}]]
         }
         mock_post.return_value = mock_response
 
         cost = shipping_service.calculate_shipping_cost(
-            self.items, 
-            self.buyer_address, 
+            self.items,
+            self.buyer_address,
             speed=DeliveryTypeValues.EXPRESS
         )
-        
-        # Base cost checks: 
+
+        # Base cost checks:
         # Distance > 50km -> Base cost 9.99 (ShippingTiers.TIERS)
         # Express Multiplier for 50-150km (regional) -> 1.5 (ShippingTiers.EXPRESS_MULTIPLIERS["regional"])
         # Expected: 9.99 * 1.5 = 14.985
@@ -76,11 +77,11 @@ class TestDeliveryTypes(unittest.TestCase):
         mock_post.return_value = mock_response
 
         cost = shipping_service.calculate_shipping_cost(
-            self.items, 
-            self.buyer_address, 
+            self.items,
+            self.buyer_address,
             speed=DeliveryTypeValues.EXPRESS
         )
-        
+
         # New behavior: Falls back to standard * 1.5 (Regional Multiplier)
         # Standard fallback (Same Province) = 12.99
         # Expected: 12.99 * 1.5 = 19.485
@@ -89,16 +90,16 @@ class TestDeliveryTypes(unittest.TestCase):
 
     def test_standard_delivery_calculation(self):
         """Test Standard Delivery calculation (Province based)."""
-        # Standard delivery usually skips Geoapify if coordinates present but speed is standard? 
+        # Standard delivery usually skips Geoapify if coordinates present but speed is standard?
         # Actually logic says: `should_call_geoapify = speed in [EXPRESS, SAME_DAY] or has_perishable`
         # So Standard skips Geoapify and uses fallback logic directly.
-        
+
         cost = shipping_service.calculate_shipping_cost(
-            self.items, 
-            self.buyer_address, 
+            self.items,
+            self.buyer_address,
             speed=DeliveryTypeValues.STANDARD
         )
-        
+
         print(f"\n[Standard Delivery] Cost: {cost}")
         self.assertEqual(cost, ShippingTiers.FALLBACK_SAME_PROVINCE)
 

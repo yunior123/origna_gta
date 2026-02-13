@@ -738,7 +738,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     except ValueError as e:
         # UX FIX: Return specific validation error (e.g., Same Day distance limit)
         logger.warning(f"Shipping validation error: {str(e)}")
-        raise https_fn.HttpsError("invalid-argument", str(e))
+        raise https_fn.HttpsError("invalid-argument", str(e)) from e
     except Exception as e:
         logger.error(f"Shipping calculation error: {str(e)}")
         raise https_fn.HttpsError("internal", "Shipping calculation failed. Please try again.") from e

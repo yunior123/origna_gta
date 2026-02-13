@@ -6,16 +6,17 @@ Tests:
 2. Fallback behavior when Geoapify fails.
 """
 
-import sys
 import os
+import sys
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 # Add functions directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
+from schema_constants import DeliveryTypeValues, Fields
 from services import shipping_service
-from schema_constants import DeliveryTypeValues, ShippingTiers, Fields
+
 
 class TestSameDayDelivery(unittest.TestCase):
     def setUp(self):
@@ -61,11 +62,11 @@ class TestSameDayDelivery(unittest.TestCase):
         mock_post.return_value = mock_response
 
         cost = shipping_service.calculate_shipping_cost(
-            self.items, 
-            self.buyer_address, 
+            self.items,
+            self.buyer_address,
             speed=DeliveryTypeValues.SAME_DAY
         )
-        
+
         # Base cost for <15km is 1.99
         # Multiplier for hyper_local same_day is 4.5 (from schema_constants.py)
         # Expected: 1.99 * 4.5 = 8.955
@@ -87,8 +88,8 @@ class TestSameDayDelivery(unittest.TestCase):
         # Expect ValueError for distance > 50km
         with self.assertRaises(ValueError) as context:
             shipping_service.calculate_shipping_cost(
-                self.items, 
-                self.buyer_address, 
+                self.items,
+                self.buyer_address,
                 speed=DeliveryTypeValues.SAME_DAY
             )
         print(f"\n[Long Distance] Caught expected error: {context.exception}")
@@ -105,11 +106,11 @@ class TestSameDayDelivery(unittest.TestCase):
         # Expect ValueError instead of fallback
         with self.assertRaises(ValueError) as context:
             shipping_service.calculate_shipping_cost(
-                self.items, 
-                self.buyer_address, 
+                self.items,
+                self.buyer_address,
                 speed=DeliveryTypeValues.SAME_DAY
             )
-        
+
         print(f"\n[Geoapify Failure] Caught expected error: {context.exception}")
 
 if __name__ == '__main__':

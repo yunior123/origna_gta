@@ -296,7 +296,7 @@ def _run_auto_capture() -> None:
 
                 if seller_doc.exists:
                     seller_data = seller_doc.to_dict()
-                    
+
                     # Fallback to current profile if snapshot missing (backward compatibility)
                     if not stripe_account_id:
                         stripe_account_id = seller_data.get(Fields.STRIPE_ACCOUNT_ID)

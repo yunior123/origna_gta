@@ -531,12 +531,12 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
         # Fallback
         item_count = sum(item.get(Fields.QUANTITY, 1) for item in chargeable_items)
         fallback_cost = _calculate_fallback_shipping(item_count, seller_state, buyer_state)
-        
+
         # SECURITY FIX: Apply markup for Express fallback to prevent undercharging
         if speed == DeliveryTypeValues.EXPRESS:
             # Use 'regional' multiplier (1.5x) as a safe default for unverified Express
             fallback_cost *= ShippingTiers.EXPRESS_MULTIPLIERS["regional"]
-            
+
         total_shipping += fallback_cost
 
     return total_shipping

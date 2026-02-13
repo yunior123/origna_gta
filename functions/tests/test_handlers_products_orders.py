@@ -668,9 +668,9 @@ class TestOrderHandlers:
 
         with patch("services.rate_limiter.RateLimiter") as mock_rl_class:
             mock_rl_class.return_value.check_rate_limit.return_value = (True, "")
-            with patch("firebase_admin.firestore.transactional", lambda fn: fn):
-                with patch("services.shipping_service.get_tax_rate", return_value=0.13):
-                    approve_shipping_cost(mock_request)
+            with patch("firebase_admin.firestore.transactional", lambda fn: fn), \
+                 patch("services.shipping_service.get_tax_rate", return_value=0.13):
+                approve_shipping_cost(mock_request)
 
         # Verify the transactional function was called (via mock_txn)
         # The actual update is done inside the transaction, so verify Stripe was called
@@ -731,10 +731,10 @@ class TestOrderHandlers:
 
         with patch("services.rate_limiter.RateLimiter") as mock_rl_class:
             mock_rl_class.return_value.check_rate_limit.return_value = (True, "")
-            with patch("firebase_admin.firestore.transactional", lambda fn: fn):
-                with patch("services.shipping_service.get_tax_rate", return_value=0.13):
-                    with pytest.raises(https_fn.HttpsError) as exc:
-                        approve_shipping_cost(mock_request)
+            with patch("firebase_admin.firestore.transactional", lambda fn: fn), \
+                 patch("services.shipping_service.get_tax_rate", return_value=0.13), \
+                 pytest.raises(https_fn.HttpsError) as exc:
+                approve_shipping_cost(mock_request)
 
         assert exc.value.code == "internal"
         assert "manual review" in str(exc.value.message).lower()
