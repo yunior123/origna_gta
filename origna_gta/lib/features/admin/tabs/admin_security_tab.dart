@@ -323,7 +323,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                 controller: disableMfaController,
                 keyboardType: TextInputType.number,
                 maxLength: 6,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'admin.security.totp_code'.tr(),
                   hintText: '000000',
                   counterText: '',

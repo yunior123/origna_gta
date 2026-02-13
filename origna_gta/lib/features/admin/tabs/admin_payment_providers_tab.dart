@@ -70,12 +70,12 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                                   child: const Icon(Icons.payment_rounded, color: Colors.white, size: 22),
                                 ),
                                 const SizedBox(width: 14),
-                                const Expanded(
+                                Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text('admin.payments.title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                                      SizedBox(height: 2),
+                                      const SizedBox(height: 2),
                                     ],
                                   ),
                                 ),
@@ -98,7 +98,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                                 children: [
                                   Icon(Icons.warning_amber_rounded, color: DesignTokens.warning, size: 20),
                                   const SizedBox(width: 12),
-                                  const Expanded(
+                                  Expanded(
                                     child: Text(
                                       'admin.payments.warning_at_least_one'.tr(),
                                       style: const TextStyle(fontSize: 13),
@@ -448,7 +448,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
             const SizedBox(height: 16),
             TextField(
               controller: _reasonController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'admin.payments.reason_label'.tr(),
                 hintText: 'admin.payments.reason_hint'.tr(),
                 border: const OutlineInputBorder(),

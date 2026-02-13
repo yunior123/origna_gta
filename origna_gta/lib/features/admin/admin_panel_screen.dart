@@ -131,11 +131,11 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: DesignTokens.primaryGradient),
         ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.admin_panel_settings_rounded, size: 22),
-            SizedBox(width: 10),
-            Text('admin.title'.tr(), style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+            const Icon(Icons.admin_panel_settings_rounded, size: 22),
+            const SizedBox(width: 10),
+            Text('admin.title'.tr(), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
           ],
         ),
         backgroundColor: Colors.transparent,
@@ -207,12 +207,12 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                           child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 24),
                         ),
                         const SizedBox(width: 12),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('admin.sellers_tab'.tr(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
-                              Text('admin.title'.tr(), style: TextStyle(color: Colors.white60, fontSize: 12)),
+                              Text('admin.sellers_tab'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
+                              Text('admin.title'.tr(), style: const TextStyle(color: Colors.white60, fontSize: 12)),
                             ],
                           ),
                         ),

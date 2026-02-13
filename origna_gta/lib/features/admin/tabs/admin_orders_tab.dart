@@ -277,7 +277,7 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
                 error: (error, _) => Center(child: Text('admin.users.error_fetching'.tr())),
                 data: (orders) {
                   if (orders.isEmpty) {
-                    return const AnimatedEmptyState(
+                    return AnimatedEmptyState(
                       icon: Icons.receipt_long_outlined,
                       title: 'orders.no_orders_found'.tr(),
                       subtitle: 'orders.no_orders_match'.tr(),
