@@ -34,14 +34,14 @@ flutter_native_splash:
 
   # Clean white background for splash screen
   color: "#FFFFFF"  ##====================================[REQUIRED]==========
-  color_dark: "#1a1a2e"
+  color_dark: "#FFFFFF"
   # platform-specific color overrides:
   color_android: "#FFFFFF"
-  color_dark_android: "#1a1a2e"
+  color_dark_android: "#FFFFFF"
   color_ios: "#FFFFFF"
-  color_dark_ios: "#1a1a2e"
+  color_dark_ios: "#FFFFFF"
   color_web: "#FFFFFF"
-  color_dark_web: "#1a1a2e"
+  color_dark_web: "#FFFFFF"
 
   # general background_image for all platform (except android 12+)
   # if you specify this [required] background_image, then you should comment the 
@@ -130,7 +130,7 @@ flutter_native_splash:
   android_12:
     # Clean white for light mode, deep space for dark mode
     color: "#FFFFFF"
-    color_dark: "#1a1a2e"
+    color_dark: "#FFFFFF"
 
     # center-logo
     # If this parameter is not specified, the app's launcher icon will be used instead. 
@@ -143,7 +143,7 @@ flutter_native_splash:
 
     # center-logo background color
     icon_background_color: "#FFFFFF"
-    icon_background_color_dark: "#1a1a2e"
+    icon_background_color_dark: "#FFFFFF"
 
     # branding:
     # The branding image dimensions must be 800x320 px.

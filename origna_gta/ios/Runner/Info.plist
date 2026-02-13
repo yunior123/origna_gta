@@ -72,7 +72,7 @@
 			<string>_dartobservatory._tcp</string>
 		</array>
 		<key>FirebaseAppDelegateProxyEnabled</key>
-		<true/>
+		<false/>
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>

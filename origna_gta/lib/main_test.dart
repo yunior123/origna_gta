@@ -2,6 +2,7 @@
 // This file is used exclusively for integration tests to avoid the
 // "Cannot set URL strategy a second time" error
 
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -19,6 +20,9 @@ import 'package:origna_gta/services/conf_services.dart';
 
 /// Emulator host: localhost for simulators/web, LAN IP for physical devices.
 String get _emulatorHost {
+  const host = String.fromEnvironment('EMULATOR_HOST');
+  if (host.isNotEmpty) return host;
+  
   if (kIsWeb) return 'localhost';
   // Physical iOS/Android devices can't reach localhost — use Mac's LAN IP.
   // Update this IP if your network changes.
@@ -28,6 +32,20 @@ String get _emulatorHost {
 
 /// Flag to track if app has been initialized
 bool _appInitialized = false;
+
+/// Helper: run a future with a timeout, log success or failure.
+Future<void> _timedStep(String name, Future<void> Function() action,
+    {Duration timeout = const Duration(seconds: 10)}) async {
+  debugPrint('▶ $name ...');
+  try {
+    await action().timeout(timeout);
+    debugPrint('▶ $name ✓');
+  } on TimeoutException {
+    debugPrint('▶ $name TIMED OUT after ${timeout.inSeconds}s — skipping');
+  } catch (e) {
+    debugPrint('▶ $name ERROR: $e');
+  }
+}
 
 /// Initialize app for a single test (doesn't re-run if already initialized)
 Future<void> initAppForTest() async {
@@ -55,8 +73,10 @@ Future<void> initAppForTest() async {
 
 /// Main entry point for tests - skips URL strategy
 Future<void> mainTest() async {
+  debugPrint('▶ mainTest() called (initialized=$_appInitialized)');
+
   if (_appInitialized) {
-    // App already initialized, just run the widget
+    debugPrint('▶ Re-running app (already initialized)');
     runApp(
       EasyLocalization(
         supportedLocales: const [Locale('en'), Locale('fr')],
@@ -68,26 +88,33 @@ Future<void> mainTest() async {
     return;
   }
 
+  debugPrint('▶ Step 1: WidgetsFlutterBinding');
   WidgetsFlutterBinding.ensureInitialized();
-  await EasyLocalization.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await _timedStep('Step 2: EasyLocalization', () async {
+    await EasyLocalization.ensureInitialized();
+  });
+
+  await _timedStep('Step 3: Firebase.initializeApp', () async {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  });
 
   // EMULATOR CONFIGURATION - Always use emulators for tests
   final host = _emulatorHost;
-  try {
+  await _timedStep('Step 4: Emulator setup at $host', () async {
     await FirebaseAuth.instance.useAuthEmulator(host, 9099);
     FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
     FirebaseFunctions.instance.useFunctionsEmulator(host, 5001);
     await FirebaseStorage.instance.useStorageEmulator(host, 9199);
-    debugPrint('Connected to Firebase Emulators at $host');
-  } catch (e) {
-    debugPrint('Emulator connection: $e');
-  }
+  });
 
-  await ConfigService().initialize(skipFetch: true);
+  await _timedStep('Step 5: ConfigService', () async {
+    await ConfigService().initialize(skipFetch: true);
+  });
 
   _appInitialized = true;
 
+  debugPrint('▶ Step 6: runApp()');
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('fr')],
@@ -96,6 +123,7 @@ Future<void> mainTest() async {
       child: const ProviderScope(child: OrignaApp()),
     ),
   );
+  debugPrint('▶ mainTest() complete');
 }
 
 /// Reset app state (for test isolation)
