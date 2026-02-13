@@ -362,13 +362,13 @@ class OrderModel {
   final String stripeSessionId;
   final String shippingApprovalStatus;
   final bool shippingApprovalRequired;
-  final double actualShipping;
-  final double pendingTotal;
+  final int actualShippingCents;
+  final int pendingTotalCents;
   // Payout tracking fields
   final List<SellerPayout> sellerPayouts;
   final bool confirmedByClient;
   final DateTime? confirmedAt;
-  final double platformFeeTotal;
+  final int platformFeeTotalCents;
   final String payoutStatus;
   final Map<String, dynamic> ratings;
 
@@ -391,13 +391,13 @@ class OrderModel {
     required this.stripeSessionId,
     this.shippingApprovalStatus = ShippingApprovalStatusValues.notRequired,
     this.shippingApprovalRequired = false,
-    this.actualShipping = 0.0,
-    this.pendingTotal = 0.0,
+    this.actualShippingCents = 0,
+    this.pendingTotalCents = 0,
     String? paymentStatus,
     this.sellerPayouts = const [],
     this.confirmedByClient = false,
     this.confirmedAt,
-    this.platformFeeTotal = 0.0,
+    this.platformFeeTotalCents = 0,
     this.payoutStatus = PayoutStatusValues.pending,
     this.ratings = const {},
   }) : paymentStatus = paymentStatus ?? PaymentStatus.awaitingPayment.value;
@@ -444,7 +444,7 @@ class OrderModel {
     final subtotalCents = (data[Fields.subtotalCents] as num?)?.toInt() ?? 0;
     final shippingCostCents = (data[Fields.shippingCostCents] as num?)?.toInt() ?? 0;
     final taxAmountCents = (data[Fields.taxAmountCents] as num?)?.toInt() ?? 0;
-    final platformFeeTotal = (data[Fields.platformFeeTotal] ?? (subtotalCents > 0 ? subtotalCents * 0.00025 : 0.0)).toDouble();
+    final platformFeeTotalCents = (data[Fields.platformFeeTotalCents] as num?)?.toInt() ?? (subtotalCents > 0 ? (subtotalCents * 0.025).round() : 0);
 
     final createdAtRaw = data[Fields.createdAt];
     final createdAt = createdAtRaw is Timestamp
@@ -473,12 +473,12 @@ class OrderModel {
       stripeSessionId: data[Fields.stripeSessionId] ?? '',
       shippingApprovalStatus: data[Fields.shippingApprovalStatus] ?? ShippingApprovalStatus.notRequired.value,
       shippingApprovalRequired: data[Fields.shippingApprovalRequired] ?? false,
-      actualShipping: (data[Fields.actualShipping] ?? 0).toDouble(),
-      pendingTotal: (data[Fields.pendingTotal] ?? 0).toDouble(),
+      actualShippingCents: (data[Fields.actualShippingCents] as num?)?.toInt() ?? 0,
+      pendingTotalCents: (data[Fields.pendingTotalCents] as num?)?.toInt() ?? 0,
       sellerPayouts: sellerPayouts,
       confirmedByClient: data[Fields.confirmedByClient] ?? false,
       confirmedAt: (data[Fields.confirmedAt] as Timestamp?)?.toDate(),
-      platformFeeTotal: platformFeeTotal,
+      platformFeeTotalCents: platformFeeTotalCents,
       payoutStatus: data[Fields.payoutStatus] ?? PayoutStatusValues.pending,
       ratings: Map<String, dynamic>.from(data[Fields.ratings] ?? {}),
     );
@@ -518,7 +518,7 @@ class OrderModel {
     final subtotalCents = (data[Fields.subtotalCents] as num?)?.toInt() ?? 0;
     final shippingCostCents = (data[Fields.shippingCostCents] as num?)?.toInt() ?? 0;
     final taxAmountCents = (data[Fields.taxAmountCents] as num?)?.toInt() ?? 0;
-    final platformFeeTotal = (data[Fields.platformFeeTotal] ?? (subtotalCents > 0 ? subtotalCents * 0.00025 : 0.0)).toDouble();
+    final platformFeeTotalCents = (data[Fields.platformFeeTotalCents] as num?)?.toInt() ?? (subtotalCents > 0 ? (subtotalCents * 0.025).round() : 0);
 
     final createdAtRaw = data[Fields.createdAt];
     final createdAt = createdAtRaw is Timestamp
@@ -547,12 +547,12 @@ class OrderModel {
       stripeSessionId: data[Fields.stripeSessionId] ?? '',
       shippingApprovalStatus: data[Fields.shippingApprovalStatus] ?? ShippingApprovalStatus.notRequired.value,
       shippingApprovalRequired: data[Fields.shippingApprovalRequired] ?? false,
-      actualShipping: (data[Fields.actualShipping] ?? 0).toDouble(),
-      pendingTotal: (data[Fields.pendingTotal] ?? 0).toDouble(),
+      actualShippingCents: (data[Fields.actualShippingCents] as num?)?.toInt() ?? 0,
+      pendingTotalCents: (data[Fields.pendingTotalCents] as num?)?.toInt() ?? 0,
       sellerPayouts: sellerPayouts,
       confirmedByClient: data[Fields.confirmedByClient] ?? false,
       confirmedAt: (data[Fields.confirmedAt] is Timestamp?) ? (data[Fields.confirmedAt] as Timestamp?)?.toDate() : null,
-      platformFeeTotal: platformFeeTotal,
+      platformFeeTotalCents: platformFeeTotalCents,
       payoutStatus: data[Fields.payoutStatus] ?? PayoutStatusValues.pending,
       ratings: Map<String, dynamic>.from(data[Fields.ratings] ?? {}),
     );
@@ -587,11 +587,11 @@ class OrderModel {
       Fields.sellerPayouts: sellerPayouts.map((p) => p.toMap()).toList(),
       Fields.shippingApprovalStatus: shippingApprovalStatus,
       Fields.shippingApprovalRequired: shippingApprovalRequired,
-      Fields.actualShipping: actualShipping,
-      Fields.pendingTotal: pendingTotal,
+      Fields.actualShippingCents: actualShippingCents,
+      Fields.pendingTotalCents: pendingTotalCents,
       Fields.confirmedByClient: confirmedByClient,
       if (confirmedAt != null) Fields.confirmedAt: Timestamp.fromDate(confirmedAt!),
-      Fields.platformFeeTotal: platformFeeTotal,
+      Fields.platformFeeTotalCents: platformFeeTotalCents,
       Fields.payoutStatus: payoutStatus,
       Fields.ratings: ratings,
     };

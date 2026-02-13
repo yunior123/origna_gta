@@ -371,7 +371,9 @@
     "tax_info": "Taxes are calculated automatically at checkout based on:\n\n• Your delivery province\n• Product type (some categories are exempt)\n\nApplicable taxes:\n• GST (5%): All provinces\n• PST (6-7%): BC, MB, SK\n• QST (9.975%): QC\n• HST (13-15%): ON (13%), NS (14%), NB, NL, PE (15%)\n\nChildren's products and certain food items may be exempt from PST depending on the province.",
     "add_instructions_optional": "Add instructions (optional)",
     "delivery_instructions_desc": "Add special delivery instructions (optional):",
-    "delivery_hint": "E.g.: Leave the package on the porch\nRing the intercom, apartment 12\nDelivery after 2 PM only"
+    "delivery_hint": "E.g.: Leave the package on the porch\nRing the intercom, apartment 12\nDelivery after 2 PM only",
+    "stock_limit_reached": "Cannot add more — not enough stock available.",
+    "unavailable_items": "{count} item(s) in your cart are no longer available and have been removed."
   },
   "checkout": {
     "checkout": "Checkout",

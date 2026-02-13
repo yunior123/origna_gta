@@ -19,12 +19,13 @@ from firebase_functions import https_fn
 @pytest.fixture
 def setup_unified_mock_db():
     """Creates a unified mock database that handles all document lookups"""
+
     def _setup(docs=None):
         if docs is None:
             docs = {
-                'prod_123': create_mock_product_doc('prod_123', price=50.00, stock_quantity=10),
-                'seller_123': create_mock_seller_doc(),
-                'test_user_123': create_mock_user_doc()
+                "prod_123": create_mock_product_doc("prod_123", price=50.00, stock_quantity=10),
+                "seller_123": create_mock_seller_doc(),
+                "test_user_123": create_mock_user_doc(),
             }
 
         mock_db = MagicMock()
@@ -71,21 +72,22 @@ def mock_unauthenticated_context():
     return None
 
 
-
 class TestCreateCheckoutSession:
     """Test create_checkout_session endpoint"""
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe.checkout.Session.create')
-    @patch('handlers.payment_stripe.get_rate_limiter')
-    def test_successful_checkout_session_creation(self, mock_get_rate_limiter, mock_stripe_create, mock_get_db, valid_checkout_data, firestore_mock_builder):
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe.checkout.Session.create")
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    def test_successful_checkout_session_creation(
+        self, mock_get_rate_limiter, mock_stripe_create, mock_get_db, valid_checkout_data, firestore_mock_builder
+    ):
         """Test successful checkout session creation with valid items"""
         from handlers.payment_stripe import create_checkout_session
 
         # Setup Firestore mock with test data
-        firestore_mock_builder.add_seller('seller_123', suspended=False, onboarded=True)
-        firestore_mock_builder.add_product('prod_123', 'seller_123', price=50.00, stock=10)
-        firestore_mock_builder.add_user('user_123', 'user@example.com', 'Test User')
+        firestore_mock_builder.add_seller("seller_123", suspended=False, onboarded=True)
+        firestore_mock_builder.add_product("prod_123", "seller_123", price=50.00, stock=10)
+        firestore_mock_builder.add_user("user_123", "user@example.com", "Test User")
 
         # Get built mock database
         mock_db = firestore_mock_builder.build_mock_db()
@@ -116,8 +118,8 @@ class TestCreateCheckoutSession:
 
         result = create_checkout_session(mock_request)
 
-        assert result['success'] is True
-        assert 'sessionId' in result
+        assert result["success"] is True
+        assert "sessionId" in result
         mock_stripe_create.assert_called_once()
 
     def test_unauthenticated_user_rejected(self):
@@ -130,10 +132,10 @@ class TestCreateCheckoutSession:
         with pytest.raises(https_fn.HttpsError) as exc:
             create_checkout_session(mock_request)
 
-        assert exc.value.code == 'unauthenticated'
+        assert exc.value.code == "unauthenticated"
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.get_rate_limiter')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.get_rate_limiter")
     def test_rate_limiting_enforced(self, mock_get_rate_limiter, mock_get_db):
         """Test rate limiting prevents abuse (100 requests/15min)"""
         from handlers.payment_stripe import create_checkout_session
@@ -143,25 +145,27 @@ class TestCreateCheckoutSession:
         mock_get_db.return_value = mock_db
         mock_user_doc = MagicMock()
         mock_user_doc.exists = True
-        mock_user_doc.to_dict.return_value = {'suspended': False}
+        mock_user_doc.to_dict.return_value = {"suspended": False}
         mock_db.collection.return_value.document.return_value.get.return_value = mock_user_doc
 
         mock_rate_limiter_instance = Mock()
-        mock_rate_limiter_instance.check_rate_limit = Mock(return_value=(False, "Rate limit exceeded: 100 requests per 15 minutes"))
+        mock_rate_limiter_instance.check_rate_limit = Mock(
+            return_value=(False, "Rate limit exceeded: 100 requests per 15 minutes")
+        )
         mock_get_rate_limiter.return_value = mock_rate_limiter_instance
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="test_user_123")
-        mock_request.auth.token = {'email_verified': True}
-        mock_request.data = {'items': []}
+        mock_request.auth.token = {"email_verified": True}
+        mock_request.data = {"items": []}
 
         with pytest.raises(https_fn.HttpsError) as exc:
             create_checkout_session(mock_request)
 
-        assert exc.value.code == 'resource-exhausted'
+        assert exc.value.code == "resource-exhausted"
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.get_rate_limiter')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.get_rate_limiter")
     def test_empty_cart_rejected(self, mock_get_rate_limiter, mock_get_db):
         """Test that empty cart is rejected"""
         from handlers.payment_stripe import create_checkout_session
@@ -172,7 +176,7 @@ class TestCreateCheckoutSession:
         # Mock user doc (not suspended) — suspension check runs before cart validation
         mock_user_doc = MagicMock()
         mock_user_doc.exists = True
-        mock_user_doc.to_dict.return_value = {'suspended': False}
+        mock_user_doc.to_dict.return_value = {"suspended": False}
         mock_db.collection.return_value.document.return_value.get.return_value = mock_user_doc
 
         # Setup rate limiter
@@ -182,17 +186,17 @@ class TestCreateCheckoutSession:
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="test_user_123")
-        mock_request.auth.token = {'email_verified': True}
-        mock_request.data = {'items': []}
+        mock_request.auth.token = {"email_verified": True}
+        mock_request.data = {"items": []}
 
         with pytest.raises(https_fn.HttpsError) as exc:
             create_checkout_session(mock_request)
 
-        assert exc.value.code == 'invalid-argument'
+        assert exc.value.code == "invalid-argument"
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.get_rate_limiter')
-    @patch('main.validate_postal_code')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    @patch("main.validate_postal_code")
     def test_product_not_found(self, mock_validate_postal, mock_get_rate_limiter, mock_get_db):
         """Test handling of non-existent product"""
         from handlers.payment_stripe import create_checkout_session
@@ -218,25 +222,25 @@ class TestCreateCheckoutSession:
         mock_request = Mock()
         mock_request.auth = Mock(uid="test_user_123")
         mock_request.data = {
-            'items': [{'productId': 'invalid_prod', 'quantity': 1}],
-            'subtotal': 50.00,
-            'shippingAddress': {
-                'street': '123 Main St',
-                'city': 'Toronto',
-                'state': 'ON',
-                'postalCode': 'M5V3A8',
-                'country': 'Canada'
-            }
+            "items": [{"productId": "invalid_prod", "quantity": 1}],
+            "subtotal": 50.00,
+            "shippingAddress": {
+                "street": "123 Main St",
+                "city": "Toronto",
+                "state": "ON",
+                "postalCode": "M5V3A8",
+                "country": "Canada",
+            },
         }
 
         with pytest.raises(https_fn.HttpsError) as exc:
             create_checkout_session(mock_request)
 
-        assert exc.value.code == 'not-found'
+        assert exc.value.code == "not-found"
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.get_rate_limiter')
-    @patch('main.validate_postal_code')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    @patch("main.validate_postal_code")
     def test_insufficient_stock(self, mock_validate_postal, mock_get_rate_limiter, mock_get_db, valid_checkout_data):
         """Test rejection when product stock is insufficient"""
         from handlers.payment_stripe import create_checkout_session
@@ -254,8 +258,8 @@ class TestCreateCheckoutSession:
 
         # Create unified document storage
         all_docs = {
-            'prod_123': create_mock_product_doc('prod_123', stock_quantity=2),
-            'seller_123': create_mock_seller_doc()
+            "prod_123": create_mock_product_doc("prod_123", stock_quantity=2),
+            "seller_123": create_mock_seller_doc(),
         }
 
         def make_doc_ref(doc_id):
@@ -277,24 +281,41 @@ class TestCreateCheckoutSession:
         mock_request = Mock()
         mock_request.auth = Mock(uid="test_user_123")
         mock_request.data = {
-            'items': [{'productId': 'prod_123', 'quantity': 10, 'price': 50.00, 'sellerId': 'seller_123', 'name': 'Test Product'}],  # Requesting 10
-            'shippingAddress': valid_checkout_data['shippingAddress'],
-            'subtotal': 500.00
+            "items": [
+                {
+                    "productId": "prod_123",
+                    "quantity": 10,
+                    "price": 50.00,
+                    "sellerId": "seller_123",
+                    "name": "Test Product",
+                }
+            ],  # Requesting 10
+            "shippingAddress": valid_checkout_data["shippingAddress"],
+            "subtotal": 500.00,
         }
 
         with pytest.raises(https_fn.HttpsError) as exc:
             create_checkout_session(mock_request)
 
-        assert exc.value.code == 'resource-exhausted'
-        assert 'stock' in str(exc.value).lower()
+        assert exc.value.code == "resource-exhausted"
+        assert "stock" in str(exc.value).lower()
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe.checkout.Session.create')
-    @patch('handlers.payment_stripe.get_rate_limiter')
-    @patch('main.validate_postal_code')
-    @patch('handlers.payment_stripe.calculate_shipping_cost')
-    @patch('handlers.payment_stripe.get_tax_rate')
-    def test_price_tampering_detection(self, mock_tax_rate, mock_shipping, mock_validate_postal, mock_get_rate_limiter, mock_stripe_create, mock_get_db, valid_checkout_data):
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe.checkout.Session.create")
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    @patch("main.validate_postal_code")
+    @patch("handlers.payment_stripe.calculate_shipping_cost")
+    @patch("handlers.payment_stripe.get_tax_rate")
+    def test_price_tampering_detection(
+        self,
+        mock_tax_rate,
+        mock_shipping,
+        mock_validate_postal,
+        mock_get_rate_limiter,
+        mock_stripe_create,
+        mock_get_db,
+        valid_checkout_data,
+    ):
         """SECURITY: Test detection of price tampering"""
         from handlers.payment_stripe import create_checkout_session
 
@@ -315,8 +336,8 @@ class TestCreateCheckoutSession:
 
         # Create unified document storage with $50 product
         all_docs = {
-            'prod_123': create_mock_product_doc('prod_123', price=50.00),
-            'seller_123': create_mock_seller_doc()
+            "prod_123": create_mock_product_doc("prod_123", price=50.00),
+            "seller_123": create_mock_seller_doc(),
         }
 
         def make_doc_ref(doc_id):
@@ -341,29 +362,31 @@ class TestCreateCheckoutSession:
         mock_request = Mock()
         mock_request.auth = Mock(uid="test_user_123")
         mock_request.data = {
-            'items': [{
-                'productId': 'prod_123',
-                'quantity': 1,
-                'price': 0.01,  # TAMPERED PRICE
-                'sellerId': 'seller_123'
-            }],
-            'shippingAddress': valid_checkout_data['shippingAddress'],
-            'subtotal': 0.01  # Tampered subtotal
+            "items": [
+                {
+                    "productId": "prod_123",
+                    "quantity": 1,
+                    "price": 0.01,  # TAMPERED PRICE
+                    "sellerId": "seller_123",
+                }
+            ],
+            "shippingAddress": valid_checkout_data["shippingAddress"],
+            "subtotal": 0.01,  # Tampered subtotal
         }
 
         # Should raise error due to price mismatch
         with pytest.raises(https_fn.HttpsError) as exc:
             create_checkout_session(mock_request)
 
-        assert exc.value.code == 'invalid-argument'
-        assert 'Price changed' in str(exc.value) or 'Price mismatch' in str(exc.value)
+        assert exc.value.code == "invalid-argument"
+        assert "Price changed" in str(exc.value) or "Price mismatch" in str(exc.value)
 
 
 class TestStripeWebhook:
     """Test stripe_webhook endpoint"""
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe.Webhook.construct_event')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe.Webhook.construct_event")
     def test_webhook_signature_validation(self, mock_construct_event, mock_get_db):
         """SECURITY: Test webhook signature is validated"""
         from handlers.payment_stripe import stripe_webhook
@@ -372,7 +395,7 @@ class TestStripeWebhook:
         mock_get_db.return_value = mock_db
 
         # Create unified doc storage
-        all_docs = {'evt_123': MagicMock(exists=False)}
+        all_docs = {"evt_123": MagicMock(exists=False)}
 
         def make_doc_ref(doc_id):
             mock_doc_ref = MagicMock()
@@ -390,14 +413,14 @@ class TestStripeWebhook:
         mock_db.collection.return_value = mock_collection
 
         mock_request = Mock()
-        mock_request.method = 'POST'
+        mock_request.method = "POST"
         mock_request.data = b'{"type": "checkout.session.completed"}'
-        mock_request.headers = {'Stripe-Signature': 'valid_signature'}
+        mock_request.headers = {"Stripe-Signature": "valid_signature"}
 
         mock_construct_event.return_value = {
-            'id': 'evt_123',
-            'type': 'checkout.session.completed',
-            'data': {'object': {}}
+            "id": "evt_123",
+            "type": "checkout.session.completed",
+            "data": {"object": {}},
         }
 
         stripe_webhook(mock_request)
@@ -405,19 +428,17 @@ class TestStripeWebhook:
         # Verify signature was validated
         mock_construct_event.assert_called_once()
 
-    @patch('handlers.payment_stripe.stripe.Webhook.construct_event')
+    @patch("handlers.payment_stripe.stripe.Webhook.construct_event")
     def test_invalid_signature_rejected(self, mock_construct_event):
         """SECURITY: Test invalid signature is rejected"""
         from handlers.payment_stripe import stripe_webhook
 
-        mock_construct_event.side_effect = stripe.error.SignatureVerificationError(
-            "Invalid signature", "sig_header"
-        )
+        mock_construct_event.side_effect = stripe.error.SignatureVerificationError("Invalid signature", "sig_header")
 
         mock_request = Mock()
-        mock_request.method = 'POST'
+        mock_request.method = "POST"
         mock_request.data = b'{"type": "test"}'
-        mock_request.headers = {'Stripe-Signature': 'invalid_sig'}
+        mock_request.headers = {"Stripe-Signature": "invalid_sig"}
 
         response = stripe_webhook(mock_request)
 
@@ -426,8 +447,8 @@ class TestStripeWebhook:
         assert response is not None
         # Check that the function completed without exception (handled the error gracefully)
 
-    @patch('handlers.payment_stripe.stripe.Webhook.construct_event')
-    @patch('handlers.payment_stripe.get_db')
+    @patch("handlers.payment_stripe.stripe.Webhook.construct_event")
+    @patch("handlers.payment_stripe.get_db")
     def test_idempotency_duplicate_webhook_ignored(self, mock_get_db, mock_construct_event):
         """Test duplicate webhooks are ignored (idempotency)"""
         from handlers.payment_stripe import stripe_webhook
@@ -436,9 +457,9 @@ class TestStripeWebhook:
         mock_get_db.return_value = mock_db
 
         mock_construct_event.return_value = {
-            'id': 'evt_duplicate',
-            'type': 'checkout.session.completed',
-            'data': {'object': {}}
+            "id": "evt_duplicate",
+            "type": "checkout.session.completed",
+            "data": {"object": {}},
         }
 
         # Mock webhook already processed
@@ -449,18 +470,18 @@ class TestStripeWebhook:
         mock_db.collection.return_value.document.return_value = mock_doc_ref
 
         mock_request = Mock()
-        mock_request.method = 'POST'
-        mock_request.data = b'{}'
-        mock_request.headers = {'Stripe-Signature': 'sig'}
+        mock_request.method = "POST"
+        mock_request.data = b"{}"
+        mock_request.headers = {"Stripe-Signature": "sig"}
 
         response = stripe_webhook(mock_request)
 
         # Function should complete without errors for duplicate events
         assert response is not None
 
-    @patch('handlers.payment_stripe.stripe.Webhook.construct_event')
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe.checkout.Session.retrieve')
+    @patch("handlers.payment_stripe.stripe.Webhook.construct_event")
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe.checkout.Session.retrieve")
     def test_checkout_session_completed_creates_order(self, mock_retrieve, mock_get_db, mock_construct_event):
         """Test checkout.session.completed webhook creates order"""
         from handlers.payment_stripe import stripe_webhook
@@ -469,24 +490,18 @@ class TestStripeWebhook:
         mock_get_db.return_value = mock_db
 
         mock_construct_event.return_value = {
-            'id': 'evt_123',
-            'type': 'checkout.session.completed',
-            'data': {
-                'object': {
-                    'id': 'cs_test_123',
-                    'payment_intent': 'pi_test_123',
-                    'metadata': {
-                        'userId': 'user_123',
-                        'items': json.dumps([{'productId': 'prod_1', 'quantity': 2}])
-                    }
+            "id": "evt_123",
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_test_123",
+                    "payment_intent": "pi_test_123",
+                    "metadata": {"userId": "user_123", "items": json.dumps([{"productId": "prod_1", "quantity": 2}])},
                 }
-            }
+            },
         }
 
-        mock_retrieve.return_value = Mock(
-            amount_total=10000,
-            customer_details={'email': 'test@example.com'}
-        )
+        mock_retrieve.return_value = Mock(amount_total=10000, customer_details={"email": "test@example.com"})
 
         # Mock webhook not processed yet
         mock_webhook_doc = MagicMock()
@@ -499,9 +514,9 @@ class TestStripeWebhook:
         mock_db.collection.return_value.document.return_value = mock_doc_ref
 
         mock_request = Mock()
-        mock_request.method = 'POST'
-        mock_request.data = b'{}'
-        mock_request.headers = {'Stripe-Signature': 'sig'}
+        mock_request.method = "POST"
+        mock_request.data = b"{}"
+        mock_request.headers = {"Stripe-Signature": "sig"}
 
         response = stripe_webhook(mock_request)
 
@@ -512,9 +527,9 @@ class TestStripeWebhook:
 class TestCapturePayment:
     """Test capture_payment endpoint"""
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe.PaymentIntent.capture')
-    @patch('handlers.payment_stripe.stripe.PaymentIntent.retrieve')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe.PaymentIntent.capture")
+    @patch("handlers.payment_stripe.stripe.PaymentIntent.retrieve")
     def test_successful_payment_capture(self, mock_retrieve, mock_capture, mock_get_db):
         """Test successful payment capture after receipt confirmation"""
         from handlers.payment_stripe import capture_payment
@@ -524,45 +539,41 @@ class TestCapturePayment:
 
         # Mock order with authorized payment and complete items
         mock_order_data = {
-            'orderId': 'order_123',
-            'userId': 'user_123',
-            'paymentStatus': 'authorized',
-            'orderStatus': 'shipped',
-            'stripePaymentIntentId': 'pi_3test_123',
-            'totalAmountCents': 10000,
-            'items': [{
-                'productId': 'prod_1',
-                'quantity': 2,
-                'price': 50.00,
-                'sellerId': 'seller_123',
-                'name': 'Test Product'
-            }]
+            "orderId": "order_123",
+            "userId": "user_123",
+            "paymentStatus": "authorized",
+            "orderStatus": "shipped",
+            "stripePaymentIntentId": "pi_3test_123",
+            "totalAmountCents": 10000,
+            "items": [
+                {"productId": "prod_1", "quantity": 2, "price": 50.00, "sellerId": "seller_123", "name": "Test Product"}
+            ],
         }
         mock_order_doc = MagicMock()
         mock_order_doc.exists = True
-        mock_order_doc.id = 'order_123'
+        mock_order_doc.id = "order_123"
         mock_order_doc.to_dict.return_value = mock_order_data
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_order_doc
         mock_db.collection.return_value.document.return_value = mock_doc_ref
 
         # Mock PI retrieve to return requires_capture status with matching amount
-        mock_retrieve.return_value = Mock(status='requires_capture', amount=10000)
-        mock_capture.return_value = Mock(status='succeeded')
+        mock_retrieve.return_value = Mock(status="requires_capture", amount=10000)
+        mock_capture.return_value = Mock(status="succeeded")
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")
-        mock_request.auth.token = {'admin': True}
-        mock_request.data = {'orderId': 'order_123'}
+        mock_request.auth.token = {"admin": True}
+        mock_request.data = {"orderId": "order_123"}
 
         result = capture_payment(mock_request)
 
-        assert result['success'] is True
-        assert result['captured'] is True
-        mock_retrieve.assert_called_once_with('pi_3test_123')
-        mock_capture.assert_called_once_with('pi_3test_123', idempotency_key='capture_order_123_pi_3test_123')
+        assert result["success"] is True
+        assert result["captured"] is True
+        mock_retrieve.assert_called_once_with("pi_3test_123")
+        mock_capture.assert_called_once_with("pi_3test_123", idempotency_key="capture_order_123_pi_3test_123")
 
-    @patch('handlers.payment_stripe.get_db')
+    @patch("handlers.payment_stripe.get_db")
     def test_capture_non_existent_order_fails(self, mock_get_db):
         """Test capture fails for non-existent order"""
         from handlers.payment_stripe import capture_payment
@@ -578,15 +589,15 @@ class TestCapturePayment:
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")
-        mock_request.data = {'orderId': 'invalid_order'}
+        mock_request.data = {"orderId": "invalid_order"}
 
         with pytest.raises(https_fn.HttpsError) as exc:
             capture_payment(mock_request)
 
-        assert exc.value.code == 'not-found'
+        assert exc.value.code == "not-found"
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe.PaymentIntent.retrieve')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe.PaymentIntent.retrieve")
     def test_capture_already_captured_payment_fails(self, mock_retrieve, mock_get_db):
         """Test double capture is prevented — retrieve returns non-capturable status"""
         from handlers.payment_stripe import capture_payment
@@ -595,44 +606,40 @@ class TestCapturePayment:
         mock_get_db.return_value = mock_db
 
         mock_order_data = {
-            'orderId': 'order_123',
-            'userId': 'user_123',
-            'paymentStatus': 'authorized',
-            'orderStatus': 'shipped',
-            'stripePaymentIntentId': 'pi_3test_123',
-            'totalAmountCents': 10000,
-            'items': [{
-                'productId': 'prod_1',
-                'quantity': 2,
-                'price': 50.00,
-                'sellerId': 'seller_123',
-                'name': 'Test Product'
-            }]
+            "orderId": "order_123",
+            "userId": "user_123",
+            "paymentStatus": "authorized",
+            "orderStatus": "shipped",
+            "stripePaymentIntentId": "pi_3test_123",
+            "totalAmountCents": 10000,
+            "items": [
+                {"productId": "prod_1", "quantity": 2, "price": 50.00, "sellerId": "seller_123", "name": "Test Product"}
+            ],
         }
         mock_order_doc = MagicMock()
         mock_order_doc.exists = True
-        mock_order_doc.id = 'order_123'
+        mock_order_doc.id = "order_123"
         mock_order_doc.to_dict.return_value = mock_order_data
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_order_doc
         mock_db.collection.return_value.document.return_value = mock_doc_ref
 
         # PI already captured — retrieve returns 'succeeded' status
-        mock_retrieve.return_value = Mock(status='succeeded', amount=10000)
+        mock_retrieve.return_value = Mock(status="succeeded", amount=10000)
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")
-        mock_request.auth.token = {'admin': True}
-        mock_request.data = {'orderId': 'order_123'}
+        mock_request.auth.token = {"admin": True}
+        mock_request.data = {"orderId": "order_123"}
 
         with pytest.raises(https_fn.HttpsError) as exc:
             capture_payment(mock_request)
 
-        assert exc.value.code == 'failed-precondition'
+        assert exc.value.code == "failed-precondition"
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe.PaymentIntent.capture')
-    @patch('handlers.payment_stripe.stripe.PaymentIntent.retrieve')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe.PaymentIntent.capture")
+    @patch("handlers.payment_stripe.stripe.PaymentIntent.retrieve")
     def test_capture_expired_authorization_fails(self, mock_retrieve, mock_capture, mock_get_db):
         """Test capture fails for expired authorization (>7 days)"""
         from handlers.payment_stripe import capture_payment
@@ -641,41 +648,43 @@ class TestCapturePayment:
         mock_get_db.return_value = mock_db
 
         mock_order_doc = create_mock_order_doc(
-            payment_status='authorized',
-            items=[{
-                'productId': 'prod_123',
-                'quantity': 2,
-                'price': 50.00,
-                'sellerId': 'seller_123',
-                'name': 'Test Product'
-            }]
+            payment_status="authorized",
+            items=[
+                {
+                    "productId": "prod_123",
+                    "quantity": 2,
+                    "price": 50.00,
+                    "sellerId": "seller_123",
+                    "name": "Test Product",
+                }
+            ],
         )
         mock_doc_ref = MagicMock()
         mock_doc_ref.get.return_value = mock_order_doc
         mock_db.collection.return_value.document.return_value = mock_doc_ref
 
         # Retrieve succeeds but capture fails with expired
-        mock_retrieve.return_value = Mock(status='requires_capture', amount=10000)
+        mock_retrieve.return_value = Mock(status="requires_capture", amount=10000)
         # Use Exception instead of stripe.error.InvalidRequestError to avoid mock conflicts
         # The handler's generic exception handler checks for 'expired' in the message
         mock_capture.side_effect = Exception("This PaymentIntent's charge has expired")
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="admin_user")
-        mock_request.auth.token = {'admin': True}
-        mock_request.data = {'orderId': 'order_123'}
+        mock_request.auth.token = {"admin": True}
+        mock_request.data = {"orderId": "order_123"}
 
         with pytest.raises(https_fn.HttpsError) as exc:
             capture_payment(mock_request)
 
-        assert 'expired' in str(exc.value).lower()
+        assert "expired" in str(exc.value).lower()
 
 
 class TestStripeConnectAccount:
     """Test Stripe Connect account creation and management"""
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe.Account.create')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe.Account.create")
     def test_create_connect_account_success(self, mock_create, mock_get_db):
         """Test successful Stripe Connect account creation for seller"""
         from handlers.payment_stripe import create_connect_account
@@ -683,7 +692,7 @@ class TestStripeConnectAccount:
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        mock_create.return_value = Mock(id='acct_test_123')
+        mock_create.return_value = Mock(id="acct_test_123")
 
         # Mock user
         mock_user_doc = create_mock_user_doc()
@@ -694,22 +703,19 @@ class TestStripeConnectAccount:
         mock_request = Mock()
         mock_request.auth = Mock(uid="seller_user_123")
         mock_request.data = {
-            'email': 'seller@example.com',
-            'country': 'CA',
-            'businessProfile': {
-                'name': 'Test Shop',
-                'url': 'https://testshop.com'
-            }
+            "email": "seller@example.com",
+            "country": "CA",
+            "businessProfile": {"name": "Test Shop", "url": "https://testshop.com"},
         }
 
         result = create_connect_account(mock_request)
 
-        assert result['success'] is True
-        assert result['accountId'] == 'acct_test_123'
+        assert result["success"] is True
+        assert result["accountId"] == "acct_test_123"
         mock_create.assert_called_once()
 
-    @patch('handlers.payment_stripe.stripe.Account.create')
-    @patch('handlers.payment_stripe.get_db')
+    @patch("handlers.payment_stripe.stripe.Account.create")
+    @patch("handlers.payment_stripe.get_db")
     def test_create_duplicate_connect_account_rejected(self, mock_get_db, mock_account_create):
         """Test user cannot create multiple Connect accounts"""
         from handlers.payment_stripe import create_connect_account
@@ -719,14 +725,11 @@ class TestStripeConnectAccount:
 
         # Mock successful account creation to test the flow
         mock_account = Mock()
-        mock_account.id = 'acct_test_new'
+        mock_account.id = "acct_test_new"
         mock_account_create.return_value = mock_account
 
         # Mock user document
-        mock_user_data = {
-            'userId': 'seller_user_123',
-            'email': 'seller@example.com'
-        }
+        mock_user_data = {"userId": "seller_user_123", "email": "seller@example.com"}
         mock_user_doc = MagicMock()
         mock_user_doc.exists = True
         mock_user_doc.to_dict.return_value = mock_user_data
@@ -740,7 +743,7 @@ class TestStripeConnectAccount:
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="seller_user_123")
-        mock_request.data = {'email': 'seller@example.com'}
+        mock_request.data = {"email": "seller@example.com"}
 
         # First call should succeed - account is created
         # This tests the happy path since mocking stripe.error causes issues
@@ -786,7 +789,7 @@ class TestEdgeCasesAndSecurity:
         assert validate_price(10.999) == 11.00
         assert validate_price(10.001) == 10.00
 
-    @patch('handlers.payment_stripe.get_db')
+    @patch("handlers.payment_stripe.get_db")
     def test_concurrent_checkout_race_condition(self, mock_get_db):
         """Test race condition: 2 users checkout same last item"""
         # This tests stock reservation with Firestore transactions
@@ -800,8 +803,8 @@ class TestEdgeCasesAndSecurity:
         # Firestore is NoSQL, but still validate inputs
         from handlers.payment_stripe import sanitize_metadata
 
-        sanitized = sanitize_metadata({'note': malicious_input})
-        assert sanitized['note'] == malicious_input  # Stored as-is, no SQL execution
+        sanitized = sanitize_metadata({"note": malicious_input})
+        assert sanitized["note"] == malicious_input  # Stored as-is, no SQL execution
 
 
 # Helper functions for validation

@@ -22,38 +22,27 @@ from .base import Address
 # SHIPPING QUANTITY DISCOUNT - Volume-based shipping discounts
 # ============================================================================
 
+
 class ShippingQuantityDiscount(BaseModel):
     """Volume-based shipping discount thresholds"""
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "minQuantity": 5,
                 "discountType": "percent",
                 "discountValue": 10.0,
-                Fields.LABEL: "10% off shipping for 5+ items"
+                Fields.LABEL: "10% off shipping for 5+ items",
             }
         }
     )
 
-    minQuantity: int = Field(
-        ...,
-        ge=2,
-        description="Minimum quantity to qualify for this discount"
-    )
+    minQuantity: int = Field(..., ge=2, description="Minimum quantity to qualify for this discount")
     discountType: str = Field(
-        default=DiscountTypeValues.PERCENT,
-        description="Discount type: percent, fixed, flat_rate"
+        default=DiscountTypeValues.PERCENT, description="Discount type: percent, fixed, flat_rate"
     )
-    discountValue: float = Field(
-        ...,
-        ge=0,
-        description="Discount value (interpretation depends on discountType)"
-    )
-    label: str | None = Field(
-        default=None,
-        max_length=100,
-        description="Optional label for display"
-    )
+    discountValue: float = Field(..., ge=0, description="Discount value (interpretation depends on discountType)")
+    label: str | None = Field(default=None, max_length=100, description="Optional label for display")
 
     @field_validator("discountType")
     @classmethod
@@ -72,6 +61,7 @@ class ShippingQuantityDiscount(BaseModel):
 
 class SellerDeliveryOption(BaseModel):
     """Seller-specific delivery options with quantity-based pricing"""
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -82,49 +72,24 @@ class SellerDeliveryOption(BaseModel):
                 "quantityDiscounts": [],
                 "maxItemsPerShipment": 10,
                 "additionalItemCost": 1.50,
-                "availableInternational": True
+                "availableInternational": True,
             }
         }
     )
 
-    type: str = Field(
-        ...,
-        description="Delivery type: pickup, standard, express, same_day"
-    )
-    description: str = Field(
-        ...,
-        min_length=1,
-        max_length=200,
-        description="Description of delivery option"
-    )
-    cost: float = Field(
-        ...,
-        ge=0,
-        description="Base cost in CAD"
-    )
-    estimatedDays: int = Field(
-        ...,
-        ge=0,
-        le=90,
-        description="Estimated delivery days"
-    )
+    type: str = Field(..., description="Delivery type: pickup, standard, express, same_day")
+    description: str = Field(..., min_length=1, max_length=200, description="Description of delivery option")
+    cost: float = Field(..., ge=0, description="Base cost in CAD")
+    estimatedDays: int = Field(..., ge=0, le=90, description="Estimated delivery days")
     quantityDiscounts: list[ShippingQuantityDiscount] = Field(
-        default_factory=list,
-        description="Quantity-based shipping discounts"
+        default_factory=list, description="Quantity-based shipping discounts"
     )
-    maxItemsPerShipment: int = Field(
-        default=0,
-        ge=0,
-        description="Max items before cost increases (0 = no limit)"
-    )
+    maxItemsPerShipment: int = Field(default=0, ge=0, description="Max items before cost increases (0 = no limit)")
     additionalItemCost: float = Field(
-        default=0.0,
-        ge=0,
-        description="Additional cost per item after maxItemsPerShipment"
+        default=0.0, ge=0, description="Additional cost per item after maxItemsPerShipment"
     )
     availableInternational: bool = Field(
-        default=False,
-        description="Whether option is available nationwide across Canada"
+        default=False, description="Whether option is available nationwide across Canada"
     )
 
     @field_validator("type")
@@ -142,12 +107,14 @@ class SellerDeliveryOption(BaseModel):
 #       All SELLING prices on the platform are in CAD (Canadian Dollars).
 # ============================================================================
 
+
 class SupplierInfo(BaseModel):
     """
     Supplier information for dropshipping/international products.
     IMPORTANT: The currency field is for tracking what you PAY the supplier.
     All selling prices to customers are in CAD only.
     """
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -158,49 +125,26 @@ class SupplierInfo(BaseModel):
                 Fields.CURRENCY: "USD",  # What you pay supplier (selling price is always CAD)
                 "shippingDays": "15-30",
                 "hasTracking": True,
-                "notes": "Good quality supplier"
+                "notes": "Good quality supplier",
             }
         }
     )
 
     type: str = Field(
-        ...,
-        description="Supplier platform: aliexpress, alibaba, 1688, dhgate, temu, amazon_usa, custom, etc."
+        ..., description="Supplier platform: aliexpress, alibaba, 1688, dhgate, temu, amazon_usa, custom, etc."
     )
-    supplierSku: str | None = Field(
-        default=None,
-        max_length=100,
-        description="Supplier's product SKU"
-    )
-    supplierUrl: str | None = Field(
-        default=None,
-        max_length=500,
-        description="Direct URL to supplier product"
-    )
-    cost: float | None = Field(
-        default=None,
-        ge=0,
-        le=100000,
-        description="Cost price from supplier (what seller pays)"
-    )
+    supplierSku: str | None = Field(default=None, max_length=100, description="Supplier's product SKU")
+    supplierUrl: str | None = Field(default=None, max_length=500, description="Direct URL to supplier product")
+    cost: float | None = Field(default=None, ge=0, le=100000, description="Cost price from supplier (what seller pays)")
     currency: str = Field(
         default=SupplierCurrencyValues.DEFAULT,
-        description="Currency of SUPPLIER cost (for tracking). Selling price is always CAD."
+        description="Currency of SUPPLIER cost (for tracking). Selling price is always CAD.",
     )
     shippingDays: str | None = Field(
-        default=None,
-        max_length=20,
-        description="Estimated shipping days range (e.g., '7-15')"
+        default=None, max_length=20, description="Estimated shipping days range (e.g., '7-15')"
     )
-    hasTracking: bool = Field(
-        default=False,
-        description="Whether supplier provides tracking"
-    )
-    notes: str | None = Field(
-        default=None,
-        max_length=500,
-        description="Internal notes about supplier"
-    )
+    hasTracking: bool = Field(default=False, description="Whether supplier provides tracking")
+    notes: str | None = Field(default=None, max_length=500, description="Internal notes about supplier")
 
     @field_validator("currency")
     @classmethod
@@ -215,8 +159,10 @@ class SupplierInfo(BaseModel):
 # INVENTORY CONFIG - For flexible inventory management
 # ============================================================================
 
+
 class InventoryConfig(BaseModel):
     """Inventory management configuration"""
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -224,34 +170,17 @@ class InventoryConfig(BaseModel):
                 "trackQuantity": True,
                 "allowBackorder": False,
                 "lowStockThreshold": 5,
-                "reservationHoldMinutes": 30
+                "reservationHoldMinutes": 30,
             }
         }
     )
 
-    managed: bool = Field(
-        default=True,
-        description="Whether inventory is actively managed"
-    )
-    trackQuantity: bool = Field(
-        default=True,
-        description="Track stock quantity (false = unlimited)"
-    )
-    allowBackorder: bool = Field(
-        default=False,
-        description="Allow orders when out of stock"
-    )
-    lowStockThreshold: int = Field(
-        default=5,
-        ge=0,
-        le=1000,
-        description="Alert threshold for low stock"
-    )
+    managed: bool = Field(default=True, description="Whether inventory is actively managed")
+    trackQuantity: bool = Field(default=True, description="Track stock quantity (false = unlimited)")
+    allowBackorder: bool = Field(default=False, description="Allow orders when out of stock")
+    lowStockThreshold: int = Field(default=5, ge=0, le=1000, description="Alert threshold for low stock")
     reservationHoldMinutes: int = Field(
-        default=30,
-        ge=5,
-        le=120,
-        description="How long to hold inventory during checkout"
+        default=30, ge=5, le=120, description="How long to hold inventory during checkout"
     )
 
 
@@ -260,6 +189,7 @@ class Product(BaseModel):
     Complete product model
     Single source of truth for product data
     """
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -274,171 +204,61 @@ class Product(BaseModel):
                     Fields.CITY: "Toronto",
                     Fields.STATE: "ON",
                     Fields.POSTAL_CODE: "M5V 3A8",
-                    Fields.COUNTRY: "Canada"
+                    Fields.COUNTRY: "Canada",
                 },
                 Fields.CATEGORY_ID: 1,
                 Fields.STOCK_QUANTITY: 100,
                 Fields.RATING: 4.5,
                 Fields.CREATED_AT: "2026-02-01T10:00:00Z",
-                Fields.IS_ACTIVE: True
+                Fields.IS_ACTIVE: True,
             }
         }
     )
 
-    productId: str = Field(
-        ...,
-        min_length=1,
-        max_length=100,
-        description="Unique product identifier"
-    )
-    name: str = Field(
-        ...,
-        min_length=1,
-        max_length=120,
-        description="Product name"
-    )
-    price: float = Field(
-        ...,
-        gt=0,
-        le=100000,
-        description="Price in CAD"
-    )
-    description: str = Field(
-        ...,
-        min_length=10,
-        max_length=4000,
-        description="Product description"
-    )
-    imageUrls: list[str] = Field(
-        ...,
-        min_length=1,
-        max_length=5,
-        description="Product image URLs (1-5 images)"
-    )
-    sellerId: str = Field(
-        ...,
-        min_length=1,
-        description="Seller user ID"
-    )
-    sellerAddress: Address = Field(
-        ...,
-        description="Seller's address for shipping calculations"
-    )
-    categoryId: int = Field(
-        ...,
-        ge=CategoryIds.MIN,
-        le=CategoryIds.MAX,
-        description="Product category ID"
-    )
-    stockQuantity: int = Field(
-        ...,
-        ge=0,
-        description="Available stock quantity"
-    )
-    rating: float = Field(
-        default=0.0,
-        ge=0,
-        le=5,
-        description="Average product rating (0-5)"
-    )
-    ratingCount: int = Field(
-        default=0,
-        ge=0,
-        description="Number of ratings"
-    )
-    createdAt: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
-        description="Product creation timestamp"
-    )
-    isActive: bool = Field(
-        default=True,
-        description="Whether product is active and visible"
-    )
+    productId: str = Field(..., min_length=1, max_length=100, description="Unique product identifier")
+    name: str = Field(..., min_length=1, max_length=120, description="Product name")
+    price: float = Field(..., gt=0, le=100000, description="Price in CAD")
+    description: str = Field(..., min_length=10, max_length=4000, description="Product description")
+    imageUrls: list[str] = Field(..., min_length=1, max_length=5, description="Product image URLs (1-5 images)")
+    sellerId: str = Field(..., min_length=1, description="Seller user ID")
+    sellerAddress: Address = Field(..., description="Seller's address for shipping calculations")
+    categoryId: int = Field(..., ge=CategoryIds.MIN, le=CategoryIds.MAX, description="Product category ID")
+    stockQuantity: int = Field(..., ge=0, description="Available stock quantity")
+    rating: float = Field(default=0.0, ge=0, le=5, description="Average product rating (0-5)")
+    ratingCount: int = Field(default=0, ge=0, description="Number of ratings")
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Product creation timestamp")
+    isActive: bool = Field(default=True, description="Whether product is active and visible")
 
     # Optional shipping metadata
-    weightKg: float | None = Field(
-        default=None,
-        gt=0,
-        le=1000,
-        description="Product weight in kilograms"
-    )
-    lengthCm: float | None = Field(
-        default=None,
-        gt=0,
-        le=1000,
-        description="Package length in centimeters"
-    )
-    widthCm: float | None = Field(
-        default=None,
-        gt=0,
-        le=1000,
-        description="Package width in centimeters"
-    )
-    heightCm: float | None = Field(
-        default=None,
-        gt=0,
-        le=1000,
-        description="Package height in centimeters"
-    )
+    weightKg: float | None = Field(default=None, gt=0, le=1000, description="Product weight in kilograms")
+    lengthCm: float | None = Field(default=None, gt=0, le=1000, description="Package length in centimeters")
+    widthCm: float | None = Field(default=None, gt=0, le=1000, description="Package width in centimeters")
+    heightCm: float | None = Field(default=None, gt=0, le=1000, description="Package height in centimeters")
 
     # Delivery options
-    isLocalDeliveryOnly: bool = Field(
-        default=False,
-        description="Only available for local delivery"
-    )
-    isPerishable: bool = Field(
-        default=False,
-        description="Product is perishable (affects shipping)"
-    )
-    estimatedShipDays: int = Field(
-        default=3,
-        ge=0,
-        le=90,
-        description="Estimated days to ship"
-    )
+    isLocalDeliveryOnly: bool = Field(default=False, description="Only available for local delivery")
+    isPerishable: bool = Field(default=False, description="Product is perishable (affects shipping)")
+    estimatedShipDays: int = Field(default=3, ge=0, le=90, description="Estimated days to ship")
     deliveryOptions: list[SellerDeliveryOption] = Field(
-        default_factory=list,
-        description="Seller-specific delivery options"
+        default_factory=list, description="Seller-specific delivery options"
     )
-    minimumOrderQuantity: int = Field(
-        default=1,
-        ge=1,
-        le=100,
-        description="Minimum order quantity"
-    )
-    freeShipping: bool = Field(
-        default=False,
-        description="Free shipping offered by seller"
-    )
+    minimumOrderQuantity: int = Field(default=1, ge=1, le=100, description="Minimum order quantity")
+    freeShipping: bool = Field(default=False, description="Free shipping offered by seller")
 
     # Digital product flag
-    isDigital: bool = Field(
-        default=False,
-        description="Whether this is a digital product (no shipping required)"
-    )
+    isDigital: bool = Field(default=False, description="Whether this is a digital product (no shipping required)")
 
     # Tax and metadata
-    taxCode: str | None = Field(
-        default=None,
-        description="Tax code override for specific products"
-    )
-    keywords: list[str] = Field(
-        default_factory=list,
-        description="Search keywords for Algolia"
-    )
+    taxCode: str | None = Field(default=None, description="Tax code override for specific products")
+    keywords: list[str] = Field(default_factory=list, description="Search keywords for Algolia")
 
     # NEW: Structured objects for scalability
     supplier: SupplierInfo | None = Field(
-        default=None,
-        description="Supplier information for dropshipping/marketplace products"
+        default=None, description="Supplier information for dropshipping/marketplace products"
     )
-    inventory: InventoryConfig | None = Field(
-        default=None,
-        description="Inventory management configuration"
-    )
+    inventory: InventoryConfig | None = Field(default=None, description="Inventory management configuration")
     status: str = Field(
-        default=ProductStatusValues.ACTIVE,
-        description="Product status: draft, active, paused, archived, out_of_stock"
+        default=ProductStatusValues.ACTIVE, description="Product status: draft, active, paused, archived, out_of_stock"
     )
 
     @field_validator("status")
@@ -484,9 +304,9 @@ class Product(BaseModel):
         """Ensure isActive and status are not contradictory"""
         if self.status == ProductStatusValues.ACTIVE and not self.isActive:
             # Auto-fix: if status is active but isActive is False, respect isActive
-            object.__setattr__(self, 'status', ProductStatusValues.PAUSED)
+            object.__setattr__(self, "status", ProductStatusValues.PAUSED)
         elif self.status in {ProductStatusValues.ARCHIVED, ProductStatusValues.PAUSED} and self.isActive:
-            object.__setattr__(self, 'isActive', False)
+            object.__setattr__(self, "isActive", False)
         return self
 
 
@@ -496,6 +316,7 @@ class ProductCreate(BaseModel):
     (excludes productId and createdAt which are generated)
     Sellers can be from any country — no country restriction on seller addresses
     """
+
     name: str = Field(..., min_length=1, max_length=120)
     price: float = Field(..., gt=0, le=100000)
     description: str = Field(..., min_length=10, max_length=4000)

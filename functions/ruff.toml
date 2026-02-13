@@ -29,6 +29,8 @@ exclude = [
 # Tests can have unused imports (fixtures) and assertions
 "tests/**/*.py" = ["F401", "F811", "B011"]
 "test_*.py" = ["F401", "F811", "B011"]
+# Diagnostic scripts need sys.path manipulation before project imports
+"scripts/diagnostics/**/*.py" = ["E402"]
 
 [lint.isort]
 known-first-party = ["handlers", "models", "config", "schema_constants", "utils"]

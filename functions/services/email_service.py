@@ -1,9 +1,7 @@
-import logging
-
-logger = logging.getLogger(__name__)
 import hashlib
 import hmac
 import html
+import logging
 import os
 from datetime import datetime
 from urllib.parse import quote
@@ -13,8 +11,10 @@ from mailjet_rest import Client
 from config import IS_EMULATOR, MAILJET_API_KEY, MAILJET_SECRET_KEY, UNSUBSCRIBE_HMAC_SECRET
 from schema_constants import AppConfig, EmailConfig, Fields
 
+logger = logging.getLogger(__name__)
+
 # Allow real email sending in emulator mode for E2E testing
-FORCE_REAL_EMAIL = os.environ.get('FORCE_REAL_EMAIL', 'false').lower() == 'true'
+FORCE_REAL_EMAIL = os.environ.get("FORCE_REAL_EMAIL", "false").lower() == "true"
 
 # Dynamic base URL for email links — Flutter web local in emulator, prod otherwise
 APP_BASE_URL = EmailConfig.DEV_URL if IS_EMULATOR else EmailConfig.PROD_URL
@@ -24,15 +24,13 @@ UNSUBSCRIBE_URL = EmailConfig.UNSUBSCRIBE_URL_DEV if IS_EMULATOR else EmailConfi
 
 # HMAC secret for signed unsubscribe tokens (prevents unauthorized unsubscription)
 # Loaded from GCP Secret Manager in production, from .env in emulator
-_UNSUBSCRIBE_SECRET = UNSUBSCRIBE_HMAC_SECRET or 'origna-unsub-default-dev-key'
+_UNSUBSCRIBE_SECRET = UNSUBSCRIBE_HMAC_SECRET or "origna-unsub-default-dev-key"
 
 
 def _generate_unsubscribe_token(email: str) -> str:
     """Generate an HMAC-SHA256 token for secure unsubscribe links.
     Prevents attackers from unsubscribing arbitrary emails."""
-    return hmac.new(
-        _UNSUBSCRIBE_SECRET.encode(), email.lower().encode(), hashlib.sha256
-    ).hexdigest()[:32]
+    return hmac.new(_UNSUBSCRIBE_SECRET.encode(), email.lower().encode(), hashlib.sha256).hexdigest()[:32]
 
 
 def _get_signed_unsubscribe_url(email: str) -> str:
@@ -49,7 +47,11 @@ def _casl_compliant_footer(include_gst: bool = False) -> str:
     - Excise Tax Act: GST/HST registration number on receipts
     - Quebec Law 25: Privacy officer contact
     """
-    gst_line = f'<p style="margin: 0 0 8px 0; font-size: 11px; color: rgba(255,255,255,0.35);">GST/HST Registration: {EmailConfig.GST_HST_NUMBER}</p>' if include_gst else ''
+    gst_line = (
+        f'<p style="margin: 0 0 8px 0; font-size: 11px; color: rgba(255,255,255,0.35);">GST/HST Registration: {EmailConfig.GST_HST_NUMBER}</p>'
+        if include_gst
+        else ""
+    )
     return f"""
         <tr><td bgcolor="#1a1a2e" style="background-color: #1a1a2e; padding: 32px 40px; text-align: center;">
             <div style="margin-bottom: 16px;">
@@ -65,6 +67,7 @@ def _casl_compliant_footer(include_gst: bool = False) -> str:
             </div>
         </td></tr>"""
 
+
 def get_order_confirmation_email(order_data, order_id=None):
     """Generate HTML email for customer order confirmation
 
@@ -72,16 +75,16 @@ def get_order_confirmation_email(order_data, order_id=None):
         order_data: Dict containing order information
         order_id: Optional order ID (can be in order_data[Fields.ORDER_ID] instead)
     """
-    oid = order_data.get(Fields.ORDER_ID, order_id or 'N/A')
+    oid = order_data.get(Fields.ORDER_ID, order_id or "N/A")
     short_oid = oid[:8] if len(oid) > 8 else oid
 
     items_html = ""
     for i, item in enumerate(order_data.get(Fields.ITEMS, [])):
-        safe_name = html.escape(str(item.get(Fields.NAME, 'Product')))
+        safe_name = html.escape(str(item.get(Fields.NAME, "Product")))
         qty = item.get(Fields.QUANTITY, 1)
         price = item.get(Fields.PRICE, 0)
         line_total = price * qty
-        bg = '#f8f9ff' if i % 2 == 0 else '#ffffff'
+        bg = "#f8f9ff" if i % 2 == 0 else "#ffffff"
         items_html += f"""
         <tr style="background: {bg};">
             <td style="padding: 14px 16px; font-size: 14px; color: #1a1a2e;">
@@ -104,8 +107,8 @@ def get_order_confirmation_email(order_data, order_id=None):
     num_items = sum(item.get(Fields.QUANTITY, 1) for item in order_data.get(Fields.ITEMS, []))
 
     # Build itemized tax breakdown (Instacart-style: show GST, HST, PST, QST separately)
-    tax_rows_html = ''
-    if len(taxes_dict) > 1 or (len(taxes_dict) == 1 and list(taxes_dict.keys())[0] != 'HST'):
+    tax_rows_html = ""
+    if len(taxes_dict) > 1 or (len(taxes_dict) == 1 and list(taxes_dict.keys())[0] != "HST"):
         for tax_name, tax_amount in sorted(taxes_dict.items()):
             tax_rows_html += f"""
                         <tr>
@@ -115,19 +118,20 @@ def get_order_confirmation_email(order_data, order_id=None):
 
     delivery_info = order_data.get(Fields.SHIPPING_ADDRESS, {})
     address_parts = [
-        delivery_info.get(Fields.STREET, ''),
-        delivery_info.get(Fields.APARTMENT, ''),
+        delivery_info.get(Fields.STREET, ""),
+        delivery_info.get(Fields.APARTMENT, ""),
         f"{delivery_info.get(Fields.CITY, '')}, {delivery_info.get(Fields.STATE, '')} {delivery_info.get(Fields.POSTAL_CODE, '')}",
         delivery_info.get(Fields.COUNTRY, AppConfig.DEFAULT_COUNTRY_NAME),
     ]
-    formatted_address = '<br>'.join(p for p in address_parts if p and p.strip())
-    phone_html = f"<br>📱 {delivery_info[Fields.PHONE_NUMBER]}" if delivery_info.get(Fields.PHONE_NUMBER) else ''
+    formatted_address = "<br>".join(p for p in address_parts if p and p.strip())
+    phone_html = f"<br>📱 {delivery_info[Fields.PHONE_NUMBER]}" if delivery_info.get(Fields.PHONE_NUMBER) else ""
 
-    order_date = datetime.now().strftime('%B %d, %Y at %I:%M %p')
+    order_date = datetime.now().strftime("%B %d, %Y at %I:%M %p")
 
     # CPA Ontario: estimated delivery date (7 business days from now as default)
     from datetime import timedelta
-    estimated_delivery = (datetime.now() + timedelta(days=10)).strftime('%B %d, %Y')
+
+    estimated_delivery = (datetime.now() + timedelta(days=10)).strftime("%B %d, %Y")
 
     return f"""
     <!DOCTYPE html>
@@ -203,7 +207,7 @@ def get_order_confirmation_email(order_data, order_id=None):
         <!-- ITEMS TABLE -->
         <tr><td style="padding: 28px 40px 0 40px;">
             <h2 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 1px;">
-                <span style="border-bottom: 3px solid #667EEA; padding-bottom: 6px;">{num_items} Item{'s' if num_items != 1 else ''} Ordered</span>
+                <span style="border-bottom: 3px solid #667EEA; padding-bottom: 6px;">{num_items} Item{"s" if num_items != 1 else ""} Ordered</span>
             </h2>
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-radius: 12px; overflow: hidden; border: 1px solid #e8ebf0;">
                 <thead>
@@ -228,7 +232,7 @@ def get_order_confirmation_email(order_data, order_id=None):
                 <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 20px 24px 4px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Subtotal ({num_items} item{'s' if num_items != 1 else ''})</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Subtotal ({num_items} item{"s" if num_items != 1 else ""})</td>
                             <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">${subtotal:.2f}</td>
                         </tr>
                         <tr>
@@ -301,6 +305,7 @@ def get_order_confirmation_email(order_data, order_id=None):
     </html>
     """
 
+
 def get_seller_notification_email(order_data, order_id=None, seller_id=None):
     """Generate HTML email for seller notification
 
@@ -309,23 +314,20 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
         order_id: Optional order ID (can be in order_data[Fields.ORDER_ID])
         seller_id: Seller ID to filter items — only shows this seller's items (multi-seller privacy)
     """
-    oid = order_data.get(Fields.ORDER_ID, order_id or 'N/A')
+    oid = order_data.get(Fields.ORDER_ID, order_id or "N/A")
     short_oid = oid[:8] if len(oid) > 8 else oid
 
     # CRITICAL: Filter items to show only this seller's items (multi-seller privacy)
     all_items = order_data.get(Fields.ITEMS, [])
-    if seller_id:
-        seller_items = [item for item in all_items if item.get(Fields.SELLER_ID) == seller_id]
-    else:
-        seller_items = all_items
+    seller_items = [item for item in all_items if item.get(Fields.SELLER_ID) == seller_id] if seller_id else all_items
 
     items_html = ""
     for i, item in enumerate(seller_items):
-        safe_name = html.escape(str(item.get(Fields.NAME, 'Product')))
+        safe_name = html.escape(str(item.get(Fields.NAME, "Product")))
         qty = item.get(Fields.QUANTITY, 1)
         price = item.get(Fields.PRICE, 0)
         line_total = price * qty
-        bg = '#f8f9ff' if i % 2 == 0 else '#ffffff'
+        bg = "#f8f9ff" if i % 2 == 0 else "#ffffff"
         items_html += f"""
         <tr style="background: {bg};">
             <td style="padding: 14px 16px; font-size: 14px; color: #1a1a2e;">
@@ -353,16 +355,16 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
 
     delivery_info = order_data.get(Fields.SHIPPING_ADDRESS, {})
     addr_parts = [
-        delivery_info.get(Fields.STREET, ''),
-        delivery_info.get(Fields.APARTMENT, ''),
+        delivery_info.get(Fields.STREET, ""),
+        delivery_info.get(Fields.APARTMENT, ""),
         f"{delivery_info.get(Fields.CITY, '')}, {delivery_info.get(Fields.STATE, '')} {delivery_info.get(Fields.POSTAL_CODE, '')}",
         delivery_info.get(Fields.COUNTRY, AppConfig.DEFAULT_COUNTRY_NAME),
     ]
-    address_html = '<br>'.join(p for p in addr_parts if p and p.strip())
-    phone_html = f"<br>📱 {delivery_info[Fields.PHONE_NUMBER]}" if delivery_info.get(Fields.PHONE_NUMBER) else ''
+    address_html = "<br>".join(p for p in addr_parts if p and p.strip())
+    phone_html = f"<br>📱 {delivery_info[Fields.PHONE_NUMBER]}" if delivery_info.get(Fields.PHONE_NUMBER) else ""
 
-    order_date = datetime.now().strftime('%B %d, %Y at %I:%M %p')
-    customer_email = html.escape(order_data.get(Fields.CUSTOMER_EMAIL, 'N/A'))
+    order_date = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    customer_email = html.escape(order_data.get(Fields.CUSTOMER_EMAIL, "N/A"))
 
     return f"""
     <!DOCTYPE html>
@@ -556,7 +558,7 @@ def _email_wrapper(title: str, content_html: str, include_gst: bool = False) -> 
     """
 
 
-def _hero_header(icon: str, heading: str, subtext: str, icon_bg: str = 'rgba(102, 126, 234, 0.2)') -> str:
+def _hero_header(icon: str, heading: str, subtext: str, icon_bg: str = "rgba(102, 126, 234, 0.2)") -> str:
     """Generate a branded hero header section for emails."""
     return f"""
         <tr><td bgcolor="#1F235A" style="background-color: #1F235A; background-image: linear-gradient(135deg, #1F235A 0%, #2F3B8F 40%, #764BA2 100%); padding: 48px 40px 40px 40px; text-align: center;">
@@ -575,31 +577,31 @@ def _hero_header(icon: str, heading: str, subtext: str, icon_bg: str = 'rgba(102
 def _order_status_tracker(active_step: int) -> str:
     """Generate order status progress tracker. active_step: 1=Confirmed, 2=Processing, 3=Shipped, 4=Delivered."""
     steps = [
-        ('Confirmed', '✓'),
-        ('Processing', '📦'),
-        ('Shipped', '🚚'),
-        ('Delivered', '🏠'),
+        ("Confirmed", "✓"),
+        ("Processing", "📦"),
+        ("Shipped", "🚚"),
+        ("Delivered", "🏠"),
     ]
-    rows = ''
+    rows = ""
     for i, (label, icon) in enumerate(steps):
         step_num = i + 1
         if step_num <= active_step:
-            bg = 'background: linear-gradient(135deg, #667EEA, #764BA2);'
-            color = '#667EEA'
-            weight = '700'
-            text_color = 'white'
+            bg = "background: linear-gradient(135deg, #667EEA, #764BA2);"
+            color = "#667EEA"
+            weight = "700"
+            text_color = "white"
         else:
-            bg = 'background-color: #e8ebf0;'
-            color = '#999999'
-            weight = '600'
-            text_color = '#999999'
+            bg = "background-color: #e8ebf0;"
+            color = "#999999"
+            weight = "600"
+            text_color = "#999999"
         rows += f"""
                 <td width="25%" align="center">
                     <div style="width: 36px; height: 36px; {bg} border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: {text_color};">{icon}</div>
                     <div style="font-size: 11px; font-weight: {weight}; color: {color}; text-transform: uppercase; letter-spacing: 0.5px;">{label}</div>
                 </td>"""
 
-    pct = ['12%', '37%', '62%', '100%'][active_step - 1] if active_step > 0 else '0%'
+    pct = ["12%", "37%", "62%", "100%"][active_step - 1] if active_step > 0 else "0%"
     return f"""
         <tr><td style="padding: 32px 40px 24px 40px;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
@@ -614,7 +616,7 @@ def _order_status_tracker(active_step: int) -> str:
     """
 
 
-def _cta_button(url: str, label: str, color: str = '#667EEA') -> str:
+def _cta_button(url: str, label: str, color: str = "#667EEA") -> str:
     """Generate a pill-shaped CTA button."""
     return f"""
         <tr><td style="padding: 0 40px 32px 40px; text-align: center;">
@@ -630,14 +632,14 @@ def _cta_button(url: str, label: str, color: str = '#667EEA') -> str:
 def _items_summary_table(items: list) -> str:
     """Generate a table of order items for receipt emails."""
     if not items:
-        return ''
-    rows = ''
+        return ""
+    rows = ""
     for i, item in enumerate(items):
-        safe_name = html.escape(str(item.get(Fields.NAME, 'Product')))
+        safe_name = html.escape(str(item.get(Fields.NAME, "Product")))
         qty = item.get(Fields.QUANTITY, 1)
         price = item.get(Fields.PRICE, 0)
         line_total = price * qty
-        bg = '#f8f9ff' if i % 2 == 0 else '#ffffff'
+        bg = "#f8f9ff" if i % 2 == 0 else "#ffffff"
         rows += f"""
         <tr style="background-color: {bg};">
             <td style="padding: 14px 16px; font-size: 14px; color: #1a1a2e;">
@@ -707,7 +709,7 @@ def _price_summary_block(subtotal: float, shipping: float, taxes: float, total: 
     """
 
 
-def get_order_shipped_email(order_data: dict, order_id: str, tracking_number: str = 'N/A', carrier: str = 'N/A') -> str:
+def get_order_shipped_email(order_data: dict, order_id: str, tracking_number: str = "N/A", carrier: str = "N/A") -> str:
     """Generate branded HTML email for order shipped notification."""
     short_oid = order_id[:8] if len(order_id) > 8 else order_id
     safe_tracking = html.escape(str(tracking_number))
@@ -719,7 +721,7 @@ def get_order_shipped_email(order_data: dict, order_id: str, tracking_number: st
     taxes = sum(order_data.get(Fields.TAXES, {}).values())
     total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
 
-    content = _hero_header('🚚', 'Your Order Has Shipped!', 'Your items are on the way.', 'rgba(59, 130, 246, 0.2)')
+    content = _hero_header("🚚", "Your Order Has Shipped!", "Your items are on the way.", "rgba(59, 130, 246, 0.2)")
     content += _order_status_tracker(3)
 
     content += f"""
@@ -752,24 +754,26 @@ def get_order_shipped_email(order_data: dict, order_id: str, tracking_number: st
 
     content += _items_summary_table(items)
     content += _price_summary_block(subtotal, shipping, taxes, total)
-    content += _cta_button(f'{APP_BASE_URL}/orders', 'Track Your Order →')
+    content += _cta_button(f"{APP_BASE_URL}/orders", "Track Your Order →")
 
-    return _email_wrapper('Order Shipped', content, include_gst=True)
+    return _email_wrapper("Order Shipped", content, include_gst=True)
 
 
 def get_order_in_transit_email(order_data: dict, order_id: str) -> str:
     """Generate branded HTML email for order in-transit notification."""
     short_oid = order_id[:8] if len(order_id) > 8 else order_id
 
-    tracking_number = order_data.get(Fields.TRACKING_NUMBER, 'N/A')
-    carrier = order_data.get(Fields.CARRIER, 'N/A')
+    tracking_number = order_data.get(Fields.TRACKING_NUMBER, "N/A")
+    carrier = order_data.get(Fields.CARRIER, "N/A")
     safe_tracking = html.escape(str(tracking_number))
     safe_carrier = html.escape(str(carrier))
 
     items = order_data.get(Fields.ITEMS, [])
     total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
 
-    content = _hero_header('🚚', 'Your Order Is In Transit!', 'Your package is on its way to you.', 'rgba(59, 130, 246, 0.2)')
+    content = _hero_header(
+        "🚚", "Your Order Is In Transit!", "Your package is on its way to you.", "rgba(59, 130, 246, 0.2)"
+    )
     content += _order_status_tracker(3)  # Between shipped and delivered
 
     content += f"""
@@ -800,13 +804,13 @@ def get_order_in_transit_email(order_data: dict, order_id: str) -> str:
         </td></tr>
 
         <tr><td style="padding: 0 40px 16px 40px; text-align: center;">
-            <p style="margin: 0; font-size: 13px; color: #6B7280; line-height: 1.6;">Your package with {len(items)} item{'s' if len(items) != 1 else ''} worth <strong>${total:.2f} CAD</strong> is on the move. You'll receive another update once it's delivered.</p>
+            <p style="margin: 0; font-size: 13px; color: #6B7280; line-height: 1.6;">Your package with {len(items)} item{"s" if len(items) != 1 else ""} worth <strong>${total:.2f} CAD</strong> is on the move. You'll receive another update once it's delivered.</p>
         </td></tr>
     """
 
-    content += _cta_button(f'{APP_BASE_URL}/orders', 'Track Your Order →')
+    content += _cta_button(f"{APP_BASE_URL}/orders", "Track Your Order →")
 
-    return _email_wrapper('Order In Transit', content, include_gst=False)
+    return _email_wrapper("Order In Transit", content, include_gst=False)
 
 
 def get_order_delivered_email(order_data: dict, order_id: str) -> str:
@@ -821,7 +825,9 @@ def get_order_delivered_email(order_data: dict, order_id: str) -> str:
 
     from schema_constants import BusinessRules
 
-    content = _hero_header('🏠', 'Your Order Has Been Delivered!', 'We hope you love your items.', 'rgba(16, 185, 129, 0.2)')
+    content = _hero_header(
+        "🏠", "Your Order Has Been Delivered!", "We hope you love your items.", "rgba(16, 185, 129, 0.2)"
+    )
     content += _order_status_tracker(4)
 
     content += f"""
@@ -858,12 +864,12 @@ def get_order_delivered_email(order_data: dict, order_id: str) -> str:
         </td></tr>
     """
 
-    content += _cta_button(f'{APP_BASE_URL}/orders', 'Confirm Receipt →', '#10B981')
+    content += _cta_button(f"{APP_BASE_URL}/orders", "Confirm Receipt →", "#10B981")
 
-    return _email_wrapper('Order Delivered', content, include_gst=True)
+    return _email_wrapper("Order Delivered", content, include_gst=True)
 
 
-def get_order_cancelled_email(order_data: dict, order_id: str, reason: str = 'Unknown') -> str:
+def get_order_cancelled_email(order_data: dict, order_id: str, reason: str = "Unknown") -> str:
     """Generate branded HTML email for order cancelled notification."""
     short_oid = order_id[:8] if len(order_id) > 8 else order_id
     safe_reason = html.escape(str(reason))
@@ -871,7 +877,7 @@ def get_order_cancelled_email(order_data: dict, order_id: str, reason: str = 'Un
     items = order_data.get(Fields.ITEMS, [])
     total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
 
-    content = _hero_header('❌', 'Order Cancelled', 'Your order has been cancelled.', 'rgba(220, 38, 38, 0.2)')
+    content = _hero_header("❌", "Order Cancelled", "Your order has been cancelled.", "rgba(220, 38, 38, 0.2)")
 
     content += f"""
         <!-- Cancellation details -->
@@ -904,9 +910,9 @@ def get_order_cancelled_email(order_data: dict, order_id: str, reason: str = 'Un
     """
 
     content += _items_summary_table(items)
-    content += _cta_button(f'{APP_BASE_URL}/orders', 'View Orders →')
+    content += _cta_button(f"{APP_BASE_URL}/orders", "View Orders →")
 
-    return _email_wrapper('Order Cancelled', content, include_gst=False)
+    return _email_wrapper("Order Cancelled", content, include_gst=False)
 
 
 def get_order_processing_email(order_data: dict, order_id: str) -> str:
@@ -919,7 +925,12 @@ def get_order_processing_email(order_data: dict, order_id: str) -> str:
     taxes = sum(order_data.get(Fields.TAXES, {}).values())
     total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
 
-    content = _hero_header('⚙️', 'Your Order Is Being Processed!', 'Payment confirmed — sellers are preparing your items.', 'rgba(99, 102, 241, 0.2)')
+    content = _hero_header(
+        "⚙️",
+        "Your Order Is Being Processed!",
+        "Payment confirmed — sellers are preparing your items.",
+        "rgba(99, 102, 241, 0.2)",
+    )
     content += _order_status_tracker(2)
 
     content += f"""
@@ -945,9 +956,9 @@ def get_order_processing_email(order_data: dict, order_id: str) -> str:
 
     content += _items_summary_table(items)
     content += _price_summary_block(subtotal, shipping, taxes, total)
-    content += _cta_button(f'{APP_BASE_URL}/orders', 'View Order →')
+    content += _cta_button(f"{APP_BASE_URL}/orders", "View Order →")
 
-    return _email_wrapper('Order Processing', content, include_gst=True)
+    return _email_wrapper("Order Processing", content, include_gst=True)
 
 
 def get_order_refunded_email(order_data: dict, order_id: str, refund_amount_cents: int = 0) -> str:
@@ -958,7 +969,12 @@ def get_order_refunded_email(order_data: dict, order_id: str, refund_amount_cent
     total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
     refund_amount = refund_amount_cents / 100 if refund_amount_cents else total
 
-    content = _hero_header('💰', 'Your Refund Has Been Processed', 'A full refund has been issued for your order.', 'rgba(16, 185, 129, 0.2)')
+    content = _hero_header(
+        "💰",
+        "Your Refund Has Been Processed",
+        "A full refund has been issued for your order.",
+        "rgba(16, 185, 129, 0.2)",
+    )
 
     content += f"""
         <!-- Refund details -->
@@ -991,9 +1007,9 @@ def get_order_refunded_email(order_data: dict, order_id: str, refund_amount_cent
     """
 
     content += _items_summary_table(items)
-    content += _cta_button(f'{APP_BASE_URL}/orders', 'View Orders →')
+    content += _cta_button(f"{APP_BASE_URL}/orders", "View Orders →")
 
-    return _email_wrapper('Order Refunded', content, include_gst=False)
+    return _email_wrapper("Order Refunded", content, include_gst=False)
 
 
 def get_order_partially_refunded_email(order_data: dict, order_id: str, refund_amount_cents: int = 0) -> str:
@@ -1004,7 +1020,9 @@ def get_order_partially_refunded_email(order_data: dict, order_id: str, refund_a
     total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
     refund_amount = refund_amount_cents / 100 if refund_amount_cents else 0
 
-    content = _hero_header('💸', 'Partial Refund Processed', 'A partial refund has been issued for your order.', 'rgba(245, 158, 11, 0.2)')
+    content = _hero_header(
+        "💸", "Partial Refund Processed", "A partial refund has been issued for your order.", "rgba(245, 158, 11, 0.2)"
+    )
 
     content += f"""
         <!-- Partial refund details -->
@@ -1041,9 +1059,9 @@ def get_order_partially_refunded_email(order_data: dict, order_id: str, refund_a
     """
 
     content += _items_summary_table(items)
-    content += _cta_button(f'{APP_BASE_URL}/orders', 'View Orders →')
+    content += _cta_button(f"{APP_BASE_URL}/orders", "View Orders →")
 
-    return _email_wrapper('Partial Refund', content, include_gst=False)
+    return _email_wrapper("Partial Refund", content, include_gst=False)
 
 
 def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_EMAIL, attachments=None):
@@ -1066,34 +1084,24 @@ def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_E
                 logger.info(f"   📎 With {len(attachments)} attachment(s): {[a.get('Filename') for a in attachments]}")
             return True
 
-        mailjet = Client(
-            auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY),
-            version=EmailConfig.MAILJET_API_VERSION
-        )
+        mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version=EmailConfig.MAILJET_API_VERSION)
 
         message = {
-            "From": {
-                "Email": from_email,
-                "Name": EmailConfig.SENDER_NAME
-            },
-            "To": [
-                {
-                    "Email": to_email
-                }
-            ],
+            "From": {"Email": from_email, "Name": EmailConfig.SENDER_NAME},
+            "To": [{"Email": to_email}],
             "Subject": subject,
             "HTMLPart": html_content,
             "Headers": {
                 "List-Unsubscribe": f"<{_get_signed_unsubscribe_url(to_email)}>, <mailto:{EmailConfig.SUPPORT_EMAIL}?subject=Unsubscribe>",
-                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"
-            }
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            },
         }
 
         # Attach files (e.g. PDF invoice)
         if attachments:
             message["Attachments"] = attachments
 
-        data = {'Messages': [message]}
+        data = {"Messages": [message]}
 
         result = mailjet.send.create(data=data)
         if result.status_code == 200:
@@ -1122,16 +1130,21 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
 
         customer_email = order_data.get(Fields.CUSTOMER_EMAIL)
         total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
-        items_summary = ', '.join([f"{html.escape(str(item.get(Fields.NAME, '')))} x{item.get(Fields.QUANTITY, 1)}"
-                                   for item in order_data.get(Fields.ITEMS, [])[:3]])
+        items_summary = ", ".join(
+            [
+                f"{html.escape(str(item.get(Fields.NAME, '')))} x{item.get(Fields.QUANTITY, 1)}"
+                for item in order_data.get(Fields.ITEMS, [])[:3]
+            ]
+        )
 
         # Email to buyer
         buyer_message = {
-            'Messages': [{
-                'From': {'Email': EmailConfig.SUPPORT_EMAIL, 'Name': EmailConfig.SENDER_NAME},
-                'To': [{'Email': customer_email}],
-                'Subject': f'Order {order_id[:8]} - Authorization Expired',
-                'HTMLPart': f"""
+            "Messages": [
+                {
+                    "From": {"Email": EmailConfig.SUPPORT_EMAIL, "Name": EmailConfig.SENDER_NAME},
+                    "To": [{"Email": customer_email}],
+                    "Subject": f"Order {order_id[:8]} - Authorization Expired",
+                    "HTMLPart": f"""
                 <html>
                 <body style="font-family: Arial, sans-serif; color: #333;">
                     <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -1156,8 +1169,9 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
                     </div>
                 </body>
                 </html>
-                """
-            }]
+                """,
+                }
+            ]
         }
 
         mailjet.send.create(data=buyer_message)
@@ -1167,7 +1181,9 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
         logger.warning(f"⚠️ Failed to send authorization expired email: {str(e)}")
 
 
-def send_payment_capture_failed_email(order_id: str, customer_email: str, customer_name: str, amount: float, error_message: str):
+def send_payment_capture_failed_email(
+    order_id: str, customer_email: str, customer_name: str, amount: float, error_message: str
+):
     """
     Send email notification when payment capture fails.
     Instructs buyer to update payment method or contact support.
@@ -1182,12 +1198,12 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
 
     # AUDIT FIX: Guard against missing Mailjet credentials (prevents crash)
     if not MAILJET_API_KEY or not MAILJET_SECRET_KEY:
-        MAILJET_CREDENTIAL_REDACTED('Mailjet not configured — skipping capture failure email')
+        MAILJET_CREDENTIAL_REDACTED("Mailjet not configured — skipping capture failure email")
         return
 
     # Sanitize user-controlled inputs before HTML injection
-    safe_name = html.escape(str(customer_name or ''))
-    safe_error = html.escape(str(error_message or 'Unknown error'))
+    safe_name = html.escape(str(customer_name or ""))
+    safe_error = html.escape(str(error_message or "Unknown error"))
 
     # Initialize Mailjet client
     mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version=EmailConfig.MAILJET_API_VERSION)
@@ -1282,18 +1298,22 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
     """
 
     try:
-        result = mailjet.send.create(data={
-            'Messages': [{
-                'From': {'Email': EmailConfig.SUPPORT_EMAIL, 'Name': EmailConfig.SENDER_NAME},
-                'To': [{'Email': customer_email, 'Name': customer_name}],
-                'Subject': subject,
-                'HTMLPart': html_body,
-                'Headers': {
-                    'List-Unsubscribe': f'<{_get_signed_unsubscribe_url(customer_email)}>, <mailto:{EmailConfig.SUPPORT_EMAIL}?subject=Unsubscribe>',
-                    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
-                }
-            }]
-        })
+        result = mailjet.send.create(
+            data={
+                "Messages": [
+                    {
+                        "From": {"Email": EmailConfig.SUPPORT_EMAIL, "Name": EmailConfig.SENDER_NAME},
+                        "To": [{"Email": customer_email, "Name": customer_name}],
+                        "Subject": subject,
+                        "HTMLPart": html_body,
+                        "Headers": {
+                            "List-Unsubscribe": f"<{_get_signed_unsubscribe_url(customer_email)}>, <mailto:{EmailConfig.SUPPORT_EMAIL}?subject=Unsubscribe>",
+                            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+                        },
+                    }
+                ]
+            }
+        )
         logger.info(f"✅ Capture failure email sent to {customer_email}")
         return result
     except Exception as e:
@@ -1301,7 +1321,9 @@ def send_payment_capture_failed_email(order_id: str, customer_email: str, custom
         raise
 
 
-def send_3ds_authentication_email(order_id: str, customer_email: str, customer_name: str, authentication_url: str, amount: float):
+def send_3ds_authentication_email(
+    order_id: str, customer_email: str, customer_name: str, authentication_url: str, amount: float
+):
     """
     Send email with 3DS authentication link for Airwallex payments.
     Required when card issuer needs additional verification.
@@ -1312,13 +1334,16 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
 
     # AUDIT FIX: Validate authentication URL domain to prevent phishing
     from urllib.parse import urlparse
+
     parsed_url = urlparse(authentication_url)
     ALLOWED_3DS_DOMAINS = {
-        'checkout.airwallex.com', 'pci-host.airwallex.com',
-        'pci-api.airwallex.com', 'api.airwallex.com',
+        "checkout.airwallex.com",
+        "pci-host.airwallex.com",
+        "pci-api.airwallex.com",
+        "api.airwallex.com",
     }
     if parsed_url.hostname not in ALLOWED_3DS_DOMAINS:
-        logger.critical(f'SECURITY: Blocked suspicious 3DS URL domain: {parsed_url.hostname}')
+        logger.critical(f"SECURITY: Blocked suspicious 3DS URL domain: {parsed_url.hostname}")
         return
 
     if IS_EMULATOR and not FORCE_REAL_EMAIL:
@@ -1327,7 +1352,7 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
         return
 
     # Sanitize user-controlled values to prevent HTML injection
-    safe_name = html.escape(str(customer_name or ''))
+    safe_name = html.escape(str(customer_name or ""))
 
     # Initialize Mailjet client
     mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version=EmailConfig.MAILJET_API_VERSION)
@@ -1443,19 +1468,22 @@ def send_3ds_authentication_email(order_id: str, customer_email: str, customer_n
     # RETRY LOGIC: We do NOT catch exceptions here.
     # Cloud Functions will retry execution if an exception is raised.
     # This prevents email loss during temporary Mailjet outages.
-    result = mailjet.send.create(data={
-        'Messages': [{
-            'From': {'Email': EmailConfig.SUPPORT_EMAIL, 'Name': EmailConfig.SENDER_NAME_SECURITY},
-            'To': [{'Email': customer_email, 'Name': customer_name}],
-            'Subject': subject,
-            'HTMLPart': html_body,
-            'Headers': {
-                'List-Unsubscribe': f'<{_get_signed_unsubscribe_url(customer_email)}>, <mailto:{EmailConfig.SUPPORT_EMAIL}?subject=Unsubscribe>',
-                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
-            }
-        }]
-    })
+    result = mailjet.send.create(
+        data={
+            "Messages": [
+                {
+                    "From": {"Email": EmailConfig.SUPPORT_EMAIL, "Name": EmailConfig.SENDER_NAME_SECURITY},
+                    "To": [{"Email": customer_email, "Name": customer_name}],
+                    "Subject": subject,
+                    "HTMLPart": html_body,
+                    "Headers": {
+                        "List-Unsubscribe": f"<{_get_signed_unsubscribe_url(customer_email)}>, <mailto:{EmailConfig.SUPPORT_EMAIL}?subject=Unsubscribe>",
+                        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+                    },
+                }
+            ]
+        }
+    )
 
     logger.info(f"✅ 3DS authentication email sent to {customer_email}")
     return result
-

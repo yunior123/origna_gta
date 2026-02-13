@@ -151,7 +151,7 @@ class _SellerOrderCard extends ConsumerWidget {
 
     final sellerTotal = sellerItems.fold<double>(0.0, (acc, item) => acc + (item.price * item.quantity));
     // Platform fee and seller net are computed by the backend — display from order data
-    final platformFee = order.platformFeeTotal > 0 ? (order.platformFeeTotal / 100.0) : sellerTotal * 0.025;
+    final platformFee = order.platformFeeTotalCents > 0 ? (order.platformFeeTotalCents / 100.0) : sellerTotal * 0.025;
     final sellerNet = sellerTotal - platformFee;
 
     return Container(

@@ -15,8 +15,6 @@ TODO(post-launch): Evaluate Airwallex activation or remove entirely.
 """
 
 import logging
-
-logger = logging.getLogger(__name__)
 from typing import Any, ClassVar
 
 from firebase_functions import https_fn
@@ -35,6 +33,8 @@ from schema_constants import (
 from services.rate_limiter import RateLimiter
 from utils.function_options import DEFAULT_OPTIONS
 
+logger = logging.getLogger(__name__)
+
 # ============================================================================
 # LAZY INITIALIZATION
 # ============================================================================
@@ -42,20 +42,24 @@ from utils.function_options import DEFAULT_OPTIONS
 _db = None
 _firestore = None
 
+
 def get_db():
     """Get Firestore client (lazy initialization)."""
     global _db, _firestore
     if _db is None:
         from firebase_admin import firestore as fs
+
         _firestore = fs
         _db = fs.client()
     return _db
+
 
 def get_server_timestamp():
     """Get Firestore SERVER_TIMESTAMP (lazy initialization)."""
     global _firestore
     if _firestore is None:
         from firebase_admin import firestore as fs
+
         _firestore = fs
     return _firestore.SERVER_TIMESTAMP
 
@@ -69,6 +73,7 @@ def _is_provider_configured(provider: str) -> tuple:
     """
     if provider == PaymentProviderValues.STRIPE:
         from config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+
         missing = []
         if not STRIPE_SECRET_KEY:
             missing.append("STRIPE_SECRET_KEY")
@@ -78,6 +83,7 @@ def _is_provider_configured(provider: str) -> tuple:
 
     elif provider == PaymentProviderValues.AIRWALLEX:
         from config import AIRWALLEX_API_KEY, AIRWALLEX_CLIENT_ID
+
         missing = []
         if not AIRWALLEX_API_KEY:
             missing.append("AIRWALLEX_API_KEY")
@@ -91,6 +97,7 @@ def _is_provider_configured(provider: str) -> tuple:
 # ============================================================================
 # PAYMENT PROVIDER CONSTANTS
 # ============================================================================
+
 
 class PaymentProvider:
     """Supported payment providers."""
@@ -125,6 +132,7 @@ DEFAULT_PROVIDER_CONFIG = {
 # UTILITY FUNCTIONS (Used by other handlers)
 # ============================================================================
 
+
 def is_provider_enabled(provider: str) -> bool:
     """
     Check if a payment provider is enabled.
@@ -155,7 +163,9 @@ def is_provider_enabled(provider: str) -> bool:
         config_data = config_doc.to_dict()
         provider_config = config_data.get(provider, {})
 
-        return provider_config.get(ApiKeys.ENABLED, DEFAULT_PROVIDER_CONFIG.get(provider, {}).get(ApiKeys.ENABLED, False))
+        return provider_config.get(
+            ApiKeys.ENABLED, DEFAULT_PROVIDER_CONFIG.get(provider, {}).get(ApiKeys.ENABLED, False)
+        )
 
     except Exception as e:
         logger.error(f"Error checking provider status: {str(e)}")
@@ -212,14 +222,14 @@ def require_provider_enabled(provider: str) -> None:
     if not is_provider_enabled(provider):
         provider_name = DEFAULT_PROVIDER_CONFIG.get(provider, {}).get(Fields.NAME, provider)
         raise https_fn.HttpsError(
-            "failed-precondition",
-            f"{provider_name} payments are currently disabled by administrator"
+            "failed-precondition", f"{provider_name} payments are currently disabled by administrator"
         )
 
 
 # ============================================================================
 # ADMIN HELPER
 # ============================================================================
+
 
 def _require_admin(req: https_fn.CallableRequest) -> tuple:
     """
@@ -253,6 +263,7 @@ def _require_admin(req: https_fn.CallableRequest) -> tuple:
 # ADMIN FUNCTIONS
 # ============================================================================
 
+
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def get_payment_providers(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
@@ -273,11 +284,10 @@ def get_payment_providers(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limit: 30/min for admin reads
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=admin_id, action='get_payment_providers',
-        max_requests=30, window_minutes=1, fail_closed=True
+        identifier=admin_id, action="get_payment_providers", max_requests=30, window_minutes=1, fail_closed=True
     )
     if not allowed:
-        raise https_fn.HttpsError('resource-exhausted', msg)
+        raise https_fn.HttpsError("resource-exhausted", msg)
 
     try:
         config_ref = get_db().collection(Collections.CONFIG).document(Documents.PAYMENT_PROVIDERS)
@@ -295,15 +305,11 @@ def get_payment_providers(req: https_fn.CallableRequest) -> dict[str, Any]:
                 **default,
                 **stored,
                 ApiKeys.CONFIGURED: is_configured,
-                ApiKeys.MISSING_KEYS: missing_keys if not is_configured else []
+                ApiKeys.MISSING_KEYS: missing_keys if not is_configured else [],
             }
 
         # Return dict directly for on_call functions (not Response object)
-        return {
-            ApiKeys.SUCCESS: True,
-            ApiKeys.PROVIDERS: providers,
-            ApiKeys.ENABLED_PROVIDERS: get_enabled_providers()
-        }
+        return {ApiKeys.SUCCESS: True, ApiKeys.PROVIDERS: providers, ApiKeys.ENABLED_PROVIDERS: get_enabled_providers()}
 
     except Exception as e:
         logger.error(f"get_payment_providers error: {str(e)}")
@@ -328,11 +334,10 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limit: 5/min for admin writes (critical operation)
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=admin_id, action='update_payment_provider',
-        max_requests=5, window_minutes=1, fail_closed=True
+        identifier=admin_id, action="update_payment_provider", max_requests=5, window_minutes=1, fail_closed=True
     )
     if not allowed:
-        raise https_fn.HttpsError('resource-exhausted', msg)
+        raise https_fn.HttpsError("resource-exhausted", msg)
 
     provider = req.data.get(ApiKeys.PROVIDER)
     enabled = req.data.get(ApiKeys.ENABLED)
@@ -341,8 +346,7 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Validate inputs
     if provider not in PaymentProvider.ALL:
         raise https_fn.HttpsError(
-            "invalid-argument",
-            f"Invalid provider. Must be one of: {', '.join(PaymentProvider.ALL)}"
+            "invalid-argument", f"Invalid provider. Must be one of: {', '.join(PaymentProvider.ALL)}"
         )
 
     if not isinstance(enabled, bool):
@@ -356,7 +360,7 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError(
                 "failed-precondition",
                 f"{provider_name} is not configured. Missing API keys: {', '.join(missing_keys)}. "
-                f"Please configure the {provider_name} account first."
+                f"Please configure the {provider_name} account first.",
             )
 
     # Safety check: don't allow disabling all providers
@@ -366,24 +370,28 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         if len(remaining) == 0:
             raise https_fn.HttpsError(
-                "failed-precondition",
-                "Cannot disable all payment providers. At least one must remain enabled."
+                "failed-precondition", "Cannot disable all payment providers. At least one must remain enabled."
             )
 
         # AUDIT FIX (MEDIUM-030): Block disabling a provider with active authorized orders.
         # Without this, orders paid but not yet captured would be stranded because
         # capture_payment() checks require_provider_enabled() first.
         from schema_constants import PaymentStatusValues as PSV
-        active_orders = get_db().collection(Collections.ORDERS)\
-            .where(Fields.PAYMENT_PROVIDER, "==", provider)\
-            .where(Fields.PAYMENT_STATUS, "in", [PSV.AUTHORIZED, PSV.CAPTURING])\
-            .limit(1).get()
+
+        active_orders = (
+            get_db()
+            .collection(Collections.ORDERS)
+            .where(Fields.PAYMENT_PROVIDER, "==", provider)
+            .where(Fields.PAYMENT_STATUS, "in", [PSV.AUTHORIZED, PSV.CAPTURING])
+            .limit(1)
+            .get()
+        )
 
         if len(active_orders) > 0:
             raise https_fn.HttpsError(
                 "failed-precondition",
                 f"Cannot disable {provider}: there are orders with active authorizations. "
-                f"Wait for all pending orders to be captured or expired before disabling."
+                f"Wait for all pending orders to be captured or expired before disabling.",
             )
 
     try:
@@ -407,34 +415,38 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
         config_ref.set(config_data, merge=True)
 
         # Log the change
-        get_db().collection(Collections.ADMIN_LOGS).add({
-            Fields.ACTION: AdminActionValues.PAYMENT_PROVIDER_UPDATE,
-            Fields.ADMIN_ID: admin_id,
-            Fields.PROVIDER: provider,
-            Fields.OLD_ENABLED: old_enabled,
-            Fields.NEW_ENABLED: enabled,
-            Fields.REASON: reason[:500] if reason else "",  # Limit reason length
-            Fields.TIMESTAMP: get_server_timestamp()
-        })
+        get_db().collection(Collections.ADMIN_LOGS).add(
+            {
+                Fields.ACTION: AdminActionValues.PAYMENT_PROVIDER_UPDATE,
+                Fields.ADMIN_ID: admin_id,
+                Fields.PROVIDER: provider,
+                Fields.OLD_ENABLED: old_enabled,
+                Fields.NEW_ENABLED: enabled,
+                Fields.REASON: reason[:500] if reason else "",  # Limit reason length
+                Fields.TIMESTAMP: get_server_timestamp(),
+            }
+        )
 
         # Log security alert if disabling
         if old_enabled and not enabled:
-            get_db().collection(Collections.SECURITY_ALERTS).add({
-                Fields.TYPE: SecurityAlertTypes.PAYMENT_PROVIDER_DISABLED,
-                Fields.SEVERITY: SeverityLevels.HIGH,
-                Fields.ADMIN_ID: admin_id,
-                Fields.PROVIDER: provider,
-                Fields.REASON: reason[:500] if reason else "",
-                Fields.TIMESTAMP: get_server_timestamp(),
-                Fields.RESOLVED: True
-            })
+            get_db().collection(Collections.SECURITY_ALERTS).add(
+                {
+                    Fields.TYPE: SecurityAlertTypes.PAYMENT_PROVIDER_DISABLED,
+                    Fields.SEVERITY: SeverityLevels.HIGH,
+                    Fields.ADMIN_ID: admin_id,
+                    Fields.PROVIDER: provider,
+                    Fields.REASON: reason[:500] if reason else "",
+                    Fields.TIMESTAMP: get_server_timestamp(),
+                    Fields.RESOLVED: True,
+                }
+            )
 
         # Return dict directly for on_call functions (not Response object)
         return {
             ApiKeys.SUCCESS: True,
             ApiKeys.PROVIDER: provider,
             ApiKeys.ENABLED: enabled,
-            ApiKeys.PROVIDER_NAME: DEFAULT_PROVIDER_CONFIG.get(provider, {}).get(Fields.NAME, provider)
+            ApiKeys.PROVIDER_NAME: DEFAULT_PROVIDER_CONFIG.get(provider, {}).get(Fields.NAME, provider),
         }
 
     except https_fn.HttpsError:
@@ -466,11 +478,10 @@ def get_provider_status(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Rate limit: 30/min per user (anti-scraping)
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action='get_provider_status',
-        max_requests=30, window_minutes=1, fail_closed=False
+        identifier=req.auth.uid, action="get_provider_status", max_requests=30, window_minutes=1, fail_closed=False
     )
     if not allowed:
-        raise https_fn.HttpsError('resource-exhausted', msg)
+        raise https_fn.HttpsError("resource-exhausted", msg)
 
     try:
         providers = {}
@@ -482,14 +493,11 @@ def get_provider_status(req: https_fn.CallableRequest) -> dict[str, Any]:
                 ApiKeys.ENABLED: is_provider_enabled(provider),
                 ApiKeys.CONFIGURED: is_configured,
                 Fields.NAME: default.get(Fields.NAME, provider),
-                ApiKeys.FEATURES: default.get(ApiKeys.FEATURES, [])
+                ApiKeys.FEATURES: default.get(ApiKeys.FEATURES, []),
             }
 
         # Return dict directly for on_call functions (not Response object)
-        return {
-            ApiKeys.SUCCESS: True,
-            ApiKeys.PROVIDERS: providers
-        }
+        return {ApiKeys.SUCCESS: True, ApiKeys.PROVIDERS: providers}
 
     except Exception as e:
         logger.error(f"get_provider_status error: {str(e)}")

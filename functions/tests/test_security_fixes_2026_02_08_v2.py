@@ -18,6 +18,7 @@ class TestStockRevalidationLogic:
     def test_helper_function_exists(self):
         """FIX-002: _restore_stock_and_cancel_order helper function exists."""
         from handlers.payment_stripe import _restore_stock_and_cancel_order
+
         assert callable(_restore_stock_and_cancel_order)
 
     def test_validation_logic_deactivated_product(self):
@@ -85,8 +86,8 @@ class TestEmailVerificationFix:
 class TestRateLimitingBehavior:
     """Tests rate limiting behavior with mocked limiter."""
 
-    @patch('handlers.payment_stripe.get_rate_limiter')
-    @patch('handlers.payment_stripe.get_db')
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    @patch("handlers.payment_stripe.get_db")
     def test_create_connect_account_rate_limit_rejected(self, mock_db, mock_get_limiter):
         """FIX-003: Rate limit rejected for create_connect_account."""
         from firebase_functions import https_fn
@@ -101,24 +102,21 @@ class TestRateLimitingBehavior:
         # Setup user lookup
         mock_user_doc = Mock()
         mock_user_doc.exists = True
-        mock_user_doc.to_dict.return_value = {
-            'email': 'test@example.com',
-            'stripeAccountId': 'acct_existing'
-        }
+        mock_user_doc.to_dict.return_value = {"email": "test@example.com", "stripeAccountId": "acct_existing"}
         mock_db.return_value.collection.return_value.document.return_value.get.return_value = mock_user_doc
 
         req = Mock()
-        req.auth.uid = 'user_123'
+        req.auth.uid = "user_123"
         req.data = {}
 
         # Should raise rate limit error
         with pytest.raises(https_fn.HttpsError) as exc_info:
             create_connect_account(req)
 
-        assert exc_info.value.code == 'resource-exhausted'
+        assert exc_info.value.code == "resource-exhausted"
 
-    @patch('handlers.payment_stripe.get_rate_limiter')
-    @patch('handlers.payment_stripe.get_db')
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    @patch("handlers.payment_stripe.get_db")
     def test_create_connect_account_rate_limit_allowed(self, mock_db, mock_get_limiter):
         """FIX-003: Rate limit passed for create_connect_account returns existing account."""
         from handlers.payment_stripe import create_connect_account
@@ -131,27 +129,25 @@ class TestRateLimitingBehavior:
         # Setup user with existing account
         mock_user_doc = Mock()
         mock_user_doc.exists = True
-        mock_user_doc.to_dict.return_value = {
-            'email': 'test@example.com',
-            'stripeAccountId': 'acct_existing'
-        }
+        mock_user_doc.to_dict.return_value = {"email": "test@example.com", "stripeAccountId": "acct_existing"}
         mock_db.return_value.collection.return_value.document.return_value.get.return_value = mock_user_doc
 
         req = Mock()
-        req.auth.uid = 'user_123'
+        req.auth.uid = "user_123"
         req.data = {}
 
         result = create_connect_account(req)
 
         # Should return existing account
-        assert result['success'] is True
-        assert result['existing'] is True
-        assert result['accountId'] == 'acct_existing'
+        assert result["success"] is True
+        assert result["existing"] is True
+        assert result["accountId"] == "acct_existing"
 
 
 # =============================================================================
 # INTEGRATION TESTS - Full flow tests
 # =============================================================================
+
 
 @pytest.mark.integration
 def test_stock_validation_integration():

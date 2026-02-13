@@ -37,6 +37,7 @@ from models import (  # noqa: E402
 # ADDRESS TESTS
 # ============================================================================
 
+
 def test_address_valid():
     """Test creating a valid address"""
     address = Address(
@@ -141,6 +142,7 @@ def test_address_phone_validation():
 # ============================================================================
 # PRODUCT TESTS
 # ============================================================================
+
 
 def test_product_valid():
     """Test creating a valid product"""
@@ -284,6 +286,7 @@ def test_product_image_urls_validation():
 # TAXES TESTS
 # ============================================================================
 
+
 def test_taxes_total_calculation():
     """Test taxes total calculation"""
     taxes = Taxes(GST=2.5, PST=3.5, HST=0.0, QST=0.0)
@@ -306,6 +309,7 @@ def test_taxes_default_values():
 # ============================================================================
 # ORDER ITEM TESTS
 # ============================================================================
+
 
 def test_order_item_subtotal_calculation():
     """Test order item subtotal calculation"""
@@ -334,6 +338,7 @@ def test_order_item_subtotal_calculation():
 # ============================================================================
 # SELLER PAYOUT TESTS
 # ============================================================================
+
 
 def test_seller_payout_status_validation():
     """Test seller payout status validation"""
@@ -370,6 +375,7 @@ def test_seller_payout_status_validation():
 # ============================================================================
 # USER TESTS
 # ============================================================================
+
 
 def test_user_valid():
     """Test creating a valid user"""
@@ -486,6 +492,7 @@ def test_user_helper_methods():
 # ============================================================================
 # SERIALIZATION TESTS
 # ============================================================================
+
 
 def test_address_json_serialization():
     """Test Address JSON serialization/deserialization"""

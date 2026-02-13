@@ -13,12 +13,13 @@ import pytest
 from schema_constants import AppConfig, EmailConfig, Fields
 
 # Force emulator mode for deterministic tests
-os.environ['FUNCTIONS_EMULATOR'] = 'true'
+os.environ["FUNCTIONS_EMULATOR"] = "true"
 
 
 # =============================================================================
 # Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def sample_order_data():
@@ -75,12 +76,14 @@ def mock_mailjet():
 # Order Confirmation Email Tests
 # =============================================================================
 
+
 class TestOrderConfirmationEmail:
     """Tests for get_order_confirmation_email."""
 
     def test_returns_html_string(self, sample_order_data):
         """Should return a non-empty HTML string."""
         from services.email_service import get_order_confirmation_email
+
         html = get_order_confirmation_email(sample_order_data)
         assert isinstance(html, str)
         assert len(html) > 100
@@ -89,6 +92,7 @@ class TestOrderConfirmationEmail:
     def test_contains_order_id(self, sample_order_data):
         """Should include the (shortened) order ID."""
         from services.email_service import get_order_confirmation_email
+
         html = get_order_confirmation_email(sample_order_data)
         # Order ID is truncated to first 8 chars
         assert "abc12345" in html
@@ -96,12 +100,14 @@ class TestOrderConfirmationEmail:
     def test_contains_item_names(self, sample_order_data):
         """Should include product names in the email."""
         from services.email_service import get_order_confirmation_email
+
         html = get_order_confirmation_email(sample_order_data)
         assert "Vintage Headphones" in html
 
     def test_xss_protection_escapes_html_in_item_names(self, sample_order_data):
         """Item names should be HTML-escaped to prevent XSS."""
         from services.email_service import get_order_confirmation_email
+
         html = get_order_confirmation_email(sample_order_data)
         # The malicious <script> tag should be escaped
         assert "<script>" not in html
@@ -110,6 +116,7 @@ class TestOrderConfirmationEmail:
     def test_contains_address(self, sample_order_data):
         """Should include shipping address details."""
         from services.email_service import get_order_confirmation_email
+
         html = get_order_confirmation_email(sample_order_data)
         assert "123 Main St" in html
         assert "Toronto" in html
@@ -118,12 +125,14 @@ class TestOrderConfirmationEmail:
     def test_contains_phone_number(self, sample_order_data):
         """Should include phone number when provided."""
         from services.email_service import get_order_confirmation_email
+
         html = get_order_confirmation_email(sample_order_data)
         assert "+14165551234" in html
 
     def test_no_phone_number_when_missing(self, sample_order_data):
         """Should handle missing phone number gracefully."""
         from services.email_service import get_order_confirmation_email
+
         del sample_order_data[Fields.SHIPPING_ADDRESS][Fields.PHONE_NUMBER]
         html = get_order_confirmation_email(sample_order_data)
         assert isinstance(html, str)
@@ -132,6 +141,7 @@ class TestOrderConfirmationEmail:
     def test_order_id_from_parameter(self, sample_order_data):
         """Should accept order_id as parameter when not in order_data."""
         from services.email_service import get_order_confirmation_email
+
         del sample_order_data[Fields.ORDER_ID]
         html = get_order_confirmation_email(sample_order_data, order_id="custom_order_999")
         assert "custom_o" in html  # First 8 chars
@@ -139,6 +149,7 @@ class TestOrderConfirmationEmail:
     def test_empty_items_list(self, sample_order_data):
         """Should handle empty items gracefully."""
         from services.email_service import get_order_confirmation_email
+
         sample_order_data[Fields.ITEMS] = []
         html = get_order_confirmation_email(sample_order_data)
         assert isinstance(html, str)
@@ -146,6 +157,7 @@ class TestOrderConfirmationEmail:
     def test_total_formatting(self, sample_order_data):
         """Should format monetary amounts correctly."""
         from services.email_service import get_order_confirmation_email
+
         html = get_order_confirmation_email(sample_order_data)
         # $135.96 total
         assert "135.96" in html
@@ -153,6 +165,7 @@ class TestOrderConfirmationEmail:
     def test_contains_origna_branding(self, sample_order_data):
         """Should include Origna branding."""
         from services.email_service import get_order_confirmation_email
+
         html = get_order_confirmation_email(sample_order_data)
         assert "O R I G N A" in html
         assert "Order Confirmed" in html
@@ -162,12 +175,14 @@ class TestOrderConfirmationEmail:
 # Seller Notification Email Tests
 # =============================================================================
 
+
 class TestSellerNotificationEmail:
     """Tests for get_seller_notification_email."""
 
     def test_returns_html_string(self, sample_order_data):
         """Should return a non-empty HTML string."""
         from services.email_service import get_seller_notification_email
+
         html = get_seller_notification_email(sample_order_data, order_id="ord_test", seller_id="seller_001")
         assert isinstance(html, str)
         assert len(html) > 100
@@ -175,6 +190,7 @@ class TestSellerNotificationEmail:
     def test_contains_seller_relevant_info(self, sample_order_data):
         """Should include order details relevant to seller."""
         from services.email_service import get_seller_notification_email
+
         html = get_seller_notification_email(sample_order_data, order_id="ord_seller_test")
         # Order ID from sample_order_data takes priority (abc12345...)
         assert "abc12345" in html
@@ -182,6 +198,7 @@ class TestSellerNotificationEmail:
     def test_contains_origna_branding(self, sample_order_data):
         """Should include Origna branding for seller emails too."""
         from services.email_service import get_seller_notification_email
+
         html = get_seller_notification_email(sample_order_data, order_id="ord_brand")
         assert "O R I G N A" in html
 
@@ -190,18 +207,21 @@ class TestSellerNotificationEmail:
 # send_email Tests
 # =============================================================================
 
+
 class TestSendEmail:
     """Tests for the send_email function."""
 
     def test_emulator_mode_skips_mailjet(self):
         """In emulator mode (without FORCE_REAL_EMAIL), should skip Mailjet and return True."""
         from services.email_service import send_email
+
         # FUNCTIONS_EMULATOR is 'true' and FORCE_REAL_EMAIL is not set
         with patch.dict(os.environ, {"FORCE_REAL_EMAIL": "false", "FUNCTIONS_EMULATOR": "true"}):
             # Re-import to pick up env changes (module-level constants)
             import importlib
 
             import services.email_service as mod
+
             original_force = mod.FORCE_REAL_EMAIL
             mod.FORCE_REAL_EMAIL = False
             try:
@@ -302,6 +322,7 @@ class TestSendEmail:
 # Authorization Expired Email Tests
 # =============================================================================
 
+
 class TestAuthorizationExpiredEmail:
     """Tests for send_authorization_expired_email."""
 
@@ -314,11 +335,14 @@ class TestAuthorizationExpiredEmail:
         mod.FORCE_REAL_EMAIL = False
         try:
             # Should not raise
-            send_authorization_expired_email("order_exp", {
-                Fields.CUSTOMER_EMAIL: "buyer@test.ca",
-                Fields.TOTAL_AMOUNT_CENTS: 5000,
-                Fields.ITEMS: [{Fields.NAME: "Widget", Fields.QUANTITY: 1}],
-            })
+            send_authorization_expired_email(
+                "order_exp",
+                {
+                    Fields.CUSTOMER_EMAIL: "buyer@test.ca",
+                    Fields.TOTAL_AMOUNT_CENTS: 5000,
+                    Fields.ITEMS: [{Fields.NAME: "Widget", Fields.QUANTITY: 1}],
+                },
+            )
         finally:
             mod.FORCE_REAL_EMAIL = original_force
 
@@ -340,11 +364,14 @@ class TestAuthorizationExpiredEmail:
         mod.MAILJET_SECRET_KEY = "MAILJET_CREDENTIAL_REDACTED"
 
         try:
-            send_authorization_expired_email("order_prod", {
-                Fields.CUSTOMER_EMAIL: "buyer@prod.ca",
-                Fields.TOTAL_AMOUNT_CENTS: 10000,
-                Fields.ITEMS: [{Fields.NAME: "Laptop", Fields.QUANTITY: 1}],
-            })
+            send_authorization_expired_email(
+                "order_prod",
+                {
+                    Fields.CUSTOMER_EMAIL: "buyer@prod.ca",
+                    Fields.TOTAL_AMOUNT_CENTS: 10000,
+                    Fields.ITEMS: [{Fields.NAME: "Laptop", Fields.QUANTITY: 1}],
+                },
+            )
             mock_client.send.create.assert_called_once()
         finally:
             mod.IS_EMULATOR = original_emulator
@@ -363,11 +390,14 @@ class TestAuthorizationExpiredEmail:
 
         try:
             # Should not raise, just print warning
-            send_authorization_expired_email("order_no_creds", {
-                Fields.CUSTOMER_EMAIL: "buyer@test.ca",
-                Fields.TOTAL_AMOUNT_CENTS: 1000,
-                Fields.ITEMS: [],
-            })
+            send_authorization_expired_email(
+                "order_no_creds",
+                {
+                    Fields.CUSTOMER_EMAIL: "buyer@test.ca",
+                    Fields.TOTAL_AMOUNT_CENTS: 1000,
+                    Fields.ITEMS: [],
+                },
+            )
         finally:
             mod.IS_EMULATOR = original_emulator
             mod.MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED
@@ -376,6 +406,7 @@ class TestAuthorizationExpiredEmail:
 # =============================================================================
 # Payment Capture Failed Email Tests
 # =============================================================================
+
 
 class TestPaymentCaptureFailedEmail:
     """Tests for send_payment_capture_failed_email."""
@@ -390,11 +421,7 @@ class TestPaymentCaptureFailedEmail:
         try:
             # Should not raise
             send_payment_capture_failed_email(
-                "order_cap_fail",
-                "buyer@test.ca",
-                "Test Buyer",
-                99.99,
-                "Insufficient funds"
+                "order_cap_fail", "buyer@test.ca", "Test Buyer", 99.99, "Insufficient funds"
             )
         finally:
             mod.FORCE_REAL_EMAIL = original_force
@@ -402,6 +429,7 @@ class TestPaymentCaptureFailedEmail:
     def test_missing_email_skips(self):
         """Should skip when customer_email is missing."""
         from services.email_service import send_payment_capture_failed_email
+
         # Should not raise
         send_payment_capture_failed_email("order_1", "", "Buyer", 50.0, "Error")
 
@@ -423,13 +451,7 @@ class TestPaymentCaptureFailedEmail:
         mod.MAILJET_SECRET_KEY = "MAILJET_CREDENTIAL_REDACTED"
 
         try:
-            send_payment_capture_failed_email(
-                "order_cap",
-                "buyer@prod.ca",
-                "Jean Tremblay",
-                149.99,
-                "Card expired"
-            )
+            send_payment_capture_failed_email("order_cap", "buyer@prod.ca", "Jean Tremblay", 149.99, "Card expired")
             mock_client.send.create.assert_called_once()
             call_data = mock_client.send.create.call_args[1]["data"]
             assert call_data["Messages"][0]["To"][0]["Email"] == "buyer@prod.ca"
@@ -443,6 +465,7 @@ class TestPaymentCaptureFailedEmail:
 # =============================================================================
 # 3DS Authentication Email Tests
 # =============================================================================
+
 
 class TestThreeDSAuthenticationEmail:
     """Tests for send_3ds_authentication_email."""
@@ -468,12 +491,14 @@ class TestThreeDSAuthenticationEmail:
     def test_missing_email_skips(self):
         """Should skip when customer_email is missing."""
         from services.email_service import send_3ds_authentication_email
+
         # Should not raise
         send_3ds_authentication_email("order_1", "", "Buyer", "https://bank.com/3ds", 50.0)
 
     def test_missing_authentication_url_skips(self):
         """Should skip when authentication_url is missing."""
         from services.email_service import send_3ds_authentication_email
+
         # Should not raise
         send_3ds_authentication_email("order_1", "buyer@test.ca", "Buyer", "", 50.0)
 
@@ -519,6 +544,7 @@ class TestThreeDSAuthenticationEmail:
 # Configuration & Module Constants Tests
 # =============================================================================
 
+
 class TestModuleConstants:
     """Tests for module-level constants and configuration."""
 
@@ -538,6 +564,7 @@ class TestModuleConstants:
     def test_app_base_url_emulator(self):
         """In emulator mode, APP_BASE_URL should point to localhost."""
         from services.email_service import APP_BASE_URL
+
         # We set FUNCTIONS_EMULATOR=true at module level
         assert "localhost" in APP_BASE_URL or "127.0.0.1" in APP_BASE_URL
 

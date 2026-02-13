@@ -1,7 +1,5 @@
-import logging
-
-logger = logging.getLogger(__name__)
 import html
+import logging
 import re
 from typing import Any
 
@@ -12,10 +10,13 @@ from models.base import Address
 from models.order import OrderItem
 from schema_constants import ApiKeys, Fields, OrderStatusValues, ValidationLimits
 
+logger = logging.getLogger(__name__)
+
 
 def create_success_response(data: dict[str, Any], status_code: int = 200) -> dict[str, Any]:
     """Create standardized success response dict for on_call functions"""
     return {ApiKeys.SUCCESS: True, **data}
+
 
 RFC_5322_EMAIL = re.compile(
     r"^(?:[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*)@"
@@ -81,10 +82,10 @@ def sanitize_path(path: str) -> str:
     path_str = os.path.basename(path_str)
 
     # Defense in depth: remove any remaining path separators
-    path_str = path_str.replace('/', '').replace('\\', '')
+    path_str = path_str.replace("/", "").replace("\\", "")
 
     # Reject hidden files (dotfiles)
-    if path_str.startswith('.'):
+    if path_str.startswith("."):
         return ""
 
     return path_str
@@ -163,6 +164,7 @@ def validate_address_map(address: dict[str, Any]) -> Address:
     validated_address = Address(**address)
     return validated_address
 
+
 def validate_item(item: dict) -> tuple[bool, str]:
     """
     Validate individual item data using OrderItem model.
@@ -180,12 +182,13 @@ def validate_item(item: dict) -> tuple[bool, str]:
     except ValidationError as e:
         errors = e.errors()
         if errors:
-            field = errors[0].get('loc', ['unknown'])[0]
-            msg = errors[0].get('msg', 'Invalid value')
+            field = errors[0].get("loc", ["unknown"])[0]
+            msg = errors[0].get("msg", "Invalid value")
             return False, f"{field}: {msg}"
         return False, "Invalid item data"
     except Exception as e:
         return False, str(e)
+
 
 def validate_order_data(data: dict[str, Any]) -> tuple[bool, str | None]:
     """
@@ -202,7 +205,12 @@ def validate_order_data(data: dict[str, Any]) -> tuple[bool, str | None]:
 
     # totalAmountCents is required (integer cents)
     amount_cents = data.get(Fields.TOTAL_AMOUNT_CENTS)
-    if amount_cents is None or not isinstance(amount_cents, (int, float)) or isinstance(amount_cents, bool) or amount_cents < 0:
+    if (
+        amount_cents is None
+        or not isinstance(amount_cents, (int, float))
+        or isinstance(amount_cents, bool)
+        or amount_cents < 0
+    ):
         return False, "Invalid totalAmountCents: must be non-negative integer"
 
     # customerEmail is optional (can be fetched from user doc)
@@ -210,6 +218,7 @@ def validate_order_data(data: dict[str, Any]) -> tuple[bool, str | None]:
     if customer_email:
         try:
             from pydantic import EmailStr
+
             EmailStr._validate(customer_email)
         except Exception:
             return False, "Invalid email address format"
@@ -234,9 +243,11 @@ def validate_order_data(data: dict[str, Any]) -> tuple[bool, str | None]:
 
     return True, None
 
+
 # ============================================================================
 # ORDER STATE MACHINE VALIDATION - CRITICAL BUSINESS LOGIC
 # ============================================================================
+
 
 def is_valid_order_status_transition(current_status: str, new_status: str) -> bool:
     """

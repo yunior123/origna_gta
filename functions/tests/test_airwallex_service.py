@@ -35,6 +35,7 @@ from services.airwallex_service import AirwallexService, get_airwallex_service
 # Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def service():
     """Create AirwallexService with test credentials."""
@@ -52,12 +53,14 @@ def service():
 @pytest.fixture
 def mock_response_ok():
     """Factory for successful HTTP responses."""
+
     def _make(json_data=None, status_code=200):
         resp = Mock()
         resp.status_code = status_code
         resp.json.return_value = json_data or {}
         resp.raise_for_status.return_value = None
         return resp
+
     return _make
 
 
@@ -77,6 +80,7 @@ def sample_seller_data():
 # =============================================================================
 # Authentication Tests
 # =============================================================================
+
 
 class TestAuthentication:
     """Tests for _authenticate method."""
@@ -137,6 +141,7 @@ class TestAuthentication:
 # =============================================================================
 # Customer & Account Creation Tests
 # =============================================================================
+
 
 class TestAccountCreation:
     """Tests for create_customer and create_connected_account."""
@@ -214,6 +219,7 @@ class TestAccountCreation:
 # =============================================================================
 # Payment Intent Tests
 # =============================================================================
+
 
 class TestPaymentIntents:
     """Tests for payment intent creation."""
@@ -316,6 +322,7 @@ class TestPaymentIntents:
 # Capture, Refund, Cancel Tests
 # =============================================================================
 
+
 class TestPaymentOperations:
     """Tests for capture_payment, refund_payment, cancel_payment."""
 
@@ -379,6 +386,7 @@ class TestPaymentOperations:
 # Payout Tests
 # =============================================================================
 
+
 class TestPayouts:
     """Tests for payout operations."""
 
@@ -428,6 +436,7 @@ class TestPayouts:
 # Webhook Signature Verification Tests
 # =============================================================================
 
+
 class TestWebhookVerification:
     """Tests for verify_webhook_signature."""
 
@@ -438,9 +447,7 @@ class TestWebhookVerification:
 
         # Compute expected signature
         signed_payload = timestamp.encode() + body.encode()
-        expected = hmac.new(
-            service.webhook_secret.encode(), signed_payload, hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(service.webhook_secret.encode(), signed_payload, hashlib.sha256).hexdigest()
 
         result = service.verify_webhook_signature(body, expected, timestamp=timestamp)
         assert result is True
@@ -451,9 +458,7 @@ class TestWebhookVerification:
         timestamp = "9876543210"
 
         signed_payload = timestamp.encode() + body.encode()
-        raw_digest = hmac.new(
-            service.webhook_secret.encode(), signed_payload, hashlib.sha256
-        ).digest()
+        raw_digest = hmac.new(service.webhook_secret.encode(), signed_payload, hashlib.sha256).digest()
         sig_b64 = base64.b64encode(raw_digest).decode()
 
         result = service.verify_webhook_signature(body, sig_b64, timestamp=timestamp)
@@ -461,9 +466,7 @@ class TestWebhookVerification:
 
     def test_invalid_signature_returns_false(self, service):
         """Should return False for incorrect signature."""
-        result = service.verify_webhook_signature(
-            '{"data":"test"}', "invalid_hex_signature", timestamp="123"
-        )
+        result = service.verify_webhook_signature('{"data":"test"}', "invalid_hex_signature", timestamp="123")
         assert result is False
 
     def test_missing_timestamp_returns_false(self, service):
@@ -487,9 +490,7 @@ class TestWebhookVerification:
         body = b'{"event_type":"test"}'
         timestamp = "123"
         signed_payload = timestamp.encode() + body
-        expected = hmac.new(
-            service.webhook_secret.encode(), signed_payload, hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(service.webhook_secret.encode(), signed_payload, hashlib.sha256).hexdigest()
 
         result = service.verify_webhook_signature(body, expected, timestamp=timestamp)
         assert result is True
@@ -499,9 +500,7 @@ class TestWebhookVerification:
         body = '{"test": true}'
         timestamp = "111"
         signed_payload = timestamp.encode() + body.encode()
-        expected = hmac.new(
-            service.webhook_secret.encode(), signed_payload, hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(service.webhook_secret.encode(), signed_payload, hashlib.sha256).hexdigest()
 
         result = service.verify_webhook_signature(body, f"sha256={expected}", timestamp=timestamp)
         assert result is True
@@ -510,6 +509,7 @@ class TestWebhookVerification:
 # =============================================================================
 # Webhook Event Handling Tests
 # =============================================================================
+
 
 class TestWebhookHandling:
     """Tests for handle_webhook_event and individual handlers."""
@@ -695,9 +695,7 @@ class TestWebhookHandling:
             "failure_reason": "Document verification failed",
         }
 
-        result = service.handle_webhook_event(
-            "connected_account.verification_failed", event_data
-        )
+        result = service.handle_webhook_event("connected_account.verification_failed", event_data)
 
         assert result[Fields.STATUS] == WebhookResponseStatus.PROCESSED
         assert result[Fields.ERROR] == "Document verification failed"
@@ -710,6 +708,7 @@ class TestWebhookHandling:
 # =============================================================================
 # Currency Consistency Tests
 # =============================================================================
+
 
 class TestCurrencyConsistency:
     """Ensure currency casing is correct across all methods."""
@@ -747,6 +746,7 @@ class TestCurrencyConsistency:
 # =============================================================================
 # Singleton Tests
 # =============================================================================
+
 
 class TestSingleton:
     """Tests for get_airwallex_service singleton."""

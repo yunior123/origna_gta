@@ -104,6 +104,27 @@ final _cartProductsBatchProvider = FutureProvider.autoDispose<Map<String, Map<St
 });
 
 // ============================================================================
+// AUDIT FIX (C4): Unavailable cart items provider
+// ============================================================================
+
+/// Exposes product IDs that are in the cart but no longer available in the catalog.
+/// UI should use this to display "X items are no longer available" banners.
+final unavailableCartItemsProvider = FutureProvider.autoDispose<List<String>>((ref) async {
+  final cartItems = ref.watch(cartItemsProvider);
+  final productCache = await ref.watch(_cartProductsBatchProvider.future);
+
+  return cartItems.maybeWhen(
+    data: (items) {
+      return items
+          .where((item) => !productCache.containsKey(item.productId))
+          .map((item) => item.productId)
+          .toList();
+    },
+    orElse: () => <String>[],
+  );
+});
+
+// ============================================================================
 // CART DETAILS PROVIDER (with product info) - BATCH FETCH
 // ============================================================================
 
@@ -269,9 +290,26 @@ class CartController {
     await _repository.removeFromCart(userId, productId);
   }
 
-  Future<void> updateQuantity(String productId, int newQuantity) async {
+  /// Updates the quantity of a product in the cart.
+  /// AUDIT FIX (H6): Returns false if the requested quantity exceeds available stock.
+  Future<bool> updateQuantity(String productId, int newQuantity) async {
     final userId = _userId;
-    if (userId == null) return;
+    if (userId == null) return false;
+
+    // Check stock availability before updating
+    if (newQuantity > 0) {
+      try {
+        final firestore = _ref.read(firestoreProvider);
+        final productDoc = await firestore.collection(Collections.products).doc(productId).get();
+        if (!productDoc.exists) return false;
+        final stockQuantity = (productDoc.data()?[Fields.stockQuantity] ?? 0) as int;
+        if (newQuantity > stockQuantity) return false;
+      } catch (e) {
+        // On error, allow the update — server-side validation will catch it at checkout
+      }
+    }
+
     await _repository.updateQuantity(userId, productId, newQuantity);
+    return true;
   }
 }

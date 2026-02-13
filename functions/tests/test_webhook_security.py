@@ -33,17 +33,20 @@ class TestStripeWebhookSecurity:
         """
         # Arrange
         mock_request = Mock()
-        mock_request.method = 'POST'
+        mock_request.method = "POST"
         # Return None only for Stripe-Signature, use default for other headers
-        mock_request.headers.get = Mock(side_effect=lambda h, default=None: {
-            'X-Forwarded-For': '192.168.1.1',
-        }.get(h, default))
+        mock_request.headers.get = Mock(
+            side_effect=lambda h, default=None: {
+                "X-Forwarded-For": "192.168.1.1",
+            }.get(h, default)
+        )
         mock_request.data = b'{"id": "evt_test"}'
 
         # Skip rate limiting in test
-        with patch('handlers.payment_stripe.IS_EMULATOR', True):
+        with patch("handlers.payment_stripe.IS_EMULATOR", True):
             # Act
             from handlers.payment_stripe import stripe_webhook
+
             response = stripe_webhook(mock_request)
 
             # Assert
@@ -63,11 +66,13 @@ class TestStripeWebhookSecurity:
 
         # Arrange
         mock_request = Mock()
-        mock_request.method = 'POST'
-        mock_request.headers.get = Mock(side_effect=lambda h, default=None: {
-            'Stripe-Signature': 'invalid_signature_123',
-            'X-Forwarded-For': '192.168.1.1'
-        }.get(h, default))
+        mock_request.method = "POST"
+        mock_request.headers.get = Mock(
+            side_effect=lambda h, default=None: {
+                "Stripe-Signature": "invalid_signature_123",
+                "X-Forwarded-For": "192.168.1.1",
+            }.get(h, default)
+        )
         mock_request.data = b'{"id": "evt_test", "type": "test"}'
 
         # Configure the mock stripe to raise SignatureVerificationError
@@ -76,9 +81,10 @@ class TestStripeWebhookSecurity:
         )
 
         # Skip rate limiting in test
-        with patch('handlers.payment_stripe.IS_EMULATOR', True):
+        with patch("handlers.payment_stripe.IS_EMULATOR", True):
             # Act
             from handlers.payment_stripe import stripe_webhook
+
             response = stripe_webhook(mock_request)
 
             # Assert
@@ -94,22 +100,25 @@ class TestStripeWebhookSecurity:
         """
         # Arrange
         mock_request = Mock()
-        mock_request.method = 'POST'
-        mock_request.headers.get = Mock(side_effect=lambda h, default=None: {
-            'Stripe-Signature': 'valid_sig',
-            'X-Forwarded-For': '192.168.1.100'
-        }.get(h, default))
+        mock_request.method = "POST"
+        mock_request.headers.get = Mock(
+            side_effect=lambda h, default=None: {
+                "Stripe-Signature": "valid_sig",
+                "X-Forwarded-For": "192.168.1.100",
+            }.get(h, default)
+        )
         mock_request.data = b'{"id": "evt_test", "type": "test"}'
 
         # Mock rate limiter (NOT using IS_EMULATOR to test actual rate limiting)
-        with patch('handlers.payment_stripe.IS_EMULATOR', False), \
-             patch('handlers.payment_stripe.get_rate_limiter') as mock_limiter:
-            mock_limiter.return_value.check_rate_limit = Mock(
-                return_value=(False, "Rate limit exceeded")
-            )
+        with (
+            patch("handlers.payment_stripe.IS_EMULATOR", False),
+            patch("handlers.payment_stripe.get_rate_limiter") as mock_limiter,
+        ):
+            mock_limiter.return_value.check_rate_limit = Mock(return_value=(False, "Rate limit exceeded"))
 
             # Act
             from handlers.payment_stripe import stripe_webhook
+
             response = stripe_webhook(mock_request)
 
             # Assert
@@ -126,38 +135,37 @@ class TestStripeWebhookSecurity:
         # Arrange
         event_id = "evt_duplicate_test"
         mock_request = Mock()
-        mock_request.method = 'POST'
-        mock_request.headers.get = Mock(side_effect=lambda h, default=None: {
-            'Stripe-Signature': 'valid_sig',
-            'X-Forwarded-For': '192.168.1.1'
-        }.get(h, default))
+        mock_request.method = "POST"
+        mock_request.headers.get = Mock(
+            side_effect=lambda h, default=None: {"Stripe-Signature": "valid_sig", "X-Forwarded-For": "192.168.1.1"}.get(
+                h, default
+            )
+        )
         mock_request.data = b'{"id": "' + event_id.encode() + b'", "type": "test"}'
 
         # Mock Firestore, skip rate limiting, and mock signature verification
-        with patch('handlers.payment_stripe.IS_EMULATOR', True), \
-             patch('handlers.payment_stripe.stripe.Webhook.construct_event') as mock_construct, \
-             patch('handlers.payment_stripe.get_db') as mock_db:
-
+        with (
+            patch("handlers.payment_stripe.IS_EMULATOR", True),
+            patch("handlers.payment_stripe.stripe.Webhook.construct_event") as mock_construct,
+            patch("handlers.payment_stripe.get_db") as mock_db,
+        ):
             # Mock successful signature verification
-            mock_construct.return_value = {
-                'id': event_id,
-                'type': 'test',
-                'data': {'object': {}}
-            }
+            mock_construct.return_value = {"id": event_id, "type": "test", "data": {"object": {}}}
 
             mock_doc = Mock()
             mock_doc.exists = True  # Event already processed
-            mock_doc.to_dict.return_value = {'status': 'completed'}
+            mock_doc.to_dict.return_value = {"status": "completed"}
 
             mock_webhook_ref = Mock()
             # create() raises when doc already exists (atomic idempotency check)
-            mock_webhook_ref.create = Mock(side_effect=Exception('Document already exists'))
+            mock_webhook_ref.create = Mock(side_effect=Exception("Document already exists"))
             mock_webhook_ref.get = Mock(return_value=mock_doc)
 
             mock_db.return_value.collection.return_value.document.return_value = mock_webhook_ref
 
             # Act
             from handlers.payment_stripe import stripe_webhook
+
             response = stripe_webhook(mock_request)
 
             # Assert
@@ -175,12 +183,13 @@ class TestStripeWebhookSecurity:
 
         # Arrange
         mock_request = Mock()
-        mock_request.method = 'POST'
-        mock_request.headers.get = Mock(side_effect=lambda h, default=None: {
-            'Stripe-Signature': 'valid_sig',
-            'X-Forwarded-For': '192.168.1.1'
-        }.get(h, default))
-        mock_request.data = b'invalid_json{'
+        mock_request.method = "POST"
+        mock_request.headers.get = Mock(
+            side_effect=lambda h, default=None: {"Stripe-Signature": "valid_sig", "X-Forwarded-For": "192.168.1.1"}.get(
+                h, default
+            )
+        )
+        mock_request.data = b"invalid_json{"
 
         # Configure mock stripe to raise ValueError for invalid payload
         payment_stripe.stripe.Webhook.construct_event.side_effect = ValueError(
@@ -188,9 +197,10 @@ class TestStripeWebhookSecurity:
         )
 
         # Skip rate limiting in test
-        with patch('handlers.payment_stripe.IS_EMULATOR', True):
+        with patch("handlers.payment_stripe.IS_EMULATOR", True):
             # Act
             from handlers.payment_stripe import stripe_webhook
+
             response = stripe_webhook(mock_request)
 
             # Assert
@@ -203,9 +213,7 @@ class TestStripeWebhookSecurity:
         assert "STRIPE_WEBHOOK_SECRET" not in response_text
 
         # DOIT contenir message générique:
-        assert any(term in response_text.lower() for term in [
-            "invalid", "error", "bad request", "internal"
-        ])
+        assert any(term in response_text.lower() for term in ["invalid", "error", "bad request", "internal"])
 
 
 class TestAirwallexWebhookSecurity:
@@ -220,26 +228,27 @@ class TestAirwallexWebhookSecurity:
         """
         # Arrange
         mock_request = Mock()
-        mock_request.headers.get = Mock(side_effect=lambda h, default=None: {
-            'x-signature': 'test_signature',
-            'X-Signature': 'test_signature',
-            'x-timestamp': '1700000000',
-            'X-Timestamp': '1700000000',
-            'X-Forwarded-For': '192.168.1.1'
-        }.get(h, default))
+        mock_request.headers.get = Mock(
+            side_effect=lambda h, default=None: {
+                "x-signature": "test_signature",
+                "X-Signature": "test_signature",
+                "x-timestamp": "1700000000",
+                "X-Timestamp": "1700000000",
+                "X-Forwarded-For": "192.168.1.1",
+            }.get(h, default)
+        )
 
-        payload = json.dumps({
-            "id": "evt_test",
-            "name": "payment_intent.succeeded",
-            "data": {"object": {"id": "pi_123"}}
-        }).encode()
+        payload = json.dumps(
+            {"id": "evt_test", "name": "payment_intent.succeeded", "data": {"object": {"id": "pi_123"}}}
+        ).encode()
         mock_request.data = payload
 
         # Mock RateLimiter, get_db, and AirwallexService
-        with patch('services.rate_limiter.RateLimiter') as MockRateLimiter, \
-             patch('handlers.payment_airwallex.get_db') as mock_get_db, \
-             patch('handlers.payment_airwallex.get_airwallex_service') as mock_service:
-
+        with (
+            patch("services.rate_limiter.RateLimiter") as MockRateLimiter,
+            patch("handlers.payment_airwallex.get_db") as mock_get_db,
+            patch("handlers.payment_airwallex.get_airwallex_service") as mock_service,
+        ):
             mock_limiter = Mock()
             mock_limiter.check_rate_limit = Mock(return_value=(True, "OK"))
             MockRateLimiter.return_value = mock_limiter
@@ -248,6 +257,7 @@ class TestAirwallexWebhookSecurity:
 
             # Act
             from handlers.payment_airwallex import airwallex_webhook
+
             response = airwallex_webhook(mock_request)
 
             # Assert
@@ -257,8 +267,8 @@ class TestAirwallexWebhookSecurity:
             # CRITIQUE: Vérifier que verify_webhook_signature a été appelé
             mock_service.return_value.verify_webhook_signature.assert_called_once_with(
                 payload,
-                'test_signature',
-                timestamp='1700000000',
+                "test_signature",
+                timestamp="1700000000",
             )
 
     def test_json_parsing_after_signature_verification(self):
@@ -270,19 +280,22 @@ class TestAirwallexWebhookSecurity:
         """
         # Arrange
         mock_request = Mock()
-        mock_request.headers.get = Mock(side_effect=lambda h, default=None: {
-            'x-signature': 'invalid_sig',
-            'X-Signature': 'invalid_sig',
-            'x-timestamp': '1700000000',
-            'X-Timestamp': '1700000000',
-            'X-Forwarded-For': '192.168.1.1'
-        }.get(h, default))
+        mock_request.headers.get = Mock(
+            side_effect=lambda h, default=None: {
+                "x-signature": "invalid_sig",
+                "X-Signature": "invalid_sig",
+                "x-timestamp": "1700000000",
+                "X-Timestamp": "1700000000",
+                "X-Forwarded-For": "192.168.1.1",
+            }.get(h, default)
+        )
         mock_request.data = b'{"id": "evt_test", "name": "test"}'
 
-        with patch('services.rate_limiter.RateLimiter') as MockRateLimiter, \
-             patch('handlers.payment_airwallex.get_db') as mock_get_db, \
-             patch('handlers.payment_airwallex.get_airwallex_service') as mock_service:
-
+        with (
+            patch("services.rate_limiter.RateLimiter") as MockRateLimiter,
+            patch("handlers.payment_airwallex.get_db") as mock_get_db,
+            patch("handlers.payment_airwallex.get_airwallex_service") as mock_service,
+        ):
             mock_limiter = Mock()
             mock_limiter.check_rate_limit = Mock(return_value=(True, "OK"))
             MockRateLimiter.return_value = mock_limiter
@@ -291,6 +304,7 @@ class TestAirwallexWebhookSecurity:
 
             # Act
             from handlers.payment_airwallex import airwallex_webhook
+
             response = airwallex_webhook(mock_request)
 
             # Assert
@@ -307,24 +321,25 @@ class TestAirwallexWebhookSecurity:
         """
         # Arrange
         mock_request = Mock()
-        mock_request.headers.get = Mock(side_effect=lambda h, default=None: {
-            'X-Signature': 'valid_sig',
-            'X-Forwarded-For': '192.168.1.200'
-        }.get(h, default))
+        mock_request.headers.get = Mock(
+            side_effect=lambda h, default=None: {"X-Signature": "valid_sig", "X-Forwarded-For": "192.168.1.200"}.get(
+                h, default
+            )
+        )
         mock_request.data = b'{"id": "evt_ddos", "name": "test"}'
 
-        with patch('services.rate_limiter.RateLimiter') as MockRateLimiter, \
-             patch('handlers.payment_airwallex.get_db') as mock_get_db:
-
+        with (
+            patch("services.rate_limiter.RateLimiter") as MockRateLimiter,
+            patch("handlers.payment_airwallex.get_db") as mock_get_db,
+        ):
             mock_limiter = Mock()
-            mock_limiter.check_rate_limit = Mock(
-                return_value=(False, "Rate limit exceeded")
-            )
+            mock_limiter.check_rate_limit = Mock(return_value=(False, "Rate limit exceeded"))
             MockRateLimiter.return_value = mock_limiter
             mock_get_db.return_value = Mock()
 
             # Act
             from handlers.payment_airwallex import airwallex_webhook
+
             response = airwallex_webhook(mock_request)
 
             # Assert
@@ -349,19 +364,13 @@ class TestWebhookSignatureCryptography:
 
         # Compute expected signature (Stripe format)
         signed_payload = f"{timestamp}.{payload.decode()}".encode()
-        expected_sig = hmac.new(
-            secret.encode(),
-            signed_payload,
-            hashlib.sha256
-        ).hexdigest()
+        expected_sig = hmac.new(secret.encode(), signed_payload, hashlib.sha256).hexdigest()
 
         sig_header = f"t={timestamp},v1={expected_sig}"
 
         # Act & Assert
         try:
-            event = stripe.Webhook.construct_event(
-                payload, sig_header, secret
-            )
+            event = stripe.Webhook.construct_event(payload, sig_header, secret)
             # Si on arrive ici, signature valide
             assert event is not None
         except stripe.error.SignatureVerificationError:
@@ -376,18 +385,11 @@ class TestWebhookSignatureCryptography:
         payload = b'{"id": "evt_test", "name": "payment_intent.succeeded"}'
 
         # Compute signature (hex encoding)
-        computed_digest = hmac.new(
-            secret.encode('utf-8'),
-            payload,
-            hashlib.sha256
-        )
+        computed_digest = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256)
         expected_sig_hex = computed_digest.hexdigest()
 
         # Act - Simulate verification
-        is_valid = hmac.compare_digest(
-            computed_digest.hexdigest(),
-            expected_sig_hex
-        )
+        is_valid = hmac.compare_digest(computed_digest.hexdigest(), expected_sig_hex)
 
         # Assert
         assert is_valid is True
@@ -403,11 +405,7 @@ class TestWebhookSignatureCryptography:
         payload = b'{"id": "evt_test", "name": "payment_intent.succeeded"}'
 
         # Compute signature (base64 encoding)
-        computed_digest = hmac.new(
-            secret.encode('utf-8'),
-            payload,
-            hashlib.sha256
-        ).digest()
+        computed_digest = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).digest()
         expected_sig_b64 = base64.b64encode(computed_digest).decode()
 
         # Act - Simulate verification
@@ -438,11 +436,7 @@ class TestRateLimiterSecurity:
 
         # Act
         allowed, message = limiter.check_rate_limit(
-            identifier="test_user",
-            action="test_action",
-            max_requests=10,
-            window_minutes=1,
-            fail_closed=True
+            identifier="test_user", action="test_action", max_requests=10, window_minutes=1, fail_closed=True
         )
 
         # Assert - Transaction doit être utilisée
@@ -468,7 +462,7 @@ class TestRateLimiterSecurity:
             action="webhook",
             max_requests=100,
             window_minutes=1,
-            fail_closed=True  # CRITIQUE: fail-closed
+            fail_closed=True,  # CRITIQUE: fail-closed
         )
 
         # Assert - Doit bloquer en cas d'erreur
@@ -495,7 +489,7 @@ class TestRateLimiterSecurity:
             action="view_product",
             max_requests=100,
             window_minutes=1,
-            fail_closed=False  # Fail-open pour UX
+            fail_closed=False,  # Fail-open pour UX
         )
 
         # Assert - Doit autoriser en cas d'erreur
@@ -517,13 +511,13 @@ class TestAuditTrailSecurity:
         mock_db.collection.return_value.document.return_value = mock_webhook_ref
 
         event_data = {
-            'provider': 'stripe',
-            'type': 'checkout.session.completed',
-            'processed': True,
-            'timestamp': datetime.now(),
-            'client_ip': '192.168.1.1',  # DOIT être présent
-            'event_id': 'evt_123',
-            'order_id': 'order_456'
+            "provider": "stripe",
+            "type": "checkout.session.completed",
+            "processed": True,
+            "timestamp": datetime.now(),
+            "client_ip": "192.168.1.1",  # DOIT être présent
+            "event_id": "evt_123",
+            "order_id": "order_456",
         }
 
         # Act
@@ -532,8 +526,8 @@ class TestAuditTrailSecurity:
         # Assert
         mock_webhook_ref.set.assert_called_once()
         logged_data = mock_webhook_ref.set.call_args[0][0]
-        assert 'client_ip' in logged_data
-        assert logged_data['client_ip'] == '192.168.1.1'
+        assert "client_ip" in logged_data
+        assert logged_data["client_ip"] == "192.168.1.1"
 
     def test_ip_sanitization_in_logs(self):
         """
@@ -591,6 +585,7 @@ class TestErrorSanitization:
 
 # ===== TESTS D'INTÉGRATION =====
 
+
 class TestWebhookSecurityIntegration:
     """Tests d'intégration de bout en bout"""
 
@@ -628,6 +623,7 @@ class TestWebhookSecurityIntegration:
 
 # ===== FIXTURES =====
 
+
 @pytest.fixture
 def mock_firestore_db():
     """Mock Firestore database pour tests"""
@@ -649,11 +645,7 @@ def valid_stripe_signature():
     timestamp = int(time.time())
 
     signed_payload = f"{timestamp}.{payload.decode()}".encode()
-    signature = hmac.new(
-        secret.encode(),
-        signed_payload,
-        hashlib.sha256
-    ).hexdigest()
+    signature = hmac.new(secret.encode(), signed_payload, hashlib.sha256).hexdigest()
 
     return f"t={timestamp},v1={signature}"
 
@@ -664,11 +656,7 @@ def valid_airwallex_signature():
     secret = "airwallex_webhook_secret"
     payload = b'{"id": "evt_test", "name": "payment_intent.succeeded"}'
 
-    signature = hmac.new(
-        secret.encode(),
-        payload,
-        hashlib.sha256
-    ).hexdigest()
+    signature = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
 
     return signature
 

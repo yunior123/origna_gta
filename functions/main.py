@@ -139,22 +139,26 @@ init_sentry()
 def get_secret(secret_id: str) -> str:
     """Retrieve secret from GCP Secret Manager"""
     client = secretmanager.SecretManagerServiceClient()
-    project_id = os.environ.get('GCLOUD_PROJECT', os.environ.get('GCP_PROJECT', 'orignagta'))
+    project_id = os.environ.get("GCLOUD_PROJECT", os.environ.get("GCP_PROJECT", "orignagta"))
     name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
     response = client.access_secret_version(request={Fields.NAME: name})
-    return response.payload.data.decode('UTF-8')
+    return response.payload.data.decode("UTF-8")
+
 
 # Lazy initialization of Stripe API key
 def _init_stripe():
     """Initialize Stripe API key lazily"""
     if not stripe.api_key:
-        stripe.api_key = get_secret('stripe-secret-key')
+        stripe.api_key = get_secret("stripe-secret-key")
+
 
 # Only initialize in production (not in test environment)
-if os.environ.get('TESTING') != 'true':
+if os.environ.get("TESTING") != "true":
     import contextlib
+
     with contextlib.suppress(Exception):
         _init_stripe()
+
 
 # ===============================================
 # VALIDATION HELPERS
@@ -171,92 +175,83 @@ def validate_postal_code(postal_code, country="Canada"):
         return False
 
     # Canadian postal code pattern: A1A 1A1
-    pattern = r'^[A-Z]\d[A-Z]\s?\d[A-Z]\d$'
+    pattern = r"^[A-Z]\d[A-Z]\s?\d[A-Z]\d$"
     return bool(re.match(pattern, postal_code.upper()))
 
 
 # Export all functions for Firebase deployment
 __all__ = [
     # Stripe payments
-    'create_checkout_session',
-    'verify_cart_prices',
-    'stripe_webhook',
-    'capture_payment',
-    'create_connect_account',
-    'get_connect_account_status',
-    'create_account_link',
-
+    "create_checkout_session",
+    "verify_cart_prices",
+    "stripe_webhook",
+    "capture_payment",
+    "create_connect_account",
+    "get_connect_account_status",
+    "create_account_link",
     # Dispute handlers
-    'process_charge_refunded',
-    'process_dispute_created',
-    'process_dispute_closed',
-    'process_dispute_updated',
-    'process_dispute_funds_reinstated',
-
+    "process_charge_refunded",
+    "process_dispute_created",
+    "process_dispute_closed",
+    "process_dispute_updated",
+    "process_dispute_funds_reinstated",
     # Airwallex payments
-    'airwallex_create_seller_account',
-    'airwallex_process_payment',
-    'airwallex_capture_payment',
-    'airwallex_webhook',
-
+    "airwallex_create_seller_account",
+    "airwallex_process_payment",
+    "airwallex_capture_payment",
+    "airwallex_webhook",
     # Products
-    'upload_product_images',
-    'delete_product',
-    'submit_product_rating',
-    'configure_algolia',
-    'get_products_paginated',
-    'get_seller_products_paginated',
-    'get_product_ratings_paginated',
-    'on_product_created',
-    'on_product_updated',
-    'on_product_deleted',
-
+    "upload_product_images",
+    "delete_product",
+    "submit_product_rating",
+    "configure_algolia",
+    "get_products_paginated",
+    "get_seller_products_paginated",
+    "get_product_ratings_paginated",
+    "on_product_created",
+    "on_product_updated",
+    "on_product_deleted",
     # Orders
-    'confirm_order_receipt',
-    'update_order_status',
-    'update_item_status',
-    'refund_order_item',
-    'cancel_order',
-    'approve_shipping_cost',
-    'update_shipping_cost',
-    'on_order_status_changed',
-
+    "confirm_order_receipt",
+    "update_order_status",
+    "update_item_status",
+    "refund_order_item",
+    "cancel_order",
+    "approve_shipping_cost",
+    "update_shipping_cost",
+    "on_order_status_changed",
     # Admin
-    'update_user_roles',
-    'suspend_seller',
-    'unsuspend_seller',
-    'admin_update_product_stock',
-    'admin_mfa_enroll',
-    'admin_mfa_verify',
-    'admin_mfa_verify_backup',
-    'admin_mfa_disable',
-    'delete_account',
-    'export_my_data',
-    'unsubscribe_email',
-
+    "update_user_roles",
+    "suspend_seller",
+    "unsuspend_seller",
+    "admin_update_product_stock",
+    "admin_mfa_enroll",
+    "admin_mfa_verify",
+    "admin_mfa_verify_backup",
+    "admin_mfa_disable",
+    "delete_account",
+    "export_my_data",
+    "unsubscribe_email",
     # User Profile
-    'update_user_profile',
-    'get_user_profile',
-    'update_email_consent',
-
+    "update_user_profile",
+    "get_user_profile",
+    "update_email_consent",
     # Payment Provider Management
-    'get_payment_providers',
-    'update_payment_provider',
-    'get_provider_status',
-
+    "get_payment_providers",
+    "update_payment_provider",
+    "get_provider_status",
     # Cron jobs
-    'auto_capture_confirmed_receipts',
-    'check_expired_authorizations',
-    'auto_archive_old_orders',
-    'monitor_algolia_sync',
-    'cleanup_stale_rate_limits',
-    'cleanup_orphaned_r2_images',
-    'cleanup_stale_webhook_events',
-    'cleanup_stale_security_alerts',
-    'retry_failed_algolia_syncs',
-
+    "auto_capture_confirmed_receipts",
+    "check_expired_authorizations",
+    "auto_archive_old_orders",
+    "monitor_algolia_sync",
+    "cleanup_stale_rate_limits",
+    "cleanup_orphaned_r2_images",
+    "cleanup_stale_webhook_events",
+    "cleanup_stale_security_alerts",
+    "retry_failed_algolia_syncs",
     # Shipping
-    'calculate_shipping_cost',
+    "calculate_shipping_cost",
 ]
 
 print(f"""
@@ -266,5 +261,3 @@ print(f"""
 ║  Architecture: Modular Handlers              ║
 ╚══════════════════════════════════════════════╝
 """)
-
-

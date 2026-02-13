@@ -2,6 +2,7 @@
 Global configuration options for Firebase Cloud Functions
 Optimized for FREE TIER - minimal resource usage, reasonable timeouts
 """
+
 from firebase_functions import options
 
 from schema_constants import AppConfig
@@ -22,10 +23,10 @@ FIRESTORE_TRIGGER_OPTIONS: dict = {}
 
 # Webhooks: 256MB memory, 90s timeout (Stripe retries on timeout, need margin)
 WEBHOOK_OPTIONS = {
-    'timeout_sec': 90,
+    "timeout_sec": 90,
 }
 
 # Cron jobs: 256MB memory, 300s timeout (batch processing up to 500 orders)
 CRON_OPTIONS = {
-    'timeout_sec': 300,
+    "timeout_sec": 300,
 }

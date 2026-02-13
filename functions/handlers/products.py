@@ -39,33 +39,38 @@ CDN_BASE_URL = "https://cdn.origna.ca"
 # SECURITY FIX #6: Magic bytes for image format validation
 # Prevents serving non-image files via CDN even if MIME type is spoofed
 IMAGE_MAGIC_BYTES = {
-    b'\xff\xd8\xff': 'image/jpeg',       # JPEG
-    b'\x89PNG\r\n\x1a\n': 'image/png',   # PNG
-    b'RIFF': 'image/webp',               # WebP (RIFF container)
-    b'GIF87a': 'image/gif',              # GIF87a
-    b'GIF89a': 'image/gif',              # GIF89a
+    b"\xff\xd8\xff": "image/jpeg",  # JPEG
+    b"\x89PNG\r\n\x1a\n": "image/png",  # PNG
+    b"RIFF": "image/webp",  # WebP (RIFF container)
+    b"GIF87a": "image/gif",  # GIF87a
+    b"GIF89a": "image/gif",  # GIF89a
 }
 MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB absolute max
 
 _db = None
 _firestore = None
 
+
 def get_db():
     """Get Firestore client (lazy initialization)."""
     global _db, _firestore
     if _db is None:
         from firebase_admin import firestore as fs
+
         _firestore = fs
         _db = fs.client()
     return _db
+
 
 def get_server_timestamp():
     """Get Firestore SERVER_TIMESTAMP (lazy initialization)."""
     global _firestore
     if _firestore is None:
         from firebase_admin import firestore as fs
+
         _firestore = fs
     return _firestore.SERVER_TIMESTAMP
+
 
 # CORS is configured in DEFAULT_OPTIONS via function_options.py
 
@@ -92,7 +97,7 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
     """
     if not req.auth:
-        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     user_id = req.auth.uid
 
@@ -100,61 +105,63 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()
     if not user_doc.exists:
-        raise https_fn.HttpsError('not-found', 'User not found')
+        raise https_fn.HttpsError("not-found", "User not found")
     user_data = user_doc.to_dict()
     if user_data.get(Fields.SUSPENDED, False):
-        raise https_fn.HttpsError('permission-denied', 'Your account is suspended')
-    if UserRoleValues.SELLER not in user_data.get(Fields.ROLES, []) and UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
-        raise https_fn.HttpsError('permission-denied', 'Seller role required')
-    if not user_data.get(Fields.ONBOARDING_COMPLETED, False) and UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
-        raise https_fn.HttpsError('failed-precondition', 'Please complete seller onboarding before uploading products')
+        raise https_fn.HttpsError("permission-denied", "Your account is suspended")
+    if UserRoleValues.SELLER not in user_data.get(Fields.ROLES, []) and UserRoleValues.ADMIN not in user_data.get(
+        Fields.ROLES, []
+    ):
+        raise https_fn.HttpsError("permission-denied", "Seller role required")
+    if not user_data.get(Fields.ONBOARDING_COMPLETED, False) and UserRoleValues.ADMIN not in user_data.get(
+        Fields.ROLES, []
+    ):
+        raise https_fn.HttpsError("failed-precondition", "Please complete seller onboarding before uploading products")
 
     # AUDIT FIX: Rate limit image uploads
     from services.rate_limiter import RateLimiter
+
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action='upload_images',
-        max_requests=10, window_minutes=1, fail_closed=False
+        identifier=user_id, action="upload_images", max_requests=10, window_minutes=1, fail_closed=False
     )
     if not allowed:
-        raise https_fn.HttpsError('resource-exhausted', msg)
+        raise https_fn.HttpsError("resource-exhausted", msg)
 
     data = req.data
-    file_names_raw = data.get('fileNames', [])
-    content_types = data.get('contentTypes', [])
+    file_names_raw = data.get("fileNames", [])
+    content_types = data.get("contentTypes", [])
 
     # Import validation functions
     from utils.helpers import sanitize_path
 
     if not file_names_raw or len(file_names_raw) == 0:
-        raise https_fn.HttpsError('invalid-argument', 'No files specified')
+        raise https_fn.HttpsError("invalid-argument", "No files specified")
 
     if len(file_names_raw) > 5:
-        raise https_fn.HttpsError('invalid-argument', 'Maximum 5 images allowed')
+        raise https_fn.HttpsError("invalid-argument", "Maximum 5 images allowed")
 
     if len(file_names_raw) != len(content_types):
-        raise https_fn.HttpsError('invalid-argument', 'File names and content types count mismatch')
+        raise https_fn.HttpsError("invalid-argument", "File names and content types count mismatch")
 
     # SECURITY: Validate MIME types against whitelist (prevent non-image uploads to CDN)
-    ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
+    ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
     for ct in content_types:
         if ct not in ALLOWED_MIME_TYPES:
             raise https_fn.HttpsError(
-                'invalid-argument',
-                f"Invalid content type '{ct}'. Allowed: {', '.join(sorted(ALLOWED_MIME_TYPES))}"
+                "invalid-argument", f"Invalid content type '{ct}'. Allowed: {', '.join(sorted(ALLOWED_MIME_TYPES))}"
             )
 
     # Sanitize file names to prevent path traversal
     file_names = [sanitize_path(fn) for fn in file_names_raw]
 
     # SECURITY: Validate file extensions against whitelist
-    ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp', 'gif'}
+    ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
     for fn in file_names:
-        ext = fn.rsplit('.', 1)[-1].lower() if '.' in fn else ''
+        ext = fn.rsplit(".", 1)[-1].lower() if "." in fn else ""
         if ext not in ALLOWED_EXTENSIONS:
             raise https_fn.HttpsError(
-                'invalid-argument',
-                f"Invalid file extension '.{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+                "invalid-argument", f"Invalid file extension '.{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
             )
 
     # Get R2 credentials based on environment
@@ -164,16 +171,16 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     r2_account_id = r2_creds.get("account_id")
 
     if not all([r2_access_key, r2_secret_key, r2_account_id]):
-        raise https_fn.HttpsError('failed-precondition', 'R2 credentials not configured')
+        raise https_fn.HttpsError("failed-precondition", "R2 credentials not configured")
 
     # Initialize R2 client (S3-compatible)
     s3_client = boto3.client(
-        's3',
-        endpoint_url=f'https://{r2_account_id}.r2.cloudflarestorage.com',
+        "s3",
+        endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
         aws_access_key_id=r2_access_key,
         aws_secret_access_key=r2_secret_key,
-        config=Config(signature_version='s3v4'),
-        region_name='auto'
+        config=Config(signature_version="s3v4"),
+        region_name="auto",
     )
 
     bucket_name = R2Config.BUCKET_NAME
@@ -182,38 +189,35 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     try:
         for file_name, content_type in zip(file_names, content_types, strict=False):
             # Generate unique key with environment-aware path
-            file_extension = file_name.split('.')[-1]
-            unique_key = R2Config.get_image_path('products', f'{uuid.uuid4()}.{file_extension}')
+            file_extension = file_name.split(".")[-1]
+            unique_key = R2Config.get_image_path("products", f"{uuid.uuid4()}.{file_extension}")
 
             # Generate presigned URL for upload
             # NOTE: ContentLength removed — it enforces EXACT size, not max.
             # Size limit enforced by Cloudflare R2 bucket-level configuration.
             presigned_url = s3_client.generate_presigned_url(
-                'put_object',
+                "put_object",
                 Params={
-                    'Bucket': bucket_name,
-                    'Key': unique_key,
-                    'ContentType': content_type,
+                    "Bucket": bucket_name,
+                    "Key": unique_key,
+                    "ContentType": content_type,
                     # SECURITY: Force inline display — prevents download-triggered XSS
-                    'ContentDisposition': 'inline',
+                    "ContentDisposition": "inline",
                 },
-                ExpiresIn=3600  # 1 hour
+                ExpiresIn=3600,  # 1 hour
             )
 
-            public_url = f'{CDN_BASE_URL}/{unique_key}'
+            public_url = f"{CDN_BASE_URL}/{unique_key}"
 
-            upload_urls.append({
-                'uploadUrl': presigned_url,
-                'publicUrl': public_url,
-                'fileName': file_name,
-                'key': unique_key
-            })
+            upload_urls.append(
+                {"uploadUrl": presigned_url, "publicUrl": public_url, "fileName": file_name, "key": unique_key}
+            )
 
-        return create_success_response({'uploadUrls': upload_urls})
+        return create_success_response({"uploadUrls": upload_urls})
 
     except Exception as e:
-        logger.error(f'ERROR: Failed to generate upload URLs: {e}')
-        raise https_fn.HttpsError('internal', 'Failed to generate upload URLs. Please try again.') from e
+        logger.error(f"ERROR: Failed to generate upload URLs: {e}")
+        raise https_fn.HttpsError("internal", "Failed to generate upload URLs. Please try again.") from e
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -233,29 +237,29 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
         {success: True, message: "Product deleted"}
     """
     if not req.auth:
-        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     user_id = req.auth.uid
     product_id = req.data.get(Fields.PRODUCT_ID)
 
     # Rate limit: 10/min — prevent mass-deletion abuse
     from services.rate_limiter import RateLimiter as _RL
+
     _limiter = _RL(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action='delete_product',
-        max_requests=10, window_minutes=1, fail_closed=False
+        identifier=user_id, action="delete_product", max_requests=10, window_minutes=1, fail_closed=False
     )
     if not allowed:
-        raise https_fn.HttpsError('resource-exhausted', msg)
+        raise https_fn.HttpsError("resource-exhausted", msg)
 
     if not product_id:
-        raise https_fn.HttpsError('invalid-argument', 'productId required')
+        raise https_fn.HttpsError("invalid-argument", "productId required")
 
     product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
     product_doc = product_ref.get()
 
     if not product_doc.exists:
-        raise https_fn.HttpsError('not-found', 'Product not found')
+        raise https_fn.HttpsError("not-found", "Product not found")
 
     product_data = product_doc.to_dict()
 
@@ -264,23 +268,35 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     user_doc = user_ref.get()
 
     if not user_doc.exists:
-        raise https_fn.HttpsError('not-found', 'User not found')
+        raise https_fn.HttpsError("not-found", "User not found")
 
     user_data = user_doc.to_dict()
     is_admin = UserRoleValues.ADMIN in user_data.get(Fields.ROLES, [])
     is_owner = product_data[Fields.SELLER_ID] == user_id
 
     if not (is_admin or is_owner):
-        raise https_fn.HttpsError('permission-denied', 'Only product owner or admin can delete')
+        raise https_fn.HttpsError("permission-denied", "Only product owner or admin can delete")
 
     # Check for pending orders
     # NOTE: Firestore can't filter on nested array map fields with array_contains.
     # Use sellerIds (denormalized on orders) to find related orders for this seller,
     # then check if any contain this productId in items.
-    pending_orders_query = get_db().collection(Collections.ORDERS)\
-        .where(Fields.SELLER_IDS, 'array_contains', user_id)\
-        .where(Fields.ORDER_STATUS, 'in', [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING, OrderStatusValues.SHIPPED])\
+    pending_orders_query = (
+        get_db()
+        .collection(Collections.ORDERS)
+        .where(Fields.SELLER_IDS, "array_contains", user_id)
+        .where(
+            Fields.ORDER_STATUS,
+            "in",
+            [
+                OrderStatusValues.PENDING,
+                OrderStatusValues.CONFIRMED,
+                OrderStatusValues.PROCESSING,
+                OrderStatusValues.SHIPPED,
+            ],
+        )
         .limit(20)
+    )
 
     pending_orders = []
     for order_doc in pending_orders_query.stream():
@@ -292,24 +308,19 @@ def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     if pending_orders:
         raise https_fn.HttpsError(
-            'failed-precondition',
-            'Cannot delete product with pending orders. Please wait for orders to complete.'
+            "failed-precondition", "Cannot delete product with pending orders. Please wait for orders to complete."
         )
 
     # Soft delete
-    product_ref.update({
-        Fields.IS_ACTIVE: False,
-        Fields.DELETED_AT: get_server_timestamp(),
-        Fields.DELETED_BY: user_id
-    })
+    product_ref.update({Fields.IS_ACTIVE: False, Fields.DELETED_AT: get_server_timestamp(), Fields.DELETED_BY: user_id})
 
     # Remove from Algolia index
     try:
         algolia_delete_product(product_id)
     except Exception as e:
-        logger.error(f'Failed to delete from Algolia: {str(e)}')
+        logger.error(f"Failed to delete from Algolia: {str(e)}")
 
-    return create_success_response({'message': 'Product deleted successfully'})
+    return create_success_response({"message": "Product deleted successfully"})
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -332,17 +343,17 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         {success: True, newRating: 4.5, ratingCount: 120}
     """
     if not req.auth:
-        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     # AUDIT FIX: Rate limit rating submissions
     from services.rate_limiter import RateLimiter
+
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=req.auth.uid, action='submit_rating',
-        max_requests=5, window_minutes=1, fail_closed=False
+        identifier=req.auth.uid, action="submit_rating", max_requests=5, window_minutes=1, fail_closed=False
     )
     if not allowed:
-        raise https_fn.HttpsError('resource-exhausted', msg)
+        raise https_fn.HttpsError("resource-exhausted", msg)
 
     user_id = req.auth.uid
     data = req.data
@@ -353,59 +364,64 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     product_id = data.get(Fields.PRODUCT_ID)
     order_id = data.get(Fields.ORDER_ID)
     rating = data.get(Fields.RATING)
-    review_raw = data.get(Fields.REVIEW, '')
+    review_raw = data.get(Fields.REVIEW, "")
 
     # Sanitize review text to prevent XSS
-    review = sanitized_text(review_raw)[:1000] if review_raw else ''  # Max 1000 chars
+    review = sanitized_text(review_raw)[:1000] if review_raw else ""  # Max 1000 chars
 
     if not product_id or not order_id or rating is None:
-        raise https_fn.HttpsError('invalid-argument', 'productId, orderId, and rating required')
+        raise https_fn.HttpsError("invalid-argument", "productId, orderId, and rating required")
 
     # Validate rating is numeric and in valid range
     if not isinstance(rating, (int, float)) or rating < 1 or rating > 5:
-        raise https_fn.HttpsError('invalid-argument', 'Rating must be between 1 and 5')
+        raise https_fn.HttpsError("invalid-argument", "Rating must be between 1 and 5")
 
     # Verify user purchased this product
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
 
     if not order_doc.exists:
-        raise https_fn.HttpsError('not-found', 'Order not found')
+        raise https_fn.HttpsError("not-found", "Order not found")
 
     order_data = order_doc.to_dict()
 
     if order_data[Fields.USER_ID] != user_id:
-        raise https_fn.HttpsError('permission-denied', 'This is not your order')
+        raise https_fn.HttpsError("permission-denied", "This is not your order")
 
     if order_data[Fields.ORDER_STATUS] != OrderStatusValues.DELIVERED:
-        raise https_fn.HttpsError('failed-precondition', 'Can only rate delivered orders')
+        raise https_fn.HttpsError("failed-precondition", "Can only rate delivered orders")
 
     # Check if product is in order
     product_in_order = any(item[Fields.PRODUCT_ID] == product_id for item in order_data[Fields.ITEMS])
 
     if not product_in_order:
-        raise https_fn.HttpsError('invalid-argument', 'Product not in this order')
+        raise https_fn.HttpsError("invalid-argument", "Product not in this order")
 
     # Check if user already rated this product with lazy loading
-    existing_ratings_query = get_db().collection(Collections.PRODUCT_RATINGS)\
-        .where(Fields.PRODUCT_ID, '==', product_id)\
-        .where(Fields.USER_ID, '==', user_id)\
+    existing_ratings_query = (
+        get_db()
+        .collection(Collections.PRODUCT_RATINGS)
+        .where(Fields.PRODUCT_ID, "==", product_id)
+        .where(Fields.USER_ID, "==", user_id)
         .limit(1)
+    )
 
     existing_ratings = list(existing_ratings_query.stream())
 
     if existing_ratings:
-        raise https_fn.HttpsError('already-exists', 'You have already rated this product')
+        raise https_fn.HttpsError("already-exists", "You have already rated this product")
 
     # Save rating
-    get_db().collection(Collections.PRODUCT_RATINGS).add({
-        Fields.PRODUCT_ID: product_id,
-        Fields.USER_ID: user_id,
-        Fields.ORDER_ID: order_id,
-        Fields.RATING: rating,
-        Fields.REVIEW: review,
-        Fields.CREATED_AT: get_server_timestamp()
-    })
+    get_db().collection(Collections.PRODUCT_RATINGS).add(
+        {
+            Fields.PRODUCT_ID: product_id,
+            Fields.USER_ID: user_id,
+            Fields.ORDER_ID: order_id,
+            Fields.RATING: rating,
+            Fields.REVIEW: review,
+            Fields.CREATED_AT: get_server_timestamp(),
+        }
+    )
 
     # Update product's average rating using transaction (atomic, prevents race conditions)
     product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
@@ -425,22 +441,16 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         new_rating_count = rating_count + 1
         new_average = (total_rating + rating) / new_rating_count
 
-        transaction.update(product_ref, {
-            Fields.RATING: new_average,
-            Fields.RATING_COUNT: new_rating_count
-        })
+        transaction.update(product_ref, {Fields.RATING: new_average, Fields.RATING_COUNT: new_rating_count})
         return new_average, new_rating_count
 
     transaction = get_db().transaction()
     new_average, new_rating_count = update_rating_transaction(transaction)
 
     if new_average is not None:
-        return create_success_response({
-            'newRating': new_average,
-            Fields.RATING_COUNT: new_rating_count
-        })
+        return create_success_response({"newRating": new_average, Fields.RATING_COUNT: new_rating_count})
 
-    raise https_fn.HttpsError('not-found', 'Product not found')
+    raise https_fn.HttpsError("not-found", "Product not found")
 
 
 def validate_image_magic_bytes(image_url: str) -> bool:
@@ -450,10 +460,11 @@ def validate_image_magic_bytes(image_url: str) -> bool:
     Returns True if valid image, False if malicious/invalid.
     """
     import requests as http_requests
+
     try:
         resp = http_requests.get(image_url, stream=True, timeout=5)
         if resp.status_code != 200:
-            logger.warning(f'⚠️ Image validation failed: HTTP {resp.status_code} for {image_url}')
+            logger.warning(f"⚠️ Image validation failed: HTTP {resp.status_code} for {image_url}")
             return False
 
         # Read only first 16 bytes for magic byte check
@@ -464,13 +475,13 @@ def validate_image_magic_bytes(image_url: str) -> bool:
             return False
 
         for magic, _mime in IMAGE_MAGIC_BYTES.items():
-            if header_bytes[:len(magic)] == magic:
+            if header_bytes[: len(magic)] == magic:
                 return True
 
-        logger.warning(f'⚠️ SECURITY: Image {image_url} has invalid magic bytes: {header_bytes[:8].hex()}')
+        logger.warning(f"⚠️ SECURITY: Image {image_url} has invalid magic bytes: {header_bytes[:8].hex()}")
         return False
     except Exception as e:
-        logger.warning(f'⚠️ Image validation error for {image_url}: {type(e).__name__}')
+        logger.warning(f"⚠️ Image validation error for {image_url}: {type(e).__name__}")
         # Fail open for CDN timeout issues; rely on MIME type validation
         return True
 
@@ -485,12 +496,12 @@ def on_product_created(event: firestore_fn.Event) -> None:
     product_data = event.data.to_dict()
 
     if not product_data:
-        logger.info(f'No data for product {product_id}')
+        logger.info(f"No data for product {product_id}")
         return
 
     # Only index active products
     if not product_data.get(Fields.IS_ACTIVE, True):
-        logger.info(f'Product {product_id} is not active, skipping indexing')
+        logger.info(f"Product {product_id} is not active, skipping indexing")
         return
 
     # ── SECURITY: SERVER-SIDE VALIDATION (products written from Flutter) ──
@@ -503,67 +514,81 @@ def on_product_created(event: firestore_fn.Event) -> None:
         if seller_doc.exists:
             seller_data = seller_doc.to_dict()
             if seller_data.get(Fields.SUSPENDED, False):
-                logger.info(f'SECURITY: Product {product_id} from suspended seller {seller_id} — deactivating')
-                get_db().collection(Collections.PRODUCTS).document(product_id).update({
-                    Fields.IS_ACTIVE: False,
-                    Fields.DEACTIVATION_REASON: 'Seller is suspended',
-                })
+                logger.info(f"SECURITY: Product {product_id} from suspended seller {seller_id} — deactivating")
+                get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                    {
+                        Fields.IS_ACTIVE: False,
+                        Fields.DEACTIVATION_REASON: "Seller is suspended",
+                    }
+                )
                 return
 
     # CRITICAL: Validate price > 0 and <= 100000 CAD
     price = product_data.get(Fields.PRICE)
     if price is None or not isinstance(price, (int, float)) or price <= 0 or price > 100000:
-        logger.info(f'SECURITY: Product {product_id} has invalid price ({price}) — deactivating')
-        get_db().collection(Collections.PRODUCTS).document(product_id).update({
-            Fields.IS_ACTIVE: False,
-            Fields.DEACTIVATION_REASON: f'Invalid price: {price}',
-        })
+        logger.info(f"SECURITY: Product {product_id} has invalid price ({price}) — deactivating")
+        get_db().collection(Collections.PRODUCTS).document(product_id).update(
+            {
+                Fields.IS_ACTIVE: False,
+                Fields.DEACTIVATION_REASON: f"Invalid price: {price}",
+            }
+        )
         return
 
     # CRITICAL: Validate stock quantity >= 0
     stock = product_data.get(Fields.STOCK_QUANTITY, 0)
     if not isinstance(stock, (int, float)) or stock < 0:
-        logger.info(f'SECURITY: Product {product_id} has invalid stock ({stock}) — deactivating')
-        get_db().collection(Collections.PRODUCTS).document(product_id).update({
-            Fields.IS_ACTIVE: False,
-            Fields.DEACTIVATION_REASON: f'Invalid stock: {stock}',
-        })
+        logger.info(f"SECURITY: Product {product_id} has invalid stock ({stock}) — deactivating")
+        get_db().collection(Collections.PRODUCTS).document(product_id).update(
+            {
+                Fields.IS_ACTIVE: False,
+                Fields.DEACTIVATION_REASON: f"Invalid stock: {stock}",
+            }
+        )
         return
 
     # Seller address validation — sellers can be from any country
     # Only verify that a seller address with a non-empty country is present
     seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
-    country = (seller_address.get(Fields.COUNTRY) or '')
+    country = seller_address.get(Fields.COUNTRY) or ""
     if not country:
-        logger.info(f'SECURITY: Product {product_id} has empty seller country — deactivating')
-        get_db().collection(Collections.PRODUCTS).document(product_id).update({
-            Fields.IS_ACTIVE: False,
-            Fields.DEACTIVATION_REASON: 'Missing seller country',
-        })
+        logger.info(f"SECURITY: Product {product_id} has empty seller country — deactivating")
+        get_db().collection(Collections.PRODUCTS).document(product_id).update(
+            {
+                Fields.IS_ACTIVE: False,
+                Fields.DEACTIVATION_REASON: "Missing seller country",
+            }
+        )
         return
 
     # CRITICAL: Sanitize text fields to prevent stored XSS
     xss_patches = {}
-    name = product_data.get(Fields.NAME, '')
-    description = product_data.get(Fields.DESCRIPTION, '')
+    name = product_data.get(Fields.NAME, "")
+    description = product_data.get(Fields.DESCRIPTION, "")
 
     # CRITICAL: Validate categoryId against allowed categories
     category_id = product_data.get(Fields.CATEGORY_ID)
-    if category_id is not None and (not isinstance(category_id, (int, float)) or int(category_id) < CategoryIds.MIN or int(category_id) > CategoryIds.MAX):
-        logger.info(f'SECURITY: Product {product_id} has invalid categoryId ({category_id}) — deactivating')
-        get_db().collection(Collections.PRODUCTS).document(product_id).update({
-            Fields.IS_ACTIVE: False,
-            Fields.DEACTIVATION_REASON: f'Invalid categoryId: {category_id}',
-        })
+    if category_id is not None and (
+        not isinstance(category_id, (int, float))
+        or int(category_id) < CategoryIds.MIN
+        or int(category_id) > CategoryIds.MAX
+    ):
+        logger.info(f"SECURITY: Product {product_id} has invalid categoryId ({category_id}) — deactivating")
+        get_db().collection(Collections.PRODUCTS).document(product_id).update(
+            {
+                Fields.IS_ACTIVE: False,
+                Fields.DEACTIVATION_REASON: f"Invalid categoryId: {category_id}",
+            }
+        )
         return
     sanitized_name = sanitized_text(name)
     sanitized_desc = sanitized_text(description)
     if sanitized_name != name:
         xss_patches[Fields.NAME] = sanitized_name
-        logger.info(f'SECURITY: Sanitized XSS in product {product_id} name')
+        logger.info(f"SECURITY: Sanitized XSS in product {product_id} name")
     if sanitized_desc != description:
         xss_patches[Fields.DESCRIPTION] = sanitized_desc
-        logger.info(f'SECURITY: Sanitized XSS in product {product_id} description')
+        logger.info(f"SECURITY: Sanitized XSS in product {product_id} description")
     if xss_patches:
         get_db().collection(Collections.PRODUCTS).document(product_id).update(xss_patches)
         product_data.update(xss_patches)
@@ -575,31 +600,43 @@ def on_product_created(event: firestore_fn.Event) -> None:
     is_digital = product_data.get(Fields.IS_DIGITAL, False)
     if is_digital and not product_data.get(Fields.FREE_SHIPPING, False):
         patches[Fields.FREE_SHIPPING] = True
-        logger.info(f'FIX: Product {product_id} is digital but freeShipping=false → patching to true')
+        logger.info(f"FIX: Product {product_id} is digital but freeShipping=false → patching to true")
 
     # Bug #2: Local-only products should have a pickup delivery option
     is_local_only = product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False)
     delivery_options = product_data.get(Fields.DELIVERY_OPTIONS, [])
-    if is_local_only and not any(opt.get(Fields.TYPE) == DeliveryTypeValues.PICKUP for opt in delivery_options if isinstance(opt, dict)):
-        pickup_option = {Fields.TYPE: DeliveryTypeValues.PICKUP, Fields.DESCRIPTION: 'Local Pickup', Fields.ESTIMATED_DAYS: 0, Fields.COST: 0.0}
+    if is_local_only and not any(
+        opt.get(Fields.TYPE) == DeliveryTypeValues.PICKUP for opt in delivery_options if isinstance(opt, dict)
+    ):
+        pickup_option = {
+            Fields.TYPE: DeliveryTypeValues.PICKUP,
+            Fields.DESCRIPTION: "Local Pickup",
+            Fields.ESTIMATED_DAYS: 0,
+            Fields.COST: 0.0,
+        }
         patches[Fields.DELIVERY_OPTIONS] = [pickup_option] + delivery_options
-        logger.info(f'FIX: Product {product_id} is local-only but missing pickup option → patching')
+        logger.info(f"FIX: Product {product_id} is local-only but missing pickup option → patching")
 
     # Bug #4: Physical products with no delivery options (and not local-only) → add standard
     if not is_digital and not is_local_only and not delivery_options:
-        standard_option = {Fields.TYPE: DeliveryTypeValues.STANDARD, Fields.DESCRIPTION: 'Standard Delivery', Fields.ESTIMATED_DAYS: 5, Fields.COST: 0.0}
+        standard_option = {
+            Fields.TYPE: DeliveryTypeValues.STANDARD,
+            Fields.DESCRIPTION: "Standard Delivery",
+            Fields.ESTIMATED_DAYS: 5,
+            Fields.COST: 0.0,
+        }
         patches[Fields.DELIVERY_OPTIONS] = [standard_option]
-        logger.info(f'FIX: Product {product_id} has no delivery options → adding standard')
+        logger.info(f"FIX: Product {product_id} has no delivery options → adding standard")
 
     # Apply patches if any
     if patches:
         try:
             get_db().collection(Collections.PRODUCTS).document(product_id).update(patches)
-            logger.info(f'Applied {len(patches)} fix(es) to product {product_id}')
+            logger.info(f"Applied {len(patches)} fix(es) to product {product_id}")
             # Update local copy for indexing
             product_data.update(patches)
         except Exception as e:
-            logger.error(f'WARNING: Failed to apply patches to product {product_id}: {str(e)}')
+            logger.error(f"WARNING: Failed to apply patches to product {product_id}: {str(e)}")
 
     # FOOD SAFETY: Perishable products should have local delivery or same-day option
     is_perishable = product_data.get(Fields.IS_PERISHABLE, False)
@@ -609,40 +646,47 @@ def on_product_created(event: firestore_fn.Event) -> None:
     image_urls = product_data.get(Fields.IMAGE_URLS, [])
     for img_url in image_urls:
         if isinstance(img_url, str) and img_url.startswith(CDN_BASE_URL) and not validate_image_magic_bytes(img_url):
-            logger.warning(f'SECURITY: Product {product_id} has invalid image — deactivating: {img_url[:80]}')
-            get_db().collection(Collections.PRODUCTS).document(product_id).update({
-                Fields.IS_ACTIVE: False,
-                Fields.DEACTIVATION_REASON: 'Image validation failed (invalid file type)',
-            })
+            logger.warning(f"SECURITY: Product {product_id} has invalid image — deactivating: {img_url[:80]}")
+            get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                {
+                    Fields.IS_ACTIVE: False,
+                    Fields.DEACTIVATION_REASON: "Image validation failed (invalid file type)",
+                }
+            )
             return
 
     if is_perishable:
         delivery_options = product_data.get(Fields.DELIVERY_OPTIONS, [])
-        has_local_or_same_day = any(
-            opt.get(Fields.TYPE) in (
-                DeliveryTypeValues.LOCAL_DELIVERY,
-                DeliveryTypeValues.SAME_DAY,
-                DeliveryTypeValues.PICKUP,
-            ) or
-            opt.get(Fields.ESTIMATED_DAYS, 99) <= 1
-            for opt in delivery_options
-        ) if delivery_options else product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False)
+        has_local_or_same_day = (
+            any(
+                opt.get(Fields.TYPE)
+                in (
+                    DeliveryTypeValues.LOCAL_DELIVERY,
+                    DeliveryTypeValues.SAME_DAY,
+                    DeliveryTypeValues.PICKUP,
+                )
+                or opt.get(Fields.ESTIMATED_DAYS, 99) <= 1
+                for opt in delivery_options
+            )
+            if delivery_options
+            else product_data.get(Fields.IS_LOCAL_DELIVERY_ONLY, False)
+        )
 
         if not has_local_or_same_day:
-            logger.warning(f'WARNING: Perishable product {product_id} should have local/same-day delivery')
+            logger.warning(f"WARNING: Perishable product {product_id} should have local/same-day delivery")
 
     try:
         # Add document ID to product data
-        product_data['id'] = product_id
+        product_data["id"] = product_id
         # Ensure sanitized data is sent to Algolia
         if Fields.NAME in product_data:
             product_data[Fields.NAME] = sanitized_text(product_data[Fields.NAME])
         if Fields.DESCRIPTION in product_data:
             product_data[Fields.DESCRIPTION] = sanitized_text(product_data[Fields.DESCRIPTION])
         index_product(product_id, product_data)
-        logger.info(f'Product {product_id} indexed to Algolia')
+        logger.info(f"Product {product_id} indexed to Algolia")
     except Exception as e:
-        logger.error(f'Failed to index product {product_id}: {str(e)}')
+        logger.error(f"Failed to index product {product_id}: {str(e)}")
 
 
 @firestore_fn.on_document_updated(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)
@@ -654,16 +698,16 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     product_data = event.data.after.to_dict()
 
     if not product_data:
-        logger.info(f'No data for product {product_id}')
+        logger.info(f"No data for product {product_id}")
         return
 
     # If product is inactive, delete from index
     if not product_data.get(Fields.IS_ACTIVE, True):
         try:
             algolia_delete_product(product_id)
-            logger.info(f'Product {product_id} removed from Algolia (inactive)')
+            logger.info(f"Product {product_id} removed from Algolia (inactive)")
         except Exception as e:
-            logger.error(f'Failed to delete from Algolia: {str(e)}')
+            logger.error(f"Failed to delete from Algolia: {str(e)}")
         return
 
     # ── SERVER-SIDE VALIDATION on update (same as on_product_created) ──
@@ -676,45 +720,53 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         if seller_doc.exists:
             seller_data = seller_doc.to_dict()
             if seller_data.get(Fields.SUSPENDED, False):
-                logger.info(f'SECURITY: Product {product_id} from suspended seller {seller_id} — deactivating')
-                get_db().collection(Collections.PRODUCTS).document(product_id).update({
-                    Fields.IS_ACTIVE: False,
-                    Fields.DEACTIVATION_REASON: 'Seller is suspended',
-                })
+                logger.info(f"SECURITY: Product {product_id} from suspended seller {seller_id} — deactivating")
+                get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                    {
+                        Fields.IS_ACTIVE: False,
+                        Fields.DEACTIVATION_REASON: "Seller is suspended",
+                    }
+                )
                 return
 
     # Validate price > 0 and <= 100000 CAD
     price = product_data.get(Fields.PRICE)
     if price is not None and (not isinstance(price, (int, float)) or price <= 0 or price > 100000):
-        logger.info(f'SECURITY: Product {product_id} updated with invalid price ({price}) — deactivating')
-        get_db().collection(Collections.PRODUCTS).document(product_id).update({
-            Fields.IS_ACTIVE: False,
-        })
+        logger.info(f"SECURITY: Product {product_id} updated with invalid price ({price}) — deactivating")
+        get_db().collection(Collections.PRODUCTS).document(product_id).update(
+            {
+                Fields.IS_ACTIVE: False,
+            }
+        )
         return
 
     # Validate stock quantity >= 0
     stock = product_data.get(Fields.STOCK_QUANTITY, 0)
     if not isinstance(stock, (int, float)) or stock < 0:
-        logger.info(f'SECURITY: Product {product_id} updated with invalid stock ({stock}) — deactivating')
-        get_db().collection(Collections.PRODUCTS).document(product_id).update({
-            Fields.IS_ACTIVE: False,
-        })
+        logger.info(f"SECURITY: Product {product_id} updated with invalid stock ({stock}) — deactivating")
+        get_db().collection(Collections.PRODUCTS).document(product_id).update(
+            {
+                Fields.IS_ACTIVE: False,
+            }
+        )
         return
 
     # Seller address validation — sellers can be from any country
     seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
-    country = (seller_address.get(Fields.COUNTRY) or '')
+    country = seller_address.get(Fields.COUNTRY) or ""
     if not country:
-        logger.info(f'SECURITY: Product {product_id} updated with empty seller country — deactivating')
-        get_db().collection(Collections.PRODUCTS).document(product_id).update({
-            Fields.IS_ACTIVE: False,
-        })
+        logger.info(f"SECURITY: Product {product_id} updated with empty seller country — deactivating")
+        get_db().collection(Collections.PRODUCTS).document(product_id).update(
+            {
+                Fields.IS_ACTIVE: False,
+            }
+        )
         return
 
     # Sanitize text fields to prevent stored XSS
     xss_patches = {}
-    name = product_data.get(Fields.NAME, '')
-    description = product_data.get(Fields.DESCRIPTION, '')
+    name = product_data.get(Fields.NAME, "")
+    description = product_data.get(Fields.DESCRIPTION, "")
     sanitized_name = sanitized_text(name)
     sanitized_desc = sanitized_text(description)
     if sanitized_name != name:
@@ -726,11 +778,11 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         product_data.update(xss_patches)
 
     try:
-        product_data['id'] = product_id
+        product_data["id"] = product_id
         index_product(product_id, product_data)
-        logger.info(f'Product {product_id} updated in Algolia')
+        logger.info(f"Product {product_id} updated in Algolia")
     except Exception as e:
-        logger.error(f'Failed to update product {product_id} in Algolia: {str(e)}')
+        logger.error(f"Failed to update product {product_id} in Algolia: {str(e)}")
 
 
 @firestore_fn.on_document_deleted(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)
@@ -742,9 +794,9 @@ def on_product_deleted(event: firestore_fn.Event) -> None:
 
     try:
         algolia_delete_product(product_id)
-        logger.info(f'Product {product_id} deleted from Algolia')
+        logger.info(f"Product {product_id} deleted from Algolia")
     except Exception as e:
-        logger.error(f'Failed to delete product {product_id} from Algolia: {str(e)}')
+        logger.error(f"Failed to delete product {product_id} from Algolia: {str(e)}")
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -754,7 +806,7 @@ def configure_algolia(req: https_fn.CallableRequest) -> dict:
     Admin only.
     """
     if not req.auth:
-        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     user_id = req.auth.uid
 
@@ -763,30 +815,31 @@ def configure_algolia(req: https_fn.CallableRequest) -> dict:
     user_doc = user_ref.get()
 
     if not user_doc.exists:
-        raise https_fn.HttpsError('not-found', 'User not found')
+        raise https_fn.HttpsError("not-found", "User not found")
 
     user_data = user_doc.to_dict()
 
     if UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
-        raise https_fn.HttpsError('permission-denied', 'Admin only')
+        raise https_fn.HttpsError("permission-denied", "Admin only")
 
     # AUDIT FIX: Rate limit admin endpoint
     from services.rate_limiter import RateLimiter
+
     _limiter = RateLimiter(get_db())
     allowed, msg = _limiter.check_rate_limit(
-        identifier=user_id, action='configure_algolia',
-        max_requests=3, window_minutes=60
+        identifier=user_id, action="configure_algolia", max_requests=3, window_minutes=60
     )
     if not allowed:
-        raise https_fn.HttpsError('resource-exhausted', msg)
+        raise https_fn.HttpsError("resource-exhausted", msg)
 
     try:
         from services.algolia_service import configure_algolia_index
+
         configure_algolia_index()
-        return create_success_response({'message': 'Algolia index configured'})
+        return create_success_response({"message": "Algolia index configured"})
     except Exception as e:
-        logger.error(f'ERROR: Algolia configuration failed: {e}')
-        raise https_fn.HttpsError('internal', 'Failed to configure Algolia. Please try again.') from e
+        logger.error(f"ERROR: Algolia configuration failed: {e}")
+        raise https_fn.HttpsError("internal", "Failed to configure Algolia. Please try again.") from e
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -813,35 +866,38 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     # AUDIT FIX: Rate limit read endpoint to prevent scraping
     from services.rate_limiter import RateLimiter
+
     _limiter = RateLimiter(get_db())
 
     if req.auth:
         allowed, msg = _limiter.check_rate_limit(
-            identifier=req.auth.uid, action='get_products',
-            max_requests=30, window_minutes=1, fail_closed=False
+            identifier=req.auth.uid, action="get_products", max_requests=30, window_minutes=1, fail_closed=False
         )
         if not allowed:
-            raise https_fn.HttpsError('resource-exhausted', msg)
+            raise https_fn.HttpsError("resource-exhausted", msg)
     else:
         # IP-based rate limiting for unauthenticated requests (anti-scraping)
-        client_ip = (req.raw_request.headers.get('X-Forwarded-For', '') or '').split(',')[0].strip()
+        client_ip = (req.raw_request.headers.get("X-Forwarded-For", "") or "").split(",")[0].strip()
         if client_ip:
             allowed, msg = _limiter.check_rate_limit(
-                identifier=f'ip:{client_ip}', action='get_products',
-                max_requests=15, window_minutes=1, fail_closed=False
+                identifier=f"ip:{client_ip}",
+                action="get_products",
+                max_requests=15,
+                window_minutes=1,
+                fail_closed=False,
             )
             if not allowed:
-                raise https_fn.HttpsError('resource-exhausted', msg)
+                raise https_fn.HttpsError("resource-exhausted", msg)
 
     data = req.data or {}
 
     # Paramètres de pagination
-    limit = min(data.get('limit', DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE)
-    start_after_id = data.get('startAfter')
-    category = data.get('category')
+    limit = min(data.get("limit", DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE)
+    start_after_id = data.get("startAfter")
+    category = data.get("category")
     seller_id = data.get(Fields.SELLER_ID)
-    order_by = data.get('orderBy', Fields.CREATED_AT)
-    order_direction = data.get('orderDirection', 'desc')
+    order_by = data.get("orderBy", Fields.CREATED_AT)
+    order_direction = data.get("orderDirection", "desc")
 
     # SECURITY FIX #14: Force isActive=True for public API — only admins can list inactive products
     # Prevents client-side bypass where isActive=false exposes deleted/hidden products
@@ -859,10 +915,10 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Validation
     if order_by not in [Fields.CREATED_AT, Fields.PRICE, Fields.RATING, Fields.RATING_COUNT, Fields.NAME]:
-        raise https_fn.HttpsError('invalid-argument', 'Invalid orderBy field')
+        raise https_fn.HttpsError("invalid-argument", "Invalid orderBy field")
 
-    if order_direction not in ['asc', 'desc']:
-        raise https_fn.HttpsError('invalid-argument', 'orderDirection must be asc or desc')
+    if order_direction not in ["asc", "desc"]:
+        raise https_fn.HttpsError("invalid-argument", "orderDirection must be asc or desc")
 
     try:
         # Construction de la requête de base
@@ -870,19 +926,19 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # Filtres
         if is_active is not None:
-            query = query.where(Fields.IS_ACTIVE, '==', is_active)
+            query = query.where(Fields.IS_ACTIVE, "==", is_active)
 
         if category:
-            query = query.where(Fields.CATEGORY_ID, '==', category)
+            query = query.where(Fields.CATEGORY_ID, "==", category)
 
         if seller_id:
-            query = query.where(Fields.SELLER_ID, '==', seller_id)
+            query = query.where(Fields.SELLER_ID, "==", seller_id)
 
         # Tri
-        if order_direction == 'desc':
-            query = query.order_by(order_by, direction='DESCENDING')
+        if order_direction == "desc":
+            query = query.order_by(order_by, direction="DESCENDING")
         else:
-            query = query.order_by(order_by, direction='ASCENDING')
+            query = query.order_by(order_by, direction="ASCENDING")
 
         # Cursor pour pagination
         if start_after_id:
@@ -907,22 +963,19 @@ def get_products_paginated(req: https_fn.CallableRequest) -> dict[str, Any]:
         products = []
         for doc in docs:
             product_data = doc.to_dict()
-            product_data['id'] = doc.id
+            product_data["id"] = doc.id
             products.append(product_data)
 
         # Cursor pour la prochaine page
         next_cursor = docs[-1].id if has_more and docs else None
 
-        return create_success_response({
-            'products': products,
-            'nextCursor': next_cursor,
-            'hasMore': has_more,
-            'totalFetched': len(products)
-        })
+        return create_success_response(
+            {"products": products, "nextCursor": next_cursor, "hasMore": has_more, "totalFetched": len(products)}
+        )
 
     except Exception as e:
-        logger.error(f'ERROR: Failed to fetch products: {e}')
-        raise https_fn.HttpsError('internal', 'Failed to fetch products. Please try again.') from e
+        logger.error(f"ERROR: Failed to fetch products: {e}")
+        raise https_fn.HttpsError("internal", "Failed to fetch products. Please try again.") from e
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -948,31 +1001,31 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> dict[str, An
     # AUDIT FIX: Rate limit read endpoint to prevent scraping
     if req.auth:
         from services.rate_limiter import RateLimiter
+
         _limiter = RateLimiter(get_db())
         allowed, msg = _limiter.check_rate_limit(
-            identifier=req.auth.uid, action='get_seller_products',
-            max_requests=30, window_minutes=1, fail_closed=False
+            identifier=req.auth.uid, action="get_seller_products", max_requests=30, window_minutes=1, fail_closed=False
         )
         if not allowed:
-            raise https_fn.HttpsError('resource-exhausted', msg)
+            raise https_fn.HttpsError("resource-exhausted", msg)
 
     data = req.data or {}
 
     seller_id = data.get(Fields.SELLER_ID)
-    limit = min(data.get('limit', DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE)
-    start_after_id = data.get('startAfter')
-    include_inactive = data.get('includeInactive', False)
+    limit = min(data.get("limit", DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE)
+    start_after_id = data.get("startAfter")
+    include_inactive = data.get("includeInactive", False)
 
     # Si pas de sellerId, utiliser l'utilisateur connecté
     if not seller_id:
         if not req.auth:
-            raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+            raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
         seller_id = req.auth.uid
 
     # Vérifier les permissions pour includeInactive
     if include_inactive:
         if not req.auth:
-            raise https_fn.HttpsError('permission-denied', 'Authentication required to view inactive products')
+            raise https_fn.HttpsError("permission-denied", "Authentication required to view inactive products")
 
         user_id = req.auth.uid
 
@@ -982,23 +1035,22 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> dict[str, An
             user_doc = user_ref.get()
 
             if not user_doc.exists:
-                raise https_fn.HttpsError('not-found', 'User not found')
+                raise https_fn.HttpsError("not-found", "User not found")
 
             user_data = user_doc.to_dict()
             if UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
-                raise https_fn.HttpsError('permission-denied', 'Only owner or admin can view inactive products')
+                raise https_fn.HttpsError("permission-denied", "Only owner or admin can view inactive products")
 
     try:
         # Construction de la requête
-        query = get_db().collection(Collections.PRODUCTS)\
-            .where(Fields.SELLER_ID, '==', seller_id)
+        query = get_db().collection(Collections.PRODUCTS).where(Fields.SELLER_ID, "==", seller_id)
 
         # Filtrer par statut si nécessaire
         if not include_inactive:
-            query = query.where(Fields.IS_ACTIVE, '==', True)
+            query = query.where(Fields.IS_ACTIVE, "==", True)
 
         # Tri par date de création (plus récent en premier)
-        query = query.order_by(Fields.CREATED_AT, direction='DESCENDING')
+        query = query.order_by(Fields.CREATED_AT, direction="DESCENDING")
 
         # Cursor
         if start_after_id:
@@ -1020,21 +1072,18 @@ def get_seller_products_paginated(req: https_fn.CallableRequest) -> dict[str, An
         products = []
         for doc in docs:
             product_data = doc.to_dict()
-            product_data['id'] = doc.id
+            product_data["id"] = doc.id
             products.append(product_data)
 
         next_cursor = docs[-1].id if has_more and docs else None
 
-        return create_success_response({
-            'products': products,
-            'nextCursor': next_cursor,
-            'hasMore': has_more,
-            'totalFetched': len(products)
-        })
+        return create_success_response(
+            {"products": products, "nextCursor": next_cursor, "hasMore": has_more, "totalFetched": len(products)}
+        )
 
     except Exception as e:
-        logger.error(f'ERROR: Failed to fetch seller products: {e}')
-        raise https_fn.HttpsError('internal', 'Failed to fetch seller products. Please try again.') from e
+        logger.error(f"ERROR: Failed to fetch seller products: {e}")
+        raise https_fn.HttpsError("internal", "Failed to fetch seller products. Please try again.") from e
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -1059,39 +1108,38 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
     # AUDIT FIX: Rate limit read endpoint to prevent scraping
     if req.auth:
         from services.rate_limiter import RateLimiter
+
         _limiter = RateLimiter(get_db())
         allowed, msg = _limiter.check_rate_limit(
-            identifier=req.auth.uid, action='get_product_ratings',
-            max_requests=30, window_minutes=1, fail_closed=False
+            identifier=req.auth.uid, action="get_product_ratings", max_requests=30, window_minutes=1, fail_closed=False
         )
         if not allowed:
-            raise https_fn.HttpsError('resource-exhausted', msg)
+            raise https_fn.HttpsError("resource-exhausted", msg)
 
     data = req.data or {}
 
     product_id = data.get(Fields.PRODUCT_ID)
     if not product_id:
-        raise https_fn.HttpsError('invalid-argument', 'productId required')
+        raise https_fn.HttpsError("invalid-argument", "productId required")
 
-    limit = min(data.get('limit', 10), 50)
-    start_after_id = data.get('startAfter')
-    min_rating = data.get('minRating')
+    limit = min(data.get("limit", 10), 50)
+    start_after_id = data.get("startAfter")
+    min_rating = data.get("minRating")
 
     # Validation
     if min_rating is not None and (not isinstance(min_rating, (int, float)) or min_rating < 1 or min_rating > 5):
-        raise https_fn.HttpsError('invalid-argument', 'minRating must be between 1 and 5')
+        raise https_fn.HttpsError("invalid-argument", "minRating must be between 1 and 5")
 
     try:
         # Construction de la requête
-        query = get_db().collection(Collections.PRODUCT_RATINGS)\
-            .where(Fields.PRODUCT_ID, '==', product_id)
+        query = get_db().collection(Collections.PRODUCT_RATINGS).where(Fields.PRODUCT_ID, "==", product_id)
 
         # Filtrer par rating minimum
         if min_rating is not None:
-            query = query.where(Fields.RATING, '>=', min_rating)
+            query = query.where(Fields.RATING, ">=", min_rating)
 
         # Tri par date (plus récent en premier)
-        query = query.order_by(Fields.CREATED_AT, direction='DESCENDING')
+        query = query.order_by(Fields.CREATED_AT, direction="DESCENDING")
 
         # Cursor
         if start_after_id:
@@ -1117,7 +1165,7 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
         # Préparer les données et collecter les user IDs uniques
         for doc in docs:
             rating_data = doc.to_dict()
-            rating_data['id'] = doc.id
+            rating_data["id"] = doc.id
             rating_data_list.append(rating_data)
 
             user_id = rating_data.get(Fields.USER_ID)
@@ -1130,7 +1178,7 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
             user_ids_list = list(user_ids_to_fetch)
             # Firestore getAll limite à 10 documents
             for i in range(0, len(user_ids_list), 10):
-                batch_user_ids = user_ids_list[i:i+10]
+                batch_user_ids = user_ids_list[i : i + 10]
                 user_refs = [get_db().collection(Collections.USERS).document(uid) for uid in batch_user_ids]
                 user_docs = get_db().get_all(user_refs)
 
@@ -1143,20 +1191,17 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
             user_id = rating_data.get(Fields.USER_ID)
             if user_id and user_id in user_data_map:
                 user_data = user_data_map[user_id]
-                rating_data['userName'] = user_data.get(Fields.NAME, 'Anonymous')
-                rating_data['userAvatar'] = user_data.get('profilePictureUrl')
+                rating_data["userName"] = user_data.get(Fields.NAME, "Anonymous")
+                rating_data["userAvatar"] = user_data.get("profilePictureUrl")
 
             ratings.append(rating_data)
 
         next_cursor = docs[-1].id if has_more and docs else None
 
-        return create_success_response({
-            Fields.RATINGS: ratings,
-            'nextCursor': next_cursor,
-            'hasMore': has_more,
-            'totalFetched': len(ratings)
-        })
+        return create_success_response(
+            {Fields.RATINGS: ratings, "nextCursor": next_cursor, "hasMore": has_more, "totalFetched": len(ratings)}
+        )
 
     except Exception as e:
-        logger.error(f'ERROR: Failed to fetch ratings: {e}')
-        raise https_fn.HttpsError('internal', 'Failed to fetch ratings. Please try again.') from e
+        logger.error(f"ERROR: Failed to fetch ratings: {e}")
+        raise https_fn.HttpsError("internal", "Failed to fetch ratings. Please try again.") from e

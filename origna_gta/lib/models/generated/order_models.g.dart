@@ -41,8 +41,8 @@ _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
       ) ??
       ShippingApprovalStatus.notRequired,
   shippingApprovalRequired: json['shippingApprovalRequired'] as bool? ?? false,
-  actualShipping: (json['actualShipping'] as num?)?.toDouble() ?? 0.0,
-  pendingTotal: (json['pendingTotal'] as num?)?.toDouble() ?? 0.0,
+  actualShippingCents: (json['actualShippingCents'] as num?)?.toInt() ?? 0,
+  pendingTotalCents: (json['pendingTotalCents'] as num?)?.toInt() ?? 0,
   sellerPayouts:
       (json['sellerPayouts'] as List<dynamic>?)
           ?.map((e) => SellerPayout.fromJson(e as Map<String, dynamic>))
@@ -52,7 +52,7 @@ _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
   confirmedAt: json['confirmedAt'] == null
       ? null
       : DateTime.parse(json['confirmedAt'] as String),
-  platformFeeTotal: (json['platformFeeTotal'] as num?)?.toDouble() ?? 0.0,
+  platformFeeTotalCents: (json['platformFeeTotalCents'] as num?)?.toInt() ?? 0,
   payoutStatus: json['payoutStatus'] as String? ?? PayoutStatusValues.pending,
   ratings:
       (json['ratings'] as List<dynamic>?)
@@ -69,7 +69,7 @@ _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
       : DateTime.parse(json['expiresAt'] as String),
   autoConfirmed: json['autoConfirmed'] as bool? ?? false,
   autoCaptured: json['autoCaptured'] as bool? ?? false,
-  refundAmount: (json['refundAmount'] as num?)?.toDouble() ?? 0.0,
+  refundAmountCents: (json['refundAmountCents'] as num?)?.toInt() ?? 0,
   refundedAt: json['refundedAt'] == null
       ? null
       : DateTime.parse(json['refundedAt'] as String),
@@ -124,12 +124,12 @@ Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
   'shippingApprovalStatus':
       _$ShippingApprovalStatusEnumMap[instance.shippingApprovalStatus]!,
   'shippingApprovalRequired': instance.shippingApprovalRequired,
-  'actualShipping': instance.actualShipping,
-  'pendingTotal': instance.pendingTotal,
+  'actualShippingCents': instance.actualShippingCents,
+  'pendingTotalCents': instance.pendingTotalCents,
   'sellerPayouts': instance.sellerPayouts,
   'confirmedByClient': instance.confirmedByClient,
   'confirmedAt': instance.confirmedAt?.toIso8601String(),
-  'platformFeeTotal': instance.platformFeeTotal,
+  'platformFeeTotalCents': instance.platformFeeTotalCents,
   'payoutStatus': instance.payoutStatus,
   'ratings': instance.ratings,
   'stripePaymentIntentId': instance.stripePaymentIntentId,
@@ -138,7 +138,7 @@ Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
   'expiresAt': instance.expiresAt?.toIso8601String(),
   'autoConfirmed': instance.autoConfirmed,
   'autoCaptured': instance.autoCaptured,
-  'refundAmount': instance.refundAmount,
+  'refundAmountCents': instance.refundAmountCents,
   'refundedAt': instance.refundedAt?.toIso8601String(),
   'stockRestored': instance.stockRestored,
   'cancelledBy': instance.cancelledBy,

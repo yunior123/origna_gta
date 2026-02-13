@@ -28,19 +28,22 @@ DEFAULT_BASE_URL = f"https://{REGION}-{PROJECT_ID}.cloudfunctions.net"
 
 EMULATOR_BASE_URL = f"http://127.0.0.1:5001/{PROJECT_ID}/{REGION}"
 
+
 class Colors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKCYAN = "\033[96m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+
 
 def print_header(text):
     print(f"\n{Colors.HEADER}{Colors.BOLD}=== {text} ==={Colors.ENDC}")
+
 
 def print_result(name, method, url, status, passed, duration_ms, error=None):
     icon = "✅" if passed else "❌"
@@ -50,6 +53,7 @@ def print_result(name, method, url, status, passed, duration_ms, error=None):
     print(f"   Status: {status} | Time: {duration_ms}ms")
     if error:
         print(f"   {Colors.FAIL}Error: {error}{Colors.ENDC}")
+
 
 def run_test(test_case, base_url):
     url = test_case.get("absolute_url") or f"{base_url}/{test_case['endpoint']}"
@@ -90,6 +94,7 @@ def run_test(test_case, base_url):
         print_result(test_case["name"], method, url, "ERR", False, duration_ms, str(e))
         return False
 
+
 def main():
     use_emulator = "--emulator" in sys.argv
     base_url = EMULATOR_BASE_URL if use_emulator else DEFAULT_BASE_URL
@@ -103,20 +108,18 @@ def main():
             "absolute_url": STRIPE_WEBHOOK_URL,
             "method": "POST",
             "body": {"id": "evt_test", "type": "payment_intent.succeeded"},
-            "expected_status": [400], # Should fail due to missing Stripe-Signature
-            "verify_response": lambda r: "signature" in str(r).lower() or "error" in r
+            "expected_status": [400],  # Should fail due to missing Stripe-Signature
+            "verify_response": lambda r: "signature" in str(r).lower() or "error" in r,
         },
-
         # 2. Airwallex Webhook
         {
             "name": "Airwallex Webhook (Missing Signature)",
             "absolute_url": AIRWALLEX_WEBHOOK_URL,
             "method": "POST",
-            "headers": {"x-resource-id": "test"}, # Missing signature header
+            "headers": {"x-resource-id": "test"},  # Missing signature header
             "body": {"id": "evt_test"},
             "expected_status": [400, 401, 403],
         },
-
         # 3. Create Checkout Session (Callable)
         # Expects specific wrapper {"data": ...}
         {
@@ -128,19 +131,18 @@ def main():
             # or 400/401/403/500/401 if unhandled or rejected at protocol level.
             # 401 est attendu ici car l'utilisateur n'est pas authentifié.
             "expected_status": [200, 400, 401, 403, 500],
-            "verify_response": lambda r: "error" in r or "result" in r
+            "verify_response": lambda r: "error" in r or "result" in r,
         },
-
         # 4. Upload Product Images (Callable)
         {
             "name": "Upload Product Images (Missing Data)",
             "endpoint": "upload_product_images",
             "method": "POST",
-            "body": {"data": {}}, # Missing fileNames/contentTypes
+            "body": {"data": {}},  # Missing fileNames/contentTypes
             # 401 est attendu ici car l'utilisateur n'est pas authentifié.
             "expected_status": [200, 400, 401, 500],
-            "verify_response": lambda r: "error" in r or "message" in str(r)
-        }
+            "verify_response": lambda r: "error" in r or "message" in str(r),
+        },
     ]
 
     passed_count = 0
@@ -156,6 +158,7 @@ def main():
     if passed_count < len(tests):
         print("\nEnsure the functions are deployed and endpoints are correct.")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

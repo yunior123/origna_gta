@@ -24,42 +24,42 @@ class TestPriceManipulationScenarios:
         mock_product = Mock()
         mock_product.exists = True
         mock_product.to_dict.return_value = {
-            'price': 15.0,  # Current price
-            'stockQuantity': 10,
-            'isActive': True,
-            'sellerId': 'seller_123',
-            'name': 'Test Product',
-            'imageUrls': [],
+            "price": 15.0,  # Current price
+            "stockQuantity": 10,
+            "isActive": True,
+            "sellerId": "seller_123",
+            "name": "Test Product",
+            "imageUrls": [],
         }
 
         # Setup mock seller
         mock_seller = Mock()
         mock_seller.exists = True
         mock_seller.to_dict.return_value = {
-            'roles': ['seller'],
-            'suspended': False,
-            'onboardingCompleted': True,
-            'chargesEnabled': True,
-            'payoutsEnabled': True,
-            'email': 'seller@example.com',
-            'stripeAccountId': 'acct_test_123'
+            "roles": ["seller"],
+            "suspended": False,
+            "onboardingCompleted": True,
+            "chargesEnabled": True,
+            "payoutsEnabled": True,
+            "email": "seller@example.com",
+            "stripeAccountId": "acct_test_123",
         }
 
         # Setup mock buyer (not suspended)
         mock_buyer = Mock()
         mock_buyer.exists = True
         mock_buyer.to_dict.return_value = {
-            'suspended': False,
-            'email': 'buyer@example.com',
+            "suspended": False,
+            "email": "buyer@example.com",
         }
 
         def make_doc_ref(doc_id):
             mock_ref = Mock()
-            if doc_id == 'prod_123':
+            if doc_id == "prod_123":
                 mock_ref.get.return_value = mock_product
-            elif doc_id == 'seller_123':
+            elif doc_id == "seller_123":
                 mock_ref.get.return_value = mock_seller
-            elif doc_id == 'buyer_123':
+            elif doc_id == "buyer_123":
                 mock_ref.get.return_value = mock_buyer
             else:
                 not_found = Mock()
@@ -73,31 +73,33 @@ class TestPriceManipulationScenarios:
 
         # Buyer tries to checkout with old price
         req = Mock()
-        req.auth.uid = 'buyer_123'
+        req.auth.uid = "buyer_123"
         req.auth.token.get.return_value = True  # email_verified
         req.data = {
-            'items': [{
-                'productId': 'prod_123',
-                'quantity': 1,
-                'price': 10.0,  # Old price!
-                'sellerId': 'seller_123',
-            }],
-            'shippingAddress': {
-                'street': '123 Main St',
-                'city': 'Toronto',
-                'state': 'ON',  # Use 'state' not 'province'
-                'postalCode': 'M5V 3A8',
-                'country': 'Canada',
-                'latitude': 43.7,
-                'longitude': -79.4,
+            "items": [
+                {
+                    "productId": "prod_123",
+                    "quantity": 1,
+                    "price": 10.0,  # Old price!
+                    "sellerId": "seller_123",
+                }
+            ],
+            "shippingAddress": {
+                "street": "123 Main St",
+                "city": "Toronto",
+                "state": "ON",  # Use 'state' not 'province'
+                "postalCode": "M5V 3A8",
+                "country": "Canada",
+                "latitude": 43.7,
+                "longitude": -79.4,
             },
-            'subtotal': 10.0,
+            "subtotal": 10.0,
         }
 
         with pytest.raises(Exception) as exc_info:
             create_checkout_session(req)
 
-        assert 'PRICE_CHANGED' in str(exc_info.value) or 'Price changed' in str(exc_info.value)
+        assert "PRICE_CHANGED" in str(exc_info.value) or "Price changed" in str(exc_info.value)
 
     def test_seller_id_mismatch_blocked(self, mock_firestore_client, mock_rate_limiter):
         """Scenario 2: Buyer sends wrong sellerId to redirect payment."""
@@ -108,26 +110,26 @@ class TestPriceManipulationScenarios:
         mock_product = Mock()
         mock_product.exists = True
         mock_product.to_dict.return_value = {
-            'price': 10.0,
-            'stockQuantity': 10,
-            'isActive': True,
-            'sellerId': 'legitimate_seller',  # Actual owner
-            'name': 'Test Product',
-            'imageUrls': [],
+            "price": 10.0,
+            "stockQuantity": 10,
+            "isActive": True,
+            "sellerId": "legitimate_seller",  # Actual owner
+            "name": "Test Product",
+            "imageUrls": [],
         }
 
         # Setup mock buyer (not suspended)
         mock_buyer = Mock()
         mock_buyer.exists = True
         mock_buyer.to_dict.return_value = {
-            'suspended': False,
+            "suspended": False,
         }
 
         def make_doc_ref(doc_id):
             mock_ref = Mock()
-            if doc_id == 'prod_123':
+            if doc_id == "prod_123":
                 mock_ref.get.return_value = mock_product
-            elif doc_id == 'buyer_123':
+            elif doc_id == "buyer_123":
                 mock_ref.get.return_value = mock_buyer
             else:
                 not_found = Mock()
@@ -140,31 +142,33 @@ class TestPriceManipulationScenarios:
         mock_db.collection.return_value = mock_collection
 
         req = Mock()
-        req.auth.uid = 'buyer_123'
+        req.auth.uid = "buyer_123"
         req.auth.token.get.return_value = True
         req.data = {
-            'items': [{
-                'productId': 'prod_123',
-                'quantity': 1,
-                'price': 10.0,
-                'sellerId': 'attacker_seller',  # Wrong!
-            }],
-            'shippingAddress': {
-                'street': '123 Main St',
-                'city': 'Toronto',
-                'state': 'ON',  # Use 'state' not 'province'
-                'postalCode': 'M5V 3A8',
-                'country': 'Canada',
-                'latitude': 43.7,
-                'longitude': -79.4,
+            "items": [
+                {
+                    "productId": "prod_123",
+                    "quantity": 1,
+                    "price": 10.0,
+                    "sellerId": "attacker_seller",  # Wrong!
+                }
+            ],
+            "shippingAddress": {
+                "street": "123 Main St",
+                "city": "Toronto",
+                "state": "ON",  # Use 'state' not 'province'
+                "postalCode": "M5V 3A8",
+                "country": "Canada",
+                "latitude": 43.7,
+                "longitude": -79.4,
             },
-            'subtotal': 10.0,
+            "subtotal": 10.0,
         }
 
         with pytest.raises(Exception) as exc_info:
             create_checkout_session(req)
 
-        assert 'Seller ID mismatch' in str(exc_info.value)
+        assert "Seller ID mismatch" in str(exc_info.value)
 
 
 class TestRaceConditionScenarios:
@@ -182,11 +186,11 @@ class TestRaceConditionScenarios:
         mock_order = Mock()
         mock_order.exists = True
         mock_order.to_dict.return_value = {
-            'userId': 'buyer_123',
-            'paymentStatus': 'cancelling',  # Lock acquired by cancel_order
-            'orderStatus': 'confirmed',
-            'items': [{'productId': 'p1', 'sellerId': 's1', 'quantity': 1}],
-            'stockRestored': False,
+            "userId": "buyer_123",
+            "paymentStatus": "cancelling",  # Lock acquired by cancel_order
+            "orderStatus": "confirmed",
+            "items": [{"productId": "p1", "sellerId": "s1", "quantity": 1}],
+            "stockRestored": False,
         }
         mock_order.reference = Mock()
         mock_db.collection.return_value.document.return_value.get.return_value = mock_order
@@ -203,24 +207,27 @@ class TestRaceConditionScenarios:
         mock_order = Mock()
         mock_order.exists = True
         mock_order.to_dict.return_value = {
-            'userId': 'buyer_123',
-            'paymentStatus': 'authorized',
-            'orderStatus': 'pending',
-            'items': [{
-                'productId': 'prod_123',
-                'sellerId': 'seller_123',
-                'quantity': 5,
-            }],
-            'stockRestored': False,
+            "userId": "buyer_123",
+            "paymentStatus": "authorized",
+            "orderStatus": "pending",
+            "items": [
+                {
+                    "productId": "prod_123",
+                    "sellerId": "seller_123",
+                    "quantity": 5,
+                }
+            ],
+            "stockRestored": False,
         }
         mock_order.reference = Mock()
 
         mock_product = Mock()
         mock_product.exists = True
-        mock_product.to_dict.return_value = {'stockQuantity': 10}
+        mock_product.to_dict.return_value = {"stockQuantity": 10}
 
         # Simulate concurrent execution
         calls = []
+
         def mock_update(updates):
             calls.append(updates)
 
@@ -254,30 +261,32 @@ class TestInventoryScenarios:
         """Scenario 30: Order local-only product from different province."""
         from services.shipping_service import calculate_shipping_cost
 
-        items = [{
-            'productId': 'local_prod',
-            'sellerId': 'seller_on',
-            'quantity': 1,
-            'isLocalDeliveryOnly': True,
-            'freeShipping': False,
-            'isDigital': False,
-            'sellerAddress': {
-                'state': 'ON',  # Product in Ontario
-                'latitude': 43.7,
-                'longitude': -79.4,
-            },
-        }]
+        items = [
+            {
+                "productId": "local_prod",
+                "sellerId": "seller_on",
+                "quantity": 1,
+                "isLocalDeliveryOnly": True,
+                "freeShipping": False,
+                "isDigital": False,
+                "sellerAddress": {
+                    "state": "ON",  # Product in Ontario
+                    "latitude": 43.7,
+                    "longitude": -79.4,
+                },
+            }
+        ]
 
         buyer_address = {
-            'state': 'BC',  # Buyer in BC
-            'latitude': 49.2,
-            'longitude': -123.1,
+            "state": "BC",  # Buyer in BC
+            "latitude": 49.2,
+            "longitude": -123.1,
         }
 
         with pytest.raises(ValueError) as exc_info:
             calculate_shipping_cost(items, buyer_address)
 
-        assert 'Local delivery only' in str(exc_info.value)
+        assert "Local delivery only" in str(exc_info.value)
 
 
 class TestAuthSecurityScenarios:
@@ -299,22 +308,22 @@ class TestAuthSecurityScenarios:
         mock_admin = Mock()
         mock_admin.exists = True
         mock_admin.to_dict.return_value = {
-            'roles': ['admin'],
-            'mfaEnabled': True,
-            'lastMfaVerify': datetime.now() - timedelta(minutes=10),  # Too old!
+            "roles": ["admin"],
+            "mfaEnabled": True,
+            "lastMfaVerify": datetime.now() - timedelta(minutes=10),  # Too old!
         }
 
         mock_target = Mock()
         mock_target.exists = True
         mock_target.to_dict.return_value = {
-            'roles': ['buyer'],
+            "roles": ["buyer"],
         }
 
         def make_doc_ref(doc_id):
             mock_ref = Mock()
-            if doc_id == 'admin_123':
+            if doc_id == "admin_123":
                 mock_ref.get.return_value = mock_admin
-            elif doc_id == 'user_456':
+            elif doc_id == "user_456":
                 mock_ref.get.return_value = mock_target
             else:
                 not_found = Mock()
@@ -327,19 +336,19 @@ class TestAuthSecurityScenarios:
         mock_db.collection.return_value = mock_collection
 
         # Patch get_db in admin module
-        monkeypatch.setattr(admin, 'get_db', lambda: mock_db)
+        monkeypatch.setattr(admin, "get_db", lambda: mock_db)
 
         req = Mock()
-        req.auth.uid = 'admin_123'
+        req.auth.uid = "admin_123"
         req.data = {
-            'targetUserId': 'user_456',
-            'roles': ['seller'],
+            "targetUserId": "user_456",
+            "roles": ["seller"],
         }
 
         with pytest.raises(Exception) as exc_info:
             admin.update_user_roles(req)
 
-        assert 'MFA' in str(exc_info.value) or 'expired' in str(exc_info.value).lower()
+        assert "MFA" in str(exc_info.value) or "expired" in str(exc_info.value).lower()
 
 
 class TestWebhookSecurityScenarios:
@@ -354,9 +363,9 @@ class TestWebhookSecurityScenarios:
 
         # Create webhook payload with old timestamp
         old_event = {
-            'id': 'evt_old',
-            'type': 'checkout.session.completed',
-            'created': int(time.time()) - 400,  # 6+ minutes ago
+            "id": "evt_old",
+            "type": "checkout.session.completed",
+            "created": int(time.time()) - 400,  # 6+ minutes ago
         }
 
         # Mock webhook_events collection for idempotency check
@@ -374,25 +383,27 @@ class TestWebhookSecurityScenarios:
 
         # The check is: if not IS_EMULATOR and event_age_seconds > 300:
         # Verify IS_EMULATOR is a boolean (not MagicMock) and the check exists
-        assert hasattr(ps_module, 'IS_EMULATOR'), "IS_EMULATOR should exist"
+        assert hasattr(ps_module, "IS_EMULATOR"), "IS_EMULATOR should exist"
 
         # Mock rate limiter and stripe
-        with patch.object(ps_module, 'get_rate_limiter') as mock_limiter:
+        with patch.object(ps_module, "get_rate_limiter") as mock_limiter:
             limiter = Mock()
             limiter.check_rate_limit.return_value = (True, "OK")
             mock_limiter.return_value = limiter
 
-            with patch.object(ps_module.stripe.Webhook, 'construct_event', return_value=old_event), \
-                 patch.object(ps_module, 'IS_EMULATOR', False):
+            with (
+                patch.object(ps_module.stripe.Webhook, "construct_event", return_value=old_event),
+                patch.object(ps_module, "IS_EMULATOR", False),
+            ):
                 req = Mock()
-                req.method = 'POST'
-                req.headers = {'Stripe-Signature': 'valid_sig'}
-                req.data = b'{}'
+                req.method = "POST"
+                req.headers = {"Stripe-Signature": "valid_sig"}
+                req.data = b"{}"
 
                 response = ps_module.stripe_webhook(req)
 
                 assert response.status_code == 400
-                assert b'Event too old' in response.response[0]
+                assert b"Event too old" in response.response[0]
 
     def test_webhook_rate_limiting(self, mock_firestore_client):
         """Scenario 12: Too many webhooks from same IP blocked."""
@@ -403,7 +414,9 @@ class TestWebhookSecurityScenarios:
 class TestShippingApprovalScenarios:
     """Scenario 24: Shipping cost approval edge cases."""
 
-    def test_approval_after_authorization_expiry_blocked(self, mock_firestore_client, mock_orders_rate_limiter, monkeypatch):
+    def test_approval_after_authorization_expiry_blocked(
+        self, mock_firestore_client, mock_orders_rate_limiter, monkeypatch
+    ):
         """Buyer can't approve shipping after auth expired."""
         from firebase_admin import firestore as fs
 
@@ -414,44 +427,45 @@ class TestShippingApprovalScenarios:
         mock_order = Mock()
         mock_order.exists = True
         mock_order.to_dict.return_value = {
-            'userId': 'buyer_123',
-            'paymentStatus': 'authorized',
-            'shippingApproval': {
-                'status': 'pending',
-                'actualCost': 22.0,  # Only 10% increase (under 20% threshold)
+            "userId": "buyer_123",
+            "paymentStatus": "authorized",
+            "shippingApproval": {
+                "status": "pending",
+                "actualCost": 22.0,  # Only 10% increase (under 20% threshold)
             },
-            'shippingCostCents': 2000,
-            'totalAmountCents': 10200,
-            'expiresAt': datetime.now(UTC) - timedelta(minutes=1),  # Expired!
+            "shippingCostCents": 2000,
+            "totalAmountCents": 10200,
+            "expiresAt": datetime.now(UTC) - timedelta(minutes=1),  # Expired!
         }
         mock_order.reference = Mock()
         mock_db.collection.return_value.document.return_value.get.return_value = mock_order
 
         # Patch get_db in orders module
-        monkeypatch.setattr(orders, 'get_db', lambda: mock_db)
-        monkeypatch.setattr(orders, 'get_firestore', lambda: fs)
-        monkeypatch.setattr(orders, 'get_server_timestamp', lambda: fs.SERVER_TIMESTAMP)
+        monkeypatch.setattr(orders, "get_db", lambda: mock_db)
+        monkeypatch.setattr(orders, "get_firestore", lambda: fs)
+        monkeypatch.setattr(orders, "get_server_timestamp", lambda: fs.SERVER_TIMESTAMP)
 
         req = Mock()
-        req.auth.uid = 'buyer_123'
+        req.auth.uid = "buyer_123"
         req.data = {
-            'orderId': 'order_123',
-            'approved': True,
+            "orderId": "order_123",
+            "approved": True,
         }
 
         with pytest.raises(Exception) as exc_info:
             orders.approve_shipping_cost(req)
 
-        assert 'expired' in str(exc_info.value).lower()
+        assert "expired" in str(exc_info.value).lower()
 
 
 # Fixtures - using global fixtures from conftest.py
 # mock_stripe and mock_rate_limiter are now provided by conftest.py autouse fixture
 
+
 @pytest.fixture
 def mock_rate_limiter():
     """Mock rate limiter to always allow."""
-    with patch('handlers.payment_stripe.get_rate_limiter') as mock:
+    with patch("handlers.payment_stripe.get_rate_limiter") as mock:
         limiter = Mock()
         limiter.check_rate_limit.return_value = (True, "OK")
         mock.return_value = limiter
@@ -467,5 +481,5 @@ def mock_orders_rate_limiter(monkeypatch):
         """Mock rate limiter to always allow requests in tests"""
         return True, "OK"
 
-    monkeypatch.setattr(RateLimiter, 'check_rate_limit', mock_check_rate_limit)
+    monkeypatch.setattr(RateLimiter, "check_rate_limit", mock_check_rate_limit)
     yield None

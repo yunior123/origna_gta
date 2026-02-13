@@ -4,10 +4,10 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Set TESTING environment variable BEFORE importing main
-os.environ['TESTING'] = 'true'
+os.environ["TESTING"] = "true"
 
 # 1. Setup global mocks BEFORE importing main
 mock_firebase_functions = MagicMock()
@@ -19,11 +19,14 @@ mock_google_auth = MagicMock()
 mock_google_cloud_firestore = MagicMock()
 mock_secret_manager = MagicMock()
 
+
 # Decorator passthrough
 def pass_through_decorator(*args, **kwargs):
     def decorator(f):
         return f
+
     return decorator
+
 
 mock_firebase_functions.https_fn.on_call.side_effect = pass_through_decorator
 mock_firebase_functions.https_fn.on_request.side_effect = pass_through_decorator
@@ -31,39 +34,42 @@ mock_firebase_functions.firestore_fn.on_document_updated.side_effect = pass_thro
 mock_firebase_functions.params.SecretParam.return_value.value = "test_key"
 mock_firebase_admin.firestore.transactional = lambda f: f
 
+
 class MockHttpsError(Exception):
     def __init__(self, code, message, details=None):
         self.code = code
         self.message = message
         self.details = details
 
+
 mock_firebase_functions.https_fn.HttpsError = MockHttpsError
 mock_firebase_functions.https_fn.FunctionsErrorCode = MagicMock()
 
 module_mocks = {
-    'firebase_functions': mock_firebase_functions,
-    'firebase_functions.https_fn': mock_firebase_functions.https_fn,
-    'firebase_functions.firestore_fn': mock_firebase_functions.firestore_fn,
-    'firebase_functions.params': mock_firebase_functions.params,
-    'firebase_admin': mock_firebase_admin,
-    'firebase_admin.firestore': mock_firebase_admin.firestore,
-    'firebase_admin.auth': mock_firebase_admin.auth,
-    'firebase_admin.credentials': mock_firebase_admin.credentials,
-    'stripe': mock_stripe,
-    'google.cloud.firestore': mock_google_cloud_firestore,
-    'google.cloud.firestore_v1.base_client': MagicMock(),
-    'google.auth': mock_google_auth,
-    'google.auth.transport.requests': MagicMock(),
-    'google.cloud.secretmanager': mock_secret_manager,
-    'google.cloud.secretmanager.SecretManagerServiceClient': MagicMock(),
-    'mailjet_rest': mock_mailjet,
-    'boto3': mock_boto3
+    "firebase_functions": mock_firebase_functions,
+    "firebase_functions.https_fn": mock_firebase_functions.https_fn,
+    "firebase_functions.firestore_fn": mock_firebase_functions.firestore_fn,
+    "firebase_functions.params": mock_firebase_functions.params,
+    "firebase_admin": mock_firebase_admin,
+    "firebase_admin.firestore": mock_firebase_admin.firestore,
+    "firebase_admin.auth": mock_firebase_admin.auth,
+    "firebase_admin.credentials": mock_firebase_admin.credentials,
+    "stripe": mock_stripe,
+    "google.cloud.firestore": mock_google_cloud_firestore,
+    "google.cloud.firestore_v1.base_client": MagicMock(),
+    "google.auth": mock_google_auth,
+    "google.auth.transport.requests": MagicMock(),
+    "google.cloud.secretmanager": mock_secret_manager,
+    "google.cloud.secretmanager.SecretManagerServiceClient": MagicMock(),
+    "mailjet_rest": mock_mailjet,
+    "boto3": mock_boto3,
 }
 
 with patch.dict(sys.modules, module_mocks):
     import main
     from handlers import payment_stripe
     from main import calculate_shipping_cost, create_checkout_session
+
 
 class TestPaymentSecurity(unittest.TestCase):
     def setUp(self):
@@ -83,8 +89,10 @@ class TestPaymentSecurity(unittest.TestCase):
         self.mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
 
         # Patch get_db and get_rate_limiter for all tests
-        self.patcher_db = patch.object(payment_stripe, 'get_db', return_value=self.mock_db)
-        self.patcher_rate_limiter = patch.object(payment_stripe, 'get_rate_limiter', return_value=self.mock_rate_limiter)
+        self.patcher_db = patch.object(payment_stripe, "get_db", return_value=self.mock_db)
+        self.patcher_rate_limiter = patch.object(
+            payment_stripe, "get_rate_limiter", return_value=self.mock_rate_limiter
+        )
         self.patcher_db.start()
         self.patcher_rate_limiter.start()
 
@@ -104,16 +112,24 @@ class TestPaymentSecurity(unittest.TestCase):
             "customerEmail": "hacker@example.com",
             "amount": 100000,
             "subtotal": 100000.00,
-            "items": [{
-                "productId": "prod_1",
-                "quantity": 1,
-                "price": 1.00,  # FAKE PRICE
-                "sellerId": "seller_elon",
-                "name": "Tesla Cybertruck",
-                "description": "Electric pickup truck",
-                "imageUrls": ["http://img.com/truck.jpg"],
-                "sellerAddress": {"street": "1 Tesla St", "city": "Markham", "state": "ON", "postalCode": "L3R 4H5", "country": "Canada"}
-            }],
+            "items": [
+                {
+                    "productId": "prod_1",
+                    "quantity": 1,
+                    "price": 1.00,  # FAKE PRICE
+                    "sellerId": "seller_elon",
+                    "name": "Tesla Cybertruck",
+                    "description": "Electric pickup truck",
+                    "imageUrls": ["http://img.com/truck.jpg"],
+                    "sellerAddress": {
+                        "street": "1 Tesla St",
+                        "city": "Markham",
+                        "state": "ON",
+                        "postalCode": "L3R 4H5",
+                        "country": "Canada",
+                    },
+                }
+            ],
             "shippingAddress": {
                 "street": "123 Test St",
                 "city": "Toronto",
@@ -121,8 +137,8 @@ class TestPaymentSecurity(unittest.TestCase):
                 "state": "ON",
                 "country": "Canada",
                 "longitude": -79.0,
-                "latitude": 43.0
-            }
+                "latitude": 43.0,
+            },
         }
 
         # Mock DB Product Return (REAL PRICE)
@@ -134,7 +150,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "stockQuantity": 5,
             "sellerId": "seller_elon",
             "isActive": True,
-            "sellerAddress": {"state": "TX", "longitude": -97.0, "latitude": 30.0}
+            "sellerAddress": {"state": "TX", "longitude": -97.0, "latitude": 30.0},
         }
 
         # Mock seller
@@ -145,7 +161,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "suspended": False,
             "onboardingCompleted": True,
             "chargesEnabled": True,
-            "payoutsEnabled": True
+            "payoutsEnabled": True,
         }
 
         # Setup Database mocks
@@ -178,11 +194,7 @@ class TestPaymentSecurity(unittest.TestCase):
         Test that shipping is calculated using helper function, ignoring client request.
         """
         # Scenario: Same province (ON to ON) fallback shipping
-        items = [{
-            "sellerId": "s1",
-            "sellerAddress": {"state": "ON"},
-            "quantity": 1
-        }]
+        items = [{"sellerId": "s1", "sellerAddress": {"state": "ON"}, "quantity": 1}]
         buyer_addr = {
             "street": "123 Test St",
             "city": "Toronto",
@@ -190,7 +202,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "state": "ON",
             "country": "Canada",
             "latitude": 43.0,
-            "longitude": -79.0
+            "longitude": -79.0,
         }
 
         cost = calculate_shipping_cost(items, buyer_addr)
@@ -203,12 +215,7 @@ class TestPaymentSecurity(unittest.TestCase):
         Scenario: All items are marked freeShipping.
         Expectation: Shipping cost is zero (no fixed/tiered/fallback applied).
         """
-        items = [{
-            "sellerId": "s1",
-            "sellerAddress": {"state": "ON"},
-            "quantity": 2,
-            "freeShipping": True
-        }]
+        items = [{"sellerId": "s1", "sellerAddress": {"state": "ON"}, "quantity": 2, "freeShipping": True}]
         buyer_addr = {
             "street": "123 Test St",
             "city": "Toronto",
@@ -216,7 +223,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "state": "ON",
             "country": "Canada",
             "latitude": 43.0,
-            "longitude": -79.0
+            "longitude": -79.0,
         }
 
         cost = calculate_shipping_cost(items, buyer_addr)
@@ -232,18 +239,14 @@ class TestPaymentSecurity(unittest.TestCase):
                 "sellerId": "s1",
                 "sellerAddress": {"state": "ON"},
                 "quantity": 2,
-                "deliveryOptions": [
-                    {"deliverySpeed": "express", "isEnabled": True, "price": 4.0}
-                ]
+                "deliveryOptions": [{"deliverySpeed": "express", "isEnabled": True, "price": 4.0}],
             },
             {
                 "sellerId": "s2",
                 "sellerAddress": {"state": "ON"},
                 "quantity": 1,
-                "deliveryOptions": [
-                    {"deliverySpeed": "express", "isEnabled": True, "price": 7.5}
-                ]
-            }
+                "deliveryOptions": [{"deliverySpeed": "express", "isEnabled": True, "price": 7.5}],
+            },
         ]
         buyer_addr = {
             "street": "123 Test St",
@@ -252,7 +255,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "state": "ON",
             "country": "Canada",
             "latitude": 43.0,
-            "longitude": -79.0
+            "longitude": -79.0,
         }
 
         cost = calculate_shipping_cost(items, buyer_addr, speed="express")
@@ -269,16 +272,9 @@ class TestPaymentSecurity(unittest.TestCase):
                 "sellerId": "s1",
                 "sellerAddress": {"state": "ON"},
                 "quantity": 1,
-                "deliveryOptions": [
-                    {"deliverySpeed": "standard", "isEnabled": True, "price": 5.0}
-                ]
+                "deliveryOptions": [{"deliverySpeed": "standard", "isEnabled": True, "price": 5.0}],
             },
-            {
-                "sellerId": "s2",
-                "sellerAddress": {"state": "ON"},
-                "quantity": 1,
-                "deliveryOptions": []
-            }
+            {"sellerId": "s2", "sellerAddress": {"state": "ON"}, "quantity": 1, "deliveryOptions": []},
         ]
         buyer_addr = {
             "street": "123 Test St",
@@ -287,7 +283,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "state": "ON",
             "country": "Canada",
             "latitude": 43.0,
-            "longitude": -79.0
+            "longitude": -79.0,
         }
 
         # For seller s1: fixed price 5.0, seller s2: fallback same province 12.99
@@ -306,20 +302,22 @@ class TestPaymentSecurity(unittest.TestCase):
             "customerEmail": "abuse@example.com",
             "amount": 100,
             "subtotal": 1010,
-            "items": [{
-                "productId": "prod_1",
-                "quantity": 101,  # ABUSIVE QUANTITY
-                "price": 10.0,
-                "sellerId": "seller_1",
-                "name": "Test Product"
-            }],
+            "items": [
+                {
+                    "productId": "prod_1",
+                    "quantity": 101,  # ABUSIVE QUANTITY
+                    "price": 10.0,
+                    "sellerId": "seller_1",
+                    "name": "Test Product",
+                }
+            ],
             "shippingAddress": {
                 "street": "123 Test St",
                 "city": "Toronto",
                 "postalCode": "M5V 1A1",
                 "state": "ON",
-                "country": "Canada"
-            }
+                "country": "Canada",
+            },
         }
 
         # Mock DB Product with stock check
@@ -330,7 +328,7 @@ class TestPaymentSecurity(unittest.TestCase):
             "price": 10.0,
             "stockQuantity": 50,  # Only 50 in stock
             "sellerId": "seller_1",
-            "isActive": True
+            "isActive": True,
         }
 
         mock_doc_ref = MagicMock()
@@ -352,17 +350,10 @@ class TestPaymentSecurity(unittest.TestCase):
             "customerEmail": "abuse@example.com",
             "amount": 100,
             "subtotal": 100,
-            "items": [{
-                "productId": "prod_1",
-                "quantity": 1,
-                "price": 10.0,
-                "sellerId": "seller_1",
-                "name": "Test Product"
-            }],
-            "shippingAddress": {
-                "state": "ON",
-                "country": "Canada"
-            }
+            "items": [
+                {"productId": "prod_1", "quantity": 1, "price": 10.0, "sellerId": "seller_1", "name": "Test Product"}
+            ],
+            "shippingAddress": {"state": "ON", "country": "Canada"},
         }
 
         with self.assertRaises(MockHttpsError):
@@ -380,20 +371,16 @@ class TestPaymentSecurity(unittest.TestCase):
             "customerEmail": "abuse@example.com",
             "amount": 100,
             "subtotal": 100,
-            "items": [{
-                "productId": "prod_1",
-                "quantity": 1,
-                "price": 10.0,
-                "sellerId": "seller_1",
-                "name": "Test Product"
-            }],
+            "items": [
+                {"productId": "prod_1", "quantity": 1, "price": 10.0, "sellerId": "seller_1", "name": "Test Product"}
+            ],
             "shippingAddress": {
                 "street": "123 Test St",
                 "city": "Toronto",
                 "postalCode": "INVALID",
                 "state": "ON",
-                "country": "Canada"
-            }
+                "country": "Canada",
+            },
         }
 
         with self.assertRaises(MockHttpsError):
@@ -411,24 +398,21 @@ class TestPaymentSecurity(unittest.TestCase):
             "customerEmail": "abuse@example.com",
             "amount": 100,
             "subtotal": 100,
-            "items": [{
-                "productId": "prod_1",
-                "quantity": 1,
-                "price": 10.0,
-                "sellerId": "seller_1",
-                "name": "Test Product"
-            }],
+            "items": [
+                {"productId": "prod_1", "quantity": 1, "price": 10.0, "sellerId": "seller_1", "name": "Test Product"}
+            ],
             "shippingAddress": {
                 "street": "X" * 200,
                 "city": "Toronto",
                 "postalCode": "M5V 1A1",
                 "state": "ON",
-                "country": "Canada"
-            }
+                "country": "Canada",
+            },
         }
 
         with self.assertRaises(MockHttpsError):
             create_checkout_session(req)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

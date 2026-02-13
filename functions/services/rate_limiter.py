@@ -2,9 +2,8 @@
 Rate Limiter for Cloud Functions
 Protects against abuse and DDoS
 """
-import logging
 
-logger = logging.getLogger(__name__)
+import logging
 import os
 from datetime import UTC, datetime, timedelta
 
@@ -12,8 +11,10 @@ from firebase_admin import firestore
 
 from schema_constants import Collections, Fields
 
+logger = logging.getLogger(__name__)
+
 # In emulator mode, relax rate limits 100x for E2E test throughput
-_IS_EMULATOR = os.environ.get('FUNCTIONS_EMULATOR', 'false').lower() == 'true'
+_IS_EMULATOR = os.environ.get("FUNCTIONS_EMULATOR", "false").lower() == "true"
 _EMULATOR_RATE_MULTIPLIER = 100 if _IS_EMULATOR else 1
 
 
@@ -30,7 +31,7 @@ class RateLimiter:
         action: str,  # 'create_checkout', 'webhook', etc
         max_requests: int,
         window_minutes: int,
-        fail_closed: bool = False  # If True, block on errors (for auth/payment)
+        fail_closed: bool = False,  # If True, block on errors (for auth/payment)
     ) -> tuple[bool, str]:
         """
         Returns (allowed: bool, message: str)
@@ -64,11 +65,7 @@ class RateLimiter:
 
                     # Window expired, reset
                     if first_request < window_start:
-                        transaction.set(ref, {
-                            Fields.COUNT: 1,
-                            Fields.FIRST_REQUEST: now,
-                            Fields.LAST_REQUEST: now
-                        })
+                        transaction.set(ref, {Fields.COUNT: 1, Fields.FIRST_REQUEST: now, Fields.LAST_REQUEST: now})
                         return True, "OK"
 
                     # Within window, check limit
@@ -76,18 +73,11 @@ class RateLimiter:
                         return False, f"Rate limit exceeded: {max_requests} requests per {window_minutes} minutes"
 
                     # Increment atomically
-                    transaction.update(ref, {
-                        Fields.COUNT: count + 1,
-                        Fields.LAST_REQUEST: now
-                    })
+                    transaction.update(ref, {Fields.COUNT: count + 1, Fields.LAST_REQUEST: now})
                     return True, "OK"
                 else:
                     # First request
-                    transaction.set(ref, {
-                        Fields.COUNT: 1,
-                        Fields.FIRST_REQUEST: now,
-                        Fields.LAST_REQUEST: now
-                    })
+                    transaction.set(ref, {Fields.COUNT: 1, Fields.FIRST_REQUEST: now, Fields.LAST_REQUEST: now})
                     return True, "OK"
 
             # Execute transaction
@@ -107,30 +97,30 @@ class RateLimiter:
     def get_identifier(self, req) -> str:
         """Extract identifier from request (IP, user_id, or device fingerprint)"""
         # Try user ID first
-        if hasattr(req, 'auth') and req.auth:
+        if hasattr(req, "auth") and req.auth:
             base_id = f"user_{req.auth.uid}"
             # SECURITY FIX: Add device fingerprint if available from Firebase claims
             # This prevents rate limit bypass via account switching
-            fingerprint = req.auth.token.get('fingerprint') or req.auth.token.get('device_id')
+            fingerprint = req.auth.token.get("fingerprint") or req.auth.token.get("device_id")
             if fingerprint:
                 return f"{base_id}_{fingerprint[:16]}"
             return base_id
 
         # Fall back to IP
-        if hasattr(req, 'headers'):
+        if hasattr(req, "headers"):
             # SECURITY: Use the LAST X-Forwarded-For entry — it's added by the
             # trusted Google Cloud load balancer. The first entry is client-supplied
             # and can be spoofed to bypass rate limiting.
-            forwarded_header = req.headers.get('X-Forwarded-For', '')
+            forwarded_header = req.headers.get("X-Forwarded-For", "")
             if forwarded_header:
-                parts = [p.strip() for p in forwarded_header.split(',') if p.strip()]
+                parts = [p.strip() for p in forwarded_header.split(",") if p.strip()]
                 # Last entry = added by trusted proxy (GCP LB)
-                trusted_ip = parts[-1] if parts else ''
+                trusted_ip = parts[-1] if parts else ""
                 if trusted_ip:
                     return f"ip_{trusted_ip}"
 
             # Direct IP
-            remote_addr = req.headers.get('X-Real-IP', 'unknown')
+            remote_addr = req.headers.get("X-Real-IP", "unknown")
             return f"ip_{remote_addr}"
 
         return "unknown"

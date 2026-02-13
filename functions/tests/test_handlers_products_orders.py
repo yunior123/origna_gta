@@ -17,28 +17,30 @@ from firebase_functions import firestore_fn, https_fn
 class TestProductHandlers:
     """Test product CRUD operations"""
 
-    @patch('handlers.products.create_success_response')
-    @patch('handlers.products.get_db')
-    @patch.dict('os.environ', {'R2_ACCESS_KEY': 'mock_key', 'R2_SECRET_KEY': 'mock_secret', 'R2_ACCOUNT_ID': 'mock_account'})
-    @patch('handlers.products.boto3.client')
+    @patch("handlers.products.create_success_response")
+    @patch("handlers.products.get_db")
+    @patch.dict(
+        "os.environ", {"R2_ACCESS_KEY": "mock_key", "R2_SECRET_KEY": "mock_secret", "R2_ACCOUNT_ID": "mock_account"}
+    )
+    @patch("handlers.products.boto3.client")
     def test_upload_product_images_success(self, mock_boto_client, mock_get_db, mock_create_response):
         """Test successful image upload with presigned URLs"""
         from handlers.products import upload_product_images
 
-        mock_create_response.return_value = {'success': True, 'data': {'uploadUrls': [{}, {}]}}
+        mock_create_response.return_value = {"success": True, "data": {"uploadUrls": [{}, {}]}}
 
         # Mock boto3 S3 client
         mock_s3_client = Mock()
         mock_boto_client.return_value = mock_s3_client
-        mock_s3_client.generate_presigned_url.return_value = 'https://r2.example.com/upload?signature=abc'
+        mock_s3_client.generate_presigned_url.return_value = "https://r2.example.com/upload?signature=abc"
 
         # Mock user document with seller onboarding complete
         mock_user_doc = Mock()
         mock_user_doc.exists = True
         mock_user_doc.to_dict.return_value = {
-            'roles': ['seller'],
-            'suspended': False,
-            'onboardingCompleted': True,
+            "roles": ["seller"],
+            "suspended": False,
+            "onboardingCompleted": True,
         }
         mock_db = Mock()
         mock_get_db.return_value = mock_db
@@ -47,39 +49,41 @@ class TestProductHandlers:
         mock_request = Mock()
         mock_request.auth = Mock(uid="seller_123")
         mock_request.data = {
-            'productId': 'prod_123',
-            'fileNames': ['image1.jpg', 'image2.png'],
-            'contentTypes': ['image/jpeg', 'image/png']
+            "productId": "prod_123",
+            "fileNames": ["image1.jpg", "image2.png"],
+            "contentTypes": ["image/jpeg", "image/png"],
         }
 
         result = upload_product_images(mock_request)
 
-        assert result['success'] is True
+        assert result["success"] is True
         mock_create_response.assert_called_once()
 
-    @patch('handlers.products.create_success_response')
-    @patch('handlers.products.get_db')
-    @patch.dict('os.environ', {'R2_ACCESS_KEY': 'mock_key', 'R2_SECRET_KEY': 'mock_secret', 'R2_ACCOUNT_ID': 'mock_account'})
-    @patch('handlers.products.boto3.client')
+    @patch("handlers.products.create_success_response")
+    @patch("handlers.products.get_db")
+    @patch.dict(
+        "os.environ", {"R2_ACCESS_KEY": "mock_key", "R2_SECRET_KEY": "mock_secret", "R2_ACCOUNT_ID": "mock_account"}
+    )
+    @patch("handlers.products.boto3.client")
     def test_upload_images_invalid_file_type_rejected(self, mock_boto_client, mock_get_db, mock_create_response):
         """SECURITY: Test non-image file types are rejected - verifies presigned URLs are only generated for images"""
         from handlers.products import upload_product_images
 
-        mock_create_response.return_value = {'success': True}
+        mock_create_response.return_value = {"success": True}
 
         # Note: The current implementation allows any file type because it only validates
         # the number of files. This test documents the expected behavior.
         mock_s3_client = Mock()
         mock_boto_client.return_value = mock_s3_client
-        mock_s3_client.generate_presigned_url.return_value = 'https://r2.example.com/upload?signature=abc'
+        mock_s3_client.generate_presigned_url.return_value = "https://r2.example.com/upload?signature=abc"
 
         # Mock user document with seller onboarding complete
         mock_user_doc = Mock()
         mock_user_doc.exists = True
         mock_user_doc.to_dict.return_value = {
-            'roles': ['seller'],
-            'suspended': False,
-            'onboardingCompleted': True,
+            "roles": ["seller"],
+            "suspended": False,
+            "onboardingCompleted": True,
         }
         mock_db = Mock()
         mock_get_db.return_value = mock_db
@@ -88,17 +92,19 @@ class TestProductHandlers:
         mock_request = Mock()
         mock_request.auth = Mock(uid="seller_123")
         mock_request.data = {
-            'productId': 'prod_123',
-            'fileNames': ['image.jpg'],  # Valid image file
-            'contentTypes': ['image/jpeg']
+            "productId": "prod_123",
+            "fileNames": ["image.jpg"],  # Valid image file
+            "contentTypes": ["image/jpeg"],
         }
 
         # This should succeed for valid image types
         result = upload_product_images(mock_request)
-        assert result['success'] is True
+        assert result["success"] is True
 
-    @patch('handlers.products.get_db')
-    @patch.dict('os.environ', {'R2_ACCESS_KEY': 'mock_key', 'R2_SECRET_KEY': 'mock_secret', 'R2_ACCOUNT_ID': 'mock_account'})
+    @patch("handlers.products.get_db")
+    @patch.dict(
+        "os.environ", {"R2_ACCESS_KEY": "mock_key", "R2_SECRET_KEY": "mock_secret", "R2_ACCOUNT_ID": "mock_account"}
+    )
     def test_upload_images_too_many_files_rejected(self, mock_get_db):
         """Test maximum 5 images per product enforced"""
         from handlers.products import upload_product_images
@@ -107,9 +113,9 @@ class TestProductHandlers:
         mock_user_doc = Mock()
         mock_user_doc.exists = True
         mock_user_doc.to_dict.return_value = {
-            'roles': ['seller'],
-            'suspended': False,
-            'onboardingCompleted': True,
+            "roles": ["seller"],
+            "suspended": False,
+            "onboardingCompleted": True,
         }
         mock_db = Mock()
         mock_get_db.return_value = mock_db
@@ -118,25 +124,25 @@ class TestProductHandlers:
         mock_request = Mock()
         mock_request.auth = Mock(uid="seller_123")
         mock_request.data = {
-            'productId': 'prod_123',
-            'fileNames': [f'image{i}.jpg' for i in range(10)],  # 10 images (max is 5)
-            'contentTypes': ['image/jpeg'] * 10
+            "productId": "prod_123",
+            "fileNames": [f"image{i}.jpg" for i in range(10)],  # 10 images (max is 5)
+            "contentTypes": ["image/jpeg"] * 10,
         }
 
         with pytest.raises(https_fn.HttpsError) as exc:
             upload_product_images(mock_request)
 
-        assert exc.value.code == 'invalid-argument'
-        assert '5' in str(exc.value)
+        assert exc.value.code == "invalid-argument"
+        assert "5" in str(exc.value)
 
-    @patch('handlers.products.create_success_response')
-    @patch('services.algolia_service.delete_product')  # Patch the algolia function, not the handler
-    @patch('handlers.products.get_db')
+    @patch("handlers.products.create_success_response")
+    @patch("services.algolia_service.delete_product")  # Patch the algolia function, not the handler
+    @patch("handlers.products.get_db")
     def test_delete_product_soft_delete(self, mock_get_db, mock_algolia_delete, mock_create_response):
         """Test product soft delete (sets isActive=false)"""
         from handlers.products import delete_product as handler_delete_product
 
-        mock_create_response.return_value = {'success': True, 'message': 'Product deleted'}
+        mock_create_response.return_value = {"success": True, "message": "Product deleted"}
 
         # Mock database
         mock_db = Mock()
@@ -145,11 +151,7 @@ class TestProductHandlers:
         # Mock product owned by user
         mock_product_doc = Mock()
         mock_product_doc.exists = True
-        mock_product_doc.to_dict.return_value = {
-            'productId': 'prod_123',
-            'sellerId': 'seller_123',
-            'isActive': True
-        }
+        mock_product_doc.to_dict.return_value = {"productId": "prod_123", "sellerId": "seller_123", "isActive": True}
 
         mock_product_ref = Mock()
         mock_product_ref.get.return_value = mock_product_doc
@@ -158,10 +160,7 @@ class TestProductHandlers:
         # Mock user doc
         mock_user_doc = Mock()
         mock_user_doc.exists = True
-        mock_user_doc.to_dict.return_value = {
-            'userId': 'seller_123',
-            'roles': ['seller']
-        }
+        mock_user_doc.to_dict.return_value = {"userId": "seller_123", "roles": ["seller"]}
         mock_user_ref = Mock()
         mock_user_ref.get.return_value = mock_user_doc
 
@@ -173,11 +172,11 @@ class TestProductHandlers:
 
         def collection_side_effect(collection_name):
             mock_collection = Mock()
-            if collection_name == 'products':
+            if collection_name == "products":
                 mock_collection.document.return_value = mock_product_ref
-            elif collection_name == 'users':
+            elif collection_name == "users":
                 mock_collection.document.return_value = mock_user_ref
-            elif collection_name == 'orders':
+            elif collection_name == "orders":
                 mock_collection.where.return_value = mock_query
             return mock_collection
 
@@ -185,15 +184,15 @@ class TestProductHandlers:
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="seller_123")
-        mock_request.data = {'productId': 'prod_123'}
+        mock_request.data = {"productId": "prod_123"}
 
         result = handler_delete_product(mock_request)
 
-        assert result['success'] is True
+        assert result["success"] is True
         # Verify create_success_response was called
         mock_create_response.assert_called_once()
 
-    @patch('handlers.products.get_db')
+    @patch("handlers.products.get_db")
     def test_delete_product_unauthorized_seller_rejected(self, mock_get_db):
         """SECURITY: Test user cannot delete another seller's product"""
         from handlers.products import delete_product
@@ -204,8 +203,8 @@ class TestProductHandlers:
         mock_product_doc = Mock()
         mock_product_doc.exists = True
         mock_product_doc.to_dict.return_value = {
-            'productId': 'prod_123',
-            'sellerId': 'other_seller_456'  # Different seller
+            "productId": "prod_123",
+            "sellerId": "other_seller_456",  # Different seller
         }
 
         mock_product_ref = Mock()
@@ -218,14 +217,14 @@ class TestProductHandlers:
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="seller_123")
-        mock_request.data = {'productId': 'prod_123'}
+        mock_request.data = {"productId": "prod_123"}
 
         with pytest.raises(https_fn.HttpsError) as exc:
             delete_product(mock_request)
 
-        assert exc.value.code == 'permission-denied'
+        assert exc.value.code == "permission-denied"
 
-    @patch('handlers.products.get_db')
+    @patch("handlers.products.get_db")
     def test_submit_rating_validates_range(self, mock_get_db):
         """Test rating must be 1-5 stars"""
         from handlers.products import submit_product_rating
@@ -233,19 +232,19 @@ class TestProductHandlers:
         mock_request = Mock()
         mock_request.auth = Mock(uid="buyer_123")
         mock_request.data = {
-            'productId': 'prod_123',
-            'orderId': 'order_123',
-            'rating': 6,  # Invalid: > 5
-            'review': 'Great product'
+            "productId": "prod_123",
+            "orderId": "order_123",
+            "rating": 6,  # Invalid: > 5
+            "review": "Great product",
         }
 
         with pytest.raises(https_fn.HttpsError) as exc:
             submit_product_rating(mock_request)
 
-        assert exc.value.code == 'invalid-argument'
-        assert ('1' in str(exc.value) and '5' in str(exc.value)) or 'rating' in str(exc.value).lower()
+        assert exc.value.code == "invalid-argument"
+        assert ("1" in str(exc.value) and "5" in str(exc.value)) or "rating" in str(exc.value).lower()
 
-    @patch('handlers.products.get_db')
+    @patch("handlers.products.get_db")
     def test_submit_rating_requires_verified_purchase(self, mock_get_db):
         """Test rating requires verified purchase (user bought product)"""
         from handlers.products import submit_product_rating
@@ -263,58 +262,51 @@ class TestProductHandlers:
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="buyer_123")
-        mock_request.data = {
-            'productId': 'prod_123',
-            'orderId': 'order_123',
-            'rating': 5,
-            'review': 'Great!'
-        }
+        mock_request.data = {"productId": "prod_123", "orderId": "order_123", "rating": 5, "review": "Great!"}
 
         with pytest.raises(https_fn.HttpsError) as exc:
             submit_product_rating(mock_request)
 
         # Check for not-found (order doesn't exist)
-        assert exc.value.code == 'not-found'
-
-
+        assert exc.value.code == "not-found"
 
 
 class TestOrderHandlers:
     """Test order lifecycle management"""
 
-    @patch('handlers.payment_stripe._capture_payment_impl')
+    @patch("handlers.payment_stripe._capture_payment_impl")
     def test_confirm_order_receipt_captures_and_pays_seller(self, mock_capture_impl):
         """Test confirm_order_receipt delegates to capture_payment"""
         from handlers.orders import confirm_order_receipt
 
-        mock_capture_impl.return_value = {'success': True, 'captured': True}
+        mock_capture_impl.return_value = {"success": True, "captured": True}
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="buyer_123")
-        mock_request.data = {'orderId': 'order_123'}
+        mock_request.data = {"orderId": "order_123"}
 
         result = confirm_order_receipt(mock_request)
 
-        assert result['success'] is True
+        assert result["success"] is True
         mock_capture_impl.assert_called_once_with(mock_request)
 
-    @patch('handlers.payment_stripe._capture_payment_impl')
+    @patch("handlers.payment_stripe._capture_payment_impl")
     def test_confirm_receipt_non_buyer_rejected(self, mock_capture_impl):
         """SECURITY: confirm_order_receipt propagates capture_payment auth checks"""
         from handlers.orders import confirm_order_receipt
 
-        mock_capture_impl.side_effect = https_fn.HttpsError('permission-denied', 'This is not your order')
+        mock_capture_impl.side_effect = https_fn.HttpsError("permission-denied", "This is not your order")
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="attacker_999")  # Different user
-        mock_request.data = {'orderId': 'order_123'}
+        mock_request.data = {"orderId": "order_123"}
 
         with pytest.raises(https_fn.HttpsError) as exc:
             confirm_order_receipt(mock_request)
 
-        assert exc.value.code == 'permission-denied'
+        assert exc.value.code == "permission-denied"
 
-    @patch('handlers.orders.get_db')
+    @patch("handlers.orders.get_db")
     def test_update_order_status_validates_state_machine(self, mock_get_db):
         """Test state machine prevents invalid transitions"""
         from handlers.orders import update_order_status
@@ -325,9 +317,9 @@ class TestOrderHandlers:
         mock_order_doc = Mock()
         mock_order_doc.exists = True
         mock_order_doc.to_dict.return_value = {
-            'orderId': 'order_123',
-            'items': [{'sellerId': 'seller_123'}],  # Items contain seller info
-            'orderStatus': 'pending'  # Current status
+            "orderId": "order_123",
+            "items": [{"sellerId": "seller_123"}],  # Items contain seller info
+            "orderStatus": "pending",  # Current status
         }
 
         mock_order_ref = Mock()
@@ -339,37 +331,37 @@ class TestOrderHandlers:
         mock_request = Mock()
         mock_request.auth = Mock(uid="seller_123")
         mock_request.data = {
-            'orderId': 'order_123',
-            'newStatus': 'delivered'  # INVALID transition from pending
+            "orderId": "order_123",
+            "newStatus": "delivered",  # INVALID transition from pending
         }
 
         with pytest.raises(https_fn.HttpsError) as exc:
             update_order_status(mock_request)
 
         # Sellers are blocked from setting DELIVERED (security fix) - permission check fires before state machine
-        assert exc.value.code in ('failed-precondition', 'permission-denied')
+        assert exc.value.code in ("failed-precondition", "permission-denied")
         # Valid: pending → confirmed → shipped → delivered → completed
         valid_transitions = [
-            ('pending', 'confirmed'),
-            ('pending', 'cancelled'),
-            ('confirmed', 'shipped'),
-            ('shipped', 'delivered'),
-            ('delivered', 'completed')
+            ("pending", "confirmed"),
+            ("pending", "cancelled"),
+            ("confirmed", "shipped"),
+            ("shipped", "delivered"),
+            ("delivered", "completed"),
         ]
 
         for current, next_status in valid_transitions:
             assert is_valid_transition(current, next_status), f"{current} → {next_status} should be valid"
 
-    @patch('handlers.orders.create_success_response')
-    @patch('handlers.orders.stripe')
-    @patch('handlers.orders.get_db')
-    @patch('firebase_admin.firestore.transactional', lambda fn: fn)
+    @patch("handlers.orders.create_success_response")
+    @patch("handlers.orders.stripe")
+    @patch("handlers.orders.get_db")
+    @patch("firebase_admin.firestore.transactional", lambda fn: fn)
     def test_cancel_order_refunds_and_restores_stock(self, mock_get_db, mock_stripe, mock_create_response):
         """Test order cancellation refunds payment and restores inventory"""
         from handlers.orders import cancel_order
 
         # Mock create_success_response
-        mock_create_response.return_value = {'success': True, 'refunded': False}
+        mock_create_response.return_value = {"success": True, "refunded": False}
 
         mock_db = Mock()
         mock_get_db.return_value = mock_db
@@ -377,15 +369,15 @@ class TestOrderHandlers:
         mock_order_doc = Mock()
         mock_order_doc.exists = True
         mock_order_doc.to_dict.return_value = {
-            'orderId': 'order_123',
-            'userId': 'buyer_123',
-            'items': [
-                {'productId': 'prod_1', 'quantity': 2, 'sellerId': 'seller_1'},
-                {'productId': 'prod_2', 'quantity': 1, 'sellerId': 'seller_1'}
+            "orderId": "order_123",
+            "userId": "buyer_123",
+            "items": [
+                {"productId": "prod_1", "quantity": 2, "sellerId": "seller_1"},
+                {"productId": "prod_2", "quantity": 1, "sellerId": "seller_1"},
             ],
-            'stripePaymentIntentId': 'pi_test_123',
-            'orderStatus': 'confirmed',
-            'paymentStatus': 'authorized'
+            "stripePaymentIntentId": "pi_test_123",
+            "orderStatus": "confirmed",
+            "paymentStatus": "authorized",
         }
 
         mock_order_ref = Mock()
@@ -394,44 +386,41 @@ class TestOrderHandlers:
         # Mock user doc (buyer)
         mock_user_doc = Mock()
         mock_user_doc.exists = True
-        mock_user_doc.to_dict.return_value = {'userId': 'buyer_123', 'roles': ['buyer']}
+        mock_user_doc.to_dict.return_value = {"userId": "buyer_123", "roles": ["buyer"]}
         mock_user_ref = Mock()
         mock_user_ref.get.return_value = mock_user_doc
 
         # Mock product doc
         mock_product_doc = Mock()
         mock_product_doc.exists = True
-        mock_product_doc.to_dict.return_value = {'stockQuantity': 10}
+        mock_product_doc.to_dict.return_value = {"stockQuantity": 10}
         mock_product_ref = Mock()
         mock_product_ref.get.return_value = mock_product_doc
 
         # Setup database mock
         def collection_side_effect(coll_name):
             mock_coll = Mock()
-            if coll_name == 'orders':
+            if coll_name == "orders":
                 mock_coll.document.return_value = mock_order_ref
-            elif coll_name == 'users':
+            elif coll_name == "users":
                 mock_coll.document.return_value = mock_user_ref
-            elif coll_name == 'products':
+            elif coll_name == "products":
                 mock_coll.document.return_value = mock_product_ref
             return mock_coll
 
         mock_db.collection.side_effect = collection_side_effect
 
-        mock_stripe.PaymentIntent.cancel.return_value = Mock(status='canceled')
+        mock_stripe.PaymentIntent.cancel.return_value = Mock(status="canceled")
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="buyer_123")
-        mock_request.data = {
-            'orderId': 'order_123',
-            'reason': 'Changed my mind'
-        }
+        mock_request.data = {"orderId": "order_123", "reason": "Changed my mind"}
 
         result = cancel_order(mock_request)
 
-        assert result['success'] is True
+        assert result["success"] is True
 
-    @patch('handlers.orders.get_db')
+    @patch("handlers.orders.get_db")
     def test_cancel_delivered_order_rejected(self, mock_get_db):
         """Test cannot cancel order that is already delivered"""
         from handlers.orders import cancel_order
@@ -442,10 +431,10 @@ class TestOrderHandlers:
         mock_order_doc = Mock()
         mock_order_doc.exists = True
         mock_order_doc.to_dict.return_value = {
-            'orderId': 'order_123',
-            'userId': 'buyer_123',
-            'items': [{'sellerId': 'seller_123', 'productId': 'prod_1', 'quantity': 1}],
-            'orderStatus': 'delivered'  # Cannot cancel delivered order
+            "orderId": "order_123",
+            "userId": "buyer_123",
+            "items": [{"sellerId": "seller_123", "productId": "prod_1", "quantity": 1}],
+            "orderStatus": "delivered",  # Cannot cancel delivered order
         }
 
         mock_order_ref = Mock()
@@ -454,16 +443,16 @@ class TestOrderHandlers:
         # Mock user doc
         mock_user_doc = Mock()
         mock_user_doc.exists = True
-        mock_user_doc.to_dict.return_value = {'userId': 'buyer_123', 'roles': ['buyer']}
+        mock_user_doc.to_dict.return_value = {"userId": "buyer_123", "roles": ["buyer"]}
         mock_user_ref = Mock()
         mock_user_ref.get.return_value = mock_user_doc
 
         # Setup database mock
         def collection_side_effect(coll_name):
             mock_coll = Mock()
-            if coll_name == 'orders':
+            if coll_name == "orders":
                 mock_coll.document.return_value = mock_order_ref
-            elif coll_name == 'users':
+            elif coll_name == "users":
                 mock_coll.document.return_value = mock_user_ref
             return mock_coll
 
@@ -471,14 +460,14 @@ class TestOrderHandlers:
 
         mock_request = Mock()
         mock_request.auth = Mock(uid="buyer_123")
-        mock_request.data = {'orderId': 'order_123'}
+        mock_request.data = {"orderId": "order_123"}
 
         with pytest.raises(https_fn.HttpsError) as exc:
             cancel_order(mock_request)
 
-        assert exc.value.code == 'failed-precondition'
+        assert exc.value.code == "failed-precondition"
 
-    @patch('handlers.orders.get_db')
+    @patch("handlers.orders.get_db")
     def test_approve_shipping_cost_seller_only(self, mock_get_db):
         """Test only buyer can approve shipping cost adjustments (not seller)"""
         from handlers.orders import approve_shipping_cost
@@ -489,10 +478,10 @@ class TestOrderHandlers:
         mock_order_doc = Mock()
         mock_order_doc.exists = True
         mock_order_doc.to_dict.return_value = {
-            'orderId': 'order_123',
-            'userId': 'buyer_123',  # The actual buyer
-            'items': [{'sellerId': 'seller_123'}],
-            'orderStatus': 'pending'
+            "orderId": "order_123",
+            "userId": "buyer_123",  # The actual buyer
+            "items": [{"sellerId": "seller_123"}],
+            "orderStatus": "pending",
         }
 
         mock_order_ref = Mock()
@@ -502,18 +491,253 @@ class TestOrderHandlers:
         # Non-buyer tries to approve (should fail - only buyer can approve)
         mock_request = Mock()
         mock_request.auth = Mock(uid="attacker_999")  # Not the buyer
-        mock_request.data = {
-            'orderId': 'order_123',
-            'approved': True
-        }
+        mock_request.data = {"orderId": "order_123", "approved": True}
 
         with pytest.raises(https_fn.HttpsError) as exc:
             approve_shipping_cost(mock_request)
 
-        assert exc.value.code == 'permission-denied'
+        assert exc.value.code == "permission-denied"
 
     # NOTE: test_on_order_status_changed_sends_notification removed
     # Firestore trigger tests require emulator - see e2e/tests/
+
+    # =========================================================================
+    # AUDIT FIX TESTS: C2 — Multi-seller cancel restriction
+    # =========================================================================
+
+    @patch("handlers.orders.get_db")
+    def test_seller_cannot_cancel_multi_seller_order(self, mock_get_db):
+        """C2: Seller with items in a multi-seller order cannot cancel the entire order"""
+        from handlers.orders import cancel_order
+
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        mock_order_doc = Mock()
+        mock_order_doc.exists = True
+        mock_order_doc.to_dict.return_value = {
+            "orderId": "order_multi",
+            "userId": "buyer_123",
+            "items": [
+                {"sellerId": "seller_A", "productId": "prod_1", "quantity": 1},
+                {"sellerId": "seller_B", "productId": "prod_2", "quantity": 1},
+            ],
+            "orderStatus": "confirmed",
+            "paymentStatus": "authorized",
+        }
+
+        mock_order_ref = Mock()
+        mock_order_ref.get.return_value = mock_order_doc
+
+        mock_user_doc = Mock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {"userId": "seller_A", "roles": ["seller"]}
+        mock_user_ref = Mock()
+        mock_user_ref.get.return_value = mock_user_doc
+
+        def collection_side_effect(coll_name):
+            mock_coll = Mock()
+            if coll_name == "orders":
+                mock_coll.document.return_value = mock_order_ref
+            elif coll_name == "users":
+                mock_coll.document.return_value = mock_user_ref
+            return mock_coll
+
+        mock_db.collection.side_effect = collection_side_effect
+
+        mock_request = Mock()
+        mock_request.auth = Mock(uid="seller_A")
+        mock_request.data = {"orderId": "order_multi"}
+
+        with pytest.raises(https_fn.HttpsError) as exc:
+            cancel_order(mock_request)
+
+        assert exc.value.code == "permission-denied"
+        assert "multi-seller" in str(exc.value.message).lower()
+
+    @patch("handlers.orders.create_success_response")
+    @patch("handlers.orders.stripe")
+    @patch("handlers.orders.get_db")
+    @patch("firebase_admin.firestore.transactional", lambda fn: fn)
+    def test_seller_can_cancel_single_seller_order(self, mock_get_db, mock_stripe, mock_create_response):
+        """C2: Seller who owns ALL items CAN cancel the order"""
+        from handlers.orders import cancel_order
+
+        mock_create_response.return_value = {"success": True}
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        mock_order_doc = Mock()
+        mock_order_doc.exists = True
+        mock_order_doc.to_dict.return_value = {
+            "orderId": "order_single",
+            "userId": "buyer_123",
+            "items": [
+                {"sellerId": "seller_A", "productId": "prod_1", "quantity": 1},
+                {"sellerId": "seller_A", "productId": "prod_2", "quantity": 2},
+            ],
+            "stripePaymentIntentId": "pi_test_456",
+            "orderStatus": "confirmed",
+            "paymentStatus": "authorized",
+        }
+
+        mock_order_ref = Mock()
+        mock_order_ref.get.return_value = mock_order_doc
+
+        mock_user_doc = Mock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {"userId": "seller_A", "roles": ["seller"]}
+        mock_user_ref = Mock()
+        mock_user_ref.get.return_value = mock_user_doc
+
+        mock_product_doc = Mock()
+        mock_product_doc.exists = True
+        mock_product_doc.to_dict.return_value = {"stockQuantity": 10}
+        mock_product_ref = Mock()
+        mock_product_ref.get.return_value = mock_product_doc
+
+        def collection_side_effect(coll_name):
+            mock_coll = Mock()
+            if coll_name == "orders":
+                mock_coll.document.return_value = mock_order_ref
+            elif coll_name == "users":
+                mock_coll.document.return_value = mock_user_ref
+            elif coll_name == "products":
+                mock_coll.document.return_value = mock_product_ref
+            return mock_coll
+
+        mock_db.collection.side_effect = collection_side_effect
+        mock_stripe.PaymentIntent.cancel.return_value = Mock(status="canceled")
+
+        mock_request = Mock()
+        mock_request.auth = Mock(uid="seller_A")
+        mock_request.data = {"orderId": "order_single", "reason": "Out of stock"}
+
+        result = cancel_order(mock_request)
+        assert result["success"] is True
+
+    # =========================================================================
+    # AUDIT FIX TESTS: C1 + C3 + H4 — Shipping approval with tax recalculation
+    # =========================================================================
+
+    @patch("handlers.orders.get_server_timestamp")
+    @patch("handlers.orders.stripe")
+    @patch("handlers.orders.get_db")
+    def test_approve_shipping_recalculates_tax(self, mock_get_db, mock_stripe, mock_get_ts):
+        """C1: Approving a shipping increase recalculates taxes on the delta"""
+        from handlers.orders import approve_shipping_cost
+
+        mock_get_ts.return_value = "2025-01-01T00:00:00Z"
+
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        # Transaction mock — just calls the decorated function directly
+        mock_txn = Mock()
+        mock_db.transaction.return_value = mock_txn
+
+        order_data = {
+            "orderId": "order_tax",
+            "userId": "buyer_123",
+            "items": [{"sellerId": "seller_1", "productId": "prod_1", "quantity": 1}],
+            "orderStatus": "confirmed",
+            "paymentStatus": "authorized",
+            "shippingApproval": {
+                "status": "pending",
+                "actualCost": 11.50,  # New: $11.50 shipping (within 20% threshold of $10)
+            },
+            "shippingCostCents": 1000,  # Old: $10 shipping
+            "totalAmountCents": 5000,   # $50 total
+            "taxAmountCents": 650,      # $6.50 tax
+            "taxes": {"HST": 6.50},
+            "shippingAddress": {"state": "ON"},  # Ontario — 13% HST
+            "stripePaymentIntentId": "pi_test_789",
+        }
+
+        mock_order_doc = Mock()
+        mock_order_doc.exists = True
+        mock_order_doc.to_dict.return_value = order_data
+        mock_order_ref = Mock()
+        mock_order_ref.get.return_value = mock_order_doc
+
+        mock_db.collection.return_value.document.return_value = mock_order_ref
+
+        mock_request = Mock()
+        mock_request.auth = Mock(uid="buyer_123")
+        mock_request.data = {"orderId": "order_tax", "approved": True}
+
+        with patch("services.rate_limiter.RateLimiter") as mock_rl_class:
+            mock_rl_class.return_value.check_rate_limit.return_value = (True, "")
+            with patch("firebase_admin.firestore.transactional", lambda fn: fn):
+                with patch("services.shipping_service.get_tax_rate", return_value=0.13):
+                    approve_shipping_cost(mock_request)
+
+        # Verify the transactional function was called (via mock_txn)
+        # The actual update is done inside the transaction, so verify Stripe was called
+        mock_stripe.PaymentIntent.modify.assert_called_once()
+        call_args = mock_stripe.PaymentIntent.modify.call_args
+        assert call_args[0][0] == "pi_test_789"
+        # New total = 5000 + 150 (shipping delta: 1150-1000) + 20 (tax on delta: 150 * 0.13 = 19.5 → 20)
+        assert call_args[1]["amount"] == 5170
+
+    @patch("handlers.orders.get_server_timestamp")
+    @patch("handlers.orders.stripe")
+    @patch("handlers.orders.get_db")
+    def test_approve_shipping_stripe_failure_flags_review(self, mock_get_db, mock_stripe, mock_get_ts):
+        """H4: Stripe failure during shipping approval flags order for manual review"""
+        from handlers.orders import approve_shipping_cost
+
+        mock_get_ts.return_value = "2025-01-01T00:00:00Z"
+
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+        mock_txn = Mock()
+        mock_db.transaction.return_value = mock_txn
+
+        order_data = {
+            "orderId": "order_stripe_fail",
+            "userId": "buyer_123",
+            "items": [{"sellerId": "seller_1", "productId": "prod_1", "quantity": 1}],
+            "orderStatus": "confirmed",
+            "paymentStatus": "authorized",
+            "shippingApproval": {
+                "status": "pending",
+                "actualCost": 11.50,  # Within 20% threshold of $10
+            },
+            "shippingCostCents": 1000,
+            "totalAmountCents": 5000,
+            "taxAmountCents": 650,
+            "taxes": {"HST": 6.50},
+            "shippingAddress": {"state": "ON"},
+            "stripePaymentIntentId": "pi_test_fail",
+        }
+
+        mock_order_doc = Mock()
+        mock_order_doc.exists = True
+        mock_order_doc.to_dict.return_value = order_data
+        mock_order_ref = Mock()
+        mock_order_ref.get.return_value = mock_order_doc
+
+        mock_db.collection.return_value.document.return_value = mock_order_ref
+
+        # Simulate Stripe failure
+        mock_stripe.PaymentIntent.modify.side_effect = mock_stripe.error.StripeError("card_declined")
+        mock_stripe.error.StripeError = type("StripeError", (Exception,), {})
+        mock_stripe.PaymentIntent.modify.side_effect = mock_stripe.error.StripeError("card_declined")
+
+        mock_request = Mock()
+        mock_request.auth = Mock(uid="buyer_123")
+        mock_request.data = {"orderId": "order_stripe_fail", "approved": True}
+
+        with patch("services.rate_limiter.RateLimiter") as mock_rl_class:
+            mock_rl_class.return_value.check_rate_limit.return_value = (True, "")
+            with patch("firebase_admin.firestore.transactional", lambda fn: fn):
+                with patch("services.shipping_service.get_tax_rate", return_value=0.13):
+                    with pytest.raises(https_fn.HttpsError) as exc:
+                        approve_shipping_cost(mock_request)
+
+        assert exc.value.code == "internal"
+        assert "manual review" in str(exc.value.message).lower()
 
 
 class TestOrderEdgeCases:
@@ -539,7 +763,7 @@ class TestOrderEdgeCases:
         # Last write wins with timestamp
         pass
 
-    @patch('handlers.orders.get_db')
+    @patch("handlers.orders.get_db")
     def test_refund_after_capture_uses_reverse_transfer(self, mock_get_db):
         pass
 
@@ -554,14 +778,14 @@ class TestOrderEdgeCases:
 def is_valid_transition(current_status, new_status):
     """Validate order status transitions"""
     VALID_TRANSITIONS = {
-        'pending': ['confirmed', 'cancelled'],
-        'confirmed': ['shipped', 'cancelled'],
-        'shipped': ['delivered', 'in_transit'],
-        'in_transit': ['delivered', 'return_requested'],
-        'delivered': ['completed'],
-        'return_requested': ['returned'],
-        'cancelled': [],  # Terminal state
-        'completed': []  # Terminal state
+        "pending": ["confirmed", "cancelled"],
+        "confirmed": ["shipped", "cancelled"],
+        "shipped": ["delivered", "in_transit"],
+        "in_transit": ["delivered", "return_requested"],
+        "delivered": ["completed"],
+        "return_requested": ["returned"],
+        "cancelled": [],  # Terminal state
+        "completed": [],  # Terminal state
     }
 
     allowed = VALID_TRANSITIONS.get(current_status, [])

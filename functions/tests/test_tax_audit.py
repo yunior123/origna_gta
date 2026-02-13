@@ -8,11 +8,14 @@ mock_firebase_functions = MagicMock()
 mock_firebase_admin = MagicMock()
 mock_stripe = MagicMock()
 
+
 # Decorator passthrough
 def pass_through_decorator(*args, **kwargs):
     def decorator(f):
         return f
+
     return decorator
+
 
 mock_firebase_functions.https_fn.on_call.side_effect = pass_through_decorator
 mock_firebase_functions.https_fn.on_request.side_effect = pass_through_decorator
@@ -20,36 +23,39 @@ mock_firebase_functions.firestore_fn.on_document_updated.side_effect = pass_thro
 mock_firebase_functions.params.SecretParam.return_value.value = "test_key"
 mock_firebase_admin.firestore.transactional = lambda f: f
 
+
 class MockHttpsError(Exception):
     def __init__(self, code, message, details=None):
         self.code = code
         self.message = message
         self.details = details
 
+
 mock_firebase_functions.https_fn.HttpsError = MockHttpsError
 
 module_mocks = {
-    'firebase_functions': mock_firebase_functions,
-    'firebase_functions.https_fn': mock_firebase_functions.https_fn,
-    'firebase_functions.firestore_fn': mock_firebase_functions.firestore_fn,
-    'firebase_functions.params': mock_firebase_functions.params,
-    'firebase_admin': mock_firebase_admin,
-    'firebase_admin.firestore': mock_firebase_admin.firestore,
-    'firebase_admin.auth': mock_firebase_admin.auth,
-    'stripe': mock_stripe,
-    'google.cloud.firestore': MagicMock(),
-    'mailjet_rest': MagicMock(),
-    'boto3': MagicMock(),
-    'botocore': MagicMock(),
-    'botocore.config': MagicMock(),
+    "firebase_functions": mock_firebase_functions,
+    "firebase_functions.https_fn": mock_firebase_functions.https_fn,
+    "firebase_functions.firestore_fn": mock_firebase_functions.firestore_fn,
+    "firebase_functions.params": mock_firebase_functions.params,
+    "firebase_admin": mock_firebase_admin,
+    "firebase_admin.firestore": mock_firebase_admin.firestore,
+    "firebase_admin.auth": mock_firebase_admin.auth,
+    "stripe": mock_stripe,
+    "google.cloud.firestore": MagicMock(),
+    "mailjet_rest": MagicMock(),
+    "boto3": MagicMock(),
+    "botocore": MagicMock(),
+    "botocore.config": MagicMock(),
     # Standard library mocks if needed
 }
 
 with patch.dict(sys.modules, module_mocks):
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
     import main
     from handlers import payment_stripe
     from main import create_checkout_session
+
 
 class TestTaxAudit(unittest.TestCase):
     def setUp(self):
@@ -69,9 +75,11 @@ class TestTaxAudit(unittest.TestCase):
         self.mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
 
         # Start patches using patch.object
-        self.patcher_db = patch.object(payment_stripe, 'get_db', return_value=self.mock_db)
-        self.patcher_rate_limiter = patch.object(payment_stripe, 'get_rate_limiter', return_value=self.mock_rate_limiter)
-        self.patcher_shipping = patch.object(main, 'calculate_shipping_cost', return_value=0.0)
+        self.patcher_db = patch.object(payment_stripe, "get_db", return_value=self.mock_db)
+        self.patcher_rate_limiter = patch.object(
+            payment_stripe, "get_rate_limiter", return_value=self.mock_rate_limiter
+        )
+        self.patcher_shipping = patch.object(main, "calculate_shipping_cost", return_value=0.0)
 
         self.patcher_db.start()
         self.patcher_rate_limiter.start()
@@ -94,24 +102,32 @@ class TestTaxAudit(unittest.TestCase):
             "customerEmail": "parent@example.com",
             "amount": 100,
             "subtotal": 100.00,  # Must match price * quantity: 100.00 * 1 = 100.00
-            "items": [{
-                "productId": "prod_kids_shirt",
-                "quantity": 1,
-                "price": 100.00,
-                "sellerId": "seller_1",
-                "name": "Kids Shirt",
-                "description": "Children's clothing item",
-                "imageUrls": ["http://img.com/shirt.jpg"],
-                "sellerAddress": {"street": "123 Test St", "city": "Toronto", "state": "ON", "postalCode": "M5V 1A1", "country": "Canada"},
-                "categoryId": 17
-            }],
+            "items": [
+                {
+                    "productId": "prod_kids_shirt",
+                    "quantity": 1,
+                    "price": 100.00,
+                    "sellerId": "seller_1",
+                    "name": "Kids Shirt",
+                    "description": "Children's clothing item",
+                    "imageUrls": ["http://img.com/shirt.jpg"],
+                    "sellerAddress": {
+                        "street": "123 Test St",
+                        "city": "Toronto",
+                        "state": "ON",
+                        "postalCode": "M5V 1A1",
+                        "country": "Canada",
+                    },
+                    "categoryId": 17,
+                }
+            ],
             "shippingAddress": {
                 "street": "123 Kids St",
                 "city": "Toronto",
                 "postalCode": "M5V 1A1",
                 "state": "ON",
-                "country": "Canada"
-            }
+                "country": "Canada",
+            },
         }
 
         # Mock Seller Document (returned by collection('users').document(seller_id).get())
@@ -122,7 +138,7 @@ class TestTaxAudit(unittest.TestCase):
             "suspended": False,
             "onboardingCompleted": True,
             "chargesEnabled": True,
-            "payoutsEnabled": True
+            "payoutsEnabled": True,
         }
 
         # Mock DB Product
@@ -135,22 +151,24 @@ class TestTaxAudit(unittest.TestCase):
             "stockQuantity": 50,
             "sellerId": "seller_1",
             "sellerAddress": {"state": "ON"},
-            "isActive": True
+            "isActive": True,
         }
 
         # Setup mock db to return different docs based on collection/document
         def mock_collection(name):
             mock_coll = MagicMock()
+
             def mock_document(doc_id=None):
                 mock_doc_ref = MagicMock()
-                mock_doc_ref.id = doc_id or 'order_123'
-                if name == 'users':
+                mock_doc_ref.id = doc_id or "order_123"
+                if name == "users":
                     mock_doc_ref.get.return_value = mock_seller_doc
-                elif name == 'products':
+                elif name == "products":
                     mock_doc_ref.get.return_value = mock_product
                 else:  # orders
                     mock_doc_ref.get.return_value = MagicMock(exists=True, to_dict=lambda: {})
                 return mock_doc_ref
+
             mock_coll.document = mock_document
             return mock_coll
 
@@ -167,12 +185,12 @@ class TestTaxAudit(unittest.TestCase):
 
         # OrignaGTA calculates tax server-side and adds it as a line item.
         # Stripe automatic_tax is intentionally disabled to avoid double taxation.
-        self.assertFalse(kwargs.get('automatic_tax', {}).get('enabled', False))
+        self.assertFalse(kwargs.get("automatic_tax", {}).get("enabled", False))
 
         # Verify Line Item Tax Code
-        line_items = kwargs['line_items']
+        line_items = kwargs["line_items"]
         product_item = line_items[0]
-        tax_code = product_item['price_data']['product_data']['tax_code']
+        tax_code = product_item["price_data"]["product_data"]["tax_code"]
 
         print(f"\n[AUDIT] Tax Code Used: {tax_code}")
 
@@ -190,24 +208,32 @@ class TestTaxAudit(unittest.TestCase):
             "customerEmail": "shopper@example.com",
             "amount": 1,
             "subtotal": 1.00,  # Must match price * quantity: 1.00 * 1 = 1.00
-            "items": [{
-                "productId": "prod_apple",
-                "quantity": 1,
-                "sellerId": "seller_1",
-                "name": "Apple",
-                "price": 1.00,
-                "description": "Fresh fruit",
-                "imageUrls": ["http://img.com/apple.jpg"],
-                "sellerAddress": {"street": "123 Farm St", "city": "Toronto", "state": "ON", "postalCode": "M5V 1A1", "country": "Canada"},
-                "categoryId": 19
-            }],
+            "items": [
+                {
+                    "productId": "prod_apple",
+                    "quantity": 1,
+                    "sellerId": "seller_1",
+                    "name": "Apple",
+                    "price": 1.00,
+                    "description": "Fresh fruit",
+                    "imageUrls": ["http://img.com/apple.jpg"],
+                    "sellerAddress": {
+                        "street": "123 Farm St",
+                        "city": "Toronto",
+                        "state": "ON",
+                        "postalCode": "M5V 1A1",
+                        "country": "Canada",
+                    },
+                    "categoryId": 19,
+                }
+            ],
             "shippingAddress": {
                 "street": "123 Grocery St",
                 "city": "Toronto",
                 "postalCode": "M5V 1A1",
                 "state": "ON",
-                "country": "Canada"
-            }
+                "country": "Canada",
+            },
         }
 
         # Mock Seller Document
@@ -218,7 +244,7 @@ class TestTaxAudit(unittest.TestCase):
             "suspended": False,
             "onboardingCompleted": True,
             "chargesEnabled": True,
-            "payoutsEnabled": True
+            "payoutsEnabled": True,
         }
 
         mock_product = MagicMock()
@@ -230,22 +256,24 @@ class TestTaxAudit(unittest.TestCase):
             "stockQuantity": 100,
             "sellerId": "seller_1",
             "sellerAddress": {"state": "ON"},
-            "isActive": True
+            "isActive": True,
         }
 
         # Setup mock db to return different docs based on collection/document
         def mock_collection(name):
             mock_coll = MagicMock()
+
             def mock_document(doc_id=None):
                 mock_doc_ref = MagicMock()
-                mock_doc_ref.id = doc_id or 'order_123'
-                if name == 'users':
+                mock_doc_ref.id = doc_id or "order_123"
+                if name == "users":
                     mock_doc_ref.get.return_value = mock_seller_doc
-                elif name == 'products':
+                elif name == "products":
                     mock_doc_ref.get.return_value = mock_product
                 else:  # orders
                     mock_doc_ref.get.return_value = MagicMock(exists=True, to_dict=lambda: {})
                 return mock_doc_ref
+
             mock_coll.document = mock_document
             return mock_coll
 
@@ -257,13 +285,14 @@ class TestTaxAudit(unittest.TestCase):
         create_checkout_session(req)
 
         args, kwargs = mock_stripe.checkout.Session.create.call_args
-        line_items = kwargs['line_items']
+        line_items = kwargs["line_items"]
         product_item = line_items[0]
-        tax_code = product_item['price_data']['product_data']['tax_code']
+        tax_code = product_item["price_data"]["product_data"]["tax_code"]
 
         print(f"[AUDIT] Grocery Tax Code Used: {tax_code}")
 
         self.assertEqual(tax_code, "txcd_30060005", "Should use Basic Groceries tax code for Category 19")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

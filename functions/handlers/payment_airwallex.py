@@ -11,13 +11,13 @@ TODO(post-launch): Evaluate Airwallex activation or remove entirely.
 """
 
 import logging
-
-logger = logging.getLogger(__name__)
 from typing import Any
 
 from firebase_functions import https_fn
 
 from utils.function_options import DEFAULT_OPTIONS
+
+logger = logging.getLogger(__name__)
 
 # Lazy-loaded globals
 _db = None
@@ -27,67 +27,85 @@ _collections = None
 _utils = None
 _fields = None
 
+
 def get_db():
     """Get Firestore client (lazy initialization)."""
     global _db, _firestore
     if _db is None:
         from firebase_admin import firestore as fs
+
         _firestore = fs
         _db = fs.client()
     return _db
+
 
 def get_server_timestamp():
     """Get Firestore SERVER_TIMESTAMP (lazy initialization)."""
     global _firestore
     if _firestore is None:
         from firebase_admin import firestore as fs
+
         _firestore = fs
     return _firestore.SERVER_TIMESTAMP
+
 
 def get_airwallex_service():
     """Get Airwallex service (lazy initialization)."""
     global _airwallex_service
     if _airwallex_service is None:
         from services.airwallex_service import AirwallexService
+
         _airwallex_service = AirwallexService()
     return _airwallex_service
+
 
 def get_collections():
     """Get Collections config (lazy initialization)."""
     global _collections
     if _collections is None:
         from schema_constants import Collections
+
         _collections = Collections
     return _collections
+
 
 def get_order_status_values():
     """Get OrderStatusValues config (lazy initialization)."""
     from schema_constants import OrderStatusValues
+
     return OrderStatusValues
+
 
 def get_payment_status_values():
     """Get PaymentStatusValues config (lazy initialization)."""
     from schema_constants import PaymentStatusValues
+
     return PaymentStatusValues
+
 
 def get_security_alert_types():
     """Get SecurityAlertTypes config (lazy initialization)."""
     from schema_constants import SecurityAlertTypes
+
     return SecurityAlertTypes
+
 
 def get_fields():
     """Get Fields config (lazy initialization)."""
     global _fields
     if _fields is None:
         from schema_constants import Fields
+
         _fields = Fields
     return _fields
+
 
 def get_utils():
     """Get utility functions (lazy initialization)."""
     global _utils
     if _utils is None:
         import utils
+
         _utils = utils
     return _utils
 
@@ -105,7 +123,7 @@ def airwallex_create_seller_account(req: https_fn.CallableRequest) -> dict[str, 
         {success: True, accountId: "..."}
     """
     if not req.auth:
-        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     user_id = req.auth.uid
     data = req.data
@@ -117,24 +135,19 @@ def airwallex_create_seller_account(req: https_fn.CallableRequest) -> dict[str, 
 
         airwallex_service = get_airwallex_service()
         account_id = airwallex_service.create_connected_account(
-            user_id=user_id,
-            email=data.get(Fields.EMAIL),
-            business_info=data.get('businessInfo', {})
+            user_id=user_id, email=data.get(Fields.EMAIL), business_info=data.get("businessInfo", {})
         )
 
         # Save account ID to Firestore
         user_ref = get_db().collection(Collections.USERS).document(user_id)
-        user_ref.update({
-            Fields.AIRWALLEX_ACCOUNT_ID: account_id,
-            Fields.UPDATED_AT: get_server_timestamp()
-        })
+        user_ref.update({Fields.AIRWALLEX_ACCOUNT_ID: account_id, Fields.UPDATED_AT: get_server_timestamp()})
 
         utils = get_utils()
-        return utils.create_success_response({'accountId': account_id})
+        return utils.create_success_response({"accountId": account_id})
 
     except Exception as e:
-        logger.error(f'Airwallex create_seller_account error: {type(e).__name__}: {str(e)}')
-        raise https_fn.HttpsError('internal', 'Failed to create seller account') from e
+        logger.error(f"Airwallex create_seller_account error: {type(e).__name__}: {str(e)}")
+        raise https_fn.HttpsError("internal", "Failed to create seller account") from e
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -155,10 +168,11 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         }
     """
     if not req.auth:
-        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     # Check if Airwallex is enabled
     from handlers.payment_providers import PaymentProvider, require_provider_enabled
+
     require_provider_enabled(PaymentProvider.AIRWALLEX)
 
     from schema_constants import ApiKeys, AppConfig, PaymentProviderValues
@@ -171,53 +185,57 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
     Fields = get_fields()
 
     order_id = data.get(Fields.ORDER_ID)
-    return_url = data.get(ApiKeys.RETURN_URL, f'{AppConfig.SITE_URL}{AppConfig.CHECKOUT_SUCCESS_PATH}')
+    return_url = data.get(ApiKeys.RETURN_URL, f"{AppConfig.SITE_URL}{AppConfig.CHECKOUT_SUCCESS_PATH}")
 
     if not order_id:
-        raise https_fn.HttpsError('invalid-argument', 'orderId required')
+        raise https_fn.HttpsError("invalid-argument", "orderId required")
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
 
     if not order_doc.exists:
-        raise https_fn.HttpsError('not-found', 'Order not found')
+        raise https_fn.HttpsError("not-found", "Order not found")
 
     order_data = order_doc.to_dict()
     Fields = get_fields()
 
     if order_data[Fields.USER_ID] != user_id:
-        raise https_fn.HttpsError('permission-denied', 'Not your order')
+        raise https_fn.HttpsError("permission-denied", "Not your order")
 
     try:
         airwallex_service = get_airwallex_service()
 
         amount_cents = order_data.get(Fields.TOTAL_AMOUNT_CENTS)
         if amount_cents is None or not isinstance(amount_cents, int) or amount_cents < 0:
-            raise https_fn.HttpsError('failed-precondition', 'Order total not available')
+            raise https_fn.HttpsError("failed-precondition", "Order total not available")
 
         from schema_constants import SupplierCurrencyValues
+
         result = airwallex_service.create_payment_intent_for_checkout(
             amount_cents=int(amount_cents),
             currency=SupplierCurrencyValues.CAD,
             order_id=order_id,
             return_url=return_url,
             capture=False,
-            metadata={'user_id': user_id},
+            metadata={"user_id": user_id},
         )
 
         # Update order with Airwallex payment intent
         from schema_constants import PaymentProviderValues
-        order_ref.update({
-            Fields.AIRWALLEX_PAYMENT_INTENT_ID: result['id'],
-            Fields.PAYMENT_PROVIDER: PaymentProviderValues.AIRWALLEX,
-            Fields.UPDATED_AT: get_server_timestamp()
-        })
+
+        order_ref.update(
+            {
+                Fields.AIRWALLEX_PAYMENT_INTENT_ID: result["id"],
+                Fields.PAYMENT_PROVIDER: PaymentProviderValues.AIRWALLEX,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            }
+        )
 
         utils = get_utils()
         return utils.create_success_response(result)
 
     except Exception as e:
-        logger.error(f'Airwallex process_payment error: {type(e).__name__}: {str(e)}')
-        raise https_fn.HttpsError('internal', 'Payment processing failed') from e
+        logger.error(f"Airwallex process_payment error: {type(e).__name__}: {str(e)}")
+        raise https_fn.HttpsError("internal", "Payment processing failed") from e
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -233,10 +251,11 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     # Check if Airwallex is enabled
     from handlers.payment_providers import PaymentProvider, require_provider_enabled
+
     require_provider_enabled(PaymentProvider.AIRWALLEX)
 
     if not req.auth:
-        raise https_fn.HttpsError('unauthenticated', 'User must be authenticated')
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     Collections = get_collections()
     Fields = get_fields()
@@ -244,13 +263,13 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
     order_id = req.data.get(Fields.ORDER_ID)
 
     if not order_id:
-        raise https_fn.HttpsError('invalid-argument', 'orderId required')
+        raise https_fn.HttpsError("invalid-argument", "orderId required")
 
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
     order_doc = order_ref.get()
 
     if not order_doc.exists:
-        raise https_fn.HttpsError('not-found', 'Order not found')
+        raise https_fn.HttpsError("not-found", "Order not found")
 
     order_data = order_doc.to_dict()
 
@@ -262,13 +281,14 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
         user_doc = get_db().collection(Collections.USERS).document(user_id).get()
         user_roles = user_doc.to_dict().get(Fields.ROLES, []) if user_doc.exists else []
         from schema_constants import UserRoleValues
+
         if UserRoleValues.ADMIN not in user_roles:
-            raise https_fn.HttpsError('permission-denied', 'Only the order buyer or an admin can capture payment')
+            raise https_fn.HttpsError("permission-denied", "Only the order buyer or an admin can capture payment")
 
     payment_intent_id = order_data.get(Fields.AIRWALLEX_PAYMENT_INTENT_ID)
 
     if not payment_intent_id:
-        raise https_fn.HttpsError('failed-precondition', 'No Airwallex payment intent found')
+        raise https_fn.HttpsError("failed-precondition", "No Airwallex payment intent found")
 
     # SECURITY FIX: Check order is in capturable state
     Fields = get_fields()
@@ -277,29 +297,27 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Idempotency: already captured
     if payment_status == PaymentStatusValues.CAPTURED:
-        return get_utils().create_success_response({'captured': True, 'message': 'Already captured'})
+        return get_utils().create_success_response({"captured": True, "message": "Already captured"})
 
     if payment_status != PaymentStatusValues.AUTHORIZED:
-        raise https_fn.HttpsError(
-            'failed-precondition',
-            f'Order payment not authorized (status: {payment_status})'
-        )
+        raise https_fn.HttpsError("failed-precondition", f"Order payment not authorized (status: {payment_status})")
 
     # SECURITY FIX: Check for active disputes before capturing
     Collections = get_collections()
     PaymentStatusValues = get_payment_status_values()
     SecurityAlertTypes = get_security_alert_types()
-    dispute_alerts = get_db().collection(Collections.SECURITY_ALERTS)\
-        .where(Fields.TYPE, '==', SecurityAlertTypes.DISPUTE_CREATED)\
-        .where(Fields.RESOLVED, '==', False)\
-        .where(Fields.ORDER_ID, '==', order_id)\
-        .limit(1).get()
+    dispute_alerts = (
+        get_db()
+        .collection(Collections.SECURITY_ALERTS)
+        .where(Fields.TYPE, "==", SecurityAlertTypes.DISPUTE_CREATED)
+        .where(Fields.RESOLVED, "==", False)
+        .where(Fields.ORDER_ID, "==", order_id)
+        .limit(1)
+        .get()
+    )
 
     if len(dispute_alerts) > 0:
-        raise https_fn.HttpsError(
-            'failed-precondition',
-            'Cannot capture payment: active dispute on this order'
-        )
+        raise https_fn.HttpsError("failed-precondition", "Cannot capture payment: active dispute on this order")
 
     # SECURITY FIX: Atomically lock for capture (prevent concurrent captures)
     from firebase_admin import firestore as _fs
@@ -308,22 +326,25 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
     def lock_for_airwallex_capture(transaction):
         fresh = order_ref.get(transaction=transaction)
         if not fresh.exists:
-            raise https_fn.HttpsError('not-found', 'Order not found')
+            raise https_fn.HttpsError("not-found", "Order not found")
         fresh_data = fresh.to_dict()
         PaymentStatusValues = get_payment_status_values()
         if fresh_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.CAPTURED:
-            return 'already_captured'
+            return "already_captured"
         if fresh_data.get(Fields.PAYMENT_STATUS) != PaymentStatusValues.AUTHORIZED:
-            raise https_fn.HttpsError('failed-precondition', 'Order status changed concurrently')
-        transaction.update(order_ref, {
-            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURING,
-            Fields.UPDATED_AT: get_server_timestamp(),
-        })
-        return 'locked'
+            raise https_fn.HttpsError("failed-precondition", "Order status changed concurrently")
+        transaction.update(
+            order_ref,
+            {
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURING,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            },
+        )
+        return "locked"
 
     lock_result = lock_for_airwallex_capture(get_db().transaction())
-    if lock_result == 'already_captured':
-        return get_utils().create_success_response({'captured': True, 'message': 'Already captured'})
+    if lock_result == "already_captured":
+        return get_utils().create_success_response({"captured": True, "message": "Already captured"})
 
     try:
         airwallex_service = get_airwallex_service()
@@ -331,29 +352,34 @@ def airwallex_capture_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         Fields = get_fields()
         PaymentStatusValues = get_payment_status_values()
-        order_ref.update({
-            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
-            Fields.CAPTURED_AT: get_server_timestamp(),
-            Fields.CONFIRMED_BY_CLIENT: True,
-            Fields.CONFIRMED_AT: get_server_timestamp(),
-            Fields.UPDATED_AT: get_server_timestamp()
-        })
+        order_ref.update(
+            {
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+                Fields.CAPTURED_AT: get_server_timestamp(),
+                Fields.CONFIRMED_BY_CLIENT: True,
+                Fields.CONFIRMED_AT: get_server_timestamp(),
+                Fields.UPDATED_AT: get_server_timestamp(),
+            }
+        )
 
         utils = get_utils()
-        return utils.create_success_response({'captured': True})
+        return utils.create_success_response({"captured": True})
 
     except Exception as e:
         # Rollback 'capturing' state to 'authorized' so the order isn't stuck
         import contextlib
+
         with contextlib.suppress(Exception):
             Fields = get_fields()
             PaymentStatusValues = get_payment_status_values()
-            order_ref.update({
-                Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
-                Fields.UPDATED_AT: get_server_timestamp(),
-            })
-        logger.error(f'Airwallex capture_payment error: {type(e).__name__}: {str(e)}')
-        raise https_fn.HttpsError('internal', 'Payment capture failed') from e
+            order_ref.update(
+                {
+                    Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
+                    Fields.UPDATED_AT: get_server_timestamp(),
+                }
+            )
+        logger.error(f"Airwallex capture_payment error: {type(e).__name__}: {str(e)}")
+        raise https_fn.HttpsError("internal", "Payment capture failed") from e
 
 
 @https_fn.on_request(timeout_sec=60)
@@ -378,28 +404,28 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
 
     # SECURITY FIX #1: Rate limiting by IP FIRST (prevent DDoS)
     rate_limiter = RateLimiter(get_db())
-    client_ip = req.headers.get('X-Forwarded-For', req.headers.get('X-Real-IP', 'unknown')).split(',')[0].strip()
+    client_ip = req.headers.get("X-Forwarded-For", req.headers.get("X-Real-IP", "unknown")).split(",")[0].strip()
 
     allowed, message = rate_limiter.check_rate_limit(
         identifier=f"ip_{client_ip}",
-        action='airwallex_webhook',
+        action="airwallex_webhook",
         max_requests=100,  # 100 webhooks per minute per IP
         window_minutes=1,
-        fail_closed=True  # Block on error for security
+        fail_closed=True,  # Block on error for security
     )
 
     if not allowed:
-        logger.warning(f'⚠️ Airwallex webhook rate limit exceeded for IP: {client_ip[:10]}...')  # Sanitized log
-        return https_fn.Response('Rate limit exceeded', status=429)
+        logger.warning(f"⚠️ Airwallex webhook rate limit exceeded for IP: {client_ip[:10]}...")  # Sanitized log
+        return https_fn.Response("Rate limit exceeded", status=429)
 
     # SECURITY FIX #2: Get raw payload for signature verification
     payload = req.data
-    sig_header = req.headers.get('x-signature') or req.headers.get('X-Signature')
-    ts_header = req.headers.get('x-timestamp') or req.headers.get('X-Timestamp')
+    sig_header = req.headers.get("x-signature") or req.headers.get("X-Signature")
+    ts_header = req.headers.get("x-timestamp") or req.headers.get("X-Timestamp")
 
     if not sig_header or not ts_header:
-        logger.warning(f'⚠️ Airwallex webhook missing signature/timestamp from IP: {client_ip[:10]}...')
-        return https_fn.Response('Missing signature', status=400)
+        logger.warning(f"⚠️ Airwallex webhook missing signature/timestamp from IP: {client_ip[:10]}...")
+        return https_fn.Response("Missing signature", status=400)
 
     # SECURITY: Verify signature BEFORE parsing JSON. Never accept signing secrets from request headers.
     try:
@@ -410,23 +436,23 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
             timestamp=ts_header,
         )
         if not is_valid:
-            logger.warning(f'⚠️ Airwallex webhook invalid signature from IP: {client_ip[:10]}...')
-            return https_fn.Response('Invalid signature', status=400)
+            logger.warning(f"⚠️ Airwallex webhook invalid signature from IP: {client_ip[:10]}...")
+            return https_fn.Response("Invalid signature", status=400)
     except ValueError as e:
-        logger.warning(f'⚠️ Airwallex webhook signature verification failed: {str(e)[:50]}...')  # Sanitized
-        return https_fn.Response('Signature verification failed', status=400)
+        logger.warning(f"⚠️ Airwallex webhook signature verification failed: {str(e)[:50]}...")  # Sanitized
+        return https_fn.Response("Signature verification failed", status=400)
     except Exception as e:
-        logger.warning(f'⚠️ Airwallex webhook signature error: {type(e).__name__}')  # Sanitized (no details)
-        return https_fn.Response('Signature verification error', status=500)
+        logger.warning(f"⚠️ Airwallex webhook signature error: {type(e).__name__}")  # Sanitized (no details)
+        return https_fn.Response("Signature verification error", status=500)
 
     # SECURITY FIX #4: Parse JSON only AFTER signature verification
     try:
         event = json.loads(payload)
     except json.JSONDecodeError:
-        logger.warning(f'⚠️ Airwallex webhook invalid JSON from IP: {client_ip[:10]}...')
-        return https_fn.Response('Invalid JSON', status=400)
+        logger.warning(f"⚠️ Airwallex webhook invalid JSON from IP: {client_ip[:10]}...")
+        return https_fn.Response("Invalid JSON", status=400)
 
-    event_id = event.get('id')
+    event_id = event.get("id")
 
     # SECURITY FIX #5: Validate event_id exists
     Collections = get_collections()
@@ -434,91 +460,97 @@ def airwallex_webhook(req: https_fn.Request) -> https_fn.Response:
 
     event_type = event.get(Fields.NAME)
     if not event_id or not event_type:
-        logger.warning('⚠️ Airwallex webhook missing event_id or event_type')
-        return https_fn.Response('Invalid event format', status=400)
+        logger.warning("⚠️ Airwallex webhook missing event_id or event_type")
+        return https_fn.Response("Invalid event format", status=400)
 
     # SECURITY FIX #6: Idempotency check (prevent duplicate processing)
     webhook_ref = get_db().collection(Collections.WEBHOOK_EVENTS).document(event_id)
     webhook_doc = webhook_ref.get()
 
     if webhook_doc.exists:
-        logger.info(f'✓ Airwallex webhook already processed: {event_type} (event: {event_id[:16]}...)')  # Sanitized
-        return https_fn.Response('Already processed', status=200)
+        logger.info(f"✓ Airwallex webhook already processed: {event_type} (event: {event_id[:16]}...)")  # Sanitized
+        return https_fn.Response("Already processed", status=200)
 
     # SECURITY FIX #7: Log webhook with client IP for audit trail
     try:
         from schema_constants import PaymentProviderValues as _PPV
-        webhook_ref.set({
-            Fields.PROVIDER: _PPV.AIRWALLEX,
-            Fields.TYPE: event_type,
-            Fields.PROCESSED: True,
-            Fields.TIMESTAMP: get_server_timestamp(),
-            Fields.CLIENT_IP: client_ip,  # Audit trail
-            Fields.EVENT_ID: event_id
-        })
+
+        webhook_ref.set(
+            {
+                Fields.PROVIDER: _PPV.AIRWALLEX,
+                Fields.TYPE: event_type,
+                Fields.PROCESSED: True,
+                Fields.TIMESTAMP: get_server_timestamp(),
+                Fields.CLIENT_IP: client_ip,  # Audit trail
+                Fields.EVENT_ID: event_id,
+            }
+        )
     except Exception as e:
-        logger.warning(f'⚠️ Failed to log webhook: {type(e).__name__}')  # Sanitized (no sensitive data)
+        logger.warning(f"⚠️ Failed to log webhook: {type(e).__name__}")  # Sanitized (no sensitive data)
 
     # Process event
     try:
-        data = event.get('data', {}) if isinstance(event.get('data'), dict) else {}
+        data = event.get("data", {}) if isinstance(event.get("data"), dict) else {}
 
         Collections = get_collections()
 
         def _extract_order_id(payload: dict[str, Any]) -> str:
-            val = payload.get(Fields.ORDER_ID) or payload.get('merchant_order_id', '')
+            val = payload.get(Fields.ORDER_ID) or payload.get("merchant_order_id", "")
             if isinstance(val, str) and val.strip():
                 return val.strip()
-            metadata = payload.get('metadata', {})
+            metadata = payload.get("metadata", {})
             if isinstance(metadata, dict):
-                val = metadata.get(Fields.ORDER_ID) or metadata.get('merchant_order_id', '')
+                val = metadata.get(Fields.ORDER_ID) or metadata.get("merchant_order_id", "")
                 if isinstance(val, str) and val.strip():
                     return val.strip()
             return ""
 
-        if event_type == 'payment_intent.requires_capture':
+        if event_type == "payment_intent.requires_capture":
             # Manual capture: payment authorized, awaiting capture
             order_id = _extract_order_id(data)
             if order_id:
                 Fields = get_fields()
                 PaymentStatusValues = get_payment_status_values()
                 order_ref = get_db().collection(Collections.ORDERS).document(order_id)
-                order_ref.update({
-                    Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
-                    Fields.ORDER_STATUS: get_order_status_values().CONFIRMED,
-                    Fields.UPDATED_AT: get_server_timestamp()
-                })
+                order_ref.update(
+                    {
+                        Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZED,
+                        Fields.ORDER_STATUS: get_order_status_values().CONFIRMED,
+                        Fields.UPDATED_AT: get_server_timestamp(),
+                    }
+                )
 
-        elif event_type == 'payment_intent.succeeded':
+        elif event_type == "payment_intent.succeeded":
             # Payment fully captured/completed
             order_id = _extract_order_id(data)
             if order_id:
                 Fields = get_fields()
                 PaymentStatusValues = get_payment_status_values()
                 order_ref = get_db().collection(Collections.ORDERS).document(order_id)
-                order_ref.update({
-                    Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
-                    Fields.UPDATED_AT: get_server_timestamp()
-                })
+                order_ref.update(
+                    {Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED, Fields.UPDATED_AT: get_server_timestamp()}
+                )
 
-        elif event_type in ('payment_attempt.authorization_failed', 'payment_intent.cancelled'):
+        elif event_type in ("payment_attempt.authorization_failed", "payment_intent.cancelled"):
             order_id = _extract_order_id(data)
             if order_id:
                 Fields = get_fields()
                 PaymentStatusValues = get_payment_status_values()
                 order_ref = get_db().collection(Collections.ORDERS).document(order_id)
-                order_ref.update({
-                    Fields.PAYMENT_STATUS: PaymentStatusValues.PAYMENT_FAILED,
-                    Fields.ORDER_STATUS: get_order_status_values().FAILED,
-                    Fields.UPDATED_AT: get_server_timestamp()
-                })
+                order_ref.update(
+                    {
+                        Fields.PAYMENT_STATUS: PaymentStatusValues.PAYMENT_FAILED,
+                        Fields.ORDER_STATUS: get_order_status_values().FAILED,
+                        Fields.UPDATED_AT: get_server_timestamp(),
+                    }
+                )
 
-        logger.info(f'✓ Airwallex webhook processed successfully: {event_type}')
-        return https_fn.Response('Success', status=200)
+        logger.info(f"✓ Airwallex webhook processed successfully: {event_type}")
+        return https_fn.Response("Success", status=200)
 
     except Exception as e:
         # SECURITY FIX #8: Sanitized error logging (no sensitive data exposure)
         error_type = type(e).__name__
-        logger.error(f'❌ Error processing Airwallex webhook: {error_type} for event_type: {event_type}')
+        logger.error(f"❌ Error processing Airwallex webhook: {error_type} for event_type: {event_type}")
         # Don't expose internal error details to webhook caller
-        return https_fn.Response('Internal processing error', status=500)
+        return https_fn.Response("Internal processing error", status=500)

@@ -173,7 +173,19 @@ class CartItemScreen extends StatelessWidget {
                           ),
                           _QuantityButton(
                             icon: Icons.add_rounded,
-                            onPressed: () => cartController.updateQuantity(productId, quantity + 1),
+                            onPressed: () async {
+                              // AUDIT FIX (H6): Show feedback if stock limit reached
+                              final success = await cartController.updateQuantity(productId, quantity + 1);
+                              if (!success && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('cart.stock_limit_reached'.tr()),
+                                    duration: const Duration(seconds: 2),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
                             isDark: isDark,
                             semanticLabel: 'btn-cart-qty-plus',
                           ),

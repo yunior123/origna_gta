@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 # Add functions directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from schema_constants import (
     Collections,
@@ -31,9 +31,9 @@ class TestPaymentFlow(unittest.TestCase):
     # NOTE: test_capture_payment_multi_seller_bugfix removed - requires feature implementation
     # to check PAID status before capture. See TODO in payment_stripe.py
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.get_rate_limiter')
-    @patch('handlers.payment_stripe.stripe')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    @patch("handlers.payment_stripe.stripe")
     def test_capture_payment_normal_flow(self, mock_stripe, mock_get_rate_limiter, mock_get_db):
         """
         Scenario: Order is Authorized.
@@ -48,7 +48,7 @@ class TestPaymentFlow(unittest.TestCase):
         mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
         mock_get_rate_limiter.return_value = mock_rate_limiter
 
-        mock_stripe.PaymentIntent.retrieve.return_value = Mock(status='requires_capture', amount=5000)
+        mock_stripe.PaymentIntent.retrieve.return_value = Mock(status="requires_capture", amount=5000)
         mock_stripe.PaymentIntent.capture = MagicMock()
 
         req = MagicMock()
@@ -64,7 +64,7 @@ class TestPaymentFlow(unittest.TestCase):
             "suspended": False,
             "onboardingCompleted": True,
             "chargesEnabled": True,
-            "payoutsEnabled": True
+            "payoutsEnabled": True,
         }
 
         # Mock Order
@@ -79,7 +79,7 @@ class TestPaymentFlow(unittest.TestCase):
             "totalAmountCents": 5000,
             "items": [
                 {"sellerId": "seller_1", "deliveryStatus": DeliveryStatus.PENDING, "price": 50.00, "quantity": 1}
-            ]
+            ],
         }
 
         # Setup DB mock
@@ -100,9 +100,9 @@ class TestPaymentFlow(unittest.TestCase):
         self.assertTrue(resp["success"])
         mock_stripe.PaymentIntent.capture.assert_called()
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.get_rate_limiter')
-    @patch('handlers.payment_stripe.stripe')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    @patch("handlers.payment_stripe.stripe")
     def test_create_checkout_session_flow(self, mock_stripe, mock_get_rate_limiter, mock_get_db):
         """
         Scenario: User initiates checkout.
@@ -116,9 +116,7 @@ class TestPaymentFlow(unittest.TestCase):
         mock_rate_limiter.check_rate_limit.return_value = (True, "OK")
         mock_get_rate_limiter.return_value = mock_rate_limiter
 
-        mock_stripe.checkout.Session.create = MagicMock(
-            return_value=MagicMock(id="cs_test_123", url="http://test.url")
-        )
+        mock_stripe.checkout.Session.create = MagicMock(return_value=MagicMock(id="cs_test_123", url="http://test.url"))
 
         req = MagicMock()
         req.auth.uid = "user_123"
@@ -136,8 +134,14 @@ class TestPaymentFlow(unittest.TestCase):
                     "sellerId": "seller_1",
                     "imageUrls": ["http://img.com/1.jpg"],
                     "description": "Test",
-                    "sellerAddress": {"street": "1 St", "city": "Toronto", "state": "ON", "postalCode": "M5V 1A1", "country": "Canada"},
-                    "categoryId": 1
+                    "sellerAddress": {
+                        "street": "1 St",
+                        "city": "Toronto",
+                        "state": "ON",
+                        "postalCode": "M5V 1A1",
+                        "country": "Canada",
+                    },
+                    "categoryId": 1,
                 }
             ],
             "shippingAddress": {
@@ -145,12 +149,12 @@ class TestPaymentFlow(unittest.TestCase):
                 "city": "Toronto",
                 "state": "ON",
                 "postalCode": "M1A 1A1",
-                "country": "Canada"
+                "country": "Canada",
             },
             "subtotal": 50.00,
             "total": 56.50,
             "taxes": {"HST": 6.50},
-            "shippingCost": 0
+            "shippingCost": 0,
         }
 
         # Mock Seller
@@ -161,7 +165,7 @@ class TestPaymentFlow(unittest.TestCase):
             "suspended": False,
             "onboardingCompleted": True,
             "chargesEnabled": True,
-            "payoutsEnabled": True
+            "payoutsEnabled": True,
         }
 
         # Mock Product
@@ -174,7 +178,7 @@ class TestPaymentFlow(unittest.TestCase):
             "sellerId": "seller_1",
             "imageUrls": ["http://img.com/1.jpg"],
             "categoryId": 1,
-            "isActive": True
+            "isActive": True,
         }
 
         # Mock transaction
@@ -204,9 +208,9 @@ class TestPaymentFlow(unittest.TestCase):
         self.assertIsNotNone(resp)
         self.assertTrue(resp.get("sessionId") is not None or resp.get("success") is True)
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.get_rate_limiter')
-    @patch('handlers.payment_stripe.stripe')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    @patch("handlers.payment_stripe.stripe")
     def test_stripe_webhook_flow(self, mock_stripe, mock_get_rate_limiter, mock_get_db):
         """
         Scenario: Webhook received for checkout.session.completed
@@ -220,8 +224,8 @@ class TestPaymentFlow(unittest.TestCase):
         mock_get_rate_limiter.return_value = mock_rate_limiter
 
         req = MagicMock()
-        req.data = b'raw_payload'
-        req.headers = {'stripe-signature': 'sig_123'}
+        req.data = b"raw_payload"
+        req.headers = {"stripe-signature": "sig_123"}
 
         # Mock Stripe event
         mock_event = {
@@ -233,9 +237,9 @@ class TestPaymentFlow(unittest.TestCase):
                     "client_reference_id": "order_123",
                     "payment_status": "paid",
                     "amount_total": 5000,
-                    "payment_intent": "pi_123"
+                    "payment_intent": "pi_123",
                 }
-            }
+            },
         }
         mock_stripe.Webhook.construct_event.return_value = mock_event
 
@@ -246,7 +250,7 @@ class TestPaymentFlow(unittest.TestCase):
         mock_order_doc.to_dict.return_value = {
             "orderId": "order_123",
             "orderStatus": OrderStatus.PENDING,
-            "totalAmountCents": 5000
+            "totalAmountCents": 5000,
         }
 
         mock_event_log = MagicMock()
@@ -268,9 +272,9 @@ class TestPaymentFlow(unittest.TestCase):
         # Verify
         self.assertIsNotNone(response)
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.get_rate_limiter')
-    @patch('handlers.payment_stripe.stripe')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    @patch("handlers.payment_stripe.stripe")
     def test_webhook_persists_stripe_amounts_and_taxes(self, mock_stripe, mock_get_rate_limiter, mock_get_db):
         """
         Scenario: Webhook includes amount_total and tax details.
@@ -284,8 +288,8 @@ class TestPaymentFlow(unittest.TestCase):
         mock_get_rate_limiter.return_value = mock_rate_limiter
 
         req = MagicMock()
-        req.data = b'raw_payload'
-        req.headers = {'stripe-signature': 'sig_456'}
+        req.data = b"raw_payload"
+        req.headers = {"stripe-signature": "sig_456"}
 
         mock_event = {
             "id": "evt_456",
@@ -298,19 +302,16 @@ class TestPaymentFlow(unittest.TestCase):
                     "amount_total": 6200,
                     "amount_subtotal": 6000,
                     "total_details": {"amount_tax": 200},
-                    "payment_intent": "pi_456"
+                    "payment_intent": "pi_456",
                 }
-            }
+            },
         }
         mock_stripe.Webhook.construct_event.return_value = mock_event
 
         mock_order_ref = MagicMock()
         mock_order_doc = MagicMock()
         mock_order_doc.exists = True
-        mock_order_doc.to_dict.return_value = {
-            "orderId": "order_456",
-            "orderStatus": OrderStatus.PENDING
-        }
+        mock_order_doc.to_dict.return_value = {"orderId": "order_456", "orderStatus": OrderStatus.PENDING}
 
         mock_event_log = MagicMock()
         mock_event_log.get.return_value.exists = False
@@ -329,8 +330,8 @@ class TestPaymentFlow(unittest.TestCase):
 
         self.assertIsNotNone(response)
 
-    @patch('handlers.products.get_db')
-    @patch('handlers.products.stripe', create=True)
+    @patch("handlers.products.get_db")
+    @patch("handlers.products.stripe", create=True)
     def test_submit_product_rating_delivered(self, mock_stripe, mock_get_db):
         """
         Scenario: User rates a delivered product.
@@ -351,7 +352,7 @@ class TestPaymentFlow(unittest.TestCase):
             "paymentStatus": PaymentStatus.PAID,
             "orderStatus": "delivered",
             "items": [{"productId": "prod_1", "deliveryStatus": DeliveryStatus.DELIVERED}],
-            "ratings": {}
+            "ratings": {},
         }
 
         mock_product_doc = MagicMock()
@@ -385,8 +386,8 @@ class TestPaymentFlow(unittest.TestCase):
 class TestRefundFlow(unittest.TestCase):
     """Tests for refund processing"""
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe")
     def test_process_charge_refunded_full_refund(self, mock_stripe, mock_get_db):
         """
         Scenario: Full refund processed.
@@ -397,29 +398,23 @@ class TestRefundFlow(unittest.TestCase):
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        charge = {
-            'payment_intent': 'pi_123',
-            'amount_refunded': 5000,
-            'refunded': True
-        }
+        charge = {"payment_intent": "pi_123", "amount_refunded": 5000, "refunded": True}
 
         mock_order_doc = MagicMock()
         mock_order_doc.reference = MagicMock()
-        mock_order_doc.reference.id = 'order_123'
-        mock_order_doc.to_dict.return_value = {
-            'items': [{'productId': 'prod_1', 'quantity': 2}]
-        }
+        mock_order_doc.reference.id = "order_123"
+        mock_order_doc.to_dict.return_value = {"items": [{"productId": "prod_1", "quantity": 2}]}
 
         mock_db.collection.return_value.where.return_value.limit.return_value.stream.return_value = [mock_order_doc]
 
         result = process_charge_refunded(charge)
 
         # The function returns 'Order {order_id} refunded' not just the order_id
-        self.assertIn('order', result.lower() if result else '')
+        self.assertIn("order", result.lower() if result else "")
         mock_order_doc.reference.update.assert_called()
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe")
     def test_process_charge_refunded_partial_refund(self, mock_stripe, mock_get_db):
         """
         Scenario: Partial refund processed.
@@ -429,32 +424,26 @@ class TestRefundFlow(unittest.TestCase):
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        charge = {
-            'payment_intent': 'pi_123',
-            'amount_refunded': 2500,
-            'refunded': False
-        }
+        charge = {"payment_intent": "pi_123", "amount_refunded": 2500, "refunded": False}
 
         mock_order_doc = MagicMock()
         mock_order_doc.reference = MagicMock()
-        mock_order_doc.reference.id = 'order_123'
-        mock_order_doc.to_dict.return_value = {
-            'items': [{'productId': 'prod_1', 'quantity': 2}]
-        }
+        mock_order_doc.reference.id = "order_123"
+        mock_order_doc.to_dict.return_value = {"items": [{"productId": "prod_1", "quantity": 2}]}
 
         mock_db.collection.return_value.where.return_value.limit.return_value.stream.return_value = [mock_order_doc]
 
         result = process_charge_refunded(charge)
 
         # The function returns 'Order {order_id} refunded' not just the order_id
-        self.assertIn('order', result.lower() if result else '')
+        self.assertIn("order", result.lower() if result else "")
 
 
 class TestDisputeFlow(unittest.TestCase):
     """Tests for dispute handling"""
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe")
     def test_process_dispute_created(self, mock_stripe, mock_get_db):
         """
         Scenario: Dispute opened on an order.
@@ -465,30 +454,30 @@ class TestDisputeFlow(unittest.TestCase):
         mock_get_db.return_value = mock_db
 
         dispute = {
-            'id': 'dp_123',
-            'charge': 'ch_123',
-            'reason': 'fraudulent',
-            'status': 'warning_needs_response',
-            'amount': 5000
+            "id": "dp_123",
+            "charge": "ch_123",
+            "reason": "fraudulent",
+            "status": "warning_needs_response",
+            "amount": 5000,
         }
 
         mock_charge = MagicMock()
-        mock_charge.payment_intent = 'pi_123'
+        mock_charge.payment_intent = "pi_123"
         mock_stripe.Charge.retrieve.return_value = mock_charge
 
         mock_order_doc = MagicMock()
         mock_order_doc.reference = MagicMock()
-        mock_order_doc.reference.id = 'order_123'
+        mock_order_doc.reference.id = "order_123"
 
         mock_db.collection.return_value.where.return_value.limit.return_value.stream.return_value = [mock_order_doc]
 
         result = process_dispute_created(dispute)
 
         # Function returns 'Dispute logged for charge {charge_id}'
-        self.assertIn('dispute', result.lower() if result else '')
+        self.assertIn("dispute", result.lower() if result else "")
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe")
     def test_process_dispute_created_missing_charge(self, mock_stripe, mock_get_db):
         """
         Scenario: Dispute event missing charge id.
@@ -500,20 +489,20 @@ class TestDisputeFlow(unittest.TestCase):
         mock_get_db.return_value = mock_db
 
         dispute = {
-            'id': 'dp_123',
-            'reason': 'fraudulent',
-            'status': 'warning_needs_response',
-            'amount': 5000
+            "id": "dp_123",
+            "reason": "fraudulent",
+            "status": "warning_needs_response",
+            "amount": 5000,
             # Note: 'charge' is missing
         }
 
         result = process_dispute_created(dispute)
 
         # Function returns 'Dispute logged for charge None' when charge is missing
-        self.assertIn('dispute', result.lower() if result else '')
+        self.assertIn("dispute", result.lower() if result else "")
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe")
     def test_process_dispute_closed_won(self, mock_stripe, mock_get_db):
         """
         Scenario: Dispute closed in seller's favor.
@@ -523,29 +512,27 @@ class TestDisputeFlow(unittest.TestCase):
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        dispute = {
-            'id': 'dp_123',
-            'charge': 'ch_123',
-            'status': 'won'
-        }
+        dispute = {"id": "dp_123", "charge": "ch_123", "status": "won"}
 
         mock_charge = MagicMock()
-        mock_charge.payment_intent = 'pi_123'
+        mock_charge.payment_intent = "pi_123"
         mock_stripe.Charge.retrieve.return_value = mock_charge
 
         mock_order_doc = MagicMock()
         mock_order_doc.reference = MagicMock()
-        mock_order_doc.reference.id = 'order_123'
+        mock_order_doc.reference.id = "order_123"
 
-        mock_db.collection.return_value.where.return_value.where.return_value.limit.return_value.stream.return_value = [mock_order_doc]
+        mock_db.collection.return_value.where.return_value.where.return_value.limit.return_value.stream.return_value = [
+            mock_order_doc
+        ]
 
         result = process_dispute_closed(dispute)
 
         # Function returns 'Dispute closed: {status}'
-        self.assertIn('closed', result.lower() if result else '')
+        self.assertIn("closed", result.lower() if result else "")
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.stripe')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.stripe")
     def test_process_dispute_closed_lost(self, mock_stripe, mock_get_db):
         """
         Scenario: Dispute lost (refund to customer).
@@ -555,34 +542,32 @@ class TestDisputeFlow(unittest.TestCase):
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        dispute = {
-            'id': 'dp_123',
-            'charge': 'ch_123',
-            'status': 'lost'
-        }
+        dispute = {"id": "dp_123", "charge": "ch_123", "status": "lost"}
 
         mock_charge = MagicMock()
-        mock_charge.payment_intent = 'pi_123'
+        mock_charge.payment_intent = "pi_123"
         mock_stripe.Charge.retrieve.return_value = mock_charge
 
         mock_order_doc = MagicMock()
         mock_order_doc.reference = MagicMock()
-        mock_order_doc.reference.id = 'order_123'
+        mock_order_doc.reference.id = "order_123"
 
-        mock_db.collection.return_value.where.return_value.where.return_value.limit.return_value.stream.return_value = [mock_order_doc]
+        mock_db.collection.return_value.where.return_value.where.return_value.limit.return_value.stream.return_value = [
+            mock_order_doc
+        ]
 
         result = process_dispute_closed(dispute)
 
         # Function returns 'Dispute closed: {status}'
-        self.assertIn('closed', result.lower() if result else '')
+        self.assertIn("closed", result.lower() if result else "")
 
 
 class TestIdempotency(unittest.TestCase):
     """Tests for idempotency in payment operations"""
 
-    @patch('handlers.payment_stripe.get_db')
-    @patch('handlers.payment_stripe.get_rate_limiter')
-    @patch('handlers.payment_stripe.stripe')
+    @patch("handlers.payment_stripe.get_db")
+    @patch("handlers.payment_stripe.get_rate_limiter")
+    @patch("handlers.payment_stripe.stripe")
     def test_webhook_idempotency_duplicate_event(self, mock_stripe, mock_get_rate_limiter, mock_get_db):
         """
         Scenario: Same webhook event received twice.
@@ -597,14 +582,10 @@ class TestIdempotency(unittest.TestCase):
         mock_get_rate_limiter.return_value = mock_rate_limiter
 
         req = MagicMock()
-        req.data = b'raw_payload'
-        req.headers = {'stripe-signature': 'sig_123'}
+        req.data = b"raw_payload"
+        req.headers = {"stripe-signature": "sig_123"}
 
-        mock_event = {
-            'id': 'evt_duplicate',
-            'type': 'checkout.session.completed',
-            'data': {'object': {'id': 'cs_123'}}
-        }
+        mock_event = {"id": "evt_duplicate", "type": "checkout.session.completed", "data": {"object": {"id": "cs_123"}}}
         mock_stripe.Webhook.construct_event.return_value = mock_event
 
         mock_event_ref = MagicMock()
@@ -616,5 +597,5 @@ class TestIdempotency(unittest.TestCase):
         self.assertIsNotNone(response)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -22,18 +22,13 @@ class TestPaymentFlowSecurity:
     def test_price_tampering_detection(self):
         """CRITICAL: Reject if client price differs from DB price"""
         # Mock product DB with real price $50
-        mock_product = {
-            'productId': 'prod_123',
-            'name': 'Test Product',
-            'price': 50.00,
-            'stockQuantity': 10
-        }
+        mock_product = {"productId": "prod_123", "name": "Test Product", "price": 50.00, "stockQuantity": 10}
 
         # Client attempts to send tampered price $0.01
         tampered_item = {
-            'productId': 'prod_123',
-            'price': 0.01,  # TAMPERING
-            'quantity': 1
+            "productId": "prod_123",
+            "price": 0.01,  # TAMPERING
+            "quantity": 1,
         }
 
         # Expected: ValueError raised with price tampering message
@@ -54,27 +49,25 @@ class TestPaymentFlowSecurity:
 
     def test_email_validation_uniformity(self):
         """MEDIUM: Email regex consistent across auth flows"""
-        valid_emails = [
-            'user@example.com',
-            'test.user@domain.co',
-            'name+tag@site.org'
-        ]
+        valid_emails = ["user@example.com", "test.user@domain.co", "name+tag@site.org"]
 
         invalid_emails = [
-            'test@test.co..m',  # Consecutive dots
-            'user@',  # No domain
-            '@domain.com',  # No local part
-            'spaces @test.com'  # Spaces
+            "test@test.co..m",  # Consecutive dots
+            "user@",  # No domain
+            "@domain.com",  # No local part
+            "spaces @test.com",  # Spaces
         ]
 
-        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
         for email in valid_emails:
             import re
+
             assert re.match(email_regex, email), f"{email} should be valid"
 
         for email in invalid_emails:
             import re
+
             assert not re.match(email_regex, email), f"{email} should be invalid"
 
     def test_authorization_expiry_tracking(self):
@@ -119,10 +112,10 @@ class TestPaymentFlowSecurity:
         body = b'{"id":"evt_123","type":"payment_intent.succeeded"}'
         timestamp = "1700000000"
         signed_payload = timestamp.encode("utf-8") + body
-        digest = hmac.new(svc.webhook_secret.encode('utf-8'), signed_payload, hashlib.sha256).digest()
+        digest = hmac.new(svc.webhook_secret.encode("utf-8"), signed_payload, hashlib.sha256).digest()
 
         sig_hex = digest.hex()
-        sig_b64 = base64.b64encode(digest).decode('ascii')
+        sig_b64 = base64.b64encode(digest).decode("ascii")
 
         assert svc.verify_webhook_signature(body, sig_hex, timestamp=timestamp) is True
         assert svc.verify_webhook_signature(body, f"sha256={sig_hex}", timestamp=timestamp) is True
@@ -133,12 +126,12 @@ class TestPaymentFlowSecurity:
         """HIGH: Duplicate requests return existing session"""
 
         # First request creates order and session
-        session_1 = {'id': 'sess_abc', 'url': 'https://stripe.com/pay'}
+        session_1 = {"id": "sess_abc", "url": "https://stripe.com/pay"}
 
         # Second request with same key returns existing session
-        session_2 = {'id': 'sess_abc', 'url': 'https://stripe.com/pay'}
+        session_2 = {"id": "sess_abc", "url": "https://stripe.com/pay"}
 
-        assert session_1['id'] == session_2['id'], "Should return same session"
+        assert session_1["id"] == session_2["id"], "Should return same session"
 
     def test_shipping_cost_recalculation(self):
         """CRITICAL: Server recalculates shipping (client untrusted)"""
@@ -155,16 +148,15 @@ class TestPaymentFlowSecurity:
 
 def validate_item_price(client_item: dict, db_product: dict):
     """Helper: Validate client price matches DB price"""
-    client_price = client_item.get('price', 0.0)
-    db_price = db_product.get('price', 0.0)
+    client_price = client_item.get("price", 0.0)
+    db_price = db_product.get("price", 0.0)
 
     if abs(client_price - db_price) > 0.01:
         raise ValueError(
-            f"Price tampering detected for '{db_product['name']}': "
-            f"client={client_price:.2f}, actual={db_price:.2f}"
+            f"Price tampering detected for '{db_product['name']}': client={client_price:.2f}, actual={db_price:.2f}"
         )
 
 
 # Run tests
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

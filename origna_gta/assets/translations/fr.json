@@ -371,7 +371,9 @@
     "tax_info": "Les taxes sont calculées automatiquement lors du paiement en fonction de :\n\n• Votre province de livraison\n• Le type de produits (certaines catégories sont exonérées)\n\nTaxes applicables :\n• TPS (5%) : Toutes les provinces\n• TVP (6-7%) : C.-B., MB, SK\n• TVQ (9,975%) : QC\n• TVH (13-15%) : ON (13%), N.-É. (14%), N.-B., T.-N.-L., Î.-P.-É. (15%)\n\nLes produits pour enfants et certaines denrées alimentaires peuvent être exonérés de TVP selon la province.",
     "add_instructions_optional": "Ajouter des instructions (facultatif)",
     "delivery_instructions_desc": "Ajoutez des instructions spéciales pour la livraison (facultatif) :",
-    "delivery_hint": "Ex : Laissez le colis sur le porche\nSonnez à l'interphone, appartement 12\nLivraison après 14h uniquement"
+    "delivery_hint": "Ex : Laissez le colis sur le porche\nSonnez à l'interphone, appartement 12\nLivraison après 14h uniquement",
+    "stock_limit_reached": "Impossible d'ajouter plus — stock insuffisant.",
+    "unavailable_items": "{count} article(s) de votre panier ne sont plus disponibles et ont été retirés."
   },
   "checkout": {
     "checkout": "Paiement",

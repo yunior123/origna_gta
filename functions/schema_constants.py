@@ -25,13 +25,14 @@ See: docs/database_schema.json for full schema documentation
 """
 
 
-
 # =============================================================================
 # COLLECTIONS - Top-level Firestore collection names
 # =============================================================================
 
+
 class Collections:
     """Firestore collection names"""
+
     USERS = "users"
     PRODUCTS = "products"
     ORDERS = "orders"
@@ -47,7 +48,6 @@ class Collections:
     ALGOLIA_SYNC_FAILURES = "algolia_sync_failures"
     CRON_LOCKS = "_cron_locks"
 
-
     # Subcollections
     CART = "cart"  # users/{userId}/cart
     FAVORITES = "favorites"  # users/{userId}/favorites
@@ -55,6 +55,7 @@ class Collections:
 
 class Documents:
     """Singleton document IDs within collections"""
+
     PAYMENT_PROVIDERS = "payment_providers"
 
 
@@ -70,8 +71,10 @@ APP_NAME = "Origna Marketplace"
 # EMAIL & APP CONFIGURATION CONSTANTS
 # =============================================================================
 
+
 class EmailConfig:
     """Email sending configuration constants."""
+
     SUPPORT_EMAIL = "support@orignaventures.ca"
     SENDER_NAME = "Origna GTA"
     SENDER_NAME_SECURITY = "Origna GTA Security"
@@ -97,6 +100,7 @@ class EmailConfig:
 
 class AppConfig:
     """Application-wide configuration constants."""
+
     PLATFORM_NAME = "origna_gta"
     DEFAULT_COUNTRY_CODE = "CA"
     DEFAULT_COUNTRY_NAME = "Canada"
@@ -124,6 +128,7 @@ class AppConfig:
 # =============================================================================
 # FIELD NAMES - All Firestore document field names
 # =============================================================================
+
 
 class Fields:
     """
@@ -233,16 +238,16 @@ class Fields:
     GST_NUMBER = "gstNumber"
 
     # === CONSENT & COMPLIANCE FIELDS (CASL + PIPEDA + Quebec Law 25) ===
-    EMAIL_CONSENT = "emailConsent"                  # bool — user accepted transactional emails
-    MARKETING_OPT_IN = "marketingOptIn"              # bool — explicit opt-in for marketing emails
-    CONSENT_TIMESTAMP = "consentTimestamp"            # datetime — when consent was given
-    CONSENT_METHOD = "consentMethod"                  # str — how consent was obtained (signup, checkbox, etc.)
-    PRIVACY_ACCEPTED_AT = "privacyAcceptedAt"          # datetime — when privacy policy was accepted
-    TERMS_ACCEPTED_AT = "termsAcceptedAt"              # datetime — when ToS was accepted
-    PRIVACY_POLICY_VERSION = "privacyPolicyVersion"    # str — version of privacy policy accepted
-    TERMS_VERSION = "termsVersion"                    # str — version of ToS accepted
-    PREFERRED_LANGUAGE = "preferredLanguage"            # str — 'en' or 'fr' (for Quebec Bill 96 compliance)
-    UNSUBSCRIBED_AT = "unsubscribedAt"                # datetime — when user unsubscribed from marketing
+    EMAIL_CONSENT = "emailConsent"  # bool — user accepted transactional emails
+    MARKETING_OPT_IN = "marketingOptIn"  # bool — explicit opt-in for marketing emails
+    CONSENT_TIMESTAMP = "consentTimestamp"  # datetime — when consent was given
+    CONSENT_METHOD = "consentMethod"  # str — how consent was obtained (signup, checkbox, etc.)
+    PRIVACY_ACCEPTED_AT = "privacyAcceptedAt"  # datetime — when privacy policy was accepted
+    TERMS_ACCEPTED_AT = "termsAcceptedAt"  # datetime — when ToS was accepted
+    PRIVACY_POLICY_VERSION = "privacyPolicyVersion"  # str — version of privacy policy accepted
+    TERMS_VERSION = "termsVersion"  # str — version of ToS accepted
+    PREFERRED_LANGUAGE = "preferredLanguage"  # str — 'en' or 'fr' (for Quebec Bill 96 compliance)
+    UNSUBSCRIBED_AT = "unsubscribedAt"  # datetime — when user unsubscribed from marketing
     DATA_PROCESSING_CONSENT = "dataProcessingConsent"  # bool — explicit consent for data processing
 
     # === DELIVERY FIELDS ===
@@ -271,7 +276,7 @@ class Fields:
     TAXES = "taxes"
     TAX_AMOUNT_CENTS = "taxAmountCents"
     TAX_CENTS = "taxCents"  # Per-item tax in cents (inside itemTaxes array)
-    TAX_RATE = "taxRate"    # Per-item tax rate (inside itemTaxes array)
+    TAX_RATE = "taxRate"  # Per-item tax rate (inside itemTaxes array)
     SHIPPING_COST_CENTS = "shippingCostCents"
     TOTAL_AMOUNT_CENTS = "totalAmountCents"
     CURRENCY = "currency"
@@ -290,7 +295,7 @@ class Fields:
     AUTO_CAPTURED = "autoCaptured"
     SELLER_PAYOUTS = "sellerPayouts"
     SELLER_STRIPE_ACCOUNTS = "sellerStripeAccounts"
-    PLATFORM_FEE_TOTAL = "platformFeeTotal"
+    PLATFORM_FEE_TOTAL_CENTS = "platformFeeTotalCents"
     PAYOUT_STATUS = "payoutStatus"
     RATINGS = "ratings"
     REFUND_AMOUNT = "refundAmount"
@@ -302,8 +307,8 @@ class Fields:
     DISPUTED_AT = "disputedAt"
     SHIPPING_APPROVAL_STATUS = "shippingApprovalStatus"
     SHIPPING_APPROVAL_REQUIRED = "shippingApprovalRequired"
-    ACTUAL_SHIPPING = "actualShipping"
-    PENDING_TOTAL = "pendingTotal"
+    ACTUAL_SHIPPING_CENTS = "actualShippingCents"
+    PENDING_TOTAL_CENTS = "pendingTotalCents"
     SHIPPING_APPROVAL = "shippingApproval"
     STOCK_RESTORED = "stockRestored"
     ARCHIVED = "archived"
@@ -444,7 +449,7 @@ class Fields:
     LAST_REQUEST = "last_request"
 
     # === FAVORITES FIELDS ===
-    DATE_FAVORITED = 'dateFavorited'
+    DATE_FAVORITED = "dateFavorited"
 
     # === CRON LOCK FIELDS ===
     LOCKED_AT = "lockedAt"
@@ -456,19 +461,21 @@ class Fields:
     LAST_RETRY_ERROR = "lastRetryError"
 
     # === ALTERNATE FIELD NAMES (used in Firestore deserialization fallbacks) ===
-    BUYER_CONFIRMED = "buyerConfirmed"       # Alternate for CONFIRMED_BY_BUYER
-    LOCAL_DELIVERY_ONLY = "localDeliveryOnly" # Alternate for IS_LOCAL_DELIVERY_ONLY
-    PERISHABLE = "perishable"                 # Alternate for IS_PERISHABLE
+    BUYER_CONFIRMED = "buyerConfirmed"  # Alternate for CONFIRMED_BY_BUYER
+    LOCAL_DELIVERY_ONLY = "localDeliveryOnly"  # Alternate for IS_LOCAL_DELIVERY_ONLY
+    PERISHABLE = "perishable"  # Alternate for IS_PERISHABLE
     SUPPLIER_SHIPPING_DAYS = "supplierShippingDays"  # Alternate for ESTIMATED_SHIP_DAYS
-    MIN_ORDER_QUANTITY = "minOrderQuantity"   # Alternate for MINIMUM_ORDER_QUANTITY
+    MIN_ORDER_QUANTITY = "minOrderQuantity"  # Alternate for MINIMUM_ORDER_QUANTITY
 
 
 # =============================================================================
 # ENUM VALUES - Valid values for enum fields
 # =============================================================================
 
+
 class OrderStatusValues:
     """Valid values for orderStatus field"""
+
     PENDING = "pending"
     CONFIRMED = "confirmed"
     PROCESSING = "processing"
@@ -482,10 +489,22 @@ class OrderStatusValues:
     PARTIALLY_REFUNDED = "partially_refunded"
     DISPUTED = "disputed"
 
-    ALL: frozenset[str] = frozenset({
-        PENDING, CONFIRMED, PROCESSING, SHIPPED, IN_TRANSIT,
-        DELIVERED, CANCELLED, FAILED, EXPIRED, REFUNDED, PARTIALLY_REFUNDED, DISPUTED
-    })
+    ALL: frozenset[str] = frozenset(
+        {
+            PENDING,
+            CONFIRMED,
+            PROCESSING,
+            SHIPPED,
+            IN_TRANSIT,
+            DELIVERED,
+            CANCELLED,
+            FAILED,
+            EXPIRED,
+            REFUNDED,
+            PARTIALLY_REFUNDED,
+            DISPUTED,
+        }
+    )
 
     # =========================================================================
     # CENTRALIZED STATE MACHINE — Single source of truth for order transitions
@@ -499,24 +518,28 @@ class OrderStatusValues:
         "shipped": ["in_transit", "delivered"],
         "in_transit": ["delivered", "cancelled"],
         "delivered": ["refunded", "partially_refunded", "disputed"],
-        "cancelled": [],       # Terminal
+        "cancelled": [],  # Terminal
         "failed": ["pending"],  # Retry
         "expired": ["pending"],  # Retry
-        "refunded": [],        # Terminal
+        "refunded": [],  # Terminal
         "partially_refunded": ["refunded"],
         "disputed": ["refunded"],  # After dispute resolution
     }
 
     # Terminal states — no further transitions allowed
-    TERMINAL_STATES: frozenset[str] = frozenset({
-        "cancelled", "refunded",
-    })
+    TERMINAL_STATES: frozenset[str] = frozenset(
+        {
+            "cancelled",
+            "refunded",
+        }
+    )
 
 
 class DeliveryItemStatusTransitions:
     """Centralized per-item delivery status transitions.
     Used by: orders.py update_item_status (inside and outside transaction).
     """
+
     VALID_TRANSITIONS: dict[str, list[str]] = {
         "pending": ["shipped"],
         "shipped": ["delivered"],
@@ -527,6 +550,7 @@ class DeliveryItemStatusTransitions:
 
 class PaymentStatusValues:
     """Valid values for paymentStatus field"""
+
     AWAITING_PAYMENT = "awaiting_payment"
     PROCESSING = "processing"
     PAID = "paid"
@@ -542,15 +566,28 @@ class PaymentStatusValues:
     CANCELLING = "cancelling"
     EXPIRING = "expiring"
 
-    ALL: frozenset[str] = frozenset({
-        AWAITING_PAYMENT, PROCESSING, PAID, PAYMENT_FAILED,
-        REFUNDED, SESSION_EXPIRED, AUTHORIZED, CAPTURED,
-        CANCELLED, AUTHORIZATION_EXPIRED, CAPTURING, CANCELLING, EXPIRING
-    })
+    ALL: frozenset[str] = frozenset(
+        {
+            AWAITING_PAYMENT,
+            PROCESSING,
+            PAID,
+            PAYMENT_FAILED,
+            REFUNDED,
+            SESSION_EXPIRED,
+            AUTHORIZED,
+            CAPTURED,
+            CANCELLED,
+            AUTHORIZATION_EXPIRED,
+            CAPTURING,
+            CANCELLING,
+            EXPIRING,
+        }
+    )
 
 
 class DeliveryStatusValues:
     """Valid values for deliveryStatus/status field on order items"""
+
     PENDING = "pending"
     SHIPPED = "shipped"
     DELIVERED = "delivered"
@@ -561,6 +598,7 @@ class DeliveryStatusValues:
 
 class PayoutStatusValues:
     """Valid values for payoutStatus field"""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -570,13 +608,14 @@ class PayoutStatusValues:
     PARTIALLY_REVERSED = "partially_reversed"
     REVERSED_DISPUTE = "reversed_dispute"
 
-    ALL: frozenset[str] = frozenset({
-        PENDING, PROCESSING, COMPLETED, PARTIAL, FAILED, REVERSED, PARTIALLY_REVERSED, REVERSED_DISPUTE
-    })
+    ALL: frozenset[str] = frozenset(
+        {PENDING, PROCESSING, COMPLETED, PARTIAL, FAILED, REVERSED, PARTIALLY_REVERSED, REVERSED_DISPUTE}
+    )
 
 
 class UserRoleValues:
     """Valid values for roles array"""
+
     ADMIN = "admin"
     SELLER = "seller"
     BUYER = "buyer"
@@ -586,6 +625,7 @@ class UserRoleValues:
 
 class ProductStatusValues:
     """Valid values for product status field"""
+
     DRAFT = "draft"
     ACTIVE = "active"
     PAUSED = "paused"
@@ -597,6 +637,7 @@ class ProductStatusValues:
 
 class ShippingApprovalStatusValues:
     """Valid values for shipping approval status"""
+
     NOT_REQUIRED = "not_required"
     PENDING = "pending"
     APPROVED = "approved"
@@ -607,6 +648,7 @@ class ShippingApprovalStatusValues:
 
 class DeliveryTypeValues:
     """Valid values for delivery option types"""
+
     PICKUP = "pickup"
     STANDARD = "standard"
     EXPRESS = "express"
@@ -614,13 +656,12 @@ class DeliveryTypeValues:
     LOCAL_DELIVERY = "local_delivery"
     CUSTOM = "custom"
 
-    ALL: frozenset[str] = frozenset({
-        PICKUP, STANDARD, EXPRESS, SAME_DAY, LOCAL_DELIVERY, CUSTOM
-    })
+    ALL: frozenset[str] = frozenset({PICKUP, STANDARD, EXPRESS, SAME_DAY, LOCAL_DELIVERY, CUSTOM})
 
 
 class WebhookStatusValues:
     """Valid values for webhook processing status"""
+
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -630,6 +671,7 @@ class WebhookStatusValues:
 
 class SecurityAlertTypes:
     """Security alert type values"""
+
     ALGOLIA_SYNC_ISSUE = "algolia_sync_issue"
     DISPUTE_CREATED = "dispute_created"
     ROLE_CHANGE = "role_change"
@@ -655,6 +697,7 @@ class SecurityAlertTypes:
 
 class SeverityLevels:
     """Security alert severity levels"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -663,6 +706,7 @@ class SeverityLevels:
 
 class DiscountTypeValues:
     """Valid values for shipping discount types"""
+
     PERCENT = "percent"
     FIXED = "fixed"
     FLAT_RATE = "flat_rate"
@@ -672,6 +716,7 @@ class DiscountTypeValues:
 
 class PaymentProviderValues:
     """Valid values for payment provider"""
+
     STRIPE = "stripe"
     AIRWALLEX = "airwallex"
 
@@ -680,6 +725,7 @@ class PaymentProviderValues:
 
 class SupplierCurrencyValues:
     """Valid currencies for supplier cost tracking (NOT selling price)"""
+
     CAD = "CAD"
     USD = "USD"
     EUR = "EUR"
@@ -696,30 +742,32 @@ class SupplierCurrencyValues:
     TWD = "TWD"
 
     DEFAULT = "USD"
-    ALL: frozenset[str] = frozenset({
-        CAD, USD, EUR, GBP, CNY, JPY, KRW, INR, AUD, MXN, BRL, HKD, SGD, TWD
-    })
+    ALL: frozenset[str] = frozenset({CAD, USD, EUR, GBP, CNY, JPY, KRW, INR, AUD, MXN, BRL, HKD, SGD, TWD})
 
 
 class CronLockStatusValues:
     """Valid values for cron lock status field."""
+
     RUNNING = "running"
     COMPLETED = "completed"
 
 
 class AlgoliaActionValues:
     """Valid values for Algolia sync failure action field."""
+
     INDEX = "index"
     DELETE = "delete"
 
 
 class AdminActionValues:
     """Valid values for admin log action field."""
+
     PAYMENT_PROVIDER_UPDATE = "payment_provider_update"
 
 
 class WebhookResponseStatus:
     """Internal webhook handler response status values."""
+
     PROCESSED = "processed"
     IGNORED = "ignored"
     ERROR = "error"
@@ -727,6 +775,7 @@ class WebhookResponseStatus:
 
 class ShippingSourceValues:
     """Source type for delivery estimate."""
+
     INTERNATIONAL_SUPPLIER = "international_supplier"
     INTERNATIONAL_GENERIC = "international_generic"
     DOMESTIC = "domestic"
@@ -736,48 +785,50 @@ class ShippingSourceValues:
 # SHIPPING TIERS — Single source of truth for all shipping pricing
 # =============================================================================
 
+
 class ShippingTiers:
     """Distance-based shipping cost tiers (CAD).
     Benchmarked against Instacart/DoorDash/PC Express.
     """
+
     NATIONAL_CEILING = 26.99
     DEFAULT_MIN_COST = 1.99  # Minimum shipping cost when coordinates unavailable
 
     # Distance thresholds (km) and base costs
     TIERS: list[tuple[float, float]] = [
-        (15, 1.99),      # Hyper-local
-        (50, 4.99),      # Local
-        (150, 9.99),     # Regional
-        (500, 14.99),    # Inter-city (Toronto-Ottawa corridor)
-        (1200, 18.99),   # Inter-regional
-        (2500, 22.99),   # Long-distance
+        (15, 1.99),  # Hyper-local
+        (50, 4.99),  # Local
+        (150, 9.99),  # Regional
+        (500, 14.99),  # Inter-city (Toronto-Ottawa corridor)
+        (1200, 18.99),  # Inter-regional
+        (2500, 22.99),  # Long-distance
     ]
 
     # Speed multipliers by distance range
     EXPRESS_MULTIPLIERS: dict[str, float] = {
-        'hyper_local': 4.0,   # ≤15km
-        'local': 1.6,         # ≤50km
-        'regional': 1.5,      # ≤150km
-        'default': 1.6,       # >150km
+        "hyper_local": 4.0,  # ≤15km
+        "local": 1.6,  # ≤50km
+        "regional": 1.5,  # ≤150km
+        "default": 1.6,  # >150km
     }
     SAME_DAY_MULTIPLIERS: dict[str, float] = {
-        'hyper_local': 4.5,   # ≤15km
-        'local': 1.8,         # ≤50km
-        'regional': 1.8,      # ≤150km
-        'default': 2.5,       # >150km
+        "hyper_local": 4.5,  # ≤15km
+        "local": 1.8,  # ≤50km
+        "regional": 1.8,  # ≤150km
+        "default": 2.5,  # >150km
     }
 
     # Surcharges
-    WEIGHT_SURCHARGE_PER_KG = 1.5        # Per kg over threshold
+    WEIGHT_SURCHARGE_PER_KG = 1.5  # Per kg over threshold
     WEIGHT_SURCHARGE_THRESHOLD_KG = 2.0  # Free weight allowance
-    ADDITIONAL_ITEM_RATE = 0.15          # 15% of base per extra item
-    VOLUMETRIC_DIVISOR = 5000.0          # L*W*H / divisor
+    ADDITIONAL_ITEM_RATE = 0.15  # 15% of base per extra item
+    VOLUMETRIC_DIVISOR = 5000.0  # L*W*H / divisor
     DEFAULT_WEIGHT_KG = 0.5
     DEFAULT_DIMENSION_CM = 10
 
     # Perishable surcharges
-    PERISHABLE_CROSS_PROVINCE = 50.0     # $50 flat
-    PERISHABLE_LONG_DISTANCE = 75.0      # $75 for >100km
+    PERISHABLE_CROSS_PROVINCE = 50.0  # $50 flat
+    PERISHABLE_LONG_DISTANCE = 75.0  # $75 for >100km
     PERISHABLE_DISTANCE_THRESHOLD_KM = 100
 
     # Fallback rates (province matrix)
@@ -800,6 +851,7 @@ class ShippingTiers:
 # SCHEMA REGISTRY - For contract testing
 # =============================================================================
 
+
 class SchemaRegistry:
     """
     Registry of expected fields per collection.
@@ -808,23 +860,38 @@ class SchemaRegistry:
 
     # Required fields per collection (must exist in every document)
     REQUIRED_FIELDS: dict[str, set[str]] = {
-        Collections.USERS: {
-            Fields.UID, Fields.EMAIL, Fields.NAME, Fields.ROLES, Fields.CREATED_AT
-        },
+        Collections.USERS: {Fields.UID, Fields.EMAIL, Fields.NAME, Fields.ROLES, Fields.CREATED_AT},
         Collections.PRODUCTS: {
-            Fields.NAME, Fields.PRICE, Fields.DESCRIPTION, Fields.IMAGE_URLS,
-            Fields.SELLER_ID, Fields.SELLER_ADDRESS, Fields.CATEGORY_ID,
-            Fields.STOCK_QUANTITY, Fields.CREATED_AT
+            Fields.NAME,
+            Fields.PRICE,
+            Fields.DESCRIPTION,
+            Fields.IMAGE_URLS,
+            Fields.SELLER_ID,
+            Fields.SELLER_ADDRESS,
+            Fields.CATEGORY_ID,
+            Fields.STOCK_QUANTITY,
+            Fields.CREATED_AT,
         },
         Collections.ORDERS: {
-            Fields.USER_ID, Fields.ITEMS, Fields.SUBTOTAL_CENTS, Fields.TAX_AMOUNT_CENTS,
-            Fields.SHIPPING_COST_CENTS, Fields.TOTAL_AMOUNT_CENTS, Fields.ORDER_STATUS,
-            Fields.PAYMENT_STATUS, Fields.SHIPPING_ADDRESS, Fields.CREATED_AT
+            Fields.USER_ID,
+            Fields.ITEMS,
+            Fields.SUBTOTAL_CENTS,
+            Fields.TAX_AMOUNT_CENTS,
+            Fields.SHIPPING_COST_CENTS,
+            Fields.TOTAL_AMOUNT_CENTS,
+            Fields.ORDER_STATUS,
+            Fields.PAYMENT_STATUS,
+            Fields.SHIPPING_ADDRESS,
+            Fields.CREATED_AT,
         },
         Collections.PAYOUTS: {
-            Fields.ORDER_ID, Fields.SELLER_ID, Fields.AMOUNT_CENTS,
-            Fields.PLATFORM_FEE_CENTS, Fields.NET_AMOUNT_CENTS, Fields.STATUS,
-            Fields.CREATED_AT
+            Fields.ORDER_ID,
+            Fields.SELLER_ID,
+            Fields.AMOUNT_CENTS,
+            Fields.PLATFORM_FEE_CENTS,
+            Fields.NET_AMOUNT_CENTS,
+            Fields.STATUS,
+            Fields.CREATED_AT,
         },
     }
 
@@ -846,7 +913,7 @@ class SchemaRegistry:
     def validate_field_name(cls, collection: str, field_name: str) -> bool:
         """Check if a field name is valid for a collection."""
         # Get all defined fields
-        all_fields = {v for k, v in Fields.__dict__.items() if not k.startswith('_')}
+        all_fields = {v for k, v in Fields.__dict__.items() if not k.startswith("_")}
         return field_name in all_fields
 
 
@@ -854,8 +921,10 @@ class SchemaRegistry:
 # VALIDATION LIMITS — Shared between frontend (schema_constants.dart) and backend
 # =============================================================================
 
+
 class ValidationLimits:
     """Centralized validation constraints. Must match frontend schema_constants.dart."""
+
     MAX_EMAIL_LENGTH = 254
     MAX_NAME_LENGTH = 60
     MIN_NAME_LENGTH = 2
@@ -872,8 +941,10 @@ class ValidationLimits:
 # BUSINESS CONSTANTS
 # =============================================================================
 
+
 class BusinessRules:
     """Business rule constants"""
+
     PLATFORM_FEE_PERCENT = 2.5
     PLATFORM_FEE_RATIO = 0.025  # PLATFORM_FEE_PERCENT / 100 — use this for calculations
     AUTO_CONFIRM_DAYS = 5  # Must be < AUTHORIZATION_EXPIRY_DAYS (2-day safety margin)
@@ -904,7 +975,7 @@ class BusinessRules:
     # Account management
     MIN_NAME_LENGTH = 2
     MAX_NAME_LENGTH = 60
-    GST_NUMBER_REGEX = r'^\d{9}[A-Z]{2}\d{4}$'
+    GST_NUMBER_REGEX = r"^\d{9}[A-Z]{2}\d{4}$"
 
     # Order archival
     ARCHIVE_AFTER_DAYS = 30
@@ -936,9 +1007,9 @@ class BusinessRules:
     }
 
     # Derived from TAX_RATES keys — single source of truth for valid provinces
-    VALID_PROVINCES: frozenset[str] = frozenset({
-        "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"
-    })
+    VALID_PROVINCES: frozenset[str] = frozenset(
+        {"AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"}
+    )
 
     # Stripe Tax Code constants (avoid magic strings in tax calculation)
     TAX_CODE_CHILDRENS_CLOTHING = "txcd_20030002"
@@ -963,8 +1034,10 @@ class BusinessRules:
 # CATEGORY IDS
 # =============================================================================
 
+
 class CategoryIds:
     """Product category IDs"""
+
     ELECTRONICS = 1
     COMPUTERS = 2
     GAMING = 3
@@ -996,6 +1069,7 @@ class ApiKeys:
     These are NOT Firestore fields — they are the contract between
     Flutter and Cloud Functions (request params + response keys).
     """
+
     # === REQUEST PARAMS (sent to Cloud Functions) ===
     ADD = "add"
     REMOVE = "remove"
@@ -1060,16 +1134,19 @@ class ApiKeys:
 
 class ErrorCodeValues:
     """Standardized error code values returned in HttpsError `details`."""
+
     PRICE_CHANGED = "PRICE_CHANGED"
 
 
 class CartVerificationReasonValues:
     """Reason values returned by verify_cart_prices()."""
+
     DEACTIVATED = "deactivated"
 
 
 class PlaceholderAddressValues:
     """Placeholder values used ONLY as last-resort fallbacks to prevent crashes."""
+
     UNKNOWN_TEXT = "N/A"
     DEFAULT_STATE = "ON"
     DEFAULT_POSTAL_CODE = "M5V 3A8"

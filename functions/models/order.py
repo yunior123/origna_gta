@@ -20,6 +20,7 @@ from .product import SellerDeliveryOption
 
 class OrderItem(BaseModel):
     """Individual item in an order — immutable snapshot at time of purchase."""
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -35,7 +36,7 @@ class OrderItem(BaseModel):
                     Fields.CITY: "Toronto",
                     Fields.STATE: "ON",
                     Fields.POSTAL_CODE: "M5V 3A8",
-                    Fields.COUNTRY: "Canada"
+                    Fields.COUNTRY: "Canada",
                 },
                 Fields.DELIVERY_STATUS: "pending",  # Deprecated — use 'status' instead
             }
@@ -50,7 +51,9 @@ class OrderItem(BaseModel):
     imageUrls: list[str] = Field(..., min_length=1, description="Product image URLs")
     sellerId: str = Field(..., min_length=1)
     sellerAddress: Address
-    deliveryStatus: DeliveryStatusEnum = Field(default=DeliveryStatusEnum.PENDING, deprecated=True, description="Deprecated: use 'status' field instead")
+    deliveryStatus: DeliveryStatusEnum = Field(
+        default=DeliveryStatusEnum.PENDING, deprecated=True, description="Deprecated: use 'status' field instead"
+    )
     trackingNumber: str | None = Field(default=None, max_length=100)
     carrier: str | None = Field(default=None, max_length=100)
     confirmedByBuyer: bool = Field(default=False)
@@ -105,6 +108,7 @@ class OrderItem(BaseModel):
 
 class Taxes(BaseModel):
     """Tax breakdown for an order (Canadian taxes)."""
+
     GST: float = Field(default=0.0, ge=0, description="Goods and Services Tax (Federal)")
     PST: float = Field(default=0.0, ge=0, description="Provincial Sales Tax")
     HST: float = Field(default=0.0, ge=0, description="Harmonized Sales Tax")
@@ -117,6 +121,7 @@ class Taxes(BaseModel):
 
 class Ratings(BaseModel):
     """Product rating within an order."""
+
     productId: str = Field(..., min_length=1)
     rating: float = Field(..., ge=0, le=5)
     review: str | None = Field(default=None, max_length=1000)
@@ -133,6 +138,7 @@ class Ratings(BaseModel):
 
 class SellerPayout(BaseModel):
     """Payout information for a seller in an order. All money in cents."""
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -141,7 +147,7 @@ class SellerPayout(BaseModel):
                 Fields.AMOUNT_CENTS: 4750,
                 Fields.PLATFORM_FEE_CENTS: 119,
                 Fields.NET_AMOUNT_CENTS: 4631,
-                Fields.STATUS: "pending"
+                Fields.STATUS: "pending",
             }
         }
     )
@@ -151,10 +157,7 @@ class SellerPayout(BaseModel):
     amountCents: int = Field(..., ge=0, description="Gross amount in cents")
     platformFeeCents: int = Field(..., ge=0, description="Platform fee in cents")
     netAmountCents: int = Field(..., ge=0, description="Net amount in cents")
-    status: str = Field(
-        default=PayoutStatusValues.PENDING,
-        description="Payout status"
-    )
+    status: str = Field(default=PayoutStatusValues.PENDING, description="Payout status")
     payoutDate: datetime | None = Field(default=None)
     stripeTransferId: str | None = Field(default=None)
     failureReason: str | None = Field(default=None, max_length=500)
@@ -169,6 +172,7 @@ class SellerPayout(BaseModel):
 
 class Order(BaseModel):
     """Complete order model. All money in integer cents."""
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -185,7 +189,7 @@ class Order(BaseModel):
                 Fields.ORDER_STATUS: "pending",
                 Fields.PAYMENT_STATUS: "awaiting_payment",
                 Fields.SHIPPING_ADDRESS: {},
-                Fields.CREATED_AT: "2026-02-01T10:00:00Z"
+                Fields.CREATED_AT: "2026-02-01T10:00:00Z",
             }
         }
     )
@@ -227,12 +231,10 @@ class Order(BaseModel):
     currency: str = Field(default=BusinessRules.DEFAULT_CURRENCY)
 
     # Shipping approval
-    shippingApprovalStatus: ShippingApprovalStatusEnum = Field(
-        default=ShippingApprovalStatusEnum.NOT_REQUIRED
-    )
+    shippingApprovalStatus: ShippingApprovalStatusEnum = Field(default=ShippingApprovalStatusEnum.NOT_REQUIRED)
     shippingApprovalRequired: bool = Field(default=False)
-    actualShipping: float = Field(default=0.0, ge=0)
-    pendingTotal: float = Field(default=0.0, ge=0)
+    actualShippingCents: int = Field(default=0, ge=0)
+    pendingTotalCents: int = Field(default=0, ge=0)
 
     # Payout tracking
     sellerPayouts: list[SellerPayout] = Field(default_factory=list)
@@ -240,11 +242,8 @@ class Order(BaseModel):
     confirmedAt: datetime | None = None
     autoConfirmed: bool = Field(default=False)
     autoCaptured: bool = Field(default=False)
-    platformFeeTotal: float = Field(default=0.0, ge=0)
-    payoutStatus: str = Field(
-        default=PayoutStatusValues.PENDING,
-        description="Overall payout status"
-    )
+    platformFeeTotalCents: int = Field(default=0, ge=0)
+    payoutStatus: str = Field(default=PayoutStatusValues.PENDING, description="Overall payout status")
 
     # Capture tracking
     captureAttempts: int = Field(default=0, ge=0)
@@ -258,7 +257,7 @@ class Order(BaseModel):
     stockRestored: bool = Field(default=False)
 
     # Refund tracking
-    refundAmount: float = Field(default=0.0, ge=0)
+    refundAmountCents: int = Field(default=0, ge=0)
     refundedAt: datetime | None = Field(default=None)
 
     # Manual review
@@ -282,9 +281,7 @@ class Order(BaseModel):
     @classmethod
     def validate_currency(cls, v: str) -> str:
         if v.lower() not in BusinessRules.SUPPORTED_SELLING_CURRENCIES:
-            raise ValueError(
-                f"Only {BusinessRules.SUPPORTED_SELLING_CURRENCIES} currencies supported"
-            )
+            raise ValueError(f"Only {BusinessRules.SUPPORTED_SELLING_CURRENCIES} currencies supported")
         return v.lower()
 
     @field_validator("payoutStatus")
@@ -297,6 +294,7 @@ class Order(BaseModel):
 
 class OrderCreate(BaseModel):
     """Model for creating new orders (excludes orderId and createdAt which are generated)."""
+
     userId: str = Field(..., min_length=1)
     customerId: str = Field(..., min_length=1)
     customerEmail: str = Field(..., pattern=r"^[^@]+@[^@]+\.[^@]+$")

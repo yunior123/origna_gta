@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Send delivered email sample using verified Gmail sender."""
+
 import os
 import sys
 
@@ -7,8 +8,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-os.environ['FUNCTIONS_EMULATOR'] = 'true'
-os.environ['FORCE_REAL_EMAIL'] = 'true'
+os.environ["FUNCTIONS_EMULATOR"] = "true"
+os.environ["FORCE_REAL_EMAIL"] = "true"
 sys.path.insert(0, os.path.dirname(__file__))
 
 from mailjet_rest import Client
@@ -58,22 +59,24 @@ print("=" * 60)
 # Generate the delivered email HTML
 delivered_html = get_order_delivered_email(MOCK_ORDER_DATA, MOCK_ORDER_ID)
 
-mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
+mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version="v3.1")
 
 for recipient in RECIPIENTS:
     data = {
-        'Messages': [{
-            "From": {"Email": VERIFIED_SENDER, "Name": "Origna GTA"},
-            "To": [{"Email": recipient}],
-            "Subject": f"[SAMPLE] Your Order Has Been Delivered — #{MOCK_ORDER_ID[:8]}",
-            "HTMLPart": delivered_html,
-        }]
+        "Messages": [
+            {
+                "From": {"Email": VERIFIED_SENDER, "Name": "Origna GTA"},
+                "To": [{"Email": recipient}],
+                "Subject": f"[SAMPLE] Your Order Has Been Delivered — #{MOCK_ORDER_ID[:8]}",
+                "HTMLPart": delivered_html,
+            }
+        ]
     }
     result = mailjet.send.create(data=data)
     resp = result.json()
-    status = resp.get('Messages', [{}])[0].get('Status', 'unknown')
-    if status == 'success':
-        msg_id = resp['Messages'][0]['To'][0]['MessageID']
+    status = resp.get("Messages", [{}])[0].get("Status", "unknown")
+    if status == "success":
+        msg_id = resp["Messages"][0]["To"][0]["MessageID"]
         print(f"  ✅ {recipient} — MessageID: {msg_id}")
     else:
         print(f"  ❌ {recipient} — {resp}")

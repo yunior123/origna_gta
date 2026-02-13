@@ -21,7 +21,7 @@ def test_validate_address_map_valid():
         "state": "ON",
         "postalCode": "M5V3A8",
         "country": "Canada",
-        "phoneNumber": "4161234567"
+        "phoneNumber": "4161234567",
     }
 
     result = validate_address_map(address_dict)
@@ -41,7 +41,7 @@ def test_validate_address_map_invalid_postal_code():
         "city": "Toronto",
         "state": "ON",
         "postalCode": "INVALID",
-        "country": "Canada"
+        "country": "Canada",
     }
 
     with pytest.raises(ValueError) as exc_info:
@@ -59,7 +59,7 @@ def test_validate_address_map_invalid_province():
         "city": "Toronto",
         "state": "XX",  # Invalid province
         "postalCode": "M5V3A8",
-        "country": "Canada"
+        "country": "Canada",
     }
 
     with pytest.raises(ValueError) as exc_info:
@@ -84,8 +84,8 @@ def test_validate_item_valid():
             "city": "Toronto",
             "state": "ON",
             "postalCode": "M5V3A8",
-            "country": "Canada"
-        }
+            "country": "Canada",
+        },
     }
 
     is_valid, error_msg = validate_item(item_dict)
@@ -110,8 +110,8 @@ def test_validate_item_invalid_quantity():
             "city": "Toronto",
             "state": "ON",
             "postalCode": "M5V3A8",
-            "country": "Canada"
-        }
+            "country": "Canada",
+        },
     }
 
     is_valid, error_msg = validate_item(item_dict)
@@ -136,8 +136,8 @@ def test_validate_item_missing_required_field():
             "city": "Toronto",
             "state": "ON",
             "postalCode": "M5V3A8",
-            "country": "Canada"
-        }
+            "country": "Canada",
+        },
     }
 
     is_valid, error_msg = validate_item(item_dict)
@@ -167,8 +167,8 @@ def test_validate_order_data_valid():
                     "city": "Toronto",
                     "state": "ON",
                     "postalCode": "M4B1B3",
-                    "country": "Canada"
-                }
+                    "country": "Canada",
+                },
             }
         ],
         "shippingAddress": {
@@ -176,8 +176,8 @@ def test_validate_order_data_valid():
             "city": "Toronto",
             "state": "ON",
             "postalCode": "M5V3A8",
-            "country": "Canada"
-        }
+            "country": "Canada",
+        },
     }
 
     is_valid, error_msg = validate_order_data(order_dict)
@@ -207,8 +207,8 @@ def test_validate_order_data_invalid_email():
                     "city": "Toronto",
                     "state": "ON",
                     "postalCode": "M4B1B3",
-                    "country": "Canada"
-                }
+                    "country": "Canada",
+                },
             }
         ],
         "shippingAddress": {
@@ -216,8 +216,8 @@ def test_validate_order_data_invalid_email():
             "city": "Toronto",
             "state": "ON",
             "postalCode": "M5V3A8",
-            "country": "Canada"
-        }
+            "country": "Canada",
+        },
     }
 
     is_valid, error_msg = validate_order_data(order_dict)
@@ -247,8 +247,8 @@ def test_validate_order_data_missing_field():
                     "city": "Toronto",
                     "state": "ON",
                     "postalCode": "M4B1B3",
-                    "country": "Canada"
-                }
+                    "country": "Canada",
+                },
             }
         ],
         "shippingAddress": {
@@ -256,8 +256,8 @@ def test_validate_order_data_missing_field():
             "city": "Toronto",
             "state": "ON",
             "postalCode": "M5V3A8",
-            "country": "Canada"
-        }
+            "country": "Canada",
+        },
     }
 
     is_valid, error_msg = validate_order_data(order_dict)
@@ -268,20 +268,15 @@ def test_validate_order_data_missing_field():
 
 def test_taxes_model_integration():
     """Test that Taxes model works correctly with real data"""
-    taxes = Taxes(
-        GST=5.0,
-        PST=7.0,
-        HST=0.0,
-        QST=0.0
-    )
+    taxes = Taxes(GST=5.0, PST=7.0, HST=0.0, QST=0.0)
 
     # Test total calculation
     assert taxes.total() == 12.0
 
     # Test JSON serialization
     taxes_dict = taxes.model_dump()
-    assert taxes_dict['GST'] == 5.0
-    assert taxes_dict['PST'] == 7.0
+    assert taxes_dict["GST"] == 5.0
+    assert taxes_dict["PST"] == 7.0
 
     # Test JSON deserialization
     taxes_restored = Taxes(**taxes_dict)
@@ -300,12 +295,8 @@ def test_order_item_model_integration():
         imageUrls=["https://example.com/image.jpg"],
         categoryId=5,
         sellerAddress=Address(
-            street="123 Seller St",
-            city="Toronto",
-            state="ON",
-            postalCode="M5V 3A8",
-            country="Canada"
-        )
+            street="123 Seller St", city="Toronto", state="ON", postalCode="M5V 3A8", country="Canada"
+        ),
     )
 
     # Test subtotal calculation
@@ -313,8 +304,8 @@ def test_order_item_model_integration():
 
     # Test JSON serialization
     item_dict = item.model_dump()
-    assert item_dict['productId'] == "prod123"
-    assert item_dict['quantity'] == 3
+    assert item_dict["productId"] == "prod123"
+    assert item_dict["quantity"] == 3
 
 
 if __name__ == "__main__":

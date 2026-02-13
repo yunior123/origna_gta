@@ -14,8 +14,10 @@ from schema_constants import BusinessRules, Fields
 # ENUMERATIONS
 # ============================================================================
 
+
 class OrderStatusEnum(StrEnum):
     """Order status values"""
+
     PENDING = "pending"
     CONFIRMED = "confirmed"
     PROCESSING = "processing"
@@ -32,6 +34,7 @@ class OrderStatusEnum(StrEnum):
 
 class PaymentStatusEnum(StrEnum):
     """Payment status values"""
+
     AWAITING_PAYMENT = "awaiting_payment"
     PROCESSING = "processing"
     PAID = "paid"
@@ -50,6 +53,7 @@ class PaymentStatusEnum(StrEnum):
 
 class DeliveryStatusEnum(StrEnum):
     """Delivery status for individual items"""
+
     PENDING = "pending"
     SHIPPED = "shipped"
     DELIVERED = "delivered"
@@ -58,6 +62,7 @@ class DeliveryStatusEnum(StrEnum):
 
 class ShippingApprovalStatusEnum(StrEnum):
     """Shipping approval status"""
+
     NOT_REQUIRED = "not_required"
     PENDING = "pending"
     APPROVED = "approved"
@@ -66,6 +71,7 @@ class ShippingApprovalStatusEnum(StrEnum):
 
 class UserRole(StrEnum):
     """User roles"""
+
     ADMIN = "admin"
     SELLER = "seller"
     BUYER = "buyer"
@@ -75,11 +81,13 @@ class UserRole(StrEnum):
 # ADDRESS MODELS
 # ============================================================================
 
+
 class Address(BaseModel):
     """
     Complete address model with validation
     Used for delivery, seller locations, and user addresses
     """
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -91,67 +99,22 @@ class Address(BaseModel):
                 Fields.COUNTRY: "Canada",
                 Fields.PHONE_NUMBER: "4165551234",
                 Fields.IS_DEFAULT: True,
-                Fields.LABEL: "Home"
+                Fields.LABEL: "Home",
             }
         }
     )
 
-    street: str = Field(
-        ...,
-        min_length=1,
-        max_length=100,
-        description="Street address"
-    )
-    apartment: str = Field(
-        default="",
-        max_length=20,
-        description="Unit, Suite, Apt number"
-    )
-    city: str = Field(
-        ...,
-        min_length=2,
-        max_length=50,
-        description="City name"
-    )
-    state: str = Field(
-        ...,
-        min_length=2,
-        max_length=2,
-        description="Province/State code (e.g., ON, QC, BC)"
-    )
-    postalCode: str = Field(
-        ...,
-        description="Canadian postal code (e.g., M5V 3A8)"
-    )
-    country: str = Field(
-        default="Canada",
-        description="Country name"
-    )
-    phoneNumber: str | None = Field(
-        default=None,
-        description="Contact phone number for delivery"
-    )
-    isDefault: bool = Field(
-        default=False,
-        description="Whether this is the default address"
-    )
-    label: str | None = Field(
-        default=None,
-        max_length=20,
-        description="Address label (Home, Work, Other)"
-    )
-    latitude: float | None = Field(
-        default=None,
-        ge=-90,
-        le=90,
-        description="Latitude for mapping/delivery routing"
-    )
-    longitude: float | None = Field(
-        default=None,
-        ge=-180,
-        le=180,
-        description="Longitude for mapping/delivery routing"
-    )
+    street: str = Field(..., min_length=1, max_length=100, description="Street address")
+    apartment: str = Field(default="", max_length=20, description="Unit, Suite, Apt number")
+    city: str = Field(..., min_length=2, max_length=50, description="City name")
+    state: str = Field(..., min_length=2, max_length=2, description="Province/State code (e.g., ON, QC, BC)")
+    postalCode: str = Field(..., description="Canadian postal code (e.g., M5V 3A8)")
+    country: str = Field(default="Canada", description="Country name")
+    phoneNumber: str | None = Field(default=None, description="Contact phone number for delivery")
+    isDefault: bool = Field(default=False, description="Whether this is the default address")
+    label: str | None = Field(default=None, max_length=20, description="Address label (Home, Work, Other)")
+    latitude: float | None = Field(default=None, ge=-90, le=90, description="Latitude for mapping/delivery routing")
+    longitude: float | None = Field(default=None, ge=-180, le=180, description="Longitude for mapping/delivery routing")
 
     @field_validator("postalCode")
     @classmethod
@@ -214,6 +177,7 @@ class AddressDetails(BaseModel):
     Simplified address for delivery info
     Includes geolocation coordinates
     """
+
     street: str = Field(..., min_length=1, max_length=100)
     city: str = Field(..., min_length=2, max_length=50)
     state: str = Field(..., min_length=2, max_length=2)

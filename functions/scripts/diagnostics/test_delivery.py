@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Send a single test email and track its delivery status."""
+
 import json
 import os
 import sys
@@ -8,7 +9,7 @@ import time
 from dotenv import load_dotenv
 
 load_dotenv()
-os.environ['FUNCTIONS_EMULATOR'] = 'true'
+os.environ["FUNCTIONS_EMULATOR"] = "true"
 sys.path.insert(0, os.path.dirname(__file__))
 
 from mailjet_rest import Client
@@ -16,13 +17,13 @@ from mailjet_rest import Client
 from config import MAILJET_API_KEY, MAILJET_SECRET_KEY
 from schema_constants import EmailConfig
 
-mj_send = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
-mj_api = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3')
+mj_send = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version="v3.1")
+mj_api = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version="v3")
 
 print("Sending simple test email from support@orignaventures.ca...")
 
 data = {
-    'Messages': [
+    "Messages": [
         {
             "From": {"Email": EmailConfig.SUPPORT_EMAIL, "Name": "Origna GTA"},
             "To": [{"Email": "yr628132@gmail.com"}],
@@ -45,10 +46,10 @@ resp = result.json()
 print(f"Status code: {result.status_code}")
 
 msg_ids = []
-for msg in resp.get('Messages', []):
-    for to in msg.get('To', []):
-        mid = to.get('MessageID')
-        email = to.get('Email')
+for msg in resp.get("Messages", []):
+    for to in msg.get("To", []):
+        mid = to.get("MessageID")
+        email = to.get("Email")
         msg_ids.append((mid, email))
         print(f"  {email} -> MessageID: {mid}")
 
@@ -59,8 +60,8 @@ for wait in [3, 5, 10]:
     for mid, email in msg_ids:
         r = mj_api.message.get(id=mid)
         if r.status_code == 200:
-            d = r.json().get('Data', [{}])[0]
-            status = d.get('Status', '?')
+            d = r.json().get("Data", [{}])[0]
+            status = d.get("Status", "?")
             print(f"  {email}: {status}")
         else:
             print(f"  {email}: API error {r.status_code}")

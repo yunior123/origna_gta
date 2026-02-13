@@ -26,6 +26,7 @@ USAGE:
 - Local dev: Run `firebase emulators:start` - Firebase is emulated, external APIs are real
 - Production: Deployed via GitHub Actions after tests pass
 """
+
 import os
 from enum import Enum
 
@@ -35,22 +36,27 @@ from firebase_functions import params
 # ENVIRONMENT DETECTION
 # ============================================================================
 
+
 class Environment(Enum):
-    EMULATOR = "emulator"       # Local development with Firebase emulators (micro-staging)
-    PRODUCTION = "production"   # Deployed to Firebase Cloud
+    EMULATOR = "emulator"  # Local development with Firebase emulators (micro-staging)
+    PRODUCTION = "production"  # Deployed to Firebase Cloud
+
 
 # Auto-detect environment
 # Firebase emulator sets FUNCTIONS_EMULATOR='true' automatically
-IS_EMULATOR = os.environ.get('FUNCTIONS_EMULATOR', 'false').lower() == 'true'
+IS_EMULATOR = os.environ.get("FUNCTIONS_EMULATOR", "false").lower() == "true"
 CURRENT_ENV = Environment.EMULATOR if IS_EMULATOR else Environment.PRODUCTION
+
 
 def get_environment() -> Environment:
     """Get current environment."""
     return CURRENT_ENV
 
+
 def is_emulator() -> bool:
     """Check if running in emulator mode."""
     return IS_EMULATOR
+
 
 # ============================================================================
 # CONSTANTS — Single source of truth is schema_constants.py
@@ -59,8 +65,9 @@ def is_emulator() -> bool:
 
 
 class CaptureMethod:
-    MANUAL = 'manual'
-    AUTOMATIC = 'automatic'
+    MANUAL = "manual"
+    AUTOMATIC = "automatic"
+
 
 # ============================================================================
 # PLATFORM CONFIGURATION
@@ -71,7 +78,9 @@ class CaptureMethod:
 
 PLATFORM_FEE_RATIO = 0.025  # 2.5% platform fee as ratio (0.025 = 2.5/100)
 PLATFORM_FEE_PERCENT = PLATFORM_FEE_RATIO  # Alias used by payment handlers
-AUTO_CONFIRM_DAYS = 5  # Auto-capture after 5 days post-delivery (must be < AUTHORIZATION_VALID_DAYS with 2-day safety margin)
+AUTO_CONFIRM_DAYS = (
+    5  # Auto-capture after 5 days post-delivery (must be < AUTHORIZATION_VALID_DAYS with 2-day safety margin)
+)
 AUTHORIZATION_VALID_DAYS = 7  # Stripe authorization valid for 7 days
 SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20% threshold ratio
 
@@ -79,6 +88,7 @@ SHIPPING_APPROVAL_THRESHOLD = 0.20  # 20% threshold ratio
 # R2 STORAGE CONFIGURATION - REAL service, environment-aware paths
 # R2 is always real (not emulated). We use folder prefixes to separate data.
 # ============================================================================
+
 
 class R2Config:
     """Cloudflare R2 Storage Configuration.
@@ -117,10 +127,12 @@ class R2Config:
             prefix = "emulator/" if IS_EMULATOR else ""
             return f"{prefix}{category}/{filename}"
 
+
 # ============================================================================
 # ALGOLIA CONFIGURATION - REAL service, separate index per environment
 # Algolia is always real (not emulated). We use separate indexes.
 # ============================================================================
+
 
 class AlgoliaConfig:
     """Algolia search configuration.
@@ -134,9 +146,11 @@ class AlgoliaConfig:
         """Get Algolia index name based on environment."""
         return "products_emulator" if IS_EMULATOR else "products"
 
+
 # ============================================================================
 # SECRETS MANAGEMENT
 # ============================================================================
+
 
 def _load_secret(key: str, required: bool = True) -> str:
     """
@@ -158,9 +172,11 @@ def _load_secret(key: str, required: bool = True) -> str:
                 raise RuntimeError(f"❌ Failed to load {key} from Secret Manager: {e}") from e
             return ""
 
+
 # ============================================================================
 # STRIPE CONFIGURATION
 # ============================================================================
+
 
 class StripeConfig:
     """Stripe payment configuration."""
@@ -169,6 +185,7 @@ class StripeConfig:
     def is_test_mode() -> bool:
         """Check if using Stripe test keys (sk_test_*)."""
         return STRIPE_SECRET_KEY.startswith("sk_test_") if STRIPE_SECRET_KEY else True
+
 
 # Load Stripe keys
 try:
@@ -245,6 +262,7 @@ R2_ACCESS_KEY_NEW = params.SecretParam("R2_ACCESS_KEY")
 R2_SECRET_KEY_NEW = params.SecretParam("R2_SECRET_KEY")
 R2_ACCOUNT_ID_NEW = params.SecretParam("R2_ACCOUNT_ID")
 
+
 def get_r2_credentials() -> dict:
     """Get R2 credentials based on environment."""
     if IS_EMULATOR:
@@ -255,10 +273,11 @@ def get_r2_credentials() -> dict:
         }
     else:
         return {
-            "access_key": R2_ACCESS_KEY_NEW.value if hasattr(R2_ACCESS_KEY_NEW, 'value') else "",
-            "secret_key": R2_SECRET_KEY_NEW.value if hasattr(R2_SECRET_KEY_NEW, 'value') else "",
-            "account_id": R2_ACCOUNT_ID_NEW.value if hasattr(R2_ACCOUNT_ID_NEW, 'value') else "",
+            "access_key": R2_ACCESS_KEY_NEW.value if hasattr(R2_ACCESS_KEY_NEW, "value") else "",
+            "secret_key": R2_SECRET_KEY_NEW.value if hasattr(R2_SECRET_KEY_NEW, "value") else "",
+            "account_id": R2_ACCOUNT_ID_NEW.value if hasattr(R2_ACCOUNT_ID_NEW, "value") else "",
         }
+
 
 # ============================================================================
 # AIRWALLEX CONFIGURATION (OPTIONAL)
@@ -274,6 +293,7 @@ AIRWALLEX_BASE_URL = os.environ.get("AIRWALLEX_BASE_URL", "https://api.airwallex
 # ============================================================================
 
 SENTRY_DSN = _load_secret("SENTRY_DSN_BACKEND", required=False)
+
 
 def init_sentry():
     """Initialize Sentry SDK for backend error monitoring (production only)."""
@@ -297,18 +317,19 @@ def init_sentry():
     except Exception as e:
         print(f"⚠️ Sentry init failed: {type(e).__name__}")
 
+
 def _sentry_before_send(event, hint):
     """Scrub sensitive data before sending to Sentry."""
     # Remove any accidentally captured secrets
-    if 'exception' in event:
-        for exception in event.get('exception', {}).get('values', []):
-            for frame in exception.get('stacktrace', {}).get('frames', []):
+    if "exception" in event:
+        for exception in event.get("exception", {}).get("values", []):
+            for frame in exception.get("stacktrace", {}).get("frames", []):
                 # Redact variables that might contain secrets
-                if 'vars' in frame:
-                    for key in list(frame['vars'].keys()):
+                if "vars" in frame:
+                    for key in list(frame["vars"].keys()):
                         key_lower = key.lower()
-                        if any(s in key_lower for s in ('secret', 'key', 'token', 'password', 'dsn', 'api_key')):
-                            frame['vars'][key] = '[REDACTED]'
+                        if any(s in key_lower for s in ("secret", "key", "token", "password", "dsn", "api_key")):
+                            frame["vars"][key] = "[REDACTED]"
     return event
 
 
@@ -319,19 +340,19 @@ def _sentry_before_send(event, hint):
 SELLER_EMAIL = os.environ.get("SELLER_EMAIL", "support@orignaventures.ca")
 
 # Stripe Tax Feature Flag
-STRIPE_TAX_ENABLED = os.environ.get('STRIPE_TAX_ENABLED', 'false').lower() == 'true'
+STRIPE_TAX_ENABLED = os.environ.get("STRIPE_TAX_ENABLED", "false").lower() == "true"
 
 # Stripe Tax Code Mapping
 CATEGORY_TAX_CODE_MAP = {
-    1: "txcd_99999999",   # Electronics → General Tangible Goods
-    2: "txcd_99999999",   # Computers → General Tangible Goods
-    3: "txcd_10201000",   # Gaming → Video Games
-    4: "txcd_99999999",   # Home/Kitchen → General Tangible Goods
-    5: "txcd_99999999",   # Fashion → General Tangible Goods
-    6: "txcd_99999999",   # Shoes/Accessories → General Tangible Goods
-    7: "txcd_99999999",   # Jewelry/Watches → General Tangible Goods
-    8: "txcd_99999999",   # Beauty/Personal Care → General Tangible Goods
-    9: "txcd_99999999",   # Health/Wellness → General Tangible Goods
+    1: "txcd_99999999",  # Electronics → General Tangible Goods
+    2: "txcd_99999999",  # Computers → General Tangible Goods
+    3: "txcd_10201000",  # Gaming → Video Games
+    4: "txcd_99999999",  # Home/Kitchen → General Tangible Goods
+    5: "txcd_99999999",  # Fashion → General Tangible Goods
+    6: "txcd_99999999",  # Shoes/Accessories → General Tangible Goods
+    7: "txcd_99999999",  # Jewelry/Watches → General Tangible Goods
+    8: "txcd_99999999",  # Beauty/Personal Care → General Tangible Goods
+    9: "txcd_99999999",  # Health/Wellness → General Tangible Goods
     10: "txcd_99999999",  # Sports/Fitness → General Tangible Goods
     11: "txcd_99999999",  # Automotive → General Tangible Goods
     12: "txcd_99999999",  # Tools/Hardware → General Tangible Goods
@@ -347,16 +368,17 @@ CATEGORY_TAX_CODE_MAP = {
 }
 
 # Stripe Tax Constants
-STRIPE_TAX_CODE_GENERAL = "txcd_99999999"       # General Tangible Goods
+STRIPE_TAX_CODE_GENERAL = "txcd_99999999"  # General Tangible Goods
 STRIPE_TAX_CODE_CHILDRENS_CLOTHING = "txcd_20030002"  # Children's Clothing
-STRIPE_TAX_CODE_BASIC_GROCERIES = "txcd_30060005"     # Basic Groceries
+STRIPE_TAX_CODE_BASIC_GROCERIES = "txcd_30060005"  # Basic Groceries
 STRIPE_TAX_CODE_SHIPPING = "txcd_92010001"  # Shipping/Handling
-STRIPE_TAX_TYPE_CA_GST_HST = "ca_gst_hst"   # Canadian GST/HST tax ID type
-STRIPE_TAX_EXEMPT_NONE = "none"             # Let Stripe determine exemption
+STRIPE_TAX_TYPE_CA_GST_HST = "ca_gst_hst"  # Canadian GST/HST tax ID type
+STRIPE_TAX_EXEMPT_NONE = "none"  # Let Stripe determine exemption
 
 # ============================================================================
 # DEBUG & LOGGING
 # ============================================================================
+
 
 def print_env_info():
     """Print current environment info for debugging."""
@@ -368,6 +390,7 @@ def print_env_info():
     print(f"   Algolia Index: {AlgoliaConfig.get_index_name()}")
     print(f"   Stripe Test Mode: {StripeConfig.is_test_mode()}")
     print("=" * 60)
+
 
 # Print environment info on module load in emulator mode
 if IS_EMULATOR:

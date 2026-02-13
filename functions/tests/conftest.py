@@ -19,53 +19,61 @@ from google.cloud.firestore_v1.base_client import BaseClient
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+
 # Create HttpsError mock class that is a real exception
 class MockHttpsError(Exception):
     """Mock Firebase HttpsError"""
+
     def __init__(self, code, message, details=None):
         self.code = code
         self.message = message
         self.details = details
         super().__init__(message)
 
+
 # Patch Firebase Functions decorators and utilities BEFORE any imports
 # This ensures that decorated functions don't require Firebase context
 def decorator_passthrough(**kwargs):
     """Decorator that does nothing, just returns the function as-is"""
+
     def decorator(func):
         return func
+
     return decorator
+
 
 # Create a real Response class for tests
 class MockResponse:
     """Mock Firebase Response that behaves like a real response"""
-    def __init__(self, body, status=200, headers=None, mimetype='text/plain'):
+
+    def __init__(self, body, status=200, headers=None, mimetype="text/plain"):
         self.status_code = status
         if isinstance(body, bytes):
             self.response = [body]
         else:
-            self.response = [body.encode('utf-8') if isinstance(body, str) else body]
+            self.response = [body.encode("utf-8") if isinstance(body, str) else body]
         self.headers = headers or {}
         self.mimetype = mimetype
 
+
 # Patch the module before it's imported by test files
-sys.modules['firebase_functions'] = MagicMock()
-sys.modules['firebase_functions'].https_fn = MagicMock()
-sys.modules['firebase_functions'].https_fn.on_call = decorator_passthrough
-sys.modules['firebase_functions'].https_fn.on_request = decorator_passthrough
-sys.modules['firebase_functions'].https_fn.CallableRequest = Mock
-sys.modules['firebase_functions'].https_fn.HttpsError = MockHttpsError
-sys.modules['firebase_functions'].https_fn.Response = MockResponse
-sys.modules['firebase_functions.https_fn'] = sys.modules['firebase_functions'].https_fn
+sys.modules["firebase_functions"] = MagicMock()
+sys.modules["firebase_functions"].https_fn = MagicMock()
+sys.modules["firebase_functions"].https_fn.on_call = decorator_passthrough
+sys.modules["firebase_functions"].https_fn.on_request = decorator_passthrough
+sys.modules["firebase_functions"].https_fn.CallableRequest = Mock
+sys.modules["firebase_functions"].https_fn.HttpsError = MockHttpsError
+sys.modules["firebase_functions"].https_fn.Response = MockResponse
+sys.modules["firebase_functions.https_fn"] = sys.modules["firebase_functions"].https_fn
 
 # Set TESTING environment variable to prevent Secret Manager calls
-os.environ['TESTING'] = 'true'
+os.environ["TESTING"] = "true"
 
 # Set mock environment variables for secrets to avoid Secret Manager calls
-os.environ['STRIPE_SECRET_KEY'] = 'STRIPE_SECRET_KEY_REDACTED'
-os.environ['STRIPE_WEBHOOK_SECRET'] = 'STRIPE_WEBHOOK_SECRET_REDACTED'
-os.environ['AIRWALLEX_API_KEY'] = 'mock_airwallex_api_key_for_testing'
-os.environ['AIRWALLEX_CLIENT_ID'] = 'mock_airwallex_client_id_for_testing'
+os.environ["STRIPE_SECRET_KEY"] = "STRIPE_SECRET_KEY_REDACTED"
+os.environ["STRIPE_WEBHOOK_SECRET"] = "STRIPE_WEBHOOK_SECRET_REDACTED"
+os.environ["AIRWALLEX_API_KEY"] = "mock_airwallex_api_key_for_testing"
+os.environ["AIRWALLEX_CLIENT_ID"] = "mock_airwallex_client_id_for_testing"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -77,7 +85,7 @@ def firebase_app():
     sinon évite l'initialisation pour les tests unitaires.
     """
     # Vérifier si l'émulateur est configuré
-    using_emulator = os.getenv('FIRESTORE_EMULATOR_HOST') is not None
+    using_emulator = os.getenv("FIRESTORE_EMULATOR_HOST") is not None
 
     # Éviter la double initialisation
     app = None
@@ -85,17 +93,13 @@ def firebase_app():
         if using_emulator:
             # Mode émulateur - utiliser les credentials par défaut
             print("🔧 Initialisation Firebase Admin avec l'émulateur Firestore")
-            firebase_admin.initialize_app(options={
-                'projectId': 'demo-test-project'
-            })
+            firebase_admin.initialize_app(options={"projectId": "demo-test-project"})
             app = firebase_admin.get_app()
         else:
             # Mode mock - initialiser pour tests qui le nécessitent
             print("🔧 Firebase Admin: Mode test unitaire")
             mock_cred = Mock(spec=credentials.Certificate)
-            firebase_admin.initialize_app(credential=mock_cred, options={
-                'projectId': 'test-project'
-            })
+            firebase_admin.initialize_app(credential=mock_cred, options={"projectId": "test-project"})
             app = firebase_admin.get_app()
     else:
         app = firebase_admin.get_app()
@@ -122,7 +126,7 @@ def firestore_client(firebase_app):
     En mode émulateur, retourne un vrai client connecté à l'émulateur.
     En mode mock, retourne un client mocké.
     """
-    using_emulator = os.getenv('FIRESTORE_EMULATOR_HOST') is not None
+    using_emulator = os.getenv("FIRESTORE_EMULATOR_HOST") is not None
 
     if using_emulator:
         # Retourner le vrai client Firestore connecté à l'émulateur
@@ -198,11 +202,11 @@ def mock_collection_reference():
 def sample_user_data():
     """Données de test pour un utilisateur."""
     return {
-        'uid': 'test_user_123',
-        'email': 'test@example.com',
-        'display_name': 'Test User',
-        'created_at': firestore.SERVER_TIMESTAMP,
-        'role': 'consumer'
+        "uid": "test_user_123",
+        "email": "test@example.com",
+        "display_name": "Test User",
+        "created_at": firestore.SERVER_TIMESTAMP,
+        "role": "consumer",
     }
 
 
@@ -210,13 +214,13 @@ def sample_user_data():
 def sample_product_data():
     """Données de test pour un produit."""
     return {
-        'product_id': 'test_product_123',
-        'name': 'Test Product',
-        'price': 29.99,
-        'currency': 'USD',
-        'stock_quantity': 100,
-        'created_at': firestore.SERVER_TIMESTAMP,
-        'updated_at': firestore.SERVER_TIMESTAMP
+        "product_id": "test_product_123",
+        "name": "Test Product",
+        "price": 29.99,
+        "currency": "USD",
+        "stock_quantity": 100,
+        "created_at": firestore.SERVER_TIMESTAMP,
+        "updated_at": firestore.SERVER_TIMESTAMP,
     }
 
 
@@ -224,20 +228,14 @@ def sample_product_data():
 def sample_order_data():
     """Données de test pour une commande."""
     return {
-        'order_id': 'test_order_123',
-        'consumer_id': 'test_user_123',
-        'orderStatus': 'pending',
-        'total_amount': 29.99,
-        'currency': 'USD',
-        'items': [
-            {
-                'product_id': 'test_product_123',
-                'quantity': 1,
-                'price': 29.99
-            }
-        ],
-        'created_at': firestore.SERVER_TIMESTAMP,
-        'updated_at': firestore.SERVER_TIMESTAMP
+        "order_id": "test_order_123",
+        "consumer_id": "test_user_123",
+        "orderStatus": "pending",
+        "total_amount": 29.99,
+        "currency": "USD",
+        "items": [{"product_id": "test_product_123", "quantity": 1, "price": 29.99}],
+        "created_at": firestore.SERVER_TIMESTAMP,
+        "updated_at": firestore.SERVER_TIMESTAMP,
     }
 
 
@@ -266,7 +264,7 @@ def pytest_configure(config):
     Charge les variables d'environnement et configure les marqueurs.
     """
     # Charger les variables d'environnement depuis .env
-    env_file = Path(__file__).parent.parent / '.env'
+    env_file = Path(__file__).parent.parent / ".env"
 
     if env_file.exists():
         print(f"\n📁 Loading environment from: {env_file}")
@@ -274,18 +272,19 @@ def pytest_configure(config):
             for line in f:
                 line = line.strip()
                 # Skip empty lines and comments
-                if not line or line.startswith('#'):
+                if not line or line.startswith("#"):
                     continue
 
                 # Parse key=value pairs
-                if '=' in line:
-                    key, value = line.split('=', 1)
+                if "=" in line:
+                    key, value = line.split("=", 1)
                     key = key.strip()
                     value = value.strip()
 
                     # Remove quotes if present
-                    if (value.startswith('"') and value.endswith('"')) or \
-                       (value.startswith("'") and value.endswith("'")):
+                    if (value.startswith('"') and value.endswith('"')) or (
+                        value.startswith("'") and value.endswith("'")
+                    ):
                         value = value[1:-1]
 
                     # Set environment variable if not already set
@@ -293,8 +292,8 @@ def pytest_configure(config):
                         os.environ[key] = value
 
         # Verify Algolia credentials are loaded
-        algolia_app_id = os.environ.get('ALGOLIA_APP_ID', '')
-        algolia_write_key = os.environ.get('ALGOLIA_WRITE_API_KEY', '')
+        algolia_app_id = os.environ.get("ALGOLIA_APP_ID", "")
+        algolia_write_key = os.environ.get("ALGOLIA_WRITE_API_KEY", "")
 
         if algolia_app_id and algolia_write_key:
             print(f"✅ Algolia credentials loaded: APP_ID={algolia_app_id[:4]}...")
@@ -304,18 +303,10 @@ def pytest_configure(config):
         print(f"\n⚠️ No .env file found at {env_file}")
 
     # Ajouter des marqueurs personnalisés
-    config.addinivalue_line(
-        "markers", "integration: marquer un test comme test d'intégration"
-    )
-    config.addinivalue_line(
-        "markers", "unit: marquer un test comme test unitaire"
-    )
-    config.addinivalue_line(
-        "markers", "emulator: test nécessitant l'émulateur Firestore"
-    )
-    config.addinivalue_line(
-        "markers", "slow: marquer un test comme lent"
-    )
+    config.addinivalue_line("markers", "integration: marquer un test comme test d'intégration")
+    config.addinivalue_line("markers", "unit: marquer un test comme test unitaire")
+    config.addinivalue_line("markers", "emulator: test nécessitant l'émulateur Firestore")
+    config.addinivalue_line("markers", "slow: marquer un test comme lent")
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -374,18 +365,17 @@ def mock_firestore_client(monkeypatch):
     mock_collection.get.return_value = []
 
     # Patch get_db to return our mock in all handlers
-    monkeypatch.setattr(payment_stripe, 'get_db', lambda: mock_db)
-    monkeypatch.setattr(products, 'get_db', lambda: mock_db)
-    monkeypatch.setattr(orders, 'get_db', lambda: mock_db)
-    monkeypatch.setattr(admin, 'get_db', lambda: mock_db)
+    monkeypatch.setattr(payment_stripe, "get_db", lambda: mock_db)
+    monkeypatch.setattr(products, "get_db", lambda: mock_db)
+    monkeypatch.setattr(orders, "get_db", lambda: mock_db)
+    monkeypatch.setattr(admin, "get_db", lambda: mock_db)
 
     # Also mock stripe to prevent API calls
     mock_stripe = MagicMock()
     mock_stripe.api_key = "STRIPE_SECRET_KEY_REDACTED"
-    monkeypatch.setattr(payment_stripe, 'stripe', mock_stripe)
+    monkeypatch.setattr(payment_stripe, "stripe", mock_stripe)
 
     yield mock_db
-
 
 
 def create_mock_seller_doc(suspended=False, onboarded=True, charges=True, payouts=True):
@@ -399,12 +389,12 @@ def create_mock_seller_doc(suspended=False, onboarded=True, charges=True, payout
         "chargesEnabled": charges,
         "payoutsEnabled": payouts,
         "email": "seller@example.com",
-        "stripeAccountId": "acct_test_123"
+        "stripeAccountId": "acct_test_123",
     }
     return doc
 
 
-def create_mock_product_doc(product_id='prod_123', price=50.00, stock_quantity=100, seller_id='seller_123'):
+def create_mock_product_doc(product_id="prod_123", price=50.00, stock_quantity=100, seller_id="seller_123"):
     """Helper to create a mocked product document"""
     doc = Mock()
     doc.exists = True
@@ -417,24 +407,20 @@ def create_mock_product_doc(product_id='prod_123', price=50.00, stock_quantity=1
         "imageUrls": ["http://example.com/image.jpg"],
         "categoryId": 1,
         "description": "Test description",
-        "isActive": True
+        "isActive": True,
     }
     return doc
 
 
-def create_mock_user_doc(email='user@example.com', name='Test User'):
+def create_mock_user_doc(email="user@example.com", name="Test User"):
     """Helper to create a mocked user document"""
     doc = Mock()
     doc.exists = True
-    doc.to_dict.return_value = {
-        "email": email,
-        "displayName": name,
-        "roles": ["buyer"]
-    }
+    doc.to_dict.return_value = {"email": email, "displayName": name, "roles": ["buyer"]}
     return doc
 
 
-def create_mock_order_doc(order_id='order_123', payment_status='paid', status='processing'):
+def create_mock_order_doc(order_id="order_123", payment_status="paid", status="processing"):
     """Helper to create a mocked order document"""
     doc = Mock()
     doc.exists = True
@@ -442,15 +428,17 @@ def create_mock_order_doc(order_id='order_123', payment_status='paid', status='p
         "orderId": order_id,
         "paymentStatus": payment_status,
         "orderStatus": status,
-        "items": [{
-            "productId": "prod_123",
-            "sellerId": "seller_123",
-            "quantity": 2,
-            "price": 50.00,
-            "deliveryStatus": "pending"
-        }],
+        "items": [
+            {
+                "productId": "prod_123",
+                "sellerId": "seller_123",
+                "quantity": 2,
+                "price": 50.00,
+                "deliveryStatus": "pending",
+            }
+        ],
         "totalAmountCents": 10000,
-        "stripePaymentIntentId": "pi_test_123"
+        "stripePaymentIntentId": "pi_test_123",
     }
     return doc
 
@@ -467,7 +455,7 @@ def mock_seller_doc():
         "chargesEnabled": True,
         "payoutsEnabled": True,
         "email": "seller@example.com",
-        "stripeAccountId": "acct_test_123"
+        "stripeAccountId": "acct_test_123",
     }
     return doc
 
@@ -486,7 +474,7 @@ def mock_product_doc():
         "imageUrls": ["http://example.com/image.jpg"],
         "categoryId": 1,
         "description": "Test description",
-        "isActive": True
+        "isActive": True,
     }
     return doc
 
@@ -496,11 +484,7 @@ def mock_user_doc():
     """Create a properly mocked user document"""
     doc = Mock()
     doc.exists = True
-    doc.to_dict.return_value = {
-        "email": "user@example.com",
-        "displayName": "Test User",
-        "roles": ["buyer"]
-    }
+    doc.to_dict.return_value = {"email": "user@example.com", "displayName": "Test User", "roles": ["buyer"]}
     return doc
 
 
@@ -513,15 +497,17 @@ def mock_order_doc():
         "orderId": "order_123",
         "paymentStatus": "paid",
         "orderStatus": "processing",
-        "items": [{
-            "productId": "prod_123",
-            "sellerId": "seller_123",
-            "quantity": 2,
-            "price": 50.00,
-            "deliveryStatus": "pending"
-        }],
+        "items": [
+            {
+                "productId": "prod_123",
+                "sellerId": "seller_123",
+                "quantity": 2,
+                "price": 50.00,
+                "deliveryStatus": "pending",
+            }
+        ],
         "totalAmountCents": 10000,
-        "stripePaymentIntentId": "pi_test_123"
+        "stripePaymentIntentId": "pi_test_123",
     }
     return doc
 
@@ -530,15 +516,17 @@ def mock_order_doc():
 def valid_checkout_data():
     """Provides valid checkout data for testing checkout endpoints"""
     return {
-        'items': [{'productId': 'prod_123', 'quantity': 2, 'price': 50.00, 'sellerId': 'seller_123', 'name': 'Test Product'}],
-        'shippingAddress': {
-            'street': '123 Main St',
-            'city': 'Toronto',
-            'state': 'ON',
-            'postalCode': 'M5V3A8',
-            'country': 'Canada'
+        "items": [
+            {"productId": "prod_123", "quantity": 2, "price": 50.00, "sellerId": "seller_123", "name": "Test Product"}
+        ],
+        "shippingAddress": {
+            "street": "123 Main St",
+            "city": "Toronto",
+            "state": "ON",
+            "postalCode": "M5V3A8",
+            "country": "Canada",
         },
-        'subtotal': 100.00  # Valid subtotal (price * quantity = 50 * 2)
+        "subtotal": 100.00,  # Valid subtotal (price * quantity = 50 * 2)
     }
 
 
@@ -555,20 +543,28 @@ def mock_auth_user():
 def mock_product_data():
     """Provides typical mock product data"""
     return {
-        'productId': 'prod_123',
-        'name': 'Test Product',
-        'price': 50.00,
-        'stockQuantity': 10,
-        'sellerId': 'seller_123',
-        'imageUrls': ['https://example.com/image.jpg'],
-        'isActive': True
+        "productId": "prod_123",
+        "name": "Test Product",
+        "price": 50.00,
+        "stockQuantity": 10,
+        "sellerId": "seller_123",
+        "imageUrls": ["https://example.com/image.jpg"],
+        "isActive": True,
     }
 
 
 # ===== COMPREHENSIVE MOCK HELPER FUNCTIONS =====
 
-def create_mock_seller_doc(suspended=False, onboarded=True, charges_enabled=True, payouts_enabled=True,
-                          seller_id='seller_123', email='seller@example.com', name='Test Seller'):
+
+def create_mock_seller_doc(
+    suspended=False,
+    onboarded=True,
+    charges_enabled=True,
+    payouts_enabled=True,
+    seller_id="seller_123",
+    email="seller@example.com",
+    name="Test Seller",
+):
     """
     Creates a complete mock seller document with all required fields.
 
@@ -588,23 +584,29 @@ def create_mock_seller_doc(suspended=False, onboarded=True, charges_enabled=True
     mock_doc.exists = True
     mock_doc.id = seller_id
     mock_doc.to_dict.return_value = {
-        'sellerId': seller_id,
-        'email': email,
-        'displayName': name,
-        'suspended': suspended,
-        'onboardingCompleted': onboarded,
-        'chargesEnabled': charges_enabled,
-        'payoutsEnabled': payouts_enabled,
-        'stripeConnectId': f'acct_{seller_id}',
-        'createdAt': MagicMock(),
-        'updatedAt': MagicMock()
+        "sellerId": seller_id,
+        "email": email,
+        "displayName": name,
+        "suspended": suspended,
+        "onboardingCompleted": onboarded,
+        "chargesEnabled": charges_enabled,
+        "payoutsEnabled": payouts_enabled,
+        "stripeConnectId": f"acct_{seller_id}",
+        "createdAt": MagicMock(),
+        "updatedAt": MagicMock(),
     }
     return mock_doc
 
 
-def create_mock_product_doc(product_id='prod_123', name='Test Product', price=50.00,
-                           stock_quantity=10, seller_id='seller_123',
-                           image_urls=None, deleted=False):
+def create_mock_product_doc(
+    product_id="prod_123",
+    name="Test Product",
+    price=50.00,
+    stock_quantity=10,
+    seller_id="seller_123",
+    image_urls=None,
+    deleted=False,
+):
     """
     Creates a complete mock product document.
 
@@ -621,30 +623,29 @@ def create_mock_product_doc(product_id='prod_123', name='Test Product', price=50
         MagicMock object representing a Firestore document snapshot
     """
     if image_urls is None:
-        image_urls = ['https://example.com/image.jpg']
+        image_urls = ["https://example.com/image.jpg"]
 
     mock_doc = MagicMock()
     mock_doc.exists = True
     mock_doc.id = product_id
     mock_doc.to_dict.return_value = {
-        'productId': product_id,
-        'name': name,
-        'price': price,
-        'stockQuantity': stock_quantity,
-        'sellerId': seller_id,
-        'imageUrls': image_urls,
-        'description': f'Description for {name}',
-        'category': 'test_category',
-        'isActive': True,
-        'deleted': deleted,
-        'createdAt': MagicMock(),
-        'updatedAt': MagicMock()
+        "productId": product_id,
+        "name": name,
+        "price": price,
+        "stockQuantity": stock_quantity,
+        "sellerId": seller_id,
+        "imageUrls": image_urls,
+        "description": f"Description for {name}",
+        "category": "test_category",
+        "isActive": True,
+        "deleted": deleted,
+        "createdAt": MagicMock(),
+        "updatedAt": MagicMock(),
     }
     return mock_doc
 
 
-def create_mock_user_doc(user_id='test_user_123', email='test@example.com',
-                        display_name='Test User', role='consumer'):
+def create_mock_user_doc(user_id="test_user_123", email="test@example.com", display_name="Test User", role="consumer"):
     """
     Creates a complete mock user document.
 
@@ -661,24 +662,24 @@ def create_mock_user_doc(user_id='test_user_123', email='test@example.com',
     mock_doc.exists = True
     mock_doc.id = user_id
     mock_doc.to_dict.return_value = {
-        'userId': user_id,
-        'email': email,
-        'displayName': display_name,
-        'role': role,
-        'createdAt': MagicMock(),
-        'updatedAt': MagicMock()
+        "userId": user_id,
+        "email": email,
+        "displayName": display_name,
+        "role": role,
+        "createdAt": MagicMock(),
+        "updatedAt": MagicMock(),
     }
     return mock_doc
 
 
 def create_mock_order_doc(
-    order_id: str = 'order_123',
-    user_id: str = 'test_user_123',
-    order_status: str = 'shipped',
-    payment_status: str = 'authorized',
+    order_id: str = "order_123",
+    user_id: str = "test_user_123",
+    order_status: str = "shipped",
+    payment_status: str = "authorized",
     items=None,
     total_amount_dollars: float = 100.00,
-    seller_id: str = 'seller_123',
+    seller_id: str = "seller_123",
 ):
     """
     Creates a complete mock order document.
@@ -696,29 +697,22 @@ def create_mock_order_doc(
         MagicMock object representing a Firestore document snapshot
     """
     if items is None:
-        items = [
-            {
-                'productId': 'prod_123',
-                'quantity': 2,
-                'price': 50.00,
-                'name': 'Test Product'
-            }
-        ]
+        items = [{"productId": "prod_123", "quantity": 2, "price": 50.00, "name": "Test Product"}]
 
     mock_doc = MagicMock()
     mock_doc.exists = True
     mock_doc.id = order_id
     mock_doc.to_dict.return_value = {
-        'orderId': order_id,
-        'userId': user_id,
-        'orderStatus': order_status,
-        'paymentStatus': payment_status,
-        'items': items,
-        'totalAmountCents': round(float(total_amount_dollars) * 100),
-        'sellerId': seller_id,
-        'stripePaymentIntentId': 'pi_3test_123',
-        'createdAt': MagicMock(),
-        'updatedAt': MagicMock()
+        "orderId": order_id,
+        "userId": user_id,
+        "orderStatus": order_status,
+        "paymentStatus": payment_status,
+        "items": items,
+        "totalAmountCents": round(float(total_amount_dollars) * 100),
+        "sellerId": seller_id,
+        "stripePaymentIntentId": "pi_3test_123",
+        "createdAt": MagicMock(),
+        "updatedAt": MagicMock(),
     }
     return mock_doc
 
@@ -736,14 +730,14 @@ def setup_mock_db_for_product_lookup(mock_db, product_data=None):
         The configured mock_db instance
     """
     if product_data is None:
-        product_data = {'prod_123': create_mock_product_doc()}
+        product_data = {"prod_123": create_mock_product_doc()}
 
     # Create a unified document getter that handles all document lookups
     all_docs = dict(product_data)
 
     # Add some default sellers if not already present
-    if 'seller_123' not in all_docs:
-        all_docs['seller_123'] = create_mock_seller_doc()
+    if "seller_123" not in all_docs:
+        all_docs["seller_123"] = create_mock_seller_doc()
 
     def make_doc_ref(doc_id):
         """Create a mock document reference"""
@@ -779,7 +773,7 @@ def setup_mock_db_for_seller_lookup(mock_db, seller_data=None):
         The configured mock_db instance
     """
     if seller_data is None:
-        seller_data = {'seller_123': create_mock_seller_doc()}
+        seller_data = {"seller_123": create_mock_seller_doc()}
 
     # Setup transaction mock for transactional lookups
     def make_doc_ref(doc_id):
@@ -798,7 +792,7 @@ def setup_mock_db_for_seller_lookup(mock_db, seller_data=None):
 
     # For transaction.get(doc_ref)
     def transaction_get_side_effect(doc_ref):
-        doc_id = doc_ref.id if hasattr(doc_ref, 'id') else str(doc_ref)
+        doc_id = doc_ref.id if hasattr(doc_ref, "id") else str(doc_ref)
         if doc_id in seller_data:
             return seller_data[doc_id]
         not_found = MagicMock()
@@ -822,14 +816,14 @@ def pytest_runtest_setup(item):
     Vérifie les prérequis avant d'exécuter un test.
     Skip les tests marqués 'emulator' si l'émulateur n'est pas configuré.
     """
-    if 'emulator' in item.keywords and not os.getenv('FIRESTORE_EMULATOR_HOST'):
-        pytest.skip("Test nécessite l'émulateur Firestore. "
-                   "Définir FIRESTORE_EMULATOR_HOST pour l'activer.")
+    if "emulator" in item.keywords and not os.getenv("FIRESTORE_EMULATOR_HOST"):
+        pytest.skip("Test nécessite l'émulateur Firestore. Définir FIRESTORE_EMULATOR_HOST pour l'activer.")
 
 
 # ============================================================================
 # COMPREHENSIVE FIRESTORE MOCK BUILDER
 # ============================================================================
+
 
 class FirestoreMockBuilder:
     """
@@ -839,7 +833,7 @@ class FirestoreMockBuilder:
 
     def __init__(self):
         self.documents = {}  # Store: {collection_name: {doc_id: doc_data}}
-        self.queries = {}    # Store: {query_key: results}
+        self.queries = {}  # Store: {query_key: results}
 
     def add_document(self, collection_name, doc_id, doc_data):
         """Add a document to mock storage"""
@@ -848,56 +842,66 @@ class FirestoreMockBuilder:
         self.documents[collection_name][doc_id] = doc_data
         return self
 
-    def add_seller(self, seller_id='seller_123', suspended=False, onboarded=True):
+    def add_seller(self, seller_id="seller_123", suspended=False, onboarded=True):
         """Add a seller document"""
-        return self.add_document('users', seller_id, {
-            "roles": ["seller"],
-            "suspended": suspended,
-            "onboardingCompleted": onboarded,
-            "chargesEnabled": True,
-            "payoutsEnabled": True,
-            "email": f"{seller_id}@example.com",
-            "stripeAccountId": f"acct_{seller_id}"
-        })
+        return self.add_document(
+            "users",
+            seller_id,
+            {
+                "roles": ["seller"],
+                "suspended": suspended,
+                "onboardingCompleted": onboarded,
+                "chargesEnabled": True,
+                "payoutsEnabled": True,
+                "email": f"{seller_id}@example.com",
+                "stripeAccountId": f"acct_{seller_id}",
+            },
+        )
 
-    def add_product(self, product_id='prod_123', seller_id='seller_123', price=50.00, stock=100):
+    def add_product(self, product_id="prod_123", seller_id="seller_123", price=50.00, stock=100):
         """Add a product document"""
-        return self.add_document('products', product_id, {
-            "productId": product_id,
-            "name": "Test Product",
-            "price": price,
-            "stockQuantity": stock,
-            "sellerId": seller_id,
-            "imageUrls": ["http://example.com/image.jpg"],
-            "categoryId": 1,
-            "description": "Test description",
-            "isActive": True
-        })
+        return self.add_document(
+            "products",
+            product_id,
+            {
+                "productId": product_id,
+                "name": "Test Product",
+                "price": price,
+                "stockQuantity": stock,
+                "sellerId": seller_id,
+                "imageUrls": ["http://example.com/image.jpg"],
+                "categoryId": 1,
+                "description": "Test description",
+                "isActive": True,
+            },
+        )
 
-    def add_user(self, user_id='user_123', email='user@example.com', name='Test User'):
+    def add_user(self, user_id="user_123", email="user@example.com", name="Test User"):
         """Add a user document"""
-        return self.add_document('users', user_id, {
-            "email": email,
-            "displayName": name,
-            "roles": ["buyer"]
-        })
+        return self.add_document("users", user_id, {"email": email, "displayName": name, "roles": ["buyer"]})
 
-    def add_order(self, order_id='order_123', payment_status='paid', order_status='processing'):
+    def add_order(self, order_id="order_123", payment_status="paid", order_status="processing"):
         """Add an order document"""
-        return self.add_document('orders', order_id, {
-            "orderId": order_id,
-            "paymentStatus": payment_status,
-            "orderStatus": order_status,
-            "items": [{
-                "productId": "prod_123",
-                "sellerId": "seller_123",
-                "quantity": 2,
-                "price": 50.00,
-                "deliveryStatus": "pending"
-            }],
-            "totalAmountCents": 10000,
-            "stripePaymentIntentId": "pi_test_123"
-        })
+        return self.add_document(
+            "orders",
+            order_id,
+            {
+                "orderId": order_id,
+                "paymentStatus": payment_status,
+                "orderStatus": order_status,
+                "items": [
+                    {
+                        "productId": "prod_123",
+                        "sellerId": "seller_123",
+                        "quantity": 2,
+                        "price": 50.00,
+                        "deliveryStatus": "pending",
+                    }
+                ],
+                "totalAmountCents": 10000,
+                "stripePaymentIntentId": "pi_test_123",
+            },
+        )
 
     def build_mock_db(self):
         """Build a complete mock database"""
@@ -907,7 +911,7 @@ class FirestoreMockBuilder:
         # Create collection() method that returns collection mocks
         def collection_impl(collection_name):
             # Normalize collection_name: accept enums, mock objects with .value, or other objects
-            if hasattr(collection_name, 'value'):
+            if hasattr(collection_name, "value"):
                 collection_name = collection_name.value
             elif not isinstance(collection_name, str):
                 try:
@@ -920,7 +924,7 @@ class FirestoreMockBuilder:
             # Create document() method that returns document refs
             def document_impl(doc_id=None):
                 if doc_id is None:
-                    doc_id = 'auto_generated_id'
+                    doc_id = "auto_generated_id"
                 mock_doc_ref = MagicMock()
                 mock_doc_ref.id = doc_id
 
@@ -928,7 +932,7 @@ class FirestoreMockBuilder:
                 def get_impl(transaction=None):
                     # Return the stored document if present, else a not-found snapshot
                     col = collection_name
-                    if hasattr(col, 'value'):
+                    if hasattr(col, "value"):
                         col = col.value
                     if col in builder.documents and doc_id in builder.documents[col]:
                         mock_doc = MagicMock()
@@ -972,7 +976,12 @@ class FirestoreMockBuilder:
                     results = []
                     if collection_name in builder.documents:
                         for doc_id, doc_data in builder.documents[collection_name].items():
-                            if field in doc_data and (operator == '==' and doc_data[field] == value or operator == 'in' and doc_data[field] in value):
+                            if field in doc_data and (
+                                operator == "=="
+                                and doc_data[field] == value
+                                or operator == "in"
+                                and doc_data[field] in value
+                            ):
                                 mock_doc = MagicMock()
                                 mock_doc.id = doc_id
                                 mock_doc.to_dict.return_value = doc_data
@@ -988,6 +997,7 @@ class FirestoreMockBuilder:
             # Create add() method for creating new documents
             def add_impl(data):
                 import uuid
+
                 new_id = str(uuid.uuid4())
                 if collection_name not in builder.documents:
                     builder.documents[collection_name] = {}
@@ -1015,11 +1025,11 @@ class FirestoreMockBuilder:
             def get_impl(doc_ref):
                 # Extract doc_id from reference-like objects (support .id, .path)
                 doc_id = None
-                if hasattr(doc_ref, 'id'):
+                if hasattr(doc_ref, "id"):
                     doc_id = doc_ref.id
-                elif hasattr(doc_ref, 'path'):
+                elif hasattr(doc_ref, "path"):
                     try:
-                        doc_id = str(doc_ref.path).split('/')[-1]
+                        doc_id = str(doc_ref.path).split("/")[-1]
                     except Exception:
                         doc_id = str(doc_ref)
                 else:
@@ -1028,7 +1038,7 @@ class FirestoreMockBuilder:
                 # Find collection and return the matching stored document
                 for collection_name, docs in builder.documents.items():
                     # Normalize collection_name keys if they are not strings
-                    collection_name.value if hasattr(collection_name, 'value') else collection_name
+                    collection_name.value if hasattr(collection_name, "value") else collection_name
                     if doc_id in docs:
                         mock_doc = MagicMock()
                         mock_doc.exists = True

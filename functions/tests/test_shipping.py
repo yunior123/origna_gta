@@ -1,13 +1,14 @@
 # Self-contained testing of the logic in shipping_service.py
 
+
 def _calculate_tiered_shipping(distance_km: float, seller_items: list[dict], speed: str) -> float:
     """Hyper-Competitive tiered calculation: Benchmarked against Instacart/DoorDash/PC Express"""
     base_cost = 26.99  # National Ceiling
 
     if distance_km <= 15:
-        base_cost = 1.99   # Hyper-local Standard (Matches Instacart Scheduled)
+        base_cost = 1.99  # Hyper-local Standard (Matches Instacart Scheduled)
     elif distance_km <= 50:
-        base_cost = 4.99   # Local Standard
+        base_cost = 4.99  # Local Standard
     elif distance_km <= 150:
         base_cost = 9.99
     elif distance_km <= 500:
@@ -21,12 +22,12 @@ def _calculate_tiered_shipping(distance_km: float, seller_items: list[dict], spe
     weight_surcharge = 0
     total_items = 0
     for item in seller_items:
-        qty = item.get('quantity', 1)
+        qty = item.get("quantity", 1)
         total_items += qty
 
         # Volumetric: (L * W * H) / 5000
-        actual_weight = item.get('weightKg', 0.5)
-        vol_weight = (item.get('lengthCm', 10) * item.get('widthCm', 10) * item.get('heightCm', 10)) / 5000.0
+        actual_weight = item.get("weightKg", 0.5)
+        vol_weight = (item.get("lengthCm", 10) * item.get("widthCm", 10) * item.get("heightCm", 10)) / 5000.0
         effective_weight = max(actual_weight, vol_weight)
 
         if effective_weight > 2.0:
@@ -36,7 +37,7 @@ def _calculate_tiered_shipping(distance_km: float, seller_items: list[dict], spe
 
     # Speed multipliers (Benchmarked to hit $7.99 and $8.99 targets)
     multiplier = 1.0
-    if speed == 'express':
+    if speed == "express":
         if distance_km <= 15:
             multiplier = 4.0  # Result: $7.96 (~$7.99 "Rapid")
         elif distance_km <= 50:
@@ -45,7 +46,7 @@ def _calculate_tiered_shipping(distance_km: float, seller_items: list[dict], spe
             multiplier = 1.5
         else:
             multiplier = 1.6
-    elif speed == 'same_day':
+    elif speed == "same_day":
         if distance_km <= 15:
             multiplier = 4.5  # Result: $8.95 (~$8.99 "Really Fast")
         elif distance_km <= 50:
@@ -57,7 +58,15 @@ def _calculate_tiered_shipping(distance_km: float, seller_items: list[dict], spe
 
     return subtotal * multiplier
 
-def run_test_scenario(name: str, distance_km: float, items: list[dict], speed: str = 'standard', expected_min: float = None, expected_max: float = None):
+
+def run_test_scenario(
+    name: str,
+    distance_km: float,
+    items: list[dict],
+    speed: str = "standard",
+    expected_min: float = None,
+    expected_max: float = None,
+):
     print(f"\n--- Scenario: {name} ---")
     print(f"Distance: {distance_km}km, Speed: {speed}")
     print(f"Items: {len(items)}")
@@ -66,7 +75,7 @@ def run_test_scenario(name: str, distance_km: float, items: list[dict], speed: s
     # but since we want to test the mathematical tiers directly:
     cost = _calculate_tiered_shipping(distance_km, items, speed)
 
-    total_weight = sum(i.get('weightKg', 0.5) * i.get('quantity', 1) for i in items)
+    total_weight = sum(i.get("weightKg", 0.5) * i.get("quantity", 1) for i in items)
     print(f"Total Weight: {total_weight}kg")
     print(f"Calculated Cost: ${cost:.2f}")
 
@@ -83,16 +92,11 @@ def run_test_scenario(name: str, distance_km: float, items: list[dict], speed: s
     assert cost > 0, "Shipping cost must be positive"
     assert cost < 200, "Shipping cost unreasonably high (>${200:.2f})"
 
+
 # Define some mock items
 def create_item(weight=0.5, length=10, w=10, h=10, qty=1):
-    return {
-        'weightKg': weight,
-        'lengthCm': length,
-        'widthCm': w,
-        'heightCm': h,
-        'quantity': qty,
-        'deliveryOptions': []
-    }
+    return {"weightKg": weight, "lengthCm": length, "widthCm": w, "heightCm": h, "quantity": qty, "deliveryOptions": []}
+
 
 if __name__ == "__main__":
     # Scenario 1: Local Small Item (Toronto to Toronto)
@@ -112,10 +116,14 @@ if __name__ == "__main__":
     run_test_scenario("3 Small Items Local", 10, [create_item(qty=3)], expected_min=2.00, expected_max=4.00)
 
     # Scenario 6: Express National
-    run_test_scenario("Express National Small", 3400, [create_item()], speed='express', expected_min=40.00, expected_max=50.00)
+    run_test_scenario(
+        "Express National Small", 3400, [create_item()], speed="express", expected_min=40.00, expected_max=50.00
+    )
 
     # Scenario 7: Same Day Local
-    run_test_scenario("Same Day Local Small", 10, [create_item()], speed='same_day', expected_min=7.00, expected_max=10.00)
+    run_test_scenario(
+        "Same Day Local Small", 10, [create_item()], speed="same_day", expected_min=7.00, expected_max=10.00
+    )
 
     # Scenario 9: Bulk Local (5 items)
     run_test_scenario("Bulk Local (5 items)", 10, [create_item(qty=5)], expected_min=2.50, expected_max=5.00)

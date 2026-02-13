@@ -21,7 +21,7 @@ from firebase_functions import https_fn
 class TestRaceConditionsAndConcurrency:
     """Test concurrent access and race conditions"""
 
-    @patch('handlers.payment_stripe._db')
+    @patch("handlers.payment_stripe._db")
     def test_concurrent_checkout_last_item_race(self, mock_db):
         """
         CRITICAL: Test race condition when 2 users checkout the last item simultaneously
@@ -33,11 +33,11 @@ class TestRaceConditionsAndConcurrency:
         mock_product_doc = Mock()
         mock_product_doc.exists = True
         mock_product_doc.to_dict.return_value = {
-            'productId': 'prod_last_item',
-            'stockQuantity': 1,  # Only 1 left!
-            'price': 50.00,
-            'sellerId': 'seller_123',
-            'name': 'Rare Item'
+            "productId": "prod_last_item",
+            "stockQuantity": 1,  # Only 1 left!
+            "price": 50.00,
+            "sellerId": "seller_123",
+            "name": "Rare Item",
         }
 
         # Simulate Firestore transaction with lock
@@ -52,8 +52,14 @@ class TestRaceConditionsAndConcurrency:
         mock_request1 = Mock()
         mock_request1.auth = Mock(uid="buyer_1")
         mock_request1.data = {
-            'items': [{'productId': 'prod_last_item', 'quantity': 1}],
-            'shippingAddress': {'street': '123 Main', 'city': 'Toronto', 'state': 'ON', 'postalCode': 'M5V3A8', 'country': 'Canada'}
+            "items": [{"productId": "prod_last_item", "quantity": 1}],
+            "shippingAddress": {
+                "street": "123 Main",
+                "city": "Toronto",
+                "state": "ON",
+                "postalCode": "M5V3A8",
+                "country": "Canada",
+            },
         }
 
         # User 2 request (same item)
@@ -67,7 +73,7 @@ class TestRaceConditionsAndConcurrency:
         # Verify transaction used (not just read-then-write)
         assert True  # Firestore transactions prevent this
 
-    @patch('handlers.orders.get_db')
+    @patch("handlers.orders.get_db")
     def test_concurrent_order_status_updates(self, mock_get_db):
         """
         Test race condition: Buyer cancels while seller ships simultaneously
@@ -78,11 +84,11 @@ class TestRaceConditionsAndConcurrency:
         mock_order_doc = Mock()
         mock_order_doc.exists = True
         mock_order_doc.to_dict.return_value = {
-            'orderId': 'order_race',
-            'userId': 'buyer_123',
-            'sellerId': 'seller_456',
-            'orderStatus': 'confirmed',
-            'version': 1  # Optimistic locking
+            "orderId": "order_race",
+            "userId": "buyer_123",
+            "sellerId": "seller_456",
+            "orderStatus": "confirmed",
+            "version": 1,  # Optimistic locking
         }
         mock_db = Mock()
         mock_db.collection.return_value.document.return_value.get.return_value = mock_order_doc
@@ -94,7 +100,7 @@ class TestRaceConditionsAndConcurrency:
 
         assert True  # Optimistic locking prevents inconsistency
 
-    @patch('handlers.products.get_db')
+    @patch("handlers.products.get_db")
     def test_concurrent_rating_submissions(self, mock_get_db):
         """
         Test concurrent rating calculations (2 users rate same product)
@@ -143,11 +149,7 @@ class TestCryptographicSecurity:
 
         # Stripe signature: t=timestamp,v1=signature
         signed_payload = f"{timestamp}.{payload.decode()}"
-        signature = hmac.new(
-            secret.encode(),
-            signed_payload.encode(),
-            hashlib.sha256
-        ).hexdigest()
+        signature = hmac.new(secret.encode(), signed_payload.encode(), hashlib.sha256).hexdigest()
 
         expected_header = f"t={timestamp},v1={signature}"
 
@@ -177,7 +179,7 @@ class TestCryptographicSecurity:
         assert len(secret) >= 32
 
         # Verify only valid Base32 chars
-        valid_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZ234567')
+        valid_chars = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567")
         assert all(c in valid_chars for c in secret)
 
     def test_password_hashing_not_exposed(self):
@@ -189,13 +191,13 @@ class TestCryptographicSecurity:
         # Should never appear in any response
         def sanitize_log(data):
             if isinstance(data, dict):
-                return {k: '***' if 'password' in k.lower() else v for k, v in data.items()}
+                return {k: "***" if "password" in k.lower() else v for k, v in data.items()}
             return data
 
-        sensitive_data = {'email': 'user@test.com', 'password': password}
+        sensitive_data = {"email": "user@test.com", "password": password}
         sanitized = sanitize_log(sensitive_data)
 
-        assert sanitized['password'] == '***'
+        assert sanitized["password"] == "***"
         assert password not in str(sanitized)
 
 
@@ -208,21 +210,21 @@ class TestInputValidationAndSanitization:
 
         malicious_names = [
             '<script>alert("XSS")</script>',
-            '<img src=x onerror=alert(1)>',
-            'javascript:alert(1)',
-            '<iframe src="evil.com"></iframe>'
+            "<img src=x onerror=alert(1)>",
+            "javascript:alert(1)",
+            '<iframe src="evil.com"></iframe>',
         ]
 
         for name in malicious_names:
             # Product names should be sanitized via html.escape
             sanitized = sanitized_text(name)
             # html.escape converts < > to entities — no raw HTML remains
-            assert '<script>' not in sanitized
-            assert '<iframe>' not in sanitized
-            assert '<img' not in sanitized
+            assert "<script>" not in sanitized
+            assert "<iframe>" not in sanitized
+            assert "<img" not in sanitized
             # All angle brackets are escaped
-            if '<' in name:
-                assert '&lt;' in sanitized
+            if "<" in name:
+                assert "&lt;" in sanitized
 
     def test_sql_injection_prevention(self):
         """SECURITY: Test SQL injection attempts (even though Firestore is NoSQL)"""
@@ -242,31 +244,27 @@ class TestInputValidationAndSanitization:
 
     def test_path_traversal_prevention(self):
         """SECURITY: Test path traversal in file uploads (../../etc/passwd)"""
-        malicious_paths = [
-            '../../../etc/passwd',
-            '..\\..\\..\\windows\\system32',
-            'test/../../../../secret.key'
-        ]
+        malicious_paths = ["../../../etc/passwd", "..\\..\\..\\windows\\system32", "test/../../../../secret.key"]
 
         from utils.helpers import sanitize_path
 
         for path in malicious_paths:
             sanitized = sanitize_path(path)
-            assert '..' not in sanitized
-            assert '/' not in sanitized
-            assert '\\' not in sanitized
+            assert ".." not in sanitized
+            assert "/" not in sanitized
+            assert "\\" not in sanitized
 
     def test_file_upload_mime_type_validation(self):
         """SECURITY: Test file uploads validate MIME type (not just extension)"""
         # Attacker renames malware.exe to image.jpg
         fake_image = {
-            'filename': 'image.jpg',
-            'content_type': 'application/x-msdownload'  # Executable!
+            "filename": "image.jpg",
+            "content_type": "application/x-msdownload",  # Executable!
         }
 
-        allowed_types = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+        allowed_types = ["image/jpeg", "image/png", "image/webp", "image/gif"]
 
-        assert fake_image['content_type'] not in allowed_types
+        assert fake_image["content_type"] not in allowed_types
         # Should be rejected despite .jpg extension
 
 
@@ -345,7 +343,7 @@ class TestBusinessLogicEdgeCases:
 class TestErrorHandlingAndRecovery:
     """Test error handling and graceful degradation"""
 
-    @patch('handlers.payment_stripe.stripe.checkout.Session.create')
+    @patch("handlers.payment_stripe.stripe.checkout.Session.create")
     def test_stripe_api_timeout_retry(self, mock_stripe):
         """Test Stripe API timeout triggers retry with exponential backoff"""
         import stripe
@@ -353,13 +351,13 @@ class TestErrorHandlingAndRecovery:
         # First call times out
         mock_stripe.side_effect = [
             stripe.error.APIConnectionError("Connection timeout"),
-            Mock(id="cs_success", url="https://checkout.stripe.com")  # Retry succeeds
+            Mock(id="cs_success", url="https://checkout.stripe.com"),  # Retry succeeds
         ]
 
         # Should retry automatically
         assert mock_stripe.call_count <= 3  # Max 3 retries
 
-    @patch('services.algolia_service.index_product')
+    @patch("services.algolia_service.index_product")
     def test_algolia_failure_fallback_to_firestore(self, mock_algolia):
         """Test search falls back to Firestore if Algolia fails"""
         mock_algolia.side_effect = Exception("Algolia service unavailable")
@@ -371,16 +369,16 @@ class TestErrorHandlingAndRecovery:
     def test_partial_order_cancellation_handling(self):
         """Test graceful handling when 1 item out of 3 is out of stock"""
         items = [
-            {'productId': 'prod_1', 'quantity': 2, 'stockAvailable': True},
-            {'productId': 'prod_2', 'quantity': 1, 'stockAvailable': False},  # Out of stock
-            {'productId': 'prod_3', 'quantity': 1, 'stockAvailable': True}
+            {"productId": "prod_1", "quantity": 2, "stockAvailable": True},
+            {"productId": "prod_2", "quantity": 1, "stockAvailable": False},  # Out of stock
+            {"productId": "prod_3", "quantity": 1, "stockAvailable": True},
         ]
 
         # Should notify user, allow checkout of available items
-        available_items = [item for item in items if item['stockAvailable']]
+        available_items = [item for item in items if item["stockAvailable"]]
         assert len(available_items) == 2
 
-    @patch('services.email_service.send_email')
+    @patch("services.email_service.send_email")
     def test_email_failure_logs_but_continues(self, mock_email):
         """Test email failures don't break order processing"""
         mock_email.side_effect = Exception("SMTP server down")
@@ -425,9 +423,9 @@ class TestPerformanceAndScalability:
         # Requires composite index: (categoryId, price, createdAt)
 
         required_indexes = [
-            ('categoryId', 'price', 'createdAt'),
-            ('sellerId', 'isActive', 'createdAt'),
-            ('userId', 'orderStatus', 'createdAt')
+            ("categoryId", "price", "createdAt"),
+            ("sellerId", "isActive", "createdAt"),
+            ("userId", "orderStatus", "createdAt"),
         ]
 
         # All indexes should be defined in firestore.indexes.json
@@ -445,5 +443,5 @@ class TestPerformanceAndScalability:
 # Helper functions
 def is_sanitized(text):
     """Check if HTML is sanitized"""
-    dangerous_tags = ['<script>', '<iframe>', 'javascript:', 'onerror=']
+    dangerous_tags = ["<script>", "<iframe>", "javascript:", "onerror="]
     return not any(tag in text for tag in dangerous_tags)

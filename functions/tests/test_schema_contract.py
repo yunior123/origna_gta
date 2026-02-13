@@ -28,6 +28,7 @@ FLUTTER_DIR = PROJECT_ROOT / "origna_gta" / "lib"
 # FIXTURES
 # =============================================================================
 
+
 @pytest.fixture(scope="module")
 def schema() -> dict:
     """Load the database schema JSON"""
@@ -88,6 +89,7 @@ def schema_timestamp_fields(schema: dict) -> dict[str, str]:
 # SCHEMA CONSISTENCY TESTS
 # =============================================================================
 
+
 class TestSchemaConsistency:
     """Tests for internal schema consistency"""
 
@@ -132,7 +134,7 @@ class TestSchemaConsistency:
         cents_suffix_pattern = re.compile(r"Cents$")
 
         # Fields that are exceptions (prices stored as dollars for display)
-        exceptions = {"price", "actualShipping", "pendingTotal", "refundAmount", "platformFeeTotal"}
+        exceptions = {"price"}
 
         violations = []
 
@@ -177,6 +179,7 @@ class TestSchemaConsistency:
 # PYTHON CODE CONTRACT TESTS
 # =============================================================================
 
+
 class TestPythonSchemaContract:
     """Tests that Python code matches the schema"""
 
@@ -193,10 +196,7 @@ class TestPythonSchemaContract:
         content = cron_file.read_text()
 
         # Should use createdAt for orders - either as string literal or via Fields constant
-        uses_created_at_literal = (
-            ".where('createdAt'" in content or
-            '.where("createdAt"' in content
-        )
+        uses_created_at_literal = ".where('createdAt'" in content or '.where("createdAt"' in content
         uses_created_at_constant = "Fields.CREATED_AT" in content
 
         assert uses_created_at_literal or uses_created_at_constant, (
@@ -205,11 +205,7 @@ class TestPythonSchemaContract:
 
         # Should NOT use createdAt for orders (either as literal or constant)
         # For orders collection, CREATED_AT should not appear in order queries
-        order_section_match = re.search(
-            r"collection\(['\"]orders['\"]\).*?\.stream\(\)",
-            content,
-            re.DOTALL
-        )
+        order_section_match = re.search(r"collection\(['\"]orders['\"]\).*?\.stream\(\)", content, re.DOTALL)
 
         if order_section_match:
             order_section = order_section_match.group(0)
@@ -303,14 +299,13 @@ class TestPythonSchemaContract:
             critical_missing = missing_in_model & critical_fields
 
             if critical_missing:
-                pytest.fail(
-                    f"Model {model_file} missing critical fields from schema: {critical_missing}"
-                )
+                pytest.fail(f"Model {model_file} missing critical fields from schema: {critical_missing}")
 
 
 # =============================================================================
 # DART CODE CONTRACT TESTS
 # =============================================================================
+
 
 class TestDartSchemaContract:
     """Tests that Dart code matches the schema"""
@@ -319,8 +314,7 @@ class TestDartSchemaContract:
         """Verify Dart schema constants file exists"""
         dart_constants = FLUTTER_DIR / "core" / "schema" / "schema_constants.dart"
         assert dart_constants.exists(), (
-            f"Dart schema constants not found at {dart_constants}. "
-            "Create it to maintain consistency with Python."
+            f"Dart schema constants not found at {dart_constants}. Create it to maintain consistency with Python."
         )
 
     def test_dart_constants_match_python_constants(self):
@@ -334,8 +328,7 @@ class TestDartSchemaContract:
         # Extract Python field values
         py_content = python_constants.read_text()
         py_pattern = re.compile(r'(\w+)\s*=\s*["\'](\w+)["\']')
-        py_fields = {m.group(2) for m in py_pattern.finditer(py_content)
-                     if not m.group(1).startswith("_")}
+        py_fields = {m.group(2) for m in py_pattern.finditer(py_content) if not m.group(1).startswith("_")}
 
         # Extract Dart field values
         dart_content = dart_constants.read_text()
@@ -383,16 +376,12 @@ class TestDartSchemaContract:
             wrong_field = "createdAt" if expected_field == "createdAt" else "createdAt"
 
             # Look for orderBy with wrong field
-            wrong_pattern = re.compile(
-                rf"\.orderBy\(['\"]({wrong_field})['\"]",
-                re.IGNORECASE
-            )
+            wrong_pattern = re.compile(rf"\.orderBy\(['\"]({wrong_field})['\"]", re.IGNORECASE)
 
             matches = wrong_pattern.findall(content)
             if matches:
                 violations.append(
-                    f"{repo_file} uses '{wrong_field}' for {collection} "
-                    f"but should use '{expected_field}'"
+                    f"{repo_file} uses '{wrong_field}' for {collection} but should use '{expected_field}'"
                 )
 
         if violations:
@@ -402,6 +391,7 @@ class TestDartSchemaContract:
 # =============================================================================
 # DRIFT DETECTION TESTS
 # =============================================================================
+
 
 class TestSchemaDrift:
     """Tests to detect schema drift over time"""
@@ -473,6 +463,7 @@ class TestSchemaDrift:
 # =============================================================================
 # HELPER TESTS FOR CI
 # =============================================================================
+
 
 class TestSchemaCI:
     """Tests specifically for CI pipeline validation"""

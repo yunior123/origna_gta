@@ -4,6 +4,7 @@
 Usage:
     cd functions && source venv/bin/activate && python send_sample_emails.py
 """
+
 import os
 import sys
 import time
@@ -14,8 +15,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Force real email sending even if in emulator mode
-os.environ['FORCE_REAL_EMAIL'] = 'true'
-os.environ['FUNCTIONS_EMULATOR'] = 'true'
+os.environ["FORCE_REAL_EMAIL"] = "true"
+os.environ["FUNCTIONS_EMULATOR"] = "true"
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -71,16 +72,18 @@ def send_to_all(subject: str, html_content: str, tag: str):
     # SPF + DKIM now configured for orignaventures.ca
     for recipient in RECIPIENTS:
         data = {
-            'Messages': [{
-                "From": {
-                    "Email": EmailConfig.SUPPORT_EMAIL,
-                    "Name": EmailConfig.SENDER_NAME,
-                },
-                "To": [{"Email": recipient}],
-                "Subject": f"[SAMPLE] {subject}",
-                "HTMLPart": html_content,
-                "CustomCampaign": f"sample-{tag}",
-            }]
+            "Messages": [
+                {
+                    "From": {
+                        "Email": EmailConfig.SUPPORT_EMAIL,
+                        "Name": EmailConfig.SENDER_NAME,
+                    },
+                    "To": [{"Email": recipient}],
+                    "Subject": f"[SAMPLE] {subject}",
+                    "HTMLPart": html_content,
+                    "CustomCampaign": f"sample-{tag}",
+                }
+            ]
         }
 
         result = mailjet.send.create(data=data)

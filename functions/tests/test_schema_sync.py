@@ -31,7 +31,7 @@ class TestExtractPythonConstants:
     def test_extract_order_status(self, tmp_path):
         """Should extract OrderStatus class constants."""
         python_file = tmp_path / "config.py"
-        python_file.write_text('''
+        python_file.write_text("""
 class OrderStatus:
     PENDING = 'pending'
     CONFIRMED = 'confirmed'
@@ -39,57 +39,57 @@ class OrderStatus:
     SHIPPED = 'shipped'
     DELIVERED = 'delivered'
     CANCELLED = 'cancelled'
-''')
+""")
 
-        result = extract_python_class_constants(python_file, 'OrderStatus')
+        result = extract_python_class_constants(python_file, "OrderStatus")
 
-        assert result['PENDING'] == 'pending'
-        assert result['CONFIRMED'] == 'confirmed'
-        assert result['SHIPPED'] == 'shipped'
+        assert result["PENDING"] == "pending"
+        assert result["CONFIRMED"] == "confirmed"
+        assert result["SHIPPED"] == "shipped"
         assert len(result) == 6
 
     def test_extract_payment_status(self, tmp_path):
         """Should extract PaymentStatus class constants."""
         python_file = tmp_path / "config.py"
-        python_file.write_text('''
+        python_file.write_text("""
 class PaymentStatus:
     AWAITING_PAYMENT = 'awaiting_payment'
     AUTHORIZED = 'authorized'
     CAPTURED = 'captured'
     REFUNDED = 'refunded'
-''')
+""")
 
-        result = extract_python_class_constants(python_file, 'PaymentStatus')
+        result = extract_python_class_constants(python_file, "PaymentStatus")
 
-        assert result['AWAITING_PAYMENT'] == 'awaiting_payment'
-        assert result['AUTHORIZED'] == 'authorized'
-        assert result['CAPTURED'] == 'captured'
+        assert result["AWAITING_PAYMENT"] == "awaiting_payment"
+        assert result["AUTHORIZED"] == "authorized"
+        assert result["CAPTURED"] == "captured"
 
     def test_extract_user_roles(self, tmp_path):
         """Should extract UserRoles class constants."""
         python_file = tmp_path / "config.py"
-        python_file.write_text('''
+        python_file.write_text("""
 class UserRoles:
     ADMIN = 'admin'
     SELLER = 'seller'
     BUYER = 'buyer'
-''')
+""")
 
-        result = extract_python_class_constants(python_file, 'UserRoles')
+        result = extract_python_class_constants(python_file, "UserRoles")
 
-        assert result['ADMIN'] == 'admin'
-        assert result['SELLER'] == 'seller'
-        assert result['BUYER'] == 'buyer'
+        assert result["ADMIN"] == "admin"
+        assert result["SELLER"] == "seller"
+        assert result["BUYER"] == "buyer"
 
     def test_empty_class(self, tmp_path):
         """Should return empty dict for non-existent class."""
         python_file = tmp_path / "config.py"
-        python_file.write_text('''
+        python_file.write_text("""
 class ExistingClass:
     VALUE = 'test'
-''')
+""")
 
-        result = extract_python_class_constants(python_file, 'NonExistentClass')
+        result = extract_python_class_constants(python_file, "NonExistentClass")
         assert result == {}
 
 
@@ -99,25 +99,25 @@ class TestExtractBusinessRules:
     def test_extract_platform_fee(self, tmp_path):
         """Should extract PLATFORM_FEE_PERCENT."""
         python_file = tmp_path / "config.py"
-        python_file.write_text('''
+        python_file.write_text("""
 PLATFORM_FEE_PERCENT = 0.025  # 2.5%
 AUTO_CONFIRM_DAYS = 5
 AUTHORIZATION_VALID_DAYS = 7
-''')
+""")
 
         result = extract_business_rules(python_file)
 
-        assert result['platformFeePercent'] == 2.5  # Converted to percentage
-        assert result['autoConfirmDays'] == 5
-        assert result['authorizationExpiryDays'] == 7
+        assert result["platformFeePercent"] == 2.5  # Converted to percentage
+        assert result["autoConfirmDays"] == 5
+        assert result["authorizationExpiryDays"] == 7
 
     def test_missing_values(self, tmp_path):
         """Should handle missing values gracefully."""
         python_file = tmp_path / "config.py"
-        python_file.write_text('''
+        python_file.write_text("""
 # No business rules defined
 SOME_OTHER_CONSTANT = 'value'
-''')
+""")
 
         result = extract_business_rules(python_file)
 
@@ -129,10 +129,10 @@ class TestNameConversion:
 
     def test_to_dart_camel_case(self):
         """Should convert UPPER_SNAKE_CASE to lowerCamelCase."""
-        assert to_dart_camel_case('PENDING') == 'pending'
-        assert to_dart_camel_case('PARTIALLY_REFUNDED') == 'partiallyRefunded'
-        assert to_dart_camel_case('IN_TRANSIT') == 'inTransit'
-        assert to_dart_camel_case('AWAITING_PAYMENT') == 'awaitingPayment'
+        assert to_dart_camel_case("PENDING") == "pending"
+        assert to_dart_camel_case("PARTIALLY_REFUNDED") == "partiallyRefunded"
+        assert to_dart_camel_case("IN_TRANSIT") == "inTransit"
+        assert to_dart_camel_case("AWAITING_PAYMENT") == "awaitingPayment"
 
 
 class TestGenerateEnumClass:
@@ -141,44 +141,44 @@ class TestGenerateEnumClass:
     def test_generates_valid_dart_code(self):
         """Should generate syntactically valid Dart code."""
         values = {
-            'PENDING': 'pending',
-            'CONFIRMED': 'confirmed',
+            "PENDING": "pending",
+            "CONFIRMED": "confirmed",
         }
 
-        dart_code = generate_enum_class('OrderStatusValues', values)
+        dart_code = generate_enum_class("OrderStatusValues", values)
 
-        assert 'abstract final class OrderStatusValues' in dart_code
+        assert "abstract final class OrderStatusValues" in dart_code
         assert "static const pending = 'pending';" in dart_code
         assert "static const confirmed = 'confirmed';" in dart_code
-        assert 'static const all = {' in dart_code
+        assert "static const all = {" in dart_code
 
     def test_creates_all_set(self):
         """Should create 'all' set with all values."""
         values = {
-            'PENDING': 'pending',
-            'SHIPPED': 'shipped',
+            "PENDING": "pending",
+            "SHIPPED": "shipped",
         }
 
-        dart_code = generate_enum_class('DeliveryStatusValues', values)
+        dart_code = generate_enum_class("DeliveryStatusValues", values)
 
-        assert 'static const all = {' in dart_code
-        assert 'pending,' in dart_code
-        assert 'shipped,' in dart_code
+        assert "static const all = {" in dart_code
+        assert "pending," in dart_code
+        assert "shipped," in dart_code
 
     def test_sorts_alphabetically(self):
         """Should sort values alphabetically."""
         values = {
-            'ZEBRA': 'zebra',
-            'ALPHA': 'alpha',
-            'BETA': 'beta',
+            "ZEBRA": "zebra",
+            "ALPHA": "alpha",
+            "BETA": "beta",
         }
 
-        dart_code = generate_enum_class('TestValues', values)
+        dart_code = generate_enum_class("TestValues", values)
 
         # alpha should come before beta and zebra
-        alpha_pos = dart_code.find('alpha')
-        beta_pos = dart_code.find('beta')
-        zebra_pos = dart_code.find('zebra')
+        alpha_pos = dart_code.find("alpha")
+        beta_pos = dart_code.find("beta")
+        zebra_pos = dart_code.find("zebra")
         assert alpha_pos < beta_pos < zebra_pos
 
 
@@ -188,25 +188,25 @@ class TestGenerateBusinessRulesClass:
     def test_generates_class(self):
         """Should generate BusinessRules class."""
         rules = {
-            'platformFeePercent': 2.5,
-            'autoConfirmDays': 5,
+            "platformFeePercent": 2.5,
+            "autoConfirmDays": 5,
         }
 
         dart_code = generate_business_rules_class(rules)
 
-        assert 'abstract final class BusinessRules' in dart_code
-        assert 'static const platformFeePercent = 2.5;' in dart_code
-        assert 'static const autoConfirmDays = 5;' in dart_code
+        assert "abstract final class BusinessRules" in dart_code
+        assert "static const platformFeePercent = 2.5;" in dart_code
+        assert "static const autoConfirmDays = 5;" in dart_code
 
     def test_formats_integers(self):
         """Should format integer values correctly."""
         rules = {
-            'autoConfirmDays': 5,
+            "autoConfirmDays": 5,
         }
 
         dart_code = generate_business_rules_class(rules)
 
-        assert 'static const autoConfirmDays = 5;' in dart_code
+        assert "static const autoConfirmDays = 5;" in dart_code
 
 
 class TestUpdateClassInDart:
@@ -214,29 +214,29 @@ class TestUpdateClassInDart:
 
     def test_updates_existing_class(self):
         """Should update existing class in Dart content."""
-        dart_content = '''
+        dart_content = """
 /// Valid values for orderStatus field
 abstract final class OrderStatusValues {
   static const pending = 'pending';
   static const all = {pending};
 }
-'''
-        new_class = '''
+"""
+        new_class = """
 /// Valid values for orderStatus field
 abstract final class OrderStatusValues {
   static const pending = 'pending';
   static const confirmed = 'confirmed';
   static const all = {pending, confirmed};
 }
-'''
-        result = update_class_in_dart(dart_content, 'OrderStatusValues', new_class)
+"""
+        result = update_class_in_dart(dart_content, "OrderStatusValues", new_class)
 
-        assert 'static const confirmed = ' in result
-        assert 'static const pending = ' in result
+        assert "static const confirmed = " in result
+        assert "static const pending = " in result
 
     def test_preserves_other_classes(self):
         """Should not modify other classes."""
-        dart_content = '''
+        dart_content = """
 abstract final class OrderStatusValues {
   static const pending = 'pending';
 }
@@ -244,17 +244,17 @@ abstract final class OrderStatusValues {
 abstract final class PaymentStatusValues {
   static const authorized = 'authorized';
 }
-'''
-        new_class = '''
+"""
+        new_class = """
 abstract final class OrderStatusValues {
   static const pending = 'pending';
   static const confirmed = 'confirmed';
 }
-'''
-        result = update_class_in_dart(dart_content, 'OrderStatusValues', new_class)
+"""
+        result = update_class_in_dart(dart_content, "OrderStatusValues", new_class)
 
-        assert 'PaymentStatusValues' in result
-        assert 'authorized' in result
+        assert "PaymentStatusValues" in result
+        assert "authorized" in result
 
 
 class TestCompareValues:
@@ -263,12 +263,12 @@ class TestCompareValues:
     def test_equal_values(self):
         """Should return True for matching values."""
         python_values = {
-            'PENDING': 'pending',
-            'CONFIRMED': 'confirmed',
+            "PENDING": "pending",
+            "CONFIRMED": "confirmed",
         }
         dart_values = {
-            'pending': 'pending',
-            'confirmed': 'confirmed',
+            "pending": "pending",
+            "confirmed": "confirmed",
         }
 
         assert compare_values(python_values, dart_values) is True
@@ -276,11 +276,11 @@ class TestCompareValues:
     def test_different_values(self):
         """Should return False for different values."""
         python_values = {
-            'PENDING': 'pending',
-            'CONFIRMED': 'confirmed',
+            "PENDING": "pending",
+            "CONFIRMED": "confirmed",
         }
         dart_values = {
-            'pending': 'pending',
+            "pending": "pending",
         }
 
         assert compare_values(python_values, dart_values) is False
@@ -288,10 +288,10 @@ class TestCompareValues:
     def test_different_content(self):
         """Should return False for same keys but different values."""
         python_values = {
-            'PENDING': 'pending',
+            "PENDING": "pending",
         }
         dart_values = {
-            'pending': 'old_pending',
+            "pending": "old_pending",
         }
 
         assert compare_values(python_values, dart_values) is False
@@ -303,10 +303,10 @@ class TestClassMapping:
     def test_mapping_exists(self):
         """Should have mappings for all expected classes."""
         expected_mappings = {
-            'OrderStatus': 'OrderStatusValues',
-            'PaymentStatus': 'PaymentStatusValues',
-            'DeliveryStatus': 'DeliveryStatusValues',
-            'UserRoles': 'UserRoleValues',
+            "OrderStatus": "OrderStatusValues",
+            "PaymentStatus": "PaymentStatusValues",
+            "DeliveryStatus": "DeliveryStatusValues",
+            "UserRoles": "UserRoleValues",
         }
 
         for py_class, dart_class in expected_mappings.items():
@@ -321,7 +321,7 @@ class TestEndToEnd:
         """Test the complete sync process from Python to Dart."""
         # Create Python source
         python_source = tmp_path / "config.py"
-        python_source.write_text('''
+        python_source.write_text("""
 class OrderStatus:
     PENDING = 'pending'
     CONFIRMED = 'confirmed'
@@ -332,11 +332,11 @@ class PaymentStatus:
 
 PLATFORM_FEE_PERCENT = 0.025
 AUTO_CONFIRM_DAYS = 5
-''')
+""")
 
         # Create initial Dart content
         dart_file = tmp_path / "schema.dart"
-        dart_file.write_text('''
+        dart_file.write_text("""
 // Schema Constants
 
 abstract final class OrderStatusValues {
@@ -352,7 +352,7 @@ abstract final class PaymentStatusValues {
 abstract final class BusinessRules {
   static const platformFeePercent = 2.0;
 }
-''')
+""")
 
         # Extract from Python
         business_rules = extract_business_rules(python_source)
@@ -362,22 +362,22 @@ abstract final class BusinessRules {
 
         # Update BusinessRules (simplest case - single class to update)
         new_rules_class = generate_business_rules_class(business_rules)
-        updated_content = update_class_in_dart(dart_content, 'BusinessRules', new_rules_class)
+        updated_content = update_class_in_dart(dart_content, "BusinessRules", new_rules_class)
 
         # Verify BusinessRules was updated
-        assert 'static const platformFeePercent = 2.5;' in updated_content
+        assert "static const platformFeePercent = 2.5;" in updated_content
 
         # Verify other classes are preserved
-        assert 'OrderStatusValues' in updated_content
-        assert 'PaymentStatusValues' in updated_content
+        assert "OrderStatusValues" in updated_content
+        assert "PaymentStatusValues" in updated_content
 
         # Write and verify file
         dart_file.write_text(updated_content)
         assert dart_file.exists()
         final_content = dart_file.read_text()
-        assert 'BusinessRules' in final_content
-        assert 'platformFeePercent = 2.5' in final_content
+        assert "BusinessRules" in final_content
+        assert "platformFeePercent = 2.5" in final_content
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
