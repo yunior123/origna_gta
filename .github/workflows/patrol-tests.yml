@@ -2,12 +2,12 @@ name: Patrol Integration Tests
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'origna_gta/lib/**'
-      - 'origna_gta/patrol_test/**'
-      - 'functions/handlers/**'
+#   push:
+#     branches: [main]
+#     paths:
+#       - 'origna_gta/lib/**'
+#       - 'origna_gta/patrol_test/**'
+#       - 'functions/handlers/**'
 
 concurrency:
   group: patrol-${{ github.ref }}
