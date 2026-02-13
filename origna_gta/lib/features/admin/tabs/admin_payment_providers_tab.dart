@@ -42,7 +42,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                       ElevatedButton.icon(
                         onPressed: _loadProviders,
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Retry'),
+                        label: Text('common.retry'.tr()),
                       ),
                     ],
                   ),
@@ -73,7 +73,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text('Payment Provider Management', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                                      Text('admin.payments.title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                                       SizedBox(height: 2),
                                     ],
                                   ),
@@ -82,8 +82,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                             ),
                             const SizedBox(height: 14),
                             Text(
-                              'Control which payment providers are available in the app. '
-                              'Disabling a provider will prevent new payments and captures.',
+                              'admin.payments.description'.tr(),
                               style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
                             ),
                             const SizedBox(height: 8),
@@ -100,9 +99,8 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                                   const SizedBox(width: 12),
                                   const Expanded(
                                     child: Text(
-                                      'At least one provider must remain enabled. '
-                                      'Changes take effect immediately.',
-                                      style: TextStyle(fontSize: 13),
+                                      'admin.payments.warning_at_least_one'.tr(),
+                                      style: const TextStyle(fontSize: 13),
                                     ),
                                   ),
                                 ],
@@ -118,18 +116,28 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                     if (_providersData != null) ...[
                       _buildProviderCard(
                         provider: PaymentProviderValues.stripe,
-                        name: 'Stripe',
+                        name: 'admin.payments.stripe_name'.tr(),
                         icon: Icons.credit_card,
-                        description: 'Primary payment processor for credit/debit cards, Apple Pay, Google Pay.',
-                        features: ['Credit/Debit Cards', 'Apple Pay', 'Google Pay', 'Connect Payouts'],
+                        description: 'admin.payments.stripe_desc'.tr(),
+                        features: [
+                          'admin.payments.stripe_feature_1'.tr(),
+                          'admin.payments.stripe_feature_2'.tr(),
+                          'admin.payments.stripe_feature_3'.tr(),
+                          'admin.payments.stripe_feature_4'.tr(),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       _buildProviderCard(
                         provider: PaymentProviderValues.airwallex,
-                        name: 'Airwallex',
+                        name: 'admin.payments.airwallex_name'.tr(),
                         icon: Icons.language,
-                        description: 'International payment processor with support for Alipay and WeChat Pay.',
-                        features: ['Cards', 'Alipay', 'WeChat Pay', 'International'],
+                        description: 'admin.payments.airwallex_desc'.tr(),
+                        features: [
+                          'admin.payments.airwallex_feature_1'.tr(),
+                          'admin.payments.airwallex_feature_2'.tr(),
+                          'admin.payments.airwallex_feature_3'.tr(),
+                          'admin.payments.airwallex_feature_4'.tr(),
+                        ],
                       ),
                     ],
 
@@ -156,7 +164,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Enabled Providers', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.success)),
+                                  Text('admin.payments.enabled_providers'.tr(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.success)),
                                   const SizedBox(height: 4),
                                   Text(_getEnabledProvidersList(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: DesignTokens.success)),
                                 ],
@@ -236,7 +244,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                'Not configured',
+                                'admin.payments.not_configured'.tr(),
                                 style: TextStyle(fontSize: 10, color: DesignTokens.warning, fontWeight: FontWeight.w600),
                               ),
                             ),
@@ -280,8 +288,8 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                     Expanded(
                       child: Text(
                         missingKeys.isNotEmpty 
-                            ? 'Missing: ${missingKeys.join(", ")}' 
-                            : 'API keys not configured. Set up $name account first.',
+                            ? 'admin.payments.missing_keys'.tr(namedArgs: {'keys': missingKeys.join(", ")}) 
+                            : 'admin.payments.not_configured_desc'.tr(namedArgs: {'name': name}),
                         style: TextStyle(fontSize: 12, color: DesignTokens.warning),
                       ),
                     ),
@@ -320,7 +328,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  isEnabled ? 'Accepting payments' : 'Not accepting payments',
+                  isEnabled ? 'admin.payments.accepting'.tr() : 'admin.payments.not_accepting'.tr(),
                   style: TextStyle(
                     fontSize: 13,
                     color: isEnabled ? DesignTokens.success : DesignTokens.error,
@@ -338,7 +346,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
   String _getEnabledProvidersList() {
     final enabledProviders = _providersData?[ApiKeys.enabledProviders] as List<dynamic>? ?? [];
     if (enabledProviders.isEmpty) {
-      return 'None';
+      return 'common.none'.tr();
     }
     return enabledProviders.map((p) => p.toString().toUpperCase()).join(', ');
   }
@@ -362,7 +370,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Failed to load payment providers. Please try again.';
+          _error = 'admin.payments.error_loading'.tr();
           _isLoading = false;
         });
       }
@@ -380,7 +388,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
             children: [
               Icon(Icons.warning_amber_rounded, color: DesignTokens.warning),
               const SizedBox(width: 12),
-              Text('$name Not Configured'),
+              Text('admin.payments.not_configured_title'.tr(namedArgs: {'name': name})),
             ],
           ),
           content: Column(
@@ -388,20 +396,20 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'You need to set up your $name account before enabling it.',
+                'admin.payments.not_configured_dialog_desc'.tr(namedArgs: {'name': name}),
                 style: TextStyle(color: DesignTokens.textPrimary),
               ),
               const SizedBox(height: 16),
               Text(
-                'Steps to configure $name:',
+                'admin.payments.steps_title'.tr(namedArgs: {'name': name}),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
-                '1. Create a $name account\n'
-                '2. Get your API keys from the $name dashboard\n'
-                '3. Add the keys to Firebase secrets\n'
-                '4. Redeploy the Cloud Functions',
+                '${'admin.payments.step_1'.tr(namedArgs: {'name': name})}\n'
+                '${'admin.payments.step_2'.tr(namedArgs: {'name': name})}\n'
+                '${'admin.payments.step_3'.tr()}\n'
+                '${'admin.payments.step_4'.tr()}',
                 style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
               ),
             ],
@@ -413,7 +421,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                 backgroundColor: DesignTokens.primary,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Got it'),
+              child: Text('common.got_it'.tr()),
             ),
           ],
         ),
@@ -425,25 +433,24 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
     final reason = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(enable ? 'Enable $name?' : 'Disable $name?'),
+        title: Text(enable ? 'admin.payments.enable_title'.tr(namedArgs: {'name': name}) : 'admin.payments.disable_title'.tr(namedArgs: {'name': name})),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               enable
-                  ? 'This will allow new payments through $name.'
-                  : 'This will prevent new payments and captures through $name. '
-                      'Existing authorized payments may fail to capture.',
+                  ? 'admin.payments.enable_desc'.tr(namedArgs: {'name': name})
+                  : 'admin.payments.disable_desc'.tr(namedArgs: {'name': name}),
               style: TextStyle(color: DesignTokens.textPrimary),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _reasonController,
               decoration: const InputDecoration(
-                labelText: 'Reason (optional)',
-                hintText: 'Enter reason for this change',
-                border: OutlineInputBorder(),
+                labelText: 'admin.payments.reason_label'.tr(),
+                hintText: 'admin.payments.reason_hint'.tr(),
+                border: const OutlineInputBorder(),
               ),
               maxLines: 2,
             ),
@@ -455,7 +462,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
               _reasonController.clear();
               Navigator.pop(context);
             },
-            child: const Text('Cancel'),
+            child: Text('common.cancel'.tr()),
           ),
           ElevatedButton(
             onPressed: () {
@@ -467,7 +474,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
               backgroundColor: enable ? DesignTokens.primary : DesignTokens.error,
               foregroundColor: Colors.white,
             ),
-            child: Text(enable ? 'Enable' : 'Disable'),
+            child: Text(enable ? 'admin.payments.enable_action'.tr() : 'admin.payments.disable_action'.tr()),
           ),
         ],
       ),
@@ -498,7 +505,7 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$name ${enable ? 'enabled' : 'disabled'} successfully'),
+          content: Text(enable ? 'admin.payments.success_enabled'.tr(namedArgs: {'name': name}) : 'admin.payments.success_disabled'.tr(namedArgs: {'name': name})),
           backgroundColor: DesignTokens.success,
         ),
       );
@@ -507,13 +514,13 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
       Navigator.pop(context); // Close loading dialog
       
       // Extract meaningful error message
-      String errorMessage = AppError.getMessage(e, 'Failed to update $name');
+      String errorMessage = AppError.getMessage(e, 'admin.payments.error_failed_update'.tr(namedArgs: {'name': name}));
       if (errorMessage.contains('not configured')) {
-        errorMessage = '$name is not configured. Please set up your account first.';
+        errorMessage = 'admin.payments.error_not_configured'.tr(namedArgs: {'name': name});
       } else if (errorMessage.contains('Missing API keys')) {
-        errorMessage = '$name API keys are missing. Configure them in Firebase secrets.';
+        errorMessage = 'admin.payments.error_keys_missing'.tr(namedArgs: {'name': name});
       } else if (errorMessage.contains('Cannot disable all')) {
-        errorMessage = 'At least one payment provider must remain enabled.';
+        errorMessage = 'admin.payments.error_cannot_disable_all'.tr();
       }
       
       ScaffoldMessenger.of(context).showSnackBar(

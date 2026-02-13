@@ -93,7 +93,7 @@ Future<bool> addToCart({
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Invalid quantity'),
+          content: Text('cart.invalid_quantity'.tr()),
           backgroundColor: DesignTokens.error,
         ),
       );
@@ -115,7 +115,7 @@ Future<bool> addToCart({
           .doc(productId);
       final productSnapshot = await transaction.get(productRef);
       if (!productSnapshot.exists) {
-        throw Exception('Product not found');
+        throw Exception('cart.product_not_found'.tr());
       }
       final productData = productSnapshot.data()!;
       final stockQuantity = productData[Fields.stockQuantity] as int? ?? 0;
@@ -127,7 +127,7 @@ Future<bool> addToCart({
       final newTotalQty = currentQty + quantity;
 
       if (newTotalQty > stockQuantity) {
-        throw Exception('Only $stockQuantity available in stock');
+        throw Exception('cart.stock_limit_count'.tr(namedArgs: {'count': stockQuantity.toString()}));
       }
 
       if (snapshot.exists) {
@@ -147,7 +147,7 @@ Future<bool> addToCart({
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Cart updated'),
+          content: Text('cart.updated'.tr()),
           backgroundColor: DesignTokens.success,
         ),
       );
@@ -431,12 +431,12 @@ void showLoginPrompt(
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Sign In Required'),
+      title: Text('auth.sign_in_required'.tr()),
       content: Text(text),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text('common.cancel'.tr()),
         ),
         ElevatedButton(
           onPressed: () {
@@ -450,7 +450,7 @@ void showLoginPrompt(
             backgroundColor: DesignTokens.primary,
             foregroundColor: Colors.white,
           ),
-          child: const Text('Sign In'),
+          child: Text('auth.sign_in'.tr()),
         ),
       ],
     ),
@@ -481,9 +481,9 @@ void showEmailVerificationDialog(
           size: 36,
         ),
       ),
-      title: const Text(
-        'Email Verification Required',
-        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+      title: Text(
+        'email_verification.title'.tr(),
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -506,7 +506,7 @@ void showEmailVerificationDialog(
               ),
             ),
           Text(
-            'Please verify your email address to use this feature:',
+            'email_verification.instruction_title'.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -521,22 +521,22 @@ void showEmailVerificationDialog(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '  1. Check your email inbox',
+                  '  1. ${'email_verification.step1'.tr()}',
                   style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '  2. Look in spam/junk folder if not found',
+                  '  2. ${'email_verification.step2'.tr()}',
                   style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '  3. Click the verification link',
+                  '  3. ${'email_verification.step3'.tr()}',
                   style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '  4. Return here and try again',
+                  '  4. ${'email_verification.step4'.tr()}',
                   style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary),
                 ),
               ],
@@ -545,7 +545,7 @@ void showEmailVerificationDialog(
           if (onResend != null) ...[
             const SizedBox(height: 16),
             Text(
-              "Didn't receive the email?",
+              "email_verification.did_not_receive".tr(),
               style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary),
             ),
           ],
@@ -560,14 +560,14 @@ void showEmailVerificationDialog(
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Verification email sent! Check your inbox.'),
+                      content: Text('email_verification.sent_success'.tr()),
                   backgroundColor: DesignTokens.primary,
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             },
             icon: const Icon(Icons.send, size: 16),
-            label: const Text('Resend Email'),
+            label: Text('email_verification.resend_button'.tr()),
             style: TextButton.styleFrom(
               foregroundColor: DesignTokens.primary,
             ),
@@ -582,7 +582,7 @@ void showEmailVerificationDialog(
             ),
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
           ),
-          child: const Text('Got It'),
+          child: Text('common.got_it'.tr()),
         ),
       ],
     ),
@@ -768,16 +768,18 @@ class AppError {
   /// backend already sanitises messages before raising HttpsError).
   /// For [FirebaseException], returns the Firebase-provided message.
   /// For everything else, returns [fallback] to avoid leaking internals.
-  static String getMessage(dynamic error, [String fallback = 'An unexpected error occurred. Please try again.']) {
+  static String getMessage(dynamic error, [String? fallback]) {
+    final defaultFallback = 'errors.generic_error'.tr();
+    final actualFallback = fallback ?? defaultFallback;
     if (error is FirebaseFunctionsException) {
-      return error.message ?? fallback;
+      return error.message ?? actualFallback;
     }
     if (error is FirebaseException) {
-      return error.message ?? fallback;
+      return error.message ?? actualFallback;
     }
     // NEVER expose raw e.toString() — it can contain stack traces,
     // class names, and server internals.
-    return fallback;
+    return actualFallback;
   }
 
   /// Log error with optional user message

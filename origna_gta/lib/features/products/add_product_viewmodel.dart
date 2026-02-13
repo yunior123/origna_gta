@@ -53,38 +53,38 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     if (state.isLoading) return;
 
     if (name.trim().isEmpty) {
-      state = state.copyWith(errorMessage: 'Product name is required');
+      state = state.copyWith(errorMessage: 'product.please_enter_name'.tr());
       return;
     }
     if (description.trim().isEmpty) {
-      state = state.copyWith(errorMessage: 'Description is required');
+      state = state.copyWith(errorMessage: 'product.please_enter_description'.tr());
       return;
     }
     if (price <= 0) {
-      state = state.copyWith(errorMessage: 'Price must be greater than 0');
+      state = state.copyWith(errorMessage: 'product.please_enter_price'.tr());
       return;
     }
     if (price > 100000) {
-      state = state.copyWith(errorMessage: 'Price cannot exceed \$100,000 CAD');
+      state = state.copyWith(errorMessage: 'product.price_limit_exceeded'.tr());
       return;
     }
     if (stock < 0) {
-      state = state.copyWith(errorMessage: 'Stock cannot be negative');
+      state = state.copyWith(errorMessage: 'product.stock_negative'.tr());
       return;
     }
     final minOrderQty = minimumOrderQuantity ?? state.minimumOrderQuantity;
     if (minOrderQty < 1) {
-      state = state.copyWith(errorMessage: 'Minimum order quantity must be at least 1');
+      state = state.copyWith(errorMessage: 'product.min_order_at_least_one'.tr());
       return;
     }
     if (categoryId <= 0) {
-      state = state.copyWith(errorMessage: 'Category is required');
+      state = state.copyWith(errorMessage: 'product.select_category'.tr());
       return;
     }
     // Bug #4: Skip address validation for digital products (no shipping needed)
     if (!state.isDigital) {
       if (street.trim().isEmpty || city.trim().isEmpty || postalCode.trim().isEmpty || state.selectedProvince.trim().isEmpty) {
-        state = state.copyWith(errorMessage: 'Complete product address is required');
+        state = state.copyWith(errorMessage: 'product.address_required'.tr());
         return;
       }
     }
@@ -97,23 +97,23 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     */
 
     if (!isValidTaxCode(taxCode)) {
-      state = state.copyWith(errorMessage: 'Invalid tax code (expected txcd_########)');
+      state = state.copyWith(errorMessage: 'product.invalid_tax_code_format'.tr());
       return;
     }
     if ((weight ?? 0) < 0 || (length ?? 0) < 0 || (width ?? 0) < 0 || (height ?? 0) < 0) {
-      state = state.copyWith(errorMessage: 'Package dimensions must be positive');
+      state = state.copyWith(errorMessage: 'product.dimensions_positive'.tr());
       return;
     }
 
     if (state.imageModels.isEmpty) {
-      state = state.copyWith(errorMessage: 'Please add at least one product image');
+      state = state.copyWith(errorMessage: 'product.image_required'.tr());
       return;
     }
 
     // Bug #4: Physical products need at least one delivery tier (unless local-only)
     if (!state.isDigital && !state.isLocalDeliveryOnly) {
       if (!state.standardEnabled && !state.expressEnabled && !state.sameDayEnabled) {
-        state = state.copyWith(errorMessage: 'Enable at least one delivery option for physical products');
+        state = state.copyWith(errorMessage: 'product.delivery_tier_required'.tr());
         return;
       }
     }
@@ -193,7 +193,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       await productRepository.addProductWithId(tempProductId, product);
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to add product'));
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'product.add_product_failed'.tr()));
     }
   }
 

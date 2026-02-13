@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/admin/admin_actions_viewmodel.dart';
@@ -36,7 +37,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
             children: [
               TextField(
                 decoration: InputDecoration(
-                  hintText: 'Search by name or email...',
+                  hintText: 'admin.users.search_hint'.tr(),
                   hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 14),
                   prefixIcon: Icon(Icons.search_rounded, color: DesignTokens.primary),
                   filled: true,
@@ -52,13 +53,13 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  _filterChip('All', 'all'),
+                  _filterChip('admin.users.filter_all'.tr(), 'all'),
                   const SizedBox(width: 6),
-                  _filterChip('Sellers', 'seller'),
+                  _filterChip('admin.users.filter_sellers'.tr(), 'seller'),
                   const SizedBox(width: 6),
-                  _filterChip('Admins', 'admin'),
+                  _filterChip('admin.users.filter_admins'.tr(), 'admin'),
                   const SizedBox(width: 6),
-                  _filterChip('Buyers', UserRoles.buyer),
+                  _filterChip('admin.users.filter_buyers'.tr(), UserRoles.buyer),
                 ],
               ),
             ],
@@ -81,13 +82,13 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                         child: Icon(Icons.cloud_off_rounded, size: 40, color: DesignTokens.error),
                       ),
                       const SizedBox(height: 16),
-                      const Text('Error Fetching from Database', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('admin.users.error_fetching'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
                 data: (usersRaw) {
                   if (usersRaw.isEmpty) {
-                    return const AnimatedEmptyState(icon: Icons.people_outline, title: 'No users found');
+                    return AnimatedEmptyState(icon: Icons.people_outline, title: 'admin.users.no_users_found'.tr());
                   }
 
                   final users = usersRaw.where((data) {
@@ -112,7 +113,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                         children: [
                           Icon(Icons.filter_alt_off_rounded, size: 40, color: DesignTokens.outlineVariant),
                           const SizedBox(height: 12),
-                          Text('No users match your filters', style: TextStyle(color: DesignTokens.textSecondary)),
+                          Text('admin.users.no_users_match'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
                         ],
                       ),
                     );
@@ -171,7 +172,7 @@ class _UserCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final name = user.name.isNotEmpty ? user.name : 'Unknown';
+    final name = user.name.isNotEmpty ? user.name : 'admin.users.unknown_user'.tr();
     final email = user.email;
     final roles = user.roles;
     final isSuspended = user.suspended;
@@ -237,7 +238,7 @@ class _UserCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(email, style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
-                  Text('Joined ${_formatDate(createdAt)}', style: TextStyle(fontSize: 11, color: DesignTokens.textDisabled)),
+                  Text('admin.users.joined_date'.tr(namedArgs: {'date': _formatDate(createdAt)}), style: TextStyle(fontSize: 11, color: DesignTokens.textDisabled)),
                 ],
               ),
             ),
@@ -248,13 +249,13 @@ class _UserCard extends ConsumerWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
               itemBuilder: (context) => [
                 if (!roles.contains(UserRoles.seller))
-                  _menuItem('make_seller', Icons.store_rounded, 'Make Seller', DesignTokens.primary),
+                  _menuItem('make_seller', Icons.store_rounded, 'admin.users.make_seller'.tr(), DesignTokens.primary),
                 if (roles.contains(UserRoles.seller) && !roles.contains(UserRoles.admin))
-                  _menuItem('remove_seller', Icons.store_rounded, 'Remove Seller Role', DesignTokens.warning),
+                  _menuItem('remove_seller', Icons.store_rounded, 'admin.users.remove_seller'.tr(), DesignTokens.warning),
                 if (!roles.contains(UserRoles.admin))
-                  _menuItem('make_admin', Icons.admin_panel_settings_rounded, 'Make Admin', DesignTokens.secondary),
-                if (!isSuspended) _menuItem('suspend', Icons.block_rounded, 'Suspend User', DesignTokens.error),
-                if (isSuspended) _menuItem('unsuspend', Icons.check_circle_rounded, 'Unsuspend User', DesignTokens.success),
+                  _menuItem('make_admin', Icons.admin_panel_settings_rounded, 'admin.users.make_admin'.tr(), DesignTokens.secondary),
+                if (!isSuspended) _menuItem('suspend', Icons.block_rounded, 'admin.users.suspend_user'.tr(), DesignTokens.error),
+                if (isSuspended) _menuItem('unsuspend', Icons.check_circle_rounded, 'admin.users.unsuspend_user'.tr(), DesignTokens.success),
               ],
             ),
           ],
@@ -264,8 +265,7 @@ class _UserCard extends ConsumerWidget {
   }
 
   String _formatDate(DateTime date) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    return DateFormat('MMM dd, yyyy').format(date);
   }
 
   void _handleAction(BuildContext context, WidgetRef ref, String action) async {
@@ -294,24 +294,25 @@ class _UserCard extends ConsumerWidget {
     if (!context.mounted) return;
     if (success) {
       switch (action) {
+      switch (action) {
         case 'make_seller':
-          messenger.showSnackBar(SnackBar(content: const Text('User is now a seller'), backgroundColor: DesignTokens.success));
+          messenger.showSnackBar(SnackBar(content: Text('admin.users.user_is_seller'.tr()), backgroundColor: DesignTokens.success));
           break;
         case 'remove_seller':
-          messenger.showSnackBar(SnackBar(content: const Text('Seller role removed'), backgroundColor: DesignTokens.warning));
+          messenger.showSnackBar(SnackBar(content: Text('admin.users.seller_role_removed'.tr()), backgroundColor: DesignTokens.warning));
           break;
         case 'make_admin':
-          messenger.showSnackBar(SnackBar(content: const Text('User is now an admin'), backgroundColor: DesignTokens.success));
+          messenger.showSnackBar(SnackBar(content: Text('admin.users.user_is_admin'.tr()), backgroundColor: DesignTokens.success));
           break;
         case 'suspend':
-          messenger.showSnackBar(SnackBar(content: const Text('User suspended'), backgroundColor: DesignTokens.warning));
+          messenger.showSnackBar(SnackBar(content: Text('admin.users.user_suspended'.tr()), backgroundColor: DesignTokens.warning));
           break;
         case 'unsuspend':
-          messenger.showSnackBar(SnackBar(content: const Text('User unsuspended'), backgroundColor: DesignTokens.success));
+          messenger.showSnackBar(SnackBar(content: Text('admin.users.user_unsuspended'.tr()), backgroundColor: DesignTokens.success));
           break;
       }
     } else {
-      final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Action failed';
+      final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'admin.users.action_failed'.tr();
       messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
     }
   }

@@ -38,7 +38,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Text('Rate Product'),
+      title: Text('rating.title'.tr()),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,7 +50,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 16),
-          const Text('How would you rate this product?', style: TextStyle(color: DesignTokens.textSecondary)),
+          Text('rating.prompt'.tr(), style: const TextStyle(color: DesignTokens.textSecondary)),
           const SizedBox(height: 16),
           _buildStarRating(),
           const SizedBox(height: 8),
@@ -65,18 +65,18 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
       actions: [
         Semantics(
           button: true,
-          label: 'Cancel rating',
-          child: TextButton(onPressed: _isSubmitting ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+          label: 'rating.cancel_label'.tr(),
+          child: TextButton(onPressed: _isSubmitting ? null : () => Navigator.pop(context), child: Text('common.cancel'.tr())),
         ),
         Semantics(
           button: true,
-          label: 'Submit rating',
+          label: 'rating.submit_label'.tr(),
           child: ElevatedButton(
           onPressed: (_selectedRating == 0 || _isSubmitting) ? null : _submitRating,
           style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
           child: _isSubmitting
               ? const ModernLoadingIndicator.small(color: Colors.white)
-              : const Text('Submit'),
+              : Text('common.submit'.tr()),
         ),
         ),
       ],
@@ -90,7 +90,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
         final starNumber = index + 1;
         return Semantics(
           button: true,
-          label: 'Rate $starNumber out of 5 stars',
+          label: 'rating.star_label'.tr(namedArgs: {'count': starNumber.toString()}),
           child: GestureDetector(
             onTap: () {
               setState(() => _selectedRating = starNumber);
@@ -108,17 +108,17 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
   String _getRatingText() {
     switch (_selectedRating) {
       case 1:
-        return 'Poor';
+        return 'rating.poor'.tr();
       case 2:
-        return 'Fair';
+        return 'rating.fair'.tr();
       case 3:
-        return 'Good';
+        return 'rating.good'.tr();
       case 4:
-        return 'Very Good';
+        return 'rating.very_good'.tr();
       case 5:
-        return 'Excellent';
+        return 'rating.excellent'.tr();
       default:
-        return 'Tap a star to rate';
+        return 'rating.tap_to_rate'.tr();
     }
   }
 
@@ -134,10 +134,10 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
 
     if (success) {
       navigator.pop();
-      messenger.showSnackBar(const SnackBar(content: Text('Thank you for your rating!'), backgroundColor: DesignTokens.success));
+      messenger.showSnackBar(SnackBar(content: Text('rating.thank_you'.tr()), backgroundColor: DesignTokens.success));
       widget.onRatingSubmitted?.call();
     } else {
-      final error = ref.read(productRatingViewModelProvider).errorMessage ?? 'Error submitting rating';
+      final error = ref.read(productRatingViewModelProvider).errorMessage ?? 'rating.error_submitting'.tr();
       messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
       setState(() => _isSubmitting = false);
     }

@@ -63,7 +63,7 @@ class ProfileScreen extends ConsumerWidget {
                 Icon(Icons.error_outline, size: 80, color: DesignTokens.error),
                 const SizedBox(height: 16),
                 Text(
-                  'Error loading profile',
+                  'profile.error_loading'.tr(),
                   style: TextStyle(color: DesignTokens.textSecondary),
                 ),
               ],
@@ -104,7 +104,7 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Setting up your profile...',
+                        'profile.setting_up'.tr(),
                         style: TextStyle(fontSize: 16, color: DesignTokens.textSecondary),
                       ),
                     ],
@@ -337,7 +337,7 @@ class ProfileScreen extends ConsumerWidget {
                                   ),
                                   child: Center(
                                     child: Text(
-                                      'Delete Account',
+                                      'profile.delete_account'.tr(),
                                       style: TextStyle(
                                         color: DesignTokens.error,
                                         fontSize: 15,
@@ -562,7 +562,7 @@ class ProfileScreen extends ConsumerWidget {
             ? DesignTokens.darkSurface
             : Colors.white,
         title: Text(
-          'Contact Us',
+          'profile.contact_us'.tr(),
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -576,7 +576,7 @@ class ProfileScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Have questions or need help? Reach out to us!',
+              'profile.contact_us_desc'.tr(),
               style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 16),
@@ -732,7 +732,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
           Icon(Icons.warning_rounded, color: DesignTokens.error, size: 28),
           const SizedBox(width: 12),
           Text(
-            'Delete Account',
+            'profile.delete_account'.tr(),
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -747,7 +747,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'This action cannot be undone. All your data will be permanently deleted.',
+              'profile.delete_warning_short'.tr(),
               style: TextStyle(
                 color: DesignTokens.error,
                 fontWeight: FontWeight.w600,
@@ -781,12 +781,12 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
         ),
         ModernButton(
           onPressed:
-              confirmController.text == 'DELETE' && !profileState.isLoading
+              confirmController.text == 'profile.type_delete_keyword'.tr() && !profileState.isLoading
               ? () => viewModel.deleteAccount(confirmController.text.trim())
               : null,
-          label: 'Delete Account',
+          label: 'profile.delete_account'.tr(),
           isLoading: profileState.isLoading,
-          backgroundColor: confirmController.text == 'DELETE'
+          backgroundColor: confirmController.text == 'profile.type_delete_keyword'.tr()
               ? DesignTokens.error
               : DesignTokens.textDisabled,
         ),

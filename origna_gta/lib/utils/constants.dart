@@ -119,13 +119,13 @@ enum DeliveryStatus {
   String get displayText {
     switch (this) {
       case DeliveryStatus.pending:
-        return 'Processing';
+        return 'orders.status.processing'.tr();
       case DeliveryStatus.shipped:
-        return 'Shipped';
+        return 'orders.status.shipped'.tr();
       case DeliveryStatus.delivered:
-        return 'Delivered';
+        return 'orders.status.delivered'.tr();
       case DeliveryStatus.refunded:
-        return 'Refunded';
+        return 'orders.status.refunded'.tr();
     }
   }
 
@@ -161,29 +161,29 @@ enum OrderStatus {
   String get displayText {
     switch (this) {
       case OrderStatus.pending:
-        return 'Pending';
+        return 'orders.status.pending'.tr();
       case OrderStatus.confirmed:
-        return 'Confirmed';
+        return 'orders.status.confirmed'.tr();
       case OrderStatus.processing:
-        return 'Processing';
+        return 'orders.status.processing'.tr();
       case OrderStatus.shipped:
-        return 'Shipped';
+        return 'orders.status.shipped'.tr();
       case OrderStatus.inTransit:
-        return 'In Transit';
+        return 'orders.status.in_transit'.tr();
       case OrderStatus.delivered:
-        return 'Delivered';
+        return 'orders.status.delivered'.tr();
       case OrderStatus.cancelled:
-        return 'Cancelled';
+        return 'orders.status.cancelled'.tr();
       case OrderStatus.failed:
-        return 'Failed';
+        return 'orders.status.failed'.tr();
       case OrderStatus.expired:
-        return 'Expired';
+        return 'orders.status.expired'.tr();
       case OrderStatus.refunded:
-        return 'Refunded';
+        return 'orders.status.refunded'.tr();
       case OrderStatus.partiallyRefunded:
-        return 'Partially Refunded';
+        return 'orders.status.partial_refund'.tr();
       case OrderStatus.disputed:
-        return 'Disputed';
+        return 'orders.status.disputed'.tr();
     }
   }
 
@@ -220,31 +220,31 @@ enum PaymentStatus {
   String get displayText {
     switch (this) {
       case PaymentStatus.awaitingPayment:
-        return 'Awaiting Payment';
+        return 'payment_status.awaiting_payment'.tr();
       case PaymentStatus.processing:
-        return 'Processing';
+        return 'payment_status.processing'.tr();
       case PaymentStatus.authorized:
-        return 'Payment Authorized';
+        return 'payment_status.authorized'.tr();
       case PaymentStatus.paid:
-        return 'Paid';
+        return 'payment_status.paid'.tr();
       case PaymentStatus.captured:
-        return 'Payment Captured';
+        return 'payment_status.captured'.tr();
       case PaymentStatus.paymentFailed:
-        return 'Payment Failed';
+        return 'payment_status.payment_failed'.tr();
       case PaymentStatus.refunded:
-        return 'Refunded';
+        return 'payment_status.refunded'.tr();
       case PaymentStatus.sessionExpired:
-        return 'Session Expired';
+        return 'payment_status.session_expired'.tr();
       case PaymentStatus.cancelled:
-        return 'Cancelled';
+        return 'payment_status.cancelled'.tr();
       case PaymentStatus.authorizationExpired:
-        return 'Authorization Expired';
+        return 'payment_status.authorization_expired'.tr();
       case PaymentStatus.capturing:
-        return 'Capturing Payment';
+        return 'payment_status.capturing'.tr();
       case PaymentStatus.cancelling:
-        return 'Cancelling';
+        return 'payment_status.cancelling'.tr();
       case PaymentStatus.expiring:
-        return 'Expiring';
+        return 'payment_status.expiring'.tr();
     }
   }
 

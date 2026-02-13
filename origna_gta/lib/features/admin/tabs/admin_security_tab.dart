@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/admin/admin_actions_viewmodel.dart';
@@ -50,9 +51,9 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Multi-Factor Authentication', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                          Text('admin.security.title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                           const SizedBox(height: 2),
-                          Text('Admin account protection', style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
+                          Text('admin.security.subtitle'.tr(), style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
                         ],
                       ),
                     ),
@@ -72,7 +73,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            _mfaEnabled ? 'ENABLED' : 'DISABLED',
+                            _mfaEnabled ? 'admin.security.mfa_enabled'.tr() : 'admin.security.mfa_disabled'.tr(),
                             style: TextStyle(color: _mfaEnabled ? DesignTokens.success : DesignTokens.textSecondary, fontWeight: FontWeight.w700, fontSize: 11),
                           ),
                         ],
@@ -81,9 +82,8 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Protect your admin account with time-based one-time passwords (TOTP). '
-                  'Required for high-risk admin actions: suspend/unsuspend sellers, update user roles, configure search.',
+                Text(
+                  'admin.security.description'.tr(),
                   style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14),
                 ),
                 const SizedBox(height: 20),
@@ -91,7 +91,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   FilledButton.icon(
                     onPressed: adminActionsState.isLoading ? null : _enableMfa,
                     icon: const Icon(Icons.security_rounded),
-                    label: const Text('Enable MFA'),
+                    label: Text('admin.security.enable_mfa'.tr()),
                     style: FilledButton.styleFrom(
                       backgroundColor: DesignTokens.primary,
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
@@ -102,7 +102,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   FilledButton.icon(
                     onPressed: adminActionsState.isLoading ? null : _disableMfa,
                     icon: const Icon(Icons.close_rounded),
-                    label: const Text('Disable MFA'),
+                    label: Text('admin.security.disable_mfa'.tr()),
                     style: FilledButton.styleFrom(
                       backgroundColor: DesignTokens.error,
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
@@ -125,11 +125,10 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Step 1: Scan QR Code', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  Text('admin.security.step1'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Use an authenticator app (Google Authenticator, Microsoft Authenticator, Authy, etc.) '
-                    'to scan this QR code:',
+                  Text(
+                    'admin.security.scan_qr_desc'.tr(),
                     style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 16),
@@ -146,7 +145,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                                 width: 250,
                                 height: 250,
                                 color: DesignTokens.outlineVariant,
-                                child: const Center(child: Text('QR Code\nUnavailable')),
+                                child: Center(child: Text('admin.security.qr_unavailable'.tr())),
                               ),
                             )
                           : Container(
@@ -158,7 +157,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Or enter this secret manually:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                  Text('admin.security.enter_secret_manual'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -174,19 +173,19 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                           child: Text(_secret!, style: const TextStyle(fontFamily: 'monospace', fontSize: 14, letterSpacing: 2)),
                         ),
                         IconButton(
-                          tooltip: 'Copy secret',
+                          tooltip: 'admin.security.copy_secret'.tr(),
                           icon: const Icon(Icons.copy),
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Secret copied to clipboard')));
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('admin.security.secret_copied'.tr())));
                           },
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text('Step 2: Verify Code', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text('admin.security.step2'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
-                  const Text('Enter the 6-digit code from your authenticator app:', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
+                  Text('admin.security.enter_code_desc'.tr(), style: const TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _mfaCodeController,
@@ -210,15 +209,14 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
                       ),
-                      child: const Text('Verify & Enable MFA'),
+                      child: Text('admin.security.verify_enable'.tr()),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text('Step 3: Save Backup Codes', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  Text('admin.security.step3'.tr(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 12),
-                  const Text(
-                    'If you lose access to your authenticator, use these backup codes to regain access. '
-                    'Each code can be used once.',
+                  Text(
+                    'admin.security.backup_codes_desc'.tr(),
                     style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 12),
@@ -255,10 +253,10 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Backup codes copied to clipboard')));
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('admin.security.backup_codes_copied'.tr())));
                               },
                               icon: const Icon(Icons.copy),
-                              label: const Text('Copy All Codes'),
+                              label: Text('admin.security.copy_all_codes'.tr()),
                             ),
                           ),
                         ],
@@ -311,12 +309,12 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Disable MFA?'),
+        title: Text('admin.security.disable_mfa_title'.tr()),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Enter your current TOTP code to confirm disabling multi-factor authentication.',
+            Text(
+              'admin.security.disable_mfa_desc'.tr(),
             ),
             const SizedBox(height: 16),
             Semantics(
@@ -326,7 +324,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                 keyboardType: TextInputType.number,
                 maxLength: 6,
                 decoration: const InputDecoration(
-                  labelText: 'TOTP Code',
+                  labelText: 'admin.security.totp_code'.tr(),
                   hintText: '000000',
                   counterText: '',
                 ),
@@ -335,7 +333,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text('common.cancel'.tr())),
           TextButton(
             onPressed: () async {
               final code = disableMfaController.text.trim();
@@ -350,10 +348,10 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
                   _qrCodeUri = null;
                   _backupCodes = [];
                 });
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('MFA disabled'), backgroundColor: DesignTokens.textPrimary));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('admin.security.mfa_disabled_success'.tr()), backgroundColor: DesignTokens.textPrimary));
               }
             },
-            child: const Text('Disable', style: TextStyle(color: DesignTokens.error)),
+            child: Text('admin.security.disable_mfa'.tr(), style: const TextStyle(color: DesignTokens.error)),
           ),
         ],
       ),
@@ -375,7 +373,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
   Future<void> _verifyAndCompleteMfa() async {
     final code = _mfaCodeController.text.trim();
     if (code.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a 6-digit code')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('admin.security.invalid_code_length'.tr())));
       return;
     }
 
@@ -388,7 +386,7 @@ class _AdminSecurityTabState extends ConsumerState<AdminSecurityTab> {
       });
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('MFA enabled successfully! Save your backup codes in a secure location.'), backgroundColor: DesignTokens.success));
+      ).showSnackBar(SnackBar(content: Text('admin.security.mfa_enabled_success'.tr()), backgroundColor: DesignTokens.success));
     }
   }
 }

@@ -33,7 +33,7 @@ class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to delete product'));
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'admin.errors.delete_product_failed'.tr()));
       return false;
     }
   }
@@ -45,7 +45,7 @@ class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to disable MFA'));
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'admin.errors.mfa_disable_failed'.tr()));
       return false;
     }
   }
@@ -57,7 +57,7 @@ class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
       state = state.copyWith(isLoading: false, isSuccess: true);
       return result;
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to enable MFA'));
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'admin.errors.mfa_enable_failed'.tr()));
       return null;
     }
   }
@@ -77,7 +77,7 @@ class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to update user suspension'));
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'admin.errors.user_suspension_failed'.tr()));
       return false;
     }
   }
@@ -89,7 +89,7 @@ class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to update stock'));
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'admin.errors.update_stock_failed'.tr()));
       return false;
     }
   }
@@ -101,7 +101,7 @@ class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to update user roles'));
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'admin.errors.user_roles_failed'.tr()));
       return false;
     }
   }
@@ -113,7 +113,7 @@ class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
       state = state.copyWith(isLoading: false, isSuccess: true);
       return true;
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to verify MFA code'));
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'admin.errors.mfa_verify_failed'.tr()));
       return false;
     }
   }

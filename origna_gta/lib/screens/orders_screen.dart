@@ -38,53 +38,53 @@ class _StatusConfig {
 _StatusConfig _orderStatusConfig(OrderStatus status) {
   switch (status) {
     case OrderStatus.pending:
-      return _StatusConfig(color: DesignTokens.secondary, icon: Icons.hourglass_empty, label: 'Pending', description: 'Awaiting confirmation');
+      return _StatusConfig(color: DesignTokens.secondary, icon: Icons.hourglass_empty, label: 'orders.status.pending'.tr(), description: 'orders.status.pending_desc'.tr());
     case OrderStatus.confirmed:
-      return _StatusConfig(color: DesignTokens.info, icon: Icons.verified_outlined, label: 'Confirmed', description: 'Payment confirmed');
+      return _StatusConfig(color: DesignTokens.info, icon: Icons.verified_outlined, label: 'orders.status.confirmed'.tr(), description: 'orders.status.confirmed_desc'.tr());
     case OrderStatus.processing:
-      return _StatusConfig(color: DesignTokens.primary, icon: Icons.autorenew, label: 'Processing', description: 'Seller is preparing your order');
+      return _StatusConfig(color: DesignTokens.primary, icon: Icons.autorenew, label: 'orders.status.processing'.tr(), description: 'orders.status.processing_desc'.tr());
     case OrderStatus.shipped:
-      return const _StatusConfig(color: Color(0xFF06B6D4), icon: Icons.local_shipping, label: 'Shipped', description: 'Handed to carrier');
+      return _StatusConfig(color: const Color(0xFF06B6D4), icon: Icons.local_shipping, label: 'orders.status.shipped'.tr(), description: 'orders.status.shipped_desc'.tr());
     case OrderStatus.inTransit:
-      return const _StatusConfig(color: Color(0xFF14B8A6), icon: Icons.flight_takeoff, label: 'In Transit', description: 'On its way to you');
+      return _StatusConfig(color: const Color(0xFF14B8A6), icon: Icons.flight_takeoff, label: 'orders.status.in_transit'.tr(), description: 'orders.status.in_transit_desc'.tr());
     case OrderStatus.delivered:
-      return _StatusConfig(color: DesignTokens.success, icon: Icons.check_circle, label: 'Delivered', description: 'Order delivered!');
+      return _StatusConfig(color: DesignTokens.success, icon: Icons.check_circle, label: 'orders.status.delivered'.tr(), description: 'orders.status.delivered_desc'.tr());
     case OrderStatus.cancelled:
-      return _StatusConfig(color: DesignTokens.error, icon: Icons.cancel_outlined, label: 'Cancelled', description: 'Order was cancelled');
+      return _StatusConfig(color: DesignTokens.error, icon: Icons.cancel_outlined, label: 'orders.status.cancelled'.tr(), description: 'orders.status.cancelled_desc'.tr());
     case OrderStatus.failed:
-      return _StatusConfig(color: DesignTokens.error, icon: Icons.error_outline, label: 'Failed', description: 'Something went wrong');
+      return _StatusConfig(color: DesignTokens.error, icon: Icons.error_outline, label: 'orders.status.failed'.tr(), description: 'orders.status.failed_desc'.tr());
     case OrderStatus.expired:
-      return _StatusConfig(color: DesignTokens.textSecondary, icon: Icons.timer_off, label: 'Expired', description: 'Order has expired');
+      return _StatusConfig(color: DesignTokens.textSecondary, icon: Icons.timer_off, label: 'orders.status.expired'.tr(), description: 'orders.status.expired_desc'.tr());
     case OrderStatus.refunded:
-      return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'Refunded', description: 'Full refund issued');
+      return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'orders.status.refunded'.tr(), description: 'orders.status.refunded_desc'.tr());
     case OrderStatus.partiallyRefunded:
-      return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'Partial Refund', description: 'Partial refund issued');
+      return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'orders.status.partial_refund'.tr(), description: 'orders.status.partial_refund_desc'.tr());
     case OrderStatus.disputed:
-      return _StatusConfig(color: DesignTokens.error, icon: Icons.gavel, label: 'Disputed', description: 'Payment dispute opened');
+      return _StatusConfig(color: DesignTokens.error, icon: Icons.gavel, label: 'orders.status.disputed'.tr(), description: 'orders.status.disputed_desc'.tr());
   }
 }
 
 /// Get visual config for an item-level status string
 _StatusConfig _itemStatusConfig(String status) {
   if (status == OrderStatusValues.confirmed) {
-    return _StatusConfig(color: DesignTokens.info, icon: Icons.verified_outlined, label: 'Confirmed', description: 'Payment confirmed');
+    return _StatusConfig(color: DesignTokens.info, icon: Icons.verified_outlined, label: 'orders.status.confirmed'.tr(), description: 'orders.status.confirmed_desc'.tr());
   } else if (status == OrderStatusValues.processing) {
-    return _StatusConfig(color: DesignTokens.primary, icon: Icons.autorenew, label: 'Processing', description: 'Being prepared');
+    return _StatusConfig(color: DesignTokens.primary, icon: Icons.autorenew, label: 'orders.status.processing'.tr(), description: 'orders.status.processing_desc'.tr());
   } else if (status == OrderStatusValues.shipped) {
-    return const _StatusConfig(color: Color(0xFF06B6D4), icon: Icons.local_shipping, label: 'Shipped', description: 'Shipped');
+    return _StatusConfig(color: const Color(0xFF06B6D4), icon: Icons.local_shipping, label: 'orders.status.shipped'.tr(), description: 'orders.status.shipped_desc'.tr());
   } else if (status == OrderStatusValues.inTransit) {
-    return const _StatusConfig(color: Color(0xFF14B8A6), icon: Icons.flight_takeoff, label: 'In Transit', description: 'Almost there');
+    return _StatusConfig(color: const Color(0xFF14B8A6), icon: Icons.flight_takeoff, label: 'orders.status.in_transit'.tr(), description: 'orders.status.in_transit_desc'.tr());
   } else if (status == OrderStatusValues.delivered) {
-    return _StatusConfig(color: DesignTokens.success, icon: Icons.check_circle, label: 'Delivered', description: 'Received');
+    return _StatusConfig(color: DesignTokens.success, icon: Icons.check_circle, label: 'orders.status.delivered'.tr(), description: 'orders.status.delivered_desc'.tr());
   } else if (status == OrderStatusValues.refunded) {
-    return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'Refunded', description: 'Refund issued');
+    return _StatusConfig(color: DesignTokens.warning, icon: Icons.money_off, label: 'orders.status.refunded'.tr(), description: 'orders.status.refunded_desc'.tr());
   } else if (status == OrderStatusValues.cancelled) {
-    return _StatusConfig(color: DesignTokens.error, icon: Icons.cancel_outlined, label: 'Cancelled', description: 'Cancelled');
+    return _StatusConfig(color: DesignTokens.error, icon: Icons.cancel_outlined, label: 'orders.status.cancelled'.tr(), description: 'orders.status.cancelled_desc'.tr());
   } else if (status == OrderStatusValues.disputed) {
-    return _StatusConfig(color: DesignTokens.error, icon: Icons.gavel, label: 'Disputed', description: 'Payment dispute opened');
+    return _StatusConfig(color: DesignTokens.error, icon: Icons.gavel, label: 'orders.status.disputed'.tr(), description: 'orders.status.disputed_desc'.tr());
   } else {
     // 'pending' or unknown
-    return _StatusConfig(color: DesignTokens.secondary, icon: Icons.hourglass_empty, label: 'Pending', description: 'Awaiting preparation');
+    return _StatusConfig(color: DesignTokens.secondary, icon: Icons.hourglass_empty, label: 'orders.status.pending'.tr(), description: 'orders.status.pending_desc'.tr());
   }
 }
 
@@ -238,7 +238,7 @@ class OrdersScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Unable to load orders',
+              'orders.unable_to_load'.tr(),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -248,7 +248,7 @@ class OrdersScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             Text(message, textAlign: TextAlign.center, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14, height: 1.5)),
             const SizedBox(height: 28),
-            ModernButton(onPressed: () => ref.invalidate(buyerOrdersProvider), label: 'Retry', icon: Icons.refresh),
+            ModernButton(onPressed: () => ref.invalidate(buyerOrdersProvider), label: 'orders.retry'.tr(), icon: Icons.refresh),
           ],
         ),
       ),
@@ -366,7 +366,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Text(
-              '${order.items.length} item${order.items.length > 1 ? 's' : ''}',
+              'orders.items'.tr(namedArgs: {'count': order.items.length.toString()}),
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary, letterSpacing: 0.5),
             ),
           ),
@@ -454,7 +454,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                     ],
                   ).createShader(bounds),
                   child: Text(
-                    'Order #${order.orderId.length > 8 ? order.orderId.substring(0, 8).toUpperCase() : order.orderId.toUpperCase()}',
+                    'orders.order_id_prefix'.tr() + (order.orderId.length > 8 ? order.orderId.substring(0, 8).toUpperCase() : order.orderId.toUpperCase()),
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: Colors.white),
                   ),
                 ),
@@ -580,7 +580,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        _infoPill('Qty: ${item.quantity}', isDark),
+                        _infoPill('orders.qty_prefix'.tr(namedArgs: {'count': item.quantity.toString()}), isDark),
                         const SizedBox(width: 8),
                         _infoPill('\$${item.price.toStringAsFixed(2)}', isDark),
                       ],
@@ -659,20 +659,20 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                   if (!isConfirmed && !isOrderConfirmed)
                     _actionButton(
                       icon: isConfirmingThis ? null : Icons.check_circle_outline,
-                      label: isConfirmingThis ? 'Confirming...' : 'Confirm Receipt',
+                      label: isConfirmingThis ? 'orders.confirming'.tr() : 'orders.confirm_receipt'.tr(),
                       color: DesignTokens.success,
                       isLoading: isConfirmingThis,
                       onTap: isConfirmingThis ? null : () => _confirmReceipt(item),
                     ),
                   // Confirmed indicator
                   if (isConfirmed || isOrderConfirmed)
-                    _statusIndicator(Icons.verified, 'Confirmed', DesignTokens.success),
+                    _statusIndicator(Icons.verified, 'orders.confirmed_action'.tr(), DesignTokens.success),
                   const SizedBox(width: 10),
                   // Rate button
                   if (!isRated)
                     _actionButton(
                       icon: Icons.star_outline_rounded,
-                      label: 'Rate',
+                      label: 'orders.rate_action'.tr(),
                       color: DesignTokens.warning,
                       onTap: () => showRatingDialog(
                         context: context,
@@ -682,7 +682,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                       ),
                     ),
                   // Rated indicator
-                  if (isRated) _statusIndicator(Icons.star_rounded, 'Rated', DesignTokens.warning),
+                  if (isRated) _statusIndicator(Icons.star_rounded, 'orders.rated_action'.tr(), DesignTokens.warning),
                 ],
               ),
             ),
@@ -871,7 +871,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              isPendingApproval ? 'Shipping cost changed — your approval is needed' : 'Payment authorized — awaiting seller shipment',
+              isPendingApproval ? 'orders.approval_needed_banner'.tr() : 'orders.authorized_banner'.tr(),
               style: TextStyle(fontSize: 13, color: bannerColor, fontWeight: FontWeight.w600, height: 1.4),
             ),
           ),
@@ -899,7 +899,7 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
     if (success) {
       messenger.showSnackBar(SnackBar(content: Text('orders.receipt_confirmed'.tr()), backgroundColor: DesignTokens.success));
     } else {
-      final error = ref.read(buyerOrdersViewModelProvider).errorMessage ?? 'Failed to confirm receipt';
+      final error = ref.read(buyerOrdersViewModelProvider).errorMessage ?? 'orders.failed_confirm_receipt'.tr();
       messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
     }
 
@@ -981,11 +981,19 @@ class _OrderStatusTimeline extends StatelessWidget {
   const _OrderStatusTimeline({required this.currentStep});
 
   static const _steps = [
-    (icon: Icons.verified_outlined, label: 'Confirmed'),
-    (icon: Icons.autorenew, label: 'Processing'),
-    (icon: Icons.local_shipping, label: 'Shipped'),
-    (icon: Icons.flight_takeoff, label: 'Transit'),
-    (icon: Icons.check_circle, label: 'Delivered'),
+    (icon: Icons.verified_outlined),
+    (icon: Icons.autorenew),
+    (icon: Icons.local_shipping),
+    (icon: Icons.flight_takeoff),
+    (icon: Icons.check_circle),
+  ];
+  
+  static List<String> get _stepLabels => [
+    'orders.status.confirmed'.tr(),
+    'orders.status.processing'.tr(),
+    'orders.status.shipped'.tr(),
+    'orders.transit_step'.tr(),
+    'orders.status.delivered'.tr(),
   ];
 
   static const _stepColors = [
@@ -1054,7 +1062,7 @@ class _OrderStatusTimeline extends StatelessWidget {
         const SizedBox(height: 6),
         // Label
         Text(
-          step.label,
+          _stepLabels[stepIndex],
           style: TextStyle(
             fontSize: 9,
             fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
@@ -1187,13 +1195,13 @@ class _PendingApprovalsBanner extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '$count order${count > 1 ? 's' : ''} need${count == 1 ? 's' : ''} approval',
+                          'orders.orders_need_approval'.tr(namedArgs: {'count': count.toString()}),
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
                         ),
                         const SizedBox(height: 3),
-                        const Text(
-                          'Tap to review shipping cost changes',
-                          style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                        Text(
+                          'orders.review_shipping_cost'.tr(),
+                          style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),

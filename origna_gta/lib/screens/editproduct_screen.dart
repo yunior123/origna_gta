@@ -368,17 +368,17 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     final standardOpt = _findOption(
       p.deliveryOptions,
       'standard',
-      const SellerDeliveryOption(type: 'standard', description: 'Standard Delivery', cost: 0.0, estimatedDays: 5),
+      SellerDeliveryOption(type: 'standard', description: 'product.standard_delivery'.tr(), cost: 0.0, estimatedDays: 5),
     );
     final expressOpt = _findOption(
       p.deliveryOptions,
       'express',
-      const SellerDeliveryOption(type: 'express', description: 'Express Delivery', cost: 9.99, estimatedDays: 2),
+      SellerDeliveryOption(type: 'express', description: 'product.express_delivery'.tr(), cost: 9.99, estimatedDays: 2),
     );
     final sameDayOpt = _findOption(
       p.deliveryOptions,
       'same_day',
-      const SellerDeliveryOption(type: 'same_day', description: 'Same Day Delivery', cost: 14.99, estimatedDays: 0),
+      SellerDeliveryOption(type: 'same_day', description: 'product.same_day_delivery'.tr(), cost: 14.99, estimatedDays: 0),
     );
 
     _standardDaysController = TextEditingController(text: standardOpt.estimatedDays.toString());
@@ -563,9 +563,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     } else if (state.isLocalDeliveryOnly) {
       // Bug #2: Inject pickup option for local-only products
       deliveryOptions = [
-        const SellerDeliveryOption(
+        SellerDeliveryOption(
           type: 'pickup',
-          description: 'Local Pickup',
+          description: 'product.local_pickup_only'.tr(),
           estimatedDays: 0,
           cost: 0.0,
         ),
@@ -575,7 +575,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         if (state.standardEnabled)
           SellerDeliveryOption(
             type: 'standard',
-            description: 'Standard Delivery',
+            description: 'product.standard_delivery'.tr(),
             estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
             cost: double.tryParse(_standardPriceController.text) ?? 0.0,
             quantityDiscounts: existingQuantityDiscounts,
@@ -585,7 +585,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         if (state.expressEnabled)
           SellerDeliveryOption(
             type: 'express',
-            description: 'Express Delivery',
+            description: 'product.express_delivery'.tr(),
             estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
             cost: double.tryParse(_expressPriceController.text) ?? 9.99,
             quantityDiscounts: existingQuantityDiscounts,
@@ -595,7 +595,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         if (state.sameDayEnabled)
           SellerDeliveryOption(
             type: 'same_day',
-            description: 'Same Day Delivery',
+            description: 'product.same_day_delivery'.tr(),
             estimatedDays: 0,
             cost: double.tryParse(_sameDayPriceController.text) ?? 14.99,
           ),

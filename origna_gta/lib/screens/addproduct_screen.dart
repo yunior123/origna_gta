@@ -1491,9 +1491,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     // Bug #2: Local-only products need a pickup delivery option
     if (state.isLocalDeliveryOnly) {
       return [
-        const SellerDeliveryOption(
+        SellerDeliveryOption(
           type: 'pickup',
-          description: 'Local Pickup',
+          description: 'product.local_pickup_only'.tr(),
           estimatedDays: 0,
           cost: 0.0,
         ),
@@ -1508,7 +1508,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         minQuantity: 3,
         discountType: 'percent',
         discountValue: discount3,
-        label: '${discount3.toStringAsFixed(0)}% off shipping for 3+ items',
+        label: 'product.shipping_discount_label'.tr(namedArgs: {'percent': discount3.toStringAsFixed(0), 'qty': '3'}),
       ));
     }
 
@@ -1518,12 +1518,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         minQuantity: 5,
         discountType: 'percent',
         discountValue: discount5,
-        label: '${discount5.toStringAsFixed(0)}% off shipping for 5+ items',
+        label: 'product.shipping_discount_label'.tr(namedArgs: {'percent': discount5.toStringAsFixed(0), 'qty': '5'}),
       ));
     }
 
     if (state.freeShippingAt10Plus) {
-      quantityDiscounts.add(const ShippingQuantityDiscount(minQuantity: 10, discountType: 'flat_rate', discountValue: 0, label: 'Free shipping for 10+ items'));
+      quantityDiscounts.add(ShippingQuantityDiscount(minQuantity: 10, discountType: 'flat_rate', discountValue: 0, label: 'product.free_shipping_10_plus_label'.tr()));
     }
 
     final additionalItemCost = double.tryParse(_additionalItemCostController.text) ?? 0.0;
@@ -1533,7 +1533,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       if (state.standardEnabled)
         SellerDeliveryOption(
           type: 'standard',
-          description: 'Standard Delivery',
+          description: 'product.standard_delivery'.tr(),
           estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
           cost: double.tryParse(_standardPriceController.text) ?? 0.0,
           quantityDiscounts: quantityDiscounts,
@@ -1543,7 +1543,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       if (state.expressEnabled)
         SellerDeliveryOption(
           type: 'express',
-          description: 'Express Delivery',
+          description: 'product.express_delivery'.tr(),
           estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
           cost: double.tryParse(_expressPriceController.text) ?? 9.99,
           quantityDiscounts: quantityDiscounts,
@@ -1553,7 +1553,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       if (state.sameDayEnabled)
         SellerDeliveryOption(
           type: 'same_day',
-          description: 'Same Day Delivery',
+          description: 'product.same_day_delivery'.tr(),
           estimatedDays: 0,
           cost: double.tryParse(_sameDayPriceController.text) ?? 14.99,
           quantityDiscounts: quantityDiscounts,

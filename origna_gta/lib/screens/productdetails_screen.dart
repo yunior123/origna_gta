@@ -179,9 +179,9 @@ class ProductDetailScreen extends ConsumerWidget {
                             ),
                             child: Row(
                               children: [
-                                const Text(
-                                  'Price:',
-                                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                                Text(
+                                  '${'product.price'.tr()}:',
+                                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
@@ -196,7 +196,7 @@ class ProductDetailScreen extends ConsumerWidget {
                           _DeliveryInfoCard(product: product),
                           const SizedBox(height: 28),
                           Text(
-                            'Description',
+                            'product.description'.tr(),
                             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
                           ),
                           const SizedBox(height: 12),
@@ -319,14 +319,14 @@ class _AddToCartButton extends ConsumerWidget {
       return Column(
         children: [
           ModernButton(
-            label: 'This is your product',
+            label: 'product.own_product_title'.tr(),
             onPressed: null,
             fullWidth: true,
             icon: Icons.storefront,
           ),
           const SizedBox(height: 8),
           Text(
-            'You cannot purchase your own products',
+            'product.own_product_msg'.tr(),
             style: TextStyle(
               fontSize: 13,
               color: DesignTokens.textSecondary,
@@ -338,7 +338,7 @@ class _AddToCartButton extends ConsumerWidget {
     }
 
     return ModernButton(
-      label: 'Add to Cart',
+      label: 'product.add_to_cart'.tr(),
       onPressed: () async {
         final user = ref.read(currentUserProvider);
         if (user == null) {
@@ -362,7 +362,7 @@ class _AddToCartButton extends ConsumerWidget {
         if (context.mounted) {
           messenger.showSnackBar(
             SnackBar(
-              content: Text(success ? 'Added to cart successfully! 🎉' : 'Failed to add to cart'),
+              content: Text(success ? 'cart.added_success'.tr() : 'cart.added_failure'.tr()),
               backgroundColor: success ? DesignTokens.success : DesignTokens.error,
               behavior: SnackBarBehavior.floating,
               margin: const EdgeInsets.all(16),
@@ -405,14 +405,14 @@ class _DeliveryInfoCard extends StatelessWidget {
               Icon(product.isDigital ? Icons.download_rounded : Icons.local_shipping_outlined, color: DesignTokens.primary, size: 22),
               const SizedBox(width: 10),
               Text(
-                'Delivery Information',
+                'product.details.delivery_information'.tr(),
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary),
               ),
             ],
           ),
           const SizedBox(height: 14),
           // Estimated delivery time
-          _DeliveryInfoRow(icon: Icons.access_time_rounded, label: 'Estimated Delivery', value: deliveryInfo.estimateText, isDark: isDark),
+          _DeliveryInfoRow(icon: Icons.access_time_rounded, label: 'checkout.estimated_delivery'.tr(), value: deliveryInfo.estimateText, isDark: isDark),
 const SizedBox(height: 10),
             if (deliveryInfo.supplierRegion != null) ...[
               _DeliveryInfoRow(
@@ -427,8 +427,8 @@ const SizedBox(height: 10),
           const SizedBox(height: 10),
           _DeliveryInfoRow(
             icon: deliveryInfo.hasTracking ? Icons.track_changes_rounded : Icons.info_outline_rounded,
-            label: 'Tracking',
-            value: deliveryInfo.hasTracking ? 'Available' : 'Limited tracking',
+            label: 'product.tracking'.tr(),
+            value: deliveryInfo.hasTracking ? 'product.tracking_available'.tr() : 'product.tracking_limited'.tr(),
             isDark: isDark,
           ),
           if (product.freeShipping) ...[
@@ -442,7 +442,7 @@ const SizedBox(height: 10),
                   Icon(Icons.local_offer_rounded, size: 16, color: DesignTokens.success),
                   const SizedBox(width: 6),
                   Text(
-                    'Free Shipping',
+                    'product.free_shipping'.tr(),
                     style: TextStyle(color: DesignTokens.success, fontWeight: FontWeight.w600, fontSize: 13),
                   ),
                 ],
@@ -464,7 +464,7 @@ const SizedBox(height: 10),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'International shipping times may vary. Customs processing may add delays.',
+                      'product.details.international_disclaimer'.tr(),
                       style: TextStyle(fontSize: 12, color: DesignTokens.warning, height: 1.3),
                     ),
                   ),
@@ -572,7 +572,7 @@ class _QuantitySelector extends ConsumerWidget {
     return Row(
       children: [
         Text(
-          'Quantity:',
+          '${'product.quantity'.tr()}:',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary),
         ),
         const SizedBox(width: 20),

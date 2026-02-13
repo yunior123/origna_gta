@@ -36,7 +36,7 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
             children: [
               TextField(
                 decoration: InputDecoration(
-                  hintText: 'Search products...',
+                  hintText: 'admin.sellers.search_hint'.tr(),
                   hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 14),
                   prefixIcon: Icon(Icons.search_rounded, color: DesignTokens.primary),
                   filled: true,
@@ -54,10 +54,10 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildFilterChip('All Products', 'all'),
-                    _buildFilterChip('In Stock', 'in_stock'),
-                    _buildFilterChip('Out of Stock', 'out_of_stock'),
-                    _buildFilterChip('Low Stock (<5)', 'low_stock'),
+                    _buildFilterChip('admin.sellers.filter_all_products'.tr(), 'all'),
+                    _buildFilterChip('admin.sellers.filter_in_stock'.tr(), 'in_stock'),
+                    _buildFilterChip('admin.sellers.filter_out_of_stock'.tr(), 'out_of_stock'),
+                    _buildFilterChip('admin.sellers.filter_low_stock'.tr(), 'low_stock'),
                   ],
                 ),
               ),
@@ -71,10 +71,10 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
               .watch(adminProductsProvider(null))
               .when(
                 loading: () => const ModernLoadingIndicator.fullScreen(),
-                error: (error, stack) => const Center(child: Text('Error Fetching from Database')),
+                error: (error, stack) => Center(child: Text('admin.users.error_fetching'.tr())),
                 data: (productsRaw) {
                   if (productsRaw.isEmpty) {
-                    return const AnimatedEmptyState(icon: Icons.inventory_2_outlined, title: 'No products found');
+                    return AnimatedEmptyState(icon: Icons.inventory_2_outlined, title: 'admin.sellers.no_products'.tr());
                   }
 
                   final products = productsRaw.where((data) {
@@ -100,7 +100,7 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                   }).toList();
 
                   if (products.isEmpty) {
-                    return const Center(child: Text('No products match your filters'));
+                    return Center(child: Text('admin.sellers.no_match'.tr()));
                   }
 
                   return ListView.builder(
@@ -163,15 +163,15 @@ class _ProductCard extends ConsumerWidget {
     IconData stockIcon;
     if (stock == 0) {
       stockColor = DesignTokens.error;
-      stockText = 'Out of Stock';
+      stockText = 'product.out_of_stock'.tr();
       stockIcon = Icons.remove_circle_rounded;
     } else if (stock < 5) {
       stockColor = DesignTokens.warning;
-      stockText = 'Low Stock ($stock)';
+      stockText = 'admin.sellers.low_stock_count'.tr(namedArgs: {'count': stock.toString()});
       stockIcon = Icons.warning_rounded;
     } else {
       stockColor = DesignTokens.success;
-      stockText = 'In Stock ($stock)';
+      stockText = 'admin.sellers.in_stock_count'.tr(namedArgs: {'count': stock.toString()});
       stockIcon = Icons.check_circle_rounded;
     }
 
@@ -241,10 +241,10 @@ class _ProductCard extends ConsumerWidget {
               icon: Icon(Icons.more_vert_rounded, color: DesignTokens.textDisabled),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
               itemBuilder: (context) => [
-                _menuItem('set_stock', Icons.edit_rounded, 'Set Stock', DesignTokens.primary),
-                _menuItem('mark_out_of_stock', Icons.remove_circle_outline_rounded, 'Mark Out of Stock', DesignTokens.warning),
-                _menuItem('view_seller', Icons.person_rounded, 'View Seller', DesignTokens.info),
-                _menuItem('delete', Icons.delete_rounded, 'Delete Product', DesignTokens.error),
+                _menuItem('set_stock', Icons.edit_rounded, 'admin.sellers.set_stock'.tr(), DesignTokens.primary),
+                _menuItem('mark_out_of_stock', Icons.remove_circle_outline_rounded, 'admin.sellers.mark_out_of_stock'.tr(), DesignTokens.warning),
+                _menuItem('view_seller', Icons.person_rounded, 'admin.sellers.view_seller'.tr(), DesignTokens.info),
+                _menuItem('delete', Icons.delete_rounded, 'admin.sellers.delete_product'.tr(), DesignTokens.error),
               ],
             ),
           ],
@@ -277,12 +277,12 @@ class _ProductCard extends ConsumerWidget {
     if (success) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(quantity == 0 ? 'Product marked as out of stock' : 'Stock updated to $quantity'),
+          content: Text(quantity == 0 ? 'product.out_of_stock'.tr() : 'admin.sellers.stock_updated'.tr(namedArgs: {'quantity': quantity.toString()})),
           backgroundColor: quantity == 0 ? DesignTokens.warning : DesignTokens.success,
         ),
       );
     } else {
-      final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to update stock';
+      final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'admin.sellers.failed_stock_update'.tr();
       messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
     }
   }
@@ -296,27 +296,27 @@ class _ProductCard extends ConsumerWidget {
           children: [
             Icon(Icons.warning_amber_rounded, color: DesignTokens.error),
             const SizedBox(width: 10),
-            const Text('Delete Product'),
+            Text('admin.sellers.delete_product'.tr()),
           ],
         ),
-        content: Text('Are you sure you want to delete "${product.name}"? This cannot be undone.'),
+        content: Text('admin.sellers.delete_confirm'.tr(namedArgs: {'name': product.name})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
               final messenger = ScaffoldMessenger.of(context);
               final success = await ref.read(adminActionsViewModelProvider.notifier).deleteProduct(product.id);
               if (!context.mounted) return;
-              if (success) {
-                messenger.showSnackBar(SnackBar(content: const Text('Product deleted'), backgroundColor: DesignTokens.error));
-              } else {
-                final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to delete product';
-                messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
-              }
+                if (success) {
+                  messenger.showSnackBar(SnackBar(content: Text('admin.sellers.deleted_success'.tr()), backgroundColor: DesignTokens.error));
+                } else {
+                  final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'admin.sellers.failed_delete'.tr();
+                  messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+                }
             },
             style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
-            child: const Text('Delete'),
+            child: Text('common.delete'.tr()),
           ),
         ],
       ),
@@ -329,21 +329,21 @@ class _ProductCard extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Set Stock Quantity'),
+        title: Text('admin.sellers.set_stock_title'.tr()),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: 'Stock Quantity', border: OutlineInputBorder()),
+          decoration: InputDecoration(labelText: 'admin.sellers.stock_quantity_label'.tr(), border: const OutlineInputBorder()),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
           ElevatedButton(
             onPressed: () {
               final newStock = int.tryParse(controller.text) ?? 0;
               Navigator.pop(ctx);
               _setStock(context, ref, newStock);
             },
-            child: const Text('Update'),
+            child: Text('common.update'.tr()),
           ),
         ],
       ),
@@ -357,7 +357,7 @@ class _ProductCard extends ConsumerWidget {
     final sellerData = await ref.read(adminActionsViewModelProvider.notifier).fetchUserById(sellerId);
     if (!context.mounted) return;
     if (sellerData == null) {
-      messenger.showSnackBar(SnackBar(content: const Text('Seller not found'), backgroundColor: DesignTokens.error));
+      messenger.showSnackBar(SnackBar(content: Text('admin.sellers.seller_not_found'.tr()), backgroundColor: DesignTokens.error));
       return;
     }
 
@@ -377,21 +377,21 @@ class _ProductCard extends ConsumerWidget {
                 child: Icon(Icons.person_rounded, color: DesignTokens.primary, size: 20),
               ),
               const SizedBox(width: 10),
-              const Text('Seller Info'),
+              Text('admin.sellers.seller_info'.tr()),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _detailRow('Name', sellerData.name.isNotEmpty ? sellerData.name : 'Unknown'),
+              _detailRow('common.name'.tr(), sellerData.name.isNotEmpty ? sellerData.name : 'common.unknown'.tr()),
               const SizedBox(height: 8),
-              _detailRow('Email', sellerData.email.isNotEmpty ? sellerData.email : 'Unknown'),
+              _detailRow('common.email'.tr(), sellerData.email.isNotEmpty ? sellerData.email : 'common.unknown'.tr()),
               const SizedBox(height: 8),
-              _detailRow('Stripe', sellerData.onboardingCompleted ? 'Connected' : 'Pending'),
+              _detailRow('Stripe', sellerData.onboardingCompleted ? 'admin.sellers.stripe_connected'.tr() : 'admin.sellers.stripe_pending'.tr()),
             ],
           ),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.close'.tr()))],
         ),
       );
     }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:origna_gta/features/admin/admin_providers.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -25,7 +24,7 @@ class _AdminOrderCard extends StatelessWidget {
     final total = order.total;
     final paymentStatus = PaymentStatus.fromValue(order.paymentStatus);
     final createdAt = order.createdAt;
-    final customerEmail = order.customerEmail.isNotEmpty ? order.customerEmail : 'Unknown';
+    final customerEmail = order.customerEmail.isNotEmpty ? order.customerEmail : 'common.unknown'.tr();
     final items = order.items;
 
     Color statusColor;
@@ -61,7 +60,7 @@ class _AdminOrderCard extends StatelessWidget {
         title: Row(
           children: [
             Expanded(
-              child: Text('#${order.orderId.substring(0, 8).toUpperCase()}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              child: Text('orders.order_id_prefix'.tr(namedArgs: {'id': order.orderId.substring(0, 8).toUpperCase()}), style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
             Text(
               '\$${total.toStringAsFixed(2)}',
@@ -86,7 +85,7 @@ class _AdminOrderCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(DateFormat('MMM dd, yyyy').format(createdAt), style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
+                Text(_formatDate(createdAt), style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
               ],
             ),
           ],
@@ -97,7 +96,7 @@ class _AdminOrderCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Items:', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('orders.items_label'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 ...items.map(
                   (item) => Padding(
@@ -120,13 +119,13 @@ class _AdminOrderCard extends StatelessWidget {
                       TextButton.icon(
                         onPressed: () => _showRefundDialog(context),
                         icon: const Icon(Icons.undo, size: 18),
-                        label: const Text('Refund'),
+                        label: Text('orders.refund'.tr()),
                         style: TextButton.styleFrom(foregroundColor: DesignTokens.error),
                       ),
                     TextButton.icon(
                       onPressed: () => _viewOrderDetails(context),
                       icon: const Icon(Icons.open_in_new, size: 18),
-                      label: const Text('Full Details'),
+                      label: Text('orders.full_details'.tr()),
                     ),
                   ],
                 ),
@@ -182,23 +181,28 @@ class _AdminOrderCard extends StatelessWidget {
           children: [
             Icon(Icons.undo_rounded, color: DesignTokens.error),
             const SizedBox(width: 10),
-            const Text('Issue Refund'),
+            Text('orders.issue_refund'.tr()),
           ],
         ),
-        content: const Text('This will refund the order via Stripe. This action cannot be undone.'),
+        content: Text('orders.refund_warning'.tr()),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Refund functionality requires Stripe API integration'), backgroundColor: DesignTokens.warning));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('orders.refund_stripe_warning'.tr()), backgroundColor: DesignTokens.warning));
             },
             style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
-            child: const Text('Issue Refund'),
+            child: Text('orders.issue_refund'.tr()),
           ),
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
   void _viewOrderDetails(BuildContext context) {
@@ -225,13 +229,13 @@ class _AdminOrderCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              Text('Order #${order.orderId.substring(0, 8).toUpperCase()}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text('orders.order_id_prefix'.tr(namedArgs: {'id': order.orderId.substring(0, 8).toUpperCase()}), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              _buildDetailRow('Customer', order.customerEmail.isNotEmpty ? order.customerEmail : 'Unknown'),
-              _buildDetailRow('User ID', order.userId.isNotEmpty ? order.userId : 'Unknown'),
-              _buildDetailRow('Payment Status', PaymentStatus.fromValue(order.paymentStatus).displayText),
-              _buildDetailRow('Total', '\$${order.total.toStringAsFixed(2)}'),
-              if (order.shippingAddress.isNotEmpty) _buildDetailRow('Address', _formatDeliveryAddress(order.shippingAddress)),
+              _buildDetailRow('orders.customer'.tr(), order.customerEmail.isNotEmpty ? order.customerEmail : 'common.unknown'.tr()),
+              _buildDetailRow('orders.user_id'.tr(), order.userId.isNotEmpty ? order.userId : 'common.unknown'.tr()),
+              _buildDetailRow('orders.payment_status'.tr(), PaymentStatus.fromValue(order.paymentStatus).displayText),
+              _buildDetailRow('orders.order_total'.tr(), '\$${order.total.toStringAsFixed(2)}'),
+              if (order.shippingAddress.isNotEmpty) _buildDetailRow('orders.delivery_address'.tr(), _formatDeliveryAddress(order.shippingAddress)),
             ],
           ),
         ),
@@ -254,11 +258,11 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildFilterChip('All', 'all'),
-                _buildFilterChip('Authorized', PaymentStatus.authorized.value),
-                _buildFilterChip('Paid', PaymentStatus.paid.value),
-                _buildFilterChip('Refunded', PaymentStatus.refunded.value),
-                _buildFilterChip('Failed', PaymentStatus.paymentFailed.value),
+                _buildFilterChip('orders.filter_all'.tr(), 'all'),
+                _buildFilterChip(PaymentStatus.authorized.displayText, PaymentStatus.authorized.value),
+                _buildFilterChip(PaymentStatus.paid.displayText, PaymentStatus.paid.value),
+                _buildFilterChip(PaymentStatus.refunded.displayText, PaymentStatus.refunded.value),
+                _buildFilterChip(PaymentStatus.paymentFailed.displayText, PaymentStatus.paymentFailed.value),
               ],
             ),
           ),
@@ -270,13 +274,13 @@ class _AdminOrdersTabState extends ConsumerState<AdminOrdersTab> {
               .watch(adminOrdersProvider(_statusFilter))
               .when(
                 loading: () => const ModernLoadingIndicator.fullScreen(),
-                error: (error, _) => const Center(child: Text('Error Fetching from Database')),
+                error: (error, _) => Center(child: Text('admin.users.error_fetching'.tr())),
                 data: (orders) {
                   if (orders.isEmpty) {
                     return const AnimatedEmptyState(
                       icon: Icons.receipt_long_outlined,
-                      title: 'No orders found',
-                      subtitle: 'Orders matching your filter will appear here',
+                      title: 'orders.no_orders_found'.tr(),
+                      subtitle: 'orders.no_orders_match'.tr(),
                     );
                   }
 

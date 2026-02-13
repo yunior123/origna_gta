@@ -52,9 +52,9 @@ class _AddressSection extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ).createShader(bounds),
-              child: const Text(
-                'Delivery Address',
-                style: TextStyle(
+              child: Text(
+                'checkout.delivery_address_title'.tr(),
+                style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
                   color: Colors.white,
@@ -93,7 +93,7 @@ class _AddressSection extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'Edit',
+                        'checkout.edit_action'.tr(),
                         style: TextStyle(
                           color: DesignTokens.primary,
                           fontWeight: FontWeight.w600,
@@ -227,7 +227,7 @@ class _CheckoutButton extends ConsumerWidget {
         label: 'btn-place-order',
         child: ModernButton(
         key: const Key('checkout_place_order_button'),
-        label: isProcessing ? 'Processing...' : 'Place Order',
+        label: isProcessing ? 'common.processing'.tr() : 'checkout.place_order'.tr(),
         onPressed: isDisabled ? null : () => _startCheckout(context, ref),
         isLoading: isProcessing,
         icon: Icons.payment,
@@ -340,7 +340,7 @@ class _CheckoutContent extends ConsumerWidget {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'Digital delivery — no shipping or address required',
+                                'checkout.digital_delivery_no_address'.tr(),
                                 style: TextStyle(
                                   color: isDark
                                       ? DesignTokens.outline
@@ -435,7 +435,7 @@ class _CheckoutContent extends ConsumerWidget {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'Digital delivery — no shipping required',
+                              'checkout.digital_delivery_no_shipping'.tr(),
                               style: TextStyle(
                                 color: isDark
                                     ? DesignTokens.outline
@@ -567,9 +567,9 @@ class _DeliveryOptionsSection extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Delivery Speed',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              'checkout.delivery_speed_title'.tr(),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             IconButton(
               onPressed: () => _showDeliveryInfo(context),
@@ -718,7 +718,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                       Text(
                         totalCost > 0
                             ? '\$${totalCost.toStringAsFixed(2)}'
-                            : 'FREE',
+                            : 'checkout.free'.tr(),
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
@@ -808,8 +808,8 @@ class _DeliveryOptionsSection extends ConsumerWidget {
                     const SizedBox(height: 6),
                     Text(
                       surcharge > 0
-                          ? 'Additional cost: +\$${surcharge.toStringAsFixed(2)}'
-                          : 'No additional cost',
+                          ? 'checkout.additional_cost'.tr(namedArgs: {'amount': surcharge.toStringAsFixed(2)})
+                          : 'checkout.no_additional_cost'.tr(),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -850,13 +850,13 @@ class _NoAddressView extends StatelessWidget {
           children: [
             Icon(Icons.location_off, size: 80, color: DesignTokens.textDisabled),
             const SizedBox(height: 24),
-            const Text(
-              'No Delivery Address',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              'checkout.no_address_title'.tr(),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Text(
-              'Please add a delivery address to continue with checkout',
+              'checkout.no_address_desc'.tr(),
               textAlign: TextAlign.center,
               style: TextStyle(color: DesignTokens.textSecondary),
             ),
@@ -916,9 +916,9 @@ class _OrderSummary extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Order Summary',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        Text(
+          'checkout.order_summary_title'.tr(),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         Container(
@@ -1023,8 +1023,8 @@ class _OrderSummary extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Taxes and total will be confirmed at payment.',
+              Text(
+                'checkout.tax_confirm_notice'.tr(),
                 style: TextStyle(
                   fontSize: 12,
                   color: DesignTokens.textSecondary,
@@ -1049,7 +1049,10 @@ class _OrderSummary extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '$taxName (Est. ${(rate * 100).toStringAsFixed(2)}%)',
+              'checkout.tax_estimate_label'.tr(namedArgs: {
+                'name': taxName,
+                'rate': (rate * 100).toStringAsFixed(2),
+              }),
               style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary),
             ),
             Text(
@@ -1081,9 +1084,9 @@ class _PaymentProviderSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Payment Method',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        Text(
+          'checkout.payment_method_title'.tr(),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         Row(
@@ -1097,7 +1100,7 @@ class _PaymentProviderSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Secure checkout powered by Stripe.',
+          'checkout.stripe_secure_notice'.tr(),
           style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12),
         ),
       ],
@@ -1202,7 +1205,7 @@ class _TermsText extends ConsumerWidget {
                     height: 1.4,
                   ),
                   children: [
-                    const TextSpan(text: 'I agree to the '),
+                    TextSpan(text: 'checkout.terms_agree'.tr()),
                     WidgetSpan(
                       child: Semantics(
                         link: true,
@@ -1210,7 +1213,7 @@ class _TermsText extends ConsumerWidget {
                         child: GestureDetector(
                         onTap: () => openTermsOfService(context),
                         child: Text(
-                          'Terms & Conditions',
+                          'checkout.terms_link'.tr(),
                           style: TextStyle(
                             fontSize: 13,
                             color: DesignTokens.primary,
@@ -1222,7 +1225,7 @@ class _TermsText extends ConsumerWidget {
                       ),
                       ),
                     ),
-                    const TextSpan(text: ' and '),
+                    TextSpan(text: ' ${'checkout.and_label'.tr()} '),
                     WidgetSpan(
                       child: Semantics(
                         link: true,
@@ -1230,7 +1233,7 @@ class _TermsText extends ConsumerWidget {
                         child: GestureDetector(
                         onTap: () => openPrivacyPolicy(context),
                         child: Text(
-                          'Privacy Policy',
+                          'checkout.privacy_link'.tr(),
                           style: TextStyle(
                             fontSize: 13,
                             color: DesignTokens.primary,

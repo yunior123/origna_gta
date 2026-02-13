@@ -25,13 +25,13 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
   late TabController _tabController;
   int _selectedIndex = 0;
 
-  static const _tabs = [
-    _AdminTab(icon: Icons.store_rounded, label: 'Sellers'),
-    _AdminTab(icon: Icons.people_rounded, label: 'Users'),
-    _AdminTab(icon: Icons.receipt_long_rounded, label: 'Orders'),
-    _AdminTab(icon: Icons.inventory_2_rounded, label: 'Products'),
-    _AdminTab(icon: Icons.payment_rounded, label: 'Payments'),
-    _AdminTab(icon: Icons.security_rounded, label: 'Security'),
+  static List<_AdminTab> get _tabs => [
+    _AdminTab(icon: Icons.store_rounded, label: 'admin.sellers_tab'.tr()),
+    _AdminTab(icon: Icons.people_rounded, label: 'admin.users_tab'.tr()),
+    _AdminTab(icon: Icons.receipt_long_rounded, label: 'admin.orders_tab'.tr()),
+    _AdminTab(icon: Icons.inventory_2_rounded, label: 'admin.products_tab'.tr()),
+    _AdminTab(icon: Icons.payment_rounded, label: 'admin.payments_tab'.tr()),
+    _AdminTab(icon: Icons.security_rounded, label: 'admin.security_tab'.tr()),
   ];
 
   @override
@@ -52,7 +52,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                 child: ModernLoadingIndicator(size: 48, strokeWidth: 3, color: DesignTokens.primary, centered: false),
               ),
               const SizedBox(height: 16),
-              Text('Loading admin panel...', style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
+              Text('admin.loading_panel'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 14)),
             ],
           ),
         ),
@@ -64,7 +64,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
             children: [
               Icon(Icons.error_outline_rounded, size: 56, color: DesignTokens.error),
               const SizedBox(height: 16),
-              Text('Error: $e', style: const TextStyle(fontSize: 16)),
+              Text('${'common.error'.tr()}: $e', style: const TextStyle(fontSize: 16)),
             ],
           ),
         ),
@@ -85,14 +85,14 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                     child: Icon(Icons.admin_panel_settings_rounded, size: 56, color: DesignTokens.error),
                   ),
                   const SizedBox(height: 24),
-                  const Text('Access Denied', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('admin.access_denied'.tr(), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('Admin privileges required to view this page', style: TextStyle(color: DesignTokens.textSecondary)),
+                  Text('admin.privileges_required'.tr(), style: TextStyle(color: DesignTokens.textSecondary)),
                   const SizedBox(height: 24),
                   FilledButton.icon(
                     onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
                     icon: const Icon(Icons.home_rounded),
-                    label: const Text('Go Home'),
+                    label: Text('admin.go_home'.tr()),
                   ),
                 ],
               ),
@@ -135,7 +135,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
           children: [
             Icon(Icons.admin_panel_settings_rounded, size: 22),
             SizedBox(width: 10),
-            Text('Admin Panel', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+            Text('admin.title'.tr(), style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
           ],
         ),
         backgroundColor: Colors.transparent,
@@ -211,8 +211,8 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Admin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
-                              Text('Panel', style: TextStyle(color: Colors.white60, fontSize: 12)),
+                              Text('admin.sellers_tab'.tr(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
+                              Text('admin.title'.tr(), style: TextStyle(color: Colors.white60, fontSize: 12)),
                             ],
                           ),
                         ),
@@ -326,11 +326,11 @@ class _AdminQuickStats extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Quick Stats', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+          Text('admin.quick_stats'.tr(), style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
           const SizedBox(height: 10),
-          _statRow(Icons.store_rounded, 'Sellers', sellers.whenOrNull(data: (s) => s.length.toString()) ?? '...'),
+          _statRow(Icons.store_rounded, 'admin.sellers_tab'.tr(), sellers.whenOrNull(data: (s) => s.length.toString()) ?? '...'),
           const SizedBox(height: 6),
-          _statRow(Icons.people_rounded, 'Users', users.whenOrNull(data: (u) => u.length.toString()) ?? '...'),
+          _statRow(Icons.people_rounded, 'admin.users_tab'.tr(), users.whenOrNull(data: (u) => u.length.toString()) ?? '...'),
         ],
       ),
     );

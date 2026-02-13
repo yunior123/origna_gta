@@ -46,7 +46,7 @@ class AuthRequiredGate extends ConsumerWidget {
           ),
         ),
       ),
-      error: (error, _) => ErrorScreen(message: 'Authentication error: $error'),
+      error: (error, _) => ErrorScreen(message: 'errors.auth_error'.tr(namedArgs: {'error': error.toString()})),
       data: (user) {
         if (user == null) {
           return Container(
@@ -89,7 +89,7 @@ class AuthRequiredGate extends ConsumerWidget {
                         FadeSlideIn(
                           delay: const Duration(milliseconds: 50),
                           child: Text(
-                            'Please sign in to continue',
+                            'auth.please_sign_in'.tr(),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
@@ -101,7 +101,7 @@ class AuthRequiredGate extends ConsumerWidget {
                         FadeSlideIn(
                           delay: const Duration(milliseconds: 100),
                           child: Text(
-                            'You need an account to access this page.',
+                            'auth.need_account_access'.tr(),
                             style: TextStyle(
                               fontSize: 14,
                               color: DesignTokens.textSecondary,
@@ -321,7 +321,7 @@ class ErrorScreen extends StatelessWidget {
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 50),
                     child: Text(
-                      'Something went wrong',
+                      'errors.generic_error'.tr(),
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -420,7 +420,7 @@ class _EmailVerificationRequiredScreenState
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 50),
                     child: Text(
-                      'Verify Your Email',
+                      'email_verification.title'.tr(),
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
@@ -470,7 +470,7 @@ class _EmailVerificationRequiredScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'To protect your account and enable all features, please verify your email address:',
+                            'email_verification.instruction_title'.tr(),
                             style: TextStyle(
                               fontSize: 14,
                               color: DesignTokens.textSecondary,
@@ -481,17 +481,17 @@ class _EmailVerificationRequiredScreenState
                           _buildStep(
                             context,
                             '1',
-                            'Check your email inbox (and spam folder)',
+                            'email_verification.step1'.tr(),
                           ),
                           _buildStep(
                             context,
                             '2',
-                            'Click the verification link in the email',
+                            'email_verification.step2'.tr(),
                           ),
                           _buildStep(
                             context,
                             '3',
-                            'Return here and tap "I\'ve Verified" below',
+                            'email_verification.step3'.tr(),
                           ),
                         ],
                       ),
@@ -502,8 +502,8 @@ class _EmailVerificationRequiredScreenState
                     delay: const Duration(milliseconds: 150),
                     child: ModernButton(
                       label: _isChecking
-                          ? 'Checking...'
-                          : "I've Verified My Email",
+                          ? 'email_verification.checking'.tr()
+                          : 'email_verification.verify_button'.tr(),
                       icon: Icons.check_circle_outline,
                       isLoading: _isChecking,
                       onPressed: _isChecking ? () {} : _checkVerification,
@@ -514,8 +514,8 @@ class _EmailVerificationRequiredScreenState
                     delay: const Duration(milliseconds: 175),
                     child: ModernButton(
                       label: _isResending
-                          ? 'Sending...'
-                          : 'Resend Verification Email',
+                          ? 'email_verification.sending'.tr()
+                          : 'email_verification.resend_button'.tr(),
                       icon: Icons.send_outlined,
                       isPrimary: false,
                       isLoading: _isResending,
@@ -540,7 +540,7 @@ class _EmailVerificationRequiredScreenState
                         color: DesignTokens.textSecondary,
                       ),
                       label: Text(
-                        'Sign in with a different account',
+                        'email_verification.different_account'.tr(),
                         style: TextStyle(
                           color: DesignTokens.textSecondary,
                           fontWeight: FontWeight.w500,
@@ -623,8 +623,8 @@ class _EmailVerificationRequiredScreenState
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text(
-                  'Email not verified yet. Please check your inbox and click the verification link.',
+                content: Text(
+                  'email_verification.not_verified_error'.tr(),
                 ),
                 backgroundColor: DesignTokens.warning,
                 behavior: SnackBarBehavior.floating,
@@ -667,8 +667,8 @@ class _EmailVerificationRequiredScreenState
           SnackBar(
             content: Text(
               e.toString().contains('too-many-requests')
-                  ? 'Please wait before requesting another email.'
-                  : 'Failed to send email. Please try again later.',
+                  ? 'email_verification.too_many_requests'.tr()
+                  : 'email_verification.send_failed'.tr(),
             ),
             backgroundColor: DesignTokens.error,
             behavior: SnackBarBehavior.floating,
