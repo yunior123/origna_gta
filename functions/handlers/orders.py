@@ -781,8 +781,7 @@ def refund_order_item(req: https_fn.CallableRequest) -> dict[str, Any]:
     payout_status = order_data.get(Fields.PAYOUT_STATUS)
     if payout_status == PayoutStatusValues.PROCESSING:
         raise https_fn.HttpsError(
-            "unavailable",
-            "Payout calculation is currently in progress. Please try again in 5 minutes."
+            "unavailable", "Payout calculation is currently in progress. Please try again in 5 minutes."
         )
 
     # Find the item
@@ -1087,7 +1086,7 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
             if expected_cost_cents is not None and actual_new_cost_cents != expected_cost_cents:
                 raise https_fn.HttpsError(
                     "failed-precondition",
-                    f"Shipping cost has changed (was ${expected_cost_cents/100:.2f}, now ${actual_new_cost_cents/100:.2f}). Please review the new cost."
+                    f"Shipping cost has changed (was ${expected_cost_cents / 100:.2f}, now ${actual_new_cost_cents / 100:.2f}). Please review the new cost.",
                 )
 
             new_shipping_cost_cents = round(fresh_approval.get(Fields.ACTUAL_COST, 0) * 100)

@@ -12,7 +12,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 # Add functions directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from schema_constants import DeliveryTypeValues, Fields, ShippingTiers
 from services import shipping_service
@@ -24,13 +24,13 @@ class TestDeliveryTypes(unittest.TestCase):
             Fields.LATITUDE: 43.6532,
             Fields.LONGITUDE: -79.3832,
             Fields.STATE: "ON",
-            Fields.CITY: "Toronto"
+            Fields.CITY: "Toronto",
         }
         self.buyer_address = {
             Fields.LATITUDE: 43.6532,
             Fields.LONGITUDE: -79.3832,
             Fields.STATE: "ON",
-            Fields.CITY: "Toronto"
+            Fields.CITY: "Toronto",
         }
         self.items = [
             {
@@ -39,26 +39,22 @@ class TestDeliveryTypes(unittest.TestCase):
                 Fields.QUANTITY: 1,
                 Fields.PRICE: 20.00,
                 Fields.WEIGHT_KG: 1.0,
-                Fields.DELIVERY_OPTIONS: []
+                Fields.DELIVERY_OPTIONS: [],
             }
         ]
 
-    @patch('services.shipping_service.GEOAPIFY_API_KEY', 'mock_key')
-    @patch('services.shipping_service.requests.post')
+    @patch("services.shipping_service.GEOAPIFY_API_KEY", "mock_key")
+    @patch("services.shipping_service.requests.post")
     def test_express_delivery_pricing(self, mock_post):
         """Test Express Delivery pricing for regional distance."""
         # Mock 100km distance
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "sources_to_targets": [[{"distance": 100000}]]
-        }
+        mock_response.json.return_value = {"sources_to_targets": [[{"distance": 100000}]]}
         mock_post.return_value = mock_response
 
         cost = shipping_service.calculate_shipping_cost(
-            self.items,
-            self.buyer_address,
-            speed=DeliveryTypeValues.EXPRESS
+            self.items, self.buyer_address, speed=DeliveryTypeValues.EXPRESS
         )
 
         # Base cost checks:
@@ -68,8 +64,8 @@ class TestDeliveryTypes(unittest.TestCase):
         print(f"\n[Express Regional] Cost: {cost}")
         self.assertAlmostEqual(cost, 9.99 * 1.5, delta=0.01)
 
-    @patch('services.shipping_service.GEOAPIFY_API_KEY', 'mock_key')
-    @patch('services.shipping_service.requests.post')
+    @patch("services.shipping_service.GEOAPIFY_API_KEY", "mock_key")
+    @patch("services.shipping_service.requests.post")
     def test_express_delivery_fallback(self, mock_post):
         """Test Express Delivery fallback when API fails."""
         mock_response = MagicMock()
@@ -77,9 +73,7 @@ class TestDeliveryTypes(unittest.TestCase):
         mock_post.return_value = mock_response
 
         cost = shipping_service.calculate_shipping_cost(
-            self.items,
-            self.buyer_address,
-            speed=DeliveryTypeValues.EXPRESS
+            self.items, self.buyer_address, speed=DeliveryTypeValues.EXPRESS
         )
 
         # New behavior: Falls back to standard * 1.5 (Regional Multiplier)
@@ -95,13 +89,12 @@ class TestDeliveryTypes(unittest.TestCase):
         # So Standard skips Geoapify and uses fallback logic directly.
 
         cost = shipping_service.calculate_shipping_cost(
-            self.items,
-            self.buyer_address,
-            speed=DeliveryTypeValues.STANDARD
+            self.items, self.buyer_address, speed=DeliveryTypeValues.STANDARD
         )
 
         print(f"\n[Standard Delivery] Cost: {cost}")
         self.assertEqual(cost, ShippingTiers.FALLBACK_SAME_PROVINCE)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

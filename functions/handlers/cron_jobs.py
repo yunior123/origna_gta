@@ -301,7 +301,7 @@ def _run_auto_capture() -> None:
                     if not stripe_account_id:
                         stripe_account_id = seller_data.get(Fields.STRIPE_ACCOUNT_ID)
                         if stripe_account_id:
-                           logger.warning(f"⚠️ Using current Stripe account for seller {seller_id} (snapshot missing)")
+                            logger.warning(f"⚠️ Using current Stripe account for seller {seller_id} (snapshot missing)")
 
                     # SECURITY FIX: Check chargesEnabled (not payoutsEnabled) for consistency
                     # with capture_payment. Also check seller is not suspended.

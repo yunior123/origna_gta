@@ -647,8 +647,8 @@ class TestOrderHandlers:
                 "actualCost": 11.50,  # New: $11.50 shipping (within 20% threshold of $10)
             },
             "shippingCostCents": 1000,  # Old: $10 shipping
-            "totalAmountCents": 5000,   # $50 total
-            "taxAmountCents": 650,      # $6.50 tax
+            "totalAmountCents": 5000,  # $50 total
+            "taxAmountCents": 650,  # $6.50 tax
             "taxes": {"HST": 6.50},
             "shippingAddress": {"state": "ON"},  # Ontario — 13% HST
             "stripePaymentIntentId": "pi_test_789",
@@ -668,8 +668,10 @@ class TestOrderHandlers:
 
         with patch("services.rate_limiter.RateLimiter") as mock_rl_class:
             mock_rl_class.return_value.check_rate_limit.return_value = (True, "")
-            with patch("firebase_admin.firestore.transactional", lambda fn: fn), \
-                 patch("services.shipping_service.get_tax_rate", return_value=0.13):
+            with (
+                patch("firebase_admin.firestore.transactional", lambda fn: fn),
+                patch("services.shipping_service.get_tax_rate", return_value=0.13),
+            ):
                 approve_shipping_cost(mock_request)
 
         # Verify the transactional function was called (via mock_txn)
@@ -731,9 +733,11 @@ class TestOrderHandlers:
 
         with patch("services.rate_limiter.RateLimiter") as mock_rl_class:
             mock_rl_class.return_value.check_rate_limit.return_value = (True, "")
-            with patch("firebase_admin.firestore.transactional", lambda fn: fn), \
-                 patch("services.shipping_service.get_tax_rate", return_value=0.13), \
-                 pytest.raises(https_fn.HttpsError) as exc:
+            with (
+                patch("firebase_admin.firestore.transactional", lambda fn: fn),
+                patch("services.shipping_service.get_tax_rate", return_value=0.13),
+                pytest.raises(https_fn.HttpsError) as exc,
+            ):
                 approve_shipping_cost(mock_request)
 
         assert exc.value.code == "internal"

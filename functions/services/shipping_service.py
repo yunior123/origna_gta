@@ -506,7 +506,7 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
 
                     # SECURITY FIX: Enforce max distance for Same Day Delivery
                     if speed == DeliveryTypeValues.SAME_DAY and distance_km > 50:
-                         raise ValueError(
+                        raise ValueError(
                             f"Same Day delivery not available: Distance {distance_km:.1f}km exceeds 50km limit."
                         )
 

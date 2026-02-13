@@ -1354,9 +1354,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
 
     if mismatches:
         logger.warning(f"⚠️ Address mismatch for order {order_id}: {mismatches}. Cancelling.")
-        _restore_stock_and_cancel_order(
-            order_id, order_data, f"Shipping address mismatch: {', '.join(mismatches)}"
-        )
+        _restore_stock_and_cancel_order(order_id, order_data, f"Shipping address mismatch: {', '.join(mismatches)}")
         return f"Order {order_id} cancelled - address mismatch"
 
     # SECURITY FIX: Re-validate products before confirming order
