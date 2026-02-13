@@ -287,7 +287,9 @@ class _SellerCard extends ConsumerWidget {
     );
   }
 
+  String _formatDate(DateTime date) {
     return DateFormat('MMM dd, yyyy').format(date);
+  }
 
   Widget _infoChip({required IconData icon, required String label, required Color color}) {
     return Container(

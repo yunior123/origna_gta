@@ -1,6 +1,8 @@
 // Application-wide constants for OrignaGTA
 // Eliminates magic strings and provides type-safe status handling
 
+import 'package:easy_localization/easy_localization.dart';
+export 'package:easy_localization/easy_localization.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
 // Re-export schema constants so existing imports keep working

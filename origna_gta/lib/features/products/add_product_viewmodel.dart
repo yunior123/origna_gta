@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';

@@ -294,7 +294,7 @@ class _UserCard extends ConsumerWidget {
     if (!context.mounted) return;
     if (success) {
       switch (action) {
-      switch (action) {
+
         case 'make_seller':
           messenger.showSnackBar(SnackBar(content: Text('admin.users.user_is_seller'.tr()), backgroundColor: DesignTokens.success));
           break;
