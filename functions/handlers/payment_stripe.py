@@ -538,11 +538,19 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError("invalid-argument", f"Address field {field} exceeds maximum length")
 
     # Validate postal code format
-    from main import validate_postal_code
+    from utils.helpers import validate_postal_code
 
     postal_code = shipping_address.get(Fields.POSTAL_CODE, "")
-    if not validate_postal_code(postal_code, shipping_address.get(Fields.COUNTRY, AppConfig.DEFAULT_COUNTRY_NAME)):
-        raise https_fn.HttpsError("invalid-argument", f"Invalid postal code format: {postal_code}")
+    country = shipping_address.get(Fields.COUNTRY, AppConfig.DEFAULT_COUNTRY_NAME)
+    
+    # Current logic only supports Canada
+    if country.lower() != "canada":
+         raise https_fn.HttpsError("invalid-argument", f"Shipping to {country} is not currently supported")
+
+    try:
+        validate_postal_code(postal_code)
+    except ValueError:
+        raise https_fn.HttpsError("invalid-argument", f"Invalid Canadian postal code format: {postal_code}")
 
     # Validate subtotal is positive number
     if not isinstance(client_subtotal, (int, float)) or client_subtotal <= 0:

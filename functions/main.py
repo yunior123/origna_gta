@@ -160,23 +160,7 @@ if os.environ.get("TESTING") != "true":
         _init_stripe()
 
 
-# ===============================================
-# VALIDATION HELPERS
-# ===============================================
-def validate_postal_code(postal_code, country="Canada"):
-    """
-    Validate postal code format.
 
-    Canadian postal code format: A1A 1A1 (letter-digit-letter space digit-letter-digit)
-    """
-    import re
-
-    if country.lower() != "canada":
-        return False
-
-    # Canadian postal code pattern: A1A 1A1
-    pattern = r"^[A-Z]\d[A-Z]\s?\d[A-Z]\d$"
-    return bool(re.match(pattern, postal_code.upper()))
 
 
 # Export all functions for Firebase deployment

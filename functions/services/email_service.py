@@ -131,7 +131,40 @@ def get_order_confirmation_email(order_data, order_id=None):
     # CPA Ontario: estimated delivery date (7 business days from now as default)
     from datetime import timedelta
 
-    estimated_delivery = (datetime.now() + timedelta(days=10)).strftime("%B %d, %Y")
+    # Calculate estimated delivery date based on items and shipping speed
+    # We take the maximum days from all items to be safe
+    max_delivery_days = 0
+    delivery_speed = order_data.get(Fields.DELIVERY_SPEED, DeliveryTypeValues.STANDARD)
+    
+    for item in items:
+        # Get item details for estimation
+        supplier_info = item.get(Fields.SUPPLIER)
+        estimated_ship_days = item.get(Fields.ESTIMATED_SHIP_DAYS, ShippingTiers.DEFAULT_SELLER_SHIP_DAYS)
+        
+        # Determine if international (naive check based on supplier or extended ship days)
+        # Ideally we would check seller address country, but that might not be in item data.
+        # Dropshipped items are definitely international if they have supplier info.
+        is_international = bool(supplier_info) or estimated_ship_days > 10
+        
+        estimate = shipping_service.estimate_delivery_date_range(
+            supplier_info=supplier_info,
+            seller_estimated_days=estimated_ship_days,
+            is_international=is_international,
+            speed=delivery_speed
+        )
+        
+        if estimate.get("max_days", 0) > max_delivery_days:
+            max_delivery_days = estimate.get("max_days", 0)
+
+    # Calculate date
+    # If Same Day (max_days=0), it's today. Otherwise add business days.
+    # For simplicity in email static text, we just add calendar days + buffer
+    # or use the max_days directly.
+    estimated_delivery_date = datetime.now() + timedelta(days=max(1, max_delivery_days))
+    if delivery_speed == DeliveryTypeValues.SAME_DAY:
+        estimated_delivery_date = datetime.now()
+        
+    estimated_delivery = estimated_delivery_date.strftime("%B %d, %Y")
 
     return f"""
     <!DOCTYPE html>

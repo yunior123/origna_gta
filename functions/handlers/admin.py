@@ -541,7 +541,18 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Reactivate seller's products that were suspended (not manually deleted)
     # Paginate in batches of 500 (Firestore batch write limit)
     product_count = 0
+    max_iterations = 20  # Safety limit to prevent infinite loops (max 10k products)
+    iteration_count = 0
+
     while True:
+        iteration_count += 1
+        if iteration_count > max_iterations:
+            logger.warning(
+                f"⚠️ unsuspend_seller hit max iterations ({max_iterations}) for seller {seller_id}, "
+                "stopping to prevent infinite loop."
+            )
+            break
+
         products = list(
             get_db()
             .collection(Collections.PRODUCTS)
@@ -576,6 +587,13 @@ def unsuspend_seller(req: https_fn.CallableRequest) -> dict[str, Any]:
             batch.commit()
         else:
             # No eligible products in this batch — all were deleted, not suspended
+            # If we fetched products but didn't reactivate any, we might get the same 500 again
+            # if we don't have a way to filter them out in the query.
+            # Currently query is: where(IS_ACTIVE == False).
+            # If they are DELETED_AT set, they are still IS_ACTIVE=False.
+            # So if we don't update them, we will find them again.
+            # We MUST break here to avoid infinite loop if we didn't process any.
+            logger.info("No reactivatable products found in batch, stopping loop.")
             break
 
     # Log security alert

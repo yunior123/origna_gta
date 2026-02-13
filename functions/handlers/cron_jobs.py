@@ -274,12 +274,17 @@ def _run_auto_capture() -> None:
                     sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
 
             # AUDIT FIX (CRITICAL-001): Use stored fee rate from checkout, not current config
+            # Fee is calculated on subtotal, so we must divide by subtotal to get the rate
             stored_fee_total = order_data.get(Fields.PLATFORM_FEE_CENTS)
+            order_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 1)
+            
             stored_fee_rate = (
-                (stored_fee_total / order_data.get(Fields.TOTAL_AMOUNT_CENTS, 1))
-                if stored_fee_total
+                (stored_fee_total / order_subtotal)
+                if stored_fee_total and order_subtotal > 0
                 else PLATFORM_FEE_PERCENT
             )
+
+            current_order_success_count = 0  # Track successful transfers for this order
 
             for seller_id, amount_cents in sellers_total_cents.items():
                 platform_fee_cents = round(amount_cents * stored_fee_rate)
@@ -379,6 +384,8 @@ def _run_auto_capture() -> None:
                                 }
                             )
 
+                            current_order_success_count += 1
+
                         except stripe.error.StripeError as e:
                             logger.error(f"Payout failed for seller {seller_id}: {str(e)}")
 
@@ -409,16 +416,19 @@ def _run_auto_capture() -> None:
                                     }
                                 )
 
-            payout_count += 1
-            logger.info(f"Auto-payout completed for order {order_id}")
+            if current_order_success_count > 0:
+                payout_count += 1
+                logger.info(f"Auto-payout completed for order {order_id} ({current_order_success_count} transfers)")
 
-            # Mark order payout as completed so it's not reprocessed next cron run
-            order_doc.reference.update(
-                {
-                    Fields.PAYOUT_STATUS: PayoutStatusValues.COMPLETED,
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                }
-            )
+                # Mark order payout as completed so it's not reprocessed next cron run
+                order_doc.reference.update(
+                    {
+                        Fields.PAYOUT_STATUS: PayoutStatusValues.COMPLETED,
+                        Fields.UPDATED_AT: get_server_timestamp(),
+                    }
+                )
+            else:
+                logger.warning(f"No successful payouts for order {order_id}, leaving as PROCESSING")
 
         except stripe.error.StripeError as e:
             failed_count += 1

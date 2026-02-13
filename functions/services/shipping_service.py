@@ -157,6 +157,7 @@ def estimate_delivery_date_range(
     supplier_info: dict | None = None,
     seller_estimated_days: int = ShippingTiers.DEFAULT_SELLER_SHIP_DAYS,
     is_international: bool = False,
+    speed: str = DeliveryTypeValues.STANDARD,
 ) -> dict:
     """
     Calculate estimated delivery date range for buyer display.
@@ -165,6 +166,7 @@ def estimate_delivery_date_range(
         supplier_info: Product's supplier object (if dropshipping)
         seller_estimated_days: Seller's stated shipping days
         is_international: Whether seller ships from outside Canada
+        speed: Delivery speed (standard, express, same_day)
 
     Returns:
         Dict with 'min_days', 'max_days', 'display_text'
@@ -174,20 +176,26 @@ def estimate_delivery_date_range(
         supplier_type = supplier_info.get(Fields.TYPE, "other")
         shipping_days = supplier_info.get(Fields.SHIPPING_DAYS, "")
 
-        if shipping_days and "-" in shipping_days:
+        # Use helper to get estimates based on speed (standard/express)
+        # Note: Dropshipping generally doesn't support 'same_day'
+        estimate_speed = speed if speed in [DeliveryTypeValues.STANDARD, DeliveryTypeValues.EXPRESS] else DeliveryTypeValues.STANDARD
+        
+        # If specific override exists and we are in standard mode, use it
+        if shipping_days and "-" in shipping_days and estimate_speed == DeliveryTypeValues.STANDARD:
             try:
                 parts = shipping_days.replace(" ", "").split("-")
                 min_days = int(parts[0])
                 max_days = int(parts[1])
             except (ValueError, IndexError):
-                # Fall back to supplier type defaults
-                estimate = get_international_shipping_estimate(supplier_type)
-                days_str = estimate["days"]
-                parts = days_str.split("-")
-                min_days = int(parts[0])
-                max_days = int(parts[1])
+                 # Fallback
+                 estimate = get_international_shipping_estimate(supplier_type, estimate_speed)
+                 days_str = estimate["days"]
+                 parts = days_str.split("-")
+                 min_days = int(parts[0])
+                 max_days = int(parts[1])
         else:
-            estimate = get_international_shipping_estimate(supplier_type)
+            # For express or missing override, use supplier defaults
+            estimate = get_international_shipping_estimate(supplier_type, estimate_speed)
             days_str = estimate["days"]
             parts = days_str.split("-")
             min_days = int(parts[0])
@@ -203,15 +211,43 @@ def estimate_delivery_date_range(
 
     if is_international:
         # Generic international (non-dropship)
+        # Express is generally faster
+        if speed == DeliveryTypeValues.EXPRESS:
+             min_days = 5
+             max_days = 10
+        else:
+             min_days = ShippingTiers.INTL_GENERIC_MIN_DAYS
+             max_days = ShippingTiers.INTL_GENERIC_MAX_DAYS
+             
         return {
-            "min_days": ShippingTiers.INTL_GENERIC_MIN_DAYS,
-            "max_days": ShippingTiers.INTL_GENERIC_MAX_DAYS,
-            "display_text": f"{ShippingTiers.INTL_GENERIC_MIN_DAYS}-{ShippingTiers.INTL_GENERIC_MAX_DAYS} business days",
+            "min_days": min_days,
+            "max_days": max_days,
+            "display_text": f"{min_days}-{max_days} business days",
             "source": ShippingSourceValues.INTERNATIONAL_GENERIC,
             "has_tracking": True,
         }
 
     # Domestic Canadian shipping
+    if speed == DeliveryTypeValues.SAME_DAY:
+        return {
+            "min_days": 0,
+            "max_days": 0,
+            "display_text": "Today",
+            "source": ShippingSourceValues.DOMESTIC,
+            "has_tracking": True,
+        }
+    
+    if speed == DeliveryTypeValues.EXPRESS:
+        # Express is typically 1-3 business days domestically
+        return {
+            "min_days": 1,
+            "max_days": 3,
+            "display_text": "1-3 business days",
+            "source": ShippingSourceValues.DOMESTIC,
+            "has_tracking": True,
+        }
+
+    # Standard Domestic
     return {
         "min_days": seller_estimated_days,
         "max_days": seller_estimated_days + ShippingTiers.DOMESTIC_BUFFER_DAYS,

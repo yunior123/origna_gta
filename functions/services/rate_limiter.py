@@ -46,7 +46,7 @@ class RateLimiter:
         # In emulator mode, multiply max_requests to avoid test throttling
         max_requests = max_requests * _EMULATOR_RATE_MULTIPLIER
 
-        now = datetime.now(UTC).replace(tzinfo=None)
+        now = datetime.now(UTC)
         window_start = now - timedelta(minutes=window_minutes)
 
         doc_id = f"{action}_{identifier}"
@@ -61,8 +61,12 @@ class RateLimiter:
                 if doc.exists:
                     data = doc.to_dict()
                     count = data.get(Fields.COUNT, 0)
-                    first_request = data.get(Fields.FIRST_REQUEST).replace(tzinfo=None)
-
+                    
+                    # Fix: Handle both timezone-aware (UTC) and naive timestamps
+                    first_request = data.get(Fields.FIRST_REQUEST)
+                    if first_request.tzinfo is None:
+                        first_request = first_request.replace(tzinfo=UTC)
+                    
                     # Window expired, reset
                     if first_request < window_start:
                         transaction.set(ref, {Fields.COUNT: 1, Fields.FIRST_REQUEST: now, Fields.LAST_REQUEST: now})
