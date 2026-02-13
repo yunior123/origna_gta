@@ -196,7 +196,7 @@ class TestCreateCheckoutSession:
 
     @patch("handlers.payment_stripe.get_db")
     @patch("handlers.payment_stripe.get_rate_limiter")
-    @patch("main.validate_postal_code")
+    @patch("utils.helpers.validate_postal_code")
     def test_product_not_found(self, mock_validate_postal, mock_get_rate_limiter, mock_get_db):
         """Test handling of non-existent product"""
         from handlers.payment_stripe import create_checkout_session
@@ -240,7 +240,7 @@ class TestCreateCheckoutSession:
 
     @patch("handlers.payment_stripe.get_db")
     @patch("handlers.payment_stripe.get_rate_limiter")
-    @patch("main.validate_postal_code")
+    @patch("utils.helpers.validate_postal_code")
     def test_insufficient_stock(self, mock_validate_postal, mock_get_rate_limiter, mock_get_db, valid_checkout_data):
         """Test rejection when product stock is insufficient"""
         from handlers.payment_stripe import create_checkout_session
@@ -303,7 +303,7 @@ class TestCreateCheckoutSession:
     @patch("handlers.payment_stripe.get_db")
     @patch("handlers.payment_stripe.stripe.checkout.Session.create")
     @patch("handlers.payment_stripe.get_rate_limiter")
-    @patch("main.validate_postal_code")
+    @patch("utils.helpers.validate_postal_code")
     @patch("handlers.payment_stripe.calculate_shipping_cost")
     @patch("handlers.payment_stripe.get_tax_rate")
     def test_price_tampering_detection(

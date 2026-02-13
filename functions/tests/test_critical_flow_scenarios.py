@@ -424,7 +424,7 @@ class TestPostalCodeValidation:
 
     def test_valid_postal_codes(self):
         """Scenario 31-36: Valid Canadian postal codes accepted."""
-        from main import validate_postal_code
+        from utils.helpers import validate_postal_code
 
         valid_codes = [
             "M5V 3A8",
@@ -435,11 +435,11 @@ class TestPostalCodeValidation:
             "L5B 3C2",
         ]
         for code in valid_codes:
-            assert validate_postal_code(code, "Canada"), f"Expected {code} to be valid"
+            assert validate_postal_code(code), f"Expected {code} to be valid"
 
     def test_invalid_postal_codes(self):
         """Scenario 37-40: Invalid postal codes rejected."""
-        from main import validate_postal_code
+        from utils.helpers import validate_postal_code
 
         invalid_codes = [
             "12345",  # US zip
@@ -448,7 +448,8 @@ class TestPostalCodeValidation:
             "",  # Empty
         ]
         for code in invalid_codes:
-            assert not validate_postal_code(code, "Canada"), f"Expected {code} to be invalid"
+            with pytest.raises(ValueError):
+                validate_postal_code(code)
 
 
 # ============================================================================

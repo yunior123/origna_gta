@@ -9,7 +9,8 @@ from urllib.parse import quote
 from mailjet_rest import Client
 
 from config import IS_EMULATOR, MAILJET_API_KEY, MAILJET_SECRET_KEY, UNSUBSCRIBE_HMAC_SECRET
-from schema_constants import AppConfig, EmailConfig, Fields
+from schema_constants import AppConfig, DeliveryTypeValues, EmailConfig, Fields, ShippingTiers
+from services import shipping_service
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +137,7 @@ def get_order_confirmation_email(order_data, order_id=None):
     max_delivery_days = 0
     delivery_speed = order_data.get(Fields.DELIVERY_SPEED, DeliveryTypeValues.STANDARD)
     
-    for item in items:
+    for item in order_data.get(Fields.ITEMS, []):
         # Get item details for estimation
         supplier_info = item.get(Fields.SUPPLIER)
         estimated_ship_days = item.get(Fields.ESTIMATED_SHIP_DAYS, ShippingTiers.DEFAULT_SELLER_SHIP_DAYS)
