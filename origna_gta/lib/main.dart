@@ -19,6 +19,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 /// Keep the semantics handle alive so it doesn't get GC'd in release mode.
 /// Without this, ensureSemantics() has no lasting effect.
+// ignore: unused_element
 SemanticsHandle? _semanticsHandle;
 
 void main() {

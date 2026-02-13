@@ -1,123 +1,12 @@
 Analyzing origna_gta...                                         
 
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/admin_actions_viewmodel.dart:36:122 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/admin_actions_viewmodel.dart:48:119 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/admin_actions_viewmodel.dart:60:118 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/admin_actions_viewmodel.dart:80:123 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/admin_actions_viewmodel.dart:92:120 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/admin_actions_viewmodel.dart:104:118 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/admin_actions_viewmodel.dart:116:118 • undefined_method
-  error • Methods can't be invoked in constant expressions • lib/features/admin/admin_panel_screen.dart:138:18 • const_eval_method_invocation
-  error • Methods can't be invoked in constant expressions • lib/features/admin/admin_panel_screen.dart:214:36 • const_eval_method_invocation
-  error • Methods can't be invoked in constant expressions • lib/features/admin/tabs/admin_orders_tab.dart:282:30 • const_eval_method_invocation
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:45:52 • undefined_method
-  error • Invalid constant value • lib/features/admin/tabs/admin_payment_providers_tab.dart:76:44 • invalid_constant
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:76:67 • undefined_method
-   info • Unnecessary 'const' keyword • lib/features/admin/tabs/admin_payment_providers_tab.dart:76:80 • unnecessary_const
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:85:60 • undefined_method
-  error • Invalid constant value • lib/features/admin/tabs/admin_payment_providers_tab.dart:102:39 • invalid_constant
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:102:77 • undefined_method
-   info • Unnecessary 'const' keyword • lib/features/admin/tabs/admin_payment_providers_tab.dart:103:46 • unnecessary_const
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:119:60 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:121:67 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:123:61 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:124:61 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:125:61 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:126:61 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:132:63 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:134:70 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:136:64 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:137:64 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:138:64 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:139:64 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:167:75 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:247:65 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:291:61 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:292:68 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:331:58 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:331:96 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:349:28 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:373:51 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:391:58 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:399:61 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:404:46 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:409:44 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:410:44 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:411:44 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:412:44 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:424:43 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:436:60 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:436:123 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:443:50 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:444:51 • undefined_method
-  error • Invalid constant value • lib/features/admin/tabs/admin_payment_providers_tab.dart:451:28 • invalid_constant
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:451:58 • undefined_method
-  error • Invalid constant value • lib/features/admin/tabs/admin_payment_providers_tab.dart:452:27 • invalid_constant
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:452:56 • undefined_method
-   info • Unnecessary 'const' keyword • lib/features/admin/tabs/admin_payment_providers_tab.dart:453:25 • unnecessary_const
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:465:41 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:477:65 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:477:104 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:508:67 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:508:133 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:517:89 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:519:62 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:521:60 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_payment_providers_tab.dart:523:66 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:39:57 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:57:74 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:58:70 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:59:74 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:60:71 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:74:90 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:77:116 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:103:72 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:166:42 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:170:51 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:174:50 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:244:86 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:245:119 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:246:92 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:247:90 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:280:64 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:280:101 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:285:113 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:299:49 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:302:54 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:304:87 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:312:97 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:314:119 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:319:41 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:332:53 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:336:87 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:339:87 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:346:41 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:360:86 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:380:48 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:387:40 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:387:110 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:389:41 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:389:113 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:391:102 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:391:140 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/admin/tabs/admin_products_tab.dart:394:96 • undefined_method
-  error • Methods can't be invoked in constant expressions • lib/features/admin/tabs/admin_security_tab.dart:327:30 • const_eval_method_invocation
    info • The import of 'package:easy_localization/easy_localization.dart' is unnecessary because all of the used elements are also provided by the import of 'package:origna_gta/utils/constants.dart' • lib/features/admin/tabs/admin_users_tab.dart:1:8 • unnecessary_import
 warning • Dead code • lib/features/checkout/checkout_provider.dart:301:7 • dead_code
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/products/add_product_viewmodel.dart:56:72 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/products/add_product_viewmodel.dart:60:79 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/products/add_product_viewmodel.dart:64:73 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/products/add_product_viewmodel.dart:68:75 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/products/add_product_viewmodel.dart:72:69 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/products/add_product_viewmodel.dart:77:77 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/products/add_product_viewmodel.dart:81:70 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/products/add_product_viewmodel.dart:87:73 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/products/add_product_viewmodel.dart:100:78 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/products/add_product_viewmodel.dart:104:74 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/products/add_product_viewmodel.dart:109:69 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/products/add_product_viewmodel.dart:116:79 • undefined_method
-  error • The method 'tr' isn't defined for the type 'String' • lib/features/products/add_product_viewmodel.dart:196:114 • undefined_method
 warning • The declaration '_semanticsHandle' isn't referenced • lib/main.dart:22:18 • unused_element
+  error • The getter 'actualShipping' isn't defined for the type 'Fields' • lib/models/generated/order_models.dart:353:47 • undefined_getter
+  error • The getter 'pendingTotal' isn't defined for the type 'Fields' • lib/models/generated/order_models.dart:354:45 • undefined_getter
+  error • The getter 'platformFeeTotal' isn't defined for the type 'Fields' • lib/models/generated/order_models.dart:358:49 • undefined_getter
+  error • The getter 'refundAmount' isn't defined for the type 'Fields' • lib/models/generated/order_models.dart:368:45 • undefined_getter
    info • The import of 'package:easy_localization/easy_localization.dart' is unnecessary because all of the used elements are also provided by the import of 'package:origna_gta/utils/constants.dart' • lib/screens/cart_screen.dart:1:8 • unnecessary_import
    info • The import of 'package:origna_gta/core/schema/schema_constants.dart' is unnecessary because all of the used elements are also provided by the import of 'package:origna_gta/utils/constants.dart' • lib/screens/cart_screen.dart:5:8 • unnecessary_import
    info • The import of 'package:easy_localization/easy_localization.dart' is unnecessary because all of the used elements are also provided by the import of 'package:origna_gta/utils/constants.dart' • lib/screens/checkout_screen.dart:1:8 • unnecessary_import
@@ -128,4 +17,3 @@ warning • The declaration '_semanticsHandle' isn't referenced • lib/main.dar
    info • The import of 'package:easy_localization/easy_localization.dart' is unnecessary because all of the used elements are also provided by the import of 'package:origna_gta/utils/constants.dart' • lib/screens/seller_orders_screen.dart:1:8 • unnecessary_import
    info • The import of 'package:intl/intl.dart' is unnecessary because all of the used elements are also provided by the import of 'package:easy_localization/easy_localization.dart' • lib/screens/shipping_approval_screen.dart:4:8 • unnecessary_import
 
-127 issues found. (ran in 4.8s)

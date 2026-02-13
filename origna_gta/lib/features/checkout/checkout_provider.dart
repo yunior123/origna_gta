@@ -298,7 +298,6 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       _ref.invalidate(cartItemsProvider);
 
       return CheckoutSuccess(checkoutUrl: checkoutUrl, orderId: orderId, sessionId: sessionId);
-      return CheckoutSuccess(checkoutUrl: checkoutUrl, orderId: orderId, sessionId: sessionId);
     } on CircuitBreakerOpenException {
       // Service is temporarily unavailable (circuit breaker open)
       if (!mounted) {
