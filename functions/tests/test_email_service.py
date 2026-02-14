@@ -230,12 +230,14 @@ class TestSendEmail:
             finally:
                 mod.FORCE_REAL_EMAIL = original_force
 
+    @patch("services.email_service.get_mailjet_api_key")
     @patch("services.email_service.Client")
-    def test_send_email_success(self, mock_client_cls):
+    def test_send_email_success(self, mock_client_cls, mock_get_key):
         """Should successfully send email via Mailjet."""
         import services.email_service as mod
         from services.email_service import send_email
 
+        mock_get_key.return_value = "test_key"
         mock_client = MagicMock()
         mock_send_result = MagicMock()
         mock_send_result.status_code = 200
@@ -245,10 +247,8 @@ class TestSendEmail:
         # Temporarily enable real email for test
         original_emulator = mod.IS_EMULATOR
         original_force = mod.FORCE_REAL_EMAIL
-        original_key = mod.MAILJET_API_KEY
         mod.IS_EMULATOR = False
         mod.FORCE_REAL_EMAIL = False
-        mod.MAILJET_API_KEY = "MAILJET_CREDENTIAL_REDACTED"
 
         try:
             result = send_email("dest@test.ca", "Subject", "<p>Body</p>")
@@ -256,14 +256,15 @@ class TestSendEmail:
         finally:
             mod.IS_EMULATOR = original_emulator
             mod.FORCE_REAL_EMAIL = original_force
-            mod.MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED
 
+    @patch("services.email_service.get_mailjet_api_key")
     @patch("services.email_service.Client")
-    def test_send_email_failure(self, mock_client_cls):
+    def test_send_email_failure(self, mock_client_cls, mock_get_key):
         """Should return False when Mailjet returns non-200."""
         import services.email_service as mod
         from services.email_service import send_email
 
+        mock_get_key.return_value = "test_key"
         mock_client = MagicMock()
         mock_send_result = MagicMock()
         mock_send_result.status_code = 400
@@ -272,36 +273,32 @@ class TestSendEmail:
         mock_client_cls.return_value = mock_client
 
         original_emulator = mod.IS_EMULATOR
-        original_key = mod.MAILJET_API_KEY
         mod.IS_EMULATOR = False
-        mod.MAILJET_API_KEY = "MAILJET_CREDENTIAL_REDACTED"
 
         try:
             result = send_email("dest@test.ca", "Subject", "<p>Body</p>")
             assert result is False
         finally:
             mod.IS_EMULATOR = original_emulator
-            mod.MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED
 
+    @patch("services.email_service.get_mailjet_api_key")
     @patch("services.email_service.Client")
-    def test_send_email_exception_returns_false(self, mock_client_cls):
+    def test_send_email_exception_returns_false(self, mock_client_cls, mock_get_key):
         """Should return False when Mailjet raises an exception."""
         import services.email_service as mod
         from services.email_service import send_email
 
+        mock_get_key.return_value = "test_key"
         mock_client_cls.side_effect = Exception("Connection refused")
 
         original_emulator = mod.IS_EMULATOR
-        original_key = mod.MAILJET_API_KEY
         mod.IS_EMULATOR = False
-        mod.MAILJET_API_KEY = "MAILJET_CREDENTIAL_REDACTED"
 
         try:
             result = send_email("dest@test.ca", "Subject", "<p>Body</p>")
             assert result is False
         finally:
             mod.IS_EMULATOR = original_emulator
-            mod.MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED
 
     def test_send_email_custom_from(self):
         """Should accept custom from_email."""
@@ -346,22 +343,22 @@ class TestAuthorizationExpiredEmail:
         finally:
             mod.FORCE_REAL_EMAIL = original_force
 
+    @patch("services.email_service.get_mailjet_secret_key")
+    @patch("services.email_service.get_mailjet_api_key")
     @patch("services.email_service.Client")
-    def test_sends_email_in_production(self, mock_client_cls):
+    def test_sends_email_in_production(self, mock_client_cls, mock_get_api_key, mock_get_secret_key):
         """Should send email via Mailjet in production mode."""
         import services.email_service as mod
         from services.email_service import send_authorization_expired_email
 
+        mock_get_api_key.return_value = "test_key"
+        mock_get_secret_key.return_value = "test_secret"
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
         mock_client.send.create.return_value = MagicMock(status_code=200)
 
         original_emulator = mod.IS_EMULATOR
-        original_key = mod.MAILJET_API_KEY
-        original_secret = mod.MAILJET_SECRET_KEY
         mod.IS_EMULATOR = False
-        mod.MAILJET_API_KEY = "MAILJET_CREDENTIAL_REDACTED"
-        mod.MAILJET_SECRET_KEY = "MAILJET_CREDENTIAL_REDACTED"
 
         try:
             send_authorization_expired_email(
@@ -375,18 +372,16 @@ class TestAuthorizationExpiredEmail:
             mock_client.send.create.assert_called_once()
         finally:
             mod.IS_EMULATOR = original_emulator
-            mod.MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED
-            mod.MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED
 
-    def test_no_crash_on_missing_mailjet_credentials(self):
+    @patch("services.email_service.get_mailjet_api_key")
+    def test_no_crash_on_missing_mailjet_credentials(self, mock_get_key):
         """Should handle missing Mailjet credentials gracefully."""
         import services.email_service as mod
         from services.email_service import send_authorization_expired_email
 
+        mock_get_key.return_value = ""
         original_emulator = mod.IS_EMULATOR
-        original_key = mod.MAILJET_API_KEY
         mod.IS_EMULATOR = False
-        mod.MAILJET_API_KEY = ""
 
         try:
             # Should not raise, just print warning
@@ -400,7 +395,6 @@ class TestAuthorizationExpiredEmail:
             )
         finally:
             mod.IS_EMULATOR = original_emulator
-            mod.MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED
 
 
 # =============================================================================
@@ -433,22 +427,22 @@ class TestPaymentCaptureFailedEmail:
         # Should not raise
         send_payment_capture_failed_email("order_1", "", "Buyer", 50.0, "Error")
 
+    @patch("services.email_service.get_mailjet_secret_key")
+    @patch("services.email_service.get_mailjet_api_key")
     @patch("services.email_service.Client")
-    def test_sends_email_in_production(self, mock_client_cls):
+    def test_sends_email_in_production(self, mock_client_cls, mock_get_api_key, mock_get_secret_key):
         """Should send capture failure email via Mailjet."""
         import services.email_service as mod
         from services.email_service import send_payment_capture_failed_email
 
+        mock_get_api_key.return_value = "test_key"
+        mock_get_secret_key.return_value = "test_secret"
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
         mock_client.send.create.return_value = MagicMock(status_code=200)
 
         original_emulator = mod.IS_EMULATOR
-        original_key = mod.MAILJET_API_KEY
-        original_secret = mod.MAILJET_SECRET_KEY
         mod.IS_EMULATOR = False
-        mod.MAILJET_API_KEY = "MAILJET_CREDENTIAL_REDACTED"
-        mod.MAILJET_SECRET_KEY = "MAILJET_CREDENTIAL_REDACTED"
 
         try:
             send_payment_capture_failed_email("order_cap", "buyer@prod.ca", "Jean Tremblay", 149.99, "Card expired")
@@ -458,8 +452,6 @@ class TestPaymentCaptureFailedEmail:
             assert "Payment Issue" in call_data["Messages"][0]["Subject"]
         finally:
             mod.IS_EMULATOR = original_emulator
-            mod.MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED
-            mod.MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED
 
 
 # =============================================================================
@@ -502,22 +494,22 @@ class TestThreeDSAuthenticationEmail:
         # Should not raise
         send_3ds_authentication_email("order_1", "buyer@test.ca", "Buyer", "", 50.0)
 
+    @patch("services.email_service.get_mailjet_secret_key")
+    @patch("services.email_service.get_mailjet_api_key")
     @patch("services.email_service.Client")
-    def test_sends_3ds_email_in_production(self, mock_client_cls):
+    def test_sends_3ds_email_in_production(self, mock_client_cls, mock_get_api_key, mock_get_secret_key):
         """Should send 3DS authentication email via Mailjet."""
         import services.email_service as mod
         from services.email_service import send_3ds_authentication_email
 
+        mock_get_api_key.return_value = "test_key"
+        mock_get_secret_key.return_value = "test_secret"
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
         mock_client.send.create.return_value = MagicMock(status_code=200)
 
         original_emulator = mod.IS_EMULATOR
-        original_key = mod.MAILJET_API_KEY
-        original_secret = mod.MAILJET_SECRET_KEY
         mod.IS_EMULATOR = False
-        mod.MAILJET_API_KEY = "MAILJET_CREDENTIAL_REDACTED"
-        mod.MAILJET_SECRET_KEY = "MAILJET_CREDENTIAL_REDACTED"
 
         try:
             send_3ds_authentication_email(
@@ -536,8 +528,6 @@ class TestThreeDSAuthenticationEmail:
             assert msg["From"]["Name"] == EmailConfig.SENDER_NAME_SECURITY
         finally:
             mod.IS_EMULATOR = original_emulator
-            mod.MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED
-            mod.MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED
 
 
 # =============================================================================

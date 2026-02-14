@@ -1117,13 +1117,13 @@ def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_E
             - Base64Content (str): Base64-encoded file content
     """
     try:
-        if (IS_EMULATOR and not FORCE_REAL_EMAIL) or not MAILJET_API_KEY:
-            MAILJET_CREDENTIAL_REDACTED(f"\U0001f4e7 [EMULATOR] Would send email to {to_email}: {subject}")
+        if (IS_EMULATOR and not FORCE_REAL_EMAIL) or not get_mailjet_api_key():
+            logger.info(f"\U0001f4e7 [EMULATOR] Would send email to {to_email}: {subject}")
             if attachments:
                 logger.info(f"   📎 With {len(attachments)} attachment(s): {[a.get('Filename') for a in attachments]}")
             return True
 
-        mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version=EmailConfig.MAILJET_API_VERSION)
+        mailjet = Client(auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version=EmailConfig.MAILJET_API_VERSION)
 
         message = {
             "From": {"Email": from_email, "Name": EmailConfig.SENDER_NAME},
@@ -1160,12 +1160,12 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
         logger.info(f"🔧 EMULATOR: Would send authorization expired email for order {order_id}")
         return
 
-    if not MAILJET_API_KEY or not MAILJET_SECRET_KEY:
-        MAILJET_CREDENTIAL_REDACTED("⚠️ Mailjet credentials not configured")
+    if not get_mailjet_api_key() or not get_mailjet_secret_key():
+        logger.warning("⚠️ Mailjet credentials not configured")
         return
 
     try:
-        mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version=EmailConfig.MAILJET_API_VERSION)
+        mailjet = Client(auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version=EmailConfig.MAILJET_API_VERSION)
 
         customer_email = order_data.get(Fields.CUSTOMER_EMAIL)
         total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100

@@ -280,8 +280,8 @@ class TestSchemaConsistency:
             algolia_content = f.read()
 
         # Check that config is imported (including AlgoliaConfig for dynamic index names)
-        assert "from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY, AlgoliaConfig" in algolia_content, (
-            "Algolia service should import credentials and AlgoliaConfig from config.py"
+        assert "from config import AlgoliaConfig, get_algolia_app_id, get_algolia_write_api_key" in algolia_content, (
+            "Algolia service should import AlgoliaConfig and credential getters from config.py"
         )
 
         # Check environment-aware index name helper exists
