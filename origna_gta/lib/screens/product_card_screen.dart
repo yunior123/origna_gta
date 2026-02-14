@@ -348,7 +348,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
   Future<void> _toggleFavorite() async {
     final user = ref.read(currentUserProvider);
     if (user == null) {
-      showLoginPrompt(context, text: "You need to sign in to add favorites");
+      showLoginPrompt(context, text: "auth.sign_in_favorites_required");
       return;
     }
 

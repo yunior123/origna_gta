@@ -43,7 +43,7 @@ class TestDeliveryTypes(unittest.TestCase):
             }
         ]
 
-    @patch("services.shipping_service.GEOAPIFY_API_KEY", "mock_key")
+    @patch("services.shipping_service.get_geoapify_api_key", return_value="mock_key")
     @patch("services.shipping_service.requests.post")
     def test_express_delivery_pricing(self, mock_post):
         """Test Express Delivery pricing for regional distance."""
@@ -64,7 +64,7 @@ class TestDeliveryTypes(unittest.TestCase):
         print(f"\n[Express Regional] Cost: {cost}")
         self.assertAlmostEqual(cost, 9.99 * 1.5, delta=0.01)
 
-    @patch("services.shipping_service.GEOAPIFY_API_KEY", "mock_key")
+    @patch("services.shipping_service.get_geoapify_api_key", return_value="mock_key")
     @patch("services.shipping_service.requests.post")
     def test_express_delivery_fallback(self, mock_post):
         """Test Express Delivery fallback when API fails."""

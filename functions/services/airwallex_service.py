@@ -22,10 +22,10 @@ from typing import Any, Union
 import requests
 
 from config import (
-    AIRWALLEX_API_KEY,
     AIRWALLEX_BASE_URL,
-    AIRWALLEX_CLIENT_ID,
-    AIRWALLEX_WEBHOOK_SECRET,
+    get_airwallex_api_key,
+    get_airwallex_client_id,
+    get_airwallex_webhook_secret,
 )
 from schema_constants import (
     AppConfig,
@@ -46,9 +46,9 @@ class AirwallexService:
     """Airwallex API Integration for international sellers"""
 
     def __init__(self):
-        self.api_key = AIRWALLEX_API_KEY
-        self.client_id = AIRWALLEX_CLIENT_ID
-        self.webhook_secret = AIRWALLEX_WEBHOOK_SECRET
+        self.api_key = get_airwallex_api_key()
+        self.client_id = get_airwallex_client_id()
+        self.webhook_secret = get_airwallex_webhook_secret()
         self.base_url = AIRWALLEX_BASE_URL
         self.token = None
         self.token_expiry = None

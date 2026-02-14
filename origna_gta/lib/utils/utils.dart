@@ -426,13 +426,13 @@ AddressDetails parseAddressSuggestion(Map<String, dynamic> suggestion) {
 // Add this helper method
 void showLoginPrompt(
   BuildContext context, {
-  String text = 'You need to sign in to add items to your cart.',
+  String text = 'auth.sign_in_cart_required',
 }) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
       title: Text('auth.sign_in_required'.tr()),
-      content: Text(text),
+      content: Text(text.tr()),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),

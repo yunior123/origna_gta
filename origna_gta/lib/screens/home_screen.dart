@@ -705,7 +705,7 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton> with SingleTic
               onPressed: () {
                 _triggerAnimation();
                 if (user == null) {
-                  showLoginPrompt(context, text: "You need to sign in to access settings");
+                  showLoginPrompt(context, text: "auth.sign_in_settings_required");
                   return;
                 }
                 Navigator.pushNamed(context, AppRoutes.profile);

@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 import stripe
 from firebase_functions import scheduler_fn
 
-from config import AUTHORIZATION_VALID_DAYS, AUTO_CONFIRM_DAYS, PLATFORM_FEE_PERCENT, STRIPE_SECRET_KEY
+from config import AUTHORIZATION_VALID_DAYS, AUTO_CONFIRM_DAYS, PLATFORM_FEE_PERCENT, get_stripe_secret_key
 from schema_constants import (
     AlgoliaActionValues,
     BusinessRules,
@@ -31,7 +31,7 @@ from utils.function_options import CRON_OPTIONS
 
 logger = logging.getLogger(__name__)
 
-stripe.api_key = STRIPE_SECRET_KEY
+# stripe.api_key = STRIPE_SECRET_KEY  # Removed global assignment to prevent deploy crash
 
 # Lazy-loaded Firestore client and module
 _db = None
@@ -135,6 +135,8 @@ def auto_capture_confirmed_receipts(event: scheduler_fn.ScheduledEvent) -> None:
         return
 
     try:
+        # Initialize Stripe key locally
+        stripe.api_key = get_stripe_secret_key()
         _run_auto_capture()
     finally:
         release_cron_lock("auto_capture_confirmed_receipts")

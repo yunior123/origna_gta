@@ -38,14 +38,27 @@ from firebase_functions import params
 
 
 class Environment(Enum):
-    EMULATOR = "emulator"  # Local development with Firebase emulators (micro-staging)
-    PRODUCTION = "production"  # Deployed to Firebase Cloud
+    EMULATOR = "emulator"  # Local development with Firebase emulators
+    DEV = "dev"            # Development Firebase project (orignagta-dev)
+    STAGING = "staging"    # Staging Firebase project (orignagta-staging)
+    PRODUCTION = "production"  # Production Firebase project (orignagta)
 
 
 # Auto-detect environment
-# Firebase emulator sets FUNCTIONS_EMULATOR='true' automatically
+# 1. Check if running in emulator
 IS_EMULATOR = os.environ.get("FUNCTIONS_EMULATOR", "false").lower() == "true"
-CURRENT_ENV = Environment.EMULATOR if IS_EMULATOR else Environment.PRODUCTION
+
+# 2. Check GCP Project ID
+PROJECT_ID = os.environ.get("GCP_PROJECT", os.environ.get("GCLOUD_PROJECT", "orignagta"))
+
+if IS_EMULATOR:
+    CURRENT_ENV = Environment.EMULATOR
+elif PROJECT_ID == "orignagta-dev":
+    CURRENT_ENV = Environment.DEV
+elif PROJECT_ID == "orignagta-staging":
+    CURRENT_ENV = Environment.STAGING
+else:
+    CURRENT_ENV = Environment.PRODUCTION
 
 
 def get_environment() -> Environment:
@@ -102,12 +115,24 @@ class R2Config:
     @staticmethod
     def get_products_folder() -> str:
         """Get folder path for product images based on environment."""
-        return "emulator/products" if IS_EMULATOR else "products"
+        if IS_EMULATOR:
+            return "emulator/products"
+        elif CURRENT_ENV == Environment.DEV:
+            return "dev/products"
+        elif CURRENT_ENV == Environment.STAGING:
+            return "staging/products"
+        return "products"
 
     @staticmethod
     def get_users_folder() -> str:
         """Get folder path for user images based on environment."""
-        return "emulator/users" if IS_EMULATOR else "users"
+        if IS_EMULATOR:
+            return "emulator/users"
+        elif CURRENT_ENV == Environment.DEV:
+            return "dev/users"
+        elif CURRENT_ENV == Environment.STAGING:
+            return "staging/users"
+        return "users"
 
     @staticmethod
     def get_image_path(category: str, filename: str) -> str:
@@ -124,8 +149,13 @@ class R2Config:
         elif category == "users":
             return f"{R2Config.get_users_folder()}/{filename}"
         else:
-            prefix = "emulator/" if IS_EMULATOR else ""
-            return f"{prefix}{category}/{filename}"
+            if IS_EMULATOR:
+                return f"emulator/{category}/{filename}"
+            elif CURRENT_ENV == Environment.DEV:
+                return f"dev/{category}/{filename}"
+            elif CURRENT_ENV == Environment.STAGING:
+                return f"staging/{category}/{filename}"
+            return f"{category}/{filename}"
 
 
 # ============================================================================
@@ -144,7 +174,13 @@ class AlgoliaConfig:
     @staticmethod
     def get_index_name() -> str:
         """Get Algolia index name based on environment."""
-        return "products_emulator" if IS_EMULATOR else "products"
+        if IS_EMULATOR:
+            return "products_emulator"
+        elif CURRENT_ENV == Environment.DEV:
+            return "products_emulator" # Use emulator index for Dev to save complication, or separate 'products_dev'
+        elif CURRENT_ENV == Environment.STAGING:
+            return "products_staging"
+        return "products"
 
 
 # ============================================================================
@@ -152,17 +188,21 @@ class AlgoliaConfig:
 # ============================================================================
 
 
+# Helper for local scripts to use .env secrets even when targeting non-emulator envs
+FORCE_LOCAL_SECRETS = os.environ.get("FORCE_LOCAL_SECRETS", "false").lower() == "true"
+
+
 def _load_secret(key: str, required: bool = True) -> str:
     """
     Load secret safely based on environment.
 
-    EMULATOR: Reads from environment variables (.env file via dotenv)
+    EMULATOR/LOCAL: Reads from environment variables (.env file via dotenv)
     PRODUCTION: Reads from Google Secret Manager via params.SecretParam
     """
-    if IS_EMULATOR:
+    if IS_EMULATOR or FORCE_LOCAL_SECRETS:
         value = os.environ.get(key)
         if not value and required:
-            raise ValueError(f"❌ {key} required in emulator mode. Add to .env or export {key}=...")
+            raise ValueError(f"❌ {key} required in local mode. Add to .env or export {key}=...")
         return value or ""
     else:
         try:
@@ -173,9 +213,28 @@ def _load_secret(key: str, required: bool = True) -> str:
             return ""
 
 
+
 # ============================================================================
 # STRIPE CONFIGURATION
 # ============================================================================
+
+# Define SecretParams (resolved at runtime in production)
+_STRIPE_SECRET_KEY_PARAM = params.SecretParam("STRIPE_SECRET_KEY")
+_STRIPE_WEBHOOK_SECRET_PARAM = params.SecretParam("STRIPE_WEBHOOK_SECRET")
+
+
+def get_stripe_secret_key() -> str:
+    """Get Stripe Secret Key (lazy load)."""
+    if IS_EMULATOR:
+        return _load_secret("STRIPE_SECRET_KEY", required=False)
+    return _STRIPE_SECRET_KEY_PARAM.value
+
+
+def get_stripe_webhook_secret() -> str:
+    """Get Stripe Webhook Secret (lazy load)."""
+    if IS_EMULATOR:
+        return _load_secret("STRIPE_WEBHOOK_SECRET", required=False)
+    return _STRIPE_WEBHOOK_SECRET_PARAM.value
 
 
 class StripeConfig:
@@ -184,74 +243,85 @@ class StripeConfig:
     @staticmethod
     def is_test_mode() -> bool:
         """Check if using Stripe test keys (sk_test_*)."""
-        return STRIPE_SECRET_KEY.startswith("sk_test_") if STRIPE_SECRET_KEY else True
+        key = get_stripe_secret_key()
+        return key.startswith("sk_test_") if key else True
 
-
-# Load Stripe keys
-try:
-    STRIPE_SECRET_KEY = _load_secret("STRIPE_SECRET_KEY", required=True)
-    STRIPE_WEBHOOK_SECRET = _load_secret("STRIPE_WEBHOOK_SECRET", required=True)
-except (ValueError, RuntimeError) as e:
-    if IS_EMULATOR:
-        # Allow partial testing in emulator without all secrets
-        print(f"⚠️ Stripe not configured: {e}")
-        STRIPE_SECRET_KEY = ""
-        STRIPE_WEBHOOK_SECRET = ""
-    else:
-        print(f"FATAL: {e}")
-        raise
 
 # ============================================================================
 # MAILJET CONFIGURATION
 # ============================================================================
 
-try:
-    MAILJET_API_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_API_KEY", required=True)
-    MAILJET_SECRET_KEY = MAILJET_CREDENTIAL_REDACTED("MAILJET_SECRET_KEY", required=True)
-except (ValueError, RuntimeError) as e:
+_MAILJET_API_KEY_PARAM = params.SecretParam("MAILJET_API_KEY")
+_MAILJET_SECRET_KEY_PARAM = params.SecretParam("MAILJET_SECRET_KEY")
+
+
+def get_mailjet_api_key() -> str:
+    """Get Mailjet API Key."""
     if IS_EMULATOR:
-        print(f"⚠️ Mailjet not configured: {e}")
-        MAILJET_API_KEY = ""
-        MAILJET_SECRET_KEY = ""
-    else:
-        print(f"FATAL: {e}")
-        raise
+        return _load_secret("MAILJET_API_KEY", required=False)
+    return _MAILJET_API_KEY_PARAM.value
+
+
+def get_mailjet_secret_key() -> str:
+    """Get Mailjet Secret Key."""
+    if IS_EMULATOR:
+        return _load_secret("MAILJET_SECRET_KEY", required=False)
+    return _MAILJET_SECRET_KEY_PARAM.value
+
 
 # ============================================================================
 # UNSUBSCRIBE HMAC SECRET (email unsubscribe link signing)
 # ============================================================================
 
-UNSUBSCRIBE_HMAC_SECRET = _load_secret("UNSUBSCRIBE_HMAC_SECRET", required=False)
+_UNSUBSCRIBE_HMAC_SECRET_PARAM = params.SecretParam("UNSUBSCRIBE_HMAC_SECRET")
+
+
+def get_unsubscribe_hmac_secret() -> str:
+    """Get Unsubscribe HMAC Secret."""
+    if IS_EMULATOR:
+        return _load_secret("UNSUBSCRIBE_HMAC_SECRET", required=False)
+    # This secret is optional in some contexts, but SecretParam requires it to exist
+    try:
+        return _UNSUBSCRIBE_HMAC_SECRET_PARAM.value
+    except Exception:
+        return ""
+
 
 # ============================================================================
 # GEOAPIFY CONFIGURATION
 # ============================================================================
 
-try:
-    GEOAPIFY_API_KEY = _load_secret("GEOAPIFY_API_KEY", required=True)
-except (ValueError, RuntimeError) as e:
+_GEOAPIFY_API_KEY_PARAM = params.SecretParam("GEOAPIFY_API_KEY")
+
+
+def get_geoapify_api_key() -> str:
+    """Get Geoapify API Key."""
     if IS_EMULATOR:
-        print(f"⚠️ Geoapify not configured: {e}")
-        GEOAPIFY_API_KEY = ""
-    else:
-        print(f"FATAL: {e}")
-        raise
+        return _load_secret("GEOAPIFY_API_KEY", required=False)
+    return _GEOAPIFY_API_KEY_PARAM.value
+
 
 # ============================================================================
 # ALGOLIA SECRETS
 # ============================================================================
 
-try:
-    ALGOLIA_APP_ID = _load_secret("ALGOLIA_APP_ID", required=True)
-    ALGOLIA_WRITE_API_KEY = _load_secret("ALGOLIA_WRITE_API_KEY", required=True)
-except (ValueError, RuntimeError) as e:
+_ALGOLIA_APP_ID_PARAM = params.SecretParam("ALGOLIA_APP_ID")
+_ALGOLIA_WRITE_API_KEY_PARAM = params.SecretParam("ALGOLIA_WRITE_API_KEY")
+
+
+def get_algolia_app_id() -> str:
+    """Get Algolia App ID."""
     if IS_EMULATOR:
-        print(f"⚠️ Algolia not configured: {e}")
-        ALGOLIA_APP_ID = ""
-        ALGOLIA_WRITE_API_KEY = ""
-    else:
-        print(f"FATAL: {e}")
-        raise
+        return _load_secret("ALGOLIA_APP_ID", required=False)
+    return _ALGOLIA_APP_ID_PARAM.value
+
+
+def get_algolia_write_api_key() -> str:
+    """Get Algolia Write API Key."""
+    if IS_EMULATOR:
+        return _load_secret("ALGOLIA_WRITE_API_KEY", required=False)
+    return _ALGOLIA_WRITE_API_KEY_PARAM.value
+
 
 # ============================================================================
 # CLOUDFLARE R2 SECRETS
@@ -261,6 +331,7 @@ except (ValueError, RuntimeError) as e:
 R2_ACCESS_KEY_NEW = params.SecretParam("R2_ACCESS_KEY")
 R2_SECRET_KEY_NEW = params.SecretParam("R2_SECRET_KEY")
 R2_ACCOUNT_ID_NEW = params.SecretParam("R2_ACCOUNT_ID")
+
 
 
 def get_r2_credentials() -> dict:
@@ -283,28 +354,59 @@ def get_r2_credentials() -> dict:
 # AIRWALLEX CONFIGURATION (OPTIONAL)
 # ============================================================================
 
-AIRWALLEX_API_KEY = _load_secret("AIRWALLEX_API_KEY", required=False)
-AIRWALLEX_CLIENT_ID = _load_secret("AIRWALLEX_CLIENT_ID", required=False)
-AIRWALLEX_WEBHOOK_SECRET = _load_secret("AIRWALLEX_WEBHOOK_SECRET", required=False)
+_AIRWALLEX_API_KEY_PARAM = params.SecretParam("AIRWALLEX_API_KEY")
+_AIRWALLEX_CLIENT_ID_PARAM = params.SecretParam("AIRWALLEX_CLIENT_ID")
+_AIRWALLEX_WEBHOOK_SECRET_PARAM = params.SecretParam("AIRWALLEX_WEBHOOK_SECRET")
+
+
+def get_airwallex_api_key() -> str:
+    if IS_EMULATOR:
+        return _load_secret("AIRWALLEX_API_KEY", required=False)
+    return _AIRWALLEX_API_KEY_PARAM.value
+
+
+def get_airwallex_client_id() -> str:
+    if IS_EMULATOR:
+        return _load_secret("AIRWALLEX_CLIENT_ID", required=False)
+    return _AIRWALLEX_CLIENT_ID_PARAM.value
+
+
+def get_airwallex_webhook_secret() -> str:
+    if IS_EMULATOR:
+        return _load_secret("AIRWALLEX_WEBHOOK_SECRET", required=False)
+    return _AIRWALLEX_WEBHOOK_SECRET_PARAM.value
+
+
 AIRWALLEX_BASE_URL = os.environ.get("AIRWALLEX_BASE_URL", "https://api.airwallex.com/api/v1")
 
 # ============================================================================
 # SENTRY ERROR MONITORING
 # ============================================================================
 
-SENTRY_DSN = _load_secret("SENTRY_DSN_BACKEND", required=False)
+_SENTRY_DSN_PARAM = params.SecretParam("SENTRY_DSN_BACKEND")
+
+
+def get_sentry_dsn() -> str:
+    if IS_EMULATOR:
+        return _load_secret("SENTRY_DSN_BACKEND", required=False)
+    return _SENTRY_DSN_PARAM.value
 
 
 def init_sentry():
     """Initialize Sentry SDK for backend error monitoring (production only)."""
-    if IS_EMULATOR or not SENTRY_DSN:
+    if IS_EMULATOR:
         return
+        
+    dsn = get_sentry_dsn()
+    if not dsn:
+        return
+
     try:
         import sentry_sdk
         from sentry_sdk.integrations.flask import FlaskIntegration
 
         sentry_sdk.init(
-            dsn=SENTRY_DSN,
+            dsn=dsn,
             integrations=[FlaskIntegration()],
             traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
             environment="production",

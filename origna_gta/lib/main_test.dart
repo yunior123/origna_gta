@@ -17,6 +17,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/firebase_options.dart';
 import 'package:origna_gta/origna_app.dart';
 import 'package:origna_gta/services/conf_services.dart';
+import 'package:origna_gta/utils/env_config.dart';
+import 'package:origna_gta/config/firebase_config_dev.dart';
+import 'package:origna_gta/config/firebase_config_prod.dart';
+import 'package:origna_gta/config/firebase_config_staging.dart';
 
 /// Emulator host: localhost for simulators/web, LAN IP for physical devices.
 String get _emulatorHost {
@@ -95,18 +99,39 @@ Future<void> mainTest() async {
     await EasyLocalization.ensureInitialized();
   });
 
+
+
   await _timedStep('Step 3: Firebase.initializeApp', () async {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      FirebaseOptions firebaseOptions;
+      switch (envConfig.environment) {
+        case AppEnvironment.dev:
+          firebaseOptions = FirebaseConfigDev.currentPlatform;
+          break;
+        case AppEnvironment.staging:
+          firebaseOptions = FirebaseConfigStaging.currentPlatform;
+          break;
+        case AppEnvironment.production:
+          firebaseOptions = FirebaseConfigProd.currentPlatform;
+          break;
+        case AppEnvironment.emulator:
+          firebaseOptions = FirebaseConfigProd.currentPlatform;
+          break;
+      }
+    await Firebase.initializeApp(options: firebaseOptions);
   });
 
-  // EMULATOR CONFIGURATION - Always use emulators for tests
-  final host = _emulatorHost;
-  await _timedStep('Step 4: Emulator setup at $host', () async {
-    await FirebaseAuth.instance.useAuthEmulator(host, 9099);
-    FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
-    FirebaseFunctions.instance.useFunctionsEmulator(host, 5001);
-    await FirebaseStorage.instance.useStorageEmulator(host, 9199);
-  });
+  // EMULATOR CONFIGURATION - Only if requested
+  if (envConfig.shouldUseEmulators) {
+    final host = _emulatorHost;
+    await _timedStep('Step 4: Emulator setup at $host', () async {
+      await FirebaseAuth.instance.useAuthEmulator(host, 9099);
+      FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
+      FirebaseFunctions.instance.useFunctionsEmulator(host, 5001);
+      await FirebaseStorage.instance.useStorageEmulator(host, 9199);
+    });
+  } else {
+    debugPrint('▶ Step 4: Using Real Services (${envConfig.displayName})');
+  }
 
   await _timedStep('Step 5: ConfigService', () async {
     await ConfigService().initialize(skipFetch: true);

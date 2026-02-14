@@ -270,7 +270,10 @@
     "seller_suspended": "Compte vendeur suspendu. Contactez le support.",
     "complete_stripe_verification": "Complétez la vérification d'identité Stripe pour ajouter des produits.",
     "please_sign_in": "Veuillez vous connecter pour continuer",
-    "need_account_access": "Vous avez besoin d'un compte pour accéder à cette page."
+    "need_account_access": "Vous avez besoin d'un compte pour accéder à cette page.",
+    "sign_in_cart_required": "Vous devez vous connecter pour ajouter des articles à votre panier.",
+    "sign_in_settings_required": "Vous devez vous connecter pour accéder aux paramètres",
+    "sign_in_favorites_required": "Vous devez vous connecter pour ajouter des favoris"
   },
   "home": {
     "tagline": "Votre marché pour acheter et vendre dans la région du Grand Toronto et partout au Canada.",

@@ -282,9 +282,18 @@ class AlgoliaProductRepository implements ProductRepository {
 
     query = query.limit(pageSize);
 
-    final snapshot = await query.get();
+    if (kDebugMode) {
+      debugPrint('[AlgoliaProductRepository] Firestore Project ID: ${_firestore.app.options.projectId}');
+      debugPrint('[AlgoliaProductRepository] Querying products collection...');
+    }
+
+    final snapshot = await query.get(const GetOptions(source: Source.server));
+    if (kDebugMode) debugPrint('[AlgoliaProductRepository] Fallback Snapshot length: ${snapshot.docs.length}');
     final products = snapshot.docs
-        .map((doc) => Product.fromFirestore(doc))
+        .map((doc) {
+           if (kDebugMode) debugPrint('[AlgoliaProductRepository] Doc ${doc.id} data: ${doc.data()}');
+           return Product.fromFirestore(doc);
+        })
         .toList();
 
     return ProductQueryResult(

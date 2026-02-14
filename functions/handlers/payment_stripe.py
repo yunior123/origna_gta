@@ -14,12 +14,14 @@ from typing import Any
 import stripe
 from firebase_functions import https_fn
 
+# Initializing Stripe key lazily in handlers
+
+
 from config import (
     AUTHORIZATION_VALID_DAYS,
     CATEGORY_TAX_CODE_MAP,
     IS_EMULATOR,
     PLATFORM_FEE_PERCENT,
-    STRIPE_SECRET_KEY,
     STRIPE_TAX_CODE_BASIC_GROCERIES,
     STRIPE_TAX_CODE_CHILDRENS_CLOTHING,
     STRIPE_TAX_CODE_GENERAL,
@@ -27,7 +29,8 @@ from config import (
     STRIPE_TAX_ENABLED,
     STRIPE_TAX_EXEMPT_NONE,
     STRIPE_TAX_TYPE_CA_GST_HST,
-    STRIPE_WEBHOOK_SECRET,
+    get_stripe_secret_key,
+    get_stripe_webhook_secret,
 )
 from schema_constants import (
     ApiKeys,
@@ -58,7 +61,7 @@ from utils.function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS
 
 logger = logging.getLogger(__name__)
 
-stripe.api_key = STRIPE_SECRET_KEY
+# stripe.api_key = STRIPE_SECRET_KEY  # Removed global assignment
 
 
 def get_tax_code_for_category(category_id):
@@ -394,6 +397,7 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
             customer_details["tax_exempt"] = STRIPE_TAX_EXEMPT_NONE  # Let Stripe determine based on tax_id
 
         # Call Stripe Tax API
+        ensure_stripe_key()
         calculation = stripe.tax.Calculation.create(
             currency=BusinessRules.DEFAULT_CURRENCY,
             customer_details=customer_details,
@@ -445,6 +449,11 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
         # Fall back to manual calculation
         return None, None, None, False
 
+# Helper to ensure stripe key is set before operations
+def ensure_stripe_key():
+    if not stripe.api_key:
+        stripe.api_key = get_stripe_secret_key()
+
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
@@ -475,6 +484,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    ensure_stripe_key()
 
     # Check email verification (skip in emulator mode - tokens may not carry email_verified)
     if not IS_EMULATOR and not req.auth.token.get("email_verified", False):
@@ -1173,7 +1184,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
 
     try:
         # SECURITY FIX #3: Verify webhook signature (HMAC with timing-safe comparison)
-        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+        event = stripe.Webhook.construct_event(payload, sig_header, get_stripe_webhook_secret())
     except ValueError:
         logger.warning(f"⚠️ Stripe webhook invalid payload from IP: {client_ip[:10]}...")  # Sanitized
         return https_fn.Response("Invalid payload", status=400)
@@ -1239,6 +1250,7 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
 
     # Route event to appropriate handler
     try:
+        ensure_stripe_key()
         if event_type == "checkout.session.completed":
             process_checkout_session_completed(event["data"]["object"])
         elif event_type == "checkout.session.async_payment_succeeded":
@@ -1576,6 +1588,7 @@ def _restore_stock_and_cancel_order(order_id: str, order_data: dict, reason: str
         refund_succeeded = False
         try:
             # Try to retrieve PI to check its current state
+            ensure_stripe_key()
             pi = stripe.PaymentIntent.retrieve(payment_intent_id)
             if pi.status == "succeeded":
                 # Auto-captured: must refund (cannot cancel a succeeded PI)
@@ -2819,6 +2832,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
     from handlers.payment_providers import PaymentProvider, require_provider_enabled
 
     require_provider_enabled(PaymentProvider.STRIPE)
+    ensure_stripe_key()
 
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")

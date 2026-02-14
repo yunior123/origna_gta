@@ -32,16 +32,19 @@ void main() {
   }
 
   Future<bool> login(WidgetTester tester, String email, String password) async {
-    final textFields = find.byType(TextField);
-    if (textFields.evaluate().length >= 2) {
-      await tester.enterText(textFields.first, email);
-      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
-      await tester.enterText(textFields.at(1), password);
-      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
+    final emailField = find.byKey(const Key('login_email_field'));
+    final passwordField = find.byKey(const Key('login_password_field'));
+    final signInBtn = find.byKey(const Key('login_submit_button'));
 
-      final signInBtn = find.widgetWithText(ElevatedButton, 'Sign In');
+    if (emailField.evaluate().isNotEmpty && passwordField.evaluate().isNotEmpty) {
+      await tester.enterText(emailField, email);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.enterText(passwordField, password);
+      await tester.pump(const Duration(milliseconds: 100));
+
       if (signInBtn.evaluate().isNotEmpty) {
         await tester.tap(signInBtn);
+        // Wait for login to complete and home screen to appear
         for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
         return true;
       }
@@ -50,23 +53,18 @@ void main() {
   }
 
   Future<void> goToCart(WidgetTester tester) async {
-    final cartIcon = find.byIcon(Icons.shopping_cart);
+    final cartIcon = find.byKey(const Key('home_cart_button'));
     if (cartIcon.evaluate().isNotEmpty) {
-      await tester.tap(cartIcon.first);
+      await tester.tap(cartIcon);
       for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
     }
   }
 
   Future<bool> goToCheckout(WidgetTester tester) async {
-    final checkoutBtn = find.widgetWithText(ElevatedButton, 'Checkout');
-    final proceedBtn = find.widgetWithText(ElevatedButton, 'Proceed to Checkout');
+    final checkoutBtn = find.byKey(const Key('cart_checkout_button'));
 
     if (checkoutBtn.evaluate().isNotEmpty) {
-      await tester.tap(checkoutBtn.first);
-      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
-      return true;
-    } else if (proceedBtn.evaluate().isNotEmpty) {
-      await tester.tap(proceedBtn.first);
+      await tester.tap(checkoutBtn);
       for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
       return true;
     }
@@ -346,7 +344,7 @@ void main() {
       await goToCart(tester);
 
       if (await goToCheckout(tester)) {
-        final placeOrderBtn = find.widgetWithText(ElevatedButton, 'Place Order');
+        final placeOrderBtn = find.byKey(const Key('checkout_place_order_button'));
         final paymentIcon = find.byIcon(Icons.payment);
 
         expect(placeOrderBtn.evaluate().isNotEmpty || paymentIcon.evaluate().isNotEmpty || true, isTrue);

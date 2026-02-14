@@ -132,6 +132,27 @@ sequenceDiagram
 - Functions README: functions/Readme.md
 
 ## Environments
+- **Development**: `flutter run -d chrome --dart-define=ENVIRONMENT=dev`
+- **Staging**: `flutter run -d chrome --dart-define=ENVIRONMENT=staging`
+- **Production**: `flutter run -d chrome --dart-define=ENVIRONMENT=production` (Default)
+- **Emulators**: `flutter run -d chrome --dart-define=ENVIRONMENT=emulator`
+
+### Deployment
+Deploy backend/hosting to specific environment:
+```bash
+# Dev
+firebase use dev
+firebase deploy
+# Staging
+firebase use staging
+firebase deploy
+# Prod
+firebase use prod
+firebase deploy
+```
+
+## Architecture Notes
 - Canada-only delivery enforced in Functions (buyer/shipping addresses only; sellers can be worldwide).
 - Stripe Connect Express direct charges, manual capture.
 - Algolia search with Firestore fallback.
+

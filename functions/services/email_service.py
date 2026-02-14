@@ -8,7 +8,12 @@ from urllib.parse import quote
 
 from mailjet_rest import Client
 
-from config import IS_EMULATOR, MAILJET_API_KEY, MAILJET_SECRET_KEY, UNSUBSCRIBE_HMAC_SECRET
+from config import (
+    IS_EMULATOR,
+    get_mailjet_api_key,
+    get_mailjet_secret_key,
+    get_unsubscribe_hmac_secret,
+)
 from schema_constants import AppConfig, DeliveryTypeValues, EmailConfig, Fields, ShippingTiers
 from services import shipping_service
 
@@ -25,7 +30,7 @@ UNSUBSCRIBE_URL = EmailConfig.UNSUBSCRIBE_URL_DEV if IS_EMULATOR else EmailConfi
 
 # HMAC secret for signed unsubscribe tokens (prevents unauthorized unsubscription)
 # Loaded from GCP Secret Manager in production, from .env in emulator
-_UNSUBSCRIBE_SECRET = UNSUBSCRIBE_HMAC_SECRET or "origna-unsub-default-dev-key"
+_UNSUBSCRIBE_SECRET = get_unsubscribe_hmac_secret() or "origna-unsub-default-dev-key"
 
 
 def _generate_unsubscribe_token(email: str) -> str:
@@ -1231,8 +1236,8 @@ def send_payment_capture_failed_email(
         return
 
     # AUDIT FIX: Guard against missing Mailjet credentials (prevents crash)
-    if not MAILJET_API_KEY or not MAILJET_SECRET_KEY:
-        MAILJET_CREDENTIAL_REDACTED("Mailjet not configured — skipping capture failure email")
+    if not get_mailjet_api_key() or not get_mailjet_secret_key():
+        logger.warning("Mailjet not configured — skipping capture failure email")
         return
 
     # Sanitize user-controlled inputs before HTML injection
@@ -1240,7 +1245,7 @@ def send_payment_capture_failed_email(
     safe_error = html.escape(str(error_message or "Unknown error"))
 
     # Initialize Mailjet client
-    mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version=EmailConfig.MAILJET_API_VERSION)
+    mailjet = Client(auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version=EmailConfig.MAILJET_API_VERSION)
 
     subject = f"Payment Issue - Order #{order_id[:8]}"
     html_body = f"""
@@ -1389,7 +1394,7 @@ def send_3ds_authentication_email(
     safe_name = html.escape(str(customer_name or ""))
 
     # Initialize Mailjet client
-    mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version=EmailConfig.MAILJET_API_VERSION)
+    mailjet = Client(auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version=EmailConfig.MAILJET_API_VERSION)
 
     subject = f"Action Required: Verify Your Payment - Order #{order_id[:8]}"
     html_body = f"""

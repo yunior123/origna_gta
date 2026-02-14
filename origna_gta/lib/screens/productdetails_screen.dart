@@ -142,6 +142,7 @@ class ProductDetailScreen extends ConsumerWidget {
                               ).createShader(bounds),
                               child: Text(
                                 product.name,
+                                key: const Key('product_detail_name'),
                                 style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white),
                               ),
                             ),
@@ -186,6 +187,7 @@ class ProductDetailScreen extends ConsumerWidget {
                                 const SizedBox(width: 12),
                                 Text(
                                   '\$${product.price.toStringAsFixed(2)}',
+                                  key: const Key('product_detail_price'),
                                   style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Colors.white),
                                 ),
                               ],
@@ -370,6 +372,7 @@ class _AddToCartButton extends ConsumerWidget {
           );
         }
       },
+      key: const Key('product_add_to_cart_button'),
       fullWidth: true,
       icon: Icons.shopping_cart_checkout,
     );
@@ -536,7 +539,7 @@ class _QuantityButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final String semanticLabel;
 
-  const _QuantityButton({required this.icon, required this.onPressed, required this.semanticLabel});
+  const _QuantityButton({super.key, required this.icon, required this.onPressed, required this.semanticLabel});
 
   @override
   Widget build(BuildContext context) {
@@ -579,12 +582,12 @@ class _QuantitySelector extends ConsumerWidget {
         GlassContainer(
           child: Row(
             children: [
-              _QuantityButton(icon: Icons.remove, onPressed: quantity > 1 ? viewModel.decrementQuantity : null, semanticLabel: 'btn-product-qty-minus'),
+              _QuantityButton(key: const Key('product_qty_minus'), icon: Icons.remove, onPressed: quantity > 1 ? viewModel.decrementQuantity : null, semanticLabel: 'btn-product-qty-minus'),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('$quantity', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                child: Text('$quantity', key: const Key('product_qty_value'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               ),
-              _QuantityButton(icon: Icons.add, onPressed: viewModel.incrementQuantity, semanticLabel: 'btn-product-qty-plus'),
+              _QuantityButton(key: const Key('product_qty_plus'), icon: Icons.add, onPressed: viewModel.incrementQuantity, semanticLabel: 'btn-product-qty-plus'),
             ],
           ),
         ),

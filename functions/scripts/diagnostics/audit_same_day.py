@@ -49,7 +49,7 @@ class TestSameDayDelivery(unittest.TestCase):
             }
         ]
 
-    @patch("services.shipping_service.GEOAPIFY_API_KEY", "mock_key")
+    @patch("services.shipping_service.get_geoapify_api_key", return_value="mock_key")
     @patch("services.shipping_service.requests.post")
     def test_same_day_short_distance(self, mock_post):
         """Test Same Day Delivery for short distance (<15km)."""
@@ -71,7 +71,7 @@ class TestSameDayDelivery(unittest.TestCase):
         print(f"\n[Short Distance] Cost: {cost}")
         self.assertAlmostEqual(cost, 1.99 * 4.5, delta=0.01)
 
-    @patch("services.shipping_service.GEOAPIFY_API_KEY", "mock_key")
+    @patch("services.shipping_service.get_geoapify_api_key", return_value="mock_key")
     @patch("services.shipping_service.requests.post")
     def test_same_day_long_distance(self, mock_post):
         """Test Same Day Delivery for long distance (>50km) - Should Fail."""
@@ -88,7 +88,7 @@ class TestSameDayDelivery(unittest.TestCase):
             shipping_service.calculate_shipping_cost(self.items, self.buyer_address, speed=DeliveryTypeValues.SAME_DAY)
         print(f"\n[Long Distance] Caught expected error: {context.exception}")
 
-    @patch("services.shipping_service.GEOAPIFY_API_KEY", "mock_key")
+    @patch("services.shipping_service.get_geoapify_api_key", return_value="mock_key")
     @patch("services.shipping_service.requests.post")
     def test_geoapify_failure_fallback(self, mock_post):
         """Test behavior when Geoapify fails - Should Fail Safely."""

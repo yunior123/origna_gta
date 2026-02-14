@@ -24,7 +24,9 @@ import 'package:flutter/foundation.dart';
 
 /// Environment enumeration
 enum AppEnvironment {
-  emulator,   // Local development with Firebase emulators (micro-staging)
+  emulator,   // Local development with Firebase emulators
+  dev,        // Development Firebase project
+  staging,    // Staging Firebase project
   production, // Production Firebase project
 }
 
@@ -50,15 +52,25 @@ class EnvConfig {
   /// Current environment
   AppEnvironment get environment {
     if (_envString == 'emulator' || _useEmulators) {
+      print('🚀 Running in EMULATOR mode');
       return AppEnvironment.emulator;
     }
+    if (_envString == 'dev') {
+      print('🛠️ Running in DEV mode');
+      return AppEnvironment.dev;
+    }
+    if (_envString == 'staging') {
+      print('🧪 Running in STAGING mode');
+      return AppEnvironment.staging;
+    }
+    print('🏭 Running in PRODUCTION mode');
     return AppEnvironment.production;
   }
 
   /// Check if running in emulator mode
   bool get isEmulator => environment == AppEnvironment.emulator;
-  
-  /// Check if running in production mode
+  bool get isDev => environment == AppEnvironment.dev;
+  bool get isStaging => environment == AppEnvironment.staging;
   bool get isProduction => environment == AppEnvironment.production;
 
   /// Whether to connect to Firebase emulators
@@ -66,31 +78,28 @@ class EnvConfig {
   bool get shouldUseEmulators {
     if (_useEmulators) return true;
     if (environment == AppEnvironment.emulator) return true;
-    // For web, auto-detect localhost
-    if (kIsWeb) {
-      try {
-        // This will be evaluated at runtime for web
-        return Uri.base.host.contains('localhost') || 
-               Uri.base.host.contains('127.0.0.1');
-      } catch (_) {
-        return false;
-      }
-    }
+    // For web, auto-detect localhost logic removed to respect explicit environment config
+    // if (kIsWeb) { ... }
+    return false;
     return false;
   }
 
   /// R2 Storage paths based on environment
-  String get r2ProductsFolder => isEmulator ? 'emulator/products' : 'products';
-  String get r2UsersFolder => isEmulator ? 'emulator/users' : 'users';
+  String get r2ProductsFolder => (isEmulator || isDev) ? 'emulator/products' : (isStaging ? 'staging/products' : 'products');
+  String get r2UsersFolder => (isEmulator || isDev) ? 'emulator/users' : (isStaging ? 'staging/users' : 'users');
   
   /// Algolia index name based on environment
-  String get algoliaIndexName => isEmulator ? 'products_emulator' : 'products';
+  String get algoliaIndexName => (isEmulator || isDev) ? 'products_emulator' : (isStaging ? 'products_staging' : 'products');
 
   /// Get environment display name
   String get displayName {
     switch (environment) {
       case AppEnvironment.emulator:
         return 'Emulator (Micro-Staging)';
+      case AppEnvironment.dev:
+        return 'Development';
+      case AppEnvironment.staging:
+        return 'Staging';
       case AppEnvironment.production:
         return 'Production';
     }

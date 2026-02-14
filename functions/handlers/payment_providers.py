@@ -72,16 +72,17 @@ def _is_provider_configured(provider: str) -> tuple:
         Tuple of (is_configured: bool, missing_keys: list)
     """
     if provider == PaymentProviderValues.STRIPE:
-        from config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+        from config import get_stripe_secret_key, get_stripe_webhook_secret
 
         missing = []
-        if not STRIPE_SECRET_KEY:
+        if not get_stripe_secret_key():
             missing.append("STRIPE_SECRET_KEY")
-        if not STRIPE_WEBHOOK_SECRET:
+        if not get_stripe_webhook_secret():
             missing.append("STRIPE_WEBHOOK_SECRET")
         return (len(missing) == 0, missing)
 
     elif provider == PaymentProviderValues.AIRWALLEX:
+        # Airwallex secrets are optional/legacy for now
         from config import AIRWALLEX_API_KEY, AIRWALLEX_CLIENT_ID
 
         missing = []

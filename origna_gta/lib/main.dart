@@ -11,7 +11,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
-import 'package:origna_gta/firebase_options.dart';
+// import 'package:origna_gta/firebase_options.dart'; // Deprecated in favor of config/
+import 'package:origna_gta/config/firebase_config_dev.dart';
+import 'package:origna_gta/config/firebase_config_prod.dart';
+import 'package:origna_gta/config/firebase_config_staging.dart';
 import 'package:origna_gta/origna_app.dart';
 import 'package:origna_gta/services/conf_services.dart';
 import 'package:origna_gta/utils/env_config.dart';
@@ -42,7 +45,28 @@ void main() {
         _semanticsHandle = SemanticsBinding.instance.ensureSemantics();
       }
 
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      FirebaseOptions firebaseOptions;
+
+      switch (envConfig.environment) {
+        case AppEnvironment.dev:
+          firebaseOptions = FirebaseConfigDev.currentPlatform;
+          break;
+        case AppEnvironment.staging:
+          firebaseOptions = FirebaseConfigStaging.currentPlatform;
+          break;
+        case AppEnvironment.production:
+          firebaseOptions = FirebaseConfigProd.currentPlatform;
+          break;
+        case AppEnvironment.emulator:
+          // For emulator, we can use dev or prod config as base, 
+          // but we MUST connect to emulators. 
+          // Let's use Prod config as base to match previous behavior, 
+          // but ConfigService will handle avoiding real calls if needed.
+          firebaseOptions = FirebaseConfigProd.currentPlatform; 
+          break;
+      }
+
+      await Firebase.initializeApp(options: firebaseOptions);
 
       // Print environment info (debug only)
       if (!kReleaseMode) {
@@ -82,6 +106,9 @@ void main() {
         try {
           await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
           debugPrint('🔐 Auth persistence set to LOCAL');
+          
+
+
         } catch (e) {
           debugPrint('⚠️ Could not set auth persistence: $e');
         }

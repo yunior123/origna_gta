@@ -270,7 +270,10 @@
     "seller_suspended": "Seller account suspended. Contact support.",
     "complete_stripe_verification": "Complete Stripe identity verification first to add products.",
     "please_sign_in": "Please sign in to continue",
-    "need_account_access": "You need an account to access this page."
+    "need_account_access": "You need an account to access this page.",
+    "sign_in_cart_required": "You need to sign in to add items to your cart.",
+    "sign_in_settings_required": "You need to sign in to access settings",
+    "sign_in_favorites_required": "You need to sign in to add favorites"
   },
   "home": {
     "tagline": "Your marketplace for buying and selling across the Greater Toronto Area and all of Canada.",

@@ -2,7 +2,7 @@ import logging
 
 import requests
 
-from config import GEOAPIFY_API_KEY
+from config import get_geoapify_api_key
 from schema_constants import (
     AppConfig,
     DeliveryTypeValues,
@@ -527,9 +527,10 @@ def calculate_shipping_cost(items: list[dict], buyer_address: dict, speed: str =
 
         should_call_geoapify = speed in [DeliveryTypeValues.EXPRESS, DeliveryTypeValues.SAME_DAY] or has_perishable
 
-        if should_call_geoapify and seller_lat and seller_lon and GEOAPIFY_API_KEY:
+        geo_key = get_geoapify_api_key()
+        if should_call_geoapify and seller_lat and seller_lon and geo_key:
             try:
-                url = f"https://api.geoapify.com/v1/routematrix?apiKey={GEOAPIFY_API_KEY}"
+                url = f"https://api.geoapify.com/v1/routematrix?apiKey={geo_key}"
                 payload = {
                     "mode": "drive",
                     "sources": [{"location": [seller_lon, seller_lat]}],

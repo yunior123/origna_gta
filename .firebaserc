@@ -1,5 +1,10 @@
 {
   "projects": {
-    "default": "orignagta"
-  }
+    "default": "orignagta",
+    "prod": "orignagta",
+    "dev": "orignagta-dev",
+    "staging": "orignagta-staging"
+  },
+  "targets": {},
+  "etags": {}
 }

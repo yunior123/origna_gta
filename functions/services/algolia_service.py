@@ -11,7 +11,7 @@ from typing import Union
 from algoliasearch.search.client import SearchClient
 from pydantic import ValidationError
 
-from config import ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY, AlgoliaConfig
+from config import AlgoliaConfig, get_algolia_app_id, get_algolia_write_api_key
 from models.product import Product
 from schema_constants import AppConfig, Collections, Fields
 
@@ -34,9 +34,9 @@ def _run_async(coro):
 
 
 # Initialize Algolia client (v4 API)
-algolia_client = (
-    SearchClient(ALGOLIA_APP_ID, ALGOLIA_WRITE_API_KEY) if ALGOLIA_APP_ID and ALGOLIA_WRITE_API_KEY else None
-)
+_app_id = get_algolia_app_id()
+_api_key = get_algolia_write_api_key()
+algolia_client = SearchClient(_app_id, _api_key) if _app_id and _api_key else None
 products_index = algolia_client if algolia_client else None
 
 

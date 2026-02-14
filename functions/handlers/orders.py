@@ -13,7 +13,7 @@ from typing import Any
 import stripe
 from firebase_functions import firestore_fn, https_fn
 
-from config import STRIPE_SECRET_KEY
+from config import get_stripe_secret_key
 from schema_constants import (
     ApiKeys,
     BusinessRules,
@@ -43,7 +43,7 @@ from utils.helpers import create_success_response, is_valid_order_status_transit
 
 logger = logging.getLogger(__name__)
 
-stripe.api_key = STRIPE_SECRET_KEY
+# stripe.api_key = STRIPE_SECRET_KEY  # Removed global assignment
 _db = None
 _firestore = None
 
@@ -605,6 +605,9 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         return fresh_payment_status
 
     payment_status = lock_for_cancel(transaction)
+    
+    # Initialize Stripe key
+    stripe.api_key = get_stripe_secret_key()
 
     # Handle payment based on current payment status
     refunded = False
