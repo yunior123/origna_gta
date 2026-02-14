@@ -52,18 +52,18 @@ class EnvConfig {
   /// Current environment
   AppEnvironment get environment {
     if (_envString == 'emulator' || _useEmulators) {
-      print('🚀 Running in EMULATOR mode');
+      debugPrint('🚀 Running in EMULATOR mode');
       return AppEnvironment.emulator;
     }
     if (_envString == 'dev') {
-      print('🛠️ Running in DEV mode');
+      debugPrint('🛠️ Running in DEV mode');
       return AppEnvironment.dev;
     }
     if (_envString == 'staging') {
-      print('🧪 Running in STAGING mode');
+      debugPrint('🧪 Running in STAGING mode');
       return AppEnvironment.staging;
     }
-    print('🏭 Running in PRODUCTION mode');
+    debugPrint('🏭 Running in PRODUCTION mode');
     return AppEnvironment.production;
   }
 
@@ -80,7 +80,6 @@ class EnvConfig {
     if (environment == AppEnvironment.emulator) return true;
     // For web, auto-detect localhost logic removed to respect explicit environment config
     // if (kIsWeb) { ... }
-    return false;
     return false;
   }
 

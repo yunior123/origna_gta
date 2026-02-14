@@ -150,6 +150,7 @@ class CartItemScreen extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _QuantityButton(
+                            key: Key('cart_qty_minus_$productId'),
                             icon: Icons.remove_rounded,
                             onPressed: quantity > 1 ? () => cartController.updateQuantity(productId, quantity - 1) : null,
                             isDark: isDark,
@@ -172,6 +173,7 @@ class CartItemScreen extends StatelessWidget {
                             ),
                           ),
                           _QuantityButton(
+                            key: Key('cart_qty_plus_$productId'),
                             icon: Icons.add_rounded,
                             onPressed: () async {
                               // AUDIT FIX (H6): Show feedback if stock limit reached
@@ -284,7 +286,7 @@ class _QuantityButton extends StatelessWidget {
   final bool isDark;
   final String semanticLabel;
 
-  const _QuantityButton({required this.icon, this.onPressed, required this.isDark, required this.semanticLabel});
+  const _QuantityButton({super.key, required this.icon, this.onPressed, required this.isDark, required this.semanticLabel});
 
   @override
   Widget build(BuildContext context) {

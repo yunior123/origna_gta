@@ -30,21 +30,36 @@ void main() {
 
   /// Login helper
   Future<void> performLogin(WidgetTester tester, String email, String password) async {
-    // Find email field
-    final emailFields = find.byType(TextField);
-    if (emailFields.evaluate().length >= 2) {
-      await tester.enterText(emailFields.first, email);
+    // Find email and password fields by key
+    final emailField = find.byKey(const Key('login_email_field'));
+    final passwordField = find.byKey(const Key('login_password_field'));
+    final loginButton = find.byKey(const Key('login_submit_button'));
+
+    if (emailField.evaluate().isNotEmpty && passwordField.evaluate().isNotEmpty) {
+      await tester.enterText(emailField, email);
       for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
-      await tester.enterText(emailFields.at(1), password);
+      await tester.enterText(passwordField, password);
       for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
+    } else {
+      // Fallback
+      final emailFields = find.byType(TextField);
+      if (emailFields.evaluate().length >= 2) {
+        await tester.enterText(emailFields.first, email);
+        await tester.enterText(emailFields.at(1), password);
+      }
     }
 
     // Find and tap login button
-    final loginButton = find.widgetWithText(ElevatedButton, 'Sign In');
     if (loginButton.evaluate().isNotEmpty) {
       await tester.tap(loginButton);
-      for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
+    } else {
+      final oldButton = find.widgetWithText(ElevatedButton, 'Sign In');
+      if (oldButton.evaluate().isNotEmpty) {
+        await tester.tap(oldButton);
+      }
     }
+
+    for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   }
 
   // ============================================================================
@@ -122,10 +137,10 @@ void main() {
     testWidgets('2.4 Login button is present and tappable', (WidgetTester tester) async {
       await waitForAppInit(tester);
 
-      final signInButton = find.widgetWithText(ElevatedButton, 'Sign In');
-      final loginButton = find.widgetWithText(ElevatedButton, 'Login');
+      final submitButton = find.byKey(const Key('login_submit_button'));
+      final signInText = find.widgetWithText(ElevatedButton, 'Sign In');
 
-      expect(signInButton.evaluate().isNotEmpty || loginButton.evaluate().isNotEmpty, isTrue, reason: 'Should have a Sign In or Login button');
+      expect(submitButton.evaluate().isNotEmpty || signInText.evaluate().isNotEmpty, isTrue, reason: 'Should have a Sign In button or Key');
     });
 
     testWidgets('2.5 Can toggle between login and register', (WidgetTester tester) async {
@@ -209,10 +224,10 @@ void main() {
     testWidgets('3.4 Cart icon is present', (WidgetTester tester) async {
       await waitForAppInit(tester);
 
-      final cartIcon = find.byIcon(Icons.shopping_cart);
-      final cartOutlined = find.byIcon(Icons.shopping_cart_outlined);
+      final cartKey = find.byKey(const Key('home_cart_button'));
+      final cartIcon = find.byIcon(Icons.shopping_cart_outlined);
 
-      expect(cartIcon.evaluate().isNotEmpty || cartOutlined.evaluate().isNotEmpty || true, isTrue);
+      expect(cartKey.evaluate().isNotEmpty || cartIcon.evaluate().isNotEmpty || true, isTrue);
     });
 
     testWidgets('3.5 Bottom navigation exists', (WidgetTester tester) async {
@@ -325,14 +340,14 @@ void main() {
       await waitForAppInit(tester);
       await performLogin(tester, buyerEmail, buyerPassword);
 
+      final cartKey = find.byKey(const Key('home_cart_button'));
       final cartIcon = find.byIcon(Icons.shopping_cart_outlined);
-      final cartFilled = find.byIcon(Icons.shopping_cart);
 
-      if (cartIcon.evaluate().isNotEmpty) {
-        await tester.tap(cartIcon);
+      if (cartKey.evaluate().isNotEmpty) {
+        await tester.tap(cartKey);
         for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
-      } else if (cartFilled.evaluate().isNotEmpty) {
-        await tester.tap(cartFilled);
+      } else if (cartIcon.evaluate().isNotEmpty) {
+        await tester.tap(cartIcon);
         for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
       }
 

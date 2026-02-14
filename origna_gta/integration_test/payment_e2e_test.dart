@@ -36,21 +36,37 @@ void main() {
 
   /// Perform login with email and password
   Future<bool> performLogin(WidgetTester tester, String email, String password) async {
-    final emailFields = find.byType(TextField);
-    if (emailFields.evaluate().length >= 2) {
-      await tester.enterText(emailFields.first, email);
+    final emailField = find.byKey(const Key('login_email_field'));
+    final passwordField = find.byKey(const Key('login_password_field'));
+    final loginButton = find.byKey(const Key('login_submit_button'));
+
+    if (emailField.evaluate().isNotEmpty && passwordField.evaluate().isNotEmpty) {
+      await tester.enterText(emailField, email);
       for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
-      await tester.enterText(emailFields.at(1), password);
+      await tester.enterText(passwordField, password);
       for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
+    } else {
+      // Fallback
+      final emailFields = find.byType(TextField);
+      if (emailFields.evaluate().length >= 2) {
+        await tester.enterText(emailFields.first, email);
+        await tester.enterText(emailFields.at(1), password);
+      }
     }
 
-    final loginButton = find.widgetWithText(ElevatedButton, 'Sign In');
     if (loginButton.evaluate().isNotEmpty) {
       await tester.tap(loginButton);
-      for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
-      return true;
+    } else {
+      final oldButton = find.widgetWithText(ElevatedButton, 'Sign In');
+      if (oldButton.evaluate().isNotEmpty) {
+        await tester.tap(oldButton);
+      } else {
+        return false;
+      }
     }
-    return false;
+    
+    for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
+    return true;
   }
 
   /// Navigate to a specific tab by icon
@@ -157,11 +173,10 @@ void main() {
       for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Look for checkout button (only visible if cart has items)
-      final checkoutButton = find.widgetWithText(ElevatedButton, 'Checkout');
-      final proceedButton = find.widgetWithText(ElevatedButton, 'Proceed to Checkout');
+      final checkoutButton = find.byKey(const Key('cart_checkout_button'));
 
       // Button may or may not exist depending on cart state
-      final hasCheckoutOption = checkoutButton.evaluate().isNotEmpty || proceedButton.evaluate().isNotEmpty;
+      final hasCheckoutOption = checkoutButton.evaluate().isNotEmpty;
 
       // This is informational - button exists only if cart has items
       expect(hasCheckoutOption || true, isTrue);
@@ -204,7 +219,7 @@ void main() {
         // Look for address-related UI
         final addressText = find.textContaining('Address');
         final deliveryText = find.textContaining('Delivery');
-        final editButton = find.byIcon(Icons.edit_outlined);
+        final editButton = find.byKey(const Key('checkout_edit_address_button'));
 
         expect(addressText.evaluate().isNotEmpty || deliveryText.evaluate().isNotEmpty || editButton.evaluate().isNotEmpty || true, isTrue);
       }
@@ -288,7 +303,7 @@ void main() {
         for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
         // Look for place order button
-        final placeOrderButton = find.widgetWithText(ElevatedButton, 'Place Order');
+        final placeOrderButton = find.byKey(const Key('checkout_place_order_button'));
         final payButton = find.byIcon(Icons.payment);
 
         expect(placeOrderButton.evaluate().isNotEmpty || payButton.evaluate().isNotEmpty || true, isTrue);

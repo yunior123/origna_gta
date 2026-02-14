@@ -19,6 +19,7 @@ class ModernTextField extends StatefulWidget {
   final int minLines;
   final int? maxLength;
   final bool showCounter;
+  final Key? textFieldKey;
 
   const ModernTextField({
     super.key,
@@ -37,6 +38,7 @@ class ModernTextField extends StatefulWidget {
     this.minLines = 1,
     this.maxLength,
     this.showCounter = false,
+    this.textFieldKey,
   });
 
   @override
@@ -65,6 +67,7 @@ class _ModernTextFieldState extends State<ModernTextField> {
           label: widget.label,
           textField: true,
           child: TextFormField(
+          key: widget.textFieldKey,
           controller: widget.controller,
           focusNode: _focusNode,
           keyboardType: widget.keyboardType,

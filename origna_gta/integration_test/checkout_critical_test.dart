@@ -138,10 +138,9 @@ void main() {
       await goToCart(tester);
 
       if (await goToCheckout(tester)) {
-        final editButton = find.byIcon(Icons.edit_outlined);
-        final editText = find.textContaining('Edit');
+        final editButton = find.byKey(const Key('checkout_edit_address_button'));
 
-        expect(editButton.evaluate().isNotEmpty || editText.evaluate().isNotEmpty || true, isTrue);
+        expect(editButton, findsOneWidget);
       }
     });
 

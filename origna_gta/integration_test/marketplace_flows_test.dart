@@ -142,38 +142,40 @@ Future<bool> performLogin(
   // Wait for login screen
   for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
-  // Find text fields (email is typically first, password second)
-  final emailFields = find.byType(TextField);
-  final textFormFields = find.byType(TextFormField);
+  // Find text fields
+  final emailField = find.byKey(const Key('login_email_field'));
+  final passwordField = find.byKey(const Key('login_password_field'));
   
-  final fields = emailFields.evaluate().isNotEmpty ? emailFields : textFormFields;
-  
-  if (fields.evaluate().length >= 2) {
+  if (emailField.evaluate().isNotEmpty && passwordField.evaluate().isNotEmpty) {
     // Enter email
-    await tester.enterText(fields.first, email);
+    await tester.enterText(emailField, email);
     for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     
     // Enter password
-    await tester.enterText(fields.at(1), password);
+    await tester.enterText(passwordField, password);
     for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
   } else {
-    debugPrint('❌ Could not find login fields');
-    return false;
+    // Fallback if keys are not present
+    final fields = find.byType(TextField).evaluate().isNotEmpty ? find.byType(TextField) : find.byType(TextFormField);
+    if (fields.evaluate().length >= 2) {
+      await tester.enterText(fields.first, email);
+      await tester.enterText(fields.at(1), password);
+    } else {
+      debugPrint('❌ Could not find login fields');
+      return false;
+    }
   }
   
   // Find and tap login button
-  final signInButton = find.widgetWithText(ElevatedButton, 'Sign In');
-  final loginButton = find.widgetWithText(ElevatedButton, 'Login');
+  final loginButton = find.byKey(const Key('login_submit_button'));
   
-  if (signInButton.evaluate().isNotEmpty) {
-    await tester.tap(signInButton);
-  } else if (loginButton.evaluate().isNotEmpty) {
+  if (loginButton.evaluate().isNotEmpty) {
     await tester.tap(loginButton);
   } else {
-    // Try any elevated button
-    final anyButton = find.byType(ElevatedButton);
-    if (anyButton.evaluate().isNotEmpty) {
-      await tester.tap(anyButton.first);
+    // Fallback
+    final signInButton = find.widgetWithText(ElevatedButton, 'Sign In');
+    if (signInButton.evaluate().isNotEmpty) {
+      await tester.tap(signInButton);
     } else {
       debugPrint('❌ Could not find login button');
       return false;
@@ -275,31 +277,28 @@ Future<void> performLogout(WidgetTester tester) async {
   debugPrint('🚪 Logging out...');
   
   // Navigate to profile/settings
-  final profileIcon = find.byIcon(Icons.person);
-  final accountIcon = find.byIcon(Icons.account_circle);
-  final settingsIcon = find.byIcon(Icons.settings);
+  final settingsIcon = find.byKey(const Key('home_settings_button'));
   
-  if (profileIcon.evaluate().isNotEmpty) {
-    await tester.tap(profileIcon.first);
-  } else if (accountIcon.evaluate().isNotEmpty) {
-    await tester.tap(accountIcon.first);
-  } else if (settingsIcon.evaluate().isNotEmpty) {
-    await tester.tap(settingsIcon.first);
+  if (settingsIcon.evaluate().isNotEmpty) {
+    await tester.tap(settingsIcon);
+  } else {
+    // Fallback
+    final profileIcon = find.byIcon(Icons.person);
+    if (profileIcon.evaluate().isNotEmpty) {
+      await tester.tap(profileIcon.first);
+    } else {
+      debugPrint('❌ Could not find settings/profile button');
+      return;
+    }
   }
   
   for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Find logout button
-  final logoutButton = find.textContaining('Log Out');
-  final signOutButton = find.textContaining('Sign Out');
-  final logoutIcon = find.byIcon(Icons.logout);
+  final logoutButton = find.byKey(const Key('profile_sign_out_button'));
   
   if (logoutButton.evaluate().isNotEmpty) {
-    await tester.tap(logoutButton.first);
-  } else if (signOutButton.evaluate().isNotEmpty) {
-    await tester.tap(signOutButton.first);
-  } else if (logoutIcon.evaluate().isNotEmpty) {
-    await tester.tap(logoutIcon.first);
+    await tester.tap(logoutButton);
   }
   
   for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
@@ -595,15 +594,11 @@ Future<bool> completeCheckout(WidgetTester tester) async {
   for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 500)); }
   
   // Proceed to checkout
-  final checkoutButton = find.widgetWithText(ElevatedButton, 'Checkout');
-  final proceedButton = find.widgetWithText(ElevatedButton, 'Proceed to Checkout');
+  final checkoutButton = find.byKey(const Key('cart_checkout_button'));
   
   if (checkoutButton.evaluate().isNotEmpty) {
     await tester.tap(checkoutButton);
-    for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
-  } else if (proceedButton.evaluate().isNotEmpty) {
-    await tester.tap(proceedButton);
-    for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
+    for (var i = 0; i < 6; i++) { await tester.pump(const Duration(seconds: 1)); }
   } else {
     debugPrint('⚠️ Could not find checkout button');
     return false;
@@ -654,16 +649,18 @@ Future<bool> completeCheckout(WidgetTester tester) async {
   }
   
   // Place order
-  final placeOrderButton = find.widgetWithText(ElevatedButton, 'Place Order');
-  final payButton = find.widgetWithText(ElevatedButton, 'Pay');
-  final confirmButton = find.widgetWithText(ElevatedButton, 'Confirm');
+  final placeOrderButton = find.byKey(const Key('checkout_place_order_button'));
   
   if (placeOrderButton.evaluate().isNotEmpty) {
     await tester.tap(placeOrderButton);
-  } else if (payButton.evaluate().isNotEmpty) {
-    await tester.tap(payButton);
-  } else if (confirmButton.evaluate().isNotEmpty) {
-    await tester.tap(confirmButton);
+  } else {
+    final oldPlaceOrderButton = find.widgetWithText(ElevatedButton, 'Place Order');
+    if (oldPlaceOrderButton.evaluate().isNotEmpty) {
+      await tester.tap(oldPlaceOrderButton);
+    } else {
+      debugPrint('⚠️ Could not find place order button');
+      return false;
+    }
   }
   
   for (var i = 0; i < 16; i++) { await tester.pump(const Duration(milliseconds: 500)); }

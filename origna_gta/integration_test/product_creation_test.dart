@@ -20,20 +20,16 @@ void main() {
       // Attendre que l'écran de login soit chargé
       for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
       
-      // Chercher les champs par type (car les keys ne sont pas encore ajoutées)
-      final emailFields = find.byType(TextFormField);
-      expect(emailFields, findsWidgets);
-      
-      // Entrer les credentials (email est le premier champ)
-      await tester.enterText(emailFields.first, 'seller@origna.ca');
+      // Entrer les credentials
+      await tester.enterText(find.byKey(const Key('login_email_field')), 'seller@origna.ca');
       for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
       
-      // Mot de passe (deuxième champ en mode login)
-      await tester.enterText(emailFields.at(1), 'Test123456!');
+      // Mot de passe
+      await tester.enterText(find.byKey(const Key('login_password_field')), 'Test123456!');
       for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
       
       // Trouver et cliquer sur le bouton Sign In
-      final signInButton = find.text('Sign In');
+      final signInButton = find.byKey(const Key('login_submit_button'));
       expect(signInButton, findsOneWidget);
       await tester.tap(signInButton);
       
@@ -207,12 +203,12 @@ void main() {
         // NAVIGUER VERS ADD PRODUCT SCREEN
         // ========================================
         
-        // Chercher le bouton d'ajout (icône add_box_outlined ou texte)
-        final addProductButton = find.byIcon(Icons.add_box_outlined);
+        // Chercher le bouton d'ajout
+        final addProductButton = find.byKey(const Key('home_add_product_button'));
         if (addProductButton.evaluate().isEmpty) {
           debugPrint('⚠️ Add product button not found. Looking for alternative...');
-          // Alternative: chercher par tooltip ou texte
-          final altButton = find.byTooltip('Add Product');
+          // Alternative: chercher par icône
+          final altButton = find.byIcon(Icons.add_box_outlined);
           if (altButton.evaluate().isNotEmpty) {
             await tester.tap(altButton);
           } else {
@@ -232,38 +228,28 @@ void main() {
         // REMPLIR LE FORMULAIRE
         // ========================================
         
-        // Trouver tous les TextFormFields
-        final formFields = find.descendant(
-          of: find.byType(Form),
-          matching: find.byType(TextFormField),
-        );
-        
-        // Scroll vers le haut pour commencer
-        await tester.drag(find.byType(SingleChildScrollView), const Offset(0, 500));
-        for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
-        
-        // Nom du produit (généralement le premier champ)
+        // Nom du produit
         debugPrint('  ✏️ Entering product name...');
-        await tester.enterText(formFields.first, product['name'] as String);
+        await tester.enterText(find.byKey(const Key('product_name_field')), product['name'] as String);
         for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         
-        // Description (scroll un peu et chercher le champ suivant)
+        // Description
         debugPrint('  ✏️ Entering description...');
         await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -100));
         for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
-        await tester.enterText(formFields.at(1), product['description'] as String);
+        await tester.enterText(find.byKey(const Key('product_description_field')), product['description'] as String);
         for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         
         // Prix
         debugPrint('  ✏️ Entering price...');
         await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -100));
         for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
-        await tester.enterText(formFields.at(2), product['price'] as String);
+        await tester.enterText(find.byKey(const Key('product_price_field')), product['price'] as String);
         for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         
         // Stock
         debugPrint('  ✏️ Entering stock...');
-        await tester.enterText(formFields.at(3), product['stock'] as String);
+        await tester.enterText(find.byKey(const Key('product_stock_field')), product['stock'] as String);
         for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         
         // Scroll pour voir plus de champs
@@ -345,7 +331,7 @@ void main() {
         for (var i = 0; i < 4; i++) { await tester.pump(const Duration(milliseconds: 250)); }
         
         // Chercher le bouton "Add Product"
-        final submitButton = find.widgetWithText(ElevatedButton, 'Add Product');
+        final submitButton = find.byKey(const Key('addproduct_submit_button'));
         expect(submitButton, findsOneWidget);
         
         await tester.tap(submitButton);

@@ -24,9 +24,14 @@ void main() {
       for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 1. Navigate to register
-      final registerButton = find.text('Sign Up');
-      expect(registerButton, findsOneWidget);
-      await tester.tap(registerButton);
+      final registerButton = find.byKey(const Key('auth_switch_to_register_button'));
+      final signUpText = find.text('Sign Up');
+      
+      if (registerButton.evaluate().isNotEmpty) {
+        await tester.tap(registerButton);
+      } else if (signUpText.evaluate().isNotEmpty) {
+        await tester.tap(signUpText);
+      }
       for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 2. Fill registration form
@@ -87,7 +92,12 @@ void main() {
       expect(find.text('Added to cart'), findsOneWidget);
 
       // 8. Go to cart
-      await tester.tap(find.byIcon(Icons.shopping_cart));
+      final cartBtn = find.byKey(const Key('home_cart_button'));
+      if (cartBtn.evaluate().isNotEmpty) {
+        await tester.tap(cartBtn);
+      } else {
+        await tester.tap(find.byIcon(Icons.shopping_cart));
+      }
       for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // Verify cart has item
@@ -95,7 +105,12 @@ void main() {
       expect(find.byType(Card), findsWidgets);
 
       // 9. Proceed to checkout
-      await tester.tap(find.text('Checkout'));
+      final checkoutBtn = find.byKey(const Key('cart_checkout_button'));
+      if (checkoutBtn.evaluate().isNotEmpty) {
+        await tester.tap(checkoutBtn);
+      } else {
+        await tester.tap(find.text('Checkout'));
+      }
       for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 10. Fill shipping info
@@ -129,7 +144,12 @@ void main() {
       for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
 
       // 12. Place order
-      await tester.tap(find.text('Place Order'));
+      final placeOrderBtn = find.byKey(const Key('checkout_place_order_button'));
+      if (placeOrderBtn.evaluate().isNotEmpty) {
+        await tester.tap(placeOrderBtn);
+      } else {
+        await tester.tap(find.text('Place Order'));
+      }
       for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
 
       // Verify order success

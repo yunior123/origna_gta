@@ -51,13 +51,13 @@ Future<void> loginWith(
   await pumpWait(tester, seconds: 4);
 }
 
-/// Navigate to profile → tap a menu item by its title text.
-Future<void> goToProfileMenuItem(WidgetTester tester, String menuTitle) async {
+/// Navigate to profile → tap a menu item by its key.
+Future<void> goToProfileMenuItem(WidgetTester tester, Key menuKey) async {
   // Tap settings from the app bar
   await tester.tap(find.byKey(const Key('home_settings_button')));
   await pumpWait(tester);
   // Find and tap the menu item
-  final menuItem = find.text(menuTitle);
+  final menuItem = find.byKey(menuKey);
   await tester.ensureVisible(menuItem);
   await tester.tap(menuItem);
   await pumpWait(tester);
@@ -424,10 +424,10 @@ void main() {
       await pumpWait(tester);
 
       // Find "My Orders" menu item
-      final myOrders = find.textContaining('My Orders');
+      final myOrders = find.byKey(const Key('profile_my_orders_button'));
       if (myOrders.evaluate().isNotEmpty) {
-        await tester.ensureVisible(myOrders.first);
-        await tester.tap(myOrders.first);
+        await tester.ensureVisible(myOrders);
+        await tester.tap(myOrders);
         await pumpWait(tester, seconds: 3);
 
         // Orders screen should be visible (either has orders or empty state)
@@ -459,10 +459,10 @@ void main() {
       await tester.tap(find.byKey(const Key('home_settings_button')));
       await pumpWait(tester);
 
-      final becomeSeller = find.textContaining('Become');
+      final becomeSeller = find.byKey(const Key('profile_become_seller_button'));
       if (becomeSeller.evaluate().isNotEmpty) {
-        await tester.ensureVisible(becomeSeller.first);
-        await tester.tap(becomeSeller.first);
+        await tester.ensureVisible(becomeSeller);
+        await tester.tap(becomeSeller);
         await pumpWait(tester, seconds: 3);
 
         // Seller registration screen should show action button
@@ -502,10 +502,10 @@ void main() {
       await tester.tap(find.byKey(const Key('home_settings_button')));
       await pumpWait(tester);
 
-      final sellerOrders = find.textContaining('Seller Orders');
+      final sellerOrders = find.byKey(const Key('profile_seller_orders_button'));
       if (sellerOrders.evaluate().isNotEmpty) {
-        await tester.ensureVisible(sellerOrders.first);
-        await tester.tap(sellerOrders.first);
+        await tester.ensureVisible(sellerOrders);
+        await tester.tap(sellerOrders);
         await pumpWait(tester, seconds: 3);
 
         // Should see the seller orders screen
@@ -599,10 +599,10 @@ void main() {
       await pumpWait(tester);
 
       // Find Admin Panel menu item
-      final adminPanel = find.textContaining('Admin');
+      final adminPanel = find.byKey(const Key('profile_admin_panel_button'));
       if (adminPanel.evaluate().isNotEmpty) {
-        await tester.ensureVisible(adminPanel.first);
-        await tester.tap(adminPanel.first);
+        await tester.ensureVisible(adminPanel);
+        await tester.tap(adminPanel);
         await pumpWait(tester, seconds: 3);
 
         // Admin screen should be visible

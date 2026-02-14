@@ -193,6 +193,7 @@ class ProfileScreen extends ConsumerWidget {
                           children: [
                             _buildMenuItem(
                               context,
+                              key: const Key('profile_my_orders_button'),
                               icon: Icons.shopping_bag_outlined,
                               title: 'profile.my_orders'.tr(),
                               subtitle: 'profile.view_purchases'.tr(),
@@ -204,6 +205,7 @@ class ProfileScreen extends ConsumerWidget {
                             if (isSeller) ...[
                               _buildMenuItem(
                                 context,
+                                key: const Key('profile_seller_orders_button'),
                                 icon: Icons.store_outlined,
                                 title: 'profile.seller_orders'.tr(),
                                 subtitle: 'profile.manage_sales'.tr(),
@@ -214,6 +216,7 @@ class ProfileScreen extends ConsumerWidget {
                               ),
                               _buildMenuItem(
                                 context,
+                                key: const Key('profile_seller_dashboard_button'),
                                 icon: Icons.dashboard_outlined,
                                 title: 'profile.seller_dashboard'.tr(),
                                 subtitle: 'profile.manage_products_account'.tr(),
@@ -225,6 +228,7 @@ class ProfileScreen extends ConsumerWidget {
                             ] else
                               _buildMenuItem(
                                 context,
+                                key: const Key('profile_become_seller_button'),
                                 icon: Icons.storefront,
                                 title: 'profile.become_seller'.tr(),
                                 subtitle: 'profile.start_selling'.tr(),
@@ -236,6 +240,7 @@ class ProfileScreen extends ConsumerWidget {
                             if (isAdmin)
                               _buildMenuItem(
                                 context,
+                                key: const Key('profile_admin_panel_button'),
                                 icon: Icons.admin_panel_settings,
                                 title: 'profile.admin_panel'.tr(),
                                 subtitle: 'profile.platform_management'.tr(),
@@ -256,6 +261,7 @@ class ProfileScreen extends ConsumerWidget {
                           children: [
                             _buildMenuItem(
                               context,
+                              key: const Key('profile_favorites_button'),
                               icon: Icons.favorite_outline,
                               title: 'favorites.my_favorites'.tr(),
                               subtitle: 'profile.your_saved_products'.tr(),
@@ -266,6 +272,7 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                             _buildMenuItem(
                               context,
+                              key: const Key('profile_address_button'),
                               icon: Icons.location_on_outlined,
                               title: 'profile.address'.tr(),
                               subtitle: 'profile.manage_delivery_address'.tr(),
@@ -276,6 +283,7 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                             _buildMenuItem(
                               context,
+                              key: const Key('profile_terms_button'),
                               icon: Icons.description_outlined,
                               title: 'profile.terms_conditions'.tr(),
                               subtitle: 'profile.legal_agreements'.tr(),
@@ -283,6 +291,7 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                             _buildMenuItem(
                               context,
+                              key: const Key('profile_privacy_button'),
                               icon: Icons.lock_outline,
                               title: 'profile.privacy_policy'.tr(),
                               subtitle: 'profile.how_we_protect'.tr(),
@@ -290,6 +299,7 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                             _buildMenuItem(
                               context,
+                              key: const Key('profile_contact_button'),
                               icon: Icons.mail_outline,
                               title: 'profile.contact_us'.tr(),
                               subtitle: 'profile.get_in_touch'.tr(),
@@ -366,6 +376,7 @@ class ProfileScreen extends ConsumerWidget {
 
   Widget _buildMenuItem(
     BuildContext context, {
+    Key? key,
     required IconData icon,
     required String title,
     String? subtitle,
@@ -374,6 +385,7 @@ class ProfileScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
+      key: key,
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : Colors.white,

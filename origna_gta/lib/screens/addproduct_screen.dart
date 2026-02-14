@@ -184,6 +184,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                   child: Row(
                     children: [
                       IconButton(
+                        key: const Key('addproduct_back_button'),
                         onPressed: () => Navigator.of(context).pop(),
                         tooltip: 'product.go_back'.tr(),
                         icon: Container(
@@ -249,6 +250,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                               children: [
                                 // SECTION 1: Basic Info
                                 _buildSectionCard(
+                                  key: const Key('addproduct_section_basic'),
                                   index: 0,
                                   icon: Icons.shopping_bag_rounded,
                                   title: 'product.product_details'.tr(),
@@ -316,6 +318,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         if (!state.isDigital)
                                           Expanded(
                                             child: _buildGlassToggle(
+                                              key: const Key('addproduct_free_shipping_toggle'),
                                               label: 'product.free_shipping'.tr(),
                                               icon: Icons.local_shipping_rounded,
                                               value: state.freeShipping,
@@ -347,6 +350,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
 
                                 // SECTION 2: Product Images
                                 _buildSectionCard(
+                                  key: const Key('addproduct_section_images'),
                                   index: 1,
                                   icon: Icons.photo_library_rounded,
                                   title: 'product.product_images'.tr(),
@@ -359,12 +363,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
 
                                 // SECTION 3: Delivery
                                 _buildSectionCard(
+                                  key: const Key('addproduct_section_delivery'),
                                   index: 2,
                                   icon: Icons.local_shipping_rounded,
                                   title: 'product.delivery_shipping'.tr(),
                                   subtitle: 'product.shipping_options'.tr(),
                                   children: [
                                     _buildGlassToggle(
+                                      key: const Key('addproduct_digital_toggle'),
                                       label: 'product.digital_product_label'.tr(),
                                       subtitle: 'product.no_shipping_needed'.tr(),
                                       icon: Icons.cloud_download_rounded,
@@ -385,6 +391,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                     if (!state.isDigital) ...[
                                       const SizedBox(height: 12),
                                       _buildGlassToggle(
+                                        key: const Key('addproduct_perishable_toggle'),
                                         label: 'product.perishable_item'.tr(),
                                         icon: Icons.thermostat_rounded,
                                         value: state.isPerishable,
@@ -394,6 +401,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       ),
                                       const SizedBox(height: 16),
                                       _buildDeliveryTierCard(
+                                        key: const Key('addproduct_standard_delivery_card'),
                                         title: 'product.standard_delivery'.tr(),
                                         icon: Icons.local_shipping_outlined,
                                         isEnabled: state.standardEnabled,
@@ -425,6 +433,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       if (!state.freeShipping) ...[
                                         const SizedBox(height: 10),
                                         _buildDeliveryTierCard(
+                                          key: const Key('addproduct_express_delivery_card'),
                                           title: 'product.express_delivery'.tr(),
                                           icon: Icons.bolt_rounded,
                                           isEnabled: state.expressEnabled,
@@ -444,6 +453,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         ),
                                         const SizedBox(height: 10),
                                         _buildDeliveryTierCard(
+                                          key: const Key('addproduct_same_day_delivery_card'),
                                           title: 'product.same_day_delivery'.tr(),
                                           icon: Icons.rocket_launch_rounded,
                                           isEnabled: state.sameDayEnabled,
@@ -466,12 +476,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                 // SECTION 4: Package & Location
                                 if (!state.isDigital)
                                   _buildSectionCard(
+                                    key: const Key('addproduct_section_package'),
                                     index: 3,
                                     icon: Icons.location_on_rounded,
                                     title: 'product.package_location'.tr(),
                                     subtitle: 'product.dimensions_pickup'.tr(),
                                     children: [
                                       _buildGlassToggle(
+                                        key: const Key('addproduct_local_pickup_toggle'),
                                         label: 'product.local_pickup_only'.tr(),
                                         icon: Icons.store_rounded,
                                         value: state.isLocalDeliveryOnly,
@@ -481,16 +493,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       ),
                                       if (!state.isLocalDeliveryOnly) ...[
                                         const SizedBox(height: 16),
-                                        _buildGlassTextField(controller: _weightController, label: 'product.weight'.tr(), icon: Icons.scale_rounded, keyboardType: TextInputType.number),
+                                        _buildGlassTextField(controller: _weightController, key: const Key('addproduct_weight_field'), label: 'product.weight'.tr(), icon: Icons.scale_rounded, keyboardType: TextInputType.number),
                                         const SizedBox(height: 12),
                                         // Dimensions row
                                         Row(
                                           children: [
-                                            Expanded(child: _buildGlassTextField(controller: _lengthController, label: 'product.length_cm'.tr(), keyboardType: TextInputType.number)),
+                                            Expanded(child: _buildGlassTextField(controller: _lengthController, key: const Key('addproduct_length_field'), label: 'product.length_cm'.tr(), keyboardType: TextInputType.number)),
                                             const SizedBox(width: 8),
-                                            Expanded(child: _buildGlassTextField(controller: _widthController, label: 'product.width_cm'.tr(), keyboardType: TextInputType.number)),
+                                            Expanded(child: _buildGlassTextField(controller: _widthController, key: const Key('addproduct_width_field'), label: 'product.width_cm'.tr(), keyboardType: TextInputType.number)),
                                             const SizedBox(width: 8),
-                                            Expanded(child: _buildGlassTextField(controller: _heightController, label: 'product.height_cm'.tr(), keyboardType: TextInputType.number)),
+                                            Expanded(child: _buildGlassTextField(controller: _heightController, key: const Key('addproduct_height_field'), label: 'product.height_cm'.tr(), keyboardType: TextInputType.number)),
                                           ],
                                         ),
                                         _buildTappableInfoHint(
@@ -504,6 +516,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       _buildSubSectionHeader('product.pickup_address'.tr(), Icons.pin_drop_rounded),
                                       const SizedBox(height: 12),
                                       _buildGlassTextField(
+                                        key: const Key('addproduct_street_field'),
                                         controller: _streetController,
                                         label: 'product.street_address'.tr(),
                                         icon: Icons.home_rounded,
@@ -522,6 +535,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       ),
                                       const SizedBox(height: 12),
                                       _buildGlassTextField(
+                                        key: const Key('addproduct_city_field'),
                                         controller: _cityController,
                                         label: 'product.city'.tr(),
                                         validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
@@ -541,6 +555,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           const SizedBox(width: 12),
                                           Expanded(
                                             child: _buildGlassTextField(
+                                              key: const Key('addproduct_postal_code_field'),
                                               controller: _postalCodeController,
                                               label: 'product.postal_code'.tr(),
                                               textCapitalization: TextCapitalization.characters,
@@ -554,8 +569,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                   ),
                                 if (!state.isDigital) const SizedBox(height: 16),
 
-                                // SECTION 5: Supplier & Inventory (Collapsible)
                                 _buildCollapsibleSection(
+                                  key: const Key('addproduct_section_supplier'),
                                   index: 4,
                                   icon: Icons.business_center_rounded,
                                   title: 'product.supplier_inventory'.tr(),
@@ -707,6 +722,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   // ─── SECTION BUILDERS ─────────────────────────────────────────────────
 
   Widget _buildSectionCard({
+    Key? key,
     required int index,
     required IconData icon,
     required String title,
@@ -714,6 +730,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     required List<Widget> children,
   }) {
     return TapRegion(
+      key: key,
       onTapInside: (_) {
         if (_activeStep != index) setState(() => _activeStep = index);
       },
@@ -774,6 +791,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   }
 
   Widget _buildCollapsibleSection({
+    Key? key,
     required int index,
     required IconData icon,
     required String title,
@@ -781,6 +799,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     required List<Widget> children,
   }) {
     return AnimatedContainer(
+      key: key,
       duration: DesignTokens.durationNormal,
       decoration: BoxDecoration(
         color: Colors.white,
@@ -855,12 +874,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   }
 
   Widget _buildGlassDropdown({
+    Key? key,
     required String label,
     required String? value,
     required List<DropdownMenuItem<String>> items,
     required void Function(String?) onChanged,
   }) {
     return DropdownButtonFormField<String>(
+      key: key,
       initialValue: value,
       decoration: InputDecoration(
         labelText: label,
@@ -878,6 +899,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   }
 
   Widget _buildGlassToggle({
+    Key? key,
     required String label,
     String? subtitle,
     required IconData icon,
@@ -887,6 +909,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     String? infoBody,
   }) {
     return GestureDetector(
+      key: key,
       onTap: () => onChanged(!value),
       child: AnimatedContainer(
         duration: DesignTokens.durationFast,
@@ -939,6 +962,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
 
   Widget _buildCategorySelector(AddProductViewModel viewModel) {
     return DropdownButtonFormField<String>(
+      key: const Key('addproduct_category_selector'),
       decoration: InputDecoration(
         labelText: 'Category',
         prefixIcon: const Icon(Icons.category_rounded, size: 20),
@@ -966,6 +990,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   }
 
   Widget _buildDeliveryTierCard({
+    Key? key,
     required String title,
     required IconData icon,
     required bool isEnabled,
@@ -976,6 +1001,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     String? infoBody,
   }) {
     return AnimatedContainer(
+      key: key,
       duration: DesignTokens.durationNormal,
       decoration: BoxDecoration(
         color: isEnabled ? color.withValues(alpha: 0.04) : DesignTokens.surfaceVariant.withValues(alpha: 0.3),

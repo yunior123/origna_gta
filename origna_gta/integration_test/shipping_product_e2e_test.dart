@@ -67,19 +67,34 @@ Future<void> enterTextByKey(WidgetTester tester, String key, String text) async 
 /// Tap a widget that contains [text] inside a descendant Text widget.
 Future<void> tapByText(WidgetTester tester, String text) async {
   final finder = find.text(text);
-  expect(finder, findsWidgets, reason: 'Text "$text" not found on screen');
+  if (finder.evaluate().isEmpty) {
+    // Try by Key as fallback if it looks like a key string
+    final keyFinder = find.byKey(Key(text));
+    if (keyFinder.evaluate().isNotEmpty) {
+      await tester.tap(keyFinder.first);
+      await tester.pump(const Duration(milliseconds: 500));
+      return;
+    }
+  }
+  expect(finder, findsWidgets, reason: 'Text or Key "$text" not found on screen');
   await tester.tap(finder.first);
   await tester.pump(const Duration(milliseconds: 500));
 }
 
-/// Tap a Switch.adaptive that is a descendant of a widget containing [label].
-Future<void> tapGlassToggle(WidgetTester tester, String label) async {
-  // Glass toggles are GestureDetector > AnimatedContainer containing a Text(label) + Switch.adaptive
-  // Tapping the GestureDetector is most reliable.
-  final labelFinder = find.text(label);
-  expect(labelFinder, findsWidgets, reason: 'Toggle label "$label" not found');
+/// Tap a Switch.adaptive that is a descendant of a widget containing [label] or by key.
+Future<void> tapGlassToggle(WidgetTester tester, String identifier) async {
+  // Try by Key first (most robust)
+  final keyFinder = find.byKey(Key(identifier));
+  if (keyFinder.evaluate().isNotEmpty) {
+    await tester.tap(keyFinder.first);
+    await tester.pump(const Duration(milliseconds: 500));
+    return;
+  }
 
-  // Find the ancestor GestureDetector
+  // Fallback to text label
+  final labelFinder = find.text(identifier);
+  expect(labelFinder, findsWidgets, reason: 'Toggle label or Key "$identifier" not found');
+
   final gestureDetector = find.ancestor(
     of: labelFinder.first,
     matching: find.byType(GestureDetector),
@@ -88,7 +103,6 @@ Future<void> tapGlassToggle(WidgetTester tester, String label) async {
   if (gestureDetector.evaluate().isNotEmpty) {
     await tester.tap(gestureDetector.first);
   } else {
-    // Fallback: tap the label text directly
     await tester.tap(labelFinder.first);
   }
   await tester.pump(const Duration(milliseconds: 500));
@@ -157,42 +171,42 @@ Future<void> fillBasicProductFields(
 /// Fill address fields (Section 4: Package & Location).
 Future<void> fillAddress(WidgetTester tester) async {
   // Scroll down to make address fields visible
-  await scrollUntilVisible(tester, find.text('Pickup Address'));
+  await scrollUntilVisible(tester, find.byKey(const Key('addproduct_section_package')));
   await tester.pump(const Duration(milliseconds: 500));
 
   // Street
-  final streetField = find.widgetWithText(TextFormField, 'Street Address');
-  if (streetField.evaluate().isNotEmpty) {
-    await tester.enterText(streetField.first, '123 Test Street');
-    await tester.pump(const Duration(milliseconds: 300));
-  }
+  await enterTextByKey(tester, 'addproduct_street_field', '123 Test Street');
 
   // City
-  final cityField = find.widgetWithText(TextFormField, 'City');
-  if (cityField.evaluate().isNotEmpty) {
-    await tester.enterText(cityField.first, 'Toronto');
-    await tester.pump(const Duration(milliseconds: 300));
-  }
+  await enterTextByKey(tester, 'addproduct_city_field', 'Toronto');
 
   // Postal Code
-  final postalField = find.widgetWithText(TextFormField, 'Postal Code');
-  if (postalField.evaluate().isNotEmpty) {
-    await tester.enterText(postalField.first, 'M5V 3L9');
-    await tester.pump(const Duration(milliseconds: 300));
-  }
-  debugPrint('✓ Filled address fields');
+  await enterTextByKey(tester, 'addproduct_postal_code_field', 'M5V 3L9');
+
+  debugPrint('✓ Filled address fields using keys');
 }
 
 /// Attempt to submit the product form.
 Future<void> tapPublishProduct(WidgetTester tester) async {
-  await scrollUntilVisible(tester, find.text('Publish Product'));
+  final submitBtn = find.byKey(const Key('addproduct_submit_button'));
+  await scrollUntilVisible(tester, submitBtn);
   await tester.pump(const Duration(milliseconds: 300));
-  await tapByText(tester, 'Publish Product');
+  await tester.tap(submitBtn);
   await pumpSettle(tester, iterations: 8);
 }
 
 /// Go back to previous screen.
 Future<void> goBack(WidgetTester tester) async {
+  final backKeys = ['addproduct_back_button', 'back_button', 'profile_back_button'];
+  for (final k in backKeys) {
+    final finder = find.byKey(Key(k));
+    if (finder.evaluate().isNotEmpty) {
+      await tester.tap(finder.first);
+      await pumpSettle(tester, iterations: 3);
+      return;
+    }
+  }
+
   final backButton = find.byIcon(Icons.arrow_back_rounded);
   if (backButton.evaluate().isNotEmpty) {
     await tester.tap(backButton.first);
@@ -251,12 +265,12 @@ void main() {
     await fillBasicProductFields(tester, name: 'T01 Standard Ship', price: '29.99');
 
     // Verify Section 3 (Delivery) is visible — scroll to it
-    await scrollUntilVisible(tester, find.text('Delivery & Shipping'));
+    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_section_delivery')));
     await tester.pump(const Duration(milliseconds: 500));
 
     // Standard Delivery should be enabled by default (standardEnabled=true in state)
     // Verify the Standard Delivery card is present
-    expect(find.text('Standard Delivery'), findsWidgets, reason: 'T01: Standard Delivery card not found');
+    expect(find.byKey(const Key('addproduct_standard_delivery_card')), findsOneWidget, reason: 'T01: Standard Delivery card not found');
     debugPrint('✓ T01: Standard Delivery visible and enabled by default');
 
     // Fill address
@@ -294,7 +308,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     // Toggle Digital Product ON
-    await tapGlassToggle(tester, 'Digital Product');
+    await tapGlassToggle(tester, 'addproduct_digital_toggle');
     await tester.pump(const Duration(milliseconds: 500));
 
     // Verify: info banner should appear
@@ -308,7 +322,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     // Verify: Package & Location section (Section 4) should also be hidden for digital
-    final packageSection = find.text('Package & Location');
+    final packageSection = find.byKey(const Key('addproduct_section_package'));
     final packageVisible = packageSection.evaluate().isNotEmpty;
     if (!packageVisible) {
       debugPrint('✓ T02: Package & Location hidden for digital product');
@@ -329,11 +343,11 @@ void main() {
     await fillBasicProductFields(tester, name: 'T03 Free Ship', price: '49.99');
 
     // Scroll to find Free Shipping toggle (it's in Section 1, after Min Order Qty)
-    await scrollUntilVisible(tester, find.text('Free Shipping'));
+    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_free_shipping_toggle')));
     await tester.pump(const Duration(milliseconds: 300));
 
     // Toggle Free Shipping ON
-    await tapGlassToggle(tester, 'Free Shipping');
+    await tapGlassToggle(tester, 'addproduct_free_shipping_toggle');
     await tester.pump(const Duration(milliseconds: 500));
 
     // Verify: Free Shipping is toggled ON
@@ -343,8 +357,8 @@ void main() {
 
     // BUG CHECK: With Free Shipping ON, delivery options should still be visible
     // (freeShipping means cost=0 but delivery method still needed for physical items)
-    await scrollUntilVisible(tester, find.text('Delivery & Shipping'));
-    expect(find.text('Standard Delivery'), findsWidgets, reason: 'T03: Standard Delivery should still be visible with Free Shipping');
+    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_section_delivery')));
+    expect(find.byKey(const Key('addproduct_standard_delivery_card')), findsOneWidget, reason: 'T03: Standard Delivery should still be visible with Free Shipping');
     debugPrint('✓ T03: Delivery options remain visible with Free Shipping (correct)');
 
     await goBack(tester);
@@ -360,17 +374,17 @@ void main() {
     await fillBasicProductFields(tester, name: 'T04 Local Only', price: '15.00');
 
     // Scroll to Package & Location section (Section 4) where Local Pickup Only toggle lives
-    await scrollUntilVisible(tester, find.text('Local Pickup Only'));
+    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_local_pickup_toggle')));
     await tester.pump(const Duration(milliseconds: 300));
 
     // Toggle Local Pickup Only ON
-    await tapGlassToggle(tester, 'Local Pickup Only');
+    await tapGlassToggle(tester, 'addproduct_local_pickup_toggle');
     await tester.pump(const Duration(milliseconds: 500));
     debugPrint('✓ T04: Local Pickup Only toggled ON');
 
     // Verify: Weight and Dimensions fields should be hidden when local-only
     // (They're inside `if (!state.isLocalDeliveryOnly)`)
-    final weightField = find.text('Weight (kg)');
+    final weightField = find.byKey(const Key('addproduct_weight_field'));
     final weightVisible = weightField.evaluate().isNotEmpty;
     if (!weightVisible) {
       debugPrint('✓ T04: Weight/dimensions hidden for local pickup only');
@@ -391,27 +405,19 @@ void main() {
     await fillBasicProductFields(tester, name: 'T05 Perishable', price: '12.50');
 
     // Scroll to Delivery section
-    await scrollUntilVisible(tester, find.text('Delivery & Shipping'));
+    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_section_delivery')));
     await tester.pump(const Duration(milliseconds: 300));
 
     // Toggle Perishable Item ON
-    await tapGlassToggle(tester, 'Perishable Item');
+    await tapGlassToggle(tester, 'addproduct_perishable_toggle');
     await tester.pump(const Duration(milliseconds: 500));
     debugPrint('✓ T05: Perishable toggled ON');
 
     // Scroll to Same-Day Delivery section and enable it
-    await scrollUntilVisible(tester, find.text('Same-Day Delivery'));
+    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_same_day_delivery_card')));
     await tester.pump(const Duration(milliseconds: 300));
 
-    // Same-Day Delivery is a _buildDeliveryTierCard with an enable toggle
-    // The card title is 'Same-Day Delivery' and has a switch
-    final sameDaySwitch = find.descendant(
-      of: find.ancestor(
-        of: find.text('Same-Day Delivery'),
-        matching: find.byType(Container),
-      ),
-      matching: find.byType(Switch),
-    );
+    final sameDaySwitch = find.byKey(const Key('addproduct_same_day_delivery_card'));
 
     if (sameDaySwitch.evaluate().isNotEmpty) {
       await tester.tap(sameDaySwitch.first);
@@ -521,17 +527,11 @@ void main() {
     await fillBasicProductFields(tester, name: 'T09 Express Test', price: '35.00');
 
     // Scroll to delivery section
-    await scrollUntilVisible(tester, find.text('Express Delivery'));
+    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_express_delivery_card')));
     await tester.pump(const Duration(milliseconds: 300));
 
     // Find Express Delivery tier card and enable it
-    final expressSwitch = find.descendant(
-      of: find.ancestor(
-        of: find.text('Express Delivery'),
-        matching: find.byType(Container),
-      ),
-      matching: find.byType(Switch),
-    );
+    final expressSwitch = find.byKey(const Key('addproduct_express_delivery_card'));
 
     if (expressSwitch.evaluate().isNotEmpty) {
       // Express is disabled by default (expressEnabled=false)
@@ -548,14 +548,8 @@ void main() {
     }
 
     // Also enable Same-Day while we're here
-    await scrollUntilVisible(tester, find.text('Same-Day Delivery'));
-    final sameDaySwitch2 = find.descendant(
-      of: find.ancestor(
-        of: find.text('Same-Day Delivery'),
-        matching: find.byType(Container),
-      ),
-      matching: find.byType(Switch),
-    );
+    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_same_day_delivery_card')));
+    final sameDaySwitch2 = find.byKey(const Key('addproduct_same_day_delivery_card'));
     if (sameDaySwitch2.evaluate().isNotEmpty) {
       await tester.tap(sameDaySwitch2.first);
       await tester.pump(const Duration(milliseconds: 500));
@@ -575,28 +569,28 @@ void main() {
     await fillBasicProductFields(tester, name: 'T10 Digital Full', price: '5.99');
 
     // Scroll to Delivery section and toggle Digital
-    await scrollUntilVisible(tester, find.text('Digital Product'));
-    await tapGlassToggle(tester, 'Digital Product');
+    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_digital_toggle')));
+    await tapGlassToggle(tester, 'addproduct_digital_toggle');
     await tester.pump(const Duration(milliseconds: 800));
 
     // Verify all physical-only UI elements are hidden:
     // 1. Perishable Item toggle (inside if (!state.isDigital))
-    final perishable = find.text('Perishable Item');
+    final perishable = find.byKey(const Key('addproduct_perishable_toggle'));
     final perishableHidden = perishable.evaluate().isEmpty;
     debugPrint('  Perishable hidden: $perishableHidden');
 
     // 2. Standard Delivery card
-    final standardDelivery = find.text('Standard Delivery');
+    final standardDelivery = find.byKey(const Key('addproduct_standard_delivery_card'));
     final sdHidden = standardDelivery.evaluate().isEmpty;
     debugPrint('  Standard Delivery hidden: $sdHidden');
 
     // 3. Express Delivery card
-    final expressDelivery = find.text('Express Delivery');
+    final expressDelivery = find.byKey(const Key('addproduct_express_delivery_card'));
     final edHidden = expressDelivery.evaluate().isEmpty;
     debugPrint('  Express Delivery hidden: $edHidden');
 
     // 4. Package & Location section
-    final packageLoc = find.text('Package & Location');
+    final packageLoc = find.byKey(const Key('addproduct_section_package'));
     final plHidden = packageLoc.evaluate().isEmpty;
     debugPrint('  Package & Location hidden: $plHidden');
 

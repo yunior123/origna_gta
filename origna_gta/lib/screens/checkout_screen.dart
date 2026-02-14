@@ -66,6 +66,7 @@ class _AddressSection extends StatelessWidget {
               child: Material(
               color: Colors.transparent,
               child: InkWell(
+                key: const Key('checkout_edit_address_button'),
                 onTap: () {
                   Navigator.pushNamed(
                     context,
@@ -594,6 +595,7 @@ class _DeliveryOptionsSection extends ConsumerWidget {
               button: true,
               label: 'btn-delivery-speed-${speed.name}',
               child: GestureDetector(
+              key: Key('checkout_delivery_speed_${speed.name}'),
               onTap: isAvailable
                   ? () => ref
                         .read(checkoutStateProvider.notifier)

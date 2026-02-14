@@ -126,10 +126,9 @@ void main() {
 
     if (await isOnLoginScreen(tester)) await loginAsBuyer(tester);
 
-    final cartIcon = find.byIcon(Icons.shopping_cart_outlined);
-    final cartIconAlt = find.byIcon(Icons.shopping_cart);
+    final cartIcon = find.byKey(const Key('home_cart_button'));
 
-    expect(cartIcon.evaluate().isNotEmpty || cartIconAlt.evaluate().isNotEmpty, isTrue,
+    expect(cartIcon, findsOneWidget,
         reason: 'Cart icon should be visible on home screen');
     debugPrint('T05 PASS: Cart icon found');
   });
@@ -143,13 +142,13 @@ void main() {
 
     if (await isOnLoginScreen(tester)) await loginAsBuyer(tester);
 
-    final settingsIcon = find.byIcon(Icons.settings_outlined);
+    final settingsIcon = find.byKey(const Key('home_settings_button'));
     if (settingsIcon.evaluate().isEmpty) {
       debugPrint('T06 SKIP: Settings icon not found');
       return;
     }
 
-    await tester.tap(settingsIcon.first);
+    await tester.tap(settingsIcon);
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
@@ -158,12 +157,13 @@ void main() {
     expect(find.byType(Scaffold), findsWidgets);
 
     // Should see profile-related icons (orders, favorites, address, etc.)
-    final orderIcon = find.byIcon(Icons.shopping_bag_outlined);
-    final favIcon = find.byIcon(Icons.favorite_outline);
-    final locationIcon = find.byIcon(Icons.location_on_outlined);
-    final found = orderIcon.evaluate().length +
-        favIcon.evaluate().length +
-        locationIcon.evaluate().length;
+    // Should see profile-related buttons
+    final orderBtn = find.byKey(const Key('profile_my_orders_button'));
+    final favBtn = find.byKey(const Key('profile_favorites_button'));
+    final addressBtn = find.byKey(const Key('profile_address_button'));
+    final found = orderBtn.evaluate().length +
+        favBtn.evaluate().length +
+        addressBtn.evaluate().length;
 
     expect(found, greaterThanOrEqualTo(1),
         reason: 'Profile screen should have at least 1 menu icon');
@@ -179,16 +179,14 @@ void main() {
 
     if (await isOnLoginScreen(tester)) await loginAsBuyer(tester);
 
-    final cartIcon = find.byIcon(Icons.shopping_cart_outlined);
-    final cartIconAlt = find.byIcon(Icons.shopping_cart);
-    final target = cartIcon.evaluate().isNotEmpty ? cartIcon : cartIconAlt;
+    final cartIcon = find.byKey(const Key('home_cart_button'));
 
-    if (target.evaluate().isEmpty) {
+    if (cartIcon.evaluate().isEmpty) {
       debugPrint('T07 SKIP: Cart icon not found');
       return;
     }
 
-    await tester.tap(target.first);
+    await tester.tap(cartIcon);
     for (var i = 0; i < 5; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
@@ -264,25 +262,25 @@ void main() {
     if (await isOnLoginScreen(tester)) await loginAsBuyer(tester);
 
     // Go to profile
-    final settingsIcon = find.byIcon(Icons.settings_outlined);
+    final settingsIcon = find.byKey(const Key('home_settings_button'));
     if (settingsIcon.evaluate().isEmpty) {
       debugPrint('T10 SKIP: Settings icon not found');
       return;
     }
 
-    await tester.tap(settingsIcon.first);
+    await tester.tap(settingsIcon);
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
 
-    // Tap orders icon
-    final ordersIcon = find.byIcon(Icons.shopping_bag_outlined);
-    if (ordersIcon.evaluate().isEmpty) {
-      debugPrint('T10 SKIP: Orders icon not found in profile');
+    // Tap orders button
+    final ordersBtn = find.byKey(const Key('profile_my_orders_button'));
+    if (ordersBtn.evaluate().isEmpty) {
+      debugPrint('T10 SKIP: Orders button not found in profile');
       return;
     }
 
-    await tester.tap(ordersIcon.first);
+    await tester.tap(ordersBtn);
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
@@ -300,24 +298,24 @@ void main() {
 
     if (await isOnLoginScreen(tester)) await loginAsBuyer(tester);
 
-    final settingsIcon = find.byIcon(Icons.settings_outlined);
+    final settingsIcon = find.byKey(const Key('home_settings_button'));
     if (settingsIcon.evaluate().isEmpty) {
       debugPrint('T11 SKIP: Settings icon not found');
       return;
     }
 
-    await tester.tap(settingsIcon.first);
+    await tester.tap(settingsIcon);
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
 
-    final favIcon = find.byIcon(Icons.favorite_outline);
-    if (favIcon.evaluate().isEmpty) {
-      debugPrint('T11 SKIP: Favorites icon not in profile');
+    final favBtn = find.byKey(const Key('profile_favorites_button'));
+    if (favBtn.evaluate().isEmpty) {
+      debugPrint('T11 SKIP: Favorites button not in profile');
       return;
     }
 
-    await tester.tap(favIcon.first);
+    await tester.tap(favBtn);
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
@@ -335,24 +333,24 @@ void main() {
 
     if (await isOnLoginScreen(tester)) await loginAsBuyer(tester);
 
-    final settingsIcon = find.byIcon(Icons.settings_outlined);
+    final settingsIcon = find.byKey(const Key('home_settings_button'));
     if (settingsIcon.evaluate().isEmpty) {
       debugPrint('T12 SKIP: Settings icon not found');
       return;
     }
 
-    await tester.tap(settingsIcon.first);
+    await tester.tap(settingsIcon);
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
 
-    final addressIcon = find.byIcon(Icons.location_on_outlined);
-    if (addressIcon.evaluate().isEmpty) {
-      debugPrint('T12 SKIP: Address icon not in profile');
+    final addressBtn = find.byKey(const Key('profile_address_button'));
+    if (addressBtn.evaluate().isEmpty) {
+      debugPrint('T12 SKIP: Address button not in profile');
       return;
     }
 
-    await tester.tap(addressIcon.first);
+    await tester.tap(addressBtn);
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
@@ -370,24 +368,24 @@ void main() {
 
     if (await isOnLoginScreen(tester)) await loginAsBuyer(tester);
 
-    final settingsIcon = find.byIcon(Icons.settings_outlined);
+    final settingsIcon = find.byKey(const Key('home_settings_button'));
     if (settingsIcon.evaluate().isEmpty) {
       debugPrint('T13 SKIP: Settings icon not found');
       return;
     }
 
-    await tester.tap(settingsIcon.first);
+    await tester.tap(settingsIcon);
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
 
-    final termsIcon = find.byIcon(Icons.description_outlined);
-    if (termsIcon.evaluate().isEmpty) {
-      debugPrint('T13 SKIP: Terms icon not in profile');
+    final termsBtn = find.byKey(const Key('profile_terms_button'));
+    if (termsBtn.evaluate().isEmpty) {
+      debugPrint('T13 SKIP: Terms button not in profile');
       return;
     }
 
-    await tester.tap(termsIcon.first);
+    await tester.tap(termsBtn);
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
@@ -430,25 +428,25 @@ void main() {
     if (await isOnLoginScreen(tester)) await loginAsBuyer(tester);
 
     // Navigate to profile
-    final settingsIcon = find.byIcon(Icons.settings_outlined);
+    final settingsIcon = find.byKey(const Key('home_settings_button'));
     if (settingsIcon.evaluate().isEmpty) {
       debugPrint('T15 SKIP: Settings icon not found');
       return;
     }
 
-    await tester.tap(settingsIcon.first);
+    await tester.tap(settingsIcon);
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
 
     // Navigate to orders
-    final ordersIcon = find.byIcon(Icons.shopping_bag_outlined);
-    if (ordersIcon.evaluate().isEmpty) {
-      debugPrint('T15 SKIP: Orders icon not found');
+    final ordersBtn = find.byKey(const Key('profile_my_orders_button'));
+    if (ordersBtn.evaluate().isEmpty) {
+      debugPrint('T15 SKIP: Orders button not found');
       return;
     }
 
-    await tester.tap(ordersIcon.first);
+    await tester.tap(ordersBtn);
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
