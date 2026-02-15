@@ -1,0 +1,690 @@
+Resolving dependencies...
+Downloading packages...
+  _fe_analyzer_shared 93.0.0 (94.0.0 available)
+  analyzer 10.0.1 (10.0.2 available)
+  app_links 6.4.1 (7.0.0 available)
+  build_runner 2.11.0 (2.11.1 available)
+  characters 1.4.0 (1.4.1 available)
+  ffi 2.1.5 (2.2.0 available)
+  flutter_riverpod 2.6.1 (3.2.1 available)
+  google_sign_in_ios 6.2.5 (6.3.0 available)
+  jni 0.14.2 (0.15.2 available)
+  matcher 0.12.17 (0.12.18 available)
+  material_color_utilities 0.11.1 (0.13.0 available)
+  meta 1.17.0 (1.18.1 available)
+  riverpod 2.6.1 (3.2.1 available)
+  rx 0.4.0 (0.5.0 available)
+  test_api 0.7.7 (0.7.9 available)
+  url_launcher_ios 6.3.6 (6.4.0 available)
+Got dependencies!
+16 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Launching integration_test/all_tests.dart on Chrome in debug mode...
+Waiting for connection from debug service on Chrome...             19,8s
+This app is linked to the debug service: ws://127.0.0.1:59594/sn-gxuOea3Y=/ws
+Debug service listening on ws://127.0.0.1:59594/sn-gxuOea3Y=/ws
+A Dart VM Service on Chrome is available at: http://127.0.0.1:59594/sn-gxuOea3Y=
+The Flutter DevTools debugger and profiler on Chrome is available at: http://127.0.0.1:59594/sn-gxuOea3Y=/devtools/?uri=ws://127.0.0.1:59594/sn-gxuOea3Y=/ws
+Starting application from main method in: org-dartlang-app:/web_entrypoint.dart.
+00:00 +0: Flutter Web E2E - Complete App Test
+▶ mainTest() called (initialized=false)
+▶ Step 1: WidgetsFlutterBinding
+▶ Step 2: EasyLocalization ...
+[90m[🌎 Easy Localization] [DEBUG] Localization initialized[0m
+▶ Step 2: EasyLocalization ✓
+▶ Step 3: Firebase.initializeApp ...
+🛠️ Running in DEV mode
+▶ Step 3: Firebase.initializeApp ✓
+🛠️ Running in DEV mode
+🛠️ Running in DEV mode
+▶ Step 4: Using Real Services (Development)
+▶ Step 5: ConfigService ...
+▶ Step 5: ConfigService ✓
+▶ Step 6: runApp()
+[90m[🌎 Easy Localization] [DEBUG] Start[0m
+▶ mainTest() complete
+[90m[🌎 Easy Localization] [DEBUG] Init state[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+[90m[🌎 Easy Localization] [DEBUG] Load Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Load asset from assets/translations[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+🔗 Initial route: /
+🔗 Parsed path: /
+⚠️  Algolia credentials empty → search disabled, using Firestore only
+🔍 Using repository: AlgoliaProductRepository
+📍 Using Firestore fallback
+[AlgoliaProductRepository] Firestore Project ID: orignagta-dev
+[AlgoliaProductRepository] Querying products collection...
+[AlgoliaProductRepository] Fallback Snapshot length: 6
+[AlgoliaProductRepository] Doc eo9CNk6t3odszWjL0vI6 data: {categoryId: 3, isDigital: false, updatedAt: Timestamp(seconds=1771053956, nanoseconds=427000000), isActive: true, name: Test Local Product, ratingCount: 0, description: Only available for local pickup., createdAt: Timestamp(seconds=1771053956, nanoseconds=427000000), stockQuantity: 10, deliveryOptions: [{estimatedDays: 0, description: Pickup, type: pickup, cost: 0}], sellerId: test-seller-uid, rating: 0, imageUrls: [https://picsum.photos/400/400], price: 50, sellerAddress: {postalCode: V6B 3P8, street: 789 Local Ln, city: Vancouver, state: BC, country: CA}, keywords: [test, local, product], isLocalDeliveryOnly: true}
+[AlgoliaProductRepository] Doc bxxJRzkNDaqrbOYbQSrc data: {isActive: true, freeShipping: true, price: 9.99, rating: 0, imageUrls: [https://picsum.photos/400/400], sellerAddress: {city: Montreal, state: QC, country: CA, street: 456 Digital Ave, postalCode: H3Z 2Y7}, createdAt: Timestamp(seconds=1771053956, nanoseconds=343000000), deliveryOptions: [], name: Test Digital Product, ratingCount: 0, sellerId: test-seller-uid, stockQuantity: 999, description: A downloadable digital product., updatedAt: Timestamp(seconds=1771053956, nanoseconds=343000000), keywords: [test, digital, product], isDigital: true, categoryId: 2}
+[AlgoliaProductRepository] Doc FOZtBSP07zeB1OJ5GJUD data: {createdAt: Timestamp(seconds=1771053956, nanoseconds=240000000), deliveryOptions: [{type: standard, cost: 5, estimatedDays: 3, description: Standard}], sellerId: test-seller-uid, rating: 0, price: 29.99, categoryId: 1, keywords: [test, physical, product], updatedAt: Timestamp(seconds=1771053956, nanoseconds=240000000), ratingCount: 0, isActive: true, stockQuantity: 100, description: A wonderful physical product for testing., imageUrls: [https://picsum.photos/400/400], name: Test Physical Product, isDigital: false, sellerAddress: {state: ON, city: Toronto, postalCode: M5V 2H1, country: CA, street: 123 Test St}}
+[AlgoliaProductRepository] Doc UbWBzRpPi6BR9jyhwzV8 data: {description: Only available for local pickup., isLocalDeliveryOnly: true, name: Test Local Product, rating: 0, deliveryOptions: [{type: pickup, description: Pickup, estimatedDays: 0, cost: 0}], stockQuantity: 10, imageUrls: [https://picsum.photos/400/400], price: 50, isActive: true, sellerAddress: {city: Vancouver, country: CA, postalCode: V6B 3P8, street: 789 Local Ln, state: BC}, createdAt: Timestamp(seconds=1771053070, nanoseconds=92000000), keywords: [test, local, product], sellerId: test-seller-uid, updatedAt: Timestamp(seconds=1771053070, nanoseconds=92000000), ratingCount: 0, categoryId: 3, isDigital: false}
+[AlgoliaProductRepository] Doc DtHZmE8tPfc8c3FyOHnk data: {rating: 0, isDigital: true, deliveryOptions: [], stockQuantity: 999, sellerAddress: {state: QC, postalCode: H3Z 2Y7, country: CA, street: 456 Digital Ave, city: Montreal}, isActive: true, categoryId: 2, keywords: [test, digital, product], ratingCount: 0, description: A downloadable digital product., imageUrls: [https://picsum.photos/400/400], freeShipping: true, updatedAt: Timestamp(seconds=1771053070, nanoseconds=9000000), name: Test Digital Product, createdAt: Timestamp(seconds=1771053070, nanoseconds=9000000), sellerId: test-seller-uid, price: 9.99}
+[AlgoliaProductRepository] Doc K4Mf88zJD4F6ljapW7HT data: {ratingCount: 0, price: 29.99, imageUrls: [https://picsum.photos/400/400], isDigital: false, rating: 0, sellerAddress: {city: Toronto, street: 123 Test St, state: ON, postalCode: M5V 2H1, country: CA}, createdAt: Timestamp(seconds=1771053069, nanoseconds=890000000), isActive: true, keywords: [test, physical, product], name: Test Physical Product, deliveryOptions: [{description: Standard, type: standard, cost: 5, estimatedDays: 3}], sellerId: test-seller-uid, categoryId: 1, updatedAt: Timestamp(seconds=1771053069, nanoseconds=890000000), description: A wonderful physical product for testing., stockQuantity: 100}
+✅ Loaded 6 products
+✓ App launches successfully
+✓ Home page displays correctly
+✓ Navigation check complete (BottomNav: false)
+✓ TextField check complete (Found: 1)
+✓ Button check complete (Found: 2 buttons)
+✓ ScrollView check complete (Found: 2 scrollables)
+✓ GridView check complete (Found: false)
+✓ Image check complete (Found: 6 images)
+✓ Card check complete (Found: 0 cards)
+✓ Scroll test passed
+
+========================================
+  E2E TEST SUMMARY
+========================================
+  ✓ All basic widget tests passed
+  ✓ App renders correctly
+========================================
+00:13 +1: Critical Flows — All 15 checks
+▶ mainTest() called (initialized=true)
+▶ Re-running app (already initialized)
+[90m[🌎 Easy Localization] [DEBUG] Start[0m
+00:14 +1: Flutter Web E2E - Complete App Test
+[90m[🌎 Easy Localization] [DEBUG] Init state[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+[90m[🌎 Easy Localization] [DEBUG] Load Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Load asset from assets/translations[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+🔗 Initial route: /
+🔗 Parsed path: /
+⚠️  Algolia credentials empty → search disabled, using Firestore only
+🔍 Using repository: AlgoliaProductRepository
+📍 Using Firestore fallback
+[AlgoliaProductRepository] Firestore Project ID: orignagta-dev
+[AlgoliaProductRepository] Querying products collection...
+[AlgoliaProductRepository] Fallback Snapshot length: 6
+[AlgoliaProductRepository] Doc eo9CNk6t3odszWjL0vI6 data: {categoryId: 3, isDigital: false, updatedAt: Timestamp(seconds=1771053956, nanoseconds=427000000), isActive: true, name: Test Local Product, ratingCount: 0, description: Only available for local pickup., createdAt: Timestamp(seconds=1771053956, nanoseconds=427000000), stockQuantity: 10, deliveryOptions: [{estimatedDays: 0, description: Pickup, type: pickup, cost: 0}], sellerId: test-seller-uid, rating: 0, imageUrls: [https://picsum.photos/400/400], price: 50, sellerAddress: {postalCode: V6B 3P8, street: 789 Local Ln, city: Vancouver, state: BC, country: CA}, keywords: [test, local, product], isLocalDeliveryOnly: true}
+[AlgoliaProductRepository] Doc bxxJRzkNDaqrbOYbQSrc data: {isActive: true, freeShipping: true, price: 9.99, rating: 0, imageUrls: [https://picsum.photos/400/400], sellerAddress: {city: Montreal, state: QC, country: CA, street: 456 Digital Ave, postalCode: H3Z 2Y7}, createdAt: Timestamp(seconds=1771053956, nanoseconds=343000000), deliveryOptions: [], name: Test Digital Product, ratingCount: 0, sellerId: test-seller-uid, stockQuantity: 999, description: A downloadable digital product., updatedAt: Timestamp(seconds=1771053956, nanoseconds=343000000), keywords: [test, digital, product], isDigital: true, categoryId: 2}
+[AlgoliaProductRepository] Doc FOZtBSP07zeB1OJ5GJUD data: {createdAt: Timestamp(seconds=1771053956, nanoseconds=240000000), deliveryOptions: [{type: standard, cost: 5, estimatedDays: 3, description: Standard}], sellerId: test-seller-uid, rating: 0, price: 29.99, categoryId: 1, keywords: [test, physical, product], updatedAt: Timestamp(seconds=1771053956, nanoseconds=240000000), ratingCount: 0, isActive: true, stockQuantity: 100, description: A wonderful physical product for testing., imageUrls: [https://picsum.photos/400/400], name: Test Physical Product, isDigital: false, sellerAddress: {state: ON, city: Toronto, postalCode: M5V 2H1, country: CA, street: 123 Test St}}
+[AlgoliaProductRepository] Doc UbWBzRpPi6BR9jyhwzV8 data: {description: Only available for local pickup., isLocalDeliveryOnly: true, name: Test Local Product, rating: 0, deliveryOptions: [{type: pickup, description: Pickup, estimatedDays: 0, cost: 0}], stockQuantity: 10, imageUrls: [https://picsum.photos/400/400], price: 50, isActive: true, sellerAddress: {city: Vancouver, country: CA, postalCode: V6B 3P8, street: 789 Local Ln, state: BC}, createdAt: Timestamp(seconds=1771053070, nanoseconds=92000000), keywords: [test, local, product], sellerId: test-seller-uid, updatedAt: Timestamp(seconds=1771053070, nanoseconds=92000000), ratingCount: 0, categoryId: 3, isDigital: false}
+[AlgoliaProductRepository] Doc DtHZmE8tPfc8c3FyOHnk data: {rating: 0, isDigital: true, deliveryOptions: [], stockQuantity: 999, sellerAddress: {state: QC, postalCode: H3Z 2Y7, country: CA, street: 456 Digital Ave, city: Montreal}, isActive: true, categoryId: 2, keywords: [test, digital, product], ratingCount: 0, description: A downloadable digital product., imageUrls: [https://picsum.photos/400/400], freeShipping: true, updatedAt: Timestamp(seconds=1771053070, nanoseconds=9000000), name: Test Digital Product, createdAt: Timestamp(seconds=1771053070, nanoseconds=9000000), sellerId: test-seller-uid, price: 9.99}
+[AlgoliaProductRepository] Doc K4Mf88zJD4F6ljapW7HT data: {ratingCount: 0, price: 29.99, imageUrls: [https://picsum.photos/400/400], isDigital: false, rating: 0, sellerAddress: {city: Toronto, street: 123 Test St, state: ON, postalCode: M5V 2H1, country: CA}, createdAt: Timestamp(seconds=1771053069, nanoseconds=890000000), isActive: true, keywords: [test, physical, product], name: Test Physical Product, deliveryOptions: [{description: Standard, type: standard, cost: 5, estimatedDays: 3}], sellerId: test-seller-uid, categoryId: 1, updatedAt: Timestamp(seconds=1771053069, nanoseconds=890000000), description: A wonderful physical product for testing., stockQuantity: 100}
+✅ Loaded 6 products
+00:20 +1: Critical Flows — All 15 checks
+T01 ✓ App launched
+T02/T14/T03 SKIP: Already logged in
+T04 ✓ Home screen (grid=false, cards=false)
+T05 ✓ Cart icon
+T07 ✓ Cart screen loaded
+⚠ No back button found
+T08 SKIP: No product cards
+
+Warning: A call to drag() with finder "Found 1 widget with type "Scrollable" (ignoring all but first): [
+  Scrollable(axisDirection: down, physics: null, restorationId: null, dependencies: [InheritedCupertinoTheme, MediaQuery, ScrollConfiguration, UnmanagedRestorationScope, _InheritedTheme, _LocalizationsScope-[GlobalKey#1f5dc]], state: ScrollableState#e148c(position: ScrollPositionWithSingleContext#a8e36(offset: 0.0, range: 0.0..372.0, viewport: 595.0, ScrollableState, BouncingScrollPhysics, IdleScrollActivity#22a5f, ScrollDirection.idle), effective physics: BouncingScrollPhysics)),
+]" derived an Offset (Offset(600.0, 361.5)) that would not hit test on the specified widget.
+Maybe the widget is actually off-screen, or another widget is obscuring it, or the widget cannot receive pointer events.
+The finder corresponds to this RenderBox: RenderRepaintBoundary#7b79e relayoutBoundary=up4
+The hit test result at that offset is: HitTestResult(_RenderInkFeatures#8cd55@Offset(239.9, 120.0), RenderCustomPaint#5ab03@Offset(239.9, 120.0), RenderPhysicalShape#154da@Offset(239.9, 120.0), RenderConstrainedBox#5178f@Offset(239.9, 120.0), RenderPositionedBox#55180@Offset(560.0, 337.5), RenderPadding#001b9@Offset(600.0, 361.5), RenderSemanticsAnnotations#83ab9@Offset(600.0, 361.5), RenderPadding#329aa@Offset(600.0, 361.5), RenderPadding#d2806@Offset(600.0, 361.5), RenderSemanticsAnnotations#ad8f8@Offset(600.0, 361.5), RenderRepaintBoundary#06308@Offset(600.0, 361.5), RenderIgnorePointer#f99a3@Offset(600.0, 361.5), RenderAnimatedOpacity#59cba@Offset(600.0, 361.5), RenderRepaintBoundary#7fa10@Offset(600.0, 361.5), RenderSemanticsAnnotations#4d731@Offset(600.0, 361.5), RenderOffstage#8c7ba@Offset(600.0, 361.5), RenderSemanticsAnnotations#210c9@Offset(600.0, 361.5), _RenderTheater#7562f@Offset(600.0, 361.5), RenderAbsorbPointer#7ab07@Offset(600.0, 361.5), RenderPointerListener#ae6a4@Offset(600.0, 361.5), RenderSemanticsAnnotations#4ed1a@Offset(600.0, 361.5), RenderSemanticsAnnotations#c445e@Offset(600.0, 361.5), RenderSemanticsAnnotations#8d81c@Offset(600.0, 361.5), RenderTapRegionSurface#20b4e@Offset(600.0, 361.5), RenderSemanticsAnnotations#43941@Offset(600.0, 361.5), RenderSemanticsAnnotations#62d9a@Offset(600.0, 361.5), RenderSemanticsAnnotations#2c872@Offset(600.0, 361.5), RenderSemanticsAnnotations#a84bf@Offset(600.0, 361.5), RenderPointerListener#048af@Offset(600.0, 361.5), RenderSemanticsGestureHandler#0ed37@Offset(600.0, 361.5), HitTestEntry<HitTestTarget>#4d259(_ReusableRenderView#8784b), HitTestEntry<HitTestTarget>#fa1b1(<IntegrationTestWidgetsFlutterBinding>))
+dart-sdk/lib/_internal/js_dev_runtime/patch/core_patch.dart 749:28                get current
+package:flutter_test/src/controller.dart 2081:25                                  [_getElementPoint]
+package:flutter_test/src/controller.dart 1865:12                                  getCenter
+package:flutter_test/src/controller.dart 1541:7                                   drag
+critical_flows_test.dart 106:19                                                   <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 623:19               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 648:23               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 594:19               <fn>
+dart-sdk/lib/async/zone.dart 1538:47                                              _rootRunUnary
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 1429:19                                              runUnary
+dart-sdk/lib/async/future_impl.dart 222:18                                        handleValue
+dart-sdk/lib/async/future_impl.dart 948:44                                        handleValueCallback
+dart-sdk/lib/async/future_impl.dart 977:13                                        _propagateToListeners
+dart-sdk/lib/async/future_impl.dart 720:5                                         [_completeWithValue]
+dart-sdk/lib/async/future_impl.dart 804:7                                         <fn>
+dart-sdk/lib/async/zone.dart 1525:13                                              _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 1422:19                                              run
+dart-sdk/lib/async/zone.dart 1321:7                                               runGuarded
+dart-sdk/lib/async/zone.dart 1362:23                                              <fn>
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+To silence this warning, pass "warnIfMissed: false" to "drag()".
+To make this warning fatal, set WidgetController.hitTestWarningShouldBeFatal to true.
+
+
+Warning: A call to drag() with finder "Found 1 widget with type "Scrollable" (ignoring all but first): [
+  Scrollable(axisDirection: down, physics: null, restorationId: null, dependencies: [InheritedCupertinoTheme, MediaQuery, ScrollConfiguration, UnmanagedRestorationScope, _InheritedTheme, _LocalizationsScope-[GlobalKey#1f5dc]], state: ScrollableState#e148c(position: ScrollPositionWithSingleContext#a8e36(offset: 0.0, range: 0.0..372.0, viewport: 595.0, ScrollableState, BouncingScrollPhysics, IdleScrollActivity#22a5f, ScrollDirection.idle), effective physics: BouncingScrollPhysics)),
+]" derived an Offset (Offset(600.0, 361.5)) that would not hit test on the specified widget.
+Maybe the widget is actually off-screen, or another widget is obscuring it, or the widget cannot receive pointer events.
+The finder corresponds to this RenderBox: RenderRepaintBoundary#7b79e relayoutBoundary=up4
+The hit test result at that offset is: HitTestResult(_RenderInkFeatures#8cd55@Offset(239.9, 120.0), RenderCustomPaint#5ab03@Offset(239.9, 120.0), RenderPhysicalShape#154da@Offset(239.9, 120.0), RenderConstrainedBox#5178f@Offset(239.9, 120.0), RenderPositionedBox#55180@Offset(560.0, 337.5), RenderPadding#001b9@Offset(600.0, 361.5), RenderSemanticsAnnotations#83ab9@Offset(600.0, 361.5), RenderPadding#329aa@Offset(600.0, 361.5), RenderPadding#d2806@Offset(600.0, 361.5), RenderSemanticsAnnotations#ad8f8@Offset(600.0, 361.5), RenderRepaintBoundary#06308@Offset(600.0, 361.5), RenderIgnorePointer#f99a3@Offset(600.0, 361.5), RenderAnimatedOpacity#59cba@Offset(600.0, 361.5), RenderRepaintBoundary#7fa10@Offset(600.0, 361.5), RenderSemanticsAnnotations#4d731@Offset(600.0, 361.5), RenderOffstage#8c7ba@Offset(600.0, 361.5), RenderSemanticsAnnotations#210c9@Offset(600.0, 361.5), _RenderTheater#7562f@Offset(600.0, 361.5), RenderAbsorbPointer#7ab07@Offset(600.0, 361.5), RenderPointerListener#ae6a4@Offset(600.0, 361.5), RenderSemanticsAnnotations#4ed1a@Offset(600.0, 361.5), RenderSemanticsAnnotations#c445e@Offset(600.0, 361.5), RenderSemanticsAnnotations#8d81c@Offset(600.0, 361.5), RenderTapRegionSurface#20b4e@Offset(600.0, 361.5), RenderSemanticsAnnotations#43941@Offset(600.0, 361.5), RenderSemanticsAnnotations#62d9a@Offset(600.0, 361.5), RenderSemanticsAnnotations#2c872@Offset(600.0, 361.5), RenderSemanticsAnnotations#a84bf@Offset(600.0, 361.5), RenderPointerListener#048af@Offset(600.0, 361.5), RenderSemanticsGestureHandler#0ed37@Offset(600.0, 361.5), HitTestEntry<HitTestTarget>#fd5a6(_ReusableRenderView#8784b), HitTestEntry<HitTestTarget>#a91b1(<IntegrationTestWidgetsFlutterBinding>))
+dart-sdk/lib/_internal/js_dev_runtime/patch/core_patch.dart 749:28                get current
+package:flutter_test/src/controller.dart 2081:25                                  [_getElementPoint]
+package:flutter_test/src/controller.dart 1865:12                                  getCenter
+package:flutter_test/src/controller.dart 1541:7                                   drag
+critical_flows_test.dart 108:19                                                   <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 623:19               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 648:23               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 594:19               <fn>
+dart-sdk/lib/async/zone.dart 1538:47                                              _rootRunUnary
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 1429:19                                              runUnary
+dart-sdk/lib/async/future_impl.dart 222:18                                        handleValue
+dart-sdk/lib/async/future_impl.dart 948:44                                        handleValueCallback
+dart-sdk/lib/async/future_impl.dart 977:13                                        _propagateToListeners
+dart-sdk/lib/async/future_impl.dart 720:5                                         [_completeWithValue]
+dart-sdk/lib/async/future_impl.dart 804:7                                         <fn>
+dart-sdk/lib/async/zone.dart 1525:13                                              _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 1422:19                                              run
+dart-sdk/lib/async/zone.dart 1321:7                                               runGuarded
+dart-sdk/lib/async/zone.dart 1362:23                                              <fn>
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+To silence this warning, pass "warnIfMissed: false" to "drag()".
+To make this warning fatal, set WidgetController.hitTestWarningShouldBeFatal to true.
+
+T09 ✓ Scroll works
+
+Warning: A call to tap() with finder "Found 1 widget with key [<'home_settings_button'>]: [
+  IconButton-[<'home_settings_button'>](tooltip: Paramètres, disabled, disabled, dependencies: [InheritedCupertinoTheme, _InheritedTheme, _LocalizationsScope-[GlobalKey#1f5dc]]),
+]" derived an Offset (Offset(1124.0, 32.0)) that would not hit test on the specified widget.
+Maybe the widget is actually off-screen, or another widget is obscuring it, or the widget cannot receive pointer events.
+The finder corresponds to this RenderBox: RenderSemanticsAnnotations#15d11 relayoutBoundary=up10
+The hit test result at that offset is: HitTestResult(_RenderColoredBox#dd5be@Offset(1124.0, 32.0), RenderConstrainedBox#8924a@Offset(1124.0, 32.0), RenderMouseRegion#26e48@Offset(1124.0, 32.0), RenderSemanticsAnnotations#e61e8@Offset(1124.0, 32.0), RenderPointerListener#5f68b@Offset(1124.0, 32.0), RenderSemanticsGestureHandler#a9991@Offset(1124.0, 32.0), RenderExcludeSemantics#18d4a@Offset(1124.0, 32.0), RenderBlockSemantics#b9cde@Offset(1124.0, 32.0), RenderIgnorePointer#e2613@Offset(1124.0, 32.0), RenderSemanticsAnnotations#1eecd@Offset(1124.0, 32.0), _RenderTheater#7562f@Offset(1124.0, 32.0), RenderAbsorbPointer#7ab07@Offset(1124.0, 32.0), RenderPointerListener#ae6a4@Offset(1124.0, 32.0), RenderSemanticsAnnotations#4ed1a@Offset(1124.0, 32.0), RenderSemanticsAnnotations#c445e@Offset(1124.0, 32.0), RenderSemanticsAnnotations#8d81c@Offset(1124.0, 32.0), RenderTapRegionSurface#20b4e@Offset(1124.0, 32.0), RenderSemanticsAnnotations#43941@Offset(1124.0, 32.0), RenderSemanticsAnnotations#62d9a@Offset(1124.0, 32.0), RenderSemanticsAnnotations#2c872@Offset(1124.0, 32.0), RenderSemanticsAnnotations#a84bf@Offset(1124.0, 32.0), RenderPointerListener#048af@Offset(1124.0, 32.0), RenderSemanticsGestureHandler#0ed37@Offset(1124.0, 32.0), HitTestEntry<HitTestTarget>#55455(_ReusableRenderView#8784b), HitTestEntry<HitTestTarget>#94f13(<IntegrationTestWidgetsFlutterBinding>))
+dart-sdk/lib/_internal/js_dev_runtime/patch/core_patch.dart 749:28                get current
+package:flutter_test/src/controller.dart 2081:25                                  [_getElementPoint]
+package:flutter_test/src/controller.dart 1865:12                                  getCenter
+package:flutter_test/src/controller.dart 1045:7                                   tap
+critical_flows_test.dart 122:19                                                   <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 623:19               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 648:23               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 594:19               <fn>
+dart-sdk/lib/async/zone.dart 1538:47                                              _rootRunUnary
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 1429:19                                              runUnary
+dart-sdk/lib/async/future_impl.dart 222:18                                        handleValue
+dart-sdk/lib/async/future_impl.dart 948:44                                        handleValueCallback
+dart-sdk/lib/async/future_impl.dart 977:13                                        _propagateToListeners
+dart-sdk/lib/async/future_impl.dart 720:5                                         [_completeWithValue]
+dart-sdk/lib/async/future_impl.dart 804:7                                         <fn>
+dart-sdk/lib/async/zone.dart 1525:13                                              _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 1422:19                                              run
+dart-sdk/lib/async/zone.dart 1321:7                                               runGuarded
+dart-sdk/lib/async/zone.dart 1362:23                                              <fn>
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+To silence this warning, pass "warnIfMissed: false" to "tap()".
+To make this warning fatal, set WidgetController.hitTestWarningShouldBeFatal to true.
+
+T06 ✓ Profile screen (0 menu items)
+T10 SKIP: Button not found
+T11 SKIP: Button not found
+T12 SKIP: Button not found
+T13 SKIP: Button not found
+T15 SKIP: Orders button not found
+
+════════════════════════════════════════
+  ✓ All 15 Critical Flows checked
+════════════════════════════════════════
+00:33 +2: Cart Operations CartModel serialization round-trip
+00:33 +3: Cart Operations CartItemDetailModel contains all order item fields
+00:33 +4: Order Calculations subtotal calculation for multiple items
+00:33 +5: Order Calculations tax calculation for Ontario order
+00:33 +6: Order Calculations total with taxes and shipping
+00:33 +7: Order Calculations shipping calculation skips free shipping items
+00:33 +8: Order Calculations platform fee calculation at 2.5%
+00:33 +9: Order Calculations seller payout after platform fee
+00:33 +10: Order Status Flow order status transitions
+00:33 +11: Order Status Flow delivery status transitions
+00:33 +12: Multi-Seller Order items grouped by seller
+00:33 +13: Multi-Seller Order unique seller IDs extracted from order
+00:33 +14: Checkout Guardrails delivery speed availability reflects item constraints
+00:33 +15: Checkout Guardrails address validation rejects incomplete delivery info
+00:33 +16: Checkout Guardrails tax code validation allows empty or valid txcd
+00:33 +17: Address Validation Canadian postal code format validation
+00:33 +18: Address Validation province code validation
+00:33 +19: Shipping & Product E2E — 12 Scenarios
+▶ mainTest() called (initialized=true)
+▶ Re-running app (already initialized)
+[90m[🌎 Easy Localization] [DEBUG] Start[0m
+00:34 +19: Flutter Web E2E - Complete App Test
+[90m[🌎 Easy Localization] [DEBUG] Init state[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+[90m[🌎 Easy Localization] [DEBUG] Load Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Load asset from assets/translations[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+🔗 Initial route: /
+🔗 Parsed path: /
+⚠️  Algolia credentials empty → search disabled, using Firestore only
+🔍 Using repository: AlgoliaProductRepository
+📍 Using Firestore fallback
+[AlgoliaProductRepository] Firestore Project ID: orignagta-dev
+[AlgoliaProductRepository] Querying products collection...
+[AlgoliaProductRepository] Fallback Snapshot length: 6
+[AlgoliaProductRepository] Doc eo9CNk6t3odszWjL0vI6 data: {categoryId: 3, isDigital: false, updatedAt: Timestamp(seconds=1771053956, nanoseconds=427000000), isActive: true, name: Test Local Product, ratingCount: 0, description: Only available for local pickup., createdAt: Timestamp(seconds=1771053956, nanoseconds=427000000), stockQuantity: 10, deliveryOptions: [{estimatedDays: 0, description: Pickup, type: pickup, cost: 0}], sellerId: test-seller-uid, rating: 0, imageUrls: [https://picsum.photos/400/400], price: 50, sellerAddress: {postalCode: V6B 3P8, street: 789 Local Ln, city: Vancouver, state: BC, country: CA}, keywords: [test, local, product], isLocalDeliveryOnly: true}
+[AlgoliaProductRepository] Doc bxxJRzkNDaqrbOYbQSrc data: {isActive: true, freeShipping: true, price: 9.99, rating: 0, imageUrls: [https://picsum.photos/400/400], sellerAddress: {city: Montreal, state: QC, country: CA, street: 456 Digital Ave, postalCode: H3Z 2Y7}, createdAt: Timestamp(seconds=1771053956, nanoseconds=343000000), deliveryOptions: [], name: Test Digital Product, ratingCount: 0, sellerId: test-seller-uid, stockQuantity: 999, description: A downloadable digital product., updatedAt: Timestamp(seconds=1771053956, nanoseconds=343000000), keywords: [test, digital, product], isDigital: true, categoryId: 2}
+[AlgoliaProductRepository] Doc FOZtBSP07zeB1OJ5GJUD data: {createdAt: Timestamp(seconds=1771053956, nanoseconds=240000000), deliveryOptions: [{type: standard, cost: 5, estimatedDays: 3, description: Standard}], sellerId: test-seller-uid, rating: 0, price: 29.99, categoryId: 1, keywords: [test, physical, product], updatedAt: Timestamp(seconds=1771053956, nanoseconds=240000000), ratingCount: 0, isActive: true, stockQuantity: 100, description: A wonderful physical product for testing., imageUrls: [https://picsum.photos/400/400], name: Test Physical Product, isDigital: false, sellerAddress: {state: ON, city: Toronto, postalCode: M5V 2H1, country: CA, street: 123 Test St}}
+[AlgoliaProductRepository] Doc UbWBzRpPi6BR9jyhwzV8 data: {description: Only available for local pickup., isLocalDeliveryOnly: true, name: Test Local Product, rating: 0, deliveryOptions: [{type: pickup, description: Pickup, estimatedDays: 0, cost: 0}], stockQuantity: 10, imageUrls: [https://picsum.photos/400/400], price: 50, isActive: true, sellerAddress: {city: Vancouver, country: CA, postalCode: V6B 3P8, street: 789 Local Ln, state: BC}, createdAt: Timestamp(seconds=1771053070, nanoseconds=92000000), keywords: [test, local, product], sellerId: test-seller-uid, updatedAt: Timestamp(seconds=1771053070, nanoseconds=92000000), ratingCount: 0, categoryId: 3, isDigital: false}
+[AlgoliaProductRepository] Doc DtHZmE8tPfc8c3FyOHnk data: {rating: 0, isDigital: true, deliveryOptions: [], stockQuantity: 999, sellerAddress: {state: QC, postalCode: H3Z 2Y7, country: CA, street: 456 Digital Ave, city: Montreal}, isActive: true, categoryId: 2, keywords: [test, digital, product], ratingCount: 0, description: A downloadable digital product., imageUrls: [https://picsum.photos/400/400], freeShipping: true, updatedAt: Timestamp(seconds=1771053070, nanoseconds=9000000), name: Test Digital Product, createdAt: Timestamp(seconds=1771053070, nanoseconds=9000000), sellerId: test-seller-uid, price: 9.99}
+[AlgoliaProductRepository] Doc K4Mf88zJD4F6ljapW7HT data: {ratingCount: 0, price: 29.99, imageUrls: [https://picsum.photos/400/400], isDigital: false, rating: 0, sellerAddress: {city: Toronto, street: 123 Test St, state: ON, postalCode: M5V 2H1, country: CA}, createdAt: Timestamp(seconds=1771053069, nanoseconds=890000000), isActive: true, keywords: [test, physical, product], name: Test Physical Product, deliveryOptions: [{description: Standard, type: standard, cost: 5, estimatedDays: 3}], sellerId: test-seller-uid, categoryId: 1, updatedAt: Timestamp(seconds=1771053069, nanoseconds=890000000), description: A wonderful physical product for testing., stockQuantity: 100}
+✅ Loaded 6 products
+00:46 +19: Shipping & Product E2E — 12 Scenarios
+
+════════════════════════════════════════════════════════════
+  SHIPPING & PRODUCT E2E TESTS
+════════════════════════════════════════════════════════════
+✓ App launched successfully
+⚠ No login screen found — may already be authenticated
+⚠ Add Product button not found — user may not have seller/admin role
+⚠ SKIPPING T01–T05/T09–T12: User does not have seller/admin role.
+  Ensure yr62813@gmail.com has roles: [seller] or [admin] in Firestore.
+  Jumping to T06 (Home Screen verification)...
+
+── T06: Home Screen Product Grid ──
+✓ T06: Home screen — GridView: false, ListView: true
+✓ T06: Home screen rendered
+
+── T07: Cart Navigation ──
+✓ T07: Navigated to cart screen
+  Cart has items: true
+  T07: No checkout button (cart may be empty — expected for fresh emulator)
+⚠ No back button found
+
+── T08: Product Detail Screen ──
+⚠ T08: No product cards found to tap (empty grid — expected for fresh emulator)
+
+════════════════════════════════════════════════════════════
+  E2E TEST SUMMARY
+════════════════════════════════════════════════════════════
+  T01: Physical Product + Standard Delivery
+  T02: Digital Product (No Shipping)
+  T03: Free Shipping Toggle
+  T04: Local Pickup Only
+  T05: Perishable + Same-Day Delivery
+  T06: Home Screen Product Grid
+  T07: Cart Navigation
+  T08: Product Detail Screen
+  T09: Express Delivery Tier Toggle
+  T10: Digital Product Hides Physical Sections
+  T11: Validation — Empty Name
+  T12: Validation — Negative/Zero Price
+════════════════════════════════════════════════════════════
+  ✓ All 12 scenarios executed
+════════════════════════════════════════════════════════════
+01:18 +20: Buyer: Login, Browse, Cart, Checkout, Orders, Seller Reg
+▶ mainTest() called (initialized=true)
+▶ Re-running app (already initialized)
+[90m[🌎 Easy Localization] [DEBUG] Start[0m
+01:18 +20: Flutter Web E2E - Complete App Test
+[90m[🌎 Easy Localization] [DEBUG] Init state[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+[90m[🌎 Easy Localization] [DEBUG] Load Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Load asset from assets/translations[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+🔗 Initial route: /
+🔗 Parsed path: /
+⚠️  Algolia credentials empty → search disabled, using Firestore only
+🔍 Using repository: AlgoliaProductRepository
+📍 Using Firestore fallback
+[AlgoliaProductRepository] Firestore Project ID: orignagta-dev
+[AlgoliaProductRepository] Querying products collection...
+[AlgoliaProductRepository] Fallback Snapshot length: 6
+[AlgoliaProductRepository] Doc eo9CNk6t3odszWjL0vI6 data: {categoryId: 3, isDigital: false, updatedAt: Timestamp(seconds=1771053956, nanoseconds=427000000), isActive: true, name: Test Local Product, ratingCount: 0, description: Only available for local pickup., createdAt: Timestamp(seconds=1771053956, nanoseconds=427000000), stockQuantity: 10, deliveryOptions: [{estimatedDays: 0, description: Pickup, type: pickup, cost: 0}], sellerId: test-seller-uid, rating: 0, imageUrls: [https://picsum.photos/400/400], price: 50, sellerAddress: {postalCode: V6B 3P8, street: 789 Local Ln, city: Vancouver, state: BC, country: CA}, keywords: [test, local, product], isLocalDeliveryOnly: true}
+[AlgoliaProductRepository] Doc bxxJRzkNDaqrbOYbQSrc data: {isActive: true, freeShipping: true, price: 9.99, rating: 0, imageUrls: [https://picsum.photos/400/400], sellerAddress: {city: Montreal, state: QC, country: CA, street: 456 Digital Ave, postalCode: H3Z 2Y7}, createdAt: Timestamp(seconds=1771053956, nanoseconds=343000000), deliveryOptions: [], name: Test Digital Product, ratingCount: 0, sellerId: test-seller-uid, stockQuantity: 999, description: A downloadable digital product., updatedAt: Timestamp(seconds=1771053956, nanoseconds=343000000), keywords: [test, digital, product], isDigital: true, categoryId: 2}
+[AlgoliaProductRepository] Doc FOZtBSP07zeB1OJ5GJUD data: {createdAt: Timestamp(seconds=1771053956, nanoseconds=240000000), deliveryOptions: [{type: standard, cost: 5, estimatedDays: 3, description: Standard}], sellerId: test-seller-uid, rating: 0, price: 29.99, categoryId: 1, keywords: [test, physical, product], updatedAt: Timestamp(seconds=1771053956, nanoseconds=240000000), ratingCount: 0, isActive: true, stockQuantity: 100, description: A wonderful physical product for testing., imageUrls: [https://picsum.photos/400/400], name: Test Physical Product, isDigital: false, sellerAddress: {state: ON, city: Toronto, postalCode: M5V 2H1, country: CA, street: 123 Test St}}
+[AlgoliaProductRepository] Doc UbWBzRpPi6BR9jyhwzV8 data: {description: Only available for local pickup., isLocalDeliveryOnly: true, name: Test Local Product, rating: 0, deliveryOptions: [{type: pickup, description: Pickup, estimatedDays: 0, cost: 0}], stockQuantity: 10, imageUrls: [https://picsum.photos/400/400], price: 50, isActive: true, sellerAddress: {city: Vancouver, country: CA, postalCode: V6B 3P8, street: 789 Local Ln, state: BC}, createdAt: Timestamp(seconds=1771053070, nanoseconds=92000000), keywords: [test, local, product], sellerId: test-seller-uid, updatedAt: Timestamp(seconds=1771053070, nanoseconds=92000000), ratingCount: 0, categoryId: 3, isDigital: false}
+[AlgoliaProductRepository] Doc DtHZmE8tPfc8c3FyOHnk data: {rating: 0, isDigital: true, deliveryOptions: [], stockQuantity: 999, sellerAddress: {state: QC, postalCode: H3Z 2Y7, country: CA, street: 456 Digital Ave, city: Montreal}, isActive: true, categoryId: 2, keywords: [test, digital, product], ratingCount: 0, description: A downloadable digital product., imageUrls: [https://picsum.photos/400/400], freeShipping: true, updatedAt: Timestamp(seconds=1771053070, nanoseconds=9000000), name: Test Digital Product, createdAt: Timestamp(seconds=1771053070, nanoseconds=9000000), sellerId: test-seller-uid, price: 9.99}
+[AlgoliaProductRepository] Doc K4Mf88zJD4F6ljapW7HT data: {ratingCount: 0, price: 29.99, imageUrls: [https://picsum.photos/400/400], isDigital: false, rating: 0, sellerAddress: {city: Toronto, street: 123 Test St, state: ON, postalCode: M5V 2H1, country: CA}, createdAt: Timestamp(seconds=1771053069, nanoseconds=890000000), isActive: true, keywords: [test, physical, product], name: Test Physical Product, deliveryOptions: [{description: Standard, type: standard, cost: 5, estimatedDays: 3}], sellerId: test-seller-uid, categoryId: 1, updatedAt: Timestamp(seconds=1771053069, nanoseconds=890000000), description: A wonderful physical product for testing., stockQuantity: 100}
+✅ Loaded 6 products
+01:28 +20: Buyer: Login, Browse, Cart, Checkout, Orders, Seller Reg
+⚠️ Login fields not found — may already be logged in
+✅ WF1: Login successful
+🔍 Using repository: AlgoliaProductRepository
+   Search query: "test"
+📍 Using Firestore fallback
+[AlgoliaProductRepository] Firestore Project ID: orignagta-dev
+[AlgoliaProductRepository] Querying products collection...
+[AlgoliaProductRepository] Fallback Snapshot length: 6
+[AlgoliaProductRepository] Doc eo9CNk6t3odszWjL0vI6 data: {categoryId: 3, isDigital: false, updatedAt: Timestamp(seconds=1771053956, nanoseconds=427000000), isActive: true, name: Test Local Product, ratingCount: 0, description: Only available for local pickup., createdAt: Timestamp(seconds=1771053956, nanoseconds=427000000), stockQuantity: 10, deliveryOptions: [{estimatedDays: 0, description: Pickup, type: pickup, cost: 0}], sellerId: test-seller-uid, rating: 0, imageUrls: [https://picsum.photos/400/400], price: 50, sellerAddress: {postalCode: V6B 3P8, street: 789 Local Ln, city: Vancouver, state: BC, country: CA}, keywords: [test, local, product], isLocalDeliveryOnly: true}
+[AlgoliaProductRepository] Doc bxxJRzkNDaqrbOYbQSrc data: {isActive: true, freeShipping: true, price: 9.99, rating: 0, imageUrls: [https://picsum.photos/400/400], sellerAddress: {city: Montreal, state: QC, country: CA, street: 456 Digital Ave, postalCode: H3Z 2Y7}, createdAt: Timestamp(seconds=1771053956, nanoseconds=343000000), deliveryOptions: [], name: Test Digital Product, ratingCount: 0, sellerId: test-seller-uid, stockQuantity: 999, description: A downloadable digital product., updatedAt: Timestamp(seconds=1771053956, nanoseconds=343000000), keywords: [test, digital, product], isDigital: true, categoryId: 2}
+[AlgoliaProductRepository] Doc FOZtBSP07zeB1OJ5GJUD data: {createdAt: Timestamp(seconds=1771053956, nanoseconds=240000000), deliveryOptions: [{type: standard, cost: 5, estimatedDays: 3, description: Standard}], sellerId: test-seller-uid, rating: 0, price: 29.99, categoryId: 1, keywords: [test, physical, product], updatedAt: Timestamp(seconds=1771053956, nanoseconds=240000000), ratingCount: 0, isActive: true, stockQuantity: 100, description: A wonderful physical product for testing., imageUrls: [https://picsum.photos/400/400], name: Test Physical Product, isDigital: false, sellerAddress: {state: ON, city: Toronto, postalCode: M5V 2H1, country: CA, street: 123 Test St}}
+[AlgoliaProductRepository] Doc UbWBzRpPi6BR9jyhwzV8 data: {description: Only available for local pickup., isLocalDeliveryOnly: true, name: Test Local Product, rating: 0, deliveryOptions: [{type: pickup, description: Pickup, estimatedDays: 0, cost: 0}], stockQuantity: 10, imageUrls: [https://picsum.photos/400/400], price: 50, isActive: true, sellerAddress: {city: Vancouver, country: CA, postalCode: V6B 3P8, street: 789 Local Ln, state: BC}, createdAt: Timestamp(seconds=1771053070, nanoseconds=92000000), keywords: [test, local, product], sellerId: test-seller-uid, updatedAt: Timestamp(seconds=1771053070, nanoseconds=92000000), ratingCount: 0, categoryId: 3, isDigital: false}
+[AlgoliaProductRepository] Doc DtHZmE8tPfc8c3FyOHnk data: {rating: 0, isDigital: true, deliveryOptions: [], stockQuantity: 999, sellerAddress: {state: QC, postalCode: H3Z 2Y7, country: CA, street: 456 Digital Ave, city: Montreal}, isActive: true, categoryId: 2, keywords: [test, digital, product], ratingCount: 0, description: A downloadable digital product., imageUrls: [https://picsum.photos/400/400], freeShipping: true, updatedAt: Timestamp(seconds=1771053070, nanoseconds=9000000), name: Test Digital Product, createdAt: Timestamp(seconds=1771053070, nanoseconds=9000000), sellerId: test-seller-uid, price: 9.99}
+[AlgoliaProductRepository] Doc K4Mf88zJD4F6ljapW7HT data: {ratingCount: 0, price: 29.99, imageUrls: [https://picsum.photos/400/400], isDigital: false, rating: 0, sellerAddress: {city: Toronto, street: 123 Test St, state: ON, postalCode: M5V 2H1, country: CA}, createdAt: Timestamp(seconds=1771053069, nanoseconds=890000000), isActive: true, keywords: [test, physical, product], name: Test Physical Product, deliveryOptions: [{description: Standard, type: standard, cost: 5, estimatedDays: 3}], sellerId: test-seller-uid, categoryId: 1, updatedAt: Timestamp(seconds=1771053069, nanoseconds=890000000), description: A wonderful physical product for testing., stockQuantity: 100}
+✅ Loaded 6 products
+🔍 Using repository: AlgoliaProductRepository
+📍 Using Firestore fallback
+[AlgoliaProductRepository] Firestore Project ID: orignagta-dev
+[AlgoliaProductRepository] Querying products collection...
+[AlgoliaProductRepository] Fallback Snapshot length: 6
+[AlgoliaProductRepository] Doc eo9CNk6t3odszWjL0vI6 data: {categoryId: 3, isDigital: false, updatedAt: Timestamp(seconds=1771053956, nanoseconds=427000000), isActive: true, name: Test Local Product, ratingCount: 0, description: Only available for local pickup., createdAt: Timestamp(seconds=1771053956, nanoseconds=427000000), stockQuantity: 10, deliveryOptions: [{estimatedDays: 0, description: Pickup, type: pickup, cost: 0}], sellerId: test-seller-uid, rating: 0, imageUrls: [https://picsum.photos/400/400], price: 50, sellerAddress: {postalCode: V6B 3P8, street: 789 Local Ln, city: Vancouver, state: BC, country: CA}, keywords: [test, local, product], isLocalDeliveryOnly: true}
+[AlgoliaProductRepository] Doc bxxJRzkNDaqrbOYbQSrc data: {isActive: true, freeShipping: true, price: 9.99, rating: 0, imageUrls: [https://picsum.photos/400/400], sellerAddress: {city: Montreal, state: QC, country: CA, street: 456 Digital Ave, postalCode: H3Z 2Y7}, createdAt: Timestamp(seconds=1771053956, nanoseconds=343000000), deliveryOptions: [], name: Test Digital Product, ratingCount: 0, sellerId: test-seller-uid, stockQuantity: 999, description: A downloadable digital product., updatedAt: Timestamp(seconds=1771053956, nanoseconds=343000000), keywords: [test, digital, product], isDigital: true, categoryId: 2}
+[AlgoliaProductRepository] Doc FOZtBSP07zeB1OJ5GJUD data: {createdAt: Timestamp(seconds=1771053956, nanoseconds=240000000), deliveryOptions: [{type: standard, cost: 5, estimatedDays: 3, description: Standard}], sellerId: test-seller-uid, rating: 0, price: 29.99, categoryId: 1, keywords: [test, physical, product], updatedAt: Timestamp(seconds=1771053956, nanoseconds=240000000), ratingCount: 0, isActive: true, stockQuantity: 100, description: A wonderful physical product for testing., imageUrls: [https://picsum.photos/400/400], name: Test Physical Product, isDigital: false, sellerAddress: {state: ON, city: Toronto, postalCode: M5V 2H1, country: CA, street: 123 Test St}}
+[AlgoliaProductRepository] Doc UbWBzRpPi6BR9jyhwzV8 data: {description: Only available for local pickup., isLocalDeliveryOnly: true, name: Test Local Product, rating: 0, deliveryOptions: [{type: pickup, description: Pickup, estimatedDays: 0, cost: 0}], stockQuantity: 10, imageUrls: [https://picsum.photos/400/400], price: 50, isActive: true, sellerAddress: {city: Vancouver, country: CA, postalCode: V6B 3P8, street: 789 Local Ln, state: BC}, createdAt: Timestamp(seconds=1771053070, nanoseconds=92000000), keywords: [test, local, product], sellerId: test-seller-uid, updatedAt: Timestamp(seconds=1771053070, nanoseconds=92000000), ratingCount: 0, categoryId: 3, isDigital: false}
+[AlgoliaProductRepository] Doc DtHZmE8tPfc8c3FyOHnk data: {rating: 0, isDigital: true, deliveryOptions: [], stockQuantity: 999, sellerAddress: {state: QC, postalCode: H3Z 2Y7, country: CA, street: 456 Digital Ave, city: Montreal}, isActive: true, categoryId: 2, keywords: [test, digital, product], ratingCount: 0, description: A downloadable digital product., imageUrls: [https://picsum.photos/400/400], freeShipping: true, updatedAt: Timestamp(seconds=1771053070, nanoseconds=9000000), name: Test Digital Product, createdAt: Timestamp(seconds=1771053070, nanoseconds=9000000), sellerId: test-seller-uid, price: 9.99}
+[AlgoliaProductRepository] Doc K4Mf88zJD4F6ljapW7HT data: {ratingCount: 0, price: 29.99, imageUrls: [https://picsum.photos/400/400], isDigital: false, rating: 0, sellerAddress: {city: Toronto, street: 123 Test St, state: ON, postalCode: M5V 2H1, country: CA}, createdAt: Timestamp(seconds=1771053069, nanoseconds=890000000), isActive: true, keywords: [test, physical, product], name: Test Physical Product, deliveryOptions: [{description: Standard, type: standard, cost: 5, estimatedDays: 3}], sellerId: test-seller-uid, categoryId: 1, updatedAt: Timestamp(seconds=1771053069, nanoseconds=890000000), description: A wonderful physical product for testing., stockQuantity: 100}
+✅ Loaded 6 products
+01:34 +20: Flutter Web E2E - Complete App Test
+[34m[🌎 Easy Localization] [WARNING] Localization key [checkout.estimated_delivery] not found[0m
+01:40 +20: Buyer: Login, Browse, Cart, Checkout, Orders, Seller Reg
+✅ WF3: Browse products
+01:40 +20: Flutter Web E2E - Complete App Test
+[34m[🌎 Easy Localization] [WARNING] Localization key [checkout.estimated_delivery] not found[0m
+01:46 +20: Buyer: Login, Browse, Cart, Checkout, Orders, Seller Reg
+ℹ️ Sign In Required popup detected — dismissing...
+ℹ️ Popup dismissed — auth state should be ready now
+ℹ️ Retrying add-to-cart after popup dismissal...
+ℹ️ Sign In Required popup detected — dismissing...
+ℹ️ Popup dismissed — auth state should be ready now
+  Cart visible: false
+✅ WF4: Cart management
+⚠️ WF5: No items — checkout skipped
+⚠️ WF6: Orders button not found
+⚠️ WF7: Become Seller not visible (may already be seller)
+
+════════════════════════════════════════
+  ✓ Buyer Workflows (WF1,3-7) complete
+════════════════════════════════════════
+02:16 +21: Registration: New user signup
+▶ mainTest() called (initialized=true)
+▶ Re-running app (already initialized)
+[90m[🌎 Easy Localization] [DEBUG] Start[0m
+02:16 +21: Flutter Web E2E - Complete App Test
+[90m[🌎 Easy Localization] [DEBUG] Init state[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+[90m[🌎 Easy Localization] [DEBUG] Load Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Load asset from assets/translations[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+🔗 Initial route: /
+🔗 Parsed path: /
+⚠️  Algolia credentials empty → search disabled, using Firestore only
+🔍 Using repository: AlgoliaProductRepository
+📍 Using Firestore fallback
+[AlgoliaProductRepository] Firestore Project ID: orignagta-dev
+[AlgoliaProductRepository] Querying products collection...
+[AlgoliaProductRepository] Fallback Snapshot length: 6
+[AlgoliaProductRepository] Doc eo9CNk6t3odszWjL0vI6 data: {categoryId: 3, isDigital: false, updatedAt: Timestamp(seconds=1771053956, nanoseconds=427000000), isActive: true, name: Test Local Product, ratingCount: 0, description: Only available for local pickup., createdAt: Timestamp(seconds=1771053956, nanoseconds=427000000), stockQuantity: 10, deliveryOptions: [{estimatedDays: 0, description: Pickup, type: pickup, cost: 0}], sellerId: test-seller-uid, rating: 0, imageUrls: [https://picsum.photos/400/400], price: 50, sellerAddress: {postalCode: V6B 3P8, street: 789 Local Ln, city: Vancouver, state: BC, country: CA}, keywords: [test, local, product], isLocalDeliveryOnly: true}
+[AlgoliaProductRepository] Doc bxxJRzkNDaqrbOYbQSrc data: {isActive: true, freeShipping: true, price: 9.99, rating: 0, imageUrls: [https://picsum.photos/400/400], sellerAddress: {city: Montreal, state: QC, country: CA, street: 456 Digital Ave, postalCode: H3Z 2Y7}, createdAt: Timestamp(seconds=1771053956, nanoseconds=343000000), deliveryOptions: [], name: Test Digital Product, ratingCount: 0, sellerId: test-seller-uid, stockQuantity: 999, description: A downloadable digital product., updatedAt: Timestamp(seconds=1771053956, nanoseconds=343000000), keywords: [test, digital, product], isDigital: true, categoryId: 2}
+[AlgoliaProductRepository] Doc FOZtBSP07zeB1OJ5GJUD data: {createdAt: Timestamp(seconds=1771053956, nanoseconds=240000000), deliveryOptions: [{type: standard, cost: 5, estimatedDays: 3, description: Standard}], sellerId: test-seller-uid, rating: 0, price: 29.99, categoryId: 1, keywords: [test, physical, product], updatedAt: Timestamp(seconds=1771053956, nanoseconds=240000000), ratingCount: 0, isActive: true, stockQuantity: 100, description: A wonderful physical product for testing., imageUrls: [https://picsum.photos/400/400], name: Test Physical Product, isDigital: false, sellerAddress: {state: ON, city: Toronto, postalCode: M5V 2H1, country: CA, street: 123 Test St}}
+[AlgoliaProductRepository] Doc UbWBzRpPi6BR9jyhwzV8 data: {description: Only available for local pickup., isLocalDeliveryOnly: true, name: Test Local Product, rating: 0, deliveryOptions: [{type: pickup, description: Pickup, estimatedDays: 0, cost: 0}], stockQuantity: 10, imageUrls: [https://picsum.photos/400/400], price: 50, isActive: true, sellerAddress: {city: Vancouver, country: CA, postalCode: V6B 3P8, street: 789 Local Ln, state: BC}, createdAt: Timestamp(seconds=1771053070, nanoseconds=92000000), keywords: [test, local, product], sellerId: test-seller-uid, updatedAt: Timestamp(seconds=1771053070, nanoseconds=92000000), ratingCount: 0, categoryId: 3, isDigital: false}
+[AlgoliaProductRepository] Doc DtHZmE8tPfc8c3FyOHnk data: {rating: 0, isDigital: true, deliveryOptions: [], stockQuantity: 999, sellerAddress: {state: QC, postalCode: H3Z 2Y7, country: CA, street: 456 Digital Ave, city: Montreal}, isActive: true, categoryId: 2, keywords: [test, digital, product], ratingCount: 0, description: A downloadable digital product., imageUrls: [https://picsum.photos/400/400], freeShipping: true, updatedAt: Timestamp(seconds=1771053070, nanoseconds=9000000), name: Test Digital Product, createdAt: Timestamp(seconds=1771053070, nanoseconds=9000000), sellerId: test-seller-uid, price: 9.99}
+[AlgoliaProductRepository] Doc K4Mf88zJD4F6ljapW7HT data: {ratingCount: 0, price: 29.99, imageUrls: [https://picsum.photos/400/400], isDigital: false, rating: 0, sellerAddress: {city: Toronto, street: 123 Test St, state: ON, postalCode: M5V 2H1, country: CA}, createdAt: Timestamp(seconds=1771053069, nanoseconds=890000000), isActive: true, keywords: [test, physical, product], name: Test Physical Product, deliveryOptions: [{description: Standard, type: standard, cost: 5, estimatedDays: 3}], sellerId: test-seller-uid, categoryId: 1, updatedAt: Timestamp(seconds=1771053069, nanoseconds=890000000), description: A wonderful physical product for testing., stockQuantity: 100}
+✅ Loaded 6 products
+02:25 +21: Registration: New user signup
+⚠️ WF2: Login/register form not visible — skipping
+✅ WF2: Registration test (skipped — user still logged in)
+02:25 +22: Seller/Admin: Dashboard, Add Product, Admin Panel
+▶ mainTest() called (initialized=true)
+▶ Re-running app (already initialized)
+[90m[🌎 Easy Localization] [DEBUG] Start[0m
+02:26 +22: Flutter Web E2E - Complete App Test
+[90m[🌎 Easy Localization] [DEBUG] Init state[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+[90m[🌎 Easy Localization] [DEBUG] Load Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Load asset from assets/translations[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+🔗 Initial route: /
+🔗 Parsed path: /
+⚠️  Algolia credentials empty → search disabled, using Firestore only
+🔍 Using repository: AlgoliaProductRepository
+📍 Using Firestore fallback
+[AlgoliaProductRepository] Firestore Project ID: orignagta-dev
+[AlgoliaProductRepository] Querying products collection...
+[AlgoliaProductRepository] Fallback Snapshot length: 6
+[AlgoliaProductRepository] Doc eo9CNk6t3odszWjL0vI6 data: {categoryId: 3, isDigital: false, updatedAt: Timestamp(seconds=1771053956, nanoseconds=427000000), isActive: true, name: Test Local Product, ratingCount: 0, description: Only available for local pickup., createdAt: Timestamp(seconds=1771053956, nanoseconds=427000000), stockQuantity: 10, deliveryOptions: [{estimatedDays: 0, description: Pickup, type: pickup, cost: 0}], sellerId: test-seller-uid, rating: 0, imageUrls: [https://picsum.photos/400/400], price: 50, sellerAddress: {postalCode: V6B 3P8, street: 789 Local Ln, city: Vancouver, state: BC, country: CA}, keywords: [test, local, product], isLocalDeliveryOnly: true}
+[AlgoliaProductRepository] Doc bxxJRzkNDaqrbOYbQSrc data: {isActive: true, freeShipping: true, price: 9.99, rating: 0, imageUrls: [https://picsum.photos/400/400], sellerAddress: {city: Montreal, state: QC, country: CA, street: 456 Digital Ave, postalCode: H3Z 2Y7}, createdAt: Timestamp(seconds=1771053956, nanoseconds=343000000), deliveryOptions: [], name: Test Digital Product, ratingCount: 0, sellerId: test-seller-uid, stockQuantity: 999, description: A downloadable digital product., updatedAt: Timestamp(seconds=1771053956, nanoseconds=343000000), keywords: [test, digital, product], isDigital: true, categoryId: 2}
+[AlgoliaProductRepository] Doc FOZtBSP07zeB1OJ5GJUD data: {createdAt: Timestamp(seconds=1771053956, nanoseconds=240000000), deliveryOptions: [{type: standard, cost: 5, estimatedDays: 3, description: Standard}], sellerId: test-seller-uid, rating: 0, price: 29.99, categoryId: 1, keywords: [test, physical, product], updatedAt: Timestamp(seconds=1771053956, nanoseconds=240000000), ratingCount: 0, isActive: true, stockQuantity: 100, description: A wonderful physical product for testing., imageUrls: [https://picsum.photos/400/400], name: Test Physical Product, isDigital: false, sellerAddress: {state: ON, city: Toronto, postalCode: M5V 2H1, country: CA, street: 123 Test St}}
+[AlgoliaProductRepository] Doc UbWBzRpPi6BR9jyhwzV8 data: {description: Only available for local pickup., isLocalDeliveryOnly: true, name: Test Local Product, rating: 0, deliveryOptions: [{type: pickup, description: Pickup, estimatedDays: 0, cost: 0}], stockQuantity: 10, imageUrls: [https://picsum.photos/400/400], price: 50, isActive: true, sellerAddress: {city: Vancouver, country: CA, postalCode: V6B 3P8, street: 789 Local Ln, state: BC}, createdAt: Timestamp(seconds=1771053070, nanoseconds=92000000), keywords: [test, local, product], sellerId: test-seller-uid, updatedAt: Timestamp(seconds=1771053070, nanoseconds=92000000), ratingCount: 0, categoryId: 3, isDigital: false}
+[AlgoliaProductRepository] Doc DtHZmE8tPfc8c3FyOHnk data: {rating: 0, isDigital: true, deliveryOptions: [], stockQuantity: 999, sellerAddress: {state: QC, postalCode: H3Z 2Y7, country: CA, street: 456 Digital Ave, city: Montreal}, isActive: true, categoryId: 2, keywords: [test, digital, product], ratingCount: 0, description: A downloadable digital product., imageUrls: [https://picsum.photos/400/400], freeShipping: true, updatedAt: Timestamp(seconds=1771053070, nanoseconds=9000000), name: Test Digital Product, createdAt: Timestamp(seconds=1771053070, nanoseconds=9000000), sellerId: test-seller-uid, price: 9.99}
+[AlgoliaProductRepository] Doc K4Mf88zJD4F6ljapW7HT data: {ratingCount: 0, price: 29.99, imageUrls: [https://picsum.photos/400/400], isDigital: false, rating: 0, sellerAddress: {city: Toronto, street: 123 Test St, state: ON, postalCode: M5V 2H1, country: CA}, createdAt: Timestamp(seconds=1771053069, nanoseconds=890000000), isActive: true, keywords: [test, physical, product], name: Test Physical Product, deliveryOptions: [{description: Standard, type: standard, cost: 5, estimatedDays: 3}], sellerId: test-seller-uid, categoryId: 1, updatedAt: Timestamp(seconds=1771053069, nanoseconds=890000000), description: A wonderful physical product for testing., stockQuantity: 100}
+✅ Loaded 6 products
+02:35 +22: Seller/Admin: Dashboard, Add Product, Admin Panel
+⚠️ Login fields not found — may already be logged in
+⚠️ WF8: seller orders button not visible
+⚠ No back button found
+⚠️ WF9: Add product button not found
+
+Warning: A call to tap() with finder "Found 1 widget with key [<'home_settings_button'>]: [
+  IconButton-[<'home_settings_button'>](tooltip: Paramètres, disabled, disabled, dependencies: [InheritedCupertinoTheme, _InheritedTheme, _LocalizationsScope-[GlobalKey#352cd]]),
+]" derived an Offset (Offset(1124.0, 32.0)) that would not hit test on the specified widget.
+Maybe the widget is actually off-screen, or another widget is obscuring it, or the widget cannot receive pointer events.
+The finder corresponds to this RenderBox: RenderSemanticsAnnotations#626f3 relayoutBoundary=up10
+The hit test result at that offset is: HitTestResult(_RenderColoredBox#090e2@Offset(1124.0, 32.0), RenderConstrainedBox#da7b2@Offset(1124.0, 32.0), RenderMouseRegion#58f88@Offset(1124.0, 32.0), RenderSemanticsAnnotations#6afe8@Offset(1124.0, 32.0), RenderPointerListener#e8330@Offset(1124.0, 32.0), RenderSemanticsGestureHandler#b0efe@Offset(1124.0, 32.0), RenderExcludeSemantics#7c13f@Offset(1124.0, 32.0), RenderBlockSemantics#e6654@Offset(1124.0, 32.0), RenderIgnorePointer#b659d@Offset(1124.0, 32.0), RenderSemanticsAnnotations#e9d94@Offset(1124.0, 32.0), _RenderTheater#aa0e3@Offset(1124.0, 32.0), RenderAbsorbPointer#3d6bc@Offset(1124.0, 32.0), RenderPointerListener#0c71c@Offset(1124.0, 32.0), RenderSemanticsAnnotations#1d8bb@Offset(1124.0, 32.0), RenderSemanticsAnnotations#77e10@Offset(1124.0, 32.0), RenderSemanticsAnnotations#f9c90@Offset(1124.0, 32.0), RenderTapRegionSurface#7bc46@Offset(1124.0, 32.0), RenderSemanticsAnnotations#34af5@Offset(1124.0, 32.0), RenderSemanticsAnnotations#7beb8@Offset(1124.0, 32.0), RenderSemanticsAnnotations#68fde@Offset(1124.0, 32.0), RenderSemanticsAnnotations#51bf4@Offset(1124.0, 32.0), RenderPointerListener#5ec4d@Offset(1124.0, 32.0), RenderSemanticsGestureHandler#cae9f@Offset(1124.0, 32.0), HitTestEntry<HitTestTarget>#8ba31(_ReusableRenderView#8784b), HitTestEntry<HitTestTarget>#7d37f(<IntegrationTestWidgetsFlutterBinding>))
+dart-sdk/lib/_internal/js_dev_runtime/patch/core_patch.dart 749:28                get current
+package:flutter_test/src/controller.dart 2081:25                                  [_getElementPoint]
+package:flutter_test/src/controller.dart 1865:12                                  getCenter
+package:flutter_test/src/controller.dart 1045:7                                   tap
+human_workflows_test.dart 411:17                                                  <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 623:19               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 648:23               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 594:19               <fn>
+dart-sdk/lib/async/zone.dart 1538:47                                              _rootRunUnary
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 1429:19                                              runUnary
+dart-sdk/lib/async/future_impl.dart 222:18                                        handleValue
+dart-sdk/lib/async/future_impl.dart 948:44                                        handleValueCallback
+dart-sdk/lib/async/future_impl.dart 977:13                                        _propagateToListeners
+dart-sdk/lib/async/future_impl.dart 720:5                                         [_completeWithValue]
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 504:7                complete
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 571:12               _asyncReturn
+helpers/test_helpers.dart 33:1                                                    <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 623:19               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 648:23               <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 594:19               <fn>
+dart-sdk/lib/async/zone.dart 1538:47                                              _rootRunUnary
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 1429:19                                              runUnary
+dart-sdk/lib/async/future_impl.dart 222:18                                        handleValue
+dart-sdk/lib/async/future_impl.dart 948:44                                        handleValueCallback
+dart-sdk/lib/async/future_impl.dart 977:13                                        _propagateToListeners
+dart-sdk/lib/async/future_impl.dart 720:5                                         [_completeWithValue]
+dart-sdk/lib/async/future_impl.dart 804:7                                         <fn>
+dart-sdk/lib/async/zone.dart 1525:13                                              _rootRun
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/async/zone.dart 1422:19                                              run
+dart-sdk/lib/async/zone.dart 1321:7                                               runGuarded
+dart-sdk/lib/async/zone.dart 1362:23                                              <fn>
+dart-sdk/lib/async/schedule_microtask.dart 40:34                                  _microtaskLoop
+dart-sdk/lib/async/schedule_microtask.dart 49:5                                   _startMicrotaskLoop
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+dart-sdk/lib/_internal/js_dev_runtime/patch/async_patch.dart 188:69               <fn>
+To silence this warning, pass "warnIfMissed: false" to "tap()".
+To make this warning fatal, set WidgetController.hitTestWarningShouldBeFatal to true.
+
+⚠️ WF10: Admin panel button not visible
+
+════════════════════════════════════════
+  ✓ Seller/Admin Workflows (WF8-10) complete
+════════════════════════════════════════
+02:45 +23: Buyer: Cart, Checkout, Orders & Security
+▶ mainTest() called (initialized=true)
+▶ Re-running app (already initialized)
+[90m[🌎 Easy Localization] [DEBUG] Start[0m
+02:46 +23: Flutter Web E2E - Complete App Test
+[90m[🌎 Easy Localization] [DEBUG] Init state[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+[90m[🌎 Easy Localization] [DEBUG] Load Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Load asset from assets/translations[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+🔗 Initial route: /
+🔗 Parsed path: /
+⚠️  Algolia credentials empty → search disabled, using Firestore only
+🔍 Using repository: AlgoliaProductRepository
+📍 Using Firestore fallback
+[AlgoliaProductRepository] Firestore Project ID: orignagta-dev
+[AlgoliaProductRepository] Querying products collection...
+[AlgoliaProductRepository] Fallback Snapshot length: 6
+[AlgoliaProductRepository] Doc eo9CNk6t3odszWjL0vI6 data: {categoryId: 3, isDigital: false, updatedAt: Timestamp(seconds=1771053956, nanoseconds=427000000), isActive: true, name: Test Local Product, ratingCount: 0, description: Only available for local pickup., createdAt: Timestamp(seconds=1771053956, nanoseconds=427000000), stockQuantity: 10, deliveryOptions: [{estimatedDays: 0, description: Pickup, type: pickup, cost: 0}], sellerId: test-seller-uid, rating: 0, imageUrls: [https://picsum.photos/400/400], price: 50, sellerAddress: {postalCode: V6B 3P8, street: 789 Local Ln, city: Vancouver, state: BC, country: CA}, keywords: [test, local, product], isLocalDeliveryOnly: true}
+[AlgoliaProductRepository] Doc bxxJRzkNDaqrbOYbQSrc data: {isActive: true, freeShipping: true, price: 9.99, rating: 0, imageUrls: [https://picsum.photos/400/400], sellerAddress: {city: Montreal, state: QC, country: CA, street: 456 Digital Ave, postalCode: H3Z 2Y7}, createdAt: Timestamp(seconds=1771053956, nanoseconds=343000000), deliveryOptions: [], name: Test Digital Product, ratingCount: 0, sellerId: test-seller-uid, stockQuantity: 999, description: A downloadable digital product., updatedAt: Timestamp(seconds=1771053956, nanoseconds=343000000), keywords: [test, digital, product], isDigital: true, categoryId: 2}
+[AlgoliaProductRepository] Doc FOZtBSP07zeB1OJ5GJUD data: {createdAt: Timestamp(seconds=1771053956, nanoseconds=240000000), deliveryOptions: [{type: standard, cost: 5, estimatedDays: 3, description: Standard}], sellerId: test-seller-uid, rating: 0, price: 29.99, categoryId: 1, keywords: [test, physical, product], updatedAt: Timestamp(seconds=1771053956, nanoseconds=240000000), ratingCount: 0, isActive: true, stockQuantity: 100, description: A wonderful physical product for testing., imageUrls: [https://picsum.photos/400/400], name: Test Physical Product, isDigital: false, sellerAddress: {state: ON, city: Toronto, postalCode: M5V 2H1, country: CA, street: 123 Test St}}
+[AlgoliaProductRepository] Doc UbWBzRpPi6BR9jyhwzV8 data: {description: Only available for local pickup., isLocalDeliveryOnly: true, name: Test Local Product, rating: 0, deliveryOptions: [{type: pickup, description: Pickup, estimatedDays: 0, cost: 0}], stockQuantity: 10, imageUrls: [https://picsum.photos/400/400], price: 50, isActive: true, sellerAddress: {city: Vancouver, country: CA, postalCode: V6B 3P8, street: 789 Local Ln, state: BC}, createdAt: Timestamp(seconds=1771053070, nanoseconds=92000000), keywords: [test, local, product], sellerId: test-seller-uid, updatedAt: Timestamp(seconds=1771053070, nanoseconds=92000000), ratingCount: 0, categoryId: 3, isDigital: false}
+[AlgoliaProductRepository] Doc DtHZmE8tPfc8c3FyOHnk data: {rating: 0, isDigital: true, deliveryOptions: [], stockQuantity: 999, sellerAddress: {state: QC, postalCode: H3Z 2Y7, country: CA, street: 456 Digital Ave, city: Montreal}, isActive: true, categoryId: 2, keywords: [test, digital, product], ratingCount: 0, description: A downloadable digital product., imageUrls: [https://picsum.photos/400/400], freeShipping: true, updatedAt: Timestamp(seconds=1771053070, nanoseconds=9000000), name: Test Digital Product, createdAt: Timestamp(seconds=1771053070, nanoseconds=9000000), sellerId: test-seller-uid, price: 9.99}
+[AlgoliaProductRepository] Doc K4Mf88zJD4F6ljapW7HT data: {ratingCount: 0, price: 29.99, imageUrls: [https://picsum.photos/400/400], isDigital: false, rating: 0, sellerAddress: {city: Toronto, street: 123 Test St, state: ON, postalCode: M5V 2H1, country: CA}, createdAt: Timestamp(seconds=1771053069, nanoseconds=890000000), isActive: true, keywords: [test, physical, product], name: Test Physical Product, deliveryOptions: [{description: Standard, type: standard, cost: 5, estimatedDays: 3}], sellerId: test-seller-uid, categoryId: 1, updatedAt: Timestamp(seconds=1771053069, nanoseconds=890000000), description: A wonderful physical product for testing., stockQuantity: 100}
+✅ Loaded 6 products
+02:55 +23: Buyer: Cart, Checkout, Orders & Security
+⚠️ Login fields not found — may already be logged in
+── 8. Add to Cart Flow ──
+  8.3 Cart icon: false
+── 1. Cart Management ──
+  1.1 ✓ Cart loaded (AppBar: false)
+  1.3 ✓ Cart state valid
+  1.5 Checkout btn: false
+── 9. Checkout Validation ──
+  9.1 Empty message: false
+  9.3 Loading: false
+── 12. Cart Persistence ──
+  12.1-12.3 ✓ Cart persists (Scaffold present)
+── 2-4, 7. Checkout Flow ──
+  ⚠ Cart empty — checkout checks skipped
+  7.1 Secure badge: false
+── 5. Order History ──
+✅ Buyer E2E complete (35 checks)
+03:11 +24: Seller: Dashboard & Orders
+▶ mainTest() called (initialized=true)
+▶ Re-running app (already initialized)
+[90m[🌎 Easy Localization] [DEBUG] Start[0m
+03:12 +24: Flutter Web E2E - Complete App Test
+[90m[🌎 Easy Localization] [DEBUG] Init state[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+[90m[🌎 Easy Localization] [DEBUG] Load Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Load asset from assets/translations[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+🔗 Initial route: /
+🔗 Parsed path: /
+⚠️  Algolia credentials empty → search disabled, using Firestore only
+🔍 Using repository: AlgoliaProductRepository
+📍 Using Firestore fallback
+[AlgoliaProductRepository] Firestore Project ID: orignagta-dev
+[AlgoliaProductRepository] Querying products collection...
+[AlgoliaProductRepository] Fallback Snapshot length: 6
+[AlgoliaProductRepository] Doc eo9CNk6t3odszWjL0vI6 data: {categoryId: 3, isDigital: false, updatedAt: Timestamp(seconds=1771053956, nanoseconds=427000000), isActive: true, name: Test Local Product, ratingCount: 0, description: Only available for local pickup., createdAt: Timestamp(seconds=1771053956, nanoseconds=427000000), stockQuantity: 10, deliveryOptions: [{estimatedDays: 0, description: Pickup, type: pickup, cost: 0}], sellerId: test-seller-uid, rating: 0, imageUrls: [https://picsum.photos/400/400], price: 50, sellerAddress: {postalCode: V6B 3P8, street: 789 Local Ln, city: Vancouver, state: BC, country: CA}, keywords: [test, local, product], isLocalDeliveryOnly: true}
+[AlgoliaProductRepository] Doc bxxJRzkNDaqrbOYbQSrc data: {isActive: true, freeShipping: true, price: 9.99, rating: 0, imageUrls: [https://picsum.photos/400/400], sellerAddress: {city: Montreal, state: QC, country: CA, street: 456 Digital Ave, postalCode: H3Z 2Y7}, createdAt: Timestamp(seconds=1771053956, nanoseconds=343000000), deliveryOptions: [], name: Test Digital Product, ratingCount: 0, sellerId: test-seller-uid, stockQuantity: 999, description: A downloadable digital product., updatedAt: Timestamp(seconds=1771053956, nanoseconds=343000000), keywords: [test, digital, product], isDigital: true, categoryId: 2}
+[AlgoliaProductRepository] Doc FOZtBSP07zeB1OJ5GJUD data: {createdAt: Timestamp(seconds=1771053956, nanoseconds=240000000), deliveryOptions: [{type: standard, cost: 5, estimatedDays: 3, description: Standard}], sellerId: test-seller-uid, rating: 0, price: 29.99, categoryId: 1, keywords: [test, physical, product], updatedAt: Timestamp(seconds=1771053956, nanoseconds=240000000), ratingCount: 0, isActive: true, stockQuantity: 100, description: A wonderful physical product for testing., imageUrls: [https://picsum.photos/400/400], name: Test Physical Product, isDigital: false, sellerAddress: {state: ON, city: Toronto, postalCode: M5V 2H1, country: CA, street: 123 Test St}}
+[AlgoliaProductRepository] Doc UbWBzRpPi6BR9jyhwzV8 data: {description: Only available for local pickup., isLocalDeliveryOnly: true, name: Test Local Product, rating: 0, deliveryOptions: [{type: pickup, description: Pickup, estimatedDays: 0, cost: 0}], stockQuantity: 10, imageUrls: [https://picsum.photos/400/400], price: 50, isActive: true, sellerAddress: {city: Vancouver, country: CA, postalCode: V6B 3P8, street: 789 Local Ln, state: BC}, createdAt: Timestamp(seconds=1771053070, nanoseconds=92000000), keywords: [test, local, product], sellerId: test-seller-uid, updatedAt: Timestamp(seconds=1771053070, nanoseconds=92000000), ratingCount: 0, categoryId: 3, isDigital: false}
+[AlgoliaProductRepository] Doc DtHZmE8tPfc8c3FyOHnk data: {rating: 0, isDigital: true, deliveryOptions: [], stockQuantity: 999, sellerAddress: {state: QC, postalCode: H3Z 2Y7, country: CA, street: 456 Digital Ave, city: Montreal}, isActive: true, categoryId: 2, keywords: [test, digital, product], ratingCount: 0, description: A downloadable digital product., imageUrls: [https://picsum.photos/400/400], freeShipping: true, updatedAt: Timestamp(seconds=1771053070, nanoseconds=9000000), name: Test Digital Product, createdAt: Timestamp(seconds=1771053070, nanoseconds=9000000), sellerId: test-seller-uid, price: 9.99}
+[AlgoliaProductRepository] Doc K4Mf88zJD4F6ljapW7HT data: {ratingCount: 0, price: 29.99, imageUrls: [https://picsum.photos/400/400], isDigital: false, rating: 0, sellerAddress: {city: Toronto, street: 123 Test St, state: ON, postalCode: M5V 2H1, country: CA}, createdAt: Timestamp(seconds=1771053069, nanoseconds=890000000), isActive: true, keywords: [test, physical, product], name: Test Physical Product, deliveryOptions: [{description: Standard, type: standard, cost: 5, estimatedDays: 3}], sellerId: test-seller-uid, categoryId: 1, updatedAt: Timestamp(seconds=1771053069, nanoseconds=890000000), description: A wonderful physical product for testing., stockQuantity: 100}
+✅ Loaded 6 products
+03:21 +24: Seller: Dashboard & Orders
+⚠️ Login fields not found — may already be logged in
+── 6. Seller Dashboard ──
+  6.1 Seller orders: false
+  6.2 ✓ Seller view loaded
+  6.3 Dashboard: false
+✅ Seller E2E complete
+03:24 +25: Unauthenticated & Structural
+▶ mainTest() called (initialized=true)
+▶ Re-running app (already initialized)
+[90m[🌎 Easy Localization] [DEBUG] Start[0m
+03:25 +25: Flutter Web E2E - Complete App Test
+[90m[🌎 Easy Localization] [DEBUG] Init state[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+[90m[🌎 Easy Localization] [DEBUG] Load Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Load asset from assets/translations[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+🔗 Initial route: /
+🔗 Parsed path: /
+⚠️  Algolia credentials empty → search disabled, using Firestore only
+🔍 Using repository: AlgoliaProductRepository
+📍 Using Firestore fallback
+[AlgoliaProductRepository] Firestore Project ID: orignagta-dev
+[AlgoliaProductRepository] Querying products collection...
+[AlgoliaProductRepository] Fallback Snapshot length: 6
+[AlgoliaProductRepository] Doc eo9CNk6t3odszWjL0vI6 data: {categoryId: 3, isDigital: false, updatedAt: Timestamp(seconds=1771053956, nanoseconds=427000000), isActive: true, name: Test Local Product, ratingCount: 0, description: Only available for local pickup., createdAt: Timestamp(seconds=1771053956, nanoseconds=427000000), stockQuantity: 10, deliveryOptions: [{estimatedDays: 0, description: Pickup, type: pickup, cost: 0}], sellerId: test-seller-uid, rating: 0, imageUrls: [https://picsum.photos/400/400], price: 50, sellerAddress: {postalCode: V6B 3P8, street: 789 Local Ln, city: Vancouver, state: BC, country: CA}, keywords: [test, local, product], isLocalDeliveryOnly: true}
+[AlgoliaProductRepository] Doc bxxJRzkNDaqrbOYbQSrc data: {isActive: true, freeShipping: true, price: 9.99, rating: 0, imageUrls: [https://picsum.photos/400/400], sellerAddress: {city: Montreal, state: QC, country: CA, street: 456 Digital Ave, postalCode: H3Z 2Y7}, createdAt: Timestamp(seconds=1771053956, nanoseconds=343000000), deliveryOptions: [], name: Test Digital Product, ratingCount: 0, sellerId: test-seller-uid, stockQuantity: 999, description: A downloadable digital product., updatedAt: Timestamp(seconds=1771053956, nanoseconds=343000000), keywords: [test, digital, product], isDigital: true, categoryId: 2}
+[AlgoliaProductRepository] Doc FOZtBSP07zeB1OJ5GJUD data: {createdAt: Timestamp(seconds=1771053956, nanoseconds=240000000), deliveryOptions: [{type: standard, cost: 5, estimatedDays: 3, description: Standard}], sellerId: test-seller-uid, rating: 0, price: 29.99, categoryId: 1, keywords: [test, physical, product], updatedAt: Timestamp(seconds=1771053956, nanoseconds=240000000), ratingCount: 0, isActive: true, stockQuantity: 100, description: A wonderful physical product for testing., imageUrls: [https://picsum.photos/400/400], name: Test Physical Product, isDigital: false, sellerAddress: {state: ON, city: Toronto, postalCode: M5V 2H1, country: CA, street: 123 Test St}}
+[AlgoliaProductRepository] Doc UbWBzRpPi6BR9jyhwzV8 data: {description: Only available for local pickup., isLocalDeliveryOnly: true, name: Test Local Product, rating: 0, deliveryOptions: [{type: pickup, description: Pickup, estimatedDays: 0, cost: 0}], stockQuantity: 10, imageUrls: [https://picsum.photos/400/400], price: 50, isActive: true, sellerAddress: {city: Vancouver, country: CA, postalCode: V6B 3P8, street: 789 Local Ln, state: BC}, createdAt: Timestamp(seconds=1771053070, nanoseconds=92000000), keywords: [test, local, product], sellerId: test-seller-uid, updatedAt: Timestamp(seconds=1771053070, nanoseconds=92000000), ratingCount: 0, categoryId: 3, isDigital: false}
+[AlgoliaProductRepository] Doc DtHZmE8tPfc8c3FyOHnk data: {rating: 0, isDigital: true, deliveryOptions: [], stockQuantity: 999, sellerAddress: {state: QC, postalCode: H3Z 2Y7, country: CA, street: 456 Digital Ave, city: Montreal}, isActive: true, categoryId: 2, keywords: [test, digital, product], ratingCount: 0, description: A downloadable digital product., imageUrls: [https://picsum.photos/400/400], freeShipping: true, updatedAt: Timestamp(seconds=1771053070, nanoseconds=9000000), name: Test Digital Product, createdAt: Timestamp(seconds=1771053070, nanoseconds=9000000), sellerId: test-seller-uid, price: 9.99}
+[AlgoliaProductRepository] Doc K4Mf88zJD4F6ljapW7HT data: {ratingCount: 0, price: 29.99, imageUrls: [https://picsum.photos/400/400], isDigital: false, rating: 0, sellerAddress: {city: Toronto, street: 123 Test St, state: ON, postalCode: M5V 2H1, country: CA}, createdAt: Timestamp(seconds=1771053069, nanoseconds=890000000), isActive: true, keywords: [test, physical, product], name: Test Physical Product, deliveryOptions: [{description: Standard, type: standard, cost: 5, estimatedDays: 3}], sellerId: test-seller-uid, categoryId: 1, updatedAt: Timestamp(seconds=1771053069, nanoseconds=890000000), description: A wonderful physical product for testing., stockQuantity: 100}
+✅ Loaded 6 products
+03:31 +25: Unauthenticated & Structural
+── Auth & Structure ──
+  2.1 Auth prompt: false
+  10.1-10.3 ✓ App structure valid
+  11.1-11.3 ✓ Error handling (buttons: 0)
+  Navigation: true
+✅ Structural E2E complete
+03:32 +26: Product Creation — 10 products + edge cases
+▶ mainTest() called (initialized=true)
+▶ Re-running app (already initialized)
+[90m[🌎 Easy Localization] [DEBUG] Start[0m
+03:32 +26: Flutter Web E2E - Complete App Test
+[90m[🌎 Easy Localization] [DEBUG] Init state[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+[90m[🌎 Easy Localization] [DEBUG] Load Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Load asset from assets/translations[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+🔗 Initial route: /
+🔗 Parsed path: /
+⚠️  Algolia credentials empty → search disabled, using Firestore only
+🔍 Using repository: AlgoliaProductRepository
+📍 Using Firestore fallback
+[AlgoliaProductRepository] Firestore Project ID: orignagta-dev
+[AlgoliaProductRepository] Querying products collection...
+[AlgoliaProductRepository] Fallback Snapshot length: 6
+[AlgoliaProductRepository] Doc eo9CNk6t3odszWjL0vI6 data: {categoryId: 3, isDigital: false, updatedAt: Timestamp(seconds=1771053956, nanoseconds=427000000), isActive: true, name: Test Local Product, ratingCount: 0, description: Only available for local pickup., createdAt: Timestamp(seconds=1771053956, nanoseconds=427000000), stockQuantity: 10, deliveryOptions: [{estimatedDays: 0, description: Pickup, type: pickup, cost: 0}], sellerId: test-seller-uid, rating: 0, imageUrls: [https://picsum.photos/400/400], price: 50, sellerAddress: {postalCode: V6B 3P8, street: 789 Local Ln, city: Vancouver, state: BC, country: CA}, keywords: [test, local, product], isLocalDeliveryOnly: true}
+[AlgoliaProductRepository] Doc bxxJRzkNDaqrbOYbQSrc data: {isActive: true, freeShipping: true, price: 9.99, rating: 0, imageUrls: [https://picsum.photos/400/400], sellerAddress: {city: Montreal, state: QC, country: CA, street: 456 Digital Ave, postalCode: H3Z 2Y7}, createdAt: Timestamp(seconds=1771053956, nanoseconds=343000000), deliveryOptions: [], name: Test Digital Product, ratingCount: 0, sellerId: test-seller-uid, stockQuantity: 999, description: A downloadable digital product., updatedAt: Timestamp(seconds=1771053956, nanoseconds=343000000), keywords: [test, digital, product], isDigital: true, categoryId: 2}
+[AlgoliaProductRepository] Doc FOZtBSP07zeB1OJ5GJUD data: {createdAt: Timestamp(seconds=1771053956, nanoseconds=240000000), deliveryOptions: [{type: standard, cost: 5, estimatedDays: 3, description: Standard}], sellerId: test-seller-uid, rating: 0, price: 29.99, categoryId: 1, keywords: [test, physical, product], updatedAt: Timestamp(seconds=1771053956, nanoseconds=240000000), ratingCount: 0, isActive: true, stockQuantity: 100, description: A wonderful physical product for testing., imageUrls: [https://picsum.photos/400/400], name: Test Physical Product, isDigital: false, sellerAddress: {state: ON, city: Toronto, postalCode: M5V 2H1, country: CA, street: 123 Test St}}
+[AlgoliaProductRepository] Doc UbWBzRpPi6BR9jyhwzV8 data: {description: Only available for local pickup., isLocalDeliveryOnly: true, name: Test Local Product, rating: 0, deliveryOptions: [{type: pickup, description: Pickup, estimatedDays: 0, cost: 0}], stockQuantity: 10, imageUrls: [https://picsum.photos/400/400], price: 50, isActive: true, sellerAddress: {city: Vancouver, country: CA, postalCode: V6B 3P8, street: 789 Local Ln, state: BC}, createdAt: Timestamp(seconds=1771053070, nanoseconds=92000000), keywords: [test, local, product], sellerId: test-seller-uid, updatedAt: Timestamp(seconds=1771053070, nanoseconds=92000000), ratingCount: 0, categoryId: 3, isDigital: false}
+[AlgoliaProductRepository] Doc DtHZmE8tPfc8c3FyOHnk data: {rating: 0, isDigital: true, deliveryOptions: [], stockQuantity: 999, sellerAddress: {state: QC, postalCode: H3Z 2Y7, country: CA, street: 456 Digital Ave, city: Montreal}, isActive: true, categoryId: 2, keywords: [test, digital, product], ratingCount: 0, description: A downloadable digital product., imageUrls: [https://picsum.photos/400/400], freeShipping: true, updatedAt: Timestamp(seconds=1771053070, nanoseconds=9000000), name: Test Digital Product, createdAt: Timestamp(seconds=1771053070, nanoseconds=9000000), sellerId: test-seller-uid, price: 9.99}
+[AlgoliaProductRepository] Doc K4Mf88zJD4F6ljapW7HT data: {ratingCount: 0, price: 29.99, imageUrls: [https://picsum.photos/400/400], isDigital: false, rating: 0, sellerAddress: {city: Toronto, street: 123 Test St, state: ON, postalCode: M5V 2H1, country: CA}, createdAt: Timestamp(seconds=1771053069, nanoseconds=890000000), isActive: true, keywords: [test, physical, product], name: Test Physical Product, deliveryOptions: [{description: Standard, type: standard, cost: 5, estimatedDays: 3}], sellerId: test-seller-uid, categoryId: 1, updatedAt: Timestamp(seconds=1771053069, nanoseconds=890000000), description: A wonderful physical product for testing., stockQuantity: 100}
+✅ Loaded 6 products
+03:38 +26: Product Creation — 10 products + edge cases
+📱 Step 1: Logging in...
+⚠️ Login fields not found — may already be logged in
+✅ Login successful
+❌ FATAL: Add product button never appeared — aborting
+04:20 +27: Firestore Stream Reactivity user document stream emits updates on changes
+04:21 +28: Firestore Stream Reactivity cart items stream updates when items added/removed
+04:22 +29: Firestore Stream Reactivity order status stream reflects real-time updates
+04:22 +30: Query Reactivity filtered query updates when matching documents change
+04:23 +31: Query Reactivity products query updates when stock changes
+04:24 +32: Optimistic Updates cart quantity update reflects immediately
+04:24 +33: Seller Dashboard Reactivity seller sees new orders in real-time
+04:25 +34: Seller Dashboard Reactivity delivery status updates visible to buyer
+04:25 +35: Edge Cases handles document deletion gracefully
+04:26 +36: Edge Cases handles concurrent updates correctly
+04:26 +37: (tearDownAll)
+04:26 +38: All tests passed!

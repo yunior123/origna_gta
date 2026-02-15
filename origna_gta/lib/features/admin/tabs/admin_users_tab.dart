@@ -36,6 +36,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
           child: Column(
             children: [
               TextField(
+                key: const Key('admin_users_search_field'),
                 decoration: InputDecoration(
                   hintText: 'admin.users.search_hint'.tr(),
                   hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 14),

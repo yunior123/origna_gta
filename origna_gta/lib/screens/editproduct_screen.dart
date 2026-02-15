@@ -114,6 +114,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextFormField(
+                          key: const Key('product_edit_stock_field'),
                           controller: _stockController,
                           keyboardType: TextInputType.number,
                           enabled: !state.isSoldOut,
@@ -297,6 +298,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     child: SizedBox(
                       height: 50,
                       child: ElevatedButton(
+                        key: const Key('product_edit_save_button'),
                         onPressed: state.isLoading ? null : () => _handleSave(viewModel),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: DesignTokens.primary,

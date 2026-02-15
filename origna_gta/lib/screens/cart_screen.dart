@@ -48,6 +48,7 @@ class CartScreen extends ConsumerWidget {
     );
 
     return Scaffold(
+      key: const Key('cart_screen_title'),
       appBar: AppBarFactory.simple(title: 'cart.your_cart'.tr()),
       backgroundColor: Colors.transparent,
       body: Container(
@@ -119,6 +120,7 @@ class CartScreen extends ConsumerWidget {
               data: (productIds) {
                 if (productIds.isEmpty) {
                   return AnimatedEmptyState(
+                    key: const Key('cart_empty_message'),
                     icon: Icons.shopping_cart_outlined,
                     title: 'cart.empty_cart'.tr(),
                     subtitle: 'cart.empty_cart_desc'.tr(),

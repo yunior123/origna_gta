@@ -82,6 +82,7 @@ class SellerOrdersScreen extends ConsumerWidget {
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
+        key: const Key('seller_orders_screen_title'),
         appBar: AppBarFactory.simple(title: 'seller.manage_orders'.tr()),
         backgroundColor: Colors.transparent,
         body: ordersAsync.when(

@@ -101,6 +101,7 @@ class ProductDetailScreen extends ConsumerWidget {
                               border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
                             ),
                             child: IconButton(
+                              key: const Key('productdetail_back_button'),
                               tooltip: 'product.go_back'.tr(),
                               icon: const Icon(Icons.arrow_back, color: Colors.white),
                               onPressed: () => Navigator.pop(context),
@@ -203,6 +204,7 @@ class ProductDetailScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 12),
                           GlassContainer(
+                            key: const Key('product_description_section'),
                             child: Text(
                               product.description,
                               style: TextStyle(fontSize: 15, color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary, height: 1.6, fontWeight: FontWeight.w400),
@@ -319,6 +321,7 @@ class _AddToCartButton extends ConsumerWidget {
     // If user is the seller, show disabled button with message
     if (isOwnProduct) {
       return Column(
+        key: const Key('product_own_product_message'),
         children: [
           ModernButton(
             label: 'product.own_product_title'.tr(),

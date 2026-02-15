@@ -137,6 +137,7 @@ class OrdersScreen extends ConsumerWidget {
         gradient: DesignTokens.backgroundGradient(isDark: isDark),
       ),
       child: Scaffold(
+        key: const Key('orders_screen_title'),
         appBar: AppBarFactory.simple(title: 'orders.my_orders'.tr()),
         backgroundColor: Colors.transparent,
         body: ordersAsync.when(
@@ -211,6 +212,7 @@ class OrdersScreen extends ConsumerWidget {
 
   Widget _buildEmptyState(bool isDark) {
     return AnimatedEmptyState(
+      key: const Key('orders_empty_message'),
       icon: Icons.shopping_bag_outlined,
       title: 'orders.no_orders'.tr(),
       subtitle: 'orders.no_orders_desc'.tr(),

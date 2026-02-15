@@ -198,6 +198,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                       ),
                       Expanded(
                         child: Text(
+                          key: const Key('addproduct_screen_title'),
                           'product.new_product'.tr(),
                           style: TextStyle(
                             fontSize: 22,
@@ -381,6 +382,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                     ),
                                     if (state.isDigital)
                                       Padding(
+                                        key: const Key('addproduct_digital_info_banner'),
                                         padding: const EdgeInsets.only(top: 8),
                                         child: _buildInfoBanner(
                                           'product.digital_skip_shipping'.tr(),
@@ -659,6 +661,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                     _buildSubSectionHeader('product.inventory_settings'.tr(), Icons.warehouse_rounded),
                                     const SizedBox(height: 12),
                                     _buildGlassToggle(
+                                      key: const Key('addproduct_inventory_toggle'),
                                       label: 'product.manage_inventory'.tr(),
                                       subtitle: 'product.manage_inventory_subtitle'.tr(),
                                       icon: Icons.inventory_rounded,
@@ -975,6 +978,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
       ),
       items: productCategories.map((c) => DropdownMenuItem(
+        key: Key('category_item_${c.name}'),
         value: c.categoryId.toString(),
         child: Row(
           children: [
@@ -1592,6 +1596,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   void _onSuccess() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        key: const Key('addproduct_success_snackbar'),
         content: Row(
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),

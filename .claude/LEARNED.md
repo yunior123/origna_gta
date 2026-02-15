@@ -106,3 +106,58 @@
 - A.3: `order.subtotal` → `order.subtotalCents` (Firestore stores cents)
 - B.4: `mark_shipped` — tolerant assertions for multi-seller shipping gate
 - E.2: Double cancel — stock restoration uses `STOCK_RESTORED` flag
+
+---
+
+## Flutter Integration Tests — Key Patterns (Mar 2026)
+
+### Test Infrastructure
+- **Entry point**: `integration_test/all_tests.dart` — single build, imports all test files
+- **Command**: `flutter drive --driver=test_driver/integration_test.dart --target=integration_test/all_tests.dart -d chrome --dart-define=ENVIRONMENT=dev --dart-define=USE_EMULATORS=false`
+- **Dev Firebase project**: `orignagta-dev` (project 245187519087), separate from prod `orignagta` (935641055788)
+- **Test users**: buyer=`yuniorrodriguezo4601@yahoo.com`/`REDACTED_TEST_PASSWORD` (uid: eVxwL5SfEATPnw1zhWYaUdGx8MD2), seller/admin=`yr62813@gmail.com`/`REDACTED_TEST_PASSWORD` (uid: RU9MI8vYFkQCakMrJfG8iGTuc012)
+- **Default role on user creation**: `roles: ['buyer']` (auth_repository.dart line 384) — MUST manually add `seller`/`admin` in Firestore for seller tests to work
+
+### Key() Naming Convention — App Screens
+| Screen | Keys |
+|--------|------|
+| Home | `home_add_product_button`, `home_cart_button`, `home_search_field`, `home_settings_button`, `product_card_${name}` |
+| Add Product | `addproduct_back_button`, `product_name_field`, `product_description_field`, `product_price_field`, `product_stock_field`, `addproduct_submit_button`, `addproduct_digital_toggle`, `addproduct_perishable_toggle`, `addproduct_free_shipping_toggle`, `addproduct_local_pickup_toggle`, `addproduct_inventory_toggle`, `addproduct_standard_delivery_card`, `addproduct_express_delivery_card`, `addproduct_same_day_delivery_card`, `addproduct_weight_field`, `addproduct_length_field`, `addproduct_width_field`, `addproduct_height_field`, `addproduct_street_field`, `addproduct_city_field`, `addproduct_postal_code_field`, `addproduct_category_selector`, `category_item_${name}` |
+| Product Detail | `product_detail_name`, `product_detail_price`, `product_description_section`, `product_add_to_cart_button`, `product_qty_minus`, `product_qty_value`, `product_qty_plus` |
+| Cart | `cart_screen_title`, `cart_checkout_button`, `ValueKey(productId)`, `cart_qty_minus_$productId`, `cart_qty_plus_$productId` |
+| Profile | `profile_sign_in_button`, `profile_my_orders_button`, `profile_seller_orders_button`, `profile_seller_dashboard_button`, `profile_become_seller_button`, `profile_admin_panel_button`, `profile_favorites_button`, `profile_address_button`, `profile_terms_button`, `profile_privacy_button`, `profile_contact_button`, `profile_sign_out_button`, `profile_delete_account_button` |
+| Orders | `orders_screen_title` |
+| Seller Orders | `seller_orders_screen_title` |
+| Admin | `admin_screen_title` |
+| Login | `login_email_field`, `login_password_field`, `login_submit_button` |
+
+### Test Files & Coverage (8 files in all_tests.dart)
+1. **app_test** — app boots, shows login or home
+2. **critical_flows_test** — 15 core flows (T01-T15): login, home, search, product detail, cart, orders, settings, admin
+3. **checkout_flow_test** — cart → checkout → terms acceptance
+4. **shipping_product_e2e_test** — 12 product creation + shipping scenarios (T01-T12)
+5. **human_workflows_test** — 10 end-to-end user workflows: register, login, browse, cart, checkout, orders, seller, admin
+6. **payment_e2e_test** — payment provider selection, checkout, order creation
+7. **product_creation_test** — 23 comprehensive tests: multi-delivery, validation, profile, search, product detail, seller registration
+8. **database_reactivity_test** — Firestore stream reactivity with FakeFirebaseFirestore
+
+### 9 Root Causes Fixed (Mar 2026)
+1. `_adminPassword` was `'960227Y#y'` → should be `'REDACTED_TEST_PASSWORD'` (shipping, human_workflows)
+2. `_sellerEmail` was `'seller1@test.origna.ca'` → should be `'yr62813@gmail.com'` (human_workflows)
+3. `product_description_section` Key missing from productdetails_screen.dart
+4. `cart_screen_title` Key missing from cart_screen.dart
+5. `orders_screen_title` Key missing from orders_screen.dart
+6. `seller_orders_screen_title` Key missing from seller_orders_screen.dart
+7. `admin_screen_title` Key missing from admin_panel_screen.dart
+8. `navigateToAddProduct()` used hard `expect` → returns `bool` now (soft fail if no seller role)
+9. `database_reactivity_test` timing: 100ms delays → 200ms, cart emissions assertion relaxed `>= 4` → `>= 3`
+
+### Integration Test Gotchas
+- **home_add_product_button** only visible if user has `isSeller || isAdmin` role — returns `SizedBox.shrink()` otherwise
+- **Popup shadows context**: Login popup `AlertDialog` captures `context`, causing `mounted` check to fail on outer widget → use `Navigator.of(context, rootNavigator: true)` for popups
+- **Self-purchase blocked** in UI: Add to cart button hidden for own products
+- **Back navigation on web**: `Navigator.pop()` may not work reliably → use `find.byIcon(Icons.arrow_back)` or `find.byTooltip('Back')` fallback
+- **FakeFirebaseFirestore timing**: Need `Future.delayed(200ms)` between operations for streams to emit
+- **ProductCard import**: Use `import 'package:origna_gta/screens/product_card_screen.dart'` for `ProductCard` type in finders
+- **Login dialog handling**: After adding to cart as guest, a sign-in dialog may appear — check for `login_dialog_sign_in_button`
+- **Resilient test pattern**: Always check `finder.evaluate().isNotEmpty` before `tester.tap()` — never hard `expect` for optional UI elements

@@ -428,23 +428,26 @@ void showLoginPrompt(
   BuildContext context, {
   String text = 'auth.sign_in_cart_required',
 }) {
+  // Capture navigator from the CALLER's context before showing dialog.
+  // The dialog builder shadows `context`, so we must store the navigator
+  // reference from the outer (still-mounted) context.
+  final navigator = Navigator.of(context);
   showDialog(
     context: context,
-    builder: (context) => AlertDialog(
+    builder: (dialogContext) => AlertDialog(
       title: Text('auth.sign_in_required'.tr()),
       content: Text(text.tr()),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          key: const Key('login_dialog_cancel_button'),
+          onPressed: () => Navigator.pop(dialogContext),
           child: Text('common.cancel'.tr()),
         ),
         ElevatedButton(
+          key: const Key('login_dialog_sign_in_button'),
           onPressed: () {
-            Navigator.pop(context);
-            Navigator.pushNamed(
-              context,
-              AppRoutes.login,
-            );
+            Navigator.pop(dialogContext);
+            navigator.pushNamed(AppRoutes.login);
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: DesignTokens.primary,

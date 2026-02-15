@@ -166,7 +166,7 @@ service cloud.firestore {
           'uid', 'email', 'name', 'roles', 'address', 'createdAt',
           'emailConsent', 'consentTimestamp', 'consentMethod',
           'privacyAcceptedAt', 'termsAcceptedAt',
-          'dataProcessingConsent',
+          'dataProcessingConsent', 'marketingOptIn',
           'privacyPolicyVersion', 'termsVersion',
           'preferredLanguage', 'platform'
         ]);

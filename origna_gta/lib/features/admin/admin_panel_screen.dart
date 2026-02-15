@@ -26,12 +26,12 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
   int _selectedIndex = 0;
 
   static List<_AdminTab> get _tabs => [
-    _AdminTab(icon: Icons.store_rounded, label: 'admin.sellers_tab'.tr()),
-    _AdminTab(icon: Icons.people_rounded, label: 'admin.users_tab'.tr()),
-    _AdminTab(icon: Icons.receipt_long_rounded, label: 'admin.orders_tab'.tr()),
-    _AdminTab(icon: Icons.inventory_2_rounded, label: 'admin.products_tab'.tr()),
-    _AdminTab(icon: Icons.payment_rounded, label: 'admin.payments_tab'.tr()),
-    _AdminTab(icon: Icons.security_rounded, label: 'admin.security_tab'.tr()),
+    _AdminTab(icon: Icons.store_rounded, label: 'admin.sellers_tab'.tr(), key: const Key('admin_tab_sellers')),
+    _AdminTab(icon: Icons.people_rounded, label: 'admin.users_tab'.tr(), key: const Key('admin_tab_users')),
+    _AdminTab(icon: Icons.receipt_long_rounded, label: 'admin.orders_tab'.tr(), key: const Key('admin_tab_orders')),
+    _AdminTab(icon: Icons.inventory_2_rounded, label: 'admin.products_tab'.tr(), key: const Key('admin_tab_products')),
+    _AdminTab(icon: Icons.payment_rounded, label: 'admin.payments_tab'.tr(), key: const Key('admin_tab_payments')),
+    _AdminTab(icon: Icons.security_rounded, label: 'admin.security_tab'.tr(), key: const Key('admin_tab_security')),
   ];
 
   @override
@@ -127,6 +127,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
 
   Widget _buildNarrowLayout() {
     return Scaffold(
+      key: const Key('admin_screen_title'),
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: DesignTokens.primaryGradient),
@@ -153,10 +154,11 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
           labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 12),
           tabs: _tabs
-              .map((t) => Tab(
-                    icon: Icon(t.icon, size: 20),
-                    text: t.label,
-                  ))
+                  .map((t) => Tab(
+                        key: t.key,
+                        icon: Icon(t.icon, size: 20),
+                        text: t.label,
+                      ))
               .toList(),
         ),
       ),
@@ -229,6 +231,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                         color: Colors.transparent,
                         borderRadius: BorderRadius.circular(DesignTokens.radius12),
                         child: InkWell(
+                          key: tab.key,
                           onTap: () {
                             setState(() => _selectedIndex = index);
                             _tabController.animateTo(index);
@@ -352,5 +355,6 @@ class _AdminQuickStats extends StatelessWidget {
 class _AdminTab {
   final IconData icon;
   final String label;
-  const _AdminTab({required this.icon, required this.label});
+  final Key? key;
+  const _AdminTab({required this.icon, required this.label, this.key});
 }

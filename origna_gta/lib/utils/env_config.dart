@@ -73,6 +73,9 @@ class EnvConfig {
   bool get isStaging => environment == AppEnvironment.staging;
   bool get isProduction => environment == AppEnvironment.production;
 
+  /// Whether we are running in an integration test environment
+  bool get isTest => const bool.fromEnvironment('IS_TEST', defaultValue: false);
+
   /// Whether to connect to Firebase emulators
   /// In web, also check localhost detection
   bool get shouldUseEmulators {

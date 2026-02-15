@@ -1,0 +1,79 @@
+Resolving dependencies...
+Downloading packages...
+  _fe_analyzer_shared 93.0.0 (94.0.0 available)
+  analyzer 10.0.1 (10.0.2 available)
+  app_links 6.4.1 (7.0.0 available)
+  build_runner 2.11.0 (2.11.1 available)
+  characters 1.4.0 (1.4.1 available)
+  ffi 2.1.5 (2.2.0 available)
+  flutter_riverpod 2.6.1 (3.2.1 available)
+  google_sign_in_ios 6.2.5 (6.3.0 available)
+  jni 0.14.2 (0.15.2 available)
+  matcher 0.12.17 (0.12.18 available)
+  material_color_utilities 0.11.1 (0.13.0 available)
+  meta 1.17.0 (1.18.1 available)
+  riverpod 2.6.1 (3.2.1 available)
+  rx 0.4.0 (0.5.0 available)
+  test_api 0.7.7 (0.7.9 available)
+  url_launcher_ios 6.3.6 (6.4.0 available)
+Got dependencies!
+16 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Launching integration_test/product_creation_test.dart on Chrome in debug mode...
+Waiting for connection from debug service on Chrome...             18,6s
+This app is linked to the debug service: ws://127.0.0.1:59946/5ZIEf0g91ds=/ws
+Debug service listening on ws://127.0.0.1:59946/5ZIEf0g91ds=/ws
+A Dart VM Service on Chrome is available at: http://127.0.0.1:59946/5ZIEf0g91ds=
+The Flutter DevTools debugger and profiler on Chrome is available at: http://127.0.0.1:59946/5ZIEf0g91ds=/devtools/?uri=ws://127.0.0.1:59946/5ZIEf0g91ds=/ws
+Starting application from main method in: org-dartlang-app:/web_entrypoint.dart.
+00:00 +0: Product Creation — 10 products + edge cases
+▶ mainTest() called (initialized=false)
+▶ Step 1: WidgetsFlutterBinding
+▶ Step 2: EasyLocalization ...
+[90m[🌎 Easy Localization] [DEBUG] Localization initialized[0m
+▶ Step 2: EasyLocalization ✓
+▶ Step 3: Firebase.initializeApp ...
+🛠️ Running in DEV mode
+▶ Step 3: Firebase.initializeApp ✓
+🛠️ Running in DEV mode
+🛠️ Running in DEV mode
+▶ Step 4: Using Real Services (Development)
+▶ Step 5: ConfigService ...
+▶ Step 5: ConfigService ✓
+▶ Step 6: runApp()
+[90m[🌎 Easy Localization] [DEBUG] Start[0m
+▶ mainTest() complete
+[90m[🌎 Easy Localization] [DEBUG] Init state[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+[90m[🌎 Easy Localization] [DEBUG] Load Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Load asset from assets/translations[0m
+[90m[🌎 Easy Localization] [DEBUG] Build[0m
+[90m[🌎 Easy Localization] [DEBUG] Init Localization Delegate[0m
+[90m[🌎 Easy Localization] [DEBUG] Init provider[0m
+🔗 Initial route: /
+🔗 Parsed path: /
+⚠️  Algolia credentials empty → search disabled, using Firestore only
+🔍 Using repository: AlgoliaProductRepository
+📍 Using Firestore fallback
+[AlgoliaProductRepository] Firestore Project ID: orignagta-dev
+[AlgoliaProductRepository] Querying products collection...
+🔍 _AddProductButton.build() → isSeller=false, isAdmin=false, isSuspended=false
+🔍 Not a seller/admin → returning shrink()
+[AlgoliaProductRepository] Fallback Snapshot length: 6
+[AlgoliaProductRepository] Doc eo9CNk6t3odszWjL0vI6 data: {isLocalDeliveryOnly: true, isDigital: false, isActive: true, updatedAt: Timestamp(seconds=1771053956, nanoseconds=427000000), price: 50, categoryId: 3, imageUrls: [https://picsum.photos/400/400], rating: 0, description: Only available for local pickup., stockQuantity: 10, name: Test Local Product, ratingCount: 0, deliveryOptions: [{description: Pickup, estimatedDays: 0, type: pickup, cost: 0}], sellerAddress: {country: CA, postalCode: V6B 3P8, city: Vancouver, street: 789 Local Ln, state: BC}, createdAt: Timestamp(seconds=1771053956, nanoseconds=427000000), sellerId: test-seller-uid, keywords: [test, local, product]}
+[AlgoliaProductRepository] Doc bxxJRzkNDaqrbOYbQSrc data: {sellerAddress: {street: 456 Digital Ave, postalCode: H3Z 2Y7, city: Montreal, state: QC, country: CA}, isDigital: true, stockQuantity: 999, updatedAt: Timestamp(seconds=1771053956, nanoseconds=343000000), name: Test Digital Product, createdAt: Timestamp(seconds=1771053956, nanoseconds=343000000), categoryId: 2, imageUrls: [https://picsum.photos/400/400], ratingCount: 0, price: 9.99, sellerId: test-seller-uid, rating: 0, deliveryOptions: [], isActive: true, keywords: [test, digital, product], description: A downloadable digital product., freeShipping: true}
+[AlgoliaProductRepository] Doc FOZtBSP07zeB1OJ5GJUD data: {createdAt: Timestamp(seconds=1771053956, nanoseconds=240000000), categoryId: 1, description: A wonderful physical product for testing., rating: 0, isDigital: false, updatedAt: Timestamp(seconds=1771053956, nanoseconds=240000000), sellerAddress: {city: Toronto, country: CA, state: ON, postalCode: M5V 2H1, street: 123 Test St}, keywords: [test, physical, product], price: 29.99, isActive: true, sellerId: test-seller-uid, deliveryOptions: [{description: Standard, estimatedDays: 3, type: standard, cost: 5}], imageUrls: [https://picsum.photos/400/400], ratingCount: 0, stockQuantity: 100, name: Test Physical Product}
+[AlgoliaProductRepository] Doc UbWBzRpPi6BR9jyhwzV8 data: {price: 50, updatedAt: Timestamp(seconds=1771053070, nanoseconds=92000000), createdAt: Timestamp(seconds=1771053070, nanoseconds=92000000), sellerId: test-seller-uid, rating: 0, categoryId: 3, description: Only available for local pickup., deliveryOptions: [{description: Pickup, cost: 0, estimatedDays: 0, type: pickup}], ratingCount: 0, isActive: true, sellerAddress: {city: Vancouver, street: 789 Local Ln, state: BC, country: CA, postalCode: V6B 3P8}, keywords: [test, local, product], stockQuantity: 10, name: Test Local Product, imageUrls: [https://picsum.photos/400/400], isLocalDeliveryOnly: true, isDigital: false}
+[AlgoliaProductRepository] Doc DtHZmE8tPfc8c3FyOHnk data: {keywords: [test, digital, product], description: A downloadable digital product., ratingCount: 0, stockQuantity: 999, rating: 0, updatedAt: Timestamp(seconds=1771053070, nanoseconds=9000000), freeShipping: true, name: Test Digital Product, isActive: true, categoryId: 2, imageUrls: [https://picsum.photos/400/400], createdAt: Timestamp(seconds=1771053070, nanoseconds=9000000), isDigital: true, sellerId: test-seller-uid, sellerAddress: {state: QC, postalCode: H3Z 2Y7, street: 456 Digital Ave, city: Montreal, country: CA}, deliveryOptions: [], price: 9.99}
+[AlgoliaProductRepository] Doc K4Mf88zJD4F6ljapW7HT data: {stockQuantity: 100, keywords: [test, physical, product], updatedAt: Timestamp(seconds=1771053069, nanoseconds=890000000), price: 29.99, createdAt: Timestamp(seconds=1771053069, nanoseconds=890000000), imageUrls: [https://picsum.photos/400/400], description: A wonderful physical product for testing., sellerAddress: {state: ON, city: Toronto, street: 123 Test St, postalCode: M5V 2H1, country: CA}, deliveryOptions: [{type: standard, estimatedDays: 3, description: Standard, cost: 5}], isActive: true, rating: 0, name: Test Physical Product, categoryId: 1, sellerId: test-seller-uid, isDigital: false, ratingCount: 0}
+✅ Loaded 6 products
+🔍 _AddProductButton.build() → isSeller=false, isAdmin=false, isSuspended=false
+🔍 Not a seller/admin → returning shrink()
+📱 Step 1: Logging in...
+⚠️ Login fields not found — may already be logged in
+✅ Login successful
+❌ FATAL: Add product button never appeared — aborting
+00:49 +1: (tearDownAll)
+00:49 +2: All tests passed!

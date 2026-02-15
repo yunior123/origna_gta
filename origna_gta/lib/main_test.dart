@@ -3,7 +3,6 @@
 // "Cannot set URL strategy a second time" error
 
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -22,14 +21,17 @@ import 'package:origna_gta/config/firebase_config_dev.dart';
 import 'package:origna_gta/config/firebase_config_prod.dart';
 import 'package:origna_gta/config/firebase_config_staging.dart';
 
+// Use a conditional import-like check if needed or just avoid dart:io
+import 'package:universal_io/io.dart' show Platform;
+
 /// Emulator host: localhost for simulators/web, LAN IP for physical devices.
 String get _emulatorHost {
   const host = String.fromEnvironment('EMULATOR_HOST');
   if (host.isNotEmpty) return host;
   
   if (kIsWeb) return 'localhost';
-  // Physical iOS/Android devices can't reach localhost — use Mac's LAN IP.
-  // Update this IP if your network changes.
+  
+  // Only access Platform if not on Web
   if (Platform.isIOS || Platform.isAndroid) return '192.168.2.42';
   return 'localhost';
 }

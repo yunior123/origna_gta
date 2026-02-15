@@ -30,37 +30,53 @@ void main() {
 
   /// Login helper
   Future<void> performLogin(WidgetTester tester, String email, String password) async {
-    // Find email and password fields by key
-    final emailField = find.byKey(const Key('login_email_field'));
-    final passwordField = find.byKey(const Key('login_password_field'));
-    final loginButton = find.byKey(const Key('login_submit_button'));
+    debugPrint('Performing login for $email');
 
-    if (emailField.evaluate().isNotEmpty && passwordField.evaluate().isNotEmpty) {
-      await tester.enterText(emailField, email);
-      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
-      await tester.enterText(passwordField, password);
-      for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
-    } else {
-      // Fallback
-      final emailFields = find.byType(TextField);
-      if (emailFields.evaluate().length >= 2) {
-        await tester.enterText(emailFields.first, email);
-        await tester.enterText(emailFields.at(1), password);
-      }
+    // 1. Handle "Sign In Required" Dialog (via Key)
+    final signInDialogBtn = find.byKey(const Key('login_dialog_sign_in_button'));
+    if (signInDialogBtn.evaluate().isNotEmpty) {
+      debugPrint('Found Sign In dialog button (by Key). Tapping...');
+      await tester.tap(signInDialogBtn);
+      await tester.pumpAndSettle();
     }
 
-    // Find and tap login button
-    if (loginButton.evaluate().isNotEmpty) {
-      await tester.tap(loginButton);
-    } else {
-      final oldButton = find.widgetWithText(ElevatedButton, 'Sign In');
-      if (oldButton.evaluate().isNotEmpty) {
-        await tester.tap(oldButton);
-      }
+    // 2. Wait for Login Screen Elements
+    bool onLoginScreen = false;
+    for (var i = 0; i < 10; i++) {
+        if (find.byKey(const Key('login_email_field')).evaluate().isNotEmpty) {
+            onLoginScreen = true;
+            break;
+        }
+        await tester.pump(const Duration(milliseconds: 500));
     }
 
-    for (var i = 0; i < 10; i++) { await tester.pump(const Duration(milliseconds: 500)); }
+    if (!onLoginScreen) {
+        debugPrint('Login screen email field not found. Dumping widget tree...');
+        // debugDumpApp(); // Optional for debugging
+        // Assuming we might already be logged in or completely lost.
+        // Let's try to proceed, maybe the field is just not what we expect?
+        // But we are enforcing keys.
+    }
+
+    // 3. Handle Auth Mode (Toggle if "Name" field is present -> Register Mode)
+    final nameField = find.byKey(const Key('login_name_field'));
+    if (nameField.evaluate().isNotEmpty) {
+      debugPrint('Detected Register Mode (Name field visible). Toggling to Sign In...');
+      final toggleBtn = find.byKey(const Key('login_toggle_mode_button'));
+      await tester.tap(toggleBtn);
+      await tester.pumpAndSettle();
+    }
+
+    // 4. Fill Credentials
+    await tester.enterText(find.byKey(const Key('login_email_field')), email);
+    await tester.enterText(find.byKey(const Key('login_password_field')), password);
+    await tester.pump();
+
+    // 5. Submit
+    await tester.tap(find.byKey(const Key('login_submit_button')));
+    await tester.pumpAndSettle();
   }
+
 
   // ============================================================================
   // GROUP 1: APP INITIALIZATION TESTS
@@ -643,8 +659,8 @@ void main() {
 
 const String adminEmail = 'yuniorrodriguezo460@gmail.com';
 const String adminPassword = '960227yro#Y7';
-const String buyerEmail = 'yuniorrodriguezo460@gmail.com';
-const String buyerPassword = '960227Y#y';
+const String buyerEmail = 'yuniorrodriguezo4601@yahoo.com';
+const String buyerPassword = 'REDACTED_TEST_PASSWORD';
 // Test credentials from E2E_TEST_EXECUTION_GUIDE.md
 const String sellerEmail = 'yr62813@gmail.com';
 

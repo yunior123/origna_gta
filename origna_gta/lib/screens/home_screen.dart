@@ -36,14 +36,22 @@ class _AddProductButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfile = ref.watch(userProfileProvider).valueOrNull;
     final sellerStatus = ref.watch(sellerAccountStatusProvider);
+    final isDev = const String.fromEnvironment('ENVIRONMENT', defaultValue: 'dev') == 'dev';
 
     // Only show for sellers or admins
     final isSeller = userProfile?.roles.contains(UserRoles.seller) ?? false;
     final isAdmin = userProfile?.roles.contains(UserRoles.admin) ?? false;
     final isSuspended = userProfile?.suspended ?? false;
+    
+    // In DEV: allow any logged-in user; in PROD: sellers/admins only
+    final isUserLoggedIn = userProfile != null;
+    final userCanAccess = isDev ? isUserLoggedIn : (isSeller || isAdmin);
 
-    // Don't show button if user is not a seller/admin
-    if (!isSeller && !isAdmin) {
+    debugPrint('🔍 _AddProductButton.build() → isDev=$isDev, isSeller=$isSeller, isAdmin=$isAdmin, isUserLoggedIn=$isUserLoggedIn, userCanAccess=$userCanAccess');
+
+    // In DEV: show button for any logged-in user; in PROD: show for sellers/admins only
+    if (!userCanAccess) {
+      debugPrint('🔍 User cannot access → returning shrink()');
       return const SizedBox.shrink();
     }
 
@@ -52,8 +60,9 @@ class _AddProductButton extends ConsumerWidget {
       data: (status) => status.isComplete,
     ) ?? false;
 
-    // Admins can always add products, sellers only when verified
-    final canAddProducts = isAdmin || isVerified;
+    // In DEV mode: allow any user; in PROD: admins can always, sellers only when verified
+    final canAddProducts = isDev ? true : (isAdmin || isVerified);
+    debugPrint('🔍 isVerified=$isVerified, canAddProducts=$canAddProducts');
 
     return IconButton(
       key: const Key('home_add_product_button'),
@@ -469,6 +478,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           end: Alignment.bottomRight,
                         ).createShader(bounds),
                         child: const Text(
+                          key: Key('home_screen_title'),
                           'Origna GTA',
                           style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 24, letterSpacing: 0.5),
                         ),
@@ -667,7 +677,12 @@ class _ProductGrid extends ConsumerWidget {
           final product = products[index];
           return Semantics(
             label: '${product.name}, \$${product.price.toStringAsFixed(2)}',
-            child: ProductCard(productId: product.productId, product: product, userModel: userProfile ?? fallbackUserModel),
+            child: ProductCard(
+              key: Key('product_card_${product.name}'),
+              productId: product.productId, 
+              product: product, 
+              userModel: userProfile ?? fallbackUserModel
+            ),
           );
         }, childCount: products.length),
       ),

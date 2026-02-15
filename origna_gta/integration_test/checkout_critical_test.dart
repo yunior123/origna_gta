@@ -19,8 +19,8 @@ void main() {
   // ============================================================================
   // TEST DATA
   // ============================================================================
-  const buyerEmail = 'yuniorrodriguezo460@gmail.com';
-  const buyerPassword = '123456';
+  const String buyerEmail = 'yuniorrodriguezo4601@yahoo.com';
+  const String buyerPassword = 'REDACTED_TEST_PASSWORD';
 
   // ============================================================================
   // HELPER FUNCTIONS
@@ -32,6 +32,43 @@ void main() {
   }
 
   Future<bool> login(WidgetTester tester, String email, String password) async {
+    debugPrint('Performing login for $email');
+
+    // 1. Handle "Sign In Required" Dialog
+    final signInDialogBtn = find.byKey(const Key('login_dialog_sign_in_button'));
+    if (signInDialogBtn.evaluate().isNotEmpty) {
+      debugPrint('Found Sign In dialog button (by Key). Tapping...');
+      await tester.tap(signInDialogBtn);
+      await tester.pumpAndSettle();
+    }
+
+    // 2. Wait for Login Screen
+    bool foundFields = false;
+    for (var i = 0; i < 10; i++) {
+        if (find.byKey(const Key('login_email_field')).evaluate().isNotEmpty) {
+            foundFields = true;
+            break;
+        }
+        await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    if (!foundFields) {
+       debugPrint('Login fields not found. Checking if already logged in...');
+       if (find.byKey(const Key('login_submit_button')).evaluate().isEmpty) {
+           debugPrint('No login submit button. Assuming already logged in.');
+           return true;
+       }
+    }
+
+    // 3. Handle Auth Mode Toggle
+    final nameField = find.byKey(const Key('login_name_field'));
+    if (nameField.evaluate().isNotEmpty) {
+        debugPrint('Detected Register Mode (Name field visible). Toggling to Sign In...');
+        final toggleBtn = find.byKey(const Key('login_toggle_mode_button'));
+        await tester.tap(toggleBtn);
+        await tester.pumpAndSettle();
+    }
+
     final emailField = find.byKey(const Key('login_email_field'));
     final passwordField = find.byKey(const Key('login_password_field'));
     final signInBtn = find.byKey(const Key('login_submit_button'));

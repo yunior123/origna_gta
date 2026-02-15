@@ -266,6 +266,7 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     IconButton(
+                      key: Key('product_edit_button_${widget.product.name}'),
                       icon: Icon(Icons.edit, color: DesignTokens.primary, size: iconSize),
                       onPressed: () => _editProduct(context),
                       tooltip: 'product.edit_product'.tr(),

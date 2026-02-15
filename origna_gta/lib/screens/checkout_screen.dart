@@ -40,6 +40,7 @@ class _AddressSection extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
+      key: const Key('checkout_address_section'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -915,6 +916,7 @@ class _OrderSummary extends ConsumerWidget {
     );
 
     return Column(
+      key: const Key('checkout_summary_section'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -972,6 +974,7 @@ class _OrderSummary extends ConsumerWidget {
               ..._buildTaxBreakdown(state, subtotal + shippingCost),
               const SizedBox(height: 8),
               Row(
+                key: const Key('checkout_shipping_section'),
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
@@ -1083,6 +1086,7 @@ class _PaymentProviderSection extends StatelessWidget {
   Widget build(BuildContext context) {
     // Only Stripe is currently integrated — Airwallex removed until backend support is wired
     return Column(
+      key: const Key('checkout_payment_section'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -1113,6 +1117,7 @@ class _SecurityInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      key: const Key('checkout_secure_badge'),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: DesignTokens.info.withValues(alpha: 0.1),
@@ -1174,6 +1179,7 @@ class _TermsText extends ConsumerWidget {
           ),
         ),
         child: Row(
+          key: const Key('checkout_terms_link'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(

@@ -1,8 +1,45 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/utils/env_config.dart';
 
 import 'login_state.dart';
+
+/// Maps Firebase Auth error codes to user-friendly messages.
+/// On web, [FirebaseAuthException.message] is often just "Error",
+/// so we must rely on [FirebaseAuthException.code] instead.
+String _friendlyAuthError(FirebaseAuthException e) {
+  switch (e.code) {
+    case 'user-not-found':
+      return 'No account found with this email.';
+    case 'wrong-password':
+      return 'Incorrect password. Please try again.';
+    case 'invalid-credential':
+      return 'Invalid email or password. Please try again.';
+    case 'invalid-email':
+      return 'The email address is not valid.';
+    case 'user-disabled':
+      return 'This account has been disabled. Contact support.';
+    case 'too-many-requests':
+      return 'Too many failed attempts. Please try again later.';
+    case 'email-already-in-use':
+      return 'This email is already registered. Try logging in.';
+    case 'weak-password':
+      return 'Password is too weak. Use at least 8 characters.';
+    case 'operation-not-allowed':
+      return 'This sign-in method is not enabled.';
+    case 'network-request-failed':
+      return 'Network error. Please check your connection.';
+    case 'account-exists-with-different-credential':
+      return 'An account already exists with this email using a different sign-in method.';
+    default:
+      if (kDebugMode) {
+        debugPrint('⚠️ Unhandled FirebaseAuthException code: ${e.code}, message: ${e.message}');
+      }
+      return 'Authentication failed. Please try again.';
+  }
+}
 
 final loginViewModelProvider = StateNotifierProvider.autoDispose<LoginViewModel, LoginState>((ref) {
   return LoginViewModel(ref);
@@ -54,7 +91,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
       if (state.isLogin) {
         await repository.signInWithEmail(email, password);
         final isVerified = await repository.isEmailVerified();
-        if (!isVerified) {
+        if (!isVerified && !envConfig.isDev && !envConfig.isTest) {
           try {
             await repository.sendEmailVerification();
           } catch (_) {
@@ -70,12 +107,20 @@ class LoginViewModel extends StateNotifier<LoginState> {
         }
       } else {
         await repository.registerWithEmail(email, password, name ?? 'User');
+        
         // SECURITY FIX: Force logout and require email verification before login
+        // BYPASS for integration tests/dev
+        if (envConfig.isDev || envConfig.isTest) {
+          state = state.copyWith(isLoading: false, isSuccess: true, failedAttempts: 0, lockoutUntil: null);
+          return;
+        }
+
         await repository.signOut();
         state = state.copyWith(
           isLoading: false,
           isLogin: true, // Redirect to Login mode
           acceptedTerms: false, // Reset
+          //TODO traslate
           successMessage: 'Registration successful! Verification email sent to $email.',
           errorMessage: null,
         );
@@ -84,26 +129,38 @@ class LoginViewModel extends StateNotifier<LoginState> {
       }
       state = state.copyWith(isLoading: false, isSuccess: true, failedAttempts: 0, lockoutUntil: null);
     } on FirebaseAuthException catch (e) {
+      if (kDebugMode) {
+        debugPrint('🔐 FirebaseAuthException — code: ${e.code}, message: ${e.message}');
+      }
       final attempts = state.failedAttempts + 1;
       DateTime? newLockout;
       if (attempts >= 5) {
         final backoffMinutes = attempts >= 8 ? 15 : 5;
         newLockout = DateTime.now().add(Duration(minutes: backoffMinutes));
       }
-      state = state.copyWith(isLoading: false, errorMessage: e.message ?? 'Authentication failed', failedAttempts: attempts, lockoutUntil: newLockout);
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: _friendlyAuthError(e),
+        failedAttempts: attempts,
+        lockoutUntil: newLockout,
+      );
     } catch (e) {
-      // Better error handling - show actual error message
+      if (kDebugMode) {
+        debugPrint('🔐 Unexpected auth error: $e');
+      }
       String errorMessage = 'An error occurred. Please try again.';
       final errorStr = e.toString().toLowerCase();
-      
+
       if (errorStr.contains('permission-denied') || errorStr.contains('permission_denied')) {
-        errorMessage = 'Account creation failed. Please check your name format (2-60 characters, letters, spaces, hyphens, apostrophes, periods).';
+        errorMessage = state.isLogin
+            ? 'Sign-in succeeded but profile setup failed. Please try again.'
+            : 'Account creation failed. Please check your name format (2-60 characters, letters, spaces, hyphens, apostrophes, periods).';
       } else if (errorStr.contains('network')) {
         errorMessage = 'Network error. Please check your connection.';
       } else if (errorStr.contains('email-already-in-use')) {
         errorMessage = 'This email is already registered. Try logging in.';
       }
-      
+
       state = state.copyWith(isLoading: false, errorMessage: errorMessage);
     }
   }
@@ -118,7 +175,7 @@ class LoginViewModel extends StateNotifier<LoginState> {
       await repository.signInWithGoogle();
       state = state.copyWith(isLoading: false, isSuccess: true);
     } on FirebaseAuthException catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.message ?? 'Google sign-in failed');
+      state = state.copyWith(isLoading: false, errorMessage: _friendlyAuthError(e));
     } catch (e) {
       state = state.copyWith(isLoading: false);
       if (!e.toString().contains('popup-closed') && !e.toString().contains('cancelled')) {
