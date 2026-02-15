@@ -1,13 +1,22 @@
 // Single entry point — ONE build, ALL integration tests.
 //
-// Run on physical iPhone:
-// flutter test integration_test/all_tests.dart \
-// -d 00008120-000174923ADB401E \
-// --dart-define=ENVIRONMENT=dev
-//
-// Requires Firebase devs running.
+// ## Flutter integration tests (web)
+// ```bash
+// # 1) Start ChromeDriver in a separate terminal
+// chromedriver --port=4444
 
-import 'dart:math';
+// # 2) Run the integration suite (no emulators)
+// cd origna_gta
+// flutter drive --driver=test_driver/integration_test.dart \
+//   --target=integration_test/all_tests.dart \
+//   -d chrome \
+//   --dart-define=ENVIRONMENT=dev \
+//   --dart-define=USE_EMULATORS=false
+// ```
+
+// Firestore database is initially seeded with products added by the admin user 
+// 3 users in Firebase Auth already exist initially:
+
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,408 +30,517 @@ import 'helpers/test_helpers.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   app.main();
-  testWidgets('All flows with admin role, admin has [buyer, seller, admin]', (tester) async {
-    await launchApp(tester);
+  testWidgets(
+    'All flows with admin role, admin has [buyer, seller, admin]',
+    (tester) async {
+      await launchApp(tester);
 
-    // ════════════════════════════════════════════════════════════════════
-    //  App launches and renders MaterialApp
-    // ════════════════════════════════════════════════════════════════════
-  
-    expect(find.byType(MaterialApp), findsOneWidget);
-    expect(find.byType(Scaffold), findsWidgets);
-    debugPrint(' ✓ App launched');
+      // ════════════════════════════════════════════════════════════════════
+      //  App launches and renders MaterialApp
+      // ════════════════════════════════════════════════════════════════════
 
-    debugPrint(' ✓ We are in home screen seeing all products');
+      expect(find.byType(MaterialApp), findsOneWidget);
+      expect(find.byType(Scaffold), findsWidgets);
+      debugPrint(' ✓ App launched');
 
-    // ════════════════════════════════════════════════════════════════════
-    // login screen checks + validation + login
-    // ════════════════════════════════════════════════════════════════════
-  
-    final settingsIcon = find.byKey(const Key('home_settings_button'));
-    expect(settingsIcon, findsOneWidget);
-    // Since we are not logged in, tapping settings should show login popup, not navigate to profile
-    var email = 'yr62813@gmail.com'; //admin email
-    var password = 'REDACTED_TEST_PASSWORD'; //admin password
-   
-   
+      debugPrint(' ✓ We are in home screen seeing all products');
+
+      // ════════════════════════════════════════════════════════════════════
+      // login screen checks + validation + login
+      // ════════════════════════════════════════════════════════════════════
+
+      final settingsIcon = find.byKey(const Key('home_settings_button'));
+      expect(settingsIcon, findsOneWidget);
+      // Since we are not logged in, tapping settings should show login popup, not navigate to profile
+      var email = 'yr62813@gmail.com'; //admin email
+      var password = 'REDACTED_TEST_PASSWORD'; //admin password
+
       final popupDismissed = await handleSignInPopup(
-      tester,
-      email: email,
-      password: password,
-    );
+        tester,
+        email: email,
+        password: password,
+      );
 
-    debugPrint('✓ Login popup handled (popupDismissed=$popupDismissed)');
-   
+      debugPrint('✓ Login popup handled (popupDismissed=$popupDismissed)');
 
-    // ════════════════════════════════════════════════════════════════════
-    // Back to home. Home screen renders product grid or loading state
-    // ════════════════════════════════════════════════════════════════════
-    expect(settingsIcon, findsOneWidget);
-    final hasGrid = find.byType(GridView).evaluate().isNotEmpty;
-    final hasCards = find.byType(Card).evaluate().isNotEmpty;
-    expect(
-      hasGrid || hasCards || find.byType(Scaffold).evaluate().isNotEmpty,
-      isTrue,
-    );
-    debugPrint('✓ Home screen (grid=$hasGrid, cards=$hasCards)');
+      // ════════════════════════════════════════════════════════════════════
+      // Back to home. Home screen renders product grid or loading state
+      // ════════════════════════════════════════════════════════════════════
+      expect(settingsIcon, findsOneWidget);
+      final hasGrid = find.byType(GridView).evaluate().isNotEmpty;
+      final hasCards = find.byType(Card).evaluate().isNotEmpty;
+      expect(
+        hasGrid || hasCards || find.byType(Scaffold).evaluate().isNotEmpty,
+        isTrue,
+      );
+      debugPrint('✓ Home screen (grid=$hasGrid, cards=$hasCards)');
 
-    final cartIcon = find.byKey(const Key('home_cart_button'));
-    expect(cartIcon, findsOneWidget);
-    debugPrint('✓ Cart icon');
+      final cartIcon = find.byKey(const Key('home_cart_button'));
+      expect(cartIcon, findsOneWidget);
+      debugPrint('✓ Cart icon');
 
-    // ════════════════════════════════════════════════════════════════════
-    // Navigate to cart screen
-    // ════════════════════════════════════════════════════════════════════
-    await tester.tap(cartIcon);
-    await pumpWait(tester, seconds: 3);
-    expect(find.byType(Scaffold), findsWidgets);
-    debugPrint('✓ Cart screen loaded');
-    await goBack(tester);
-
-    // ════════════════════════════════════════════════════════════════════
-    // Tap product card opens details
-    // ════════════════════════════════════════════════════════════════════
-    final cards = find.byType(Card);
-    if (cards.evaluate().isNotEmpty) {
-      await tester.tap(cards.first);
+      // ════════════════════════════════════════════════════════════════════
+      // Navigate to cart screen
+      // ════════════════════════════════════════════════════════════════════
+      await tester.tap(cartIcon);
       await pumpWait(tester, seconds: 3);
       expect(find.byType(Scaffold), findsWidgets);
-
-      final addToCart = find.byKey(const Key('product_add_to_cart_button'));
-      final ownProduct = find.byKey(const Key('product_own_product_message'));
-      debugPrint(
-        ' ✓ Product detail (addToCart=${addToCart.evaluate().isNotEmpty || ownProduct.evaluate().isNotEmpty})',
-      );
+      debugPrint('✓ Cart screen loaded');
       await goBack(tester);
-    } else {
-      debugPrint('⚠ SKIP: No product cards');
-    }
 
-    // ════════════════════════════════════════════════════════════════════
-    //  Home screen is scrollable
-    // ════════════════════════════════════════════════════════════════════
-    final scrollable = find.byType(Scrollable);
-    if (scrollable.evaluate().isNotEmpty) {
-      await tester.drag(scrollable.first, const Offset(0, -300));
-      await tester.pump(const Duration(seconds: 2));
-      await tester.drag(scrollable.first, const Offset(0, 300));
-      await tester.pump(const Duration(seconds: 2));
-      debugPrint('✓ Scroll works');
-    } else {
-      debugPrint('⚠ SKIP: No scrollable');
-    }
-
-    // ════════════════════════════════════════════════════════════════════
-    // Navigate to profile screen
-    // ════════════════════════════════════════════════════════════════════
-   
-    if (settingsIcon.evaluate().isEmpty) {
-      debugPrint('⚠ SKIP: Settings icon not found');
-    } else {
-      await tester.tap(settingsIcon);
-      await pumpWait(tester, seconds: 5);
-      expect(find.byType(Scaffold), findsWidgets);
-
-      final orderBtn = find.byKey(const Key('profile_my_orders_button'));
-      final favBtn = find.byKey(const Key('profile_favorites_button'));
-      final addrBtn = find.byKey(const Key('profile_address_button'));
-      final found =
-          orderBtn.evaluate().length +
-          favBtn.evaluate().length +
-          addrBtn.evaluate().length;
-      debugPrint('✓ Profile screen ($found menu items)');
-
-      // ══════════════════════════════════════════════════════════════════
-      // Profile sub-pages (orders, favorites, address, terms)
-      // ══════════════════════════════════════════════════════════════════
-      await checkProfileSubPage(tester, 'profile_my_orders_button', 'T10');
-      await checkProfileSubPage(tester, 'profile_favorites_button', 'T11');
-      await checkProfileSubPage(tester, 'profile_address_button', 'T12');
-      await checkProfileSubPage(tester, 'profile_terms_button', 'T13');
-
-      // ══════════════════════════════════════════════════════════════════
-      // Back navigation works
-      // ══════════════════════════════════════════════════════════════════
-      final ordersBtn2 = find.byKey(const Key('profile_my_orders_button'));
-      if (ordersBtn2.evaluate().isNotEmpty) {
-        await tester.tap(ordersBtn2);
-        await pumpWait(tester, seconds: 2);
-        await goBack(tester);
+      // ════════════════════════════════════════════════════════════════════
+      // Tap product card opens details
+      // ════════════════════════════════════════════════════════════════════
+      final cards = find.byType(Card);
+      if (cards.evaluate().isNotEmpty) {
+        await tester.tap(cards.first);
+        await pumpWait(tester, seconds: 3);
         expect(find.byType(Scaffold), findsWidgets);
-        debugPrint(' ✓ Back navigation');
+
+        final addToCart = find.byKey(const Key('product_add_to_cart_button'));
+        final ownProduct = find.byKey(const Key('product_own_product_message'));
+        debugPrint(
+          ' ✓ Product detail (addToCart=${addToCart.evaluate().isNotEmpty || ownProduct.evaluate().isNotEmpty})',
+        );
+        await goBack(tester);
       } else {
-        debugPrint('⚠ SKIP: Orders button not found');
+        debugPrint('⚠ SKIP: No product cards');
       }
-    }
 
+      // ════════════════════════════════════════════════════════════════════
+      //  Home screen is scrollable
+      // ════════════════════════════════════════════════════════════════════
+      final scrollable = find.byType(Scrollable);
+      if (scrollable.evaluate().isNotEmpty) {
+        await tester.drag(scrollable.first, const Offset(0, -300));
+        await tester.pump(const Duration(seconds: 2));
+        await tester.drag(scrollable.first, const Offset(0, 300));
+        await tester.pump(const Duration(seconds: 2));
+        debugPrint('✓ Scroll works');
+      } else {
+        debugPrint('⚠ SKIP: No scrollable');
+      }
 
-    //Check if user has seller/admin role (needed for all product creation tests)
-    final canAddProducts = await navigateToAddProduct(tester);
-    if (!canAddProducts) {
-      debugPrint('⚠ SKIPPING T01–T05/T09–T12: User does not have seller/admin role.');
-      debugPrint(' Ensure yr62813@gmail.com has roles: [seller] or [admin] in Firestore.');
-      debugPrint(' Jumping to T06 (Home Screen verification)...');
-    }
+      // ════════════════════════════════════════════════════════════════════
+      // Navigate to profile screen
+      // ════════════════════════════════════════════════════════════════════
 
+      if (settingsIcon.evaluate().isEmpty) {
+        debugPrint('⚠ SKIP: Settings icon not found');
+      } else {
+        await tester.tap(settingsIcon);
+        await pumpWait(tester, seconds: 5);
+        expect(find.byType(Scaffold), findsWidgets);
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // — Create Physical Product with Standard Delivery
-    // ═══════════════════════════════════════════════════════════════════════
-    if (canAddProducts) {
-    debugPrint('');
-    debugPrint('── Physical Product + Standard Delivery ──');
-    // Verify we're on the Add Product screen
-    expect(find.byKey(const Key('addproduct_screen_title')), findsOneWidget, reason: 'T01: Not on Add Product screen');
-    // Fill basic fields
-    await fillBasicProductFields(tester, name: 'T01 Standard Ship', price: '29.99');
-    // Verify Section 3 (Delivery) is visible — scroll to it
-    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_section_delivery')));
-    await tester.pump(const Duration(milliseconds: 500));
-    // Standard Delivery should be enabled by default (standardEnabled=true in state)
-    // Verify the Standard Delivery card is present
-    expect(find.byKey(const Key('addproduct_standard_delivery_card')), findsOneWidget, reason: 'T01: Standard Delivery card not found');
-    debugPrint('✓Standard Delivery visible and enabled by default');
-    // Fill address
-    await fillAddress(tester);
-    // Submit
-    await tapPublishProduct(tester);
+        final orderBtn = find.byKey(const Key('profile_my_orders_button'));
+        final favBtn = find.byKey(const Key('profile_favorites_button'));
+        final addrBtn = find.byKey(const Key('profile_address_button'));
+        final found =
+            orderBtn.evaluate().length +
+            favBtn.evaluate().length +
+            addrBtn.evaluate().length;
+        debugPrint('✓ Profile screen ($found menu items)');
 
-    // Check for success (SnackBar or navigation back)
-    final successSnack = find.byKey(const Key('addproduct_success_snackbar'));
-    final hasSuccess = successSnack.evaluate().isNotEmpty;
-    // If there's a validation error, the form stays — check for that
-    if (!hasSuccess) {
-      debugPrint('⚠ Product may not have published (missing images or validation). Continuing...');
-      await goBack(tester);
-      await pumpSettle(tester, iterations: 3);
-    } else {
-      debugPrint('✓ Product published with Standard Delivery');
-      await goBack(tester);
-      await pumpSettle(tester, iterations: 3);
-    }
+        // ══════════════════════════════════════════════════════════════════
+        // Profile sub-pages (orders, favorites, address, terms)
+        // ══════════════════════════════════════════════════════════════════
+        await checkProfileSubPage(tester, 'profile_my_orders_button', 'T10');
+        await checkProfileSubPage(tester, 'profile_favorites_button', 'T11');
+        await checkProfileSubPage(tester, 'profile_address_button', 'T12');
+        await checkProfileSubPage(tester, 'profile_terms_button', 'T13');
 
+        // ══════════════════════════════════════════════════════════════════
+        // Back navigation works
+        // ══════════════════════════════════════════════════════════════════
+        final ordersBtn2 = find.byKey(const Key('profile_my_orders_button'));
+        if (ordersBtn2.evaluate().isNotEmpty) {
+          await tester.tap(ordersBtn2);
+          await pumpWait(tester, seconds: 2);
+          await goBack(tester);
+          expect(find.byType(Scaffold), findsWidgets);
+          debugPrint(' ✓ Back navigation');
+        } else {
+          debugPrint('⚠ SKIP: Orders button not found');
+        }
+      }
 
-    // Ensure we're back on home screen
-    await pumpSettle(tester, iterations: 3);
+      //Check if user has seller/admin role (needed for all product creation tests)
+      final canAddProducts = await navigateToAddProduct(tester);
+      if (!canAddProducts) {
+        debugPrint(
+          '⚠ SKIPPING T01–T05/T09–T12: User does not have seller/admin role.',
+        );
+        debugPrint(
+          ' Ensure yr62813@gmail.com has roles: [seller] or [admin] in Firestore.',
+        );
+        debugPrint(' Jumping to T06 (Home Screen verification)...');
+      }
 
-    var exist = verifyProductInMarketplace(tester, 'T01 Standard Ship');
+      // ═══════════════════════════════════════════════════════════════════════
+      // — Create Physical Product with Standard Delivery
+      // ═══════════════════════════════════════════════════════════════════════
+      if (canAddProducts) {
+        debugPrint('');
+        debugPrint('── Physical Product + Standard Delivery ──');
+        // Verify we're on the Add Product screen
+        expect(
+          find.byKey(const Key('addproduct_screen_title')),
+          findsOneWidget,
+          reason: 'T01: Not on Add Product screen',
+        );
+        // Fill basic fields
+        await fillBasicProductFields(
+          tester,
+          name: 'T01 Standard Ship',
+          price: '29.99',
+        );
+        // Verify Section 3 (Delivery) is visible — scroll to it
+        await scrollUntilVisible(
+          tester,
+          find.byKey(const Key('addproduct_section_delivery')),
+        );
+        await tester.pump(const Duration(milliseconds: 500));
+        // Standard Delivery should be enabled by default (standardEnabled=true in state)
+        // Verify the Standard Delivery card is present
+        expect(
+          find.byKey(const Key('addproduct_standard_delivery_card')),
+          findsOneWidget,
+          reason: 'T01: Standard Delivery card not found',
+        );
+        debugPrint('✓Standard Delivery visible and enabled by default');
+        // Fill address
+        await fillAddress(tester);
+        // Submit
+        await tapPublishProduct(tester);
 
+        // Check for success (SnackBar or navigation back)
+        final successSnack = find.byKey(
+          const Key('addproduct_success_snackbar'),
+        );
+        final hasSuccess = successSnack.evaluate().isNotEmpty;
+        // If there's a validation error, the form stays — check for that
+        if (!hasSuccess) {
+          debugPrint(
+            '⚠ Product may not have published (missing images or validation). Continuing...',
+          );
+          await goBack(tester);
+          await pumpSettle(tester, iterations: 3);
+        } else {
+          debugPrint('✓ Product published with Standard Delivery');
+          await goBack(tester);
+          await pumpSettle(tester, iterations: 3);
+        }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  — Create Digital Product (Shipping Section Hidden)
-    // ═══════════════════════════════════════════════════════════════════════
-    debugPrint('');
-    debugPrint('── Digital Product (No Shipping) ──');
-    await navigateToAddProduct(tester);
-    await fillBasicProductFields(tester, name: 'T02 Digital Item', price: '9.99');
-    // Scroll to Delivery section
-    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_section_delivery')));
-    await tester.pump(const Duration(milliseconds: 500));
-    // Toggle Digital Product ON
-    await tapGlassToggle(tester, 'addproduct_digital_toggle');
-    await tester.pump(const Duration(milliseconds: 500));
-    // Verify: info banner should appear
-    final digitalBanner = find.byKey(const Key('addproduct_digital_info_banner'));
-    expect(digitalBanner, findsOneWidget, reason: 'T02: Digital info banner not shown');
-    debugPrint('✓ : Digital toggle ON → shipping info banner shown');
-    // Verify: Standard Delivery should be hidden when digital
-    // The standard delivery card appears inside "if (!state.isDigital)" block
-    // So after toggling digital ON, it should vanish
-    await tester.pump(const Duration(milliseconds: 500));
-    // Verify: Package & Location section (Section 4) should also be hidden for digital
-    final packageSection = find.byKey(const Key('addproduct_section_package'));
-    final packageVisible = packageSection.evaluate().isNotEmpty;
-    if (!packageVisible) {
-      debugPrint('✓ : Package & Location hidden for digital product');
-    } else {
-      debugPrint('⚠ : Package & Location still visible for digital — BUG');
-      
-    }
-      // Submit
-    await tapPublishProduct(tester);
+        // Ensure we're back on home screen
+        await pumpSettle(tester, iterations: 3);
 
-    // If there's a validation error, the form stays — check for that
-    if (!hasSuccess) {
-      debugPrint('⚠ Product may not have published (missing images or validation). Continuing...');
-      await goBack(tester);
-      await pumpSettle(tester, iterations: 3);
-    } else {
-      debugPrint('✓ Product published');
-      await goBack(tester);
-      await pumpSettle(tester, iterations: 3);
-    }
+        var exist = await verifyProductInMarketplace(
+          tester,
+          'T01 Standard Ship',
+        );
+        if (exist) {
+          debugPrint('✓ Product appears in marketplace');
+        } else {
+          debugPrint(
+            '⚠ Product not found in marketplace — may be due to indexing delay or validation failure',
+          );
+        }
 
-     // Ensure we're back on home screen
-    await pumpSettle(tester, iterations: 3);
+        // ═══════════════════════════════════════════════════════════════════════
+        //  — Create Digital Product (Shipping Section Hidden)
+        // ═══════════════════════════════════════════════════════════════════════
+        debugPrint('');
+        debugPrint('── Digital Product (No Shipping) ──');
+        await navigateToAddProduct(tester);
+        await fillBasicProductFields(
+          tester,
+          name: 'T02 Digital Item',
+          price: '9.99',
+        );
+        // Scroll to Delivery section
+        await scrollUntilVisible(
+          tester,
+          find.byKey(const Key('addproduct_section_delivery')),
+        );
+        await tester.pump(const Duration(milliseconds: 500));
+        // Toggle Digital Product ON
+        await tapGlassToggle(tester, 'addproduct_digital_toggle');
+        await tester.pump(const Duration(milliseconds: 500));
+        // Verify: info banner should appear
+        final digitalBanner = find.byKey(
+          const Key('addproduct_digital_info_banner'),
+        );
+        expect(
+          digitalBanner,
+          findsOneWidget,
+          reason: 'T02: Digital info banner not shown',
+        );
+        debugPrint('✓ : Digital toggle ON → shipping info banner shown');
+        // Verify: Standard Delivery should be hidden when digital
+        // The standard delivery card appears inside "if (!state.isDigital)" block
+        // So after toggling digital ON, it should vanish
+        await tester.pump(const Duration(milliseconds: 500));
+        // Verify: Package & Location section (Section 4) should also be hidden for digital
+        final packageSection = find.byKey(
+          const Key('addproduct_section_package'),
+        );
+        final packageVisible = packageSection.evaluate().isNotEmpty;
+        if (!packageVisible) {
+          debugPrint('✓ : Package & Location hidden for digital product');
+        } else {
+          debugPrint('⚠ : Package & Location still visible for digital — BUG');
+        }
+        // Submit
+        await tapPublishProduct(tester);
 
+        // If there's a validation error, the form stays — check for that
+        if (!hasSuccess) {
+          debugPrint(
+            '⚠ Product may not have published (missing images or validation). Continuing...',
+          );
+          await goBack(tester);
+          await pumpSettle(tester, iterations: 3);
+        } else {
+          debugPrint('✓ Product published');
+          await goBack(tester);
+          await pumpSettle(tester, iterations: 3);
+        }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  — Create Product with Free Shipping Toggle
-    // ═══════════════════════════════════════════════════════════════════════
-    debugPrint('');
-    debugPrint('── Free Shipping Toggle ──');
-    await navigateToAddProduct(tester);
-    await fillBasicProductFields(tester, name: 'T03 Free Ship', price: '49.99');
-    // Scroll to find Free Shipping toggle (it's in Section 1, after Min Order Qty)
-    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_free_shipping_toggle')));
-    await tester.pump(const Duration(milliseconds: 300));
-    // Toggle Free Shipping ON
-    await tapGlassToggle(tester, 'addproduct_free_shipping_toggle');
-    await tester.pump(const Duration(milliseconds: 500));
-    // Verify: Free Shipping is toggled ON
-    // The toggle's Switch.adaptive should now have value=true
-    // We can verify by checking the primary color styling or just trust the toggle worked
-    debugPrint('✓ Free Shipping toggled ON');
+        // Ensure we're back on home screen
+        await pumpSettle(tester, iterations: 3);
 
-    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_section_delivery')));
-    expect(find.byKey(const Key('addproduct_standard_delivery_card')), findsOneWidget, reason: 'T03: Standard Delivery should still be visible with Free Shipping');
-    debugPrint('✓ Delivery options remain visible with Free Shipping (correct)');
-  
-      // Submit
-    await tapPublishProduct(tester);
+        exist = await verifyProductInMarketplace(tester, 'T02 Digital Item');
+        if (exist) {
+          debugPrint('✓ Product appears in marketplace');
+        } else {
+          debugPrint(
+            '⚠ Product not found in marketplace — may be due to indexing delay or validation failure',
+          );
+        }
 
-    // If there's a validation error, the form stays — check for that
-    if (!hasSuccess) {
-      debugPrint('⚠ Product may not have published (missing images or validation). Continuing...');
-      await goBack(tester);
-      await pumpSettle(tester, iterations: 3);
-    } else {
-      debugPrint('✓ Product published');
-      await goBack(tester);
-      await pumpSettle(tester, iterations: 3);
-    }
+        // ═══════════════════════════════════════════════════════════════════════
+        //  — Create Product with Free Shipping Toggle
+        // ═══════════════════════════════════════════════════════════════════════
+        debugPrint('');
+        debugPrint('── Free Shipping Toggle ──');
+        await navigateToAddProduct(tester);
+        await fillBasicProductFields(
+          tester,
+          name: 'T03 Free Ship',
+          price: '49.99',
+        );
+        // Scroll to find Free Shipping toggle (it's in Section 1, after Min Order Qty)
+        await scrollUntilVisible(
+          tester,
+          find.byKey(const Key('addproduct_free_shipping_toggle')),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+        // Toggle Free Shipping ON
+        await tapGlassToggle(tester, 'addproduct_free_shipping_toggle');
+        await tester.pump(const Duration(milliseconds: 500));
+        // Verify: Free Shipping is toggled ON
+        // The toggle's Switch.adaptive should now have value=true
+        // We can verify by checking the primary color styling or just trust the toggle worked
+        debugPrint('✓ Free Shipping toggled ON');
 
-     // Ensure we're back on home screen
-    await pumpSettle(tester, iterations: 3);
+        await scrollUntilVisible(
+          tester,
+          find.byKey(const Key('addproduct_section_delivery')),
+        );
+        expect(
+          find.byKey(const Key('addproduct_standard_delivery_card')),
+          findsOneWidget,
+          reason:
+              'T03: Standard Delivery should still be visible with Free Shipping',
+        );
+        debugPrint(
+          '✓ Delivery options remain visible with Free Shipping (correct)',
+        );
 
+        // Submit
+        await tapPublishProduct(tester);
 
+        // If there's a validation error, the form stays — check for that
+        if (!hasSuccess) {
+          debugPrint(
+            '⚠ Product may not have published (missing images or validation). Continuing...',
+          );
+          await goBack(tester);
+          await pumpSettle(tester, iterations: 3);
+        } else {
+          debugPrint('✓ Product published');
+          await goBack(tester);
+          await pumpSettle(tester, iterations: 3);
+        }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  — Create Local Pickup Only Product
-    // ═══════════════════════════════════════════════════════════════════════
-    debugPrint('');
-    debugPrint('── : Local Pickup Only ──');
-    await navigateToAddProduct(tester);
-    await fillBasicProductFields(tester, name: ' Local Only', price: '15.00');
-    // Scroll to Package & Location section (Section 4) where Local Pickup Only toggle lives
-    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_local_pickup_toggle')));
-    await tester.pump(const Duration(milliseconds: 300));
-    // Toggle Local Pickup Only ON
-    await tapGlassToggle(tester, 'addproduct_local_pickup_toggle');
-    await tester.pump(const Duration(milliseconds: 500));
-    debugPrint('✓ : Local Pickup Only toggled ON');
-    // Verify: Weight and Dimensions fields should be hidden when local-only
-    // (They're inside `if (!state.isLocalDeliveryOnly)`)
-    final weightField = find.byKey(const Key('addproduct_weight_field'));
-    final weightVisible = weightField.evaluate().isNotEmpty;
-    if (!weightVisible) {
-      debugPrint('✓ : Weight/dimensions hidden for local pickup only');
-    } else {
-      debugPrint('⚠ : Weight/dimensions still visible — may be in viewport');
-    }
-       // Submit
-    await tapPublishProduct(tester);
+        // Ensure we're back on home screen
+        await pumpSettle(tester, iterations: 3);
 
-    // If there's a validation error, the form stays — check for that
-    if (!hasSuccess) {
-      debugPrint('⚠ Product may not have published (missing images or validation). Continuing...');
-      await goBack(tester);
-      await pumpSettle(tester, iterations: 3);
-    } else {
-      debugPrint('✓ Product published');
-      await goBack(tester);
-      await pumpSettle(tester, iterations: 3);
-    }
+        exist = await verifyProductInMarketplace(tester, 'T03 Free Ship');
+        if (exist) {
+          debugPrint('✓ Product appears in marketplace');
+        } else {
+          debugPrint(
+            '⚠ Product not found in marketplace — may be due to indexing delay or validation failure',
+          );
+        }
 
-     // Ensure we're back on home screen
-    await pumpSettle(tester, iterations: 3);
+        // ═══════════════════════════════════════════════════════════════════════
+        //  — Create Local Pickup Only Product
+        // ═══════════════════════════════════════════════════════════════════════
+        debugPrint('');
+        debugPrint('── : Local Pickup Only ──');
+        await navigateToAddProduct(tester);
+        await fillBasicProductFields(
+          tester,
+          name: ' Local Only',
+          price: '15.00',
+        );
+        // Scroll to Package & Location section (Section 4) where Local Pickup Only toggle lives
+        await scrollUntilVisible(
+          tester,
+          find.byKey(const Key('addproduct_local_pickup_toggle')),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+        // Toggle Local Pickup Only ON
+        await tapGlassToggle(tester, 'addproduct_local_pickup_toggle');
+        await tester.pump(const Duration(milliseconds: 500));
+        debugPrint('✓ : Local Pickup Only toggled ON');
+        // Verify: Weight and Dimensions fields should be hidden when local-only
+        // (They're inside `if (!state.isLocalDeliveryOnly)`)
+        final weightField = find.byKey(const Key('addproduct_weight_field'));
+        final weightVisible = weightField.evaluate().isNotEmpty;
+        if (!weightVisible) {
+          debugPrint('✓ : Weight/dimensions hidden for local pickup only');
+        } else {
+          debugPrint(
+            '⚠ : Weight/dimensions still visible — may be in viewport',
+          );
+        }
+        // Submit
+        await tapPublishProduct(tester);
 
+        // If there's a validation error, the form stays — check for that
+        if (!hasSuccess) {
+          debugPrint(
+            '⚠ Product may not have published (missing images or validation). Continuing...',
+          );
+          await goBack(tester);
+          await pumpSettle(tester, iterations: 3);
+        } else {
+          debugPrint('✓ Product published');
+          await goBack(tester);
+          await pumpSettle(tester, iterations: 3);
+        }
 
+        // Ensure we're back on home screen
+        await pumpSettle(tester, iterations: 3);
 
+        exist = await verifyProductInMarketplace(tester, 'Local Only');
+        if (exist) {
+          debugPrint('✓ Product appears in marketplace');
+        } else {
+          debugPrint(
+            '⚠ Product not found in marketplace — may be due to indexing delay or validation failure',
+          );
+        }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  — Create Perishable Product with Same-Day Delivery
-    // ═══════════════════════════════════════════════════════════════════════
-    debugPrint('');
-    debugPrint('── : Perishable + Same-Day Delivery ──');
-    await navigateToAddProduct(tester);
-    await fillBasicProductFields(tester, name: ' Perishable', price: '12.50');
-    // Scroll to Delivery section
-    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_section_delivery')));
-    await tester.pump(const Duration(milliseconds: 300));
-    // Toggle Perishable Item ON
-    await tapGlassToggle(tester, 'addproduct_perishable_toggle');
-    await tester.pump(const Duration(milliseconds: 500));
-    debugPrint('✓ : Perishable toggled ON');
-    // Scroll to Same-Day Delivery section and enable it
-    await scrollUntilVisible(tester, find.byKey(const Key('addproduct_same_day_delivery_card')));
-    await tester.pump(const Duration(milliseconds: 300));
-    final sameDaySwitch = find.byKey(const Key('addproduct_same_day_delivery_card'));
-    if (sameDaySwitch.evaluate().isNotEmpty) {
-      await tester.tap(sameDaySwitch.first);
-      await tester.pump(const Duration(milliseconds: 500));
-      debugPrint('✓ : Same-Day Delivery enabled');
-    } else {
-      // Fallback: try tapping the card header
-      debugPrint('⚠ : Could not find Same-Day switch, skipping');
-    }
-         // Submit
-    await tapPublishProduct(tester);
+        // ═══════════════════════════════════════════════════════════════════════
+        //  — Create Perishable Product with Same-Day Delivery
+        // ═══════════════════════════════════════════════════════════════════════
+        debugPrint('');
+        debugPrint('── : Perishable + Same-Day Delivery ──');
+        await navigateToAddProduct(tester);
+        await fillBasicProductFields(
+          tester,
+          name: ' Perishable',
+          price: '12.50',
+        );
+        // Scroll to Delivery section
+        await scrollUntilVisible(
+          tester,
+          find.byKey(const Key('addproduct_section_delivery')),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+        // Toggle Perishable Item ON
+        await tapGlassToggle(tester, 'addproduct_perishable_toggle');
+        await tester.pump(const Duration(milliseconds: 500));
+        debugPrint('✓ : Perishable toggled ON');
+        // Scroll to Same-Day Delivery section and enable it
+        await scrollUntilVisible(
+          tester,
+          find.byKey(const Key('addproduct_same_day_delivery_card')),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+        final sameDaySwitch = find.byKey(
+          const Key('addproduct_same_day_delivery_card'),
+        );
+        if (sameDaySwitch.evaluate().isNotEmpty) {
+          await tester.tap(sameDaySwitch.first);
+          await tester.pump(const Duration(milliseconds: 500));
+          debugPrint('✓ : Same-Day Delivery enabled');
+        } else {
+          // Fallback: try tapping the card header
+          debugPrint('⚠ : Could not find Same-Day switch, skipping');
+        }
+        // Submit
+        await tapPublishProduct(tester);
 
-    // If there's a validation error, the form stays — check for that
-    if (!hasSuccess) {
-      debugPrint('⚠ Product may not have published (missing images or validation). Continuing...');
-      await goBack(tester);
-      await pumpSettle(tester, iterations: 3);
-    } else {
-      debugPrint('✓ Product published');
-      await goBack(tester);
-      await pumpSettle(tester, iterations: 3);
-    }
+        // If there's a validation error, the form stays — check for that
+        if (!hasSuccess) {
+          debugPrint(
+            '⚠ Product may not have published (missing images or validation). Continuing...',
+          );
+          await goBack(tester);
+          await pumpSettle(tester, iterations: 3);
+        } else {
+          debugPrint('✓ Product published');
+          await goBack(tester);
+          await pumpSettle(tester, iterations: 3);
+        }
 
-     // Ensure we're back on home screen
-    await pumpSettle(tester, iterations: 3);
+        // Ensure we're back on home screen
+        await pumpSettle(tester, iterations: 3);
 
+        exist = await verifyProductInMarketplace(tester, 'Perishable');
+        if (exist) {
+          debugPrint('✓ Product appears in marketplace');
+        } else {
+          debugPrint(
+            '⚠ Product not found in marketplace — may be due to indexing delay or validation failure',
+          );
+        }
+      } // end if (canAddProducts)
 
-    } // end if (canAddProducts) 
+      // ═══════════════════════════════════════════════════════════════════════
+      //  — Verify Home Screen Has Products (Grid View)
+      // ═══════════════════════════════════════════════════════════════════════
+      debugPrint('');
+      debugPrint('── Home Screen Product Grid ──');
+      // We should be back on home screen
+      await pumpSettle(tester, iterations: 5);
+      // Check for product grid or list
+      final listView = find.byType(ListView);
 
+      final hasList = listView.evaluate().isNotEmpty;
+      debugPrint('✓  Home screen — GridView: $hasGrid, ListView: $hasList');
+      // Search for any product content
+      final scaffold = find.byType(Scaffold);
+      expect(scaffold, findsWidgets, reason: ' No Scaffold on home screen');
+      debugPrint('✓  Home screen rendered');
 
+      debugPrint('');
+      debugPrint('════════════════════════════════════════');
+      debugPrint('  ✓ All Admin Flows checked');
+      debugPrint('════════════════════════════════════════');
+    },
+    timeout: const Timeout(Duration(minutes: 8)),
+  );
 
-
-    // ═══════════════════════════════════════════════════════════════════════
-    //  — Verify Home Screen Has Products (Grid View)
-    // ═══════════════════════════════════════════════════════════════════════
-    debugPrint('');
-    debugPrint('── Home Screen Product Grid ──');
-    // We should be back on home screen
-    await pumpSettle(tester, iterations: 5);
-    // Check for product grid or list
-    final listView = find.byType(ListView);
-   
-    final hasList = listView.evaluate().isNotEmpty;
-    debugPrint('✓  Home screen — GridView: $hasGrid, ListView: $hasList');
-    // Search for any product content
-    final scaffold = find.byType(Scaffold);
-    expect(scaffold, findsWidgets, reason: ' No Scaffold on home screen');
-    debugPrint('✓  Home screen rendered');
-
-
-
-
-
-    debugPrint('');
-    debugPrint('════════════════════════════════════════');
-    debugPrint('  ✓ All Flows checked');
-    debugPrint('════════════════════════════════════════');
-  }, timeout: const Timeout(Duration(minutes: 8)));
-
-
-
-  //   const String buyerEmail = 'yuniorrodriguezo4601@yahoo.com';
-//   const String buyerPassword = 'REDACTED_TEST_PASSWORD';
-
-
-
+  //   const String sellerEmail = 'yuniorrodriguezo4601@yahoo.com';
+  //   const String sellerPassword = 'REDACTED_TEST_PASSWORD';
+  // const String buyerEmail = 'yuniorrodriguezo460@gmail.com';
+// const String buyerPassword = 'REDACTED_TEST_PASSWORD';
 }
 
 
@@ -4666,13 +4784,7 @@ void main() {
 //     debugPrint('\n🎉 All product creation tests done!');
 //   }, timeout: const Timeout(Duration(minutes: 15)));
 // }
-// const String adminEmail = 'yuniorrodriguezo460@gmail.com';
-// const String adminPassword = '960227yro#Y7';
-// const String buyerEmail = 'yuniorrodriguezo4601@yahoo.com';
-// const String buyerPassword = 'REDACTED_TEST_PASSWORD';
-// // Test credentials from E2E_TEST_EXECUTION_GUIDE.md
-// const String sellerEmail = 'yr62813@gmail.com';
-// const String sellerPassword = '960227Y#y';
+
 // /// Helper function to create mock cart items for testing
 // CartItemDetailModel _createMockItem({
 //   String productId = 'prod_test',
