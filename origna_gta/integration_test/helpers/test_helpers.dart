@@ -19,7 +19,11 @@ const adminPassword = 'REDACTED_TEST_PASSWORD';
 // ─── PUMP HELPERS ────────────────────────────────────────────────────────────
 
 /// Pump N frames with a short delay.
-Future<void> pumpFor(WidgetTester tester, {int frames = 5, int ms = 100}) async {
+Future<void> pumpFor(
+  WidgetTester tester, {
+  int frames = 5,
+  int ms = 100,
+}) async {
   for (var i = 0; i < frames; i++) {
     await tester.pump(Duration(milliseconds: ms));
   }
@@ -48,22 +52,6 @@ Future<bool> loginWith(
   required String email,
   required String password,
 }) async {
-
-        // T02: Login screen fields
-      expect(find.byKey(const Key('login_email_field')), findsOneWidget);
-      expect(find.byKey(const Key('login_password_field')), findsOneWidget);
-      expect(find.byKey(const Key('login_submit_button')), findsOneWidget);
-      debugPrint('T02 ✓ Login fields present');
-
-      // T14: Empty form validation — submit without data
-      await tester.tap(find.byKey(const Key('login_submit_button')));
-      await pumpWait(tester);
-      expect(find.byKey(const Key('login_submit_button')), findsOneWidget);
-      debugPrint('T14 ✓ Form validation triggered');
-
-      // T03: Buyer login
-      await loginWith(tester, email: buyerEmail, password: buyerPassword);
-
   // Wait for login fields
   for (var i = 0; i < 12; i++) {
     if (find.byKey(const Key('login_email_field')).evaluate().isNotEmpty) break;
@@ -127,7 +115,11 @@ Future<bool> tapByKey(WidgetTester tester, String keyName) async {
 }
 
 /// Enter text into a field found by Key.
-Future<void> enterTextByKey(WidgetTester tester, String key, String text) async {
+Future<void> enterTextByKey(
+  WidgetTester tester,
+  String key,
+  String text,
+) async {
   final field = find.byKey(Key(key));
   if (field.evaluate().isNotEmpty) {
     await tester.tap(field);
@@ -150,7 +142,7 @@ Future<void> goBack(WidgetTester tester) async {
   for (final k in [
     'addproduct_back_button',
     'back_button',
-    'profile_back_button'
+    'profile_back_button',
   ]) {
     final btn = find.byKey(Key(k));
     if (btn.evaluate().isNotEmpty) {
@@ -192,7 +184,9 @@ Future<void> checkProfileSubPage(
     debugPrint('$label SKIP: Button not found');
     return;
   }
-  await tester.tap(btn);
+  await scrollUntilVisible(tester, btn, delta: -220, maxScrolls: 12);
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.tap(btn.first, warnIfMissed: false);
   await pumpWait(tester, seconds: 2);
   expect(find.byType(Scaffold), findsWidgets);
   debugPrint('$label ✓ Screen loaded');
@@ -218,21 +212,33 @@ Future<bool> handleSignInPopup(
 
 Future<bool> navigateToAddProduct(WidgetTester tester) async {
   final addBtn = find.byKey(const Key('home_add_product_button'));
-  // The button might not be visible if user is not seller — wait a bit
-  if (addBtn.evaluate().isEmpty) {
-    await pumpSettle(tester, iterations: 8);
+
+  // Retry loop to absorb auth/profile provider timing on web integration runs
+  for (int attempt = 0; attempt < 4; attempt++) {
+    if (addBtn.evaluate().isNotEmpty) break;
+    await navigateToTab(tester, Icons.home);
+    await pumpWait(tester, seconds: 2);
+    await pumpSettle(tester, iterations: 4);
   }
+
   if (addBtn.evaluate().isEmpty) {
-    debugPrint('⚠ Add Product button not found — user may not have seller/admin role');
+    debugPrint(
+      '⚠ Add Product button not found after retries — user may not have seller/admin role or profile not loaded',
+    );
     return false;
   }
-  await tester.tap(addBtn);
+
+  await tester.tap(addBtn.first, warnIfMissed: false);
   await pumpSettle(tester, iterations: 5);
   debugPrint('✓ Navigated to Add Product screen');
   return true;
 }
 
-Future<void> pumpSettle(WidgetTester tester, {int iterations = 10, int ms = 1000}) async {
+Future<void> pumpSettle(
+  WidgetTester tester, {
+  int iterations = 10,
+  int ms = 1000,
+}) async {
   for (int i = 0; i < iterations; i++) {
     await tester.pump(Duration(milliseconds: ms));
   }
@@ -261,7 +267,10 @@ Future<void> tapGlassToggle(WidgetTester tester, String identifier) async {
 
 Future<void> fillAddress(WidgetTester tester) async {
   // Scroll down to make address fields visible
-  await scrollUntilVisible(tester, find.byKey(const Key('addproduct_section_package')));
+  await scrollUntilVisible(
+    tester,
+    find.byKey(const Key('addproduct_section_package')),
+  );
   await tester.pump(const Duration(milliseconds: 500));
   // Street
   await enterTextByKey(tester, 'addproduct_street_field', '123 Test Street');
@@ -282,34 +291,43 @@ Future<void> tapPublishProduct(WidgetTester tester) async {
 }
 
 /// Verify product appears in marketplace
-Future<bool> verifyProductInMarketplace(WidgetTester tester, String productName) async {
+Future<bool> verifyProductInMarketplace(
+  WidgetTester tester,
+  String productName,
+) async {
   debugPrint('🔍 Verifying product in marketplace: $productName');
- 
+
   // Navigate to home/browse
   await navigateToTab(tester, Icons.home);
-  for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
- 
+  for (var i = 0; i < 6; i++) {
+    await tester.pump(const Duration(milliseconds: 500));
+  }
+
   // Search for product
   final searchIcon = find.byIcon(Icons.search);
   if (searchIcon.evaluate().isNotEmpty) {
     await tester.tap(searchIcon.first);
-    for (var i = 0; i < 5; i++) { await tester.pump(const Duration(milliseconds: 100)); }
-   
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
     final searchField = find.byType(TextField);
     if (searchField.evaluate().isNotEmpty) {
       await tester.enterText(searchField.first, productName);
-      for (var i = 0; i < 6; i++) { await tester.pump(const Duration(milliseconds: 500)); }
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 500));
+      }
     }
   }
   // Check if product appears
   final productFound = find.textContaining(productName);
- 
+
   if (productFound.evaluate().isNotEmpty) {
     debugPrint('✓ Product found in marketplace');
     return true;
   }
   return false;
-    }
+}
 // Future<void> enterTextByKey(WidgetTester tester, String key, String text) async {
 //   final field = find.byKey(Key(key));
 //   expect(field, findsOneWidget, reason: 'Field with Key("$key") not found');

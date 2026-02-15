@@ -3,6 +3,10 @@
 
 - Ensure schema constants are widely used
 - Update json schema constants when database schema changes
+- Stabilize integration auth fixtures: use 3 distinct test accounts (buyer/seller/admin) instead of overlapping credentials to avoid role ambiguity in integration flows.
+- Add deterministic seeded data hook for integration tests (products/cart/address baseline) to reduce SKIP paths and flaky UI branches.
+- Improve checkout testability by exposing a stable key for checkout screen root/title (currently section keys exist, but root-level entry assertion is indirect).
+- Add CI gate for integration logs: fail when critical scenarios are skipped (currently many scenarios can pass with SKIP and still appear successful).
 
 
 ## TODO (Future)
