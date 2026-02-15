@@ -160,4 +160,6 @@
 - **FakeFirebaseFirestore timing**: Need `Future.delayed(200ms)` between operations for streams to emit
 - **ProductCard import**: Use `import 'package:origna_gta/screens/product_card_screen.dart'` for `ProductCard` type in finders
 - **Login dialog handling**: After adding to cart as guest, a sign-in dialog may appear — check for `login_dialog_sign_in_button`
+- **Home-first auth**: Home renders before login; actions like cart/settings can open sign-in dialog, so tests should route to login via the dialog before asserting login UI
+- **Web integration**: `flutter drive` on web requires ChromeDriver running on port 4444
 - **Resilient test pattern**: Always check `finder.evaluate().isNotEmpty` before `tester.tap()` — never hard `expect` for optional UI elements

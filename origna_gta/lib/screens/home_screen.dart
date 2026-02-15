@@ -34,9 +34,16 @@ class _AddProductButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userProfile = ref.watch(userProfileProvider).valueOrNull;
+    final userProfileAsync = ref.watch(userProfileProvider);
     final sellerStatus = ref.watch(sellerAccountStatusProvider);
     final isDev = const String.fromEnvironment('ENVIRONMENT', defaultValue: 'dev') == 'dev';
+
+    // If provider is loading, hide button temporarily (will rebuild when loaded)
+    if (userProfileAsync.isLoading) {
+      return const SizedBox.shrink();
+    }
+
+    final userProfile = userProfileAsync.valueOrNull;
 
     // Only show for sellers or admins
     final isSeller = userProfile?.roles.contains(UserRoles.seller) ?? false;

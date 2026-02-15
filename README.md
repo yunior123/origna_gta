@@ -79,6 +79,20 @@ sequenceDiagram
 - Functions tests: (cd functions) pytest
 - Configure Algolia index: Call `configure_algolia` Cloud Function (admin only)
 
+## Flutter integration tests (web)
+```bash
+# 1) Start ChromeDriver in a separate terminal
+chromedriver --port=4444
+
+# 2) Run the integration suite (no emulators)
+cd origna_gta
+flutter drive --driver=test_driver/integration_test.dart \
+  --target=integration_test/all_tests.dart \
+  -d chrome \
+  --dart-define=ENVIRONMENT=dev \
+  --dart-define=USE_EMULATORS=false
+```
+
 ## CI / E2E
 - GitHub Actions runs backend + Flutter tests and a stable Playwright suite.
 - Local E2E stack:

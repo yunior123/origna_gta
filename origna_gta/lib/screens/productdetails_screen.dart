@@ -419,8 +419,8 @@ class _DeliveryInfoCard extends StatelessWidget {
           const SizedBox(height: 14),
           // Estimated delivery time
           _DeliveryInfoRow(icon: Icons.access_time_rounded, label: 'checkout.estimated_delivery'.tr(), value: deliveryInfo.estimateText, isDark: isDark),
-const SizedBox(height: 10),
-            if (deliveryInfo.supplierRegion != null) ...[
+          const SizedBox(height: 10),
+          if (deliveryInfo.supplierRegion != null) ...[
               _DeliveryInfoRow(
                 icon: Icons.public_rounded,
                 label: 'product.ships_from'.tr(),

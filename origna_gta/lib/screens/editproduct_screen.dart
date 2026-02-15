@@ -89,12 +89,14 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                 children: [
                   _buildSectionTitle('product.basic_information'.tr()),
                   TextFormField(
+                    key: const Key('product_edit_name_field'),
                     controller: _nameController,
                     decoration: InputDecoration(labelText: 'product.product_name'.tr(), prefixIcon: const Icon(Icons.shopping_bag_outlined)),
                     validator: (value) => value?.isEmpty ?? true ? 'product.please_enter_name'.tr() : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
+                    key: const Key('product_edit_description_field'),
                     controller: _descriptionController,
                     maxLines: 3,
                     decoration: InputDecoration(labelText: 'product.description'.tr(), prefixIcon: const Icon(Icons.description_outlined)),
@@ -105,6 +107,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     children: [
                       Expanded(
                         child: TextFormField(
+                          key: const Key('product_edit_price_field'),
                           controller: _priceController,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           decoration: InputDecoration(labelText: 'product.price'.tr(), prefixIcon: const Icon(Icons.attach_money_outlined)),
@@ -147,6 +150,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     onChanged: viewModel.toggleDigital,
                   ),
                   DropdownButtonFormField<String>(
+                    key: const Key('product_edit_category_dropdown'),
                     initialValue: _categoryController.text.isNotEmpty ? _categoryController.text : null,
                     decoration: InputDecoration(labelText: 'product.category'.tr(), prefixIcon: const Icon(Icons.category_outlined)),
                     items: productCategories.map((c) => DropdownMenuItem(value: c.categoryId.toString(), child: Text(c.name.tr()))).toList(),
