@@ -99,14 +99,45 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         state = state.copyWith(errorMessage: 'product.address_required'.tr());
         return;
       }
+      // FIX: Validate address field lengths to match Firestore Rules
+      if (street.trim().length < 3) {
+        state = state.copyWith(errorMessage: 'product.street_too_short'.tr());
+        return;
+      }
+      if (street.trim().length > 100) {
+        state = state.copyWith(errorMessage: 'product.street_too_long'.tr());
+        return;
+      }
+      if (city.trim().length < 2) {
+        state = state.copyWith(errorMessage: 'product.city_too_short'.tr());
+        return;
+      }
+      if (city.trim().length > 50) {
+        state = state.copyWith(errorMessage: 'product.city_too_long'.tr());
+        return;
+      }
+      // FIX: Validate postal code format in ViewModel (not just Form UI)
+      final normalizedPostal = postalCode.trim().toUpperCase().replaceAll(' ', '');
+      final postalRegex = RegExp(r'^[A-Z]\d[A-Z]\d[A-Z]\d$');
+      if (!postalRegex.hasMatch(normalizedPostal)) {
+        state = state.copyWith(errorMessage: 'product.invalid_postal'.tr());
+        return;
+      }
+
+      // SECURITY: Require address to be verified via Geoapify autocomplete
+      // In dev/test mode, allow bypass for integration tests
+      final isDevOrTest =
+          const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production') == 'dev' ||
+          const bool.fromEnvironment('IS_TEST', defaultValue: false);
+      if (!state.addressVerified && !isDevOrTest) {
+        if (state.latitude == null || state.longitude == null) {
+          state = state.copyWith(
+            errorMessage: 'product.address_not_verified'.tr(),
+          );
+          return;
+        }
+      }
     }
-    // Relaxed address validation for Web/Test environment where Geocoder might fail
-    /* 
-    if (state.latitude == null || state.longitude == null) {
-      state = state.copyWith(errorMessage: 'Select a valid address from suggestions');
-      return;
-    }
-    */
 
     if (!isValidTaxCode(taxCode)) {
       state = state.copyWith(
@@ -280,6 +311,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       selectedProvince: details.state,
       latitude: details.latitude,
       longitude: details.longitude,
+      addressVerified: true,
       showSuggestions: false,
       addressSuggestions: [],
     );
@@ -352,8 +384,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       state = state.copyWith(isPerishable: value);
 
   /// Bug #16: Invalidate lat/lng when user manually edits address fields
+  /// Also resets addressVerified — user must re-select from Geoapify
   void clearCoordinates() =>
-      state = state.copyWith(latitude: null, longitude: null);
+      state = state.copyWith(latitude: null, longitude: null, addressVerified: false);
 
   /// Bug #1: Allow ProductAddImages widget to sync images back to ViewModel
   void updateImages(List<ImageModel> images) =>

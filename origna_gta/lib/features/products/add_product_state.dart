@@ -13,6 +13,7 @@ class AddProductState {
   final List<ImageModel> imageModels;
   final List<Map<String, dynamic>> addressSuggestions;
   final bool showSuggestions;
+  final bool addressVerified; // true when address selected from Geoapify
   final bool isPerishable;
   final bool isDigital;
   final bool standardEnabled;
@@ -35,6 +36,7 @@ class AddProductState {
     this.imageModels = const [],
     this.addressSuggestions = const [],
     this.showSuggestions = false,
+    this.addressVerified = false,
     this.isPerishable = false,
     this.isDigital = false,
     this.standardEnabled = true,
@@ -60,6 +62,7 @@ class AddProductState {
     List<ImageModel>? imageModels,
     List<Map<String, dynamic>>? addressSuggestions,
     bool? showSuggestions,
+    bool? addressVerified,
     bool? isPerishable,
     bool? isDigital,
     bool? standardEnabled,
@@ -82,6 +85,7 @@ class AddProductState {
       imageModels: imageModels ?? this.imageModels,
       addressSuggestions: addressSuggestions ?? this.addressSuggestions,
       showSuggestions: showSuggestions ?? this.showSuggestions,
+      addressVerified: addressVerified ?? this.addressVerified,
       isPerishable: isPerishable ?? this.isPerishable,
       isDigital: isDigital ?? this.isDigital,
       standardEnabled: standardEnabled ?? this.standardEnabled,

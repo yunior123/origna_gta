@@ -69,6 +69,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   bool _inventoryManaged = true;
   bool _trackQuantity = true;
   bool _allowBackorder = false;
+  bool _hasAttemptedSubmit = false;
 
   // Active section for stepper
   int _activeStep = 0;
@@ -246,6 +247,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                           constraints: BoxConstraints(maxWidth: maxWidth),
                           child: Form(
                             key: _formKey,
+                            autovalidateMode: _hasAttemptedSubmit
+                                ? AutovalidateMode.onUserInteraction
+                                : AutovalidateMode.disabled,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -516,6 +520,20 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       const SizedBox(height: 20),
                                       // Location fields
                                       _buildSubSectionHeader('product.pickup_address'.tr(), Icons.pin_drop_rounded),
+                                      const SizedBox(height: 8),
+                                      // Address verification status banner
+                                      if (state.addressVerified)
+                                        _buildInfoBanner(
+                                          'product.address_verified'.tr(),
+                                          Icons.verified_rounded,
+                                          DesignTokens.success,
+                                        )
+                                      else if (_streetController.text.trim().isNotEmpty && !state.addressVerified)
+                                        _buildInfoBanner(
+                                          'product.address_select_from_suggestions'.tr(),
+                                          Icons.warning_amber_rounded,
+                                          DesignTokens.warning,
+                                        ),
                                       const SizedBox(height: 12),
                                       _buildGlassTextField(
                                         key: const Key('addproduct_street_field'),
@@ -523,7 +541,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         label: 'product.street_address'.tr(),
                                         icon: Icons.home_rounded,
                                         onChanged: viewModel.onStreetChanged,
-                                        validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
+                                        validator: _validateStreet,
+                                        hint: 'product.street_hint'.tr(),
                                       ),
                                       if (state.showSuggestions && state.addressSuggestions.isNotEmpty)
                                         _buildAddressSuggestions(state, viewModel),
@@ -540,8 +559,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         key: const Key('addproduct_city_field'),
                                         controller: _cityController,
                                         label: 'product.city'.tr(),
-                                        validator: (v) => v?.isEmpty ?? true ? 'common.required'.tr() : null,
-                                        onChanged: (_) => viewModel.clearCoordinates(),
+                                        validator: _validateCity,
+                                        readOnly: state.addressVerified,
+                                        onChanged: state.addressVerified ? null : (_) => viewModel.clearCoordinates(),
                                       ),
                                       const SizedBox(height: 12),
                                       Row(
@@ -552,7 +572,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                               label: 'product.province'.tr(),
                                               value: state.selectedProvince,
                                               items: _provinceNames.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.key))).toList(),
-                                              onChanged: (v) => viewModel.setProvince(v!),
+                                              onChanged: state.addressVerified ? null : (v) => viewModel.setProvince(v!),
                                             ),
                                           ),
                                           const SizedBox(width: 12),
@@ -563,11 +583,30 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                               label: 'product.postal_code'.tr(),
                                               textCapitalization: TextCapitalization.characters,
                                               validator: _validatePostalCode,
-                                              onChanged: (_) => viewModel.clearCoordinates(),
+                                              readOnly: state.addressVerified,
+                                              onChanged: state.addressVerified ? null : (_) => viewModel.clearCoordinates(),
                                             ),
                                           ),
                                         ],
                                       ),
+                                      // Clear verified address button
+                                      if (state.addressVerified) ...[
+                                        const SizedBox(height: 8),
+                                        Align(
+                                          alignment: Alignment.centerRight,
+                                          child: TextButton.icon(
+                                            key: const Key('addproduct_clear_address_button'),
+                                            onPressed: () {
+                                              _streetController.clear();
+                                              _cityController.clear();
+                                              _postalCodeController.clear();
+                                              viewModel.clearCoordinates();
+                                            },
+                                            icon: const Icon(Icons.clear_rounded, size: 16),
+                                            label: Text('product.clear_address'.tr(), style: const TextStyle(fontSize: 12)),
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 if (!state.isDigital) const SizedBox(height: 16),
@@ -849,6 +888,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     TextCapitalization textCapitalization = TextCapitalization.none,
     String? Function(String?)? validator,
     void Function(String)? onChanged,
+    bool readOnly = false,
   }) {
     return TextFormField(
       key: key,
@@ -858,6 +898,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       textCapitalization: textCapitalization,
       validator: validator,
       onChanged: onChanged,
+      readOnly: readOnly,
       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: label,
@@ -882,7 +923,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     required String label,
     required String? value,
     required List<DropdownMenuItem<String>> items,
-    required void Function(String?) onChanged,
+    required void Function(String?)? onChanged,
   }) {
     return DropdownButtonFormField<String>(
       key: key,
@@ -1439,6 +1480,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                       );
                       return;
                     }
+                    if (!_hasAttemptedSubmit) {
+                      setState(() => _hasAttemptedSubmit = true);
+                    }
                     if (_formKey.currentState!.validate()) {
                       SupplierInfo? supplierInfo;
                       final hasCost = _costController.text.trim().isNotEmpty;
@@ -1612,6 +1656,20 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       ),
     );
     Navigator.pop(context);
+  }
+
+  String? _validateStreet(String? v) {
+    if (v == null || v.trim().isEmpty) return 'common.required'.tr();
+    if (v.trim().length < 3) return 'product.street_too_short'.tr();
+    if (v.trim().length > 100) return 'product.street_too_long'.tr();
+    return null;
+  }
+
+  String? _validateCity(String? v) {
+    if (v == null || v.trim().isEmpty) return 'common.required'.tr();
+    if (v.trim().length < 2) return 'product.city_too_short'.tr();
+    if (v.trim().length > 50) return 'product.city_too_long'.tr();
+    return null;
   }
 
   String? _validatePostalCode(String? v) {

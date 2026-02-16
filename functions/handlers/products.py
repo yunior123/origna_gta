@@ -12,11 +12,13 @@ import uuid
 from typing import Any
 
 import boto3
+import requests
 from botocore.config import Config
 from firebase_functions import firestore_fn, https_fn
 
-from config import R2_ACCESS_KEY_NEW, R2_ACCOUNT_ID_NEW, R2_SECRET_KEY_NEW, R2Config, get_r2_credentials
+from config import R2_ACCESS_KEY_NEW, R2_ACCOUNT_ID_NEW, R2_SECRET_KEY_NEW, R2Config, get_geoapify_api_key, get_r2_credentials
 from schema_constants import (
+    AppConfig,
     CategoryIds,
     Collections,
     DeliveryTypeValues,
@@ -459,10 +461,8 @@ def validate_image_magic_bytes(image_url: str) -> bool:
     Downloads first 16 bytes and verifies against known image signatures.
     Returns True if valid image, False if malicious/invalid.
     """
-    import requests as http_requests
-
     try:
-        resp = http_requests.get(image_url, stream=True, timeout=5)
+        resp = requests.get(image_url, stream=True, timeout=5)
         if resp.status_code != 200:
             logger.warning(f"⚠️ Image validation failed: HTTP {resp.status_code} for {image_url}")
             return False
@@ -484,6 +484,92 @@ def validate_image_magic_bytes(image_url: str) -> bool:
         logger.warning(f"⚠️ Image validation error for {image_url}: {type(e).__name__}")
         # Fail open for CDN timeout issues; rely on MIME type validation
         return True
+
+
+def _verify_address_with_geoapify(
+    product_id: str,
+    lat: float,
+    lon: float,
+    street: str,
+    city: str,
+    postal_code: str,
+    country: str,
+) -> tuple[bool, str]:
+    """
+    SECURITY: Verify seller address coordinates via Geoapify reverse geocoding.
+    
+    Returns:
+        (is_valid, reason) — bool indicates if address is valid, reason is error message
+    
+    Validation rules:
+    - Address MUST be verified via Geoapify for non-digital products
+    - Coordinates must match declared city/postal/country (fuzzy matching)
+    - If unverified or fake address detected → product is REJECTED
+    """
+    geo_key = get_geoapify_api_key()
+    if not geo_key:
+        # In production, we MUST have Geoapify key. Fail closed.
+        return False, "Address verification service not configured"
+
+    try:
+        url = (
+            f"https://api.geoapify.com/v1/geocode/reverse"
+            f"?lat={lat}&lon={lon}&apiKey={geo_key}"
+        )
+        response = requests.get(url, timeout=AppConfig.GEOAPIFY_TIMEOUT_SECONDS)
+        if response.status_code != 200:
+            return False, f"Address verification failed (HTTP {response.status_code})"
+
+        data = response.json()
+        features = data.get("features", [])
+        if not features:
+            return (
+                False,
+                f"Address verification returned no results — coordinates ({lat}, {lon}) may be invalid"
+            )
+
+        props = features[0].get("properties", {})
+        geo_city = (props.get("city") or props.get("town") or props.get("village") or "").lower()
+        geo_postal = (props.get("postcode") or "").replace(" ", "").replace("-", "").upper()
+        geo_country = (props.get("country_code") or "").upper()
+
+        declared_city = city.lower().strip()
+        declared_postal = postal_code.replace(" ", "").replace("-", "").upper()
+        declared_country = country.upper().strip()
+
+        # Check country match (CA vs CA)
+        country_match = geo_country == declared_country[:2].upper() if declared_country else False
+
+        # Check city match (fuzzy — first 3 chars)
+        city_match = (
+            geo_city[:3] == declared_city[:3]
+            if len(geo_city) >= 3 and len(declared_city) >= 3
+            else geo_city == declared_city
+        )
+
+        # Check postal code match (first 3 chars = Forward Sortation Area)
+        postal_match = (
+            geo_postal[:3] == declared_postal[:3]
+            if len(geo_postal) >= 3 and len(declared_postal) >= 3
+            else False  # Strict: postal code must be provided and match
+        )
+
+        if not country_match:
+            return False, f"Country mismatch: declared {declared_country} vs verified {geo_country}"
+
+        if not city_match:
+            return False, f"City mismatch: declared {declared_city} vs verified {geo_city}"
+
+        if not postal_match:
+            return False, f"Postal code mismatch: declared {declared_postal} vs verified {geo_postal}"
+
+        logger.info(f"✅ Address verified for product {product_id}: {geo_city}, {geo_postal}")
+        return True, ""
+
+    except requests.Timeout:
+        return False, "Address verification timeout — please try again"
+    except Exception as e:
+        return False, f"Address verification error: {type(e).__name__}"
 
 
 @firestore_fn.on_document_created(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)
@@ -547,8 +633,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         )
         return
 
-    # Seller address validation — sellers can be from any country
-    # Only verify that a seller address with a non-empty country is present
+    # Seller address validation — verify address exists via Geoapify geocoding
     seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
     country = seller_address.get(Fields.COUNTRY) or ""
     if not country:
@@ -560,6 +645,44 @@ def on_product_created(event: firestore_fn.Event) -> None:
             }
         )
         return
+
+    # SECURITY: Validate address coordinates via Geoapify reverse geocoding
+    # Ensures the seller address is a real, verified location
+    seller_lat = seller_address.get(Fields.LATITUDE)
+    seller_lon = seller_address.get(Fields.LONGITUDE)
+    seller_street = seller_address.get(Fields.STREET, "")
+    seller_city = seller_address.get(Fields.CITY, "")
+    seller_postal = seller_address.get(Fields.POSTAL_CODE, "")
+
+    # Skip digital products (no physical address needed)
+    is_digital = product_data.get(Fields.IS_DIGITAL, False)
+
+    if not is_digital:
+        # Require lat/lng from frontend Geoapify autocomplete
+        if seller_lat is None or seller_lon is None:
+            logger.info(f"SECURITY: Product {product_id} missing lat/lng — address not verified via Geoapify — REJECTING")
+            get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                {
+                    Fields.IS_ACTIVE: False,
+                    Fields.DEACTIVATION_REASON: "Address not verified via Geoapify (missing coordinates)",
+                }
+            )
+            return
+        else:
+            # Verify coordinates match the declared address via Geoapify reverse geocoding
+            is_valid, error_reason = _verify_address_with_geoapify(
+                product_id, seller_lat, seller_lon,
+                seller_street, seller_city, seller_postal, country,
+            )
+            if not is_valid:
+                logger.info(f"SECURITY: Product {product_id} failed address verification: {error_reason} — REJECTING")
+                get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                    {
+                        Fields.IS_ACTIVE: False,
+                        Fields.DEACTIVATION_REASON: f"Address verification failed: {error_reason}",
+                    }
+                )
+                return
 
     # CRITICAL: Sanitize text fields to prevent stored XSS
     xss_patches = {}
@@ -751,7 +874,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         )
         return
 
-    # Seller address validation — sellers can be from any country
+    # Seller address validation — verify address exists via Geoapify geocoding
     seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
     country = seller_address.get(Fields.COUNTRY) or ""
     if not country:
@@ -762,6 +885,39 @@ def on_product_updated(event: firestore_fn.Event) -> None:
             }
         )
         return
+
+    # SECURITY: Validate address coordinates on updates too
+    seller_lat = seller_address.get(Fields.LATITUDE)
+    seller_lon = seller_address.get(Fields.LONGITUDE)
+    seller_street = seller_address.get(Fields.STREET, "")
+    seller_city = seller_address.get(Fields.CITY, "")
+    seller_postal = seller_address.get(Fields.POSTAL_CODE, "")
+    is_digital = product_data.get(Fields.IS_DIGITAL, False)
+
+    if not is_digital:
+        if seller_lat is None or seller_lon is None:
+            logger.info(f"SECURITY: Product {product_id} updated with missing coordinates — REJECTING")
+            get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                {
+                    Fields.IS_ACTIVE: False,
+                    Fields.DEACTIVATION_REASON: "Address not verified via Geoapify (missing coordinates)",
+                }
+            )
+            return
+        
+        is_valid, error_reason = _verify_address_with_geoapify(
+            product_id, seller_lat, seller_lon,
+            seller_street, seller_city, seller_postal, country,
+        )
+        if not is_valid:
+            logger.info(f"SECURITY: Product {product_id} updated with invalid address: {error_reason} — REJECTING")
+            get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                {
+                    Fields.IS_ACTIVE: False,
+                    Fields.DEACTIVATION_REASON: f"Address verification failed: {error_reason}",
+                }
+            )
+            return
 
     # Sanitize text fields to prevent stored XSS
     xss_patches = {}

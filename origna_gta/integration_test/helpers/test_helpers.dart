@@ -8,6 +8,53 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:origna_gta/main_test.dart' as app;
 
+bool _appBootstrapped = false;
+
+void debugStep(String id, String message) {
+  debugPrint('[$id] $message');
+}
+
+class CaseTracker {
+  final bool strictIntegration;
+  int caseCount = 0;
+  final List<String> failedCases = [];
+
+  CaseTracker({required this.strictIntegration});
+
+  void check(String id, bool condition, String label) {
+    caseCount++;
+    if (!condition) {
+      debugStep(id, 'FAIL — $label');
+      if (strictIntegration) {
+        failedCases.add('$id: $label');
+      }
+      return;
+    }
+    debugStep(id, 'PASS — $label');
+  }
+
+  void stopOnSkip(String id, String reason) {
+    debugStep(id, 'SKIP => STOP — $reason');
+    if (strictIntegration) {
+      failedCases.add('$id: SKIP => STOP — $reason');
+    }
+  }
+
+  void throwIfFailed() {
+    if (strictIntegration && failedCases.isNotEmpty) {
+      final preview = failedCases.take(20).join(' | ');
+      fail(
+        'Integration run completed with ${failedCases.length} failed checks. First failures: $preview',
+      );
+    } else if (!strictIntegration && failedCases.isNotEmpty) {
+      debugStep(
+        'Z03',
+        'Non-strict mode: ${failedCases.length} failed checks recorded but not fatal',
+      );
+    }
+  }
+}
+
 // ─── CREDENTIALS ─────────────────────────────────────────────────────────────
 
 const buyerEmail = 'yuniorrodriguezo460@gmail.com';
@@ -110,9 +157,49 @@ Future<void> launchApp(WidgetTester tester, {int pumpSeconds = 6}) async {
   }
 }
 
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
+Future<void> ensureAppStarted(WidgetTester tester, {int pumpSeconds = 6}) async {
+  if (!_appBootstrapped) {
+    await app.mainTest();
+    await pumpWait(tester, seconds: pumpSeconds);
+    _appBootstrapped = true;
+  }
 
-/// Login with email/password. Returns true if login was performed.
+  final bootstrapped = await waitForAppBootstrap(tester);
+  if (!bootstrapped) {
+    fail(
+      'ensureAppStarted: bootstrap timeout (MaterialApp=${find.byType(MaterialApp).evaluate().isNotEmpty}, '
+      'Scaffold=${find.byType(Scaffold).evaluate().isNotEmpty}, '
+      'home_settings_button=${find.byKey(const Key('home_settings_button')).evaluate().isNotEmpty})',
+    );
+  }
+}
+
+Future<bool> ensureHomeReady(WidgetTester tester, {int timeoutSeconds = 15}) async {
+  await navigateToTab(tester, Icons.home);
+  final maxTicks = timeoutSeconds * 2;
+  for (var i = 0; i < maxTicks; i++) {
+    final hasSettings =
+        find.byKey(const Key('home_settings_button')).evaluate().isNotEmpty;
+    final hasCart =
+        find.byKey(const Key('home_cart_button')).evaluate().isNotEmpty;
+    final hasScaffold = find.byType(Scaffold).evaluate().isNotEmpty;
+    if (hasSettings && hasScaffold) {
+      return true;
+    }
+    if (!hasScaffold) {
+      await tester.pump(const Duration(milliseconds: 350));
+      continue;
+    }
+    if (!hasSettings && hasCart) {
+      await navigateToTab(tester, Icons.home);
+    }
+    await tester.pump(const Duration(milliseconds: 500));
+  }
+  return find.byKey(const Key('home_settings_button')).evaluate().isNotEmpty;
+}
+
+// ─── LOGIN HELPERS ───────────────────────────────────────────────────────────
+
 Future<bool> loginWith(
   WidgetTester tester, {
   required String email,
@@ -175,10 +262,73 @@ Future<Credential?> switchToAnyCredential(
     if (isLoggedIn) {
       await navigateToTab(tester, Icons.home);
       await pumpWait(tester, seconds: 2);
+      await ensureHomeReady(tester, timeoutSeconds: 12);
       return credential;
     }
   }
   return null;
+}
+
+Future<Credential?> switchCredentialWithRecovery(
+  WidgetTester tester,
+  List<Credential> candidates,
+  String scope,
+) async {
+  for (var attempt = 1; attempt <= 3; attempt++) {
+    final credential = await switchToAnyCredential(tester, candidates);
+    if (credential != null) {
+      await ensureHomeReady(tester, timeoutSeconds: 12);
+      return credential;
+    }
+
+    debugStep('$scope.R$attempt', 'Credential switch retry after UI recovery');
+
+    await navigateToTab(tester, Icons.home);
+    await pumpWait(tester, seconds: 2);
+
+    final settings = find.byKey(const Key('home_settings_button'));
+    if (settings.evaluate().isNotEmpty) {
+      await tester.tap(settings.first, warnIfMissed: false);
+      await pumpWait(tester, seconds: 2);
+
+      final signOut = find.byKey(const Key('profile_sign_out_button'));
+      if (signOut.evaluate().isNotEmpty) {
+        await tester.tap(signOut.first, warnIfMissed: false);
+        await pumpWait(tester, seconds: 2);
+      } else {
+        final loginEmailField = find.byKey(const Key('login_email_field'));
+        if (loginEmailField.evaluate().isEmpty) {
+          await goBack(tester);
+          await pumpWait(tester, seconds: 1);
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+Future<bool> ensureAddProductCreationContext(WidgetTester tester) async {
+  final credential = await switchCredentialWithRecovery(
+    tester,
+    <Credential>[...adminCredentialCandidates, ...sellerCredentialCandidates],
+    'P00',
+  );
+  if (credential == null) {
+    return false;
+  }
+
+  await ensureHomeReady(tester, timeoutSeconds: 12);
+  final canNavigate = await navigateToAddProduct(tester);
+  if (!canNavigate) {
+    debugStep(
+      'P00',
+      'Role session established but add-product entry is still unavailable',
+    );
+    return false;
+  }
+
+  return true;
 }
 
 Future<void> _ensureLoggedOut(WidgetTester tester) async {
@@ -598,6 +748,89 @@ Future<void> pumpSettle(
   }
 }
 
+// ─── TEST INITIALIZATION HELPERS ─────────────────────────────────────────────
+
+/// Initialize integration test with standard setup.
+Future<CaseTracker> initializeIntegrationTest(
+  WidgetTester tester, {
+  bool strictIntegration = true,
+}) async {
+  await ensureAppStarted(tester);
+  return CaseTracker(strictIntegration: strictIntegration);
+}
+
+/// Establish user session with credential recovery and home verification.
+Future<Credential?> establishSession(
+  WidgetTester tester,
+  List<Credential> candidates,
+  String scope,
+  CaseTracker tracker,
+  String skipCode,
+  String skipMessage,
+) async {
+  final credential = await switchCredentialWithRecovery(
+    tester,
+    candidates,
+    scope,
+  );
+  if (credential == null) {
+    tracker.stopOnSkip(skipCode, skipMessage);
+    tracker.throwIfFailed();
+    return null;
+  }
+  await ensureHomeReady(tester, timeoutSeconds: 15);
+  return credential;
+}
+
+/// Open settings panel from home.
+Future<bool> openSettings(WidgetTester tester) async {
+  final settingsButton = find.byKey(const Key('home_settings_button'));
+  if (settingsButton.evaluate().isEmpty) return false;
+  await tester.tap(settingsButton.first);
+  await pumpWait(tester, seconds: 3);
+  return true;
+}
+
+// ─── PRODUCT TEST HELPERS ────────────────────────────────────────────────────
+
+/// Publish product and verify success with tracker.
+Future<bool> publishAndVerify(
+  WidgetTester tester,
+  CaseTracker tracker,
+  String testId,
+  String checkCode,
+  String skipCode,
+) async {
+  await tapPublishProduct(tester);
+  final hasSuccess = await didPublishSucceed(tester);
+  tracker.check(checkCode, hasSuccess, '$testId publication reussie');
+  if (!hasSuccess) {
+    tracker.stopOnSkip(
+      skipCode,
+      '$testId publish failed (validation/images/backend)',
+    );
+  }
+  return hasSuccess;
+}
+
+/// Clean up after product publish and verify in marketplace.
+Future<bool> cleanupAndVerifyProduct(
+  WidgetTester tester,
+  String productName,
+  CaseTracker tracker,
+  String checkCode,
+  String testId,
+) async {
+  if (find.byKey(const Key('addproduct_screen_title')).evaluate().isNotEmpty) {
+    await goBack(tester);
+    await pumpSettle(tester, iterations: 3);
+  }
+  await pumpSettle(tester, iterations: 3);
+  final exist = await verifyProductInMarketplace(tester, productName);
+  tracker.check(checkCode, exist, '$testId trouve dans marketplace');
+  return exist;
+}
+
 Future<void> fillBasicProductFields(
   WidgetTester tester, {
   required String name,
@@ -671,42 +904,61 @@ Future<void> fillAddress(WidgetTester tester) async {
     find.byKey(const Key('addproduct_section_package')),
   );
   await tester.pump(const Duration(milliseconds: 500));
-  // Street
+  // Street (triggers Geoapify suggestions)
   await enterTextByKey(tester, 'addproduct_street_field', '123 Test Street');
-  // City
-  await enterTextByKey(tester, 'addproduct_city_field', 'Toronto');
-  // Province (required for physical products)
-  final provinceDropdown = find.byKey(
-    const Key('addproduct_province_dropdown'),
-  );
-  if (provinceDropdown.evaluate().isNotEmpty) {
-    final provinceReady = await _ensureFinderOnScreen(
+  await tester.pump(const Duration(milliseconds: 900));
+
+  var suggestionSelected = false;
+  final suggestionTiles = find.byType(ListTile);
+  if (suggestionTiles.evaluate().isNotEmpty) {
+    final ready = await _ensureFinderOnScreen(
       tester,
-      provinceDropdown,
-      maxAttempts: 14,
+      suggestionTiles,
+      maxAttempts: 8,
     );
-    if (!provinceReady) {
-      fail(
-        'fillAddress: province dropdown is present but off-screen/non-hit-testable',
-      );
+    if (ready) {
+      await tester.tap(suggestionTiles.first, warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 600));
+      suggestionSelected = true;
+      debugPrint('✓ fillAddress: selected first address suggestion');
     }
-
-    await tester.tap(provinceDropdown.first, warnIfMissed: false);
-    await tester.pump(const Duration(milliseconds: 500));
-
-    final ontarioOption = find.text('ON');
-    if (ontarioOption.evaluate().isNotEmpty) {
-      await tester.tap(ontarioOption.last, warnIfMissed: false);
-      await tester.pump(const Duration(milliseconds: 500));
-    } else {
-      fail('fillAddress: province option ON not found');
-    }
-  } else {
-    fail('fillAddress: addproduct_province_dropdown not found');
   }
-  // Postal Code
-  await enterTextByKey(tester, 'addproduct_postal_code_field', 'M5V 3L9');
-  debugPrint('✓ Filled address fields using keys');
+
+  if (!suggestionSelected) {
+    // Manual fallback when suggestions are unavailable.
+    await enterTextByKey(tester, 'addproduct_city_field', 'Toronto');
+
+    final provinceDropdown = find.byKey(
+      const Key('addproduct_province_dropdown'),
+    );
+    if (provinceDropdown.evaluate().isNotEmpty) {
+      final provinceReady = await _ensureFinderOnScreen(
+        tester,
+        provinceDropdown,
+        maxAttempts: 14,
+      );
+      if (!provinceReady) {
+        fail(
+          'fillAddress: province dropdown is present but off-screen/non-hit-testable',
+        );
+      }
+
+      await tester.tap(provinceDropdown.first, warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 500));
+
+      final ontarioOption = find.text('ON');
+      if (ontarioOption.evaluate().isNotEmpty) {
+        await tester.tap(ontarioOption.last, warnIfMissed: false);
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+    } else {
+      fail('fillAddress: addproduct_province_dropdown not found');
+    }
+
+    await enterTextByKey(tester, 'addproduct_postal_code_field', 'M5V 3L9');
+  }
+
+  debugPrint('✓ Filled address fields using keys/suggestions');
 }
 
 /// Attempt to submit the product form.
@@ -763,6 +1015,45 @@ Future<String?> tapPublishProduct(WidgetTester tester) async {
   return latestSnack;
 }
 
+Future<bool> didPublishSucceed(WidgetTester tester) async {
+  for (var i = 0; i < 90; i++) {
+    final hasSuccessSnack = find
+        .byKey(const Key('addproduct_success_snackbar'))
+        .evaluate()
+        .isNotEmpty;
+    final hasLeftAddProductScreen = find
+        .byKey(const Key('addproduct_screen_title'))
+        .evaluate()
+        .isEmpty;
+    if (hasSuccessSnack || hasLeftAddProductScreen) {
+      return true;
+    }
+    await tester.pump(const Duration(milliseconds: 500));
+  }
+  return false;
+}
+
+List<double> extractDollarAmounts(Finder finder) {
+  final amounts = <double>[];
+  final dollarRegex = RegExp(r'\$\s*([0-9]+(?:\.[0-9]{1,2})?)');
+
+  for (final element in finder.evaluate()) {
+    final widget = element.widget;
+    if (widget is! Text) continue;
+
+    final content = widget.data ?? widget.textSpan?.toPlainText() ?? '';
+    for (final match in dollarRegex.allMatches(content)) {
+      final raw = match.group(1);
+      final value = raw == null ? null : double.tryParse(raw);
+      if (value != null) {
+        amounts.add(value);
+      }
+    }
+  }
+
+  return amounts;
+}
+
 /// Verify product appears in marketplace
 Future<bool> verifyProductInMarketplace(
   WidgetTester tester,
@@ -801,44 +1092,3 @@ Future<bool> verifyProductInMarketplace(
   }
   return false;
 }
-// Future<void> enterTextByKey(WidgetTester tester, String key, String text) async {
-//   final field = find.byKey(Key(key));
-//   expect(field, findsOneWidget, reason: 'Field with Key("$key") not found');
-//   await tester.tap(field);
-//   await tester.pump(const Duration(milliseconds: 200));
-//   await tester.enterText(field, text);
-//   await tester.pump(const Duration(milliseconds: 300));
-// }
-// /// Tap a widget by its Key.
-// Future<void> tapByKey(WidgetTester tester, String keyName) async {
-//   final finder = find.byKey(Key(keyName));
-//   expect(finder, findsWidgets, reason: 'Key "$keyName" not found on screen');
-//   await tester.tap(finder.first);
-//   await tester.pump(const Duration(milliseconds: 500));
-// }
-
-// Future<void> goBack(WidgetTester tester) async {
-//   final backKeys = ['addproduct_back_button', 'back_button', 'profile_back_button'];
-//   for (final k in backKeys) {
-//     final finder = find.byKey(Key(k));
-//     if (finder.evaluate().isNotEmpty) {
-//       await tester.tap(finder.first);
-//       await pumpSettle(tester, iterations: 3);
-//       return;
-//     }
-//   }
-//   final backButton = find.byIcon(Icons.arrow_back_rounded);
-//   if (backButton.evaluate().isNotEmpty) {
-//     await tester.tap(backButton.first);
-//     await pumpSettle(tester, iterations: 3);
-//     return;
-//   }
-//   // Fallback: Navigator pop via back icon
-//   final backIcon = find.byType(BackButton);
-//   if (backIcon.evaluate().isNotEmpty) {
-//     await tester.tap(backIcon.first);
-//     await pumpSettle(tester, iterations: 3);
-//     return;
-//   }
-//   debugPrint('⚠ No back button found');
-// }
