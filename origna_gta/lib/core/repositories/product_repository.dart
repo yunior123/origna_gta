@@ -70,7 +70,7 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Future<void> deleteProduct(String productId) async {
-    await _functions.httpsCallable('delete_product').call({Fields.productId: productId});
+    await _functions.httpsCallable(CloudFunctionEndpoints.deleteProduct).call({Fields.productId: productId});
   }
 
   @override
@@ -138,13 +138,14 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Future<String?> getUploadUrl(String fileName) async {
-    final result = await _functions.httpsCallable('get_r2_presigned_url').call({Fields.fileName: fileName});
+    // BUG: 'get_r2_presigned_url' endpoint not found in backend - verify correct endpoint name
+    final result = await _functions.httpsCallable(CloudFunctionEndpoints.getR2PresignedUrl).call({Fields.fileName: fileName});
     return result.data[Fields.uploadUrl];
   }
 
   @override
   Future<void> submitRating(String orderId, String productId, int rating) async {
-    await _functions.httpsCallable('submit_product_rating').call({Fields.orderId: orderId, Fields.productId: productId, Fields.rating: rating});
+    await _functions.httpsCallable(CloudFunctionEndpoints.submitProductRating).call({Fields.orderId: orderId, Fields.productId: productId, Fields.rating: rating});
   }
 
   @override

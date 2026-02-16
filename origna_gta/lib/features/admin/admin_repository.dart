@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
@@ -30,17 +31,17 @@ class FirebaseAdminRepository implements AdminRepository {
   Future<void> deleteProduct(String productId) async {
     // SECURITY FIX: Call Cloud Function instead of direct Firestore write
     // Backend enforces ownership, pending order checks, Algolia cleanup
-    await _functions.httpsCallable('delete_product').call({Fields.productId: productId});
+    await _functions.httpsCallable(CloudFunctionEndpoints.deleteProduct).call({Fields.productId: productId});
   }
 
   @override
   Future<void> disableAdminMfa(String code) async {
-    await _functions.httpsCallable('admin_mfa_disable').call({ApiKeys.code: code});
+    await _functions.httpsCallable(CloudFunctionEndpoints.adminMfaDisable).call({ApiKeys.code: code});
   }
 
   @override
   Future<Map<String, dynamic>> enableAdminMfa() async {
-    final result = await _functions.httpsCallable('admin_mfa_enroll').call();
+    final result = await _functions.httpsCallable(CloudFunctionEndpoints.adminMfaEnroll).call();
     return Map<String, dynamic>.from(result.data as Map);
   }
 
@@ -53,24 +54,24 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Future<Map<String, dynamic>> getPaymentProviders() async {
-    final result = await _functions.httpsCallable('get_payment_providers').call();
+    final result = await _functions.httpsCallable(CloudFunctionEndpoints.getPaymentProviders).call();
     return Map<String, dynamic>.from(result.data as Map);
   }
 
   @override
   Future<void> setUserSuspended(String userId, bool suspended) async {
     if (suspended) {
-      await _functions.httpsCallable('suspend_seller').call({Fields.sellerId: userId, ApiKeys.reason: 'Suspended by admin'});
+      await _functions.httpsCallable(CloudFunctionEndpoints.suspendSeller).call({Fields.sellerId: userId, ApiKeys.reason: 'Suspended by admin'});
     } else {
       // SECURITY FIX: Call Cloud Function instead of direct Firestore write
       // Backend enforces admin+MFA, reactivates products, logs audit
-      await _functions.httpsCallable('unsuspend_seller').call({Fields.sellerId: userId, ApiKeys.reason: 'Unsuspended by admin'});
+      await _functions.httpsCallable(CloudFunctionEndpoints.unsuspendSeller).call({Fields.sellerId: userId, ApiKeys.reason: 'Unsuspended by admin'});
     }
   }
 
   @override
   Future<void> updatePaymentProvider(String provider, bool enabled, {String? reason}) async {
-    await _functions.httpsCallable('update_payment_provider').call({
+    await _functions.httpsCallable(CloudFunctionEndpoints.updatePaymentProvider).call({
       ApiKeys.provider: provider,
       ApiKeys.enabled: enabled,
       ApiKeys.reason: reason ?? '',
@@ -81,7 +82,7 @@ class FirebaseAdminRepository implements AdminRepository {
   Future<void> updateProductStock(String productId, int quantity) async {
     // SECURITY FIX: Call Cloud Function instead of direct Firestore write
     // Backend enforces admin+MFA, validates quantity, logs audit
-    await _functions.httpsCallable('admin_update_product_stock').call({
+    await _functions.httpsCallable(CloudFunctionEndpoints.adminUpdateProductStock).call({
       Fields.productId: productId,
       Fields.stockQuantity: quantity,
     });
@@ -90,19 +91,19 @@ class FirebaseAdminRepository implements AdminRepository {
   @override
   Future<void> updateUserRoles(String userId, {List<String> add = const [], List<String> remove = const [], String? reason}) async {
     // SECURITY FIX H-1: Call Cloud Function with server-side validation
-    await _functions.httpsCallable('update_user_roles').call({Fields.targetUserId: userId, ApiKeys.add: add, ApiKeys.remove: remove, ApiKeys.reason: reason ?? 'No reason provided'});
+    await _functions.httpsCallable(CloudFunctionEndpoints.updateUserRoles).call({Fields.targetUserId: userId, ApiKeys.add: add, ApiKeys.remove: remove, ApiKeys.reason: reason ?? 'No reason provided'});
   }
 
   @override
   Future<Map<String, dynamic>> verifyAdminMfa(String code) async {
-    final result = await _functions.httpsCallable('admin_mfa_verify').call({ApiKeys.code: code});
+    final result = await _functions.httpsCallable(CloudFunctionEndpoints.adminMfaVerify).call({ApiKeys.code: code});
     return Map<String, dynamic>.from(result.data as Map);
   }
 
   @override
   Stream<List<OrderModel>> watchOrders({String? status, int limit = 50}) {
     Query query = _firestore.collection(Collections.orders).orderBy(Fields.createdAt, descending: true).limit(limit);
-    if (status != null && status != 'all') {
+    if (status != null && status != FilterValues.all) {
       query = query.where(Fields.paymentStatus, isEqualTo: status);
     }
     return query.snapshots().map((snapshot) {

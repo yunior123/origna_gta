@@ -27,7 +27,7 @@ final refreshSellerStatusProvider = FutureProvider.family.autoDispose<SellerAcco
 
   try {
     final functions = ref.read(firebaseFunctionsProvider);
-    final callable = functions.httpsCallable('get_connect_account_status');
+    final callable = functions.httpsCallable(CloudFunctionEndpoints.getConnectAccountStatus);
     final result = await callable.call();
     final data = result.data as Map<String, dynamic>;
     

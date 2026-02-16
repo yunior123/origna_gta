@@ -13,7 +13,7 @@ import 'seller_registration_state.dart';
 final paymentProviderStatusProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   try {
     final functions = ref.read(firebaseFunctionsProvider);
-    final callable = functions.httpsCallable('get_provider_status');
+    final callable = functions.httpsCallable(CloudFunctionEndpoints.getProviderStatus);
     final result = await callable.call();
     final data = Map<String, dynamic>.from(result.data as Map);
     if (data[ApiKeys.success] == true && data[ApiKeys.providers] != null) {
@@ -100,7 +100,7 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
     // We don't necessarily need to set loading here to avoid UI flickering on resume
     try {
       final functions = _ref.read(firebaseFunctionsProvider);
-      final callable = functions.httpsCallable('get_connect_account_status');
+      final callable = functions.httpsCallable(CloudFunctionEndpoints.getConnectAccountStatus);
       await callable.call();
       // The cloud function usually updates the user document, which the UI observes via userProfileProvider
     } on FirebaseFunctionsException catch (e) {
@@ -115,7 +115,7 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
     state = state.copyWith(paymentProvider: provider, error: null, successMessage: null);
     try {
       final functions = _ref.read(firebaseFunctionsProvider);
-      await functions.httpsCallable('set_payment_provider').call({ApiKeys.provider: provider});
+      await functions.httpsCallable(CloudFunctionEndpoints.updatePaymentProvider).call({ApiKeys.provider: provider});
     } catch (e) {
       state = state.copyWith(error: 'Failed to update payment provider');
     }
@@ -132,12 +132,12 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
     try {
       final functions = _ref.read(firebaseFunctionsProvider);
       if (state.paymentProvider == PaymentProviderValues.airwallex) {
-        final createAccount = functions.httpsCallable('airwallex_create_seller_account');
+        final createAccount = functions.httpsCallable(CloudFunctionEndpoints.airwallexCreateSellerAccount);
         await createAccount.call();
         state = state.copyWith(isLoading: false, successMessage: 'Airwallex account connected');
         _isOperationInProgress = false;
       } else {
-        final createAccount = functions.httpsCallable('create_connect_account');
+        final createAccount = functions.httpsCallable(CloudFunctionEndpoints.createConnectAccount);
 
         await createAccount.call();
         // Result contains account data — proceed to onboarding
@@ -169,7 +169,7 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
 
     try {
       final functions = _ref.read(firebaseFunctionsProvider);
-      final createLink = functions.httpsCallable('create_account_link');
+      final createLink = functions.httpsCallable(CloudFunctionEndpoints.createAccountLink);
 
       // Use current origin on web (works for both localhost and production)
       final String baseUrl = kIsWeb ? Uri.base.origin : 'https://orignagta.ca';

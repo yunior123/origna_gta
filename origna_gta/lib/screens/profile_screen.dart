@@ -262,7 +262,7 @@ class ProfileScreen extends ConsumerWidget {
                             _buildMenuItem(
                               context,
                               key: const Key('profile_favorites_button'),
-                              icon: Icons.favorite_outline,
+                              icon: Icons.bookmark_border_rounded,
                               title: 'favorites.my_favorites'.tr(),
                               subtitle: 'profile.your_saved_products'.tr(),
                               onTap: () => Navigator.pushNamed(

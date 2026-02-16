@@ -12,7 +12,7 @@ class FirebaseOrderRepository implements OrderRepository {
 
   @override
   Future<void> approveShippingCost(String orderId, bool approved) async {
-    await _functions.httpsCallable('approve_shipping_cost').call({
+    await _functions.httpsCallable(CloudFunctionEndpoints.approveShippingCost).call({
       Fields.orderId: orderId,
       ApiKeys.approved: approved,
     });
@@ -20,12 +20,12 @@ class FirebaseOrderRepository implements OrderRepository {
 
   @override
   Future<void> capturePayment(String orderId) async {
-    await _functions.httpsCallable('capture_payment').call({Fields.orderId: orderId});
+    await _functions.httpsCallable(CloudFunctionEndpoints.capturePayment).call({Fields.orderId: orderId});
   }
 
   @override
   Future<void> confirmReceipt(String orderId, List<String> itemIds) async {
-    await _functions.httpsCallable('confirm_order_receipt').call({
+    await _functions.httpsCallable(CloudFunctionEndpoints.confirmOrderReceipt).call({
       Fields.orderId: orderId,
       ApiKeys.itemIds: itemIds,
     });
@@ -33,7 +33,7 @@ class FirebaseOrderRepository implements OrderRepository {
 
   @override
   Future<Map<String, dynamic>> createCheckoutSession(Map<String, dynamic> orderData) async {
-    final callable = _functions.httpsCallable('create_checkout_session');
+    final callable = _functions.httpsCallable(CloudFunctionEndpoints.createCheckoutSession);
     final response = await callable.call(orderData);
     return Map<String, dynamic>.from(response.data);
   }
@@ -47,7 +47,7 @@ class FirebaseOrderRepository implements OrderRepository {
 
   @override
   Future<void> updateItemStatus(String orderId, String itemId, String status, {String? trackingNumber, String? carrier}) async {
-    await _functions.httpsCallable('update_item_status').call({
+    await _functions.httpsCallable(CloudFunctionEndpoints.updateItemStatus).call({
       Fields.orderId: orderId,
       Fields.productId: itemId,
       Fields.status: status,
@@ -67,7 +67,7 @@ class FirebaseOrderRepository implements OrderRepository {
 
   @override
   Future<void> updateShippingCost(String orderId, double newShippingCost, String reason) async {
-    await _functions.httpsCallable('update_shipping_cost').call({
+    await _functions.httpsCallable(CloudFunctionEndpoints.updateShippingCost).call({
       Fields.orderId: orderId,
       ApiKeys.newShippingCost: newShippingCost,
       ApiKeys.reason: reason,

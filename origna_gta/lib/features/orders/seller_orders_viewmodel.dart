@@ -1,5 +1,7 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'seller_orders_state.dart';
 
@@ -30,7 +32,7 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
       } catch (captureError) {
         state = state.copyWith(
           isLoading: false,
-          errorMessage: AppError.getMessage(captureError, 'Shipping updated but payment capture failed. Please retry capture.'),
+          errorMessage: AppError.getMessage(captureError, 'seller.shipping_capture_failed'.tr()),
         );
         return;
       }
@@ -41,8 +43,8 @@ class SellerOrdersViewModel extends StateNotifier<SellerOrdersState> {
           // Update the first item with tracking info (seller ships entire order)
           await repository.updateItemStatus(
             orderId,
-            'all', // Convention: 'all' means entire order
-            'shipped',
+            OrderItemIdValues.all,
+            OrderStatusValues.shipped,
             trackingNumber: trackingNumber,
           );
         } catch (_) {

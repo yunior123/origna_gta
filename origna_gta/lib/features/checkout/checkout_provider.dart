@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
@@ -123,11 +124,11 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     } on CircuitBreakerOpenException catch (_) {
       // Algolia/service is temporarily unavailable
       state = state.copyWith(
-        shippingError: 'Shipping calculation temporarily unavailable. Please try again.',
+        shippingError: 'checkout.errors.shipping_unavailable'.tr(),
         isCalculatingShipping: false,
       );
     } catch (e) {
-      state = state.copyWith(shippingError: 'Failed to calculate shipping', isCalculatingShipping: false);
+      state = state.copyWith(shippingError: 'checkout.errors.shipping_calc_failed'.tr(), isCalculatingShipping: false);
     }
   }
 

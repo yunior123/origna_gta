@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:origna_gta/main_test.dart' as app;
 
+import 'helpers/test_helpers.dart';
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -14,14 +16,11 @@ void main() {
   testWidgets('Flutter Web E2E - Complete App Test', (WidgetTester tester) async {
     // Launch app once
     await app.mainTest();
-    // Use pump instead of pumpAndSettle to avoid timeout from
-    // persistent animations/timers (Firebase, Riverpod, etc.)
-    for (int i = 0; i < 10; i++) {
-      await tester.pump(const Duration(seconds: 1));
-    }
+    final bootstrapped = await waitForAppBootstrap(tester);
+    expect(bootstrapped, isTrue, reason: 'App bootstrap timeout');
 
     // ===== 1. App launches successfully =====
-    expect(find.byType(MaterialApp), findsOneWidget);
+    expect(find.byType(MaterialApp), findsWidgets);
     debugPrint('✓ App launches successfully');
 
     // ===== 2. Home page displays correctly =====

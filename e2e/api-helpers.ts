@@ -18,14 +18,59 @@
  */
 
 // ════════════════════════════════════════════════════════════════════
-// CONFIGURATION — Single source of truth for all emulator URLs
+// CONFIGURATION — Environment-aware URLs
 // ════════════════════════════════════════════════════════════════════
 
-export const AUTH_EMULATOR = 'http://localhost:9099';
-export const FIRESTORE_EMULATOR = 'http://localhost:8080';
-export const FUNCTIONS_EMULATOR = 'http://localhost:5001';
-export const WEB_APP_URL = 'http://localhost:5005';
-export const PROJECT_ID = 'orignagta';
+// Detect test environment: 'emulator' (default), 'dev', 'staging', 'production'
+const TEST_ENV = (process.env.TEST_ENVIRONMENT || 'emulator').toLowerCase();
+
+// Build environment-specific URLs
+const getEnvironmentConfig = () => {
+  switch (TEST_ENV) {
+    case 'dev':
+      return {
+        auth: 'https://identitytoolkit.googleapis.com',  // Cloud Auth
+        firestore: 'https://firestore.googleapis.com',    // Cloud Firestore
+        functions: 'https://us-central1-orignagta-dev.cloudfunctions.net',
+        webApp: 'https://orignagta-dev.web.app',
+        projectId: 'orignagta-dev',
+      };
+    case 'staging':
+      return {
+        auth: 'https://identitytoolkit.googleapis.com',  // Cloud Auth
+        firestore: 'https://firestore.googleapis.com',    // Cloud Firestore
+        functions: 'https://us-central1-orignagta-staging.cloudfunctions.net',
+        webApp: 'https://orignagta-staging.web.app',
+        projectId: 'orignagta-staging',
+      };
+    case 'production':
+      return {
+        auth: 'https://identitytoolkit.googleapis.com',  // Cloud Auth
+        firestore: 'https://firestore.googleapis.com',    // Cloud Firestore
+        functions: 'https://us-central1-orignagta.cloudfunctions.net',
+        webApp: 'https://orignagta.web.app',
+        projectId: 'orignagta',
+      };
+    case 'emulator':
+    default:
+      return {
+        auth: 'http://localhost:9099',
+        firestore: 'http://localhost:8080',
+        functions: 'http://localhost:5001',
+        webApp: 'http://localhost:5005',
+        projectId: 'orignagta',
+      };
+  }
+};
+
+const envConfig = getEnvironmentConfig();
+
+export const AUTH_EMULATOR = envConfig.auth;
+export const FIRESTORE_EMULATOR = envConfig.firestore;
+export const FUNCTIONS_EMULATOR = envConfig.functions;
+export const WEB_APP_URL = envConfig.webApp;
+export const PROJECT_ID = envConfig.projectId;
+export const TEST_ENVIRONMENT = TEST_ENV;
 
 /** Firestore REST API base path */
 export const FIRESTORE_BASE = `${FIRESTORE_EMULATOR}/v1/projects/${PROJECT_ID}/databases/(default)/documents`;

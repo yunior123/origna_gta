@@ -118,10 +118,19 @@ class AppConfig:
 
     # Canonical CORS origins — use this list in all handlers
     CORS_ORIGINS: list[str] = [
+        # Production
         "https://orignagta.ca",
         "https://www.orignagta.ca",
         "https://orignagta.web.app",
         "https://orignagta.firebaseapp.com",
+        # Dev & Staging Firebase hosting
+        "https://orignagta-dev.web.app",
+        "https://orignagta-dev.firebaseapp.com",
+        "https://orignagta-staging.web.app",
+        "https://orignagta-staging.firebaseapp.com",
+        # Local development (Firebase Emulator & Flutter Web)
+        "http://localhost:5005",      # Firebase Emulator hosting / Flutter Web
+        "http://localhost:5001",      # Firebase Functions (for preflight checks)
     ]
 
 

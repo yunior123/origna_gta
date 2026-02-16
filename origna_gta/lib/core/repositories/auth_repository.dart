@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -44,8 +45,8 @@ class FirebaseAuthRepository implements AuthRepository {
     if (user == null) return;
 
     // Call the collective delete function which handles Firestore, Auth, and Stripe
-    await _functions.httpsCallable('delete_account').call({
-      Fields.confirmation: 'DELETE_MY_ACCOUNT',
+    await _functions.httpsCallable(CloudFunctionEndpoints.deleteAccount).call({
+      Fields.confirmation: ConfirmationValues.deleteMyAccount,
     });
   }
 
@@ -387,14 +388,14 @@ class FirebaseAuthRepository implements AuthRepository {
         Fields.consentTimestamp: now,
         Fields.termsAcceptedAt: now,
         Fields.privacyAcceptedAt: now,
-        Fields.consentMethod: 'signup',
+        Fields.consentMethod: ConsentMethodValues.signup,
         Fields.dataProcessingConsent: true,
         Fields.emailConsent: true,
         // FIX #7-8: Add missing PIPEDA fields (version tracking + granular marketing opt-in)
         Fields.marketingOptIn: false, // CASL requires explicit opt-in, default false
-        Fields.privacyPolicyVersion: '1.0',
-        Fields.termsVersion: '1.0',
-        Fields.preferredLanguage: 'en', // Bill 96 — track user language preference
+        Fields.privacyPolicyVersion: PolicyVersionValues.defaultVersion,
+        Fields.termsVersion: PolicyVersionValues.defaultVersion,
+        Fields.preferredLanguage: LanguageValues.english, // Bill 96 — track user language preference
       });
     } else {
       final data = docSnapshot.data();

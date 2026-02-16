@@ -87,11 +87,11 @@ class EnvConfig {
   }
 
   /// R2 Storage paths based on environment
-  String get r2ProductsFolder => (isEmulator || isDev) ? 'emulator/products' : (isStaging ? 'staging/products' : 'products');
-  String get r2UsersFolder => (isEmulator || isDev) ? 'emulator/users' : (isStaging ? 'staging/users' : 'users');
+  String get r2ProductsFolder => isEmulator ? 'emulator/products' : (isDev ? 'dev/products' : (isStaging ? 'staging/products' : 'products'));
+  String get r2UsersFolder => isEmulator ? 'emulator/users' : (isDev ? 'dev/users' : (isStaging ? 'staging/users' : 'users'));
   
   /// Algolia index name based on environment
-  String get algoliaIndexName => (isEmulator || isDev) ? 'products_emulator' : (isStaging ? 'products_staging' : 'products');
+  String get algoliaIndexName => isEmulator ? 'products_emulator' : (isDev ? 'products_dev' : (isStaging ? 'products_staging' : 'products'));
 
   /// Get environment display name
   String get displayName {

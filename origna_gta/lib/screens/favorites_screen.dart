@@ -64,7 +64,7 @@ class FavoritesScreen extends ConsumerWidget {
           data: (products) {
             if (products.isEmpty) {
               return AnimatedEmptyState(
-                icon: Icons.favorite_outline_rounded,
+                icon: Icons.bookmark_border_rounded,
                 title: 'favorites.empty_favorites'.tr(),
                 subtitle: 'favorites.empty_favorites_desc'.tr(),
               );

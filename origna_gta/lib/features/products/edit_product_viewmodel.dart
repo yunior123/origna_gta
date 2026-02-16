@@ -1,8 +1,10 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
 import 'package:origna_gta/utils/utils.dart';
 
@@ -13,10 +15,6 @@ final editProductViewModelProvider = StateNotifierProvider.autoDispose.family<Ed
 });
 
 class EditProductViewModel extends StateNotifier<EditProductState> {
-  static const String _standardType = 'standard';
-  static const String _expressType = 'express';
-  static const String _sameDayType = 'same_day';
-
   final Ref _ref;
   final models.Product _product;
 
@@ -28,12 +26,12 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           isPerishable: _product.isPerishable,
           isDigital: _product.isDigital,
           existingImageUrls: List.from(_product.imageUrls),
-          selectedProvince: _product.sellerAddress.state.isNotEmpty ? _product.sellerAddress.state : 'ON',
+          selectedProvince: _product.sellerAddress.state.isNotEmpty ? _product.sellerAddress.state : ProvinceCodeValues.ontario,
           latitude: _product.sellerAddress.latitude,
           longitude: _product.sellerAddress.longitude,
-          standardEnabled: _product.deliveryOptions.any((o) => o.type == _standardType),
-          expressEnabled: _product.deliveryOptions.any((o) => o.type == _expressType),
-          sameDayEnabled: _product.deliveryOptions.any((o) => o.type == _sameDayType),
+          standardEnabled: _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.standard),
+          expressEnabled: _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.express),
+          sameDayEnabled: _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.sameDay),
           minimumOrderQuantity: _product.minimumOrderQuantity,
           freeShipping: _product.freeShipping,
         ),
@@ -85,7 +83,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     freeShipping: value ? true : state.freeShipping,
     isPerishable: value ? false : state.isPerishable,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
-    standardEnabled: value ? false : _product.deliveryOptions.any((o) => o.type == _standardType),
+    standardEnabled: value ? false : _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.standard),
     expressEnabled: value ? false : state.expressEnabled,
     sameDayEnabled: value ? false : state.sameDayEnabled,
   );
@@ -127,7 +125,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       return;
     }
     if (price <= 0) {
-      state = state.copyWith(errorMessage: 'Price must be greater than 0');
+      state = state.copyWith(errorMessage: 'product.please_enter_price'.tr());
       return;
     }
     if (price > 100000) {
@@ -199,7 +197,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           city: city,
           state: state.selectedProvince,
           postalCode: postalCode.toUpperCase(),
-          country: 'Canada', // Default for now — sellers can be from any country, UI supports CA addresses
+          country: CountryValues.canada, // Default for now — sellers can be from any country, UI supports CA addresses
           latitude: state.latitude,
           longitude: state.longitude,
         ),

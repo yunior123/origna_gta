@@ -1,4 +1,5 @@
 import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 
 /// Sentinel to explicitly clear nullable fields in copyWith.
 const _sentinel = Object();
@@ -28,7 +29,7 @@ class AddProductState {
   AddProductState({
     this.isLoading = false,
     this.isLocalDeliveryOnly = false,
-    this.selectedProvince = 'ON',
+    this.selectedProvince = ProvinceCodeValues.ontario,
     this.latitude,
     this.longitude,
     this.imageModels = const [],

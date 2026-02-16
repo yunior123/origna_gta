@@ -273,7 +273,44 @@
     "need_account_access": "You need an account to access this page.",
     "sign_in_cart_required": "You need to sign in to add items to your cart.",
     "sign_in_settings_required": "You need to sign in to access settings",
-    "sign_in_favorites_required": "You need to sign in to add favorites"
+    "sign_in_favorites_required": "You need to sign in to add favorites",
+    "errors": {
+      "user_not_found": "No account found with this email.",
+      "wrong_password": "Incorrect password. Please try again.",
+      "invalid_credential": "Invalid email or password. Please try again.",
+      "invalid_email": "The email address is not valid.",
+      "user_disabled": "This account has been disabled. Contact support.",
+      "too_many_requests": "Too many failed attempts. Please try again later.",
+      "email_already_in_use": "This email is already registered. Try logging in.",
+      "weak_password": "Password is too weak. Use at least 8 characters.",
+      "operation_not_allowed": "This sign-in method is not enabled.",
+      "network_error": "Network error. Please check your connection.",
+      "account_exists_different_credential": "An account already exists with this email using a different sign-in method.",
+      "authentication_failed": "Authentication failed. Please try again.",
+      "generic_error": "An error occurred. Please try again.",
+      "lockout_message": "Too many attempts. Try again in {minutes}m.",
+      "google_signin_failed": "Google sign-in failed. Please try again.",
+      "profile_setup_failed": "Sign-in succeeded but profile setup failed. Please try again.",
+      "account_creation_failed": "Account creation failed. Please check your name format (2-60 characters, letters, spaces, hyphens, apostrophes, periods).",
+      "email_verification_required": "Please verify your email first. A verification link has been sent to {email}.",
+      "registration_success": "Registration successful! Verification email sent to {email}."
+    },
+    "validation": {
+      "password_min_8": "Password must be at least 8 characters",
+      "password_uppercase": "Password must contain uppercase letter",
+      "password_lowercase": "Password must contain lowercase letter",
+      "password_number": "Password must contain number",
+      "password_special": "Password must contain special character (!@#$%^&*...)",
+      "password_common": "Password is too common. Choose a stronger password",
+      "email_required_validation": "Email is required",
+      "email_too_short": "Email is too short",
+      "email_too_long": "Email is too long",
+      "email_invalid_validation": "Please enter a valid email address",
+      "name_required_validation": "Name is required",
+      "name_too_short": "Name must be at least 2 characters",
+      "name_too_long": "Name must be less than 60 characters",
+      "name_invalid_format": "Name can only contain letters, spaces, hyphens, apostrophes, and periods"
+    }
   },
   "home": {
     "tagline": "Your marketplace for buying and selling across the Greater Toronto Area and all of Canada.",
@@ -644,7 +681,9 @@
     "errors": {
       "payment_failed": "Payment failed. Please try again.",
       "invalid_address": "Invalid shipping address.",
-      "stock_issue": "Some items are out of stock."
+      "stock_issue": "Some items are out of stock.",
+      "shipping_calc_failed": "Failed to calculate shipping",
+      "shipping_unavailable": "Shipping calculation temporarily unavailable. Please try again."
     }
   },
   "orders": {
@@ -823,6 +862,7 @@
     "shipping_approved": "Shipping approved",
     "order_cancelled": "Order cancelled",
     "failed_update_approval": "Failed to update shipping approval",
+    "shipping_capture_failed": "Shipping updated but payment capture failed. Please retry capture.",
     "cancel_order_title": "Cancel Order?",
     "cancel_order_body": "Rejecting the shipping cost will cancel your order. The payment authorization will be released and you will not be charged.",
     "yes_cancel_order": "Yes, Cancel Order",
@@ -974,6 +1014,7 @@
     "good": "Good",
     "very_good": "Very Good",
     "excellent": "Excellent",
+    "invalid_range": "Rating must be between 1 and 5",
     "cancel_label": "Cancel rating",
     "submit_label": "Submit rating",
     "star_label": "Rate {count} out of 5 stars"

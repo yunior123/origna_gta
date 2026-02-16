@@ -81,7 +81,7 @@ class AlgoliaProductRepository implements ProductRepository {
   @override
   Future<void> deleteProduct(String productId) async {
     // AUDIT FIX: Use Cloud Function for deletion — validates pending orders, syncs Algolia, etc.
-    await _functions.httpsCallable('delete_product').call({Fields.productId: productId});
+    await _functions.httpsCallable(CloudFunctionEndpoints.deleteProduct).call({Fields.productId: productId});
   }
 
   @override
@@ -185,7 +185,7 @@ class AlgoliaProductRepository implements ProductRepository {
   ) async {
     // Call backend Cloud Function for secure rating submission
     // Backend validates: auth, ownership, delivery status, duplicate check
-    await _functions.httpsCallable('submit_product_rating').call({
+    await _functions.httpsCallable(CloudFunctionEndpoints.submitProductRating).call({
       Fields.orderId: orderId,
       Fields.productId: productId,
       Fields.rating: rating,

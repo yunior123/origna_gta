@@ -177,7 +177,7 @@ class AlgoliaConfig:
         if IS_EMULATOR:
             return "products_emulator"
         elif CURRENT_ENV == Environment.DEV:
-            return "products_emulator" # Use emulator index for Dev to save complication, or separate 'products_dev'
+            return "products_dev"
         elif CURRENT_ENV == Environment.STAGING:
             return "products_staging"
         return "products"

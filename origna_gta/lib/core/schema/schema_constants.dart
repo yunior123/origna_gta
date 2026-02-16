@@ -468,6 +468,18 @@ abstract final class OrderStatusValues {
   static const terminalStates = {cancelled, refunded};
 }
 
+/// Filter sentinel values — special values used in query filters to mean "no filter"
+abstract final class FilterValues {
+  /// Special filter value meaning "show all items regardless of status"
+  static const all = 'all';
+}
+
+/// Confirmation values for sensitive operations requiring explicit confirmation
+abstract final class ConfirmationValues {
+  /// Confirmation string for account deletion
+  static const deleteMyAccount = 'DELETE_MY_ACCOUNT';
+}
+
 /// Centralized per-item delivery status transitions.
 /// Must match schema_constants.py DeliveryItemStatusTransitions.VALID_TRANSITIONS.
 abstract final class DeliveryItemStatusTransitions {
@@ -477,6 +489,13 @@ abstract final class DeliveryItemStatusTransitions {
     DeliveryStatusValues.delivered: [DeliveryStatusValues.refunded],
     DeliveryStatusValues.refunded: [], // Terminal
   };
+}
+
+/// Special values for itemId parameter in updateItemStatus.
+/// Convention: 'all' means apply the status change to the entire order (all items).
+abstract final class OrderItemIdValues {
+  /// Apply status change to all items in the order
+  static const all = 'all';
 }
 
 /// Valid values for paymentStatus field
@@ -632,6 +651,19 @@ abstract final class ProductStatusValues {
   static const outOfStock = 'out_of_stock';
 
   static const all = {draft, active, paused, archived, outOfStock};
+}
+
+/// Valid values for country fields
+abstract final class CountryValues {
+  static const canada = 'Canada';
+  static const canadaCode = 'CA';
+
+  static const all = {canada, canadaCode};
+}
+
+/// Canadian province code values
+abstract final class ProvinceCodeValues {
+  static const ontario = 'ON';
 }
 
 /// Valid values for supplier platform types
@@ -872,4 +904,84 @@ abstract final class ApiKeys {
   // === SHIPPING RESPONSE KEYS ===
   static const allItemsShipped = 'allItemsShipped';
   static const approvalRequired = 'approvalRequired';
+}
+
+// =============================================================================
+// CLOUD FUNCTION ENDPOINTS - Single source of truth for all Firebase callable names
+// =============================================================================
+
+/// Cloud Function endpoint names. Update here ONLY if backend function names change.
+/// Prevents endpoint name drift between frontend and backend.
+abstract final class CloudFunctionEndpoints {
+  // === AUTH ENDPOINTS ===
+  static const deleteAccount = 'delete_account';
+
+  // === ADMIN ENDPOINTS ===
+  static const updateUserRoles = 'update_user_roles';
+  static const suspendSeller = 'suspend_seller';
+  static const unsuspendSeller = 'unsuspend_seller';
+  static const adminUpdateProductStock = 'admin_update_product_stock';
+  static const adminMfaEnroll = 'admin_mfa_enroll';
+  static const adminMfaVerify = 'admin_mfa_verify';
+  static const adminMfaDisable = 'admin_mfa_disable';
+
+  // === PRODUCT ENDPOINTS ===
+  static const deleteProduct = 'delete_product';
+  static const getR2PresignedUrl = 'get_r2_presigned_url';
+  static const submitProductRating = 'submit_product_rating';
+
+  // === ORDER ENDPOINTS ===
+  static const confirmOrderReceipt = 'confirm_order_receipt';
+  static const updateOrderStatus = 'update_order_status';
+  static const updateItemStatus = 'update_item_status';
+  static const cancelOrder = 'cancel_order';
+  static const refundOrderItem = 'refund_order_item';
+  static const approveShippingCost = 'approve_shipping_cost';
+  static const updateShippingCost = 'update_shipping_cost';
+
+  // === PAYMENT ENDPOINTS ===
+  static const createCheckoutSession = 'create_checkout_session';
+  static const verifyCartPrices = 'verify_cart_prices';
+  static const capturePayment = 'capture_payment';
+  static const createConnectAccount = 'create_connect_account';
+  static const createAccountLink = 'create_account_link';
+  static const getConnectAccountStatus = 'get_connect_account_status';
+  static const getPaymentProviders = 'get_payment_providers';
+  static const updatePaymentProvider = 'update_payment_provider';
+  static const getProviderStatus = 'get_provider_status';
+
+  // === AIRWALLEX ENDPOINTS ===
+  static const airwallexCreateSellerAccount = 'airwallex_create_seller_account';
+  static const airwallexProcessPayment = 'airwallex_process_payment';
+  static const airwallexCapturePayment = 'airwallex_capture_payment';
+}
+
+// =============================================================================
+// SYSTEM VALUES - Default values and system constants (not user-facing)
+// =============================================================================
+
+/// Default policy/terms version numbers
+abstract final class PolicyVersionValues {
+  static const defaultVersion = '1.0';
+}
+
+/// Language preference defaults (ISO 639-1 codes)
+abstract final class LanguageValues {
+  static const english = 'en';
+  static const french = 'fr';
+}
+
+/// Firebase RemoteConfig keys
+abstract final class RemoteConfigKeys {
+  static const algoliaAppId = 'algolia_app_id';
+  static const algoliaSearchApiKey = 'algolia_search_api_key';
+  static const geoapifyApiKey = 'geoapify_api_key';
+  static const imageBaseUrl = 'image_base_url';
+  static const sentryDnsKey = 'sentry_dns';
+}
+
+/// User-facing UI messages
+abstract final class UIMessages {
+  static const sessionExpired = 'Session expired due to inactivity. Please login again.';
+  static const sessionExpiredTitle = 'Session Expired';
 }

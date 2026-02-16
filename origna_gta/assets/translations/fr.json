@@ -273,7 +273,44 @@
     "need_account_access": "Vous avez besoin d'un compte pour accéder à cette page.",
     "sign_in_cart_required": "Vous devez vous connecter pour ajouter des articles à votre panier.",
     "sign_in_settings_required": "Vous devez vous connecter pour accéder aux paramètres",
-    "sign_in_favorites_required": "Vous devez vous connecter pour ajouter des favoris"
+    "sign_in_favorites_required": "Vous devez vous connecter pour ajouter des favoris",
+    "errors": {
+      "user_not_found": "Aucun compte trouvé avec cet e-mail.",
+      "wrong_password": "Mot de passe incorrect. Veuillez réessayer.",
+      "invalid_credential": "E-mail ou mot de passe invalide. Veuillez réessayer.",
+      "invalid_email": "L'adresse e-mail n'est pas valide.",
+      "user_disabled": "Ce compte a été désactivé. Contactez le support.",
+      "too_many_requests": "Trop de tentatives échouées. Veuillez réessayer plus tard.",
+      "email_already_in_use": "Cet e-mail est déjà enregistré. Essayez de vous connecter.",
+      "weak_password": "Le mot de passe est trop faible. Utilisez au moins 8 caractères.",
+      "operation_not_allowed": "Cette méthode de connexion n'est pas activée.",
+      "network_error": "Erreur réseau. Veuillez vérifier votre connexion.",
+      "account_exists_different_credential": "Un compte existe déjà avec cet e-mail en utilisant une méthode de connexion différente.",
+      "authentication_failed": "L'authentification a échoué. Veuillez réessayer.",
+      "generic_error": "Une erreur s'est produite. Veuillez réessayer.",
+      "lockout_message": "Trop de tentatives. Réessayez dans {minutes}m.",
+      "google_signin_failed": "La connexion Google a échoué. Veuillez réessayer.",
+      "profile_setup_failed": "La connexion a réussi mais la configuration du profil a échouée. Veuillez réessayer.",
+      "account_creation_failed": "La création du compte a échoué. Veuillez vérifier votre format de nom (2-60 caractères, lettres, espaces, tirets, apostrophes, points).",
+      "email_verification_required": "Veuillez d'abord vérifier votre e-mail. Un lien de vérification a été envoyé à {email}.",
+      "registration_success": "Inscription réussie! Un e-mail de vérification a été envoyé à {email}."
+    },
+    "validation": {
+      "password_min_8": "Le mot de passe doit contenir au moins 8 caractères",
+      "password_uppercase": "Le mot de passe doit contenir une lettre majuscule",
+      "password_lowercase": "Le mot de passe doit contenir une lettre minuscule",
+      "password_number": "Le mot de passe doit contenir un chiffre",
+      "password_special": "Le mot de passe doit contenir un caractère spécial (!@#$%^&*...)",
+      "password_common": "Le mot de passe est trop commun. Choisissez un mot de passe plus fort",
+      "email_required_validation": "L'e-mail est requis",
+      "email_too_short": "L'e-mail est trop court",
+      "email_too_long": "L'e-mail est trop long",
+      "email_invalid_validation": "Veuillez entrer une adresse e-mail valide",
+      "name_required_validation": "Le nom est requis",
+      "name_too_short": "Le nom doit contenir au moins 2 caractères",
+      "name_too_long": "Le nom doit contenir moins de 60 caractères",
+      "name_invalid_format": "Le nom ne peut contenir que des lettres, des espaces, des tirets, des apostrophes et des points"
+    }
   },
   "home": {
     "tagline": "Votre marché pour acheter et vendre dans la région du Grand Toronto et partout au Canada.",
@@ -644,7 +681,9 @@
     "errors": {
       "payment_failed": "Le paiement a échoué. Veuillez réessayer.",
       "invalid_address": "Adresse de livraison invalide.",
-      "stock_issue": "Certains articles sont en rupture de stock."
+      "stock_issue": "Certains articles sont en rupture de stock.",
+      "shipping_calc_failed": "Impossible de calculer les frais de livraison",
+      "shipping_unavailable": "Le calcul de la livraison est temporairement indisponible. Veuillez réessayer."
     }
   },
   "orders": {
@@ -823,6 +862,7 @@
     "shipping_approved": "Livraison approuvée",
     "order_cancelled": "Commande annulée",
     "failed_update_approval": "Échec de la mise à jour de l'approbation de livraison",
+    "shipping_capture_failed": "Livraison mise à jour mais capture de paiement échouée. Veuillez réessayer la capture.",
     "cancel_order_title": "Annuler la commande ?",
     "cancel_order_body": "Le rejet des frais de livraison annulera votre commande. L'autorisation de paiement sera libérée et vous ne serez pas facturé.",
     "yes_cancel_order": "Oui, annuler la commande",
@@ -974,6 +1014,7 @@
     "good": "Bon",
     "very_good": "Très bon",
     "excellent": "Excellent",
+    "invalid_range": "L'évaluation doit être entre 1 et 5",
     "cancel_label": "Annuler l'évaluation",
     "submit_label": "Soumettre l'évaluation",
     "star_label": "Évaluer à {count} étoiles sur 5"

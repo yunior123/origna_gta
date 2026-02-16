@@ -159,8 +159,8 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                             child: Padding(
                               padding: EdgeInsets.all(isCompact ? 6 : 8),
                               child: Icon(
-                                isFavorite ? Icons.favorite : Icons.favorite_border,
-                                color: isFavorite ? DesignTokens.error : DesignTokens.textSecondary,
+                                isFavorite ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                color: isFavorite ? DesignTokens.primary : DesignTokens.textSecondary,
                                 size: favIconSize,
                               ),
                             ),

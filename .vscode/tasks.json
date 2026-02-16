@@ -265,6 +265,22 @@
 			"problemMatcher": [],
 			"group": "build"
 		},
+		{
+			"label": "Flutter: Integration Test (Hard Timeout 15m)",
+			"type": "shell",
+			"command": "python3 ${workspaceFolder}/scripts/run_flutter_integration_with_timeout.py --timeout 900",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "flutter"
+			}
+		},
 		// =====================================================================
 		// DEPLOYMENT
 		// =====================================================================

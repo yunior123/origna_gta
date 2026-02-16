@@ -166,7 +166,7 @@ extension PaymentStatusExtension on PaymentStatus {
       case PaymentStatus.refunded:
         return 'Refunded';
       case PaymentStatus.sessionExpired:
-        return 'Session Expired';
+        return UIMessages.sessionExpiredTitle;
       case PaymentStatus.cancelled:
         return 'Cancelled';
       case PaymentStatus.authorizationExpired:

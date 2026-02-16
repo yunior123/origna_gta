@@ -16,6 +16,42 @@ const sellerPassword = 'REDACTED_TEST_PASSWORD';
 const adminEmail = 'yr62813@gmail.com';
 const adminPassword = 'REDACTED_TEST_PASSWORD';
 
+class Credential {
+  final String label;
+  final String email;
+  final String password;
+
+  const Credential({
+    required this.label,
+    required this.email,
+    required this.password,
+  });
+}
+
+const buyerCredentialCandidates = <Credential>[
+  Credential(
+    label: '[buyer]',
+    email: 'yuniorrodriguezo460@gmail.com',
+    password: 'REDACTED_TEST_PASSWORD',
+  ),
+];
+
+const sellerCredentialCandidates = <Credential>[
+  Credential(
+    label: '[buyer,seller]',
+    email: 'yuniorrodriguezo4601@yahoo.com',
+    password: 'REDACTED_TEST_PASSWORD',
+  ),
+];
+
+const adminCredentialCandidates = <Credential>[
+  Credential(
+    label: '[buyer,seller,admin]',
+    email: 'yr62813@gmail.com',
+    password: 'REDACTED_TEST_PASSWORD',
+  ),
+];
+
 // ─── PUMP HELPERS ────────────────────────────────────────────────────────────
 
 /// Pump N frames with a short delay.
@@ -36,12 +72,45 @@ Future<void> pumpWait(WidgetTester tester, {int seconds = 3}) async {
   }
 }
 
+Future<bool> waitForAppBootstrap(
+  WidgetTester tester, {
+  int timeoutSeconds = 180,
+}) async {
+  final materialApp = find.byType(MaterialApp);
+  final scaffold = find.byType(Scaffold);
+  final homeSettings = find.byKey(const Key('home_settings_button'));
+
+  final maxTicks = timeoutSeconds * 2;
+  for (var i = 0; i < maxTicks; i++) {
+    final hasMaterialApp = materialApp.evaluate().isNotEmpty;
+    final hasScaffold = scaffold.evaluate().isNotEmpty;
+    final hasHomeSettings = homeSettings.evaluate().isNotEmpty;
+
+    if (hasMaterialApp && (hasScaffold || hasHomeSettings)) {
+      return true;
+    }
+
+    await tester.pump(const Duration(milliseconds: 500));
+  }
+
+  return false;
+}
+
 // ─── APP LIFECYCLE ───────────────────────────────────────────────────────────
 
 /// Launch app and wait for it to settle.
 Future<void> launchApp(WidgetTester tester, {int pumpSeconds = 6}) async {
   await app.mainTest();
   await pumpWait(tester, seconds: pumpSeconds);
+
+  final bootstrapped = await waitForAppBootstrap(tester);
+  if (!bootstrapped) {
+    fail(
+      'launchApp: bootstrap timeout (MaterialApp=${find.byType(MaterialApp).evaluate().isNotEmpty}, '
+      'Scaffold=${find.byType(Scaffold).evaluate().isNotEmpty}, '
+      'home_settings_button=${find.byKey(const Key('home_settings_button')).evaluate().isNotEmpty})',
+    );
+  }
 }
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
@@ -90,6 +159,121 @@ Future<bool> loginWith(
   await tester.tap(loginButton);
   await pumpWait(tester, seconds: 5);
   return true;
+}
+
+bool isAdminAccountEmail(String email) {
+  final lower = email.toLowerCase();
+  return adminCredentialCandidates
+      .map((credential) => credential.email.toLowerCase())
+      .contains(lower);
+}
+
+Future<Credential?> switchToAnyCredential(
+  WidgetTester tester,
+  List<Credential> credentials,
+) async {
+  for (final credential in credentials) {
+    await _ensureLoggedOut(tester);
+    final isLoggedIn = await _tryLoginFromHomeSettings(tester, credential);
+    if (isLoggedIn) {
+      await navigateToTab(tester, Icons.home);
+      await pumpWait(tester, seconds: 2);
+      return credential;
+    }
+  }
+  return null;
+}
+
+Future<void> _ensureLoggedOut(WidgetTester tester) async {
+  await navigateToTab(tester, Icons.home);
+  await pumpWait(tester, seconds: 2);
+
+  final settingsButton = find.byKey(const Key('home_settings_button'));
+  if (settingsButton.evaluate().isEmpty) return;
+
+  await tester.tap(settingsButton.first);
+  await pumpWait(tester, seconds: 2);
+
+  final signOutButton = find.byKey(const Key('profile_sign_out_button'));
+  if (signOutButton.evaluate().isNotEmpty) {
+    final signOutReady = await _ensureFinderOnScreen(tester, signOutButton);
+    if (!signOutReady) {
+      fail('switchToAnyCredential: sign out button present but off-screen/non-hit-testable');
+    }
+    await tester.tap(signOutButton.first, warnIfMissed: false);
+    await pumpWait(tester, seconds: 3);
+    return;
+  }
+
+  final loginDialogSignIn = find.byKey(
+    const Key('login_dialog_sign_in_button'),
+  );
+  if (loginDialogSignIn.evaluate().isNotEmpty) {
+    return;
+  }
+
+  final loginEmailField = find.byKey(const Key('login_email_field'));
+  if (loginEmailField.evaluate().isNotEmpty) {
+    return;
+  }
+
+  await goBack(tester);
+  await pumpWait(tester, seconds: 1);
+}
+
+Future<bool> _tryLoginFromHomeSettings(
+  WidgetTester tester,
+  Credential credential,
+) async {
+  await navigateToTab(tester, Icons.home);
+  await pumpWait(tester, seconds: 1);
+
+  final settingsButton = find.byKey(const Key('home_settings_button'));
+  if (settingsButton.evaluate().isEmpty) return false;
+
+  await tester.tap(settingsButton.first);
+  await pumpWait(tester, seconds: 2);
+
+  final usedPopup = await handleSignInPopup(
+    tester,
+    email: credential.email,
+    password: credential.password,
+  );
+
+  if (!usedPopup) {
+    final loginEmailField = find.byKey(const Key('login_email_field'));
+    final loginPasswordField = find.byKey(const Key('login_password_field'));
+    final submitButton = find.byKey(const Key('login_submit_button'));
+
+    if (loginEmailField.evaluate().isNotEmpty &&
+        loginPasswordField.evaluate().isNotEmpty &&
+        submitButton.evaluate().isNotEmpty) {
+      await enterTextByKey(tester, 'login_email_field', credential.email);
+      await enterTextByKey(tester, 'login_password_field', credential.password);
+      await tester.tap(submitButton.first);
+      await pumpWait(tester, seconds: 4);
+    }
+  }
+
+  await navigateToTab(tester, Icons.home);
+  await pumpWait(tester, seconds: 1);
+
+  final verifySettingsButton = find.byKey(const Key('home_settings_button'));
+  if (verifySettingsButton.evaluate().isEmpty) return false;
+
+  await tester.tap(verifySettingsButton.first);
+  await pumpWait(tester, seconds: 2);
+
+  final signedIn = find
+      .byKey(const Key('profile_sign_out_button'))
+      .evaluate()
+      .isNotEmpty;
+  if (signedIn) {
+    await goBack(tester);
+    await pumpWait(tester, seconds: 1);
+  }
+
+  return signedIn;
 }
 
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
@@ -191,6 +375,20 @@ Future<void> goBack(WidgetTester tester) async {
       return;
     }
   }
+  final materialBackButton = find.byType(BackButton);
+  if (materialBackButton.evaluate().isNotEmpty) {
+    await tester.tap(materialBackButton.first, warnIfMissed: false);
+    await pumpWait(tester);
+    return;
+  }
+
+  final closeButton = find.byType(CloseButton);
+  if (closeButton.evaluate().isNotEmpty) {
+    await tester.tap(closeButton.first, warnIfMissed: false);
+    await pumpWait(tester);
+    return;
+  }
+
   for (final k in [
     'addproduct_back_button',
     'back_button',
@@ -203,6 +401,13 @@ Future<void> goBack(WidgetTester tester) async {
       return;
     }
   }
+
+  try {
+    await tester.pageBack();
+    await pumpWait(tester, seconds: 2);
+    return;
+  } catch (_) {}
+
   debugPrint('⚠ No back button found');
 }
 
@@ -260,6 +465,11 @@ Future<void> checkProfileSubPage(
   String buttonKey,
   String label,
 ) async {
+  if (buttonKey == 'profile_terms_button' || buttonKey.contains('terms')) {
+    debugPrint('$label SKIP: External terms/policy page intentionally not tapped in E2E');
+    return;
+  }
+
   final btn = find.byKey(Key(buttonKey));
   if (btn.evaluate().isEmpty) {
     debugPrint('$label SKIP: Button not found');
@@ -273,6 +483,15 @@ Future<void> checkProfileSubPage(
   debugPrint('$label ✓ Screen loaded');
   await goBack(tester);
   await pumpWait(tester);
+
+  final profileAnchor = find.byKey(const Key('profile_my_orders_button'));
+  final homeSettings = find.byKey(const Key('home_settings_button'));
+  if (profileAnchor.evaluate().isEmpty && homeSettings.evaluate().isEmpty) {
+    try {
+      await tester.pageBack();
+      await pumpWait(tester, seconds: 2);
+    } catch (_) {}
+  }
 }
 
 Future<bool> handleSignInPopup(
@@ -335,11 +554,44 @@ Future<void> fillBasicProductFields(
   required String price,
   String description = 'Integration test product',
   String stock = '10',
+  String categoryItemKey = 'category_item_categories.electronics',
 }) async {
   await enterTextByKey(tester, 'product_name_field', name);
   await enterTextByKey(tester, 'product_description_field', description);
   await enterTextByKey(tester, 'product_price_field', price);
   await enterTextByKey(tester, 'product_stock_field', stock);
+
+  final categorySelector = find.byKey(const Key('addproduct_category_selector'));
+  if (categorySelector.evaluate().isNotEmpty) {
+    final categoryReady = await _ensureFinderOnScreen(
+      tester,
+      categorySelector,
+      maxAttempts: 14,
+    );
+    if (!categoryReady) {
+      fail('fillBasicProductFields: category selector is present but off-screen/non-hit-testable');
+    }
+
+    await tester.tap(categorySelector.first, warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final categoryItem = find.byKey(Key(categoryItemKey));
+    if (categoryItem.evaluate().isNotEmpty) {
+      await tester.tap(categoryItem.first, warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 500));
+    } else {
+      final fallbackOption = find.textContaining('Elect');
+      if (fallbackOption.evaluate().isNotEmpty) {
+        await tester.tap(fallbackOption.first, warnIfMissed: false);
+        await tester.pump(const Duration(milliseconds: 500));
+      } else {
+        fail('fillBasicProductFields: no selectable category option found in dropdown');
+      }
+    }
+  } else {
+    fail('fillBasicProductFields: addproduct_category_selector not found');
+  }
+
   debugPrint('✓ Filled basic fields: $name / \$$price / stock=$stock');
 }
 
@@ -379,6 +631,16 @@ Future<void> tapPublishProduct(WidgetTester tester) async {
   }
   await tester.tap(submitBtn.first);
   await pumpSettle(tester, iterations: 8);
+
+  final errorSnackText = find.descendant(
+    of: find.byType(SnackBar),
+    matching: find.byType(Text),
+  );
+  if (errorSnackText.evaluate().isNotEmpty) {
+    final textWidget = tester.widget<Text>(errorSnackText.first);
+    final msg = textWidget.data ?? textWidget.textSpan?.toPlainText() ?? 'unknown error';
+    debugPrint('⚠ Publish snackbar: $msg');
+  }
 }
 
 /// Verify product appears in marketplace

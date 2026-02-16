@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -26,7 +27,7 @@ class ProductRatingViewModel extends StateNotifier<ProductRatingState> {
   Future<bool> submitRating(String orderId, String productId, int rating) async {
     if (state.isLoading) return false;
     if (rating < 1 || rating > 5) {
-      state = state.copyWith(errorMessage: 'Rating must be between 1 and 5');
+      state = state.copyWith(errorMessage: 'rating.invalid_range'.tr());
       return false;
     }
     state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);

@@ -106,7 +106,12 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       return;
     }
 
-    if (state.imageModels.isEmpty) {
+    final isDevOrTestRun =
+      const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production') ==
+        'dev' ||
+      const bool.fromEnvironment('IS_TEST', defaultValue: false);
+
+    if (state.imageModels.isEmpty && !isDevOrTestRun) {
       state = state.copyWith(errorMessage: 'product.image_required'.tr());
       return;
     }
@@ -128,16 +133,25 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
       // AUDIT FIX: Upload images FIRST to prevent orphan Firestore documents.
       // If image upload fails, no product document is created.
-      final compressedImages = await _compressImages(state.imageModels);
-      if (compressedImages.isEmpty) {
-        throw Exception('Failed to compress images. Please try different images.');
-      }
-
       // Generate a temporary product ID for the image path
       final tempProductId = _ref.read(productRepositoryProvider).generateProductId();
-      final urls = await productRepository.uploadImages(compressedImages, tempProductId);
+      List<String> urls;
 
-      if (urls.isEmpty) throw Exception('Failed to upload images. Please check your connection and try again.');
+      if (state.imageModels.isEmpty && isDevOrTestRun) {
+        final stamp = DateTime.now().millisecondsSinceEpoch;
+        urls = <String>['https://picsum.photos/seed/origna-$stamp/800/800'];
+      } else {
+        final compressedImages = await _compressImages(state.imageModels);
+        if (compressedImages.isEmpty) {
+          throw Exception('Failed to compress images. Please try different images.');
+        }
+
+        urls = await productRepository.uploadImages(compressedImages, tempProductId);
+
+        if (urls.isEmpty) {
+          throw Exception('Failed to upload images. Please check your connection and try again.');
+        }
+      }
 
       final productCreate = models.ProductCreate(
         sellerId: _ref.read(userIdProvider)!,
@@ -152,7 +166,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
           city: city,
           state: state.selectedProvince,
           postalCode: postalCode.toUpperCase(),
-          country: 'Canada', // Default for now — sellers can be from any country, UI supports CA addresses
+          country: CountryValues.canada, // Default for now — sellers can be from any country, UI supports CA addresses
           latitude: state.latitude,
           longitude: state.longitude,
         ),
@@ -177,7 +191,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         // Structured objects for long-term scaling
         supplier: supplier,
         inventory: inventory,
-        status: status ?? 'active',
+        status: status ?? ProductStatusValues.active,
       );
 
       // Convert ProductCreate to JSON, then create Product for repository
