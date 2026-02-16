@@ -290,7 +290,7 @@ class AlgoliaProductRepository implements ProductRepository {
     if (kDebugMode) debugPrint('[AlgoliaProductRepository] Fallback Snapshot length: ${snapshot.docs.length}');
     final products = snapshot.docs
         .map((doc) {
-           if (kDebugMode) debugPrint('[AlgoliaProductRepository] Doc ${doc.id} data: ${doc.data()}');
+           if (kDebugMode) debugPrint('[AlgoliaProductRepository] Doc ${doc.id} name: ${doc.data()['name']}');
            return Product.fromFirestore(doc);
         })
         .toList();

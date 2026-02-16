@@ -81,7 +81,7 @@ service cloud.firestore {
         (addr.state is string && addr.state.size() <= 50) &&
         (addr.postalCode is string && addr.postalCode.size() <= 15) &&
         (addr.country is string && addr.country.size() <= 56) &&
-        (addr.phoneNumber == null || (addr.phoneNumber is string && addr.phoneNumber.matches('^\d{10,15}$'))) &&
+        (addr.phoneNumber == null || (addr.phoneNumber is string && addr.phoneNumber.matches('^\\d{10,15}$'))) &&
         (addr.isDefault == null || addr.isDefault is bool) &&
         (addr.label == null || isStringWithLen(addr.label, 1, 30)) &&
         (addr.latitude == null || (addr.latitude is number && addr.latitude >= -90 && addr.latitude <= 90)) &&

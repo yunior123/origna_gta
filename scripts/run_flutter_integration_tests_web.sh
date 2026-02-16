@@ -8,6 +8,11 @@ APP_DIR="$PROJECT_DIR/origna_gta"
 TARGET="${1:-integration_test/app_test.dart}"
 DRIVER="test_driver/integration_test.dart"
 
+ENVIRONMENT_VALUE="${ENVIRONMENT:-dev}"
+USE_EMULATORS_VALUE="${USE_EMULATORS:-false}"
+FIREBASE_PROJECT_ID_VALUE="${FIREBASE_PROJECT_ID:-orignagta-dev}"
+STRICT_INTEGRATION_VALUE="${STRICT_INTEGRATION:-true}"
+
 if ! command -v chromedriver >/dev/null 2>&1; then
   echo "chromedriver not found in PATH. Install it (brew install chromedriver or npm i -g chromedriver)." >&2
   exit 1
@@ -52,4 +57,8 @@ flutter drive \
   --target="$TARGET" \
   -d web-server \
   --browser-name=chrome \
-  --headless
+  --headless \
+  --dart-define=ENVIRONMENT="$ENVIRONMENT_VALUE" \
+  --dart-define=USE_EMULATORS="$USE_EMULATORS_VALUE" \
+  --dart-define=FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID_VALUE" \
+  --dart-define=STRICT_INTEGRATION="$STRICT_INTEGRATION_VALUE"

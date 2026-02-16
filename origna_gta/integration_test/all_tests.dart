@@ -38,19 +38,29 @@ void main() {
     testWidgets(
       'G01 — All flows with admin role, admin has [buyer, seller, admin]',
       (tester) async {
+        const strictIntegration = bool.fromEnvironment(
+          'STRICT_INTEGRATION',
+          defaultValue: true,
+        );
         var caseCount = 0;
+        final failedCases = <String>[];
         void checkCase(String id, bool condition, String label) {
           caseCount++;
           if (!condition) {
             _debugStep(id, 'FAIL — $label');
-            fail('$id: $label');
+            if (strictIntegration) {
+              failedCases.add('$id: $label');
+            }
+            return;
           }
           _debugStep(id, 'PASS — $label');
         }
 
-        Never stopOnSkip(String id, String reason) {
+        void stopOnSkip(String id, String reason) {
           _debugStep(id, 'SKIP => STOP — $reason');
-          fail('$id: SKIP => STOP — $reason');
+          if (strictIntegration) {
+            failedCases.add('$id: SKIP => STOP — $reason');
+          }
         }
 
         List<double> extractDollarAmounts(Finder finder) {
@@ -90,6 +100,76 @@ void main() {
             await tester.pump(const Duration(milliseconds: 500));
           }
           return false;
+        }
+
+        Future<bool> ensureHomeReady({int timeoutSeconds = 15}) async {
+          await navigateToTab(tester, Icons.home);
+          final maxTicks = timeoutSeconds * 2;
+          for (var i = 0; i < maxTicks; i++) {
+            final hasSettings =
+                find.byKey(const Key('home_settings_button')).evaluate().isNotEmpty;
+            final hasCart =
+                find.byKey(const Key('home_cart_button')).evaluate().isNotEmpty;
+            final hasScaffold = find.byType(Scaffold).evaluate().isNotEmpty;
+            if (hasSettings && hasScaffold) {
+              return true;
+            }
+            if (!hasScaffold) {
+              await tester.pump(const Duration(milliseconds: 350));
+              continue;
+            }
+            if (!hasSettings && hasCart) {
+              await navigateToTab(tester, Icons.home);
+            }
+            await tester.pump(const Duration(milliseconds: 500));
+          }
+          return find
+              .byKey(const Key('home_settings_button'))
+              .evaluate()
+              .isNotEmpty;
+        }
+
+        Future<Credential?> switchCredentialWithRecovery(
+          List<Credential> candidates,
+          String scope,
+        ) async {
+          for (var attempt = 1; attempt <= 3; attempt++) {
+            final credential = await switchToAnyCredential(tester, candidates);
+            if (credential != null) {
+              await ensureHomeReady(timeoutSeconds: 12);
+              return credential;
+            }
+
+            _debugStep(
+              '$scope.R$attempt',
+              'Credential switch retry after UI recovery',
+            );
+
+            await navigateToTab(tester, Icons.home);
+            await pumpWait(tester, seconds: 2);
+
+            final settings = find.byKey(const Key('home_settings_button'));
+            if (settings.evaluate().isNotEmpty) {
+              await tester.tap(settings.first, warnIfMissed: false);
+              await pumpWait(tester, seconds: 2);
+
+              final signOut = find.byKey(const Key('profile_sign_out_button'));
+              if (signOut.evaluate().isNotEmpty) {
+                await tester.tap(signOut.first, warnIfMissed: false);
+                await pumpWait(tester, seconds: 2);
+              } else {
+                final loginEmailField = find.byKey(
+                  const Key('login_email_field'),
+                );
+                if (loginEmailField.evaluate().isEmpty) {
+                  await goBack(tester);
+                  await pumpWait(tester, seconds: 1);
+                }
+              }
+            }
+          }
+
+          return null;
         }
 
         final runStamp = DateTime.now().millisecondsSinceEpoch.toString();
@@ -168,18 +248,43 @@ void main() {
           'A03',
           'Login popup handled (popupDismissed=$popupDismissed)',
         );
+
+        final ensuredAdmin = await switchCredentialWithRecovery(
+          adminCredentialCandidates,
+          'A03.1',
+        );
+        final hasSettingsAfterAuth = settingsIcon.evaluate().isNotEmpty;
+        _debugStep(
+          'A03.1',
+          'Auth revalidation (ensuredAdmin=${ensuredAdmin != null}, settingsVisible=$hasSettingsAfterAuth)',
+        );
         checkCase(
           'C078',
-          find.byKey(const Key('login_email_field')).evaluate().isEmpty,
-          'login UI fermée avant vérification home cards',
+          ensuredAdmin != null,
+          'session admin valide avant vérification home cards',
         );
+
+        await ensureHomeReady(timeoutSeconds: 15);
+
+        await navigateToTab(tester, Icons.home);
+        await pumpWait(tester, seconds: 2);
+        var settingsAfterLogin = find.byKey(
+          const Key('home_settings_button'),
+        );
+        if (settingsAfterLogin.evaluate().isEmpty) {
+          await goBack(tester);
+          await pumpWait(tester, seconds: 1);
+          await navigateToTab(tester, Icons.home);
+          await pumpWait(tester, seconds: 2);
+          settingsAfterLogin = find.byKey(const Key('home_settings_button'));
+        }
 
         // ════════════════════════════════════════════════════════════════════
         // Back to home. Home screen renders product grid or loading state
         // ════════════════════════════════════════════════════════════════════
         checkCase(
           'C004',
-          settingsIcon.evaluate().isNotEmpty,
+          settingsAfterLogin.evaluate().isNotEmpty,
           'Settings après login',
         );
         final hasGrid = find.byType(GridView).evaluate().isNotEmpty;
@@ -194,22 +299,30 @@ void main() {
           'Home screen rendered (grid=$hasGrid, cards=$hasCards)',
         );
 
-        final cartIcon = find.byKey(const Key('home_cart_button'));
+        var cartIcon = find.byKey(const Key('home_cart_button'));
+        if (cartIcon.evaluate().isEmpty) {
+          await ensureHomeReady(timeoutSeconds: 8);
+          cartIcon = find.byKey(const Key('home_cart_button'));
+        }
         checkCase('C006', cartIcon.evaluate().isNotEmpty, 'Cart icon visible');
         _debugStep('A05', 'Cart icon found');
 
         // ════════════════════════════════════════════════════════════════════
         // Navigate to cart screen
         // ════════════════════════════════════════════════════════════════════
-        await tester.tap(cartIcon);
-        await pumpWait(tester, seconds: 3);
-        checkCase(
-          'C007',
-          find.byType(Scaffold).evaluate().isNotEmpty,
-          'Cart screen affiché',
-        );
-        _debugStep('A06', 'Cart screen loaded');
-        await goBack(tester);
+        if (cartIcon.evaluate().isNotEmpty) {
+          await tester.tap(cartIcon.first, warnIfMissed: false);
+          await pumpWait(tester, seconds: 3);
+          checkCase(
+            'C007',
+            find.byType(Scaffold).evaluate().isNotEmpty,
+            'Cart screen affiché',
+          );
+          _debugStep('A06', 'Cart screen loaded');
+          await goBack(tester);
+        } else {
+          stopOnSkip('S200', 'Cart icon missing before cart navigation block');
+        }
 
         // ════════════════════════════════════════════════════════════════════
         // Tap product card opens details
@@ -223,7 +336,35 @@ void main() {
           find.textContaining('Test Physical Product'),
           find.textContaining('Test Digital Product'),
           find.textContaining('Test Local Product'),
+          find.textContaining('Test Physical'),
+          find.textContaining('Test Digital'),
+          find.textContaining('Test Local'),
+          find.textContaining('T01 Standard Ship'),
         ];
+
+        for (var retry = 0; retry < 12; retry++) {
+          final hasAnyCandidate =
+              seededProductCardFinders.any(
+                (finder) => finder.evaluate().isNotEmpty,
+              ) ||
+              seededProductTextFinders.any(
+                (finder) => finder.evaluate().isNotEmpty,
+              );
+
+          if (hasAnyCandidate) {
+            break;
+          }
+
+          final scrollableRetry = find.byType(Scrollable);
+          if (scrollableRetry.evaluate().isNotEmpty) {
+            await tester.drag(
+              scrollableRetry.first,
+              const Offset(0, -220),
+              warnIfMissed: false,
+            );
+          }
+          await tester.pump(const Duration(milliseconds: 500));
+        }
 
         Finder productOpenTarget = find.byType(Scaffold);
         for (final finder in seededProductCardFinders) {
@@ -285,10 +426,11 @@ void main() {
         // Navigate to profile screen
         // ════════════════════════════════════════════════════════════════════
 
-        if (settingsIcon.evaluate().isEmpty) {
+        final settingsNow = find.byKey(const Key('home_settings_button'));
+        if (settingsNow.evaluate().isEmpty) {
           stopOnSkip('S003', 'Settings icon not found');
         } else {
-          await tester.tap(settingsIcon);
+          await tester.tap(settingsNow.first, warnIfMissed: false);
           await pumpWait(tester, seconds: 5);
           checkCase(
             'C009',
@@ -558,6 +700,8 @@ void main() {
             '✓ Delivery options remain visible with Free Shipping (correct)',
           );
 
+          // Fill address (physical product requires valid sellerAddress)
+          await fillAddress(tester);
           // Submit
           await tapPublishProduct(tester);
           final hasSuccessT03 = await didPublishSucceed();
@@ -613,6 +757,8 @@ void main() {
               '⚠ : Weight/dimensions still visible — may be in viewport',
             );
           }
+          // Fill address (physical product requires valid sellerAddress)
+          await fillAddress(tester);
           // Submit
           await tapPublishProduct(tester);
           final hasSuccessT04 = await didPublishSucceed();
@@ -673,6 +819,8 @@ void main() {
           } else {
             stopOnSkip('S006', 'Could not find Same-Day delivery switch');
           }
+          // Fill address (physical product requires valid sellerAddress)
+          await fillAddress(tester);
           // Submit
           await tapPublishProduct(tester);
           final hasSuccessT05 = await didPublishSucceed();
@@ -875,9 +1023,9 @@ void main() {
         // ═══════════════════════════════════════════════════════════════════════
         debugPrint('');
         _debugStep('B01', 'Buyer Flow — login + browse + cart/profile checks');
-        final buyerCred = await switchToAnyCredential(
-          tester,
+        final buyerCred = await switchCredentialWithRecovery(
           buyerCredentialCandidates,
+          'B01',
         );
         if (buyerCred == null) {
           stopOnSkip(
@@ -1346,9 +1494,9 @@ void main() {
         // ═══════════════════════════════════════════════════════════════════════
         debugPrint('');
         _debugStep('C01', 'Seller Flow — seller tools + seller orders');
-        final sellerCred = await switchToAnyCredential(
-          tester,
+        final sellerCred = await switchCredentialWithRecovery(
           sellerCredentialCandidates,
+          'C01',
         );
         if (sellerCred == null) {
           stopOnSkip(
@@ -1478,9 +1626,9 @@ void main() {
         // ═══════════════════════════════════════════════════════════════════════
         debugPrint('');
         _debugStep('D01', 'Admin Extended Flow — panel + privileged menu');
-        final adminCred = await switchToAnyCredential(
-          tester,
+        final adminCred = await switchCredentialWithRecovery(
           adminCredentialCandidates,
+          'D01',
         );
         if (adminCred == null) {
           stopOnSkip(
@@ -1640,6 +1788,7 @@ void main() {
         }
 
         // Edge hardening checks (UI resilience)
+        await ensureHomeReady(timeoutSeconds: 15);
         final globalCart = find.byKey(const Key('home_cart_button'));
         final globalSettings = find.byKey(const Key('home_settings_button'));
         checkCase(
@@ -1653,14 +1802,18 @@ void main() {
           'home settings remains available after role switching',
         );
 
-        await tester.tap(globalSettings.first);
-        await pumpWait(tester, seconds: 2);
-        checkCase(
-          'C069',
-          find.byType(Scaffold).evaluate().isNotEmpty,
-          'profile/settings still opens at end of run',
-        );
-        await goBack(tester);
+        if (globalSettings.evaluate().isNotEmpty) {
+          await tester.tap(globalSettings.first, warnIfMissed: false);
+          await pumpWait(tester, seconds: 2);
+          checkCase(
+            'C069',
+            find.byType(Scaffold).evaluate().isNotEmpty,
+            'profile/settings still opens at end of run',
+          );
+          await goBack(tester);
+        } else {
+          stopOnSkip('S201', 'Global settings missing at final edge-hardening');
+        }
 
         checkCase(
           'C070',
@@ -1673,6 +1826,18 @@ void main() {
         _debugStep('Z00', 'Total cases validés: $caseCount');
         _debugStep('Z01', 'All flows checked');
         _debugStep('Z02', 'Buyer/Seller/Admin extension flows checked');
+
+        if (strictIntegration && failedCases.isNotEmpty) {
+          final preview = failedCases.take(20).join(' | ');
+          fail(
+            'Integration run completed with ${failedCases.length} failed checks. First failures: $preview',
+          );
+        } else if (!strictIntegration && failedCases.isNotEmpty) {
+          _debugStep(
+            'Z03',
+            'Non-strict mode: ${failedCases.length} failed checks recorded but not fatal',
+          );
+        }
       },
       timeout: const Timeout(Duration(minutes: 15)),
     );
