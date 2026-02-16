@@ -103,10 +103,58 @@ Future<void> navigateToTab(WidgetTester tester, IconData icon) async {
   }
 }
 
+Future<bool> _ensureFinderOnScreen(
+  WidgetTester tester,
+  Finder finder, {
+  int maxAttempts = 16,
+}) async {
+  if (finder.evaluate().isEmpty) return false;
+
+  try {
+    await tester.ensureVisible(finder.first);
+    await tester.pump(const Duration(milliseconds: 150));
+  } catch (_) {}
+
+  bool isOnScreen() {
+    if (finder.evaluate().isEmpty) return false;
+    final center = tester.getCenter(finder.first, warnIfMissed: false);
+    final logicalSize =
+        tester.view.physicalSize / tester.view.devicePixelRatio;
+    return center.dx >= 0 &&
+        center.dy >= 0 &&
+        center.dx <= logicalSize.width &&
+        center.dy <= logicalSize.height;
+  }
+
+  if (isOnScreen()) return true;
+
+  final scrollable = find.byType(Scrollable);
+  if (scrollable.evaluate().isEmpty) return false;
+
+  for (var i = 0; i < maxAttempts; i++) {
+    final direction = i < (maxAttempts ~/ 2) ? -280.0 : 280.0;
+    await tester.drag(scrollable.first, Offset(0, direction));
+    await tester.pump(const Duration(milliseconds: 220));
+    if (finder.evaluate().isNotEmpty) {
+      try {
+        await tester.ensureVisible(finder.first);
+        await tester.pump(const Duration(milliseconds: 120));
+      } catch (_) {}
+    }
+    if (isOnScreen()) return true;
+  }
+
+  return false;
+}
+
 /// Tap a widget by Key name. Returns true if found and tapped.
 Future<bool> tapByKey(WidgetTester tester, String keyName) async {
   final finder = find.byKey(Key(keyName));
   if (finder.evaluate().isNotEmpty) {
+    final ready = await _ensureFinderOnScreen(tester, finder);
+    if (!ready) {
+      fail('tapByKey: widget "$keyName" is present but off-screen/non-hit-testable');
+    }
     await tester.tap(finder.first);
     await pumpFor(tester, frames: 5, ms: 100);
     return true;
@@ -122,7 +170,11 @@ Future<void> enterTextByKey(
 ) async {
   final field = find.byKey(Key(key));
   if (field.evaluate().isNotEmpty) {
-    await tester.tap(field);
+    final ready = await _ensureFinderOnScreen(tester, field);
+    if (!ready) {
+      fail('enterTextByKey: field "$key" is present but off-screen/non-hit-testable');
+    }
+    await tester.tap(field.first);
     await tester.pump(const Duration(milliseconds: 200));
     await tester.enterText(field, text);
     await pumpFor(tester, frames: 3, ms: 100);
@@ -161,15 +213,44 @@ Future<void> scrollUntilVisible(
   double delta = -300,
   int maxScrolls = 20,
 }) async {
-  final scrollable = find.byType(Scrollable);
-  if (scrollable.evaluate().isEmpty) return;
+  final scrollables = find.byType(Scrollable).evaluate().toList();
+  if (scrollables.isEmpty) return;
+
+  Finder? activeScrollable;
+  for (final element in scrollables) {
+    final candidate = find.byElementPredicate((e) => e == element);
+    final onScreen = await _ensureFinderOnScreen(
+      tester,
+      candidate,
+      maxAttempts: 1,
+    );
+    if (onScreen) {
+      activeScrollable = candidate;
+      break;
+    }
+  }
+
+  activeScrollable ??= find.byElementPredicate((e) => e == scrollables.first);
+
+  if (finder.evaluate().isNotEmpty) {
+    final ready = await _ensureFinderOnScreen(tester, finder, maxAttempts: 6);
+    if (ready) return;
+  }
+
   for (var i = 0; i < maxScrolls; i++) {
     if (finder.evaluate().isNotEmpty) {
-      final ro = finder.evaluate().first.renderObject;
-      if (ro != null && ro.paintBounds.height > 0) return;
+      final ready = await _ensureFinderOnScreen(tester, finder, maxAttempts: 3);
+      if (ready) return;
     }
-    await tester.drag(scrollable.first, Offset(0, delta));
+    await tester.drag(activeScrollable.first, Offset(0, delta), warnIfMissed: false);
     await tester.pump(const Duration(milliseconds: 500));
+  }
+
+  if (finder.evaluate().isNotEmpty) {
+    final ready = await _ensureFinderOnScreen(tester, finder, maxAttempts: 12);
+    if (!ready) {
+      fail('scrollUntilVisible: target is present but still off-screen/non-hit-testable');
+    }
   }
 }
 
@@ -228,7 +309,11 @@ Future<bool> navigateToAddProduct(WidgetTester tester) async {
     return false;
   }
 
-  await tester.tap(addBtn.first, warnIfMissed: false);
+  final ready = await _ensureFinderOnScreen(tester, addBtn);
+  if (!ready) {
+    fail('navigateToAddProduct: add product button is present but off-screen/non-hit-testable');
+  }
+  await tester.tap(addBtn.first);
   await pumpSettle(tester, iterations: 5);
   debugPrint('✓ Navigated to Add Product screen');
   return true;
@@ -261,6 +346,10 @@ Future<void> fillBasicProductFields(
 Future<void> tapGlassToggle(WidgetTester tester, String identifier) async {
   final keyFinder = find.byKey(Key(identifier));
   expect(keyFinder, findsWidgets, reason: 'Toggle Key "$identifier" not found');
+  final ready = await _ensureFinderOnScreen(tester, keyFinder);
+  if (!ready) {
+    fail('tapGlassToggle: toggle "$identifier" is present but off-screen/non-hit-testable');
+  }
   await tester.tap(keyFinder.first);
   await tester.pump(const Duration(milliseconds: 500));
 }
@@ -284,9 +373,11 @@ Future<void> fillAddress(WidgetTester tester) async {
 /// Attempt to submit the product form.
 Future<void> tapPublishProduct(WidgetTester tester) async {
   final submitBtn = find.byKey(const Key('addproduct_submit_button'));
-  await scrollUntilVisible(tester, submitBtn);
-  await tester.pump(const Duration(milliseconds: 300));
-  await tester.tap(submitBtn);
+  final ready = await _ensureFinderOnScreen(tester, submitBtn, maxAttempts: 20);
+  if (!ready) {
+    fail('tapPublishProduct: submit button is present but off-screen/non-hit-testable');
+  }
+  await tester.tap(submitBtn.first);
   await pumpSettle(tester, iterations: 8);
 }
 

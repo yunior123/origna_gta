@@ -32,6 +32,7 @@ void _debugStep(String id, String message) {
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  WidgetController.hitTestWarningShouldBeFatal = true;
   app.main();
   group('G00 — Role-based grouped integration flows', () {
     testWidgets(
@@ -309,6 +310,15 @@ void main() {
               'Retour depuis sous-page profile OK',
             );
             debugPrint(' ✓ Back navigation');
+
+            // Ensure we are back on Home before seller/admin-only checks.
+            await goBack(tester);
+            await pumpWait(tester, seconds: 2);
+            checkCase(
+              'C079',
+              find.byKey(const Key('home_settings_button')).evaluate().isNotEmpty,
+              'Retour Home explicite après flow profile',
+            );
           } else {
             stopOnSkip('S004', 'Orders button not found in profile');
           }
@@ -419,6 +429,10 @@ void main() {
           final digitalBanner = find.byKey(
             const Key('addproduct_digital_info_banner'),
           );
+          if (digitalBanner.evaluate().isEmpty) {
+            await tapGlassToggle(tester, 'addproduct_digital_toggle');
+            await tester.pump(const Duration(milliseconds: 500));
+          }
           checkCase(
             'C013',
             digitalBanner.evaluate().isNotEmpty,
@@ -700,8 +714,16 @@ void main() {
               const Key('addproduct_express_delivery_card'),
             );
             if (expressSwitch.evaluate().isNotEmpty) {
-              await tester.tap(expressSwitch.first);
-              await tester.pump(const Duration(milliseconds: 500));
+              final tappedExpress = await tapByKey(
+                tester,
+                'addproduct_express_delivery_card',
+              );
+              if (!tappedExpress) {
+                stopOnSkip(
+                  'S018',
+                  'Express delivery card not tappable/visible',
+                );
+              }
               debugPrint('✓ T09: Express Delivery enabled');
             } else {
               debugPrint('⚠ T09: Could not find Express switch');
@@ -715,8 +737,16 @@ void main() {
               const Key('addproduct_same_day_delivery_card'),
             );
             if (sameDaySwitch2.evaluate().isNotEmpty) {
-              await tester.tap(sameDaySwitch2.first);
-              await tester.pump(const Duration(milliseconds: 500));
+              final tappedSameDay = await tapByKey(
+                tester,
+                'addproduct_same_day_delivery_card',
+              );
+              if (!tappedSameDay) {
+                stopOnSkip(
+                  'S019',
+                  'Same-day delivery card not tappable/visible',
+                );
+              }
               debugPrint('✓ T09: Same-Day Delivery also enabled');
             }
 

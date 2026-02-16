@@ -621,6 +621,7 @@
     "no_address_title": "Aucune adresse de livraison",
     "no_address_desc": "Veuillez ajouter une adresse de livraison pour continuer le paiement",
     "order_summary_title": "Résumé de la commande",
+    "estimated_delivery": "Livraison estimée",
     "estimated_shipping": "Livraison estimée",
     "shipping_confirmed_by_seller": "Livraison confirmée par le vendeur",
     "estimated_total": "Total estimé",

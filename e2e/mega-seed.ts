@@ -1,5 +1,5 @@
 /**
- * Mega Seed Script — 76 Users, 30 Products, Multi-Seller Carts, 8 Orders
+ * Mega Seed Script — 76 Users, 30 Products, Multi-Seller Carts, 16 Orders
  * ======================================================================
  * Extends the original seed with 50 additional randomized users.
  * Run AFTER emulators are started: cd e2e && npx ts-node mega-seed.ts
@@ -14,7 +14,7 @@
  *
  * Products: 30 across 15+ categories, various price tiers & shipping configs.
  * Cart items: ~20 buyers get cart items (some multi-seller carts).
- * Pre-created orders: 8 orders at various statuses for lifecycle/regression tests.
+ * Pre-created orders: 16 orders at various statuses for lifecycle/regression tests.
  */
 
 const AUTH_EMULATOR = 'http://localhost:9099';
@@ -518,17 +518,23 @@ async function seedCartItems(uidMap: Map<string, string>) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// SEED ORDERS — 8 orders for regression-e2e tests
+// SEED ORDERS — 16 orders for regression-e2e tests
 // ════════════════════════════════════════════════════════════════════
 
 async function seedOrders(uidMap: Map<string, string>) {
-  console.log('\n📋 Creating 8 test orders for regression tests...');
+  console.log('\n📋 Creating 16 test orders for regression tests...');
   let count = 0;
 
   const buyerUid = uidMap.get('buyer1@test.origna.ca') || 'buyer1_uid';
+  const buyer2Uid = uidMap.get('buyer2@test.origna.ca') || 'buyer2_uid';
+  const buyer3Uid = uidMap.get('buyer3@test.origna.ca') || 'buyer3_uid';
+  const adminUid = uidMap.get('yr62813@gmail.com') || 'admin_uid';
+  const combo1Uid = uidMap.get('combo1@test.origna.ca') || 'combo1_uid';
   const seller1Uid = uidMap.get('seller1@test.origna.ca') || 'seller1_uid';
   const seller2Uid = uidMap.get('seller2@test.origna.ca') || 'seller2_uid';
   const seller3Uid = uidMap.get('seller3@test.origna.ca') || 'seller3_uid';
+  const seller4Uid = uidMap.get('seller4@test.origna.ca') || 'seller4_uid';
+  const seller5Uid = uidMap.get('seller5@test.origna.ca') || 'seller5_uid';
   const buyerAddress = {
     street: '123 Test Street', apartment: '', city: 'Toronto',
     state: 'ON', postalCode: 'M5V 3A8', country: 'Canada',
@@ -633,6 +639,78 @@ async function seedOrders(uidMap: Map<string, string>) {
         makeItem('product_005', 'Pacific Coast Trail Running Shoes', 12999, 1, seller2Uid, 'confirmed', seller2Address),
         makeItem('product_008', 'Alberta Wildflower Honey', 4200, 1, seller3Uid, 'confirmed', seller3Address),
       ],
+    },
+    // order_test_009 — failed payment (regression for failure handling)
+    {
+      id: 'order_test_009', orderStatus: 'failed', paymentStatus: 'payment_failed', paymentProvider: 'stripe',
+      buyerUid: buyer2Uid, customerEmail: 'buyer2@test.origna.ca', sellerIds: [seller4Uid],
+      stripePaymentIntentId: 'pi_test_failed_009',
+      subtotalCents: 2399, shippingCostCents: 899, taxAmountCents: 430, totalAmountCents: 2399 + 899 + 430,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_012', 'Organic Manitoba Oats', 2399, 1, seller4Uid, 'failed')],
+    },
+    // order_test_010 — expired authorization
+    {
+      id: 'order_test_010', orderStatus: 'expired', paymentStatus: 'authorization_expired', paymentProvider: 'stripe',
+      buyerUid: buyer2Uid, customerEmail: 'buyer2@test.origna.ca', sellerIds: [seller2Uid],
+      stripePaymentIntentId: 'pi_test_expired_010',
+      subtotalCents: 8400, shippingCostCents: 1500, taxAmountCents: 1485, totalAmountCents: 8400 + 1500 + 1485,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_007', 'Alberta Cedar Cutting Board', 8400, 1, seller2Uid, 'expired')],
+    },
+    // order_test_011 — refunded delivered order
+    {
+      id: 'order_test_011', orderStatus: 'refunded', paymentStatus: 'refunded', paymentProvider: 'stripe',
+      buyerUid: buyer3Uid, customerEmail: 'buyer3@test.origna.ca', sellerIds: [seller1Uid],
+      stripePaymentIntentId: 'pi_test_refunded_011',
+      subtotalCents: 6900, shippingCostCents: 1000, taxAmountCents: 1027, totalAmountCents: 6900 + 1000 + 1027,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_004', 'BC Artisan Coffee Set', 6900, 1, seller1Uid, 'refunded', undefined, true)],
+    },
+    // order_test_012 — partially refunded order
+    {
+      id: 'order_test_012', orderStatus: 'partially_refunded', paymentStatus: 'captured', paymentProvider: 'stripe',
+      buyerUid: buyer3Uid, customerEmail: 'buyer3@test.origna.ca', sellerIds: [seller5Uid],
+      stripePaymentIntentId: 'pi_test_partial_refund_012',
+      subtotalCents: 15499, shippingCostCents: 1200, taxAmountCents: 2542, totalAmountCents: 15499 + 1200 + 2542,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_017', 'Nova Scotia Lobster Kit', 15499, 1, seller5Uid, 'partially_refunded', undefined, true)],
+    },
+    // order_test_013 — admin as buyer for admin dashboard visibility
+    {
+      id: 'order_test_013', orderStatus: 'processing', paymentStatus: 'authorized', paymentProvider: 'stripe',
+      buyerUid: adminUid, customerEmail: 'yr62813@gmail.com', sellerIds: [seller3Uid],
+      stripePaymentIntentId: 'pi_test_adminbuyer_013',
+      subtotalCents: 11200, shippingCostCents: 1400, taxAmountCents: 1638, totalAmountCents: 11200 + 1400 + 1638,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_008', 'Alberta Wildflower Honey', 11200, 2, seller3Uid, 'processing')],
+    },
+    // order_test_014 — combo account as buyer
+    {
+      id: 'order_test_014', orderStatus: 'confirmed', paymentStatus: 'authorized', paymentProvider: 'stripe',
+      buyerUid: combo1Uid, customerEmail: 'combo1@test.origna.ca', sellerIds: [seller2Uid],
+      stripePaymentIntentId: 'pi_test_combo_014',
+      subtotalCents: 9999, shippingCostCents: 1100, taxAmountCents: 1443, totalAmountCents: 9999 + 1100 + 1443,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_006', 'Vancouver Glass Terrarium', 9999, 1, seller2Uid, 'confirmed')],
+    },
+    // order_test_015 — session expired before payment completion
+    {
+      id: 'order_test_015', orderStatus: 'pending', paymentStatus: 'session_expired', paymentProvider: 'stripe',
+      buyerUid: buyer2Uid, customerEmail: 'buyer2@test.origna.ca', sellerIds: [seller1Uid],
+      stripePaymentIntentId: 'pi_test_session_expired_015',
+      subtotalCents: 3300, shippingCostCents: 800, taxAmountCents: 533, totalAmountCents: 3300 + 800 + 533,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_003', 'Quebec Tourtière Spice Kit', 3300, 3, seller1Uid, 'pending')],
+    },
+    // order_test_016 — cancelled after authorization
+    {
+      id: 'order_test_016', orderStatus: 'cancelled', paymentStatus: 'authorized', paymentProvider: 'stripe',
+      buyerUid: buyer3Uid, customerEmail: 'buyer3@test.origna.ca', sellerIds: [seller4Uid],
+      stripePaymentIntentId: 'pi_test_cancelled_auth_016',
+      subtotalCents: 4700, shippingCostCents: 900, taxAmountCents: 728, totalAmountCents: 4700 + 900 + 728,
+      shippingAddress: buyerAddress, createdAt: now,
+      items: [makeItem('product_014', 'Prairie Chia Bundle', 4700, 1, seller4Uid, 'cancelled')],
     },
   ];
 

@@ -125,7 +125,7 @@ class CartScreen extends ConsumerWidget {
                     title: 'cart.empty_cart'.tr(),
                     subtitle: 'cart.empty_cart_desc'.tr(),
                     action: SizedBox(
-                      width: 200,
+                      width: 240,
                       child: ModernButton(
                         label: 'common.go_shopping'.tr(),
                         icon: Icons.arrow_back,
@@ -348,50 +348,61 @@ class _CartTotalDisplay extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${'cart.subtotal'.tr()}:',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : DesignTokens.textPrimary,
+              Flexible(
+                child: Text(
+                  '${'cart.subtotal'.tr()}:',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : DesignTokens.textPrimary,
+                  ),
                 ),
               ),
+              const SizedBox(width: 12),
               // Only this Consumer rebuilds when the subtotal value changes
-              Consumer(
-                builder: (context, ref, _) {
-                  final subtotalAsync = ref.watch(
-                    cartWithDetailsProvider.select(
-                      (async) => async.whenData(
-                        (items) => items.fold(
-                          0.0,
-                          (total, item) => total + (item.price * item.quantity),
+              Flexible(
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final subtotalAsync = ref.watch(
+                      cartWithDetailsProvider.select(
+                        (async) => async.whenData(
+                          (items) => items.fold(
+                            0.0,
+                            (total, item) => total + (item.price * item.quantity),
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                  return subtotalAsync.when(
-                    loading: () => const SizedBox(width: 100, height: 28),
-                    error: (_, _) => const SizedBox.shrink(),
-                    data: (subtotal) => ShaderMask(
-                      shaderCallback: (bounds) => LinearGradient(
-                        colors: [DesignTokens.primary, DesignTokens.secondary],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ).createShader(bounds),
-                      child: Text(
-                        NumberFormat.currency(
-                          locale: "en_CA",
-                          symbol: "CAD \$",
-                        ).format(subtotal),
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                    );
+                    return subtotalAsync.when(
+                      loading: () => const SizedBox(width: 100, height: 28),
+                      error: (_, _) => const SizedBox.shrink(),
+                      data: (subtotal) => ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(
+                          colors: [DesignTokens.primary, DesignTokens.secondary],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ).createShader(bounds),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            NumberFormat.currency(
+                              locale: "en_CA",
+                              symbol: "CAD \$",
+                            ).format(subtotal),
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ],
           ),

@@ -103,32 +103,42 @@ class _ModernButtonState extends State<ModernButton>
                             ? Colors.white
                             : DesignTokens.primary,
                       )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (widget.icon != null) ...[
-                            Icon(
-                              widget.icon,
-                              color: widget.isPrimary && !widget.isOutlined
-                                  ? Colors.white
-                                  : DesignTokens.primary,
-                              size: 18,
-                            ),
-                            const SizedBox(width: DesignTokens.spacing8),
-                          ],
-                          Text(
-                            widget.label,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                              color: widget.isPrimary && !widget.isOutlined
-                                  ? Colors.white
-                                  : DesignTokens.primary,
-                            ),
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: DesignTokens.spacing12,
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (widget.icon != null) ...[
+                                Icon(
+                                  widget.icon,
+                                  color: widget.isPrimary && !widget.isOutlined
+                                      ? Colors.white
+                                      : DesignTokens.primary,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: DesignTokens.spacing8),
+                              ],
+                              Text(
+                                widget.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
+                                  color: widget.isPrimary && !widget.isOutlined
+                                      ? Colors.white
+                                      : DesignTokens.primary,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
               ),
             ),
