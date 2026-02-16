@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -16,24 +17,42 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Future<String> addProduct(Product product) async {
-    if (kDebugMode) debugPrint('REPO: Attempting to add product: ${product.name}');
+    if (kDebugMode)
+      debugPrint('REPO: Attempting to add product: ${product.name}');
     try {
-      final firestoreData = sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
-      final docRef = await _firestore.collection(Collections.products).add(firestoreData);
-      if (kDebugMode) debugPrint('REPO: Product added successfully locally with ID: ${docRef.id}');
+      final firestoreData = sanitizeProductForFirestore(
+        product.toJson(),
+        ensureDateCreated: true,
+      );
+      final docRef = await _firestore
+          .collection(Collections.products)
+          .add(firestoreData);
+      if (kDebugMode)
+        debugPrint(
+          'REPO: Product added successfully locally with ID: ${docRef.id}',
+        );
 
       // DIAGNOSTIC: Check connectivity
       try {
-        if (kDebugMode) debugPrint('REPO: [FirebaseProductRepository] Verifying write from SERVER...');
-        final docSnapshot = await docRef.get(const GetOptions(source: Source.server));
+        if (kDebugMode)
+          debugPrint(
+            'REPO: [FirebaseProductRepository] Verifying write from SERVER...',
+          );
+        final docSnapshot = await docRef.get(
+          const GetOptions(source: Source.server),
+        );
         if (docSnapshot.exists) {
           if (kDebugMode) debugPrint('REPO: SERVER VERIFICATION SUCCESS!');
         } else {
-          if (kDebugMode) debugPrint('REPO: SERVER VERIFICATION FAILED: Document does not exist on server.');
+          if (kDebugMode)
+            debugPrint(
+              'REPO: SERVER VERIFICATION FAILED: Document does not exist on server.',
+            );
           throw FirebaseException(
             plugin: 'cloud_firestore',
             code: 'sync-failed',
-            message: '[FirebaseProductRepository] Write succeeded locally but failed to persist to server.',
+            message:
+                '[FirebaseProductRepository] Write succeeded locally but failed to persist to server.',
           );
         }
       } catch (e) {
@@ -43,7 +62,8 @@ class FirebaseProductRepository implements ProductRepository {
         throw FirebaseException(
           plugin: 'cloud_firestore',
           code: 'sync-failed-network',
-          message: '[FirebaseProductRepository] Server verification threw error: $e',
+          message:
+              '[FirebaseProductRepository] Server verification threw error: $e',
         );
       }
 
@@ -57,10 +77,41 @@ class FirebaseProductRepository implements ProductRepository {
   @override
   Future<void> addProductWithId(String productId, Product product) async {
     if (kDebugMode) debugPrint('REPO: Adding product with ID: $productId');
-    final firestoreData = sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
-    firestoreData[Fields.productId] = productId;
-    await _firestore.collection(Collections.products).doc(productId).set(firestoreData);
-    if (kDebugMode) debugPrint('REPO: Product added with predetermined ID: $productId');
+    final firestoreData = sanitizeProductForFirestore(
+      product.toJson(),
+      ensureDateCreated: true,
+    );
+    try {
+      if (kDebugMode) {
+        final currentUser = FirebaseAuth.instance.currentUser;
+        debugPrint(
+          'REPO: addProductWithId auth uid=${currentUser?.uid} email=${currentUser?.email}',
+        );
+        debugPrint(
+          'REPO: addProductWithId payload sellerId=${firestoreData[Fields.sellerId]} state=${(firestoreData[Fields.sellerAddress] as Map?)?['state']} apartment=${(firestoreData[Fields.sellerAddress] as Map?)?['apartment']} keys=${firestoreData.keys.toList()}',
+        );
+      }
+
+      await _firestore
+          .collection(Collections.products)
+          .doc(productId)
+          .set(firestoreData);
+
+      if (kDebugMode) {
+        debugPrint('REPO: Product added with predetermined ID: $productId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        if (e is FirebaseException) {
+          debugPrint(
+            'REPO: addProductWithId FirebaseException code=${e.code} message=${e.message}',
+          );
+        } else {
+          debugPrint('REPO: addProductWithId error: $e');
+        }
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -70,12 +121,17 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Future<void> deleteProduct(String productId) async {
-    await _functions.httpsCallable(CloudFunctionEndpoints.deleteProduct).call({Fields.productId: productId});
+    await _functions.httpsCallable(CloudFunctionEndpoints.deleteProduct).call({
+      Fields.productId: productId,
+    });
   }
 
   @override
   Future<Product?> fetchProductById(String productId) async {
-    final doc = await _firestore.collection(Collections.products).doc(productId).get();
+    final doc = await _firestore
+        .collection(Collections.products)
+        .doc(productId)
+        .get();
     if (!doc.exists) return null;
     final data = doc.data();
     if (data == null) return null;
@@ -84,13 +140,21 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
-  Future<ProductQueryResult> fetchProducts({String? searchQuery, int? categoryId, DocumentSnapshot? lastDocument, int pageSize = 20}) async {
+  Future<ProductQueryResult> fetchProducts({
+    String? searchQuery,
+    int? categoryId,
+    DocumentSnapshot? lastDocument,
+    int pageSize = 20,
+  }) async {
     Query query = _firestore.collection(Collections.products);
 
     query = query.where(Fields.isActive, isEqualTo: true);
 
     if (searchQuery != null && searchQuery.isNotEmpty) {
-      query = query.where(Fields.keywords, arrayContains: searchQuery.toLowerCase().trim());
+      query = query.where(
+        Fields.keywords,
+        arrayContains: searchQuery.toLowerCase().trim(),
+      );
     }
 
     if (categoryId != null) {
@@ -104,10 +168,17 @@ class FirebaseProductRepository implements ProductRepository {
     }
 
     final snapshot = await query.get();
-    final products = snapshot.docs.map((doc) => Product.fromFirestore(doc)).where((p) => p.isActive).toList();
+    final products = snapshot.docs
+        .map((doc) => Product.fromFirestore(doc))
+        .where((p) => p.isActive)
+        .toList();
     final hasMore = snapshot.docs.length >= pageSize;
 
-    return ProductQueryResult(products: products, lastDocument: snapshot.docs.isNotEmpty ? snapshot.docs.last : null, hasMore: hasMore);
+    return ProductQueryResult(
+      products: products,
+      lastDocument: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
+      hasMore: hasMore,
+    );
   }
 
   @override
@@ -119,16 +190,30 @@ class FirebaseProductRepository implements ProductRepository {
     // Actually current limit is 30. Let's use 30.
     for (int i = 0; i < productIds.length; i += 30) {
       final chunk = productIds.skip(i).take(30).toList();
-      final snapshot = await _firestore.collection(Collections.products).where(FieldPath.documentId, whereIn: chunk).where(Fields.isActive, isEqualTo: true).get();
-      results.addAll(snapshot.docs.map((doc) => Product.fromFirestore(doc)).where((p) => p.isActive));
+      final snapshot = await _firestore
+          .collection(Collections.products)
+          .where(FieldPath.documentId, whereIn: chunk)
+          .where(Fields.isActive, isEqualTo: true)
+          .get();
+      results.addAll(
+        snapshot.docs
+            .map((doc) => Product.fromFirestore(doc))
+            .where((p) => p.isActive),
+      );
     }
     return results;
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(String query) async {
+  Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(
+    String query,
+  ) async {
     final String apiKey = ConfigService().geoapifyKey;
-    final response = await http.get(Uri.parse('https://api.geoapify.com/v1/geocode/autocomplete?text=$query&filter=countrycode:ca&apiKey=$apiKey'));
+    final response = await http.get(
+      Uri.parse(
+        'https://api.geoapify.com/v1/geocode/autocomplete?text=$query&filter=countrycode:ca&apiKey=$apiKey',
+      ),
+    );
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       return List<Map<String, dynamic>>.from(data['features'] ?? []);
@@ -139,18 +224,34 @@ class FirebaseProductRepository implements ProductRepository {
   @override
   Future<String?> getUploadUrl(String fileName) async {
     // BUG: 'get_r2_presigned_url' endpoint not found in backend - verify correct endpoint name
-    final result = await _functions.httpsCallable(CloudFunctionEndpoints.getR2PresignedUrl).call({Fields.fileName: fileName});
+    final result = await _functions
+        .httpsCallable(CloudFunctionEndpoints.getR2PresignedUrl)
+        .call({Fields.fileName: fileName});
     return result.data[Fields.uploadUrl];
   }
 
   @override
-  Future<void> submitRating(String orderId, String productId, int rating) async {
-    await _functions.httpsCallable(CloudFunctionEndpoints.submitProductRating).call({Fields.orderId: orderId, Fields.productId: productId, Fields.rating: rating});
+  Future<void> submitRating(
+    String orderId,
+    String productId,
+    int rating,
+  ) async {
+    await _functions
+        .httpsCallable(CloudFunctionEndpoints.submitProductRating)
+        .call({
+          Fields.orderId: orderId,
+          Fields.productId: productId,
+          Fields.rating: rating,
+        });
   }
 
   @override
   Future<void> toggleFavorite(String userId, String productId) async {
-    final favRef = _firestore.collection(Collections.users).doc(userId).collection(Collections.favorites).doc(productId);
+    final favRef = _firestore
+        .collection(Collections.users)
+        .doc(userId)
+        .collection(Collections.favorites)
+        .doc(productId);
 
     // RACE CONDITION FIX: Use transaction to prevent duplicate writes from rapid taps
     await _firestore.runTransaction((transaction) async {
@@ -158,19 +259,31 @@ class FirebaseProductRepository implements ProductRepository {
       if (doc.exists) {
         transaction.delete(favRef);
       } else {
-        transaction.set(favRef, {Fields.productId: productId, Fields.dateFavorited: FieldValue.serverTimestamp()});
+        transaction.set(favRef, {
+          Fields.productId: productId,
+          Fields.dateFavorited: FieldValue.serverTimestamp(),
+        });
       }
     });
   }
 
   @override
-  Future<void> updateProduct(String productId, Map<String, dynamic> data) async {
+  Future<void> updateProduct(
+    String productId,
+    Map<String, dynamic> data,
+  ) async {
     final sanitized = sanitizeProductForFirestore(data);
-    await _firestore.collection(Collections.products).doc(productId).update(sanitized);
+    await _firestore
+        .collection(Collections.products)
+        .doc(productId)
+        .update(sanitized);
   }
 
   @override
-  Future<List<String>> uploadImages(List<Uint8List> images, String productId) async {
+  Future<List<String>> uploadImages(
+    List<Uint8List> images,
+    String productId,
+  ) async {
     final uploadFutures = images.asMap().entries.map((entry) async {
       return await _uploadSingleImage(entry.value, productId, entry.key);
     });
@@ -181,22 +294,38 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Stream<Set<String>> watchFavorites(String userId) {
-    return _firestore.collection(Collections.users).doc(userId).collection(Collections.favorites).snapshots().map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
+    return _firestore
+        .collection(Collections.users)
+        .doc(userId)
+        .collection(Collections.favorites)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
   }
 
   // Sanitization is now handled by the shared top-level
   // sanitizeProductForFirestore() function in this file.
 
-  Future<String?> _uploadSingleImage(Uint8List bytes, String productId, int index) async {
+  Future<String?> _uploadSingleImage(
+    Uint8List bytes,
+    String productId,
+    int index,
+  ) async {
     const maxRetries = 3;
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        final fileName = "product_${productId}_${index}_${DateTime.now().millisecondsSinceEpoch}.jpg";
+        final fileName =
+            "product_${productId}_${index}_${DateTime.now().millisecondsSinceEpoch}.jpg";
         final uploadUrl = await getUploadUrl(fileName);
 
         if (uploadUrl == null) throw Exception('Could not get upload URL');
 
-        final response = await http.put(Uri.parse(uploadUrl), body: bytes, headers: {"Content-Type": "image/jpeg"}).timeout(const Duration(seconds: 30));
+        final response = await http
+            .put(
+              Uri.parse(uploadUrl),
+              body: bytes,
+              headers: {"Content-Type": "image/jpeg"},
+            )
+            .timeout(const Duration(seconds: 30));
 
         if (response.statusCode == 200) {
           return "${ConfigService().imageBaseUrl}/products/$fileName";
@@ -216,18 +345,41 @@ class ProductQueryResult {
   final DocumentSnapshot? lastDocument;
   final bool hasMore;
 
-  ProductQueryResult({required this.products, this.lastDocument, required this.hasMore});
+  ProductQueryResult({
+    required this.products,
+    this.lastDocument,
+    required this.hasMore,
+  });
 }
 
 /// Shared sanitization for product data before writing to Firestore.
 /// Used by both [FirebaseProductRepository] and [AlgoliaProductRepository].
-Map<String, dynamic> sanitizeProductForFirestore(Map<String, dynamic> rawData, {bool ensureDateCreated = false}) {
+Map<String, dynamic> sanitizeProductForFirestore(
+  Map<String, dynamic> rawData, {
+  bool ensureDateCreated = false,
+}) {
   final encoded = jsonEncode(rawData);
   final decoded = jsonDecode(encoded);
   final data = (decoded as Map).cast<String, dynamic>();
 
   // productId is derived from document id; avoid storing a client-controlled field.
   data.remove(Fields.productId);
+  // ratingCount is server-managed via rating events; do not allow client write on create.
+  data.remove(Fields.ratingCount);
+
+  // Firestore rules expect sellerAddress.apartment to be null OR non-empty string.
+  // Address model defaults apartment to '', so normalize empty values to null.
+  final sellerAddress = data[Fields.sellerAddress];
+  if (sellerAddress is Map) {
+    final address = Map<String, dynamic>.from(
+      sellerAddress.cast<String, dynamic>(),
+    );
+    final apartment = address['apartment'];
+    if (apartment is String && apartment.trim().isEmpty) {
+      address['apartment'] = null;
+    }
+    data[Fields.sellerAddress] = address;
+  }
 
   // Ensure createdAt is stored as a Firestore Timestamp (not ISO string)
   if (data.containsKey(Fields.createdAt) || ensureDateCreated) {
@@ -253,7 +405,12 @@ abstract class ProductRepository {
   Future<void> addProductWithId(String productId, Product product);
   Future<void> deleteProduct(String productId);
   Future<Product?> fetchProductById(String productId);
-  Future<ProductQueryResult> fetchProducts({String? searchQuery, int? categoryId, DocumentSnapshot? lastDocument, int pageSize = 20});
+  Future<ProductQueryResult> fetchProducts({
+    String? searchQuery,
+    int? categoryId,
+    DocumentSnapshot? lastDocument,
+    int pageSize = 20,
+  });
   Future<List<Product>> fetchProductsByIds(List<String> productIds);
   String generateProductId();
   Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(String query);

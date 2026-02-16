@@ -11,16 +11,20 @@ import 'package:origna_gta/utils/utils.dart';
 
 import 'add_product_state.dart';
 
-final addProductViewModelProvider = StateNotifierProvider.autoDispose<AddProductViewModel, AddProductState>((ref) {
-  return AddProductViewModel(ref);
-});
+final addProductViewModelProvider =
+    StateNotifierProvider.autoDispose<AddProductViewModel, AddProductState>((
+      ref,
+    ) {
+      return AddProductViewModel(ref);
+    });
 
 class AddProductViewModel extends StateNotifier<AddProductState> {
   final Ref _ref;
 
   AddProductViewModel(this._ref) : super(AddProductState());
 
-  void addImage(ImageModel image) => state = state.copyWith(imageModels: [...state.imageModels, image]);
+  void addImage(ImageModel image) =>
+      state = state.copyWith(imageModels: [...state.imageModels, image]);
   Future<void> addProduct({
     required String name,
     required String description,
@@ -58,7 +62,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       return;
     }
     if (description.trim().isEmpty) {
-      state = state.copyWith(errorMessage: 'product.please_enter_description'.tr());
+      state = state.copyWith(
+        errorMessage: 'product.please_enter_description'.tr(),
+      );
       return;
     }
     if (price <= 0) {
@@ -75,7 +81,9 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }
     final minOrderQty = minimumOrderQuantity ?? state.minimumOrderQuantity;
     if (minOrderQty < 1) {
-      state = state.copyWith(errorMessage: 'product.min_order_at_least_one'.tr());
+      state = state.copyWith(
+        errorMessage: 'product.min_order_at_least_one'.tr(),
+      );
       return;
     }
     if (categoryId <= 0) {
@@ -84,7 +92,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }
     // Bug #4: Skip address validation for digital products (no shipping needed)
     if (!state.isDigital) {
-      if (street.trim().isEmpty || city.trim().isEmpty || postalCode.trim().isEmpty || state.selectedProvince.trim().isEmpty) {
+      if (street.trim().isEmpty ||
+          city.trim().isEmpty ||
+          postalCode.trim().isEmpty ||
+          state.selectedProvince.trim().isEmpty) {
         state = state.copyWith(errorMessage: 'product.address_required'.tr());
         return;
       }
@@ -98,18 +109,26 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     */
 
     if (!isValidTaxCode(taxCode)) {
-      state = state.copyWith(errorMessage: 'product.invalid_tax_code_format'.tr());
+      state = state.copyWith(
+        errorMessage: 'product.invalid_tax_code_format'.tr(),
+      );
       return;
     }
-    if ((weight ?? 0) < 0 || (length ?? 0) < 0 || (width ?? 0) < 0 || (height ?? 0) < 0) {
+    if ((weight ?? 0) < 0 ||
+        (length ?? 0) < 0 ||
+        (width ?? 0) < 0 ||
+        (height ?? 0) < 0) {
       state = state.copyWith(errorMessage: 'product.dimensions_positive'.tr());
       return;
     }
 
     final isDevOrTestRun =
-      const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production') ==
-        'dev' ||
-      const bool.fromEnvironment('IS_TEST', defaultValue: false);
+        const String.fromEnvironment(
+              'ENVIRONMENT',
+              defaultValue: 'production',
+            ) ==
+            'dev' ||
+        const bool.fromEnvironment('IS_TEST', defaultValue: false);
 
     if (state.imageModels.isEmpty && !isDevOrTestRun) {
       state = state.copyWith(errorMessage: 'product.image_required'.tr());
@@ -118,8 +137,12 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
     // Bug #4: Physical products need at least one delivery tier (unless local-only)
     if (!state.isDigital && !state.isLocalDeliveryOnly) {
-      if (!state.standardEnabled && !state.expressEnabled && !state.sameDayEnabled) {
-        state = state.copyWith(errorMessage: 'product.delivery_tier_required'.tr());
+      if (!state.standardEnabled &&
+          !state.expressEnabled &&
+          !state.sameDayEnabled) {
+        state = state.copyWith(
+          errorMessage: 'product.delivery_tier_required'.tr(),
+        );
         return;
       }
     }
@@ -129,12 +152,22 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     try {
       final productRepository = _ref.read(productRepositoryProvider);
 
-      final sanitizedDeliveryOptions = state.isDigital ? <models.SellerDeliveryOption>[] : deliveryOptions;
+      final sanitizedDeliveryOptions = state.isDigital
+          ? <models.SellerDeliveryOption>[]
+          : deliveryOptions;
+
+      final streetTrimmed = street.trim();
+      final apartmentTrimmed = apartment.trim();
+      final cityTrimmed = city.trim();
+      final provinceTrimmed = state.selectedProvince.trim();
+      final postalTrimmed = postalCode.trim().toUpperCase();
 
       // AUDIT FIX: Upload images FIRST to prevent orphan Firestore documents.
       // If image upload fails, no product document is created.
       // Generate a temporary product ID for the image path
-      final tempProductId = _ref.read(productRepositoryProvider).generateProductId();
+      final tempProductId = _ref
+          .read(productRepositoryProvider)
+          .generateProductId();
       List<String> urls;
 
       if (state.imageModels.isEmpty && isDevOrTestRun) {
@@ -143,72 +176,82 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       } else {
         final compressedImages = await _compressImages(state.imageModels);
         if (compressedImages.isEmpty) {
-          throw Exception('Failed to compress images. Please try different images.');
+          throw Exception(
+            'Failed to compress images. Please try different images.',
+          );
         }
 
-        urls = await productRepository.uploadImages(compressedImages, tempProductId);
+        urls = await productRepository.uploadImages(
+          compressedImages,
+          tempProductId,
+        );
 
         if (urls.isEmpty) {
-          throw Exception('Failed to upload images. Please check your connection and try again.');
+          throw Exception(
+            'Failed to upload images. Please check your connection and try again.',
+          );
         }
       }
 
-      final productCreate = models.ProductCreate(
+      final product = models.Product(
+        productId: tempProductId,
         sellerId: _ref.read(userIdProvider)!,
         name: name,
         keywords: generateSearchKeywords(name),
         stockQuantity: stock,
         price: price,
-        imageUrls: urls,  // Images already uploaded
+        imageUrls: urls,
         sellerAddress: models.Address(
-          street: street,
-          apartment: apartment,
-          city: city,
-          state: state.selectedProvince,
-          postalCode: postalCode.toUpperCase(),
-          country: CountryValues.canada, // Default for now — sellers can be from any country, UI supports CA addresses
+          street: streetTrimmed,
+          apartment: apartmentTrimmed,
+          city: cityTrimmed,
+          state: provinceTrimmed,
+          postalCode: postalTrimmed,
+          country: CountryValues.canada,
           latitude: state.latitude,
           longitude: state.longitude,
         ),
         description: description,
         categoryId: categoryId,
+        createdAt: DateTime.now(),
+        rating: 0.0,
+        isActive: true,
         weightKg: state.isDigital ? null : weight,
         lengthCm: state.isDigital ? null : length,
         widthCm: state.isDigital ? null : width,
         heightCm: state.isDigital ? null : height,
-        isLocalDeliveryOnly: state.isDigital ? false : state.isLocalDeliveryOnly,
-        estimatedShipDays: sanitizedDeliveryOptions.isNotEmpty ? sanitizedDeliveryOptions.first.estimatedDays : 0,
+        isLocalDeliveryOnly: state.isDigital
+            ? false
+            : state.isLocalDeliveryOnly,
+        estimatedShipDays: sanitizedDeliveryOptions.isNotEmpty
+            ? sanitizedDeliveryOptions.first.estimatedDays
+            : 0,
         taxCode: taxCode,
         deliveryOptions: sanitizedDeliveryOptions,
         isPerishable: state.isDigital ? false : state.isPerishable,
         isDigital: state.isDigital,
         minimumOrderQuantity: minOrderQty,
         freeShipping: freeShipping ?? state.freeShipping,
-        // Flat supplier fields
         cost: cost,
         supplierSku: supplierSku,
         supplierUrl: supplierUrl,
-        // Structured objects for long-term scaling
         supplier: supplier,
         inventory: inventory,
         status: status ?? ProductStatusValues.active,
       );
 
-      // Convert ProductCreate to JSON, then create Product for repository
-      final productData = productCreate.toJson();
-      // Create a Product instance from the JSON (repository expects Product type)
-      final product = models.Product.fromJson({
-        ...productData,
-        Fields.productId: tempProductId,  // Use the same ID as image upload path
-        Fields.createdAt: DateTime.now().toIso8601String(),
-        Fields.rating: 0.0,
-        Fields.isActive: true,
-      });
-
       await productRepository.addProductWithId(tempProductId, product);
       state = state.copyWith(isLoading: false, isSuccess: true);
-    } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'product.add_product_failed'.tr()));
+    } catch (e, st) {
+      AppError.log(
+        e,
+        stackTrace: st,
+        context: 'AddProductViewModel.addProduct',
+      );
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: AppError.getMessage(e, 'product.add_product_failed'.tr()),
+      );
     }
   }
 
@@ -219,11 +262,18 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       state = state.copyWith(showSuggestions: false, addressSuggestions: []);
       return;
     }
-    final suggestions = await _ref.read(locationRepositoryProvider).getAddressSuggestions(value);
-    state = state.copyWith(addressSuggestions: suggestions, showSuggestions: suggestions.isNotEmpty);
+    final suggestions = await _ref
+        .read(locationRepositoryProvider)
+        .getAddressSuggestions(value);
+    state = state.copyWith(
+      addressSuggestions: suggestions,
+      showSuggestions: suggestions.isNotEmpty,
+    );
   }
 
-  void removeImage(int index) => state = state.copyWith(imageModels: List<ImageModel>.from(state.imageModels)..removeAt(index));
+  void removeImage(int index) => state = state.copyWith(
+    imageModels: List<ImageModel>.from(state.imageModels)..removeAt(index),
+  );
   void selectAddress(Map<String, dynamic> suggestion) {
     final details = parseAddressSuggestion(suggestion);
     state = state.copyWith(
@@ -235,8 +285,12 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     );
   }
 
-  void setExpressEnabled(bool value) => state = state.copyWith(expressEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
-  void setFreeShippingAt10Plus(bool? value) => state = state.copyWith(freeShippingAt10Plus: value ?? false);
+  void setExpressEnabled(bool value) => state = state.copyWith(
+    expressEnabled: value,
+    isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
+  );
+  void setFreeShippingAt10Plus(bool? value) =>
+      state = state.copyWith(freeShippingAt10Plus: value ?? false);
   void setLocalDeliveryOnly(bool value) => state = state.copyWith(
     isLocalDeliveryOnly: value,
     standardEnabled: value ? false : state.standardEnabled,
@@ -244,20 +298,30 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     sameDayEnabled: value ? false : state.sameDayEnabled,
   );
 
-  void setMinimumOrderQuantity(int value) => state = state.copyWith(minimumOrderQuantity: value);
+  void setMinimumOrderQuantity(int value) =>
+      state = state.copyWith(minimumOrderQuantity: value);
 
-  void setProvince(String province) => state = state.copyWith(selectedProvince: province);
+  void setProvince(String province) =>
+      state = state.copyWith(selectedProvince: province);
 
-  void setSameDayEnabled(bool value) => state = state.copyWith(sameDayEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
+  void setSameDayEnabled(bool value) => state = state.copyWith(
+    sameDayEnabled: value,
+    isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
+  );
 
-  void setStandardEnabled(bool value) => state = state.copyWith(standardEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
+  void setStandardEnabled(bool value) => state = state.copyWith(
+    standardEnabled: value,
+    isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
+  );
 
   void toggleDigital(bool value) => state = state.copyWith(
     isDigital: value,
     freeShipping: value ? true : state.freeShipping,
     isPerishable: value ? false : state.isPerishable,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
-    standardEnabled: value ? false : true, // Re-enable standard when going back to physical
+    standardEnabled: value
+        ? false
+        : true, // Re-enable standard when going back to physical
     expressEnabled: value ? false : state.expressEnabled,
     sameDayEnabled: value ? false : state.sameDayEnabled,
   );
@@ -284,13 +348,16 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     }
   }
 
-  void togglePerishable(bool value) => state = state.copyWith(isPerishable: value);
+  void togglePerishable(bool value) =>
+      state = state.copyWith(isPerishable: value);
 
   /// Bug #16: Invalidate lat/lng when user manually edits address fields
-  void clearCoordinates() => state = state.copyWith(latitude: null, longitude: null);
+  void clearCoordinates() =>
+      state = state.copyWith(latitude: null, longitude: null);
 
   /// Bug #1: Allow ProductAddImages widget to sync images back to ViewModel
-  void updateImages(List<ImageModel> images) => state = state.copyWith(imageModels: images);
+  void updateImages(List<ImageModel> images) =>
+      state = state.copyWith(imageModels: images);
 
   Future<List<Uint8List>> _compressImages(List<ImageModel> imageModels) async {
     final results = <Uint8List>[];
@@ -306,7 +373,11 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     if (image == null) return null;
     img.Image resized = image;
     if (image.width > 2048 || image.height > 2048) {
-      resized = img.copyResize(image, width: image.width > image.height ? 2048 : null, height: image.height > image.width ? 2048 : null);
+      resized = img.copyResize(
+        image,
+        width: image.width > image.height ? 2048 : null,
+        height: image.height > image.width ? 2048 : null,
+      );
     }
     return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
   }

@@ -5,6 +5,30 @@
 
 ---
 
+## Environment Configuration (Feb 2026)
+
+**4-Environment Architecture:**
+- **Emulator** — Local Firebase + Real external services (R2, Algolia, Stripe test)
+- **Dev** — GCP project `orignagta-dev`, cloud infra, test keys
+- **Staging** — GCP project `orignagta-staging`, cloud infra, test keys  
+- **Production** — GCP project `orignagta`, cloud infra, Stripe live keys
+
+**Critical Environment Rules:**
+- **Separate indices/folders per env** — Prevents test data pollution
+  - Algolia: `products_emulator` | `products_dev` | `products_staging` | `products`
+  - R2: `emulator/` | `dev/` | `staging/` | (base)
+- **CORS must include all hosting domains** — Dev, staging, production Firebase hostings + localhost
+- **E2E tests support all 4 envs** — Use `TEST_ENVIRONMENT=staging npm run test:e2e`
+- **Backend auto-detects from GCP_PROJECT** — DEV/STAGING/PRODUCTION via project ID
+- **Frontend uses `--dart-define`** — `ENVIRONMENT=dev`, `USE_EMULATORS=true`
+
+**Key Files:**
+- **Backend:** `functions/config.py` line 177 (Algolia index), `schema_constants.py` lines 120-131 (CORS)
+- **Frontend:** `lib/utils/env_config.dart` lines 90-93 (R2 paths + Algolia index)
+- **E2E:** `e2e/api-helpers.ts` lines 22-69 (environment-aware endpoints)
+
+---
+
 ## E2E Testing Infrastructure (Feb 2026)
 
 - **Solo developer** — AI agents are the QA team

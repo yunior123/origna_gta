@@ -70,6 +70,23 @@ service cloud.firestore {
         (addr.latitude == null || (addr.latitude is number && addr.latitude >= -90 && addr.latitude <= 90)) &&
         (addr.longitude == null || (addr.longitude is number && addr.longitude >= -180 && addr.longitude <= 180));
     }
+
+    // Digital products do not require a shippable seller address, but shape must remain strict.
+    function isValidDigitalSellerAddress(addr) {
+      return addr is map &&
+        addr.keys().hasOnly(['street','apartment','city','state','postalCode','country','phoneNumber','isDefault','label','latitude','longitude']) &&
+        (addr.street is string && addr.street.size() <= 100) &&
+        (addr.apartment == null || (addr.apartment is string && addr.apartment.size() <= 20)) &&
+        (addr.city is string && addr.city.size() <= 50) &&
+        (addr.state is string && addr.state.size() <= 50) &&
+        (addr.postalCode is string && addr.postalCode.size() <= 15) &&
+        (addr.country is string && addr.country.size() <= 56) &&
+        (addr.phoneNumber == null || (addr.phoneNumber is string && addr.phoneNumber.matches('^\d{10,15}$'))) &&
+        (addr.isDefault == null || addr.isDefault is bool) &&
+        (addr.label == null || isStringWithLen(addr.label, 1, 30)) &&
+        (addr.latitude == null || (addr.latitude is number && addr.latitude >= -90 && addr.latitude <= 90)) &&
+        (addr.longitude == null || (addr.longitude is number && addr.longitude >= -180 && addr.longitude <= 180));
+    }
     
     function hasRole(role) {
       return isAuthenticated() &&
@@ -243,7 +260,10 @@ service cloud.firestore {
         ]) &&
         isStringWithLen(request.resource.data.name, 2, 120) &&
         isStringWithLen(request.resource.data.description, 10, 4000) &&
-        isValidSellerAddress(request.resource.data.sellerAddress) &&
+        ((request.resource.data.isDigital == true &&
+          isValidDigitalSellerAddress(request.resource.data.sellerAddress)) ||
+         (request.resource.data.isDigital != true &&
+          isValidSellerAddress(request.resource.data.sellerAddress))) &&
         // Sellers can be from any country — no geographic restriction on seller addresses
         request.resource.data.createdAt is timestamp &&
         request.resource.data.imageUrls is list &&
@@ -287,7 +307,10 @@ service cloud.firestore {
           request.resource.data.sellerId == resource.data.sellerId &&
           isStringWithLen(request.resource.data.name, 2, 120) &&
           isStringWithLen(request.resource.data.description, 10, 4000) &&
-          isValidSellerAddress(request.resource.data.sellerAddress) &&
+          ((request.resource.data.isDigital == true &&
+            isValidDigitalSellerAddress(request.resource.data.sellerAddress)) ||
+           (request.resource.data.isDigital != true &&
+            isValidSellerAddress(request.resource.data.sellerAddress))) &&
           request.resource.data.imageUrls is list &&
           request.resource.data.imageUrls.size() >= 1 && request.resource.data.imageUrls.size() <= 5 &&
           request.resource.data.keywords is list &&

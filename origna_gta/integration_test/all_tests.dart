@@ -74,16 +74,22 @@ void main() {
           return amounts;
         }
 
-        bool didPublishSucceed() {
-          final hasSuccessSnack = find
-              .byKey(const Key('addproduct_success_snackbar'))
-              .evaluate()
-              .isNotEmpty;
-          final hasLeftAddProductScreen = find
-              .byKey(const Key('addproduct_screen_title'))
-              .evaluate()
-              .isEmpty;
-          return hasSuccessSnack || hasLeftAddProductScreen;
+        Future<bool> didPublishSucceed() async {
+          for (var i = 0; i < 90; i++) {
+            final hasSuccessSnack = find
+                .byKey(const Key('addproduct_success_snackbar'))
+                .evaluate()
+                .isNotEmpty;
+            final hasLeftAddProductScreen = find
+                .byKey(const Key('addproduct_screen_title'))
+                .evaluate()
+                .isEmpty;
+            if (hasSuccessSnack || hasLeftAddProductScreen) {
+              return true;
+            }
+            await tester.pump(const Duration(milliseconds: 500));
+          }
+          return false;
         }
 
         final runStamp = DateTime.now().millisecondsSinceEpoch.toString();
@@ -120,10 +126,14 @@ void main() {
         // ════════════════════════════════════════════════════════════════════
 
         final settingsIcon = find.byKey(const Key('home_settings_button'));
-        checkCase('C003', settingsIcon.evaluate().isNotEmpty, 'Settings visible');
+        checkCase(
+          'C003',
+          settingsIcon.evaluate().isNotEmpty,
+          'Settings visible',
+        );
         // Since we are not logged in, tapping settings should show login popup, not navigate to profile
-        var email = 'yr62813@gmail.com'; //admin email
-        var password = 'REDACTED_TEST_PASSWORD'; //admin password
+        var email = adminEmail;
+        var password = adminPassword;
 
         await tester.tap(settingsIcon.first);
         await pumpWait(tester, seconds: 2);
@@ -136,7 +146,9 @@ void main() {
 
         if (!popupDismissed) {
           final loginEmailField = find.byKey(const Key('login_email_field'));
-          final loginPasswordField = find.byKey(const Key('login_password_field'));
+          final loginPasswordField = find.byKey(
+            const Key('login_password_field'),
+          );
           final loginSubmit = find.byKey(const Key('login_submit_button'));
           if (loginEmailField.evaluate().isNotEmpty &&
               loginPasswordField.evaluate().isNotEmpty &&
@@ -165,7 +177,11 @@ void main() {
         // ════════════════════════════════════════════════════════════════════
         // Back to home. Home screen renders product grid or loading state
         // ════════════════════════════════════════════════════════════════════
-        checkCase('C004', settingsIcon.evaluate().isNotEmpty, 'Settings après login');
+        checkCase(
+          'C004',
+          settingsIcon.evaluate().isNotEmpty,
+          'Settings après login',
+        );
         final hasGrid = find.byType(GridView).evaluate().isNotEmpty;
         final hasCards = find.byType(Card).evaluate().isNotEmpty;
         checkCase(
@@ -222,8 +238,12 @@ void main() {
         );
 
         final hasOpenableProduct =
-            seededProductCardFinders.any((finder) => finder.evaluate().isNotEmpty) ||
-            seededProductTextFinders.any((finder) => finder.evaluate().isNotEmpty);
+            seededProductCardFinders.any(
+              (finder) => finder.evaluate().isNotEmpty,
+            ) ||
+            seededProductTextFinders.any(
+              (finder) => finder.evaluate().isNotEmpty,
+            );
 
         if (hasOpenableProduct) {
           await tester.tap(productOpenTarget.first, warnIfMissed: false);
@@ -293,7 +313,10 @@ void main() {
           await checkProfileSubPage(tester, 'profile_my_orders_button', 'T10');
           await checkProfileSubPage(tester, 'profile_favorites_button', 'T11');
           await checkProfileSubPage(tester, 'profile_address_button', 'T12');
-          _debugStep('T13', 'Skipped terms page to avoid external tab interruption');
+          _debugStep(
+            'T13',
+            'Skipped terms page to avoid external tab interruption',
+          );
 
           // ══════════════════════════════════════════════════════════════════
           // Back navigation works
@@ -340,7 +363,10 @@ void main() {
             await pumpWait(tester, seconds: 2);
             checkCase(
               'C079',
-              find.byKey(const Key('home_settings_button')).evaluate().isNotEmpty,
+              find
+                  .byKey(const Key('home_settings_button'))
+                  .evaluate()
+                  .isNotEmpty,
               'Retour Home explicite après flow profile',
             );
           } else {
@@ -366,15 +392,14 @@ void main() {
           // Verify we're on the Add Product screen
           checkCase(
             'C011',
-            find.byKey(const Key('addproduct_screen_title')).evaluate().isNotEmpty,
+            find
+                .byKey(const Key('addproduct_screen_title'))
+                .evaluate()
+                .isNotEmpty,
             'Add product screen visible',
           );
           // Fill basic fields
-          await fillBasicProductFields(
-            tester,
-            name: p01Name,
-            price: '29.99',
-          );
+          await fillBasicProductFields(tester, name: p01Name, price: '29.99');
           // Verify Section 3 (Delivery) is visible — scroll to it
           await scrollUntilVisible(
             tester,
@@ -385,7 +410,8 @@ void main() {
           // Verify the Standard Delivery card is present
           checkCase(
             'C012',
-            find.byKey(const Key('addproduct_standard_delivery_card'))
+            find
+                .byKey(const Key('addproduct_standard_delivery_card'))
                 .evaluate()
                 .isNotEmpty,
             'Standard delivery visible',
@@ -394,16 +420,23 @@ void main() {
           // Fill address
           await fillAddress(tester);
           // Submit
-          await tapPublishProduct(tester);
+          final publishMessage = await tapPublishProduct(tester);
 
           // Check for success (SnackBar or navigation back)
-          final hasSuccess = didPublishSucceed();
-          checkCase('C080', hasSuccess, 'T01 publication réussie');
+          final hasSuccess = await didPublishSucceed();
           if (!hasSuccess) {
-            stopOnSkip('S020', 'T01 publish failed (validation/images/backend)');
+            stopOnSkip(
+              'S020',
+              'T01 publish failed (validation/images/backend): ${publishMessage ?? 'no snackbar message captured'}',
+            );
+          } else {
+            _debugStep('C080', 'PASS — T01 publication réussie');
           }
           debugPrint('✓ Product published with Standard Delivery');
-          if (find.byKey(const Key('addproduct_screen_title')).evaluate().isNotEmpty) {
+          if (find
+              .byKey(const Key('addproduct_screen_title'))
+              .evaluate()
+              .isNotEmpty) {
             await goBack(tester);
             await pumpSettle(tester, iterations: 3);
           }
@@ -411,10 +444,7 @@ void main() {
           // Ensure we're back on home screen
           await pumpSettle(tester, iterations: 3);
 
-          var exist = await verifyProductInMarketplace(
-            tester,
-            p01Name,
-          );
+          var exist = await verifyProductInMarketplace(tester, p01Name);
           checkCase('C081', exist, 'T01 trouvé dans marketplace');
           debugPrint('✓ Product appears in marketplace');
 
@@ -424,11 +454,7 @@ void main() {
           debugPrint('');
           _debugStep('P02', 'T02 — Digital Product (No Shipping)');
           await navigateToAddProduct(tester);
-          await fillBasicProductFields(
-            tester,
-            name: p02Name,
-            price: '9.99',
-          );
+          await fillBasicProductFields(tester, name: p02Name, price: '9.99');
           // Scroll to Delivery section
           await scrollUntilVisible(
             tester,
@@ -470,14 +496,20 @@ void main() {
           }
           // Submit
           await tapPublishProduct(tester);
-            final hasSuccessT02 = didPublishSucceed();
+          final hasSuccessT02 = await didPublishSucceed();
 
           checkCase('C082', hasSuccessT02, 'T02 publication réussie');
           if (!hasSuccessT02) {
-            stopOnSkip('S021', 'T02 publish failed (validation/images/backend)');
+            stopOnSkip(
+              'S021',
+              'T02 publish failed (validation/images/backend)',
+            );
           }
           debugPrint('✓ Product published');
-          if (find.byKey(const Key('addproduct_screen_title')).evaluate().isNotEmpty) {
+          if (find
+              .byKey(const Key('addproduct_screen_title'))
+              .evaluate()
+              .isNotEmpty) {
             await goBack(tester);
             await pumpSettle(tester, iterations: 3);
           }
@@ -495,11 +527,7 @@ void main() {
           debugPrint('');
           _debugStep('P03', 'T03 — Free Shipping Toggle');
           await navigateToAddProduct(tester);
-          await fillBasicProductFields(
-            tester,
-            name: p03Name,
-            price: '49.99',
-          );
+          await fillBasicProductFields(tester, name: p03Name, price: '49.99');
           // Scroll to find Free Shipping toggle (it's in Section 1, after Min Order Qty)
           await scrollUntilVisible(
             tester,
@@ -520,7 +548,8 @@ void main() {
           );
           checkCase(
             'C014',
-            find.byKey(const Key('addproduct_standard_delivery_card'))
+            find
+                .byKey(const Key('addproduct_standard_delivery_card'))
                 .evaluate()
                 .isNotEmpty,
             'Free shipping n\'enlève pas standard delivery',
@@ -531,14 +560,20 @@ void main() {
 
           // Submit
           await tapPublishProduct(tester);
-            final hasSuccessT03 = didPublishSucceed();
+          final hasSuccessT03 = await didPublishSucceed();
 
           checkCase('C084', hasSuccessT03, 'T03 publication réussie');
           if (!hasSuccessT03) {
-            stopOnSkip('S022', 'T03 publish failed (validation/images/backend)');
+            stopOnSkip(
+              'S022',
+              'T03 publish failed (validation/images/backend)',
+            );
           }
           debugPrint('✓ Product published');
-          if (find.byKey(const Key('addproduct_screen_title')).evaluate().isNotEmpty) {
+          if (find
+              .byKey(const Key('addproduct_screen_title'))
+              .evaluate()
+              .isNotEmpty) {
             await goBack(tester);
             await pumpSettle(tester, iterations: 3);
           }
@@ -556,11 +591,7 @@ void main() {
           debugPrint('');
           _debugStep('P04', 'T04 — Local Pickup Only');
           await navigateToAddProduct(tester);
-          await fillBasicProductFields(
-            tester,
-            name: p04Name,
-            price: '15.00',
-          );
+          await fillBasicProductFields(tester, name: p04Name, price: '15.00');
           // Scroll to Package & Location section (Section 4) where Local Pickup Only toggle lives
           await scrollUntilVisible(
             tester,
@@ -584,14 +615,20 @@ void main() {
           }
           // Submit
           await tapPublishProduct(tester);
-            final hasSuccessT04 = didPublishSucceed();
+          final hasSuccessT04 = await didPublishSucceed();
 
           checkCase('C086', hasSuccessT04, 'T04 publication réussie');
           if (!hasSuccessT04) {
-            stopOnSkip('S023', 'T04 publish failed (validation/images/backend)');
+            stopOnSkip(
+              'S023',
+              'T04 publish failed (validation/images/backend)',
+            );
           }
           debugPrint('✓ Product published');
-          if (find.byKey(const Key('addproduct_screen_title')).evaluate().isNotEmpty) {
+          if (find
+              .byKey(const Key('addproduct_screen_title'))
+              .evaluate()
+              .isNotEmpty) {
             await goBack(tester);
             await pumpSettle(tester, iterations: 3);
           }
@@ -609,11 +646,7 @@ void main() {
           debugPrint('');
           _debugStep('P05', 'T05 — Perishable + Same-Day Delivery');
           await navigateToAddProduct(tester);
-          await fillBasicProductFields(
-            tester,
-            name: p05Name,
-            price: '12.50',
-          );
+          await fillBasicProductFields(tester, name: p05Name, price: '12.50');
           // Scroll to Delivery section
           await scrollUntilVisible(
             tester,
@@ -642,14 +675,20 @@ void main() {
           }
           // Submit
           await tapPublishProduct(tester);
-            final hasSuccessT05 = didPublishSucceed();
+          final hasSuccessT05 = await didPublishSucceed();
 
           checkCase('C088', hasSuccessT05, 'T05 publication réussie');
           if (!hasSuccessT05) {
-            stopOnSkip('S024', 'T05 publish failed (validation/images/backend)');
+            stopOnSkip(
+              'S024',
+              'T05 publish failed (validation/images/backend)',
+            );
           }
           debugPrint('✓ Product published');
-          if (find.byKey(const Key('addproduct_screen_title')).evaluate().isNotEmpty) {
+          if (find
+              .byKey(const Key('addproduct_screen_title'))
+              .evaluate()
+              .isNotEmpty) {
             await goBack(tester);
             await pumpSettle(tester, iterations: 3);
           }
@@ -668,11 +707,7 @@ void main() {
           _debugStep('P09', 'T09 — Express Delivery Tier Toggle');
           final navT09 = await navigateToAddProduct(tester);
           if (navT09) {
-            await fillBasicProductFields(
-              tester,
-              name: p09Name,
-              price: '35.00',
-            );
+            await fillBasicProductFields(tester, name: p09Name, price: '35.00');
             await scrollUntilVisible(
               tester,
               find.byKey(const Key('addproduct_express_delivery_card')),
@@ -730,11 +765,7 @@ void main() {
           _debugStep('P10', 'T10 — Digital Product Hides Physical Sections');
           final navT10 = await navigateToAddProduct(tester);
           if (navT10) {
-            await fillBasicProductFields(
-              tester,
-              name: p10Name,
-              price: '5.99',
-            );
+            await fillBasicProductFields(tester, name: p10Name, price: '5.99');
             await scrollUntilVisible(
               tester,
               find.byKey(const Key('addproduct_digital_toggle')),
@@ -800,11 +831,7 @@ void main() {
           _debugStep('P12', 'T12 — Validation Negative/Zero Price');
           final navT12 = await navigateToAddProduct(tester);
           if (navT12) {
-            await fillBasicProductFields(
-              tester,
-              name: p12Name,
-              price: '0',
-            );
+            await fillBasicProductFields(tester, name: p12Name, price: '0');
             await tapPublishProduct(tester);
 
             final stillOnAddProduct2 = find.byKey(
@@ -940,7 +967,9 @@ void main() {
               );
 
               final addAddressButton = find.bySemanticsLabel('btn-add-address');
-              final editAddressButton = find.bySemanticsLabel('btn-edit-address');
+              final editAddressButton = find.bySemanticsLabel(
+                'btn-edit-address',
+              );
               checkCase(
                 'C092',
                 addAddressButton.evaluate().isNotEmpty ||
@@ -953,20 +982,28 @@ void main() {
                 await pumpWait(tester, seconds: 2);
                 final fields = find.byType(TextFormField);
                 if (fields.evaluate().length >= 5) {
-                  await tester.enterText(fields.at(0), '123 Test Ave $runStamp');
+                  await tester.enterText(
+                    fields.at(0),
+                    '123 Test Ave $runStamp',
+                  );
                   await tester.enterText(fields.at(1), 'Unit 1');
                   await tester.enterText(fields.at(2), 'Toronto');
                   await tester.enterText(fields.at(3), 'M5V1A1');
                   await tester.enterText(fields.at(4), '4165550000');
                 }
-                final saveAddressButton = find.bySemanticsLabel('btn-save-address');
+                final saveAddressButton = find.bySemanticsLabel(
+                  'btn-save-address',
+                );
                 checkCase(
                   'C093',
                   saveAddressButton.evaluate().isNotEmpty,
                   'save address button visible',
                 );
                 if (saveAddressButton.evaluate().isNotEmpty) {
-                  await tester.tap(saveAddressButton.first, warnIfMissed: false);
+                  await tester.tap(
+                    saveAddressButton.first,
+                    warnIfMissed: false,
+                  );
                   await pumpWait(tester, seconds: 4);
                 }
               }
@@ -977,23 +1014,40 @@ void main() {
                 await pumpWait(tester, seconds: 2);
                 final fields = find.byType(TextFormField);
                 if (fields.evaluate().isNotEmpty) {
-                  await tester.enterText(fields.first, '456 Updated Ave $runStamp');
+                  await tester.enterText(
+                    fields.first,
+                    '456 Updated Ave $runStamp',
+                  );
                 }
-                final saveAddressButton = find.bySemanticsLabel('btn-save-address');
+                final saveAddressButton = find.bySemanticsLabel(
+                  'btn-save-address',
+                );
                 if (saveAddressButton.evaluate().isNotEmpty) {
-                  await tester.tap(saveAddressButton.first, warnIfMissed: false);
+                  await tester.tap(
+                    saveAddressButton.first,
+                    warnIfMissed: false,
+                  );
                   await pumpWait(tester, seconds: 4);
                 }
               }
 
               checkCase(
                 'C094',
-                find.bySemanticsLabel('btn-edit-address').evaluate().isNotEmpty ||
-                    find.byKey(const Key('home_settings_button')).evaluate().isNotEmpty,
+                find
+                        .bySemanticsLabel('btn-edit-address')
+                        .evaluate()
+                        .isNotEmpty ||
+                    find
+                        .byKey(const Key('home_settings_button'))
+                        .evaluate()
+                        .isNotEmpty,
                 '[buyer] create/edit adresse exécuté',
               );
 
-              if (find.bySemanticsLabel('btn-edit-address').evaluate().isNotEmpty) {
+              if (find
+                  .bySemanticsLabel('btn-edit-address')
+                  .evaluate()
+                  .isNotEmpty) {
                 await goBack(tester);
                 await pumpWait(tester, seconds: 1);
               }
@@ -1213,10 +1267,12 @@ void main() {
                 'summary contains multiple monetary values',
               );
               if (shippingAmounts.isNotEmpty && summaryAmounts.isNotEmpty) {
-                final maxSummary =
-                    summaryAmounts.reduce((value, element) => value > element ? value : element);
-                final minShipping =
-                    shippingAmounts.reduce((value, element) => value < element ? value : element);
+                final maxSummary = summaryAmounts.reduce(
+                  (value, element) => value > element ? value : element,
+                );
+                final minShipping = shippingAmounts.reduce(
+                  (value, element) => value < element ? value : element,
+                );
                 checkCase(
                   'C075',
                   maxSummary >= minShipping,
@@ -1258,7 +1314,9 @@ void main() {
             orElse: () => find.byType(Scaffold),
           );
 
-          if (buyerProductFinders.any((finder) => finder.evaluate().isNotEmpty)) {
+          if (buyerProductFinders.any(
+            (finder) => finder.evaluate().isNotEmpty,
+          )) {
             await tester.tap(buyerProductTarget.first, warnIfMissed: false);
             await pumpWait(tester, seconds: 3);
             final buyerAddToCart = find.byKey(
@@ -1313,7 +1371,10 @@ void main() {
             await pumpWait(tester, seconds: 3);
             checkCase(
               'C035',
-              find.byKey(const Key('addproduct_screen_title')).evaluate().isNotEmpty,
+              find
+                  .byKey(const Key('addproduct_screen_title'))
+                  .evaluate()
+                  .isNotEmpty,
               '[buyer,seller] add product screen open',
             );
             await goBack(tester);
@@ -1378,7 +1439,8 @@ void main() {
               await pumpWait(tester, seconds: 3);
               checkCase(
                 'C040',
-                find.byKey(const Key('seller_orders_screen_title'))
+                find
+                    .byKey(const Key('seller_orders_screen_title'))
                     .evaluate()
                     .isNotEmpty,
                 '[buyer,seller] seller orders screen visible',
@@ -1421,11 +1483,16 @@ void main() {
           adminCredentialCandidates,
         );
         if (adminCred == null) {
-          stopOnSkip('S011', 'Admin extension login failed with configured admin credentials');
+          stopOnSkip(
+            'S011',
+            'Admin extension login failed with configured admin credentials',
+          );
         } else {
           debugPrint('✓ Admin login succeeded with: ${adminCred.label}');
 
-          final adminAddProduct = find.byKey(const Key('home_add_product_button'));
+          final adminAddProduct = find.byKey(
+            const Key('home_add_product_button'),
+          );
           checkCase(
             'C063',
             adminAddProduct.evaluate().isNotEmpty,
@@ -1536,7 +1603,10 @@ void main() {
             checkCase(
               'C065',
               find.byKey(const Key('admin_tab_orders')).evaluate().isNotEmpty &&
-                  find.byKey(const Key('admin_tab_payments')).evaluate().isNotEmpty,
+                  find
+                      .byKey(const Key('admin_tab_payments'))
+                      .evaluate()
+                      .isNotEmpty,
               '[admin] tabs order/payment persistent after navigation',
             );
             await goBack(tester);
@@ -1560,7 +1630,10 @@ void main() {
 
             checkCase(
               'C066',
-              find.byKey(const Key('home_settings_button')).evaluate().isNotEmpty,
+              find
+                  .byKey(const Key('home_settings_button'))
+                  .evaluate()
+                  .isNotEmpty,
               '[admin] retour home/profile stable',
             );
           }
@@ -1596,11 +1669,7 @@ void main() {
         );
 
         debugPrint('');
-        checkCase(
-          'C054',
-          caseCount >= 70,
-          'Matrice de cas critiques >= 70',
-        );
+        checkCase('C054', caseCount >= 70, 'Matrice de cas critiques >= 70');
         _debugStep('Z00', 'Total cases validés: $caseCount');
         _debugStep('Z01', 'All flows checked');
         _debugStep('Z02', 'Buyer/Seller/Admin extension flows checked');

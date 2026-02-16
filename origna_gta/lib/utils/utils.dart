@@ -41,33 +41,113 @@ const Map<String, Map<String, double>> provinceTaxRates = {
 };
 
 /// Maximum total keywords to generate (Firestore array limit consideration)
-const int _maxKeywords = 100;
+const int _maxKeywords = 30;
 
 /// Maximum characters per word to generate prefixes for
 const int _maxWordLength = 20;
 
 final List<ProductCategories> productCategories = [
-  ProductCategories(categoryId: 1, name: "categories.electronics", icon: Icons.devices),
-  ProductCategories(categoryId: 2, name: "categories.computers", icon: Icons.computer),
-  ProductCategories(categoryId: 3, name: "categories.gaming", icon: Icons.sports_esports),
-  ProductCategories(categoryId: 4, name: "categories.home_kitchen", icon: Icons.kitchen),
-  ProductCategories(categoryId: 5, name: "categories.fashion", icon: Icons.shopping_bag),
-  ProductCategories(categoryId: 6, name: "categories.shoes_accessories", icon: Icons.backpack),
-  ProductCategories(categoryId: 7, name: "categories.jewelry_watches", icon: Icons.watch),
-  ProductCategories(categoryId: 8, name: "categories.beauty_personal_care", icon: Icons.spa),
-  ProductCategories(categoryId: 9, name: "categories.health_wellness", icon: Icons.favorite),
-  ProductCategories(categoryId: 10, name: "categories.sports_fitness", icon: Icons.fitness_center),
-  ProductCategories(categoryId: 11, name: "categories.automotive", icon: Icons.directions_car),
-  ProductCategories(categoryId: 12, name: "categories.tools_hardware", icon: Icons.handyman),
-  ProductCategories(categoryId: 13, name: "categories.office_supplies", icon: Icons.folder),
+  ProductCategories(
+    categoryId: 1,
+    name: "categories.electronics",
+    icon: Icons.devices,
+  ),
+  ProductCategories(
+    categoryId: 2,
+    name: "categories.computers",
+    icon: Icons.computer,
+  ),
+  ProductCategories(
+    categoryId: 3,
+    name: "categories.gaming",
+    icon: Icons.sports_esports,
+  ),
+  ProductCategories(
+    categoryId: 4,
+    name: "categories.home_kitchen",
+    icon: Icons.kitchen,
+  ),
+  ProductCategories(
+    categoryId: 5,
+    name: "categories.fashion",
+    icon: Icons.shopping_bag,
+  ),
+  ProductCategories(
+    categoryId: 6,
+    name: "categories.shoes_accessories",
+    icon: Icons.backpack,
+  ),
+  ProductCategories(
+    categoryId: 7,
+    name: "categories.jewelry_watches",
+    icon: Icons.watch,
+  ),
+  ProductCategories(
+    categoryId: 8,
+    name: "categories.beauty_personal_care",
+    icon: Icons.spa,
+  ),
+  ProductCategories(
+    categoryId: 9,
+    name: "categories.health_wellness",
+    icon: Icons.favorite,
+  ),
+  ProductCategories(
+    categoryId: 10,
+    name: "categories.sports_fitness",
+    icon: Icons.fitness_center,
+  ),
+  ProductCategories(
+    categoryId: 11,
+    name: "categories.automotive",
+    icon: Icons.directions_car,
+  ),
+  ProductCategories(
+    categoryId: 12,
+    name: "categories.tools_hardware",
+    icon: Icons.handyman,
+  ),
+  ProductCategories(
+    categoryId: 13,
+    name: "categories.office_supplies",
+    icon: Icons.folder,
+  ),
   ProductCategories(categoryId: 14, name: "categories.books", icon: Icons.book),
-  ProductCategories(categoryId: 15, name: "categories.music_instruments", icon: Icons.music_note),
-  ProductCategories(categoryId: 16, name: "categories.toys_games", icon: Icons.gamepad),
-  ProductCategories(categoryId: 17, name: "categories.baby_kids", icon: Icons.child_care),
-  ProductCategories(categoryId: 18, name: "categories.pet_supplies", icon: Icons.pets),
-  ProductCategories(categoryId: 19, name: "categories.groceries", icon: Icons.local_grocery_store),
-  ProductCategories(categoryId: 20, name: "categories.art_collectibles", icon: Icons.palette),
-  ProductCategories(categoryId: 21, name: "categories.digital_products", icon: Icons.cloud),
+  ProductCategories(
+    categoryId: 15,
+    name: "categories.music_instruments",
+    icon: Icons.music_note,
+  ),
+  ProductCategories(
+    categoryId: 16,
+    name: "categories.toys_games",
+    icon: Icons.gamepad,
+  ),
+  ProductCategories(
+    categoryId: 17,
+    name: "categories.baby_kids",
+    icon: Icons.child_care,
+  ),
+  ProductCategories(
+    categoryId: 18,
+    name: "categories.pet_supplies",
+    icon: Icons.pets,
+  ),
+  ProductCategories(
+    categoryId: 19,
+    name: "categories.groceries",
+    icon: Icons.local_grocery_store,
+  ),
+  ProductCategories(
+    categoryId: 20,
+    name: "categories.art_collectibles",
+    icon: Icons.palette,
+  ),
+  ProductCategories(
+    categoryId: 21,
+    name: "categories.digital_products",
+    icon: Icons.cloud,
+  ),
 ];
 
 // Provincial tax configuration — single source of truth
@@ -83,9 +163,7 @@ Future<bool> addToCart({
 }) async {
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) {
-    Navigator.of(
-      context,
-    ).pushNamed(AppRoutes.login);
+    Navigator.of(context).pushNamed(AppRoutes.login);
     return false;
   }
 
@@ -127,7 +205,11 @@ Future<bool> addToCart({
       final newTotalQty = currentQty + quantity;
 
       if (newTotalQty > stockQuantity) {
-        throw Exception('cart.stock_limit_count'.tr(namedArgs: {'count': stockQuantity.toString()}));
+        throw Exception(
+          'cart.stock_limit_count'.tr(
+            namedArgs: {'count': stockQuantity.toString()},
+          ),
+        );
       }
 
       if (snapshot.exists) {
@@ -323,6 +405,7 @@ List<String> generateSearchKeywords(String name) {
 
   final keywords = <String>{};
   final words = cleanName.split(RegExp(r'\s+'));
+  final prefixLimit = _maxKeywords > 1 ? _maxKeywords - 1 : 0;
 
   for (final word in words) {
     final maxLen = word.length < _maxWordLength ? word.length : _maxWordLength;
@@ -330,13 +413,13 @@ List<String> generateSearchKeywords(String name) {
     for (int i = 0; i < maxLen; i++) {
       temp += word[i];
       keywords.add(temp);
-      if (keywords.length >= _maxKeywords) break;
+      if (keywords.length >= prefixLimit) break;
     }
-    if (keywords.length >= _maxKeywords) break;
+    if (keywords.length >= prefixLimit) break;
   }
 
   keywords.add(cleanName);
-  return keywords.toList();
+  return keywords.take(_maxKeywords).toList();
 }
 
 Future<int> getCartItemCount(String userId) async {
@@ -525,22 +608,34 @@ void showEmailVerificationDialog(
               children: [
                 Text(
                   '  1. ${'email_verification.step1'.tr()}',
-                  style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: DesignTokens.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '  2. ${'email_verification.step2'.tr()}',
-                  style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: DesignTokens.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '  3. ${'email_verification.step3'.tr()}',
-                  style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: DesignTokens.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '  4. ${'email_verification.step4'.tr()}',
-                  style: TextStyle(fontSize: 13, color: DesignTokens.textPrimary),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: DesignTokens.textPrimary,
+                  ),
                 ),
               ],
             ),
@@ -563,7 +658,7 @@ void showEmailVerificationDialog(
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                      content: Text('email_verification.sent_success'.tr()),
+                  content: Text('email_verification.sent_success'.tr()),
                   backgroundColor: DesignTokens.primary,
                   behavior: SnackBarBehavior.floating,
                 ),
@@ -571,9 +666,7 @@ void showEmailVerificationDialog(
             },
             icon: const Icon(Icons.send, size: 16),
             label: Text('email_verification.resend_button'.tr()),
-            style: TextButton.styleFrom(
-              foregroundColor: DesignTokens.primary,
-            ),
+            style: TextButton.styleFrom(foregroundColor: DesignTokens.primary),
           ),
         ElevatedButton(
           onPressed: () => Navigator.pop(ctx),
@@ -875,10 +968,7 @@ void openPrivacyPolicy(BuildContext context) {
     // Navigate to actual URL for OAuth compliance
     _launchPath(AppRoutes.privacyPolicy);
   } else {
-    Navigator.pushNamed(
-      context,
-      AppRoutes.privacyPolicy,
-    );
+    Navigator.pushNamed(context, AppRoutes.privacyPolicy);
   }
 }
 
@@ -890,9 +980,6 @@ void openTermsOfService(BuildContext context) {
     // Navigate to actual URL for OAuth compliance
     _launchPath(AppRoutes.termsOfService);
   } else {
-    Navigator.pushNamed(
-      context,
-      AppRoutes.termsOfService,
-    );
+    Navigator.pushNamed(context, AppRoutes.termsOfService);
   }
 }

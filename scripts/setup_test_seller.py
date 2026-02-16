@@ -19,6 +19,7 @@ def create_user(uid, email, name, roles, extra_fields=None):
         "uid": {"stringValue": uid},
         "email": {"stringValue": email},
         "name": {"stringValue": name},
+        "role": {"stringValue": roles[0] if roles else "buyer"},
         "roles": {"arrayValue": {"values": [{"stringValue": r} for r in roles]}},
         "suspended": {"booleanValue": False},
         "consentTimestamp": {"timestampValue": "2025-01-01T00:00:00Z"},
@@ -32,6 +33,9 @@ def create_user(uid, email, name, roles, extra_fields=None):
         "termsVersion": {"stringValue": "1.0"},
         "preferredLanguage": {"stringValue": "en"},
         "createdAt": {"timestampValue": "2025-01-01T00:00:00Z"},
+        "onboardingCompleted": {"booleanValue": False},
+        "chargesEnabled": {"booleanValue": False},
+        "payoutsEnabled": {"booleanValue": False},
     }
     if extra_fields:
         fields.update(extra_fields)
@@ -49,13 +53,28 @@ def create_user(uid, email, name, roles, extra_fields=None):
     except urllib.error.HTTPError as e:
         print(f"ERROR {e.code}: {e.read().decode()}")
 
-# Seller/Admin user
+# Admin user
 create_user(
     uid="RU9MI8vYFkQCakMrJfG8iGTuc012",
     email="yr62813@gmail.com",
-    name="Test Seller Admin",
+    name="Test Admin Seller",
     roles=["buyer", "seller", "admin"],
     extra_fields={
+        "role": {"stringValue": "admin"},
+        "chargesEnabled": {"booleanValue": True},
+        "payoutsEnabled": {"booleanValue": True},
+        "onboardingCompleted": {"booleanValue": True},
+    }
+)
+
+# Seller user
+create_user(
+    uid="eVxwL5SfEATPnw1zhWYaUdGx8MD2",
+    email="yuniorrodriguezo4601@yahoo.com",
+    name="Test Seller Yahoo",
+    roles=["buyer", "seller"],
+    extra_fields={
+        "role": {"stringValue": "seller"},
         "chargesEnabled": {"booleanValue": True},
         "payoutsEnabled": {"booleanValue": True},
         "onboardingCompleted": {"booleanValue": True},
@@ -64,8 +83,11 @@ create_user(
 
 # Buyer user
 create_user(
-    uid="eVxwL5SfEATPnw1zhWYaUdGx8MD2",
-    email="yuniorrodriguezo4601@yahoo.com",
-    name="Test Buyer",
+    uid="5YDrolVHlIVO7Jrk2FwGGD5daFHq",
+    email="yuniorrodriguezo460@gmail.com",
+    name="Test Buyer Gmail",
     roles=["buyer"],
+    extra_fields={
+        "role": {"stringValue": "buyer"},
+    }
 )

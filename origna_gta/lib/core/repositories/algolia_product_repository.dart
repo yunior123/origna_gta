@@ -69,7 +69,6 @@ class AlgoliaProductRepository implements ProductRepository {
     if (kDebugMode) debugPrint('REPO: [AlgoliaProductRepository] Adding product with ID: $productId');
     // AUDIT FIX: Sanitize product data before Firestore write
     final firestoreData = sanitizeProductForFirestore(product.toJson(), ensureDateCreated: true);
-    firestoreData[Fields.productId] = productId;
     await _firestore.collection(Collections.products).doc(productId).set(firestoreData);
   }
 

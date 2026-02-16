@@ -36,7 +36,6 @@ class _AddProductButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfileAsync = ref.watch(userProfileProvider);
     final sellerStatus = ref.watch(sellerAccountStatusProvider);
-    final isDev = const String.fromEnvironment('ENVIRONMENT', defaultValue: 'dev') == 'dev';
 
     // If provider is loading, hide button temporarily (will rebuild when loaded)
     if (userProfileAsync.isLoading) {
@@ -49,26 +48,25 @@ class _AddProductButton extends ConsumerWidget {
     final isSeller = userProfile?.roles.contains(UserRoles.seller) ?? false;
     final isAdmin = userProfile?.roles.contains(UserRoles.admin) ?? false;
     final isSuspended = userProfile?.suspended ?? false;
-    
-    // In DEV: allow any logged-in user; in PROD: sellers/admins only
-    final isUserLoggedIn = userProfile != null;
-    final userCanAccess = isDev ? isUserLoggedIn : (isSeller || isAdmin);
 
-    debugPrint('🔍 _AddProductButton.build() → isDev=$isDev, isSeller=$isSeller, isAdmin=$isAdmin, isUserLoggedIn=$isUserLoggedIn, userCanAccess=$userCanAccess');
+    final userCanAccess = isSeller || isAdmin;
 
-    // In DEV: show button for any logged-in user; in PROD: show for sellers/admins only
+    debugPrint(
+      '🔍 _AddProductButton.build() → isSeller=$isSeller, isAdmin=$isAdmin, userCanAccess=$userCanAccess',
+    );
+
+    // Show only for sellers/admins to match Firestore rules.
     if (!userCanAccess) {
       debugPrint('🔍 User cannot access → returning shrink()');
       return const SizedBox.shrink();
     }
 
     // Check if seller account is fully verified (charges AND payouts enabled)
-    final isVerified = sellerStatus.whenOrNull(
-      data: (status) => status.isComplete,
-    ) ?? false;
+    final isVerified =
+        sellerStatus.whenOrNull(data: (status) => status.isComplete) ?? false;
 
-    // In DEV mode: allow any user; in PROD: admins can always, sellers only when verified
-    final canAddProducts = isDev ? true : (isAdmin || isVerified);
+    // Must match Firestore rules: admin OR verified seller.
+    final canAddProducts = isAdmin || isVerified;
     debugPrint('🔍 isVerified=$isVerified, canAddProducts=$canAddProducts');
 
     return IconButton(
@@ -79,7 +77,7 @@ class _AddProductButton extends ConsumerWidget {
         if (isSuspended) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('auth.seller_suspended'.tr()), 
+              content: Text('auth.seller_suspended'.tr()),
               backgroundColor: DesignTokens.primary,
             ),
           );
@@ -88,7 +86,7 @@ class _AddProductButton extends ConsumerWidget {
         if (!canAddProducts) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('auth.complete_stripe_verification'.tr()), 
+              content: Text('auth.complete_stripe_verification'.tr()),
               backgroundColor: DesignTokens.primary,
             ),
           );
@@ -112,7 +110,8 @@ class _CartBadge extends ConsumerStatefulWidget {
   ConsumerState<_CartBadge> createState() => _CartBadgeState();
 }
 
-class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProviderStateMixin {
+class _CartBadgeState extends ConsumerState<_CartBadge>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _pulseAnimation;
@@ -135,7 +134,10 @@ class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProvide
                 child: IconButton(
                   key: const Key('home_cart_button'),
                   tooltip: 'home.shopping_cart'.tr(),
-                  icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                  icon: const Icon(
+                    Icons.shopping_cart_outlined,
+                    color: Colors.white,
+                  ),
                   onPressed: () async {
                     _triggerAnimation();
                     if (user == null) {
@@ -166,13 +168,29 @@ class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProvide
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
-                        border: Border.all(color: DesignTokens.primary, width: 2),
-                        boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 2)],
+                        border: Border.all(
+                          color: DesignTokens.primary,
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: DesignTokens.primary.withValues(alpha: 0.4),
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
-                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
                       child: Text(
                         cartCount > 99 ? '99+' : '$cartCount',
-                        style: const TextStyle(color: DesignTokens.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: DesignTokens.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -194,9 +212,18 @@ class _CartBadgeState extends ConsumerState<_CartBadge> with SingleTickerProvide
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.15,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.2,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   void _triggerAnimation() {
@@ -211,7 +238,9 @@ class _CategoryChips extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedCategoryId = ref.watch(homeViewModelProvider.select((state) => state.selectedCategoryId));
+    final selectedCategoryId = ref.watch(
+      homeViewModelProvider.select((state) => state.selectedCategoryId),
+    );
 
     return Container(
       height: 52,
@@ -222,7 +251,9 @@ class _CategoryChips extends ConsumerWidget {
         itemBuilder: (context, index) {
           final isAll = index == 0;
           final category = isAll ? null : productCategories[index - 1];
-          final isSelected = isAll ? selectedCategoryId == null : selectedCategoryId == category?.categoryId;
+          final isSelected = isAll
+              ? selectedCategoryId == null
+              : selectedCategoryId == category?.categoryId;
 
           return Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -232,32 +263,57 @@ class _CategoryChips extends ConsumerWidget {
               decoration: BoxDecoration(
                 gradient: isSelected
                     ? LinearGradient(
-                        colors: [DesignTokens.primary.withValues(alpha: 0.9), DesignTokens.secondary.withValues(alpha: 0.9)],
+                        colors: [
+                          DesignTokens.primary.withValues(alpha: 0.9),
+                          DesignTokens.secondary.withValues(alpha: 0.9),
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       )
                     : null,
                 color: !isSelected ? DesignTokens.surface : null,
                 borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.textSecondary.withValues(alpha: 0.3), width: 1.5),
-                boxShadow: isSelected ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))] : [],
+                border: Border.all(
+                  color: isSelected
+                      ? DesignTokens.primary
+                      : DesignTokens.textSecondary.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: DesignTokens.primary.withValues(alpha: 0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : [],
               ),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    homeNotifier.onCategorySelected(isAll ? null : category!.categoryId);
+                    homeNotifier.onCategorySelected(
+                      isAll ? null : category!.categoryId,
+                    );
                   },
                   borderRadius: BorderRadius.circular(DesignTokens.radius12),
                   splashColor: Colors.white.withValues(alpha: 0.2),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: Center(
                       child: Text(
                         isAll ? 'home.category_all'.tr() : category!.name.tr(),
                         style: TextStyle(
-                          color: isSelected ? Colors.white : DesignTokens.textPrimary,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          color: isSelected
+                              ? Colors.white
+                              : DesignTokens.textPrimary,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
                           fontSize: 13,
                         ),
                       ),
@@ -286,11 +342,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final day = DateTime.now().day;
     final showSparky = day % 2 == 0;
     final mascotController = showSparky
-      ? ref.watch(mascotControllerProvider)
-      : null;
+        ? ref.watch(mascotControllerProvider)
+        : null;
     final mooseController = !showSparky
-      ? ref.watch(mooseControllerProvider)
-      : null;
+        ? ref.watch(mooseControllerProvider)
+        : null;
 
     return Scaffold(
       appBar: _buildModernAppBar(),
@@ -313,7 +369,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
-                        color: isDark ? DesignTokens.textDisabled : DesignTokens.textSecondary,
+                        color: isDark
+                            ? DesignTokens.textDisabled
+                            : DesignTokens.textSecondary,
                         fontWeight: FontWeight.w400,
                         height: 1.3,
                       ),
@@ -324,18 +382,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 // Animated Search Bar
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.all(ResponsiveBreakpoints.getSpacing(context, SpacingSize.md)),
+                    padding: EdgeInsets.all(
+                      ResponsiveBreakpoints.getSpacing(context, SpacingSize.md),
+                    ),
                     child: _buildModernSearchBar(homeNotifier),
                   ),
                 ),
 
                 // Category Chips
-                SliverToBoxAdapter(child: _CategoryChips(homeNotifier: homeNotifier)),
+                SliverToBoxAdapter(
+                  child: _CategoryChips(homeNotifier: homeNotifier),
+                ),
 
-                const SliverToBoxAdapter(child: SizedBox(height: DesignTokens.spacing20)),
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: DesignTokens.spacing20),
+                ),
 
                 // Product Grid
-                _ProductGrid(cardAspectRatio: _getCardAspectRatio(context), fallbackUserModel: widget.userModel),
+                _ProductGrid(
+                  cardAspectRatio: _getCardAspectRatio(context),
+                  fallbackUserModel: widget.userModel,
+                ),
 
                 // Pagination Loader
                 const _PaginationLoader(),
@@ -343,10 +410,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 // Footer with legal links
                 SliverToBoxAdapter(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 24,
+                      horizontal: 16,
+                    ),
                     child: Column(
                       children: [
-                        Divider(color: DesignTokens.textSecondary.withValues(alpha: 0.2)),
+                        Divider(
+                          color: DesignTokens.textSecondary.withValues(
+                            alpha: 0.2,
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         Wrap(
                           alignment: WrapAlignment.center,
@@ -364,11 +438,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 },
                                 child: Text(
                                   'Privacy Policy',
-                                  style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+                                  style: TextStyle(
+                                    color: DesignTokens.primary,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ),
-                            Text('|', style: TextStyle(color: DesignTokens.textSecondary.withValues(alpha: 0.4), fontSize: 13)),
+                            Text(
+                              '|',
+                              style: TextStyle(
+                                color: DesignTokens.textSecondary.withValues(
+                                  alpha: 0.4,
+                                ),
+                                fontSize: 13,
+                              ),
+                            ),
                             Semantics(
                               label: 'btn-home-terms-of-service',
                               button: true,
@@ -381,7 +466,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 },
                                 child: Text(
                                   'Terms of Service',
-                                  style: TextStyle(color: DesignTokens.primary, fontSize: 13),
+                                  style: TextStyle(
+                                    color: DesignTokens.primary,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ),
@@ -390,7 +478,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const SizedBox(height: 8),
                         Text(
                           '© 2026 Origna GTA. All rights reserved.',
-                          style: TextStyle(color: DesignTokens.textSecondary, fontSize: 11),
+                          style: TextStyle(
+                            color: DesignTokens.textSecondary,
+                            fontSize: 11,
+                          ),
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -442,11 +533,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [DesignTokens.primary.withValues(alpha: 0.95), DesignTokens.secondary.withValues(alpha: 0.95)],
+            colors: [
+              DesignTokens.primary.withValues(alpha: 0.95),
+              DesignTokens.secondary.withValues(alpha: 0.95),
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          boxShadow: [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 8))],
+          boxShadow: [
+            BoxShadow(
+              color: DesignTokens.primary.withValues(alpha: 0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: SafeArea(
           child: Padding(
@@ -467,10 +567,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(DesignTokens.radius16),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                              borderRadius: BorderRadius.circular(
+                                DesignTokens.radius16,
+                              ),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
                             ),
-                            child: const Icon(Icons.shopping_bag, color: Colors.white, size: 28),
+                            child: const Icon(
+                              Icons.shopping_bag,
+                              color: Colors.white,
+                              size: 28,
+                            ),
                           ),
                         );
                       },
@@ -480,20 +589,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       header: true,
                       child: ShaderMask(
                         shaderCallback: (bounds) => LinearGradient(
-                          colors: [Colors.white, Colors.white.withValues(alpha: 0.8)],
+                          colors: [
+                            Colors.white,
+                            Colors.white.withValues(alpha: 0.8),
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ).createShader(bounds),
                         child: const Text(
                           key: Key('home_screen_title'),
                           'Origna GTA',
-                          style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 24, letterSpacing: 0.5),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            fontSize: 24,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const Row(children: [_SettingsButton(), _AddProductButton(), _CartBadge()]),
+                const Row(
+                  children: [
+                    _SettingsButton(),
+                    _AddProductButton(),
+                    _CartBadge(),
+                  ],
+                ),
               ],
             ),
           ),
@@ -512,7 +635,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           key: const Key('home_search_field'),
           controller: _searchController,
           onChanged: homeNotifier.onSearchChanged,
-          style: TextStyle(color: isDark ? Colors.white : DesignTokens.textPrimary),
+          style: TextStyle(
+            color: isDark ? Colors.white : DesignTokens.textPrimary,
+          ),
           cursorColor: DesignTokens.primary,
           decoration: InputDecoration(
             hintText: 'home.search_products'.tr(),
@@ -527,24 +652,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         _searchController.clear();
                         homeNotifier.onSearchChanged('');
                       },
-                      child: Icon(Icons.close, color: DesignTokens.textSecondary),
+                      child: Icon(
+                        Icons.close,
+                        color: DesignTokens.textSecondary,
+                      ),
                     ),
                   )
                 : null,
-          filled: true,
-          fillColor: Colors.transparent,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(DesignTokens.radius12),
-            borderSide: BorderSide(color: DesignTokens.textSecondary.withValues(alpha: 0.2), width: 1),
+            filled: true,
+            fillColor: Colors.transparent,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(DesignTokens.radius12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(DesignTokens.radius12),
+              borderSide: BorderSide(
+                color: DesignTokens.textSecondary.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(DesignTokens.radius12),
+              borderSide: BorderSide(color: DesignTokens.primary, width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(DesignTokens.radius12),
-            borderSide: BorderSide(color: DesignTokens.primary, width: 2),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
-      ),
       ),
     );
   }
@@ -561,7 +698,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 300) {
       // Only paginate when products already exist — initial load is handled by the ViewModel constructor
       final products = ref.read(homeViewModelProvider).products;
       if (products.isNotEmpty) {
@@ -576,9 +714,12 @@ class _PaginationLoader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isLoadingMore = ref.watch(homeViewModelProvider.select((state) => state.isLoadingMore));
+    final isLoadingMore = ref.watch(
+      homeViewModelProvider.select((state) => state.isLoadingMore),
+    );
 
-    if (!isLoadingMore) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    if (!isLoadingMore)
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
 
     return SliverToBoxAdapter(
       child: Padding(
@@ -593,7 +734,11 @@ class _PaginationLoader extends ConsumerWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ).createShader(bounds),
-              child: const ModernLoadingIndicator(strokeWidth: 3, color: Colors.white, centered: false),
+              child: const ModernLoadingIndicator(
+                strokeWidth: 3,
+                color: Colors.white,
+                centered: false,
+              ),
             ),
           ),
         ),
@@ -606,12 +751,19 @@ class _ProductGrid extends ConsumerWidget {
   final double cardAspectRatio;
   final UserModel? fallbackUserModel;
 
-  const _ProductGrid({required this.cardAspectRatio, required this.fallbackUserModel});
+  const _ProductGrid({
+    required this.cardAspectRatio,
+    required this.fallbackUserModel,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isLoading = ref.watch(homeViewModelProvider.select((state) => state.isLoading));
-    final products = ref.watch(homeViewModelProvider.select((state) => state.products));
+    final isLoading = ref.watch(
+      homeViewModelProvider.select((state) => state.isLoading),
+    );
+    final products = ref.watch(
+      homeViewModelProvider.select((state) => state.products),
+    );
     final userProfile = ref.watch(userProfileProvider).valueOrNull;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -628,20 +780,37 @@ class _ProductGrid extends ConsumerWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [DesignTokens.primary.withValues(alpha: 0.1), DesignTokens.secondary.withValues(alpha: 0.1)],
+                      colors: [
+                        DesignTokens.primary.withValues(alpha: 0.1),
+                        DesignTokens.secondary.withValues(alpha: 0.1),
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                   ),
-                  child: Icon(Icons.inventory_2_outlined, size: 80, color: DesignTokens.primary.withValues(alpha: 0.6)),
+                  child: Icon(
+                    Icons.inventory_2_outlined,
+                    size: 80,
+                    color: DesignTokens.primary.withValues(alpha: 0.6),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Text(
                   'home.no_products_found'.tr(),
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : DesignTokens.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                Text('home.try_adjusting'.tr(), style: TextStyle(fontSize: 14, color: DesignTokens.textSecondary)),
+                Text(
+                  'home.try_adjusting'.tr(),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: DesignTokens.textSecondary,
+                  ),
+                ),
               ],
             ),
           ),
@@ -670,7 +839,7 @@ class _ProductGrid extends ConsumerWidget {
     }
 
     final spacing = ResponsiveBreakpoints.getSpacing(context, SpacingSize.md);
-    
+
     return SliverPadding(
       padding: EdgeInsets.all(spacing),
       sliver: SliverGrid(
@@ -686,9 +855,9 @@ class _ProductGrid extends ConsumerWidget {
             label: '${product.name}, \$${product.price.toStringAsFixed(2)}',
             child: ProductCard(
               key: Key('product_card_${product.name}'),
-              productId: product.productId, 
-              product: product, 
-              userModel: userProfile ?? fallbackUserModel
+              productId: product.productId,
+              product: product,
+              userModel: userProfile ?? fallbackUserModel,
             ),
           );
         }, childCount: products.length),
@@ -705,7 +874,8 @@ class _SettingsButton extends ConsumerStatefulWidget {
   ConsumerState<_SettingsButton> createState() => _SettingsButtonState();
 }
 
-class _SettingsButtonState extends ConsumerState<_SettingsButton> with SingleTickerProviderStateMixin {
+class _SettingsButtonState extends ConsumerState<_SettingsButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _rotationAnimation;
 
@@ -727,7 +897,10 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton> with SingleTic
               onPressed: () {
                 _triggerAnimation();
                 if (user == null) {
-                  showLoginPrompt(context, text: "auth.sign_in_settings_required");
+                  showLoginPrompt(
+                    context,
+                    text: "auth.sign_in_settings_required",
+                  );
                   return;
                 }
                 Navigator.pushNamed(context, AppRoutes.profile);
@@ -748,8 +921,14 @@ class _SettingsButtonState extends ConsumerState<_SettingsButton> with SingleTic
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
-    _rotationAnimation = Tween<double>(begin: 0.0, end: 0.5).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    _rotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 0.5,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   void _triggerAnimation() {
@@ -765,7 +944,9 @@ class _ShimmerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
       baseColor: isDark ? DesignTokens.darkOutline : DesignTokens.outline,
-      highlightColor: isDark ? DesignTokens.darkSurfaceVariant : DesignTokens.outlineVariant,
+      highlightColor: isDark
+          ? DesignTokens.darkSurfaceVariant
+          : DesignTokens.outlineVariant,
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -779,7 +960,9 @@ class _ShimmerCard extends StatelessWidget {
               child: Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(DesignTokens.radius16)),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(DesignTokens.radius16),
+                  ),
                 ),
               ),
             ),
@@ -791,9 +974,30 @@ class _ShimmerCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    Container(height: 14, width: double.infinity, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
-                    Container(height: 14, width: 80, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
-                    Container(height: 14, width: 60, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+                    Container(
+                      height: 14,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    Container(
+                      height: 14,
+                      width: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    Container(
+                      height: 14,
+                      width: 60,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
                   ],
                 ),
               ),

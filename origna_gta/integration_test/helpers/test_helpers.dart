@@ -5,13 +5,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:origna_gta/main_test.dart' as app;
 
 // ─── CREDENTIALS ─────────────────────────────────────────────────────────────
 
-const buyerEmail = 'yuniorrodriguezo4601@yahoo.com';
+const buyerEmail = 'yuniorrodriguezo460@gmail.com';
 const buyerPassword = 'REDACTED_TEST_PASSWORD';
-const sellerEmail = 'yr62813@gmail.com';
+const sellerEmail = 'yuniorrodriguezo4601@yahoo.com';
 const sellerPassword = 'REDACTED_TEST_PASSWORD';
 const adminEmail = 'yr62813@gmail.com';
 const adminPassword = 'REDACTED_TEST_PASSWORD';
@@ -29,17 +30,13 @@ class Credential {
 }
 
 const buyerCredentialCandidates = <Credential>[
-  Credential(
-    label: '[buyer]',
-    email: 'yuniorrodriguezo460@gmail.com',
-    password: 'REDACTED_TEST_PASSWORD',
-  ),
+  Credential(label: '[buyer]', email: buyerEmail, password: 'REDACTED_TEST_PASSWORD'),
 ];
 
 const sellerCredentialCandidates = <Credential>[
   Credential(
     label: '[buyer,seller]',
-    email: 'yuniorrodriguezo4601@yahoo.com',
+    email: sellerEmail,
     password: 'REDACTED_TEST_PASSWORD',
   ),
 ];
@@ -47,7 +44,7 @@ const sellerCredentialCandidates = <Credential>[
 const adminCredentialCandidates = <Credential>[
   Credential(
     label: '[buyer,seller,admin]',
-    email: 'yr62813@gmail.com',
+    email: adminEmail,
     password: 'REDACTED_TEST_PASSWORD',
   ),
 ];
@@ -198,7 +195,9 @@ Future<void> _ensureLoggedOut(WidgetTester tester) async {
   if (signOutButton.evaluate().isNotEmpty) {
     final signOutReady = await _ensureFinderOnScreen(tester, signOutButton);
     if (!signOutReady) {
-      fail('switchToAnyCredential: sign out button present but off-screen/non-hit-testable');
+      fail(
+        'switchToAnyCredential: sign out button present but off-screen/non-hit-testable',
+      );
     }
     await tester.tap(signOutButton.first, warnIfMissed: false);
     await pumpWait(tester, seconds: 3);
@@ -225,6 +224,17 @@ Future<bool> _tryLoginFromHomeSettings(
   WidgetTester tester,
   Credential credential,
 ) async {
+  bool isExpectedUserLoggedIn() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final currentEmail = currentUser?.email?.toLowerCase();
+    return currentEmail != null &&
+        currentEmail == credential.email.toLowerCase();
+  }
+
+  if (isExpectedUserLoggedIn()) {
+    return true;
+  }
+
   await navigateToTab(tester, Icons.home);
   await pumpWait(tester, seconds: 1);
 
@@ -268,12 +278,23 @@ Future<bool> _tryLoginFromHomeSettings(
       .byKey(const Key('profile_sign_out_button'))
       .evaluate()
       .isNotEmpty;
+
+  final expectedUser = isExpectedUserLoggedIn();
+
+  if (signedIn && !expectedUser) {
+    final signOutButton = find.byKey(const Key('profile_sign_out_button'));
+    if (signOutButton.evaluate().isNotEmpty) {
+      await tester.tap(signOutButton.first, warnIfMissed: false);
+      await pumpWait(tester, seconds: 2);
+    }
+  }
+
   if (signedIn) {
     await goBack(tester);
     await pumpWait(tester, seconds: 1);
   }
 
-  return signedIn;
+  return signedIn && expectedUser;
 }
 
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
@@ -302,8 +323,7 @@ Future<bool> _ensureFinderOnScreen(
   bool isOnScreen() {
     if (finder.evaluate().isEmpty) return false;
     final center = tester.getCenter(finder.first, warnIfMissed: false);
-    final logicalSize =
-        tester.view.physicalSize / tester.view.devicePixelRatio;
+    final logicalSize = tester.view.physicalSize / tester.view.devicePixelRatio;
     return center.dx >= 0 &&
         center.dy >= 0 &&
         center.dx <= logicalSize.width &&
@@ -337,7 +357,9 @@ Future<bool> tapByKey(WidgetTester tester, String keyName) async {
   if (finder.evaluate().isNotEmpty) {
     final ready = await _ensureFinderOnScreen(tester, finder);
     if (!ready) {
-      fail('tapByKey: widget "$keyName" is present but off-screen/non-hit-testable');
+      fail(
+        'tapByKey: widget "$keyName" is present but off-screen/non-hit-testable',
+      );
     }
     await tester.tap(finder.first);
     await pumpFor(tester, frames: 5, ms: 100);
@@ -356,7 +378,9 @@ Future<void> enterTextByKey(
   if (field.evaluate().isNotEmpty) {
     final ready = await _ensureFinderOnScreen(tester, field);
     if (!ready) {
-      fail('enterTextByKey: field "$key" is present but off-screen/non-hit-testable');
+      fail(
+        'enterTextByKey: field "$key" is present but off-screen/non-hit-testable',
+      );
     }
     await tester.tap(field.first);
     await tester.pump(const Duration(milliseconds: 200));
@@ -447,14 +471,20 @@ Future<void> scrollUntilVisible(
       final ready = await _ensureFinderOnScreen(tester, finder, maxAttempts: 3);
       if (ready) return;
     }
-    await tester.drag(activeScrollable.first, Offset(0, delta), warnIfMissed: false);
+    await tester.drag(
+      activeScrollable.first,
+      Offset(0, delta),
+      warnIfMissed: false,
+    );
     await tester.pump(const Duration(milliseconds: 500));
   }
 
   if (finder.evaluate().isNotEmpty) {
     final ready = await _ensureFinderOnScreen(tester, finder, maxAttempts: 12);
     if (!ready) {
-      fail('scrollUntilVisible: target is present but still off-screen/non-hit-testable');
+      fail(
+        'scrollUntilVisible: target is present but still off-screen/non-hit-testable',
+      );
     }
   }
 }
@@ -466,7 +496,9 @@ Future<void> checkProfileSubPage(
   String label,
 ) async {
   if (buttonKey == 'profile_terms_button' || buttonKey.contains('terms')) {
-    debugPrint('$label SKIP: External terms/policy page intentionally not tapped in E2E');
+    debugPrint(
+      '$label SKIP: External terms/policy page intentionally not tapped in E2E',
+    );
     return;
   }
 
@@ -530,7 +562,9 @@ Future<bool> navigateToAddProduct(WidgetTester tester) async {
 
   final ready = await _ensureFinderOnScreen(tester, addBtn);
   if (!ready) {
-    fail('navigateToAddProduct: add product button is present but off-screen/non-hit-testable');
+    fail(
+      'navigateToAddProduct: add product button is present but off-screen/non-hit-testable',
+    );
   }
   await tester.tap(addBtn.first);
   await pumpSettle(tester, iterations: 5);
@@ -561,7 +595,9 @@ Future<void> fillBasicProductFields(
   await enterTextByKey(tester, 'product_price_field', price);
   await enterTextByKey(tester, 'product_stock_field', stock);
 
-  final categorySelector = find.byKey(const Key('addproduct_category_selector'));
+  final categorySelector = find.byKey(
+    const Key('addproduct_category_selector'),
+  );
   if (categorySelector.evaluate().isNotEmpty) {
     final categoryReady = await _ensureFinderOnScreen(
       tester,
@@ -569,7 +605,9 @@ Future<void> fillBasicProductFields(
       maxAttempts: 14,
     );
     if (!categoryReady) {
-      fail('fillBasicProductFields: category selector is present but off-screen/non-hit-testable');
+      fail(
+        'fillBasicProductFields: category selector is present but off-screen/non-hit-testable',
+      );
     }
 
     await tester.tap(categorySelector.first, warnIfMissed: false);
@@ -585,7 +623,9 @@ Future<void> fillBasicProductFields(
         await tester.tap(fallbackOption.first, warnIfMissed: false);
         await tester.pump(const Duration(milliseconds: 500));
       } else {
-        fail('fillBasicProductFields: no selectable category option found in dropdown');
+        fail(
+          'fillBasicProductFields: no selectable category option found in dropdown',
+        );
       }
     }
   } else {
@@ -600,7 +640,9 @@ Future<void> tapGlassToggle(WidgetTester tester, String identifier) async {
   expect(keyFinder, findsWidgets, reason: 'Toggle Key "$identifier" not found');
   final ready = await _ensureFinderOnScreen(tester, keyFinder);
   if (!ready) {
-    fail('tapGlassToggle: toggle "$identifier" is present but off-screen/non-hit-testable');
+    fail(
+      'tapGlassToggle: toggle "$identifier" is present but off-screen/non-hit-testable',
+    );
   }
   await tester.tap(keyFinder.first);
   await tester.pump(const Duration(milliseconds: 500));
@@ -617,30 +659,92 @@ Future<void> fillAddress(WidgetTester tester) async {
   await enterTextByKey(tester, 'addproduct_street_field', '123 Test Street');
   // City
   await enterTextByKey(tester, 'addproduct_city_field', 'Toronto');
+  // Province (required for physical products)
+  final provinceDropdown = find.byKey(
+    const Key('addproduct_province_dropdown'),
+  );
+  if (provinceDropdown.evaluate().isNotEmpty) {
+    final provinceReady = await _ensureFinderOnScreen(
+      tester,
+      provinceDropdown,
+      maxAttempts: 14,
+    );
+    if (!provinceReady) {
+      fail(
+        'fillAddress: province dropdown is present but off-screen/non-hit-testable',
+      );
+    }
+
+    await tester.tap(provinceDropdown.first, warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final ontarioOption = find.text('ON');
+    if (ontarioOption.evaluate().isNotEmpty) {
+      await tester.tap(ontarioOption.last, warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 500));
+    } else {
+      fail('fillAddress: province option ON not found');
+    }
+  } else {
+    fail('fillAddress: addproduct_province_dropdown not found');
+  }
   // Postal Code
   await enterTextByKey(tester, 'addproduct_postal_code_field', 'M5V 3L9');
   debugPrint('✓ Filled address fields using keys');
 }
 
 /// Attempt to submit the product form.
-Future<void> tapPublishProduct(WidgetTester tester) async {
+Future<String?> tapPublishProduct(WidgetTester tester) async {
   final submitBtn = find.byKey(const Key('addproduct_submit_button'));
   final ready = await _ensureFinderOnScreen(tester, submitBtn, maxAttempts: 20);
   if (!ready) {
-    fail('tapPublishProduct: submit button is present but off-screen/non-hit-testable');
+    fail(
+      'tapPublishProduct: submit button is present but off-screen/non-hit-testable',
+    );
   }
-  await tester.tap(submitBtn.first);
-  await pumpSettle(tester, iterations: 8);
 
-  final errorSnackText = find.descendant(
-    of: find.byType(SnackBar),
-    matching: find.byType(Text),
+  final currentUser = FirebaseAuth.instance.currentUser;
+  debugPrint(
+    'ℹ️ Publish auth context: uid=${currentUser?.uid} email=${currentUser?.email}',
   );
-  if (errorSnackText.evaluate().isNotEmpty) {
-    final textWidget = tester.widget<Text>(errorSnackText.first);
-    final msg = textWidget.data ?? textWidget.textSpan?.toPlainText() ?? 'unknown error';
-    debugPrint('⚠ Publish snackbar: $msg');
+
+  await tester.tap(submitBtn.first);
+
+  String? latestSnack;
+  for (var i = 0; i < 90; i++) {
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final errorSnackText = find.descendant(
+      of: find.byType(SnackBar),
+      matching: find.byType(Text),
+    );
+    if (errorSnackText.evaluate().isNotEmpty) {
+      final textWidget = tester.widget<Text>(errorSnackText.first);
+      latestSnack =
+          textWidget.data ??
+          textWidget.textSpan?.toPlainText() ??
+          'unknown error';
+    }
+
+    final hasSuccessSnack = find
+        .byKey(const Key('addproduct_success_snackbar'))
+        .evaluate()
+        .isNotEmpty;
+    final leftAddProductScreen = find
+        .byKey(const Key('addproduct_screen_title'))
+        .evaluate()
+        .isEmpty;
+
+    if (hasSuccessSnack || leftAddProductScreen) {
+      break;
+    }
   }
+
+  if (latestSnack != null && latestSnack.trim().isNotEmpty) {
+    debugPrint('⚠ Publish snackbar: $latestSnack');
+  }
+
+  return latestSnack;
 }
 
 /// Verify product appears in marketplace

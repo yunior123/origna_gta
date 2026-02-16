@@ -548,6 +548,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         children: [
                                           Expanded(
                                             child: _buildGlassDropdown(
+                                              key: const Key('addproduct_province_dropdown'),
                                               label: 'product.province'.tr(),
                                               value: state.selectedProvince,
                                               items: _provinceNames.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.key))).toList(),
