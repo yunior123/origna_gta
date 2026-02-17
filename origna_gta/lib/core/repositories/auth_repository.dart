@@ -297,6 +297,18 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<void> signOut() async {
     await _auth.signOut();
+
+    // On Flutter Web (et parfois avec l'émulateur), la propagation du sign-out
+    // peut être asynchrone/retardée. Attendre l'évènement authStateChanges
+    // rend l'état UI (gates/providers) beaucoup plus fiable.
+    try {
+      await _auth
+          .authStateChanges()
+          .firstWhere((user) => user == null)
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // Best-effort only: ne pas bloquer la navigation si l'event tarde.
+    }
   }
 
   @override

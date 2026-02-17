@@ -119,6 +119,17 @@ void main() {
     }
 
     debugPrint('📦 ========== SEEDED PRODUCT SEARCH START ========== 📦');
+    debugPrint('  Creating generic product card finder...');
+    final anyProductCardFinder = find.byWidgetPredicate(
+      (widget) {
+        final key = widget.key;
+        return key is ValueKey<String> && key.value.startsWith('product_card_');
+      },
+      description: 'any product card (key starts with product_card_)',
+    );
+    debugPrint(
+      '  Generic product card finder ready: ${anyProductCardFinder.evaluate().isNotEmpty}',
+    );
     debugPrint('  Creating product card finders...');
     final seededProductCardFinders = <Finder>[
       find.byKey(const Key('product_card_Test Physical Product')),
@@ -141,6 +152,7 @@ void main() {
     for (var retry = 0; retry < 12; retry++) {
       debugPrint('  🔄 Retry $retry/12: Checking for seeded products...');
       final hasAnyCandidate =
+          anyProductCardFinder.evaluate().isNotEmpty ||
           seededProductCardFinders.any(
             (finder) => finder.evaluate().isNotEmpty,
           ) ||
@@ -173,6 +185,10 @@ void main() {
 
     debugPrint('🎯 Determining product to open...');
     Finder productOpenTarget = find.byType(Scaffold);
+    if (anyProductCardFinder.evaluate().isNotEmpty) {
+      debugPrint('  ✅ Found at least one product card (generic)');
+      productOpenTarget = anyProductCardFinder;
+    }
     debugPrint('  Checking product card finders...');
     for (final finder in seededProductCardFinders) {
       if (finder.evaluate().isNotEmpty) {
@@ -190,6 +206,7 @@ void main() {
 
     debugPrint('  Checking if any openable product exists...');
     final hasOpenableProduct =
+        anyProductCardFinder.evaluate().isNotEmpty ||
         seededProductCardFinders.any(
           (finder) => finder.evaluate().isNotEmpty,
         ) ||
@@ -331,8 +348,18 @@ void main() {
       );
 
       if (signOutButton.evaluate().isNotEmpty) {
+        // The sign out button sits in the profile "Danger Zone" (near bottom).
+        // On some viewports it exists but is off-screen, which makes taps flaky.
+        await ensureFinderOnScreen(tester, signOutButton, maxAttempts: 20);
         await tester.tap(signOutButton.first, warnIfMissed: false);
         await pumpWait(tester, seconds: 2);
+
+        final signedOut = await verifySignedOutState(tester);
+        tracker.check(
+          'C099',
+          signedOut,
+          'Signed out state confirmed (popup/login visible)',
+        );
       } else {
         tracker.stopOnSkip('S005', 'Sign out button not found in profile');
       }

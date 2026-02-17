@@ -81,6 +81,15 @@ Future<void> initAppForTest() async {
 Future<void> mainTest() async {
   debugPrint('▶ mainTest() called (initialized=$_appInitialized)');
 
+  const isTest = bool.fromEnvironment('IS_TEST', defaultValue: false);
+  const env = String.fromEnvironment('ENVIRONMENT', defaultValue: 'production');
+  if (isTest && env != 'dev') {
+    throw StateError(
+      'Integration tests must run against DEV Firebase only. '
+      'Re-run with --dart-define=ENVIRONMENT=dev (current ENVIRONMENT=$env).',
+    );
+  }
+
   if (_appInitialized) {
     debugPrint('▶ Re-running app (already initialized)');
     runApp(
@@ -105,25 +114,30 @@ Future<void> mainTest() async {
 
   await _timedStep('Step 3: Firebase.initializeApp', () async {
       FirebaseOptions firebaseOptions;
-      switch (envConfig.environment) {
-        case AppEnvironment.dev:
-          firebaseOptions = FirebaseConfigDev.currentPlatform;
-          break;
-        case AppEnvironment.staging:
-          firebaseOptions = FirebaseConfigStaging.currentPlatform;
-          break;
-        case AppEnvironment.production:
-          firebaseOptions = FirebaseConfigProd.currentPlatform;
-          break;
-        case AppEnvironment.emulator:
-          firebaseOptions = FirebaseConfigProd.currentPlatform;
-          break;
+      if (isTest) {
+        // Integration tests are DEV-only and must never connect to emulators.
+        firebaseOptions = FirebaseConfigDev.currentPlatform;
+      } else {
+        switch (envConfig.environment) {
+          case AppEnvironment.dev:
+            firebaseOptions = FirebaseConfigDev.currentPlatform;
+            break;
+          case AppEnvironment.staging:
+            firebaseOptions = FirebaseConfigStaging.currentPlatform;
+            break;
+          case AppEnvironment.production:
+            firebaseOptions = FirebaseConfigProd.currentPlatform;
+            break;
+          case AppEnvironment.emulator:
+            firebaseOptions = FirebaseConfigProd.currentPlatform;
+            break;
+        }
       }
     await Firebase.initializeApp(options: firebaseOptions);
   });
 
   // EMULATOR CONFIGURATION - Only if requested
-  if (envConfig.shouldUseEmulators) {
+  if (!isTest && envConfig.shouldUseEmulators) {
     final host = _emulatorHost;
     await _timedStep('Step 4: Emulator setup at $host', () async {
       await FirebaseAuth.instance.useAuthEmulator(host, 9099);

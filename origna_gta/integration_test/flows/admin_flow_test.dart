@@ -29,26 +29,17 @@ void main() {
       debugStep('D01', 'Admin Extended Flow — panel + privileged menu');
 
       debugPrint('  Calling establishSession...');
-
-      debugPrint('  ⚙️  Looking for settings button...');
-      final settingsButton = find.byKey(const Key('home_settings_button'));
-      if (settingsButton.evaluate().isEmpty) {
-        debugPrint('  ❌ Settings button not found');
-      }
-      debugPrint('  ✅ Settings button found, tapping...');
-
-      await tester.tap(settingsButton.first, warnIfMissed: false);
-
-      debugPrint('  ⏳ Waiting 4s for popup/profile to appear...');
-      await pumpWait(tester, seconds: 2);
-
-      debugPrint('  💬 Checking for sign-in popup...');
-      final _ = await handleSignInPopup(
+      final adminCredential = await establishSession(
         tester,
-        email: adminCredentialCandidates.first.email,
-        password: adminCredentialCandidates.first.password,
+        adminCredentialCandidates,
+        'D01',
+        tracker,
+        'S001',
+        'Admin session could not be established. Provide --dart-define=TEST_ADMIN_EMAIL/TEST_ADMIN_PASSWORD for the DEV Firebase account.',
       );
-
+      if (adminCredential == null) {
+        return;
+      }
       debugPrint('  ✅ establishSession completed');
 
       final adminAddProduct = find.byKey(const Key('home_add_product_button'));
@@ -168,9 +159,8 @@ void main() {
           await goBack(tester);
         }
 
-        final privacyButton = find.byKey(const Key('profile_privacy_button'));
-        if (privacyButton.evaluate().isNotEmpty) {
-          await tester.tap(privacyButton.first);
+        final didTapPrivacy = await tapByKey(tester, 'profile_privacy_button');
+        if (didTapPrivacy) {
           await pumpWait(tester, seconds: 2);
           tracker.check(
             'C053',
@@ -229,7 +219,11 @@ void main() {
       await ensureHomeReady(tester, timeoutSeconds: 8);
 
       debugPrint('🚪 ========== SIGN OUT FLOW START ========== 🚪');
-      final settingsForSignOut = find.byKey(const Key('home_settings_button'));
+      var settingsForSignOut = find.byKey(const Key('home_settings_button'));
+      if (settingsForSignOut.evaluate().isEmpty) {
+        await ensureHomeReady(tester, timeoutSeconds: 8);
+        settingsForSignOut = find.byKey(const Key('home_settings_button'));
+      }
       if (settingsForSignOut.evaluate().isNotEmpty) {
         await tester.tap(settingsForSignOut.first, warnIfMissed: false);
         await pumpWait(tester, seconds: 2);
@@ -244,6 +238,13 @@ void main() {
         if (signOutButton.evaluate().isNotEmpty) {
           await tester.tap(signOutButton.first, warnIfMissed: false);
           await pumpWait(tester, seconds: 2);
+
+          final signedOut = await verifySignedOutState(tester);
+          tracker.check(
+            'C099',
+            signedOut,
+            'Signed out state confirmed (popup/login visible)',
+          );
         } else {
           tracker.stopOnSkip('S005', 'Sign out button not found in profile');
         }

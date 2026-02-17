@@ -176,6 +176,13 @@ void main() {
         if (signOutButton.evaluate().isNotEmpty) {
           await tester.tap(signOutButton.first, warnIfMissed: false);
           await pumpWait(tester, seconds: 2);
+
+          final signedOut = await verifySignedOutState(tester);
+          tracker.check(
+            'C099',
+            signedOut,
+            'Signed out state confirmed (popup/login visible)',
+          );
         } else {
           tracker.stopOnSkip('S005', 'Sign out button not found in profile');
         }

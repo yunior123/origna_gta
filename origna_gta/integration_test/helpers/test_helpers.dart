@@ -36,6 +36,7 @@ class CaseTracker {
   }
 
   void stopOnSkip(String id, String reason) {
+    caseCount++;
     debugStep(id, 'SKIP => STOP — $reason');
     if (strictIntegration) {
       failedCases.add('$id: SKIP => STOP — $reason');
@@ -59,12 +60,69 @@ class CaseTracker {
 
 // ─── CREDENTIALS ─────────────────────────────────────────────────────────────
 
-const buyerEmail = 'yuniorrodriguezo460@gmail.com';
-const buyerPassword = 'REDACTED_TEST_PASSWORD2026';
-const sellerEmail = 'yuniorrodriguezo4601@yahoo.com';
-const sellerPassword = 'REDACTED_TEST_PASSWORD';
-const adminEmail = 'yr62813@gmail.com';
-const adminPassword = 'REDACTED_TEST_PASSWORD';
+// Integration tests run against DEV Firebase (no emulators).
+// Credentials MUST be provided via `--dart-define` or `--dart-define-from-file`.
+// Defaults are intentionally empty to avoid accidentally using real accounts.
+
+const buyerEmail = String.fromEnvironment('TEST_BUYER_EMAIL', defaultValue: '');
+const buyerPassword = String.fromEnvironment(
+  'TEST_BUYER_PASSWORD',
+  defaultValue: '',
+);
+
+const sellerEmail = String.fromEnvironment(
+  'TEST_SELLER_EMAIL',
+  defaultValue: '',
+);
+const sellerPassword = String.fromEnvironment(
+  'TEST_SELLER_PASSWORD',
+  defaultValue: '',
+);
+
+const adminEmail = String.fromEnvironment('TEST_ADMIN_EMAIL', defaultValue: '');
+const adminPassword = String.fromEnvironment(
+  'TEST_ADMIN_PASSWORD',
+  defaultValue: '',
+);
+
+void _assertDevIntegrationConfig() {
+  const env = String.fromEnvironment('ENVIRONMENT', defaultValue: 'production');
+  if (env != 'dev') {
+    fail(
+      'Integration tests must run against DEV Firebase only. '
+      'Provide --dart-define=ENVIRONMENT=dev (current ENVIRONMENT=$env).',
+    );
+  }
+
+  // Fail fast: integration tests must not rely on hardcoded credentials.
+  // Required for the all-tests aggregator (random suite selection).
+  final missing = <String>[];
+  if (buyerEmail.trim().isEmpty) missing.add('TEST_BUYER_EMAIL');
+  if (buyerPassword.isEmpty) missing.add('TEST_BUYER_PASSWORD');
+  if (adminEmail.trim().isEmpty) missing.add('TEST_ADMIN_EMAIL');
+  if (adminPassword.isEmpty) missing.add('TEST_ADMIN_PASSWORD');
+
+  if (missing.isNotEmpty) {
+    fail(
+      'Missing integration credentials: ${missing.join(', ')}.\n'
+      'Run with e.g.:\n'
+      'flutter drive --driver=test_driver/integration_test.dart '
+      '--target=integration_test/all_tests.dart -d chrome '
+      '--dart-define=ENVIRONMENT=dev --dart-define=IS_TEST=true '
+      '--dart-define-from-file=../logs/integration_dart_defines.dev.json',
+    );
+  }
+}
+
+String _resolvedSellerEmail() {
+  // DEV Firebase can legitimately have only an admin + buyer account.
+  // Allow seller flows to reuse the admin account when seller creds aren't set.
+  return sellerEmail.isNotEmpty ? sellerEmail : adminEmail;
+}
+
+String _resolvedSellerPassword() {
+  return sellerPassword.isNotEmpty ? sellerPassword : adminPassword;
+}
 
 class Credential {
   final String label;
@@ -78,25 +136,53 @@ class Credential {
   });
 }
 
-const buyerCredentialCandidates = <Credential>[
-  Credential(label: '[buyer]', email: buyerEmail, password: buyerPassword),
+final buyerCredentialCandidates = <Credential>[
+  const Credential(
+    label: '[buyer]',
+    email: buyerEmail,
+    password: buyerPassword,
+  ),
 ];
 
-const sellerCredentialCandidates = <Credential>[
+final sellerCredentialCandidates = <Credential>[
   Credential(
     label: '[buyer,seller]',
-    email: sellerEmail,
-    password: 'REDACTED_TEST_PASSWORD',
+    email: _resolvedSellerEmail(),
+    password: _resolvedSellerPassword(),
   ),
 ];
 
-const adminCredentialCandidates = <Credential>[
-  Credential(
+final adminCredentialCandidates = <Credential>[
+  const Credential(
     label: '[buyer,seller,admin]',
     email: adminEmail,
-    password: 'REDACTED_TEST_PASSWORD',
+    password: adminPassword,
   ),
 ];
+
+Future<bool> _waitForFirebaseAuthSignedIn(
+  WidgetTester tester, {
+  Duration timeout = const Duration(seconds: 12),
+}) async {
+  if (FirebaseAuth.instance.currentUser != null) return true;
+
+  bool signedIn = false;
+  await tester.runAsync(() async {
+    try {
+      await FirebaseAuth.instance
+          .authStateChanges()
+          .firstWhere((user) => user != null)
+          .timeout(timeout);
+      signedIn = true;
+    } catch (_) {
+      signedIn = FirebaseAuth.instance.currentUser != null;
+    }
+  });
+
+  // One more pump to let providers/UI react.
+  await tester.pump(const Duration(milliseconds: 250));
+  return signedIn || FirebaseAuth.instance.currentUser != null;
+}
 
 // ─── PUMP HELPERS ────────────────────────────────────────────────────────────
 
@@ -138,11 +224,15 @@ Future<bool> waitForAppBootstrap(
     final hasHomeSettings = homeSettings.evaluate().isNotEmpty;
 
     if (i % 10 == 0) {
-      debugPrint('  [$i/$maxTicks] MaterialApp=$hasMaterialApp Scaffold=$hasScaffold HomeSettings=$hasHomeSettings');
+      debugPrint(
+        '  [$i/$maxTicks] MaterialApp=$hasMaterialApp Scaffold=$hasScaffold HomeSettings=$hasHomeSettings',
+      );
     }
 
     if (hasMaterialApp && (hasScaffold || hasHomeSettings)) {
-      debugPrint('✅ waitForAppBootstrap COMPLETE: app ready after ${i * 500}ms');
+      debugPrint(
+        '✅ waitForAppBootstrap COMPLETE: app ready after ${i * 500}ms',
+      );
       return true;
     }
 
@@ -161,10 +251,10 @@ Future<void> launchApp(WidgetTester tester, {int pumpSeconds = 6}) async {
   debugPrint('  📱 Calling app.mainTest()...');
   await app.mainTest();
   debugPrint('  ✅ app.mainTest() complete');
-  
+
   debugPrint('  ⏱️  pumpWait for ${pumpSeconds}s...');
   await pumpWait(tester, seconds: pumpSeconds);
-  
+
   debugPrint('  🔍 Checking bootstrap status...');
   final bootstrapped = await waitForAppBootstrap(tester);
   if (!bootstrapped) {
@@ -178,7 +268,10 @@ Future<void> launchApp(WidgetTester tester, {int pumpSeconds = 6}) async {
   debugPrint('✅✅ launchApp COMPLETE: app running');
 }
 
-Future<void> ensureAppStarted(WidgetTester tester, {int pumpSeconds = 6}) async {
+Future<void> ensureAppStarted(
+  WidgetTester tester, {
+  int pumpSeconds = 6,
+}) async {
   if (!_appBootstrapped) {
     await app.mainTest();
     await pumpWait(tester, seconds: pumpSeconds);
@@ -195,14 +288,23 @@ Future<void> ensureAppStarted(WidgetTester tester, {int pumpSeconds = 6}) async 
   }
 }
 
-Future<bool> ensureHomeReady(WidgetTester tester, {int timeoutSeconds = 15}) async {
+Future<bool> ensureHomeReady(
+  WidgetTester tester, {
+  int timeoutSeconds = 15,
+}) async {
+  // Some builds/screens do not have a bottom navigation tab with a Home icon.
+  // Avoid noisy logs and rely on stable home anchors (keys) instead.
   await navigateToTab(tester, Icons.home);
   final maxTicks = timeoutSeconds * 2;
   for (var i = 0; i < maxTicks; i++) {
-    final hasSettings =
-        find.byKey(const Key('home_settings_button')).evaluate().isNotEmpty;
-    final hasCart =
-        find.byKey(const Key('home_cart_button')).evaluate().isNotEmpty;
+    final hasSettings = find
+        .byKey(const Key('home_settings_button'))
+        .evaluate()
+        .isNotEmpty;
+    final hasCart = find
+        .byKey(const Key('home_cart_button'))
+        .evaluate()
+        .isNotEmpty;
     final hasScaffold = find.byType(Scaffold).evaluate().isNotEmpty;
     if (hasSettings && hasScaffold) {
       return true;
@@ -227,7 +329,15 @@ Future<bool> loginWith(
   required String password,
 }) async {
   debugPrint('🔐 loginWith START: email=$email');
-  
+
+  if (email.trim().isEmpty || password.isEmpty) {
+    debugPrint(
+      '❌ loginWith: missing TEST_* credentials. '
+      'Provide --dart-define (or --dart-define-from-file) for TEST_*.',
+    );
+    return false;
+  }
+
   // Wait for login fields
   debugPrint('  ⏳ Waiting for login fields...');
   for (var i = 0; i < 12; i++) {
@@ -263,7 +373,7 @@ Future<bool> loginWith(
   await tester.enterText(emailField, email);
   await pumpFor(tester, frames: 3, ms: 100);
   debugPrint('  ✅ Email entered');
-  
+
   debugPrint('  ⌨️  Entering password...');
   await tester.enterText(passwordField, password);
   await pumpFor(tester, frames: 3, ms: 100);
@@ -283,10 +393,17 @@ Future<bool> loginWith(
   debugPrint('  🔘 Login button found, tapping...');
 
   await tester.tap(loginButton.first, warnIfMissed: false);
-  debugPrint('  ⏳ Waiting 5s for login to complete...');
-  await pumpWait(tester, seconds: 5);
-  debugPrint('✅ loginWith COMPLETE');
-  return true;
+  debugPrint('  ⏳ Waiting for FirebaseAuth signed-in...');
+  await pumpWait(tester, seconds: 2);
+
+  final signedIn = await _waitForFirebaseAuthSignedIn(tester);
+  if (signedIn) {
+    debugPrint('✅ loginWith COMPLETE (signed in)');
+    return true;
+  }
+
+  debugPrint('❌ loginWith: still signed out after submit');
+  return false;
 }
 
 bool isAdminAccountEmail(String email) {
@@ -301,10 +418,10 @@ Future<Credential?> switchToAnyCredential(
   List<Credential> credentials,
 ) async {
   if (credentials.isEmpty) return null;
-  
+
   final credential = credentials.first;
   debugPrint('🔄 switchToAnyCredential: ${credential.email}');
-  
+
   debugPrint('  ⚙️  Looking for settings button...');
   final settingsButton = find.byKey(const Key('home_settings_button'));
   if (settingsButton.evaluate().isEmpty) {
@@ -319,11 +436,19 @@ Future<Credential?> switchToAnyCredential(
   await pumpWait(tester, seconds: 4);
 
   debugPrint('  💬 Checking for sign-in popup...');
-  final _ = await handleSignInPopup(
+  await handleSignInPopup(
     tester,
     email: credential.email,
     password: credential.password,
   );
+
+  final signedIn = await _waitForFirebaseAuthSignedIn(tester);
+  if (!signedIn) {
+    debugPrint(
+      '❌ switchToAnyCredential: failed to establish auth session for ${credential.email}',
+    );
+    return null;
+  }
 
   debugPrint('  ✅ switchToAnyCredential completed');
   return credential;
@@ -343,11 +468,10 @@ Future<Credential?> switchCredentialWithRecovery(
 }
 
 Future<bool> ensureAddProductCreationContext(WidgetTester tester) async {
-  final credential = await switchCredentialWithRecovery(
-    tester,
-    <Credential>[...adminCredentialCandidates, ...sellerCredentialCandidates],
-    'P00',
-  );
+  final credential = await switchCredentialWithRecovery(tester, <Credential>[
+    ...adminCredentialCandidates,
+    ...sellerCredentialCandidates,
+  ], 'P00');
   if (credential == null) {
     return false;
   }
@@ -368,18 +492,129 @@ Future<bool> ensureAddProductCreationContext(WidgetTester tester) async {
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
 
 /// Navigate to a tab by icon.
-Future<void> navigateToTab(WidgetTester tester, IconData icon) async {
-  debugPrint('🔀 navigateToTab: icon=$icon');
+Future<bool> navigateToTab(
+  WidgetTester tester,
+  IconData icon, {
+  bool logIfMissing = false,
+}) async {
   final tabIcon = find.byIcon(icon);
   if (tabIcon.evaluate().isNotEmpty) {
+    debugPrint('🔀 navigateToTab: icon=$icon');
     debugPrint('  ✅ Tab icon found, tapping...');
     await tester.tap(tabIcon.first, warnIfMissed: false);
     debugPrint('  ⏳ Waiting 2s...');
     await pumpWait(tester, seconds: 2);
     debugPrint('✅ navigateToTab COMPLETE');
+    return true;
   } else {
-    debugPrint('  ❌ Tab icon not found');
+    if (logIfMissing) {
+      debugPrint('🔀 navigateToTab: icon=$icon');
+      debugPrint('  ❌ Tab icon not found');
+    }
+    return false;
   }
+}
+
+/// Verify we are signed out by checking for the "Sign In Required" popup
+/// or the presence of the login form.
+///
+/// This does NOT tap the sign-in button; it only asserts state.
+Future<bool> verifySignedOutState(WidgetTester tester) async {
+  // Try to navigate home, but do NOT rely on the settings button being present
+  // (it may legitimately disappear for signed-out users).
+  await navigateToTab(tester, Icons.home);
+  await tester.pump(const Duration(milliseconds: 250));
+
+  // Best-effort: wait for the Firebase auth state to actually flip to signed-out.
+  // On Flutter Web, propagation can be delayed.
+  await tester.runAsync(() async {
+    try {
+      await FirebaseAuth.instance
+          .authStateChanges()
+          .firstWhere((user) => user == null)
+          .timeout(const Duration(seconds: 12));
+    } catch (_) {
+      // Don't fail here — we'll fall back to UI + currentUser polling below.
+    }
+  });
+
+  bool hasSignInPopupOrLoginForm() {
+    final signInDialogButton = find.byKey(
+      const Key('login_dialog_sign_in_button'),
+    );
+    final loginEmailField = find.byKey(const Key('login_email_field'));
+    final loginPasswordField = find.byKey(const Key('login_password_field'));
+    return signInDialogButton.evaluate().isNotEmpty ||
+        loginEmailField.evaluate().isNotEmpty ||
+        loginPasswordField.evaluate().isNotEmpty;
+  }
+
+  // Give auth/UI time to settle after sign-out.
+  // On Web/Chrome, Firebase Auth state propagation can take several seconds.
+  const maxPolls = 80; // 80 * 250ms ~= 20s
+  for (var i = 0; i < maxPolls; i++) {
+    if (hasSignInPopupOrLoginForm()) {
+      debugPrint('✅ verifySignedOutState: popup/login UI detected');
+      return true;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    final signOutButton = find.byKey(const Key('profile_sign_out_button'));
+    if (user == null && signOutButton.evaluate().isEmpty) {
+      debugPrint('✅ verifySignedOutState: FirebaseAuth currentUser is null');
+      return true;
+    }
+
+    if (i == 0 || (i + 1) % 16 == 0) {
+      debugPrint(
+        '⏳ verifySignedOutState: waiting... poll=${i + 1}/$maxPolls '
+        '(currentUser=${user != null}, signOutBtn=${signOutButton.evaluate().isNotEmpty})',
+      );
+    }
+
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+
+  // If we still have a settings button, tapping it should trigger the
+  // "Sign In Required" popup for signed-out users.
+  final settingsButton = find.byKey(const Key('home_settings_button'));
+  if (settingsButton.evaluate().isNotEmpty) {
+    await tester.tap(settingsButton.first, warnIfMissed: false);
+    await pumpWait(tester, seconds: 2);
+    if (hasSignInPopupOrLoginForm()) {
+      debugPrint('✅ verifySignedOutState: settings tap triggered login UI');
+      return true;
+    }
+  } else {
+    debugPrint(
+      'ℹ️ verifySignedOutState: home_settings_button not found (may be expected when signed out)',
+    );
+  }
+
+  final stillSignedIn = FirebaseAuth.instance.currentUser != null;
+  final signOutButton = find.byKey(const Key('profile_sign_out_button'));
+  if (!stillSignedIn && signOutButton.evaluate().isEmpty) {
+    debugPrint(
+      '✅ verifySignedOutState: signed-out inferred (no user + no sign-out button)',
+    );
+    return true;
+  }
+
+  if (signOutButton.evaluate().isNotEmpty) {
+    debugPrint('❌ verifySignedOutState: still seeing sign out button');
+  }
+  debugPrint('⚠️ verifySignedOutState: could not confirm signed-out state');
+  return false;
+}
+
+/// Public wrapper around the internal ensure-visible helper.
+/// Use this in flows to avoid flaky taps on widgets that exist but are offscreen.
+Future<bool> ensureFinderOnScreen(
+  WidgetTester tester,
+  Finder finder, {
+  int maxAttempts = 16,
+}) async {
+  return _ensureFinderOnScreen(tester, finder, maxAttempts: maxAttempts);
 }
 
 Future<bool> _ensureFinderOnScreen(
@@ -406,11 +641,14 @@ Future<bool> _ensureFinderOnScreen(
     if (finder.evaluate().isEmpty) return false;
     final center = tester.getCenter(finder.first, warnIfMissed: false);
     final logicalSize = tester.view.physicalSize / tester.view.devicePixelRatio;
-    final onScreen = center.dx >= 0 &&
+    final onScreen =
+        center.dx >= 0 &&
         center.dy >= 0 &&
         center.dx <= logicalSize.width &&
         center.dy <= logicalSize.height;
-    debugPrint('    isOnScreen: center=$center, size=$logicalSize, result=$onScreen');
+    debugPrint(
+      '    isOnScreen: center=$center, size=$logicalSize, result=$onScreen',
+    );
     return onScreen;
   }
 
@@ -439,12 +677,16 @@ Future<bool> _ensureFinderOnScreen(
       } catch (_) {}
     }
     if (isOnScreen()) {
-      debugPrint('✅✅ _ensureFinderOnScreen SUCCESS: widget on screen after ${i + 1} attempts');
+      debugPrint(
+        '✅✅ _ensureFinderOnScreen SUCCESS: widget on screen after ${i + 1} attempts',
+      );
       return true;
     }
   }
 
-  debugPrint('❌ _ensureFinderOnScreen FAILED: widget not on screen after $maxAttempts attempts');
+  debugPrint(
+    '❌ _ensureFinderOnScreen FAILED: widget not on screen after $maxAttempts attempts',
+  );
   return false;
 }
 
@@ -456,13 +698,32 @@ Future<bool> tapByKey(WidgetTester tester, String keyName) async {
     debugPrint('  ✅ Widget found');
     final ready = await _ensureFinderOnScreen(tester, finder);
     if (!ready) {
-      debugPrint('  ❌ Widget off-screen/non-hit-testable');
+      debugPrint('  ❌ Widget off-screen');
+      fail('tapByKey: widget "$keyName" is present but off-screen');
+    }
+
+    // The widget can be visible but temporarily not receiving pointer events
+    // (e.g., during animations or under IgnorePointer). Wait briefly for a
+    // hit-testable target.
+    Finder? hitTarget;
+    for (var i = 0; i < 20; i++) {
+      final candidate = finder.hitTestable();
+      if (candidate.evaluate().isNotEmpty) {
+        hitTarget = candidate;
+        break;
+      }
+      await tester.pump(const Duration(milliseconds: 150));
+    }
+
+    if (hitTarget == null) {
+      debugPrint('  ❌ Widget not hit-testable after waiting');
       fail(
-        'tapByKey: widget "$keyName" is present but off-screen/non-hit-testable',
+        'tapByKey: widget "$keyName" is visible but not hit-testable (pointer events blocked)',
       );
     }
+
     debugPrint('  🔘 Tapping...');
-    await tester.tap(finder.first, warnIfMissed: false);
+    await tester.tap(hitTarget.first, warnIfMissed: false);
     await pumpFor(tester, frames: 5, ms: 100);
     debugPrint('✅ tapByKey SUCCESS');
     return true;
@@ -477,7 +738,9 @@ Future<void> enterTextByKey(
   String key,
   String text,
 ) async {
-  debugPrint('⌨️  enterTextByKey: key="$key", text=${text.substring(0, min(text.length, 20))}...');
+  debugPrint(
+    '⌨️  enterTextByKey: key="$key", text=${text.substring(0, min(text.length, 20))}...',
+  );
   final field = find.byKey(Key(key));
   if (field.evaluate().isNotEmpty) {
     debugPrint('  ✅ Field found');
@@ -646,7 +909,7 @@ Future<bool> handleSignInPopup(
   debugPrint('  Looking for key: login_dialog_sign_in_button');
   final dialogKey = find.byKey(const Key('login_dialog_sign_in_button'));
   debugPrint('  Dialog button found: ${dialogKey.evaluate().isNotEmpty}');
-  
+
   if (dialogKey.evaluate().isEmpty) {
     debugPrint('  ❌ No popup found');
     debugPrint('  DEBUG: Listing all visible Text widgets...');
@@ -659,7 +922,9 @@ Future<bool> handleSignInPopup(
         final widget = tester.widget<Text>(allTexts.at(i));
         final data = widget.data?.toString() ?? '';
         if (data.length < 100) {
-          debugPrint('      Text[$i]: ${data.substring(0, min(50, data.length))}');
+          debugPrint(
+            '      Text[$i]: ${data.substring(0, min(50, data.length))}',
+          );
         }
       }
     }
@@ -669,23 +934,29 @@ Future<bool> handleSignInPopup(
   debugPrint('ℹ️ Sign In Required popup detected — navigating to login...');
   debugPrint('  🔘 Tapping Sign In button in dialog...');
   debugPrint('    Dialog button widget count: ${dialogKey.evaluate().length}');
-  debugPrint('    Attempting to tap dialogKey.first with warnIfMissed=false...');
-  
+  debugPrint(
+    '    Attempting to tap dialogKey.first with warnIfMissed=false...',
+  );
+
   // Wait longer for dialog to be fully rendered and clickable
   debugPrint('    Waiting for dialog to stabilize...');
   await pumpWait(tester, seconds: 2);
-  
+
   debugPrint('    Executing tap...');
   await tester.tap(dialogKey.first, warnIfMissed: false);
   debugPrint('  ✅ Tap completed');
   debugPrint('  ⏳ Waiting 3s after dialog dismiss...');
   await pumpWait(tester, seconds: 3);
   debugPrint('  📝 Calling loginWith...');
-  await loginWith(tester, email: email, password: password);
+  final ok = await loginWith(tester, email: email, password: password);
   debugPrint('  ⏳ Waiting 2s after login...');
   await pumpWait(tester, seconds: 2);
-  debugPrint('✅ handleSignInPopup COMPLETE — Login completed after popup');
-  return true;
+  if (ok) {
+    debugPrint('✅ handleSignInPopup COMPLETE — Login completed after popup');
+    return true;
+  }
+  debugPrint('❌ handleSignInPopup: login failed after popup');
+  return false;
 }
 
 Future<bool> navigateToAddProduct(WidgetTester tester) async {
@@ -735,6 +1006,7 @@ Future<CaseTracker> initializeIntegrationTest(
   WidgetTester tester, {
   bool strictIntegration = true,
 }) async {
+  _assertDevIntegrationConfig();
   await ensureAppStarted(tester);
   return CaseTracker(strictIntegration: strictIntegration);
 }
@@ -748,7 +1020,6 @@ Future<Credential?> establishSession(
   String skipCode,
   String skipMessage,
 ) async {
-  
   final credential = await switchCredentialWithRecovery(
     tester,
     candidates,
@@ -767,9 +1038,9 @@ Future<Credential?> establishSession(
 Future<bool> openSettings(WidgetTester tester) async {
   final settingsButton = find.byKey(const Key('home_settings_button'));
   if (settingsButton.evaluate().isEmpty) return false;
-  
+
   await tester.tap(settingsButton.first, warnIfMissed: false);
-  
+
   await pumpWait(tester, seconds: 3);
   return true;
 }

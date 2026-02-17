@@ -297,7 +297,7 @@
           "order": "DESCENDING"
         }
       ],
-      "comment": "AUDIT 2026-02-07: Index for seller orders filtered by paymentStatus (watchSellerOrders)"
+      "comment": "FIX 2026-02-17: Index for seller orders filtered by paymentStatus (watchSellerOrders) - Added to fix Seller Orders screen error"
     },
     {
       "collectionGroup": "products",

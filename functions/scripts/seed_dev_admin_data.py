@@ -1,0 +1,215 @@
+"""Seed minimal DEV data for integration tests.
+
+Ensures the admin user has:
+- at least one favorite (users/{uid}/favorites/{productId})
+- at least one order (orders/{orderId})
+
+Idempotent: safe to run multiple times.
+
+This script is intended for the DEV Firebase project used by Flutter web
+integration tests (no emulators).
+
+Credentials:
+- Uses GOOGLE_APPLICATION_CREDENTIALS if set
+- Otherwise looks for ../serviceAccountKey.json relative to this file
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+from datetime import UTC, datetime
+from pathlib import Path
+
+import firebase_admin
+from firebase_admin import auth, credentials, firestore
+
+from schema_constants import (
+    BusinessRules,
+    CategoryIds,
+    Collections,
+    Fields,
+    OrderStatusValues,
+    PaymentStatusValues,
+)
+
+
+def _ensure_firebase_initialized() -> None:
+    if firebase_admin._apps:
+        return
+
+    # Prefer explicit credential path if provided; otherwise try repo-local key.
+    cred_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if not cred_path:
+        candidate = (Path(__file__).resolve().parent.parent / "serviceAccountKey.json").resolve()
+        if candidate.exists():
+            cred_path = str(candidate)
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
+
+    if cred_path and Path(cred_path).exists():
+        firebase_admin.initialize_app(credentials.Certificate(cred_path))
+        return
+
+    # Fall back to application default credentials (may work on CI/GCP).
+    firebase_admin.initialize_app()
+
+
+def _now_utc() -> datetime:
+    return datetime.now(UTC)
+
+
+def _seed_product(db: firestore.Client, *, seller_uid: str) -> str:
+    # Keep deterministic IDs for idempotency.
+    product_id = f"seed_admin_{seller_uid[:12]}_product"
+    product_ref = db.collection(Collections.PRODUCTS).document(product_id)
+
+    if product_ref.get().exists:
+        return product_id
+
+    address = {
+        Fields.STREET: "136 Shaver Ave N",
+        Fields.CITY: "Toronto",
+        Fields.STATE: "ON",
+        Fields.POSTAL_CODE: "M9B 4N8",
+        Fields.COUNTRY: "Canada",
+    }
+
+    product_doc = {
+        Fields.PRODUCT_ID: product_id,
+        Fields.NAME: "Seed Product (Admin)",
+        Fields.PRICE: 19.99,
+        Fields.DESCRIPTION: "Seeded product for DEV integration tests.",
+        Fields.IMAGE_URLS: ["https://example.com/seed-product.jpg"],
+        Fields.SELLER_ID: seller_uid,
+        Fields.SELLER_ADDRESS: address,
+        Fields.CATEGORY_ID: CategoryIds.ELECTRONICS,
+        Fields.STOCK_QUANTITY: 25,
+        Fields.RATING: 0.0,
+        Fields.RATING_COUNT: 0,
+        Fields.CREATED_AT: _now_utc(),
+        Fields.IS_ACTIVE: True,
+    }
+
+    product_ref.set(product_doc)
+    return product_id
+
+
+def _seed_favorite(db: firestore.Client, *, user_uid: str, product_id: str) -> None:
+    fav_ref = (
+        db.collection(Collections.USERS)
+        .document(user_uid)
+        .collection(Collections.FAVORITES)
+        .document(product_id)
+    )
+
+    if fav_ref.get().exists:
+        return
+
+    fav_ref.set(
+        {
+            Fields.PRODUCT_ID: product_id,
+            Fields.DATE_FAVORITED: _now_utc(),
+        }
+    )
+
+
+def _seed_order(db: firestore.Client, *, user_uid: str, user_email: str, product_id: str) -> str:
+    order_id = f"seed_admin_{user_uid[:12]}_order"
+    order_ref = db.collection(Collections.ORDERS).document(order_id)
+
+    if order_ref.get().exists:
+        return order_id
+
+    product_snap = db.collection(Collections.PRODUCTS).document(product_id).get()
+    product = product_snap.to_dict() if product_snap.exists else {}
+
+    seller_address = product.get(Fields.SELLER_ADDRESS) or {
+        Fields.STREET: "136 Shaver Ave N",
+        Fields.CITY: "Toronto",
+        Fields.STATE: "ON",
+        Fields.POSTAL_CODE: "M9B 4N8",
+        Fields.COUNTRY: "Canada",
+    }
+
+    item_price = float(product.get(Fields.PRICE) or 19.99)
+    quantity = 1
+    subtotal_cents = int(round(item_price * 100)) * quantity
+
+    order_item = {
+        Fields.PRODUCT_ID: product_id,
+        Fields.NAME: product.get(Fields.NAME) or "Seed Product (Admin)",
+        Fields.DESCRIPTION: product.get(Fields.DESCRIPTION) or "Seeded product for DEV integration tests.",
+        Fields.PRICE: item_price,
+        Fields.QUANTITY: quantity,
+        Fields.IMAGE_URLS: product.get(Fields.IMAGE_URLS) or ["https://example.com/seed-product.jpg"],
+        Fields.SELLER_ID: product.get(Fields.SELLER_ID) or user_uid,
+        Fields.SELLER_ADDRESS: seller_address,
+        # Keep both fields written for compatibility.
+        Fields.STATUS: "pending",
+        Fields.DELIVERY_STATUS: "pending",
+    }
+
+    shipping_address = {
+        Fields.STREET: "136 Shaver Ave N",
+        Fields.CITY: "Toronto",
+        Fields.STATE: "ON",
+        Fields.POSTAL_CODE: "M9B 4N8",
+        Fields.COUNTRY: "Canada",
+    }
+
+    seller_id = order_item[Fields.SELLER_ID]
+
+    order_doc = {
+        Fields.ORDER_ID: order_id,
+        Fields.USER_ID: user_uid,
+        Fields.CUSTOMER_EMAIL: user_email,
+        Fields.ITEMS: [order_item],
+        Fields.SELLER_IDS: [seller_id],
+        Fields.SUBTOTAL_CENTS: subtotal_cents,
+        Fields.SHIPPING_COST_CENTS: 0,
+        Fields.TAX_AMOUNT_CENTS: 0,
+        Fields.TOTAL_AMOUNT_CENTS: subtotal_cents,
+        Fields.TAXES: {"GST": 0.0, "PST": 0.0, "HST": 0.0, "QST": 0.0},
+        Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
+        Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+        Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+        Fields.CAPTURED_AT: _now_utc(),
+        Fields.AUTO_CAPTURED: True,
+        Fields.CONFIRMED_BY_CLIENT: True,
+        Fields.CONFIRMED_AT: _now_utc(),
+        Fields.SHIPPING_ADDRESS: shipping_address,
+        Fields.CREATED_AT: _now_utc(),
+    }
+
+    order_ref.set(order_doc)
+    return order_id
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--admin-email",
+        default=os.environ.get("TEST_ADMIN_EMAIL", ""),
+        help="Admin email to lookup (defaults to TEST_ADMIN_EMAIL env var)",
+    )
+    args = parser.parse_args()
+
+    admin_email = (args.admin_email or "").strip()
+    if not admin_email:
+        raise SystemExit("Missing --admin-email (or TEST_ADMIN_EMAIL env var).")
+
+    _ensure_firebase_initialized()
+    db = firestore.client()
+
+    user = auth.get_user_by_email(admin_email)
+    admin_uid = user.uid
+
+    product_id = _seed_product(db, seller_uid=admin_uid)
+    _seed_favorite(db, user_uid=admin_uid, product_id=product_id)
+    _seed_order(db, user_uid=admin_uid, user_email=admin_email, product_id=product_id)
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

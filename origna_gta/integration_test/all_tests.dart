@@ -32,28 +32,45 @@ import 'flows/admin_flow_test.dart' as admin;
 /// ```bash
 /// flutter drive --target=integration_test/all_tests.dart
 /// ```
-/// 
+///
 /// ## Flutter integration tests (web)
-// ```bash
-// # 1) Start ChromeDriver in a separate terminal
-// chromedriver --port=4444
-
-// # 2) Run the integration suite (no emulators)
-// cd origna_gta
-// flutter drive --driver=test_driver/integration_test.dart \
-//   --target=integration_test/all_tests.dart \
-//   -d chrome \
-//   --dart-define=ENVIRONMENT=dev \
-//   --dart-define=USE_EMULATORS=false
-// ```
+///
+/// DEV Firebase only (no emulators): credentials must be provided via
+/// `--dart-define` or `--dart-define-from-file`.
+///
+/// ```bash
+/// cd origna_gta
+/// flutter drive --driver=test_driver/integration_test.dart \
+///   --target=integration_test/all_tests.dart \
+///   -d chrome \
+///   --dart-define=ENVIRONMENT=dev \
+///   --dart-define=IS_TEST=true \
+///   --dart-define-from-file=../logs/integration_dart_defines.dev.json
+/// ```
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  // Randomly select ONE test to run (0-4)
-  final random = Random();
-  final selectedTest = random.nextInt(5);
-  
+  const env = String.fromEnvironment('ENVIRONMENT', defaultValue: 'production');
+  if (env != 'dev') {
+    throw StateError(
+      'Integration tests are DEV Firebase only. '
+      'Re-run with --dart-define=ENVIRONMENT=dev (current ENVIRONMENT=$env).',
+    );
+  }
+
+  // Select ONE test to run (0-4)
+  // - Default: random selection
+  // - Override: --dart-define=INTEGRATION_TEST_INDEX=2 (for example)
+  const forcedIndex = int.fromEnvironment(
+    'INTEGRATION_TEST_INDEX',
+    defaultValue: -1,
+  );
+
+  final selectedTest = (forcedIndex >= 0 && forcedIndex < 5)
+      ? forcedIndex
+      : Random().nextInt(5);
+
   final testNames = [
     'Smoke Test (Home + Profile)',
     'Add Product Flow',
@@ -61,11 +78,14 @@ void main() {
     'Seller Flow',
     'Admin Flow',
   ];
-  
+
   debugPrint('');
   debugPrint('═══════════════════════════════════════════════════════');
   debugPrint('🎲 RANDOM TEST SELECTION MODE');
-  debugPrint('   Selected: ${testNames[selectedTest]} (index $selectedTest)');
+  debugPrint(
+    '   Selected: ${testNames[selectedTest]} (index $selectedTest) '
+    '${forcedIndex >= 0 ? '(forced)' : ''}',
+  );
   debugPrint('═══════════════════════════════════════════════════════');
   debugPrint('');
 

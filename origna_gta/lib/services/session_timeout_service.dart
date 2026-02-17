@@ -61,6 +61,14 @@ class SessionTimeoutService {
     try {
       await _auth.signOut();
 
+      // Best-effort: wait for auth state propagation (esp. Web)
+      try {
+        await _auth
+            .authStateChanges()
+            .firstWhere((u) => u == null)
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {}
+
       // Show snackbar to inform user
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

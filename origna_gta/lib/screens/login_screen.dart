@@ -234,7 +234,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                       ),
                                       Expanded(
                                         child: Text(
-                                          'I want to receive promotional emails and offers (optional)',
+                                          'auth.marketing_opt_in'.tr(),
                                           style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, height: 1.4),
                                         ),
                                       ),
