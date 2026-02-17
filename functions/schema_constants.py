@@ -66,6 +66,9 @@ class Documents:
 APP_NAME = "Origna Marketplace"
 """Canonical application name used in TOTP provisioning, emails, etc."""
 
+COUNTRY_CANADA = "Canada"
+"""Country name constant for Canada (enforced for buyers)"""
+
 
 # =============================================================================
 # EMAIL & APP CONFIGURATION CONSTANTS

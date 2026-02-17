@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'address_state.dart';
 
@@ -19,7 +20,7 @@ class AddressViewModel extends StateNotifier<AddressState> {
     if (address != null) {
       state = state.copyWith(
         selectedProvince: address.state,
-        selectedLabel: address.label ?? 'Home',
+        selectedLabel: address.label ?? AddressLabelValues.home,
         latitude: address.latitude,
         longitude: address.longitude,
       );
@@ -27,6 +28,9 @@ class AddressViewModel extends StateNotifier<AddressState> {
   }
 
   Future<void> onStreetChanged(String value) async {
+    // Reset coordinates when user types manually
+    state = state.copyWith(clearCoordinates: true);
+    
     if (value.length < 3) {
       state = state.copyWith(showSuggestions: false, addressSuggestions: []);
       return;
@@ -50,6 +54,11 @@ class AddressViewModel extends StateNotifier<AddressState> {
     final userId = _ref.read(userIdProvider);
     if (userId == null) return;
 
+    if (state.latitude == null || state.longitude == null) {
+      state = state.copyWith(errorMessage: 'Please select a valid address from the suggestions');
+      return;
+    }
+
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
@@ -59,7 +68,7 @@ class AddressViewModel extends StateNotifier<AddressState> {
         city: city.trim(),
         state: state.selectedProvince!,
         postalCode: postalCode.trim().toUpperCase(),
-        country: 'Canada',
+        country: GeoValues.countryCanada,
         phoneNumber: phoneNumber.trim(),
         label: state.selectedLabel,
         isDefault: true,

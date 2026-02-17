@@ -1,3 +1,5 @@
+import 'package:origna_gta/core/schema/schema_constants.dart';
+
 class AddressState {
   final bool isLoading;
   final String? selectedProvince;
@@ -11,8 +13,8 @@ class AddressState {
 
   AddressState({
     this.isLoading = false,
-    this.selectedProvince = 'ON',
-    this.selectedLabel = 'Home',
+    this.selectedProvince = ProvinceCodeValues.ontario,
+    this.selectedLabel = AddressLabelValues.home,
     this.addressSuggestions = const [],
     this.showSuggestions = false,
     this.latitude,
@@ -31,6 +33,7 @@ class AddressState {
     double? longitude,
     String? errorMessage,
     bool? isSuccess,
+    bool clearCoordinates = false,
   }) {
     return AddressState(
       isLoading: isLoading ?? this.isLoading,
@@ -38,8 +41,8 @@ class AddressState {
       selectedLabel: selectedLabel ?? this.selectedLabel,
       addressSuggestions: addressSuggestions ?? this.addressSuggestions,
       showSuggestions: showSuggestions ?? this.showSuggestions,
-      latitude: latitude ?? this.latitude,
-      longitude: longitude ?? this.longitude,
+      latitude: clearCoordinates ? null : (latitude ?? this.latitude),
+      longitude: clearCoordinates ? null : (longitude ?? this.longitude),
       errorMessage: errorMessage,
       isSuccess: isSuccess ?? this.isSuccess,
     );

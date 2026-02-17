@@ -450,6 +450,11 @@ Future<Credential?> switchToAnyCredential(
     return null;
   }
 
+  // Close the profile/settings screen that was opened by tapping settings button
+  debugPrint('  🔙 Closing profile screen...');
+  await goBack(tester);
+  await pumpWait(tester, seconds: 1);
+
   debugPrint('  ✅ switchToAnyCredential completed');
   return credential;
 }
@@ -477,6 +482,19 @@ Future<bool> ensureAddProductCreationContext(WidgetTester tester) async {
   }
 
   await ensureHomeReady(tester, timeoutSeconds: 12);
+  
+  // Tap outside menu overlay to dismiss it (settings menu stays open after credential switch)
+  debugPrint('  🔒 Dismissing any open menus by tapping outside...');
+  await tester.tapAt(const Offset(50, 100));
+  await pumpWait(tester, seconds: 1);
+  
+  // Navigate to home tab to force menu closure
+  await navigateToTab(tester, Icons.home, logIfMissing: false);
+  await pumpWait(tester, seconds: 2);
+  
+  // Force rebuilds to ensure add product button appears
+  await pumpSettle(tester, iterations: 3, ms: 500);
+  
   final canNavigate = await navigateToAddProduct(tester);
   if (!canNavigate) {
     debugStep(

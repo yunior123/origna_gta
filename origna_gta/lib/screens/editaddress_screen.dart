@@ -145,6 +145,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                       child: Column(
                         children: [
                           _buildTextField(
+                            key: const Key('address_street_field'),
                             controller: _streetController,
                             label: 'address.street'.tr(),
                             icon: Icons.location_on_outlined,
@@ -184,12 +185,14 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                             ),
                           const SizedBox(height: DesignTokens.spacing16),
                           _buildTextField(
+                            key: const Key('address_apartment_field'),
                             controller: _apartmentController,
                             label: 'address.apartment_optional'.tr(),
                             icon: Icons.apartment_outlined,
                           ),
                           const SizedBox(height: DesignTokens.spacing16),
                           _buildTextField(
+                            key: const Key('address_city_field'),
                             controller: _cityController,
                             label: 'address.city'.tr(),
                             icon: Icons.location_city_outlined,
@@ -222,6 +225,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                           ),
                           const SizedBox(height: DesignTokens.spacing16),
                           _buildTextField(
+                            key: const Key('address_postal_code_field'),
                             controller: _postalCodeController,
                             label: 'address.postal_code'.tr(),
                             icon: Icons.markunread_mailbox_outlined,
@@ -237,6 +241,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                           ),
                           const SizedBox(height: DesignTokens.spacing16),
                           _buildTextField(
+                            key: const Key('address_phone_field'),
                             controller: _phoneController,
                             label: 'address.phone'.tr(),
                             icon: Icons.phone_outlined,
@@ -314,6 +319,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   }
 
   Widget _buildTextField({
+    Key? key,
     required TextEditingController controller,
     required String label,
     IconData? icon,
@@ -324,6 +330,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return TextFormField(
+      key: key,
       controller: controller,
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,

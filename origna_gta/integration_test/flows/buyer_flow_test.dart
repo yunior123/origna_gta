@@ -1,3 +1,5 @@
+import 'package:easy_localization/easy_localization.dart';
+// import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -26,7 +28,7 @@ void main() {
       );
       debugPrint('✅ Integration test initialized');
 
-      final runStamp = DateTime.now().millisecondsSinceEpoch.toString();
+      // final runStamp = DateTime.now().millisecondsSinceEpoch.toString();
 
       debugStep('B01', 'Buyer Flow — login + browse + cart/profile checks');
 
@@ -114,8 +116,20 @@ void main() {
             '[buyer] ecran adresse s\'ouvre',
           );
 
+          // Wait for loading to finish (user profile fetch)
+          await pumpWait(tester, seconds: 4);
+
           final addAddressButton = find.bySemanticsLabel('btn-add-address');
           final editAddressButton = find.bySemanticsLabel('btn-edit-address');
+          
+          // Debug what IS on screen if buttons are missing
+          if (addAddressButton.evaluate().isEmpty && editAddressButton.evaluate().isEmpty) {
+             debugPrint('⚠️ Buttons missing. Checking for Error/Loading/Empty states...');
+             if (find.text('address.loading'.tr()).evaluate().isNotEmpty) debugPrint(' -> Loading state active');
+             if (find.text('address.error_loading'.tr()).evaluate().isNotEmpty) debugPrint(' -> Error state active');
+             if (find.text('address.sign_in_to_view'.tr()).evaluate().isNotEmpty) debugPrint(' -> Sign in required state');
+          }
+
           tracker.check(
             'C092',
             addAddressButton.evaluate().isNotEmpty ||
@@ -126,57 +140,97 @@ void main() {
           if (addAddressButton.evaluate().isNotEmpty) {
             await tester.tap(addAddressButton.first, warnIfMissed: false);
             await pumpWait(tester, seconds: 2);
-            final fields = find.byType(TextFormField);
-            if (fields.evaluate().length >= 5) {
-              await tester.enterText(fields.at(0), '123 Test Ave $runStamp');
-              await tester.enterText(fields.at(1), 'Unit 1');
-              await tester.enterText(fields.at(2), 'Toronto');
-              await tester.enterText(fields.at(3), 'M5V1A1');
-              await tester.enterText(fields.at(4), '4165550000');
-            }
 
-            // Province is REQUIRED (state.selectedProvince!) for saveAddress.
-            final provinceDropdown = find.byType(
-              DropdownButtonFormField<String>,
-            );
-            if (provinceDropdown.evaluate().isNotEmpty) {
-              await tester.tap(provinceDropdown.first, warnIfMissed: false);
+            final streetField = find.byKey(const Key('address_street_field'));
+            
+            if (streetField.evaluate().isNotEmpty) {
+              // 1. Enter Street to trigger Geoapify suggestions
+              // Use specific diverse address to ensure good matches
+              const searchAddress = '100 Queen Street West';
+              await tester.enterText(streetField, searchAddress);
+              await pumpWait(tester, seconds: 5); // Increased wait for API response
+
+              // 2. Look for suggestions list (ListView with ListTiles)
+              final suggestions = find.byType(ListTile);
+              if (suggestions.evaluate().isNotEmpty) {
+                await tester.tap(suggestions.first, warnIfMissed: false);
+                await pumpWait(tester, seconds: 3); // Wait for auto-fill
+              } else {
+                debugPrint('⚠️ Geoapify suggestions not found for "$searchAddress"');
+                await pumpWait(tester, seconds: 2);
+                if (suggestions.evaluate().isNotEmpty) {
+                  await tester.tap(suggestions.first, warnIfMissed: false);
+                  await pumpWait(tester, seconds: 3);
+                } else {
+                  throw TestFailure('❌ Geoapify suggestions not found. App requires valid address selection.');
+                }
+              }
+
+              // Province is REQUIRED (state.selectedProvince!) for saveAddress.
+              final provinceDropdown = find.byType(
+                DropdownButtonFormField<String>,
+              );
+              if (provinceDropdown.evaluate().isNotEmpty) {
+                await tester.tap(provinceDropdown.first, warnIfMissed: false);
+                await pumpWait(tester, seconds: 1);
+
+                // UI uses English labels like "Ontario (ON)".
+                final ontario = find.text('Ontario (ON)');
+                final anyOn = find.textContaining('(ON)');
+                final option = ontario.evaluate().isNotEmpty ? ontario : anyOn;
+                if (option.evaluate().isNotEmpty) {
+                  await tester.tap(option.last, warnIfMissed: false);
+                  await pumpWait(tester, seconds: 1);
+                }
+              }
+
+              // Fill phone if empty (required)
+              final phoneField = find.byKey(const Key('address_phone_field'));
+              if (phoneField.evaluate().isNotEmpty) {
+                 final phoneVal = (tester.widget(phoneField) as TextFormField).controller?.text;
+                 if (phoneVal == null || phoneVal.isEmpty) {
+                    await tester.enterText(phoneField, '4165550199');
+                 }
+              }
+              
+              // Ensure focus is lost from text fields to trigger validation/controllers
+              await tester.tap(find.byType(Scaffold).first, warnIfMissed: false);
               await pumpWait(tester, seconds: 1);
 
-              // UI uses English labels like "Ontario (ON)".
-              final ontario = find.text('Ontario (ON)');
-              final anyOn = find.textContaining('(ON)');
-              final option = ontario.evaluate().isNotEmpty ? ontario : anyOn;
-              if (option.evaluate().isNotEmpty) {
-                await tester.tap(option.last, warnIfMissed: false);
+              final saveAddressButton = find.bySemanticsLabel('btn-save-address');
+              tracker.check(
+                'C093',
+                saveAddressButton.evaluate().isNotEmpty,
+                'save address button visible',
+              );
+              if (saveAddressButton.evaluate().isNotEmpty) {
+                await tester.ensureVisible(saveAddressButton.first);
                 await pumpWait(tester, seconds: 1);
+                await tester.tap(saveAddressButton.first, warnIfMissed: false);
+                // Wait for async save operation and navigation pop
+                await pumpWait(tester, seconds: 5);
               }
-            }
-
-            final saveAddressButton = find.bySemanticsLabel('btn-save-address');
-            tracker.check(
-              'C093',
-              saveAddressButton.evaluate().isNotEmpty,
-              'save address button visible',
-            );
-            if (saveAddressButton.evaluate().isNotEmpty) {
-              await tester.tap(saveAddressButton.first, warnIfMissed: false);
-              await pumpWait(tester, seconds: 4);
             }
           }
 
+          // Case: already had address, so we edit it
           final editButtonAfter = find.bySemanticsLabel('btn-edit-address');
           if (editButtonAfter.evaluate().isNotEmpty) {
             await tester.tap(editButtonAfter.first, warnIfMissed: false);
             await pumpWait(tester, seconds: 2);
-            final fields = find.byType(TextFormField);
-            if (fields.evaluate().isNotEmpty) {
-              await tester.enterText(fields.first, '456 Updated Ave $runStamp');
+            
+            // Should modify something other than street to avoid clearing coords, or re-select street
+            final apartmentField = find.byKey(const Key('address_apartment_field'));
+            if (apartmentField.evaluate().isNotEmpty) {
+               await tester.enterText(apartmentField, 'Apt 999');
+               await tester.tap(find.byType(Scaffold).first, warnIfMissed: false);
             }
+            
             final saveAddressButton = find.bySemanticsLabel('btn-save-address');
             if (saveAddressButton.evaluate().isNotEmpty) {
+              await tester.ensureVisible(saveAddressButton.first);
               await tester.tap(saveAddressButton.first, warnIfMissed: false);
-              await pumpWait(tester, seconds: 4);
+              await pumpWait(tester, seconds: 5);
             }
           }
 

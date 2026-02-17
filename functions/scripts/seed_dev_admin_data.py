@@ -18,8 +18,13 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
+
+_FUNCTIONS_DIR = Path(__file__).resolve().parent.parent
+if str(_FUNCTIONS_DIR) not in sys.path:
+    sys.path.insert(0, str(_FUNCTIONS_DIR))
 
 import firebase_admin
 from firebase_admin import auth, credentials, firestore
@@ -31,6 +36,7 @@ from schema_constants import (
     Fields,
     OrderStatusValues,
     PaymentStatusValues,
+    UserRoleValues,
 )
 
 
@@ -58,13 +64,47 @@ def _now_utc() -> datetime:
     return datetime.now(UTC)
 
 
+def _seed_user_profile(db: firestore.Client, *, user_uid: str, user_email: str) -> None:
+    """Ensure user profile exists with admin AND seller roles for testing."""
+    user_ref = db.collection(Collections.USERS).document(user_uid)
+    
+    # Check if profile already exists
+    existing = user_ref.get()
+    
+    if existing.exists:
+        # User exists - ensure they have admin AND seller roles
+        user_data = existing.to_dict() or {}
+        current_roles = user_data.get(Fields.ROLES, [])
+        
+        # Add missing roles
+        updated_roles = list(set(current_roles + [UserRoleValues.ADMIN, UserRoleValues.SELLER]))
+        
+        if set(updated_roles) != set(current_roles):
+            user_ref.update({Fields.ROLES: updated_roles})
+            print(f"✅ Updated roles for {user_email}: {updated_roles}")
+    else:
+        # User doesn't exist - create with admin AND seller roles
+        user_data = {
+            Fields.UID: user_uid,
+            Fields.EMAIL: user_email,
+            Fields.NAME: "Test Admin User",
+            Fields.ROLES: [UserRoleValues.ADMIN, UserRoleValues.SELLER],
+            Fields.CREATED_AT: _now_utc(),
+            Fields.STRIPE_ACCOUNT_ID: f"test_acct_{user_uid[:12]}",
+            Fields.CHARGES_ENABLED: True,
+            Fields.PAYOUTS_ENABLED: True,
+        }
+        user_ref.set(user_data)
+        print(f"✅ Created user profile for {user_email} with admin + seller roles")
+
+
 def _seed_product(db: firestore.Client, *, seller_uid: str) -> str:
     # Keep deterministic IDs for idempotency.
     product_id = f"seed_admin_{seller_uid[:12]}_product"
     product_ref = db.collection(Collections.PRODUCTS).document(product_id)
 
-    if product_ref.get().exists:
-        return product_id
+    # If it already exists, still ensure required fields are present (merge).
+    # This keeps the seed idempotent while allowing schema evolution.
 
     address = {
         Fields.STREET: "136 Shaver Ave N",
@@ -75,7 +115,6 @@ def _seed_product(db: firestore.Client, *, seller_uid: str) -> str:
     }
 
     product_doc = {
-        Fields.PRODUCT_ID: product_id,
         Fields.NAME: "Seed Product (Admin)",
         Fields.PRICE: 19.99,
         Fields.DESCRIPTION: "Seeded product for DEV integration tests.",
@@ -90,7 +129,7 @@ def _seed_product(db: firestore.Client, *, seller_uid: str) -> str:
         Fields.IS_ACTIVE: True,
     }
 
-    product_ref.set(product_doc)
+    product_ref.set(product_doc, merge=True)
     return product_id
 
 
@@ -102,14 +141,12 @@ def _seed_favorite(db: firestore.Client, *, user_uid: str, product_id: str) -> N
         .document(product_id)
     )
 
-    if fav_ref.get().exists:
-        return
-
     fav_ref.set(
         {
             Fields.PRODUCT_ID: product_id,
             Fields.DATE_FAVORITED: _now_utc(),
-        }
+        },
+        merge=True,
     )
 
 
@@ -117,8 +154,7 @@ def _seed_order(db: firestore.Client, *, user_uid: str, user_email: str, product
     order_id = f"seed_admin_{user_uid[:12]}_order"
     order_ref = db.collection(Collections.ORDERS).document(order_id)
 
-    if order_ref.get().exists:
-        return order_id
+    # If it already exists, still ensure required fields are present (merge).
 
     product_snap = db.collection(Collections.PRODUCTS).document(product_id).get()
     product = product_snap.to_dict() if product_snap.exists else {}
@@ -162,6 +198,7 @@ def _seed_order(db: firestore.Client, *, user_uid: str, user_email: str, product
     order_doc = {
         Fields.ORDER_ID: order_id,
         Fields.USER_ID: user_uid,
+        Fields.CUSTOMER_ID: f"seed_customer_{user_uid[:12]}",
         Fields.CUSTOMER_EMAIL: user_email,
         Fields.ITEMS: [order_item],
         Fields.SELLER_IDS: [seller_id],
@@ -173,6 +210,7 @@ def _seed_order(db: firestore.Client, *, user_uid: str, user_email: str, product
         Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
         Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
         Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+        Fields.STRIPE_SESSION_ID: f"seed_session_{order_id}",
         Fields.CAPTURED_AT: _now_utc(),
         Fields.AUTO_CAPTURED: True,
         Fields.CONFIRMED_BY_CLIENT: True,
@@ -181,7 +219,7 @@ def _seed_order(db: firestore.Client, *, user_uid: str, user_email: str, product
         Fields.CREATED_AT: _now_utc(),
     }
 
-    order_ref.set(order_doc)
+    order_ref.set(order_doc, merge=True)
     return order_id
 
 
@@ -203,6 +241,9 @@ def main() -> int:
 
     user = auth.get_user_by_email(admin_email)
     admin_uid = user.uid
+
+    # Seed user profile with admin + seller roles
+    _seed_user_profile(db, user_uid=admin_uid, user_email=admin_email)
 
     product_id = _seed_product(db, seller_uid=admin_uid)
     _seed_favorite(db, user_uid=admin_uid, product_id=product_id)

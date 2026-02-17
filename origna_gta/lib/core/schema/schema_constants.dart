@@ -971,6 +971,18 @@ abstract final class LanguageValues {
   static const french = 'fr';
 }
 
+/// Geographic constants
+abstract final class GeoValues {
+  static const countryCanada = 'Canada';
+}
+
+/// Standard address labels
+abstract final class AddressLabelValues {
+  static const home = 'Home';
+  static const work = 'Work';
+  static const other = 'Other';
+}
+
 /// Firebase RemoteConfig keys
 abstract final class RemoteConfigKeys {
   static const algoliaAppId = 'algolia_app_id';
