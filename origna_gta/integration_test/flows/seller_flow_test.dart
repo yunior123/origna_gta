@@ -28,7 +28,7 @@ void main() {
 
       debugStep('C01', 'Seller Flow — seller tools + seller orders');
 
-      final _seller = await establishSession(
+      final seller = await establishSession(
         tester,
         sellerCredentialCandidates,
         'seller',
@@ -36,7 +36,7 @@ void main() {
         'S001',
         '[seller] session/login failed',
       );
-      if (_seller == null) return;
+      if (seller == null) return;
 
       final sellerAddButton = find.byKey(const Key('home_add_product_button'));
       tracker.check(
@@ -67,9 +67,9 @@ void main() {
         final sellerAdminPanel = find.byKey(
           const Key('profile_admin_panel_button'),
         );
-        final isUsingAdminAccount = isAdminAccountEmail(_seller.email);
+        final isUsingAdminAccount = isAdminAccountEmail(seller.email);
         debugPrint(
-          '🔎 Seller flow account: email=${_seller.email} isUsingAdminAccount=$isUsingAdminAccount',
+          '🔎 Seller flow account: email=${seller.email} isUsingAdminAccount=$isUsingAdminAccount',
         );
         tracker.check(
           'C036',

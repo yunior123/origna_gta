@@ -44,7 +44,7 @@ void main() {
       '  Using adminCredentialCandidates for session establishment...',
     );
 
-    final _admin = await establishSession(
+    final admin = await establishSession(
       tester,
       adminCredentialCandidates,
       'admin',
@@ -52,7 +52,7 @@ void main() {
       'S001',
       '[admin] session/login failed',
     );
-    if (_admin == null) return;
+    if (admin == null) return;
 
     debugPrint('✅ C078 passed: Admin session valid');
     debugPrint('✅ Admin session established successfully');

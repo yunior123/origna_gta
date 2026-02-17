@@ -18,22 +18,85 @@ from .config import PROJECT_ROOT, CRITICAL, HIGH, MEDIUM
 from .prompts import STRUCTURED_OUTPUT_INSTRUCTION, PROJECT_CONTEXT
 
 
+_SYNC_CLASS_NAMES = {
+    # Cross-stack invariants: these strings are used everywhere (Firestore paths + field names).
+    "Collections",
+    "Documents",
+    "Fields",
+}
+
+
+def _should_sync_class(class_name: str) -> bool:
+    # Intentionally strict and minimal: many *Values/*Ids classes are backend-only.
+    # Keep the fast local check focused on Firestore schema names.
+    return class_name in _SYNC_CLASS_NAMES
+
+
 def _extract_python_constants(text: str) -> dict[str, str]:
-    """Extract NAME = 'value' constants from Python file."""
-    constants = {}
-    for match in re.finditer(r'^(\w+)\s*=\s*["\']([^"\']+)["\']', text, re.MULTILINE):
-        constants[match.group(1)] = match.group(2)
+    """Extract string constants from key schema classes in schema_constants.py."""
+    constants: dict[str, str] = {}
+    current_class: str | None = None
+
+    for line in text.splitlines():
+        class_match = re.match(r"^class\s+(\w+)\s*(?:\(|:)\s*", line)
+        if class_match:
+            current_class = class_match.group(1)
+            continue
+
+        if current_class and re.match(r"^\S", line):
+            # New top-level statement ends the previous class block.
+            current_class = None
+
+        if not current_class or not _should_sync_class(current_class):
+            continue
+
+        # Capture:     NAME = "value"
+        match = re.match(r"^\s+(\w+)\s*=\s*[\"\']([^\"\']+)[\"\']\s*(?:#.*)?$", line)
+        if match:
+            key = f"{current_class}.{match.group(1)}"
+            constants[key] = match.group(2)
+
     return constants
 
 
 def _extract_dart_constants(text: str) -> dict[str, str]:
-    """Extract static const String NAME = 'value'; constants from Dart file."""
-    constants = {}
-    for match in re.finditer(
-        r"static\s+const\s+String\s+(\w+)\s*=\s*['\"]([^'\"]+)['\"]",
-        text,
-    ):
-        constants[match.group(1)] = match.group(2)
+    """Extract string constants from key schema classes in schema_constants.dart."""
+    constants: dict[str, str] = {}
+    current_class: str | None = None
+    brace_depth = 0
+
+    for line in text.splitlines():
+        if current_class is None:
+            class_match = re.match(
+                r"^\s*(?:abstract\s+final\s+class|class)\s+(\w+)\s*\{\s*$",
+                line,
+            )
+            if class_match:
+                current_class = class_match.group(1)
+                brace_depth = line.count("{") - line.count("}")
+                continue
+
+        if current_class is not None:
+            brace_depth += line.count("{") - line.count("}")
+            if brace_depth <= 0:
+                current_class = None
+                brace_depth = 0
+                continue
+
+            if not _should_sync_class(current_class):
+                continue
+
+            # Capture both typed and untyped const strings:
+            #   static const foo = 'bar';
+            #   static const String foo = 'bar';
+            match = re.match(
+                r"^\s*static\s+const(?:\s+\w+)?\s+(\w+)\s*=\s*['\"]([^'\"]+)['\"]\s*;\s*(?://.*)?$",
+                line,
+            )
+            if match:
+                key = f"{current_class}.{match.group(1)}"
+                constants[key] = match.group(2)
+
     return constants
 
 

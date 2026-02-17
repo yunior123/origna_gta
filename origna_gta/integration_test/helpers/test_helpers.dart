@@ -5,13 +5,85 @@
 
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/main_test.dart' as app;
 
 bool _appBootstrapped = false;
+bool _devSeedEnsured = false;
+
+Future<void> ensureDevSeedData(
+  WidgetTester tester, {
+  Credential? signedInCredential,
+}) async {
+  if (_devSeedEnsured) return;
+  _devSeedEnsured = true;
+
+  await tester.runAsync(() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      debugPrint('⚠ ensureDevSeedData: no FirebaseAuth user; skipping');
+      return;
+    }
+
+    final firestore = FirebaseFirestore.instance;
+
+    try {
+      final products = await firestore
+          .collection(Collections.products)
+          .limit(1)
+          .get(const GetOptions(source: Source.server));
+      if (products.docs.isNotEmpty) {
+        // ok
+      } else {
+        debugPrint(
+          '⚠ ensureDevSeedData: no products found in DEV. Admin/Buyer demos may look empty.',
+        );
+      }
+    } catch (e) {
+      debugPrint('⚠ ensureDevSeedData: products query failed: $e');
+    }
+
+    // Read-only checks: client writes to orders are typically blocked by rules.
+    // For demos (non-emulator DEV), seed via Admin SDK script if needed.
+    try {
+      final favoritesRef = firestore
+          .collection(Collections.users)
+          .doc(user.uid)
+          .collection(Collections.favorites);
+      final existingFavs = await favoritesRef
+          .limit(1)
+          .get(const GetOptions(source: Source.server));
+      if (existingFavs.docs.isEmpty) {
+        debugPrint(
+          'ℹ️ ensureDevSeedData: favorites empty for ${signedInCredential?.email ?? user.uid} (ok, but demo may look empty).',
+        );
+      }
+    } catch (e) {
+      debugPrint('⚠ ensureDevSeedData: favorites read failed: $e');
+    }
+
+    try {
+      final ordersRef = firestore.collection(Collections.orders);
+      final existingOrders = await ordersRef
+          .limit(1)
+          .get(const GetOptions(source: Source.server));
+      if (existingOrders.docs.isEmpty) {
+        debugPrint(
+          'ℹ️ ensureDevSeedData: orders collection appears empty (ok for tests, but Admin Orders tab may look empty).',
+        );
+      }
+    } catch (e) {
+      debugPrint('⚠ ensureDevSeedData: orders read failed: $e');
+    }
+  });
+
+  await tester.pump(const Duration(milliseconds: 250));
+}
 
 void debugStep(String id, String message) {
   // Integration tests often run in profile mode on web; `debugPrint` output can
@@ -1071,6 +1143,7 @@ Future<Credential?> establishSession(
     return null;
   }
   await ensureHomeReady(tester, timeoutSeconds: 2);
+  await ensureDevSeedData(tester, signedInCredential: credential);
   return credential;
 }
 

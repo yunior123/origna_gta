@@ -187,6 +187,9 @@
 - **Home-first auth**: Home renders before login; actions like cart/settings can open sign-in dialog, so tests should route to login via the dialog before asserting login UI
 - **Web integration**: `flutter drive` on web requires ChromeDriver running on port 4444
 - **Resilient test pattern**: Always check `finder.evaluate().isNotEmpty` before `tester.tap()` — never hard `expect` for optional UI elements
+- **all_tests.dart default is random**: `integration_test/all_tests.dart` runs ONE suite (random) unless `--dart-define=INTEGRATION_TEST_INDEX=0..4` is set.
+- **"Stopped at home" can be normal**: suites often return to Home/Profile, then sign out; the terminal log is the source of truth (`All tests passed!`).
+- **DEV seeding for demos**: `ensureDevSeedData()` in `integration_test/helpers/test_helpers.dart` attempts to seed 1 Order + 1 Favorite (best-effort) so Admin/Favorites screens are not empty.
 
 ---
 

@@ -309,21 +309,20 @@ def verify_firestore() -> list[Finding]:
                 file="firestore.indexes.json", category="infra",
             ))
 
-    # 3. Try firebase CLI for rules deployment check
+    # 3. firebase CLI does not support a safe "dry-run" deploy for Firestore rules.
+    # Keep checks local-only here (static scan above). Actual deploy should happen via
+    # an explicit deploy script/command.
     if _has_cmd("firebase"):
-        rc, stdout, stderr = _run_cmd([
-            "firebase", "deploy", "--only", "firestore:rules",
-            "--project=orignagta", "--dry-run",
-        ], timeout=60)
-
-        if rc != 0:
-            findings.append(Finding(
-                severity=HIGH,
-                title="Firestore rules dry-run deploy failed",
-                description=f"Error: {stderr[:300]}",
-                file="firestore.rules", category="infra",
-                fix_suggestion="Fix syntax errors in firestore.rules before production deploy",
-            ))
+        findings.append(Finding(
+            severity=LOW,
+            title="Firestore rules deploy validation skipped",
+            description=(
+                "Firebase CLI has no supported dry-run for firestore:rules; "
+                "rely on static checks + explicit deploy."
+            ),
+            file="firestore.rules",
+            category="infra",
+        ))
 
     # 4. Check indexes deployment  
     if _has_cmd("gcloud"):
@@ -384,7 +383,29 @@ def verify_stripe() -> list[Finding]:
         ))
         return findings
 
-    # 2. List webhook endpoints
+    # 2. Determine CLI mode early (test vs live) so we can interpret findings.
+    is_test_mode: bool | None = None
+    rc, stdout, stderr = _run_cmd(["stripe", "config", "--list"], timeout=15)
+    if rc == 0:
+        is_test_mode = "test" in stdout.lower()
+        if is_test_mode:
+            findings.append(Finding(
+                severity=MEDIUM,
+                title="Stripe CLI configured with test keys",
+                description="Ensure production keys are set in GCP Secret Manager",
+                file="functions/config.py",
+                category="infra",
+            ))
+    else:
+        findings.append(Finding(
+            severity=MEDIUM,
+            title="Stripe CLI not configured",
+            description="Run `stripe login` to authenticate",
+            file="functions/config.py",
+            category="infra",
+        ))
+
+    # 3. List webhook endpoints
     rc, stdout, stderr = _run_cmd([
         "stripe", "webhook_endpoints", "list", "--limit=20",
     ], timeout=30)
@@ -404,7 +425,7 @@ def verify_stripe() -> list[Finding]:
             expected_url = "us-central1-orignagta.cloudfunctions.net/stripe_webhook"
             if expected_url not in stdout:
                 findings.append(Finding(
-                    severity=HIGH,
+                    severity=MEDIUM if is_test_mode else HIGH,
                     title="Production webhook URL not found",
                     description=f"Expected URL containing: {expected_url}",
                     file="functions/handlers/payment_stripe.py", category="infra",
@@ -425,24 +446,6 @@ def verify_stripe() -> list[Finding]:
             title="Stripe webhook list failed",
             description=f"Error: {stderr[:200]}. May need `stripe login` first.",
             file="functions/handlers/payment_stripe.py", category="infra",
-        ))
-
-    # 3. Check Stripe config (API key validity)
-    rc, stdout, stderr = _run_cmd(["stripe", "config", "--list"], timeout=15)
-    if rc == 0:
-        if "test" in stdout.lower():
-            findings.append(Finding(
-                severity=MEDIUM,
-                title="Stripe CLI configured with test keys",
-                description="Ensure production keys are set in GCP Secret Manager",
-                file="functions/config.py", category="infra",
-            ))
-    else:
-        findings.append(Finding(
-            severity=MEDIUM,
-            title="Stripe CLI not configured",
-            description="Run `stripe login` to authenticate",
-            file="functions/config.py", category="infra",
         ))
 
     return findings

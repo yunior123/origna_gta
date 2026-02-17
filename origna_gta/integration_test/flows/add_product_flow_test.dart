@@ -28,7 +28,7 @@ void main() {
 
       debugStep('P00', 'Add Product Flow — Login as seller');
 
-      final _seller = await establishSession(
+      final seller = await establishSession(
         tester,
         sellerCredentialCandidates,
         'seller',
@@ -36,7 +36,7 @@ void main() {
         'S001',
         '[seller] session/login failed',
       );
-      if (_seller == null) return;
+      if (seller == null) return;
 
       final runStamp = DateTime.now().millisecondsSinceEpoch.toString();
       final p01Name = 'T01 Standard Ship $runStamp';

@@ -31,7 +31,7 @@ void main() {
 
       debugStep('B01', 'Buyer Flow — login + browse + cart/profile checks');
 
-      final _buyer = await establishSession(
+      final buyer = await establishSession(
         tester,
         buyerCredentialCandidates,
         'buyer',
@@ -39,7 +39,7 @@ void main() {
         'S021',
         '[buyer] session/login failed',
       );
-      if (_buyer == null) return;
+      if (buyer == null) return;
 
       final buyerAddProductButton = find.byKey(
         const Key('home_add_product_button'),
