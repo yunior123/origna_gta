@@ -479,6 +479,27 @@ class Fields:
     SUPPLIER_SHIPPING_DAYS = "supplierShippingDays"  # Alternate for ESTIMATED_SHIP_DAYS
     MIN_ORDER_QUANTITY = "minOrderQuantity"  # Alternate for MINIMUM_ORDER_QUANTITY
 
+    # === LOWERCASE TAX KEYS (used in JSON API responses) ===
+    GST_LOWER = "gst"
+    PST_LOWER = "pst"
+    HST_LOWER = "hst"
+    QST_LOWER = "qst"
+
+    # === TAX FIELDS / KEYS ===
+    # Map keys used inside Fields.TAXES (order tax breakdown)
+    GST = "GST"
+    PST = "PST"
+    HST = "HST"
+    QST = "QST"
+
+    # === REVIEW/RATING FIELDS ===
+    COMMENT = "comment"
+
+    # === API REQUEST/RESPONSE FIELDS ===
+    FILE_NAME = "fileName"
+    UPLOAD_URL = "uploadUrl"
+    CONFIRMATION = "confirmation"
+
 
 # =============================================================================
 # ENUM VALUES - Valid values for enum fields

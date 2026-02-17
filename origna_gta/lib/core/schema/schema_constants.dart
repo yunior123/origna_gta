@@ -39,10 +39,20 @@ abstract final class Collections {
   static const adminLogs = 'admin_logs';
   static const productRatings = 'product_ratings';
   static const algoliaSyncFailures = 'algolia_sync_failures';
+  static const cronLocks = '_cron_locks';
 
   // Subcollections
   static const cart = 'cart'; // users/{userId}/cart
   static const favorites = 'favorites'; // users/{userId}/favorites
+}
+
+// =============================================================================
+// DOCUMENTS - Singleton document IDs within collections
+// =============================================================================
+
+/// Singleton document IDs within collections
+abstract final class Documents {
+  static const paymentProviders = 'payment_providers';
 }
 
 // =============================================================================
@@ -79,11 +89,15 @@ abstract final class Fields {
   static const lastOrderId = 'lastOrderId';
   static const lastCheckoutTimestamp = 'lastCheckoutTimestamp';
   static const stripeAccountId = 'stripeAccountId';
+  static const snapshotAccountId = 'snapshotAccountId';
+  static const liveAccountId = 'liveAccountId';
   static const payoutsEnabled = 'payoutsEnabled';
   static const chargesEnabled = 'chargesEnabled';
   static const onboardingCompleted = 'onboardingCompleted';
   static const pendingRequirements = 'pendingRequirements';
   static const paymentProvider = 'paymentProvider';
+  static const oldEnabled = 'oldEnabled';
+  static const newEnabled = 'newEnabled';
   static const airwallexAccountId = 'airwallexAccountId';
   static const airwallexCustomerId = 'airwallexCustomerId';
   static const airwallexStatus = 'airwallexStatus';
@@ -181,6 +195,7 @@ abstract final class Fields {
   static const payoutStatus = 'payoutStatus';
   static const ratings = 'ratings';
   static const orderRefundCents = 'refundAmountCents';
+  static const refundAmount = 'refundAmount';
   static const refundedAt = 'refundedAt';
   static const shippingApprovalStatus = 'shippingApprovalStatus';
   static const shippingApprovalRequired = 'shippingApprovalRequired';
@@ -190,12 +205,19 @@ abstract final class Fields {
   static const manualReviewReason = 'manualReviewReason';
   static const payoutErrors = 'payoutErrors';
 
+  // === STRIPE METADATA FIELDS ===
+  static const metadataPlatformFee = 'platformFee';
+
   // === AIRWALLEX-SPECIFIC FIELDS ===
   static const airwallexPaymentId = 'airwallexPaymentId';
+  static const airwallexPaymentIntentId = 'airwallexPaymentIntentId';
   static const paymentCompletedAt = 'paymentCompletedAt';
   static const paymentError = 'paymentError';
   static const requires3ds = 'requires3ds';
   static const authenticationUrl = 'authenticationUrl';
+  static const airwallexAccountVerified = 'airwallexAccountVerified';
+  static const airwallexVerificationStatus = 'airwallexVerificationStatus';
+  static const airwallexVerificationError = 'airwallexVerificationError';
 
   // === ORDER FIELDS (missing from Dart, present in Python) ===
   static const shippingApproval = 'shippingApproval';
@@ -357,6 +379,15 @@ abstract final class Fields {
   static const count = 'count';
   static const firstRequest = 'first_request';
   static const lastRequest = 'last_request';
+
+  // === CRON LOCK FIELDS ===
+  static const lockedAt = 'lockedAt';
+  static const lockedBy = 'lockedBy';
+
+  // === ALGOLIA SYNC FAILURE FIELDS ===
+  static const retryCount = 'retryCount';
+  static const maxRetriesExceeded = 'maxRetriesExceeded';
+  static const lastRetryError = 'lastRetryError';
 
   // === WEBHOOK EVENT FIELDS ===
   static const clientIp = 'clientIp';
