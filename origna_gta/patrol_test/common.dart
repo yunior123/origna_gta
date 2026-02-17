@@ -104,7 +104,7 @@ void patrol(
 
 /// Buyer account seeded in Firebase emulator.
 const kTestBuyerEmail = 'yuniorrodriguezo460@gmail.com';
-const kTestBuyerPassword = 'REDACTED_TEST_PASSWORD';
+const kTestBuyerPassword = 'REDACTED_TEST_PASSWORD2026';
 
 /// Seller account (seller1 — Mode Montréal) seeded in Firebase emulator.
 const kTestSellerEmail = 'seller1@test.origna.ca';

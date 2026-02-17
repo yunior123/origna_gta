@@ -441,6 +441,31 @@ void main() {
         '[buyer] retour home OK',
       );
 
+      await ensureHomeReady(tester, timeoutSeconds: 8);
+
+      debugPrint('🚪 ========== SIGN OUT FLOW START ========== 🚪');
+      final settingsForSignOut = find.byKey(const Key('home_settings_button'));
+      if (settingsForSignOut.evaluate().isNotEmpty) {
+        await tester.tap(settingsForSignOut.first, warnIfMissed: false);
+        await pumpWait(tester, seconds: 2);
+
+        final signOutButton = find.byKey(const Key('profile_sign_out_button'));
+        tracker.check(
+          'C080',
+          signOutButton.evaluate().isNotEmpty,
+          'Sign out button visible in profile',
+        );
+
+        if (signOutButton.evaluate().isNotEmpty) {
+          await tester.tap(signOutButton.first, warnIfMissed: false);
+          await pumpWait(tester, seconds: 2);
+        } else {
+          tracker.stopOnSkip('S005', 'Sign out button not found in profile');
+        }
+      } else {
+        tracker.stopOnSkip('S006', 'Settings button missing before sign out');
+      }
+
       debugPrint('🧪 Running final tracker validation...');
       debugPrint('📊 Test Statistics:');
       debugPrint('  Total checks performed: ${tracker.caseCount}');

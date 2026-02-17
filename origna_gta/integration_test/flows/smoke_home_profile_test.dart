@@ -315,6 +315,8 @@ void main() {
       }
     }
 
+    await ensureHomeReady(tester, timeoutSeconds: 8);
+
     debugPrint('🚪 ========== SIGN OUT FLOW START ========== 🚪');
     final settingsForSignOut = find.byKey(const Key('home_settings_button'));
     if (settingsForSignOut.evaluate().isNotEmpty) {

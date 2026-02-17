@@ -60,7 +60,7 @@ class CaseTracker {
 // ─── CREDENTIALS ─────────────────────────────────────────────────────────────
 
 const buyerEmail = 'yuniorrodriguezo460@gmail.com';
-const buyerPassword = 'REDACTED_TEST_PASSWORD';
+const buyerPassword = 'REDACTED_TEST_PASSWORD2026';
 const sellerEmail = 'yuniorrodriguezo4601@yahoo.com';
 const sellerPassword = 'REDACTED_TEST_PASSWORD';
 const adminEmail = 'yr62813@gmail.com';
@@ -79,7 +79,7 @@ class Credential {
 }
 
 const buyerCredentialCandidates = <Credential>[
-  Credential(label: '[buyer]', email: buyerEmail, password: 'REDACTED_TEST_PASSWORD'),
+  Credential(label: '[buyer]', email: buyerEmail, password: buyerPassword),
 ];
 
 const sellerCredentialCandidates = <Credential>[
