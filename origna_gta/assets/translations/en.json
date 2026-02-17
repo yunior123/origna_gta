@@ -958,6 +958,7 @@
     "not_found": "The requested item was not found.",
     "rate_limited": "Too many requests. Please try again later.",
     "generic_error": "Something went wrong. Please try again.",
+    "invalid_payment_link": "Invalid payment link.",
     "auth_error": "Authentication error: {error}",
     "error_title": "Error",
     "verification_error": "Error checking verification. Please try again."

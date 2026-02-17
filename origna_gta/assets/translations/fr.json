@@ -958,6 +958,7 @@
     "not_found": "L'élément demandé est introuvable.",
     "rate_limited": "Trop de demandes. Veuillez réessayer plus tard.",
     "generic_error": "Une erreur est survenue. Veuillez réessayer.",
+    "invalid_payment_link": "Lien de paiement invalide.",
     "auth_error": "Erreur d'authentification : {error}",
     "error_title": "Erreur",
     "verification_error": "Erreur de vérification. Veuillez réessayer."

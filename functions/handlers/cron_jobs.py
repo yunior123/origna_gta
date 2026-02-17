@@ -447,7 +447,7 @@ def _run_auto_capture() -> None:
     logger.error(f"Auto-payout completed: {payout_count} paid out, {failed_count} failed")
 
 
-@scheduler_fn.on_schedule(schedule="every 1 hour", **CRON_OPTIONS)
+@scheduler_fn.on_schedule(schedule="every 1 hours", **CRON_OPTIONS)
 def check_expired_authorizations(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Expires orders with authorizations older than 7 days.

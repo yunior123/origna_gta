@@ -61,7 +61,7 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
     return [
       MaterialPageRoute(builder: (_) => const AuthWrapper()),
       MaterialPageRoute(
-        builder: (_) => const ErrorScreen(message: 'Invalid payment link'),
+        builder: (_) => ErrorScreen(message: 'errors.invalid_payment_link'.tr()),
       ),
     ];
   }
@@ -143,7 +143,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
     if (sessionId == null || sessionId.isEmpty) {
       return MaterialPageRoute(
-        builder: (_) => const ErrorScreen(message: 'Invalid payment link'),
+        builder: (_) => ErrorScreen(message: 'errors.invalid_payment_link'.tr()),
       );
     }
 
