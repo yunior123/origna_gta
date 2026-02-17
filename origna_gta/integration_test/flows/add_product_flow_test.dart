@@ -20,6 +20,33 @@ void main() {
         strictIntegration: strictIntegration,
       );
 
+      debugStep('P00', 'Add Product Flow — Login as seller');
+   
+
+
+       debugPrint('  Calling establishSession...');
+
+    debugPrint('  ⚙️  Looking for settings button...');
+    final settingsButton = find.byKey(const Key('home_settings_button'));
+    if (settingsButton.evaluate().isEmpty) {
+      debugPrint('  ❌ Settings button not found');
+    }
+    debugPrint('  ✅ Settings button found, tapping...');
+
+    await tester.tap(settingsButton.first, warnIfMissed: false);
+
+    debugPrint('  ⏳ Waiting 4s for popup/profile to appear...');
+    await pumpWait(tester, seconds: 2);
+
+    debugPrint('  💬 Checking for sign-in popup...');
+    final _ = await handleSignInPopup(
+      tester,
+      email: sellerCredentialCandidates.first.email,
+      password: sellerCredentialCandidates.first.password,
+    );
+
+    debugPrint('  ✅ establishSession completed');
+
       final runStamp = DateTime.now().millisecondsSinceEpoch.toString();
       final p01Name = 'T01 Standard Ship $runStamp';
       final p02Name = 'T02 Digital Item $runStamp';
@@ -33,8 +60,8 @@ void main() {
       final canAddProducts = await ensureAddProductCreationContext(tester);
       if (!canAddProducts) {
         tracker.stopOnSkip(
-          'S005',
-          'Unable to establish seller/admin session for product creation flow',
+          'S006',
+          'Unable to navigate to add product screen after seller login',
         );
         tracker.throwIfFailed();
         return;

@@ -718,9 +718,11 @@ class _PaginationLoader extends ConsumerWidget {
       homeViewModelProvider.select((state) => state.isLoadingMore),
     );
 
-    if (!isLoadingMore)
-      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    if (!isLoadingMore){
+   return const SliverToBoxAdapter(child: SizedBox.shrink());
 
+    }
+   
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 32),

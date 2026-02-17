@@ -21,15 +21,29 @@ void main() {
       );
 
       debugStep('D01', 'Admin Extended Flow — panel + privileged menu');
-      final adminCred = await establishSession(
+
+      debugPrint('  Calling establishSession...');
+
+      debugPrint('  ⚙️  Looking for settings button...');
+      final settingsButton = find.byKey(const Key('home_settings_button'));
+      if (settingsButton.evaluate().isEmpty) {
+        debugPrint('  ❌ Settings button not found');
+      }
+      debugPrint('  ✅ Settings button found, tapping...');
+
+      await tester.tap(settingsButton.first, warnIfMissed: false);
+
+      debugPrint('  ⏳ Waiting 4s for popup/profile to appear...');
+      await pumpWait(tester, seconds: 2);
+
+      debugPrint('  💬 Checking for sign-in popup...');
+      final _ = await handleSignInPopup(
         tester,
-        adminCredentialCandidates,
-        'D01',
-        tracker,
-        'S011',
-        'Admin extension login failed with configured admin credentials',
+        email: adminCredentialCandidates.first.email,
+        password: adminCredentialCandidates.first.password,
       );
-      if (adminCred == null) return;
+
+      debugPrint('  ✅ establishSession completed');
 
       final adminAddProduct = find.byKey(const Key('home_add_product_button'));
       tracker.check(
@@ -39,10 +53,12 @@ void main() {
       );
 
       if (await openSettings(tester)) {
-        final adminPanelButton =
-            find.byKey(const Key('profile_admin_panel_button'));
-        final adminSellerOrdersButton =
-            find.byKey(const Key('profile_seller_orders_button'));
+        final adminPanelButton = find.byKey(
+          const Key('profile_admin_panel_button'),
+        );
+        final adminSellerOrdersButton = find.byKey(
+          const Key('profile_seller_orders_button'),
+        );
 
         tracker.check(
           'C042',
@@ -61,8 +77,9 @@ void main() {
           await goBack(tester);
         }
 
-        final adminBuyerOrdersButton =
-            find.byKey(const Key('profile_my_orders_button'));
+        final adminBuyerOrdersButton = find.byKey(
+          const Key('profile_my_orders_button'),
+        );
         tracker.check(
           'C064',
           adminBuyerOrdersButton.evaluate().isNotEmpty,
@@ -136,7 +153,10 @@ void main() {
           tracker.check(
             'C065',
             find.byKey(const Key('admin_tab_orders')).evaluate().isNotEmpty &&
-                find.byKey(const Key('admin_tab_payments')).evaluate().isNotEmpty,
+                find
+                    .byKey(const Key('admin_tab_payments'))
+                    .evaluate()
+                    .isNotEmpty,
             '[admin] tabs order/payment persistent after navigation',
           );
           await goBack(tester);

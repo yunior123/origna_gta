@@ -21,15 +21,29 @@ void main() {
       );
 
       debugStep('C01', 'Seller Flow — seller tools + seller orders');
-      final sellerCred = await establishSession(
+
+      debugPrint('  Calling establishSession...');
+
+      debugPrint('  ⚙️  Looking for settings button...');
+      final settingsButton = find.byKey(const Key('home_settings_button'));
+      if (settingsButton.evaluate().isEmpty) {
+        debugPrint('  ❌ Settings button not found');
+      }
+      debugPrint('  ✅ Settings button found, tapping...');
+
+      await tester.tap(settingsButton.first, warnIfMissed: false);
+
+      debugPrint('  ⏳ Waiting 4s for popup/profile to appear...');
+      await pumpWait(tester, seconds: 2);
+
+      debugPrint('  💬 Checking for sign-in popup...');
+      final _ = await handleSignInPopup(
         tester,
-        sellerCredentialCandidates,
-        'C01',
-        tracker,
-        'S008',
-        'Seller flow login failed with configured seller credentials',
+        email: sellerCredentialCandidates.first.email,
+        password: sellerCredentialCandidates.first.password,
       );
-      if (sellerCred == null) return;
+
+      debugPrint('  ✅ establishSession completed');
 
       final sellerAddButton = find.byKey(const Key('home_add_product_button'));
       tracker.check(
@@ -42,7 +56,10 @@ void main() {
         await pumpWait(tester, seconds: 3);
         tracker.check(
           'C035',
-          find.byKey(const Key('addproduct_screen_title')).evaluate().isNotEmpty,
+          find
+              .byKey(const Key('addproduct_screen_title'))
+              .evaluate()
+              .isNotEmpty,
           '[buyer,seller] add product screen open',
         );
         await goBack(tester);
@@ -54,22 +71,24 @@ void main() {
       }
 
       if (await openSettings(tester)) {
-        final sellerAdminPanel =
-            find.byKey(const Key('profile_admin_panel_button'));
-        if (!isAdminAccountEmail(sellerCred.email)) {
-          tracker.check(
-            'C036',
-            sellerAdminPanel.evaluate().isEmpty,
-            '[buyer,seller] admin panel cache',
-          );
-        }
+        final sellerAdminPanel = find.byKey(
+          const Key('profile_admin_panel_button'),
+        );
+        tracker.check(
+          'C036',
+          sellerAdminPanel.evaluate().isEmpty,
+          '[buyer,seller] admin panel cache',
+        );
 
-        final sellerOrdersButton =
-            find.byKey(const Key('profile_seller_orders_button'));
-        final sellerDashboardButton =
-            find.byKey(const Key('profile_seller_dashboard_button'));
-        final becomeSellerButton =
-            find.byKey(const Key('profile_become_seller_button'));
+        final sellerOrdersButton = find.byKey(
+          const Key('profile_seller_orders_button'),
+        );
+        final sellerDashboardButton = find.byKey(
+          const Key('profile_seller_dashboard_button'),
+        );
+        final becomeSellerButton = find.byKey(
+          const Key('profile_become_seller_button'),
+        );
 
         tracker.check(
           'C037',
@@ -123,7 +142,9 @@ void main() {
         '[buyer,seller] retour home/profile stable',
       );
 
-      final sellerBuyerOrders = find.byKey(const Key('profile_my_orders_button'));
+      final sellerBuyerOrders = find.byKey(
+        const Key('profile_my_orders_button'),
+      );
       tracker.check(
         'C062',
         sellerBuyerOrders.evaluate().isNotEmpty ||

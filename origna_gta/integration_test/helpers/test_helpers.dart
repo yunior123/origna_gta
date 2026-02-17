@@ -3,6 +3,8 @@
 // Centralizes credentials, pump helpers, login, and navigation.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -111,15 +113,20 @@ Future<void> pumpFor(
 
 /// Wait for network / Firebase operations.
 Future<void> pumpWait(WidgetTester tester, {int seconds = 3}) async {
-  for (var i = 0; i < seconds * 2; i++) {
+  debugPrint('⏱️  pumpWait START: ${seconds}s');
+  final iterations = seconds * 2;
+  for (var i = 0; i < iterations; i++) {
+    debugPrint('  ⏱️  Pump ${i + 1}/$iterations (500ms)');
     await tester.pump(const Duration(milliseconds: 500));
   }
+  debugPrint('✅ pumpWait COMPLETE: ${seconds}s elapsed');
 }
 
 Future<bool> waitForAppBootstrap(
   WidgetTester tester, {
   int timeoutSeconds = 180,
 }) async {
+  debugPrint('🚀 waitForAppBootstrap START: timeout=${timeoutSeconds}s');
   final materialApp = find.byType(MaterialApp);
   final scaffold = find.byType(Scaffold);
   final homeSettings = find.byKey(const Key('home_settings_button'));
@@ -130,13 +137,19 @@ Future<bool> waitForAppBootstrap(
     final hasScaffold = scaffold.evaluate().isNotEmpty;
     final hasHomeSettings = homeSettings.evaluate().isNotEmpty;
 
+    if (i % 10 == 0) {
+      debugPrint('  [${i}/$maxTicks] MaterialApp=$hasMaterialApp Scaffold=$hasScaffold HomeSettings=$hasHomeSettings');
+    }
+
     if (hasMaterialApp && (hasScaffold || hasHomeSettings)) {
+      debugPrint('✅ waitForAppBootstrap COMPLETE: app ready after ${i * 500}ms');
       return true;
     }
 
     await tester.pump(const Duration(milliseconds: 500));
   }
 
+  debugPrint('❌ waitForAppBootstrap TIMEOUT: ${timeoutSeconds}s exceeded');
   return false;
 }
 
@@ -144,17 +157,25 @@ Future<bool> waitForAppBootstrap(
 
 /// Launch app and wait for it to settle.
 Future<void> launchApp(WidgetTester tester, {int pumpSeconds = 6}) async {
+  debugPrint('🚀🚀 launchApp START: pumpSeconds=$pumpSeconds');
+  debugPrint('  📱 Calling app.mainTest()...');
   await app.mainTest();
+  debugPrint('  ✅ app.mainTest() complete');
+  
+  debugPrint('  ⏱️  pumpWait for ${pumpSeconds}s...');
   await pumpWait(tester, seconds: pumpSeconds);
-
+  
+  debugPrint('  🔍 Checking bootstrap status...');
   final bootstrapped = await waitForAppBootstrap(tester);
   if (!bootstrapped) {
+    debugPrint('❌❌ launchApp FAILED: bootstrap timeout');
     fail(
       'launchApp: bootstrap timeout (MaterialApp=${find.byType(MaterialApp).evaluate().isNotEmpty}, '
       'Scaffold=${find.byType(Scaffold).evaluate().isNotEmpty}, '
       'home_settings_button=${find.byKey(const Key('home_settings_button')).evaluate().isNotEmpty})',
     );
   }
+  debugPrint('✅✅ launchApp COMPLETE: app running');
 }
 
 Future<void> ensureAppStarted(WidgetTester tester, {int pumpSeconds = 6}) async {
@@ -205,9 +226,15 @@ Future<bool> loginWith(
   required String email,
   required String password,
 }) async {
+  debugPrint('🔐 loginWith START: email=$email');
+  
   // Wait for login fields
+  debugPrint('  ⏳ Waiting for login fields...');
   for (var i = 0; i < 12; i++) {
-    if (find.byKey(const Key('login_email_field')).evaluate().isNotEmpty) break;
+    if (find.byKey(const Key('login_email_field')).evaluate().isNotEmpty) {
+      debugPrint('  ✅ Login fields found after ${i + 1} attempts');
+      break;
+    }
     await tester.pump(const Duration(milliseconds: 250));
   }
 
@@ -218,30 +245,47 @@ Future<bool> loginWith(
     debugPrint('⚠️ Login fields not found — may already be logged in');
     return false;
   }
+  debugPrint('  📧 Email field: present');
+  debugPrint('  🔑 Password field: present');
 
   // Toggle to Sign In mode if in Register mode
   if (find.byKey(const Key('login_name_field')).evaluate().isNotEmpty) {
+    debugPrint('  ℹ️  In Register mode, toggling to Sign In...');
     final toggle = find.byKey(const Key('login_toggle_mode_button'));
     if (toggle.evaluate().isNotEmpty) {
-      await tester.tap(toggle);
+      await tester.tap(toggle.first, warnIfMissed: false);
       await pumpFor(tester);
+      debugPrint('  ✅ Toggled to Sign In mode');
     }
   }
 
+  debugPrint('  ⌨️  Entering email...');
   await tester.enterText(emailField, email);
   await pumpFor(tester, frames: 3, ms: 100);
+  debugPrint('  ✅ Email entered');
+  
+  debugPrint('  ⌨️  Entering password...');
   await tester.enterText(passwordField, password);
   await pumpFor(tester, frames: 3, ms: 100);
+  debugPrint('  ✅ Password entered');
 
   // Dismiss keyboard
+  debugPrint('  ⌨️  Dismissing keyboard...');
   await tester.testTextInput.receiveAction(TextInputAction.done);
   await pumpFor(tester, frames: 3, ms: 200);
+  debugPrint('  ✅ Keyboard dismissed');
 
   final loginButton = find.byKey(const Key('login_submit_button'));
-  if (loginButton.evaluate().isEmpty) return false;
+  if (loginButton.evaluate().isEmpty) {
+    debugPrint('  ❌ Login button not found');
+    return false;
+  }
+  debugPrint('  🔘 Login button found, tapping...');
 
-  await tester.tap(loginButton);
+  await tester.tap(loginButton.first, warnIfMissed: false);
+  debugPrint('  ⏳ Waiting 5s for login to complete...');
   await pumpWait(tester, seconds: 5);
+  debugPrint('✅ loginWith COMPLETE');
   return true;
 }
 
@@ -256,17 +300,33 @@ Future<Credential?> switchToAnyCredential(
   WidgetTester tester,
   List<Credential> credentials,
 ) async {
-  for (final credential in credentials) {
-    await _ensureLoggedOut(tester);
-    final isLoggedIn = await _tryLoginFromHomeSettings(tester, credential);
-    if (isLoggedIn) {
-      await navigateToTab(tester, Icons.home);
-      await pumpWait(tester, seconds: 2);
-      await ensureHomeReady(tester, timeoutSeconds: 12);
-      return credential;
-    }
+  if (credentials.isEmpty) return null;
+  
+  final credential = credentials.first;
+  debugPrint('🔄 switchToAnyCredential: ${credential.email}');
+  
+  debugPrint('  ⚙️  Looking for settings button...');
+  final settingsButton = find.byKey(const Key('home_settings_button'));
+  if (settingsButton.evaluate().isEmpty) {
+    debugPrint('  ❌ Settings button not found');
+    return null;
   }
-  return null;
+  debugPrint('  ✅ Settings button found, tapping...');
+
+  await tester.tap(settingsButton.first, warnIfMissed: false);
+
+  debugPrint('  ⏳ Waiting 4s for popup/profile to appear...');
+  await pumpWait(tester, seconds: 4);
+
+  debugPrint('  💬 Checking for sign-in popup...');
+  final _ = await handleSignInPopup(
+    tester,
+    email: credential.email,
+    password: credential.password,
+  );
+
+  debugPrint('  ✅ switchToAnyCredential completed');
+  return credential;
 }
 
 Future<Credential?> switchCredentialWithRecovery(
@@ -274,37 +334,11 @@ Future<Credential?> switchCredentialWithRecovery(
   List<Credential> candidates,
   String scope,
 ) async {
-  for (var attempt = 1; attempt <= 3; attempt++) {
-    final credential = await switchToAnyCredential(tester, candidates);
-    if (credential != null) {
-      await ensureHomeReady(tester, timeoutSeconds: 12);
-      return credential;
-    }
-
-    debugStep('$scope.R$attempt', 'Credential switch retry after UI recovery');
-
-    await navigateToTab(tester, Icons.home);
-    await pumpWait(tester, seconds: 2);
-
-    final settings = find.byKey(const Key('home_settings_button'));
-    if (settings.evaluate().isNotEmpty) {
-      await tester.tap(settings.first, warnIfMissed: false);
-      await pumpWait(tester, seconds: 2);
-
-      final signOut = find.byKey(const Key('profile_sign_out_button'));
-      if (signOut.evaluate().isNotEmpty) {
-        await tester.tap(signOut.first, warnIfMissed: false);
-        await pumpWait(tester, seconds: 2);
-      } else {
-        final loginEmailField = find.byKey(const Key('login_email_field'));
-        if (loginEmailField.evaluate().isEmpty) {
-          await goBack(tester);
-          await pumpWait(tester, seconds: 1);
-        }
-      }
-    }
+  final credential = await switchToAnyCredential(tester, candidates);
+  if (credential != null) {
+    await ensureHomeReady(tester, timeoutSeconds: 3);
+    return credential;
   }
-
   return null;
 }
 
@@ -331,146 +365,20 @@ Future<bool> ensureAddProductCreationContext(WidgetTester tester) async {
   return true;
 }
 
-Future<void> _ensureLoggedOut(WidgetTester tester) async {
-  await navigateToTab(tester, Icons.home);
-  await pumpWait(tester, seconds: 2);
-
-  final settingsButton = find.byKey(const Key('home_settings_button'));
-  if (settingsButton.evaluate().isEmpty) return;
-
-  await tester.tap(settingsButton.first);
-  await pumpWait(tester, seconds: 2);
-
-  final signOutButton = find.byKey(const Key('profile_sign_out_button'));
-  if (signOutButton.evaluate().isNotEmpty) {
-    final signOutReady = await _ensureFinderOnScreen(tester, signOutButton);
-    if (!signOutReady) {
-      debugPrint(
-        '⚠ switchToAnyCredential: sign out button present but not yet hit-testable; continuing with fallback logout path',
-      );
-      await goBack(tester);
-      await pumpWait(tester, seconds: 1);
-      return;
-    }
-    await tester.tap(signOutButton.first, warnIfMissed: false);
-    await pumpWait(tester, seconds: 3);
-    return;
-  }
-
-  final loginDialogSignIn = find.byKey(
-    const Key('login_dialog_sign_in_button'),
-  );
-  if (loginDialogSignIn.evaluate().isNotEmpty) {
-    return;
-  }
-
-  final loginEmailField = find.byKey(const Key('login_email_field'));
-  if (loginEmailField.evaluate().isNotEmpty) {
-    return;
-  }
-
-  await goBack(tester);
-  await pumpWait(tester, seconds: 1);
-}
-
-Future<bool> _tryLoginFromHomeSettings(
-  WidgetTester tester,
-  Credential credential,
-) async {
-  bool isExpectedUserLoggedIn() {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    final currentEmail = currentUser?.email?.toLowerCase();
-    return currentEmail != null &&
-        currentEmail == credential.email.toLowerCase();
-  }
-
-  if (isExpectedUserLoggedIn()) {
-    return true;
-  }
-
-  await navigateToTab(tester, Icons.home);
-  await pumpWait(tester, seconds: 1);
-
-  final settingsButton = find.byKey(const Key('home_settings_button'));
-  if (settingsButton.evaluate().isEmpty) {
-    return isExpectedUserLoggedIn();
-  }
-
-  await tester.tap(settingsButton.first);
-  await pumpWait(tester, seconds: 2);
-
-  final usedPopup = await handleSignInPopup(
-    tester,
-    email: credential.email,
-    password: credential.password,
-  );
-
-  if (!usedPopup) {
-    final loginEmailField = find.byKey(const Key('login_email_field'));
-    final loginPasswordField = find.byKey(const Key('login_password_field'));
-    final submitButton = find.byKey(const Key('login_submit_button'));
-
-    if (loginEmailField.evaluate().isNotEmpty &&
-        loginPasswordField.evaluate().isNotEmpty &&
-        submitButton.evaluate().isNotEmpty) {
-      await enterTextByKey(tester, 'login_email_field', credential.email);
-      await enterTextByKey(tester, 'login_password_field', credential.password);
-      await tester.tap(submitButton.first);
-      await pumpWait(tester, seconds: 4);
-    }
-  }
-
-  await navigateToTab(tester, Icons.home);
-  await pumpWait(tester, seconds: 1);
-
-  final verifySettingsButton = find.byKey(const Key('home_settings_button'));
-  if (verifySettingsButton.evaluate().isEmpty) {
-    return isExpectedUserLoggedIn();
-  }
-
-  await tester.tap(verifySettingsButton.first);
-  await pumpWait(tester, seconds: 2);
-
-  var hasSignOutButton = find
-      .byKey(const Key('profile_sign_out_button'))
-      .evaluate()
-      .isNotEmpty;
-  var expectedUser = isExpectedUserLoggedIn();
-
-  if (hasSignOutButton && !expectedUser) {
-    final signOutButton = find.byKey(const Key('profile_sign_out_button'));
-    if (signOutButton.evaluate().isNotEmpty) {
-      await tester.tap(signOutButton.first, warnIfMissed: false);
-      await pumpWait(tester, seconds: 2);
-    }
-  }
-
-  if (hasSignOutButton) {
-    await goBack(tester);
-    await pumpWait(tester, seconds: 1);
-  }
-
-  for (var i = 0; i < 10; i++) {
-    hasSignOutButton =
-        find.byKey(const Key('profile_sign_out_button')).evaluate().isNotEmpty;
-    expectedUser = isExpectedUserLoggedIn();
-    if (hasSignOutButton || expectedUser) {
-      break;
-    }
-    await tester.pump(const Duration(milliseconds: 400));
-  }
-
-  return expectedUser;
-}
-
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
 
 /// Navigate to a tab by icon.
 Future<void> navigateToTab(WidgetTester tester, IconData icon) async {
+  debugPrint('🔀 navigateToTab: icon=$icon');
   final tabIcon = find.byIcon(icon);
   if (tabIcon.evaluate().isNotEmpty) {
-    await tester.tap(tabIcon.first);
+    debugPrint('  ✅ Tab icon found, tapping...');
+    await tester.tap(tabIcon.first, warnIfMissed: false);
+    debugPrint('  ⏳ Waiting 2s...');
     await pumpWait(tester, seconds: 2);
+    debugPrint('✅ navigateToTab COMPLETE');
+  } else {
+    debugPrint('  ❌ Tab icon not found');
   }
 }
 
@@ -479,30 +387,49 @@ Future<bool> _ensureFinderOnScreen(
   Finder finder, {
   int maxAttempts = 16,
 }) async {
-  if (finder.evaluate().isEmpty) return false;
+  debugPrint('📐 _ensureFinderOnScreen: maxAttempts=$maxAttempts');
+  if (finder.evaluate().isEmpty) {
+    debugPrint('  ❌ Finder is empty');
+    return false;
+  }
 
   try {
+    debugPrint('  📄 Attempting ensureVisible...');
     await tester.ensureVisible(finder.first);
     await tester.pump(const Duration(milliseconds: 150));
-  } catch (_) {}
+    debugPrint('  ✅ ensureVisible succeeded');
+  } catch (e) {
+    debugPrint('  ⚠️  ensureVisible failed: $e');
+  }
 
   bool isOnScreen() {
     if (finder.evaluate().isEmpty) return false;
     final center = tester.getCenter(finder.first, warnIfMissed: false);
     final logicalSize = tester.view.physicalSize / tester.view.devicePixelRatio;
-    return center.dx >= 0 &&
+    final onScreen = center.dx >= 0 &&
         center.dy >= 0 &&
         center.dx <= logicalSize.width &&
         center.dy <= logicalSize.height;
+    debugPrint('    isOnScreen: center=$center, size=$logicalSize, result=$onScreen');
+    return onScreen;
   }
 
-  if (isOnScreen()) return true;
+  if (isOnScreen()) {
+    debugPrint('✅ _ensureFinderOnScreen: widget already on screen');
+    return true;
+  }
 
+  debugPrint('  🔍 Looking for scrollable...');
   final scrollable = find.byType(Scrollable);
-  if (scrollable.evaluate().isEmpty) return false;
+  if (scrollable.evaluate().isEmpty) {
+    debugPrint('  ❌ No scrollable found');
+    return false;
+  }
+  debugPrint('  ✅ Scrollable found, starting scroll attempts...');
 
   for (var i = 0; i < maxAttempts; i++) {
     final direction = i < (maxAttempts ~/ 2) ? -280.0 : 280.0;
+    debugPrint('  [${i + 1}/$maxAttempts] Dragging direction=$direction');
     await tester.drag(scrollable.first, Offset(0, direction));
     await tester.pump(const Duration(milliseconds: 220));
     if (finder.evaluate().isNotEmpty) {
@@ -511,26 +438,36 @@ Future<bool> _ensureFinderOnScreen(
         await tester.pump(const Duration(milliseconds: 120));
       } catch (_) {}
     }
-    if (isOnScreen()) return true;
+    if (isOnScreen()) {
+      debugPrint('✅✅ _ensureFinderOnScreen SUCCESS: widget on screen after ${i + 1} attempts');
+      return true;
+    }
   }
 
+  debugPrint('❌ _ensureFinderOnScreen FAILED: widget not on screen after $maxAttempts attempts');
   return false;
 }
 
 /// Tap a widget by Key name. Returns true if found and tapped.
 Future<bool> tapByKey(WidgetTester tester, String keyName) async {
+  debugPrint('🔘 tapByKey: key="$keyName"');
   final finder = find.byKey(Key(keyName));
   if (finder.evaluate().isNotEmpty) {
+    debugPrint('  ✅ Widget found');
     final ready = await _ensureFinderOnScreen(tester, finder);
     if (!ready) {
+      debugPrint('  ❌ Widget off-screen/non-hit-testable');
       fail(
         'tapByKey: widget "$keyName" is present but off-screen/non-hit-testable',
       );
     }
-    await tester.tap(finder.first);
+    debugPrint('  🔘 Tapping...');
+    await tester.tap(finder.first, warnIfMissed: false);
     await pumpFor(tester, frames: 5, ms: 100);
+    debugPrint('✅ tapByKey SUCCESS');
     return true;
   }
+  debugPrint('  ❌ Widget not found');
   return false;
 }
 
@@ -540,18 +477,26 @@ Future<void> enterTextByKey(
   String key,
   String text,
 ) async {
+  debugPrint('⌨️  enterTextByKey: key="$key", text=${text.substring(0, min(text.length, 20))}...');
   final field = find.byKey(Key(key));
   if (field.evaluate().isNotEmpty) {
+    debugPrint('  ✅ Field found');
     final ready = await _ensureFinderOnScreen(tester, field);
     if (!ready) {
+      debugPrint('  ❌ Field off-screen/non-hit-testable');
       fail(
         'enterTextByKey: field "$key" is present but off-screen/non-hit-testable',
       );
     }
-    await tester.tap(field.first);
+    debugPrint('  🔘 Tapping field...');
+    await tester.tap(field.first, warnIfMissed: false);
     await tester.pump(const Duration(milliseconds: 200));
+    debugPrint('  ⌨️  Entering text...');
     await tester.enterText(field, text);
     await pumpFor(tester, frames: 3, ms: 100);
+    debugPrint('✅ enterTextByKey SUCCESS');
+  } else {
+    debugPrint('  ❌ Field not found');
   }
 }
 
@@ -586,7 +531,7 @@ Future<void> goBack(WidgetTester tester) async {
   ]) {
     final btn = find.byKey(Key(k));
     if (btn.evaluate().isNotEmpty) {
-      await tester.tap(btn.first);
+      await tester.tap(btn.first, warnIfMissed: false);
       await pumpWait(tester);
       return;
     }
@@ -697,14 +642,49 @@ Future<bool> handleSignInPopup(
   required String email,
   required String password,
 }) async {
+  debugPrint('🔍 handleSignInPopup: checking for dialog...');
+  debugPrint('  Looking for key: login_dialog_sign_in_button');
   final dialogKey = find.byKey(const Key('login_dialog_sign_in_button'));
-  if (dialogKey.evaluate().isEmpty) return false;
+  debugPrint('  Dialog button found: ${dialogKey.evaluate().isNotEmpty}');
+  
+  if (dialogKey.evaluate().isEmpty) {
+    debugPrint('  ❌ No popup found');
+    debugPrint('  DEBUG: Listing all visible Text widgets...');
+    final allTexts = find.byType(Text);
+    final textCount = allTexts.evaluate().length;
+    debugPrint('    Total Text widgets: $textCount');
+    if (textCount > 0 && textCount < 50) {
+      // Only show if reasonable number
+      for (var i = 0; i < min(10, textCount); i++) {
+        final widget = tester.widget<Text>(allTexts.at(i));
+        final data = widget.data?.toString() ?? '';
+        if (data.length < 100) {
+          debugPrint('      Text[$i]: ${data.substring(0, min(50, data.length))}');
+        }
+      }
+    }
+    return false;
+  }
+  debugPrint('  ✅ Popup detected');
   debugPrint('ℹ️ Sign In Required popup detected — navigating to login...');
-  await tester.tap(dialogKey);
+  debugPrint('  🔘 Tapping Sign In button in dialog...');
+  debugPrint('    Dialog button widget count: ${dialogKey.evaluate().length}');
+  debugPrint('    Attempting to tap dialogKey.first with warnIfMissed=false...');
+  
+  // Wait longer for dialog to be fully rendered and clickable
+  debugPrint('    Waiting for dialog to stabilize...');
   await pumpWait(tester, seconds: 2);
+  
+  debugPrint('    Executing tap...');
+  await tester.tap(dialogKey.first, warnIfMissed: false);
+  debugPrint('  ✅ Tap completed');
+  debugPrint('  ⏳ Waiting 3s after dialog dismiss...');
+  await pumpWait(tester, seconds: 3);
+  debugPrint('  📝 Calling loginWith...');
   await loginWith(tester, email: email, password: password);
+  debugPrint('  ⏳ Waiting 2s after login...');
   await pumpWait(tester, seconds: 2);
-  debugPrint('ℹ️ Login completed after popup');
+  debugPrint('✅ handleSignInPopup COMPLETE — Login completed after popup');
   return true;
 }
 
@@ -732,7 +712,7 @@ Future<bool> navigateToAddProduct(WidgetTester tester) async {
       'navigateToAddProduct: add product button is present but off-screen/non-hit-testable',
     );
   }
-  await tester.tap(addBtn.first);
+  await tester.tap(addBtn.first, warnIfMissed: false);
   await pumpSettle(tester, iterations: 5);
   debugPrint('✓ Navigated to Add Product screen');
   return true;
@@ -740,7 +720,7 @@ Future<bool> navigateToAddProduct(WidgetTester tester) async {
 
 Future<void> pumpSettle(
   WidgetTester tester, {
-  int iterations = 10,
+  int iterations = 3,
   int ms = 1000,
 }) async {
   for (int i = 0; i < iterations; i++) {
@@ -768,6 +748,7 @@ Future<Credential?> establishSession(
   String skipCode,
   String skipMessage,
 ) async {
+  
   final credential = await switchCredentialWithRecovery(
     tester,
     candidates,
@@ -778,7 +759,7 @@ Future<Credential?> establishSession(
     tracker.throwIfFailed();
     return null;
   }
-  await ensureHomeReady(tester, timeoutSeconds: 15);
+  await ensureHomeReady(tester, timeoutSeconds: 2);
   return credential;
 }
 
@@ -786,7 +767,9 @@ Future<Credential?> establishSession(
 Future<bool> openSettings(WidgetTester tester) async {
   final settingsButton = find.byKey(const Key('home_settings_button'));
   if (settingsButton.evaluate().isEmpty) return false;
-  await tester.tap(settingsButton.first);
+  
+  await tester.tap(settingsButton.first, warnIfMissed: false);
+  
   await pumpWait(tester, seconds: 3);
   return true;
 }

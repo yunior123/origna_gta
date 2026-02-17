@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/services/algolia_service.dart';
-import 'package:origna_gta/utils/constants.dart';
 
 import 'product_repository.dart';
 

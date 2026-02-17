@@ -17,8 +17,9 @@ class FirebaseProductRepository implements ProductRepository {
 
   @override
   Future<String> addProduct(Product product) async {
-    if (kDebugMode)
+    if (kDebugMode) {
       debugPrint('REPO: Attempting to add product: ${product.name}');
+    }
     try {
       final firestoreData = sanitizeProductForFirestore(
         product.toJson(),
@@ -27,27 +28,32 @@ class FirebaseProductRepository implements ProductRepository {
       final docRef = await _firestore
           .collection(Collections.products)
           .add(firestoreData);
-      if (kDebugMode)
+      if (kDebugMode) {
         debugPrint(
           'REPO: Product added successfully locally with ID: ${docRef.id}',
         );
+      }
 
       // DIAGNOSTIC: Check connectivity
       try {
-        if (kDebugMode)
+        if (kDebugMode) {
           debugPrint(
             'REPO: [FirebaseProductRepository] Verifying write from SERVER...',
           );
+        }
         final docSnapshot = await docRef.get(
           const GetOptions(source: Source.server),
         );
         if (docSnapshot.exists) {
-          if (kDebugMode) debugPrint('REPO: SERVER VERIFICATION SUCCESS!');
+          if (kDebugMode) {
+            debugPrint('REPO: SERVER VERIFICATION SUCCESS!');
+          }
         } else {
-          if (kDebugMode)
+          if (kDebugMode) {
             debugPrint(
               'REPO: SERVER VERIFICATION FAILED: Document does not exist on server.',
             );
+          }
           throw FirebaseException(
             plugin: 'cloud_firestore',
             code: 'sync-failed',
@@ -69,7 +75,9 @@ class FirebaseProductRepository implements ProductRepository {
 
       return docRef.id;
     } catch (e) {
-      if (kDebugMode) debugPrint('REPO: Error adding product: $e');
+      if (kDebugMode) {
+        debugPrint('REPO: Error adding product: $e');
+      }
       rethrow;
     }
   }

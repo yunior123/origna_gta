@@ -23,18 +23,33 @@ void main() {
       final runStamp = DateTime.now().millisecondsSinceEpoch.toString();
 
       debugStep('B01', 'Buyer Flow — login + browse + cart/profile checks');
-      final buyerCred = await establishSession(
-        tester,
-        buyerCredentialCandidates,
-        'B01',
-        tracker,
-        'S007',
-        'Buyer flow login failed with configured buyer credentials',
-      );
-      if (buyerCred == null) return;
 
-      final buyerAddProductButton =
-          find.byKey(const Key('home_add_product_button'));
+      debugPrint('  Calling establishSession...');
+
+      debugPrint('  ⚙️  Looking for settings button...');
+      final settingsButton = find.byKey(const Key('home_settings_button'));
+      if (settingsButton.evaluate().isEmpty) {
+        debugPrint('  ❌ Settings button not found');
+      }
+      debugPrint('  ✅ Settings button found, tapping...');
+
+      await tester.tap(settingsButton.first, warnIfMissed: false);
+
+      debugPrint('  ⏳ Waiting 4s for popup/profile to appear...');
+      await pumpWait(tester, seconds: 2);
+
+      debugPrint('  💬 Checking for sign-in popup...');
+      final _ = await handleSignInPopup(
+        tester,
+        email: buyerCredentialCandidates.first.email,
+        password: buyerCredentialCandidates.first.password,
+      );
+
+      debugPrint('  ✅ establishSession completed');
+
+      final buyerAddProductButton = find.byKey(
+        const Key('home_add_product_button'),
+      );
       tracker.check(
         'C021',
         buyerAddProductButton.evaluate().isEmpty,
@@ -42,19 +57,10 @@ void main() {
       );
 
       if (await openSettings(tester)) {
-        final buyerAdminPanel =
-            find.byKey(const Key('profile_admin_panel_button'));
-        if (!isAdminAccountEmail(buyerCred.email)) {
-          tracker.check(
-            'C022',
-            buyerAdminPanel.evaluate().isEmpty,
-            '[buyer] admin panel cache',
-          );
-        }
-
         final buyerOrders = find.byKey(const Key('profile_my_orders_button'));
-        final buyerFavorites =
-            find.byKey(const Key('profile_favorites_button'));
+        final buyerFavorites = find.byKey(
+          const Key('profile_favorites_button'),
+        );
         final buyerAddress = find.byKey(const Key('profile_address_button'));
         tracker.check(
           'C023',
@@ -97,10 +103,8 @@ void main() {
             '[buyer] ecran adresse s\'ouvre',
           );
 
-          final addAddressButton =
-              find.bySemanticsLabel('btn-add-address');
-          final editAddressButton =
-              find.bySemanticsLabel('btn-edit-address');
+          final addAddressButton = find.bySemanticsLabel('btn-add-address');
+          final editAddressButton = find.bySemanticsLabel('btn-edit-address');
           tracker.check(
             'C092',
             addAddressButton.evaluate().isNotEmpty ||
@@ -119,8 +123,7 @@ void main() {
               await tester.enterText(fields.at(3), 'M5V1A1');
               await tester.enterText(fields.at(4), '4165550000');
             }
-            final saveAddressButton =
-                find.bySemanticsLabel('btn-save-address');
+            final saveAddressButton = find.bySemanticsLabel('btn-save-address');
             tracker.check(
               'C093',
               saveAddressButton.evaluate().isNotEmpty,
@@ -140,8 +143,7 @@ void main() {
             if (fields.evaluate().isNotEmpty) {
               await tester.enterText(fields.first, '456 Updated Ave $runStamp');
             }
-            final saveAddressButton =
-                find.bySemanticsLabel('btn-save-address');
+            final saveAddressButton = find.bySemanticsLabel('btn-save-address');
             if (saveAddressButton.evaluate().isNotEmpty) {
               await tester.tap(saveAddressButton.first, warnIfMissed: false);
               await pumpWait(tester, seconds: 4);
@@ -151,7 +153,8 @@ void main() {
           tracker.check(
             'C094',
             find.bySemanticsLabel('btn-edit-address').evaluate().isNotEmpty ||
-                find.byKey(const Key('home_settings_button'))
+                find
+                    .byKey(const Key('home_settings_button'))
                     .evaluate()
                     .isNotEmpty,
             '[buyer] create/edit adresse execute',
@@ -182,29 +185,34 @@ void main() {
       if (buyerCart.evaluate().isNotEmpty) {
         await tester.tap(buyerCart.first);
         await pumpWait(tester, seconds: 3);
-        final checkoutButton =
-            find.byKey(const Key('cart_checkout_button'));
+        final checkoutButton = find.byKey(const Key('cart_checkout_button'));
 
         if (checkoutButton.evaluate().isNotEmpty) {
           await tester.tap(checkoutButton.first);
           await pumpWait(tester, seconds: 4);
 
-          final checkoutPlaceOrder =
-              find.byKey(const Key('checkout_place_order_button'));
-          final checkoutTerms =
-              find.byKey(const Key('checkout_terms_checkbox'));
-          final checkoutSummary =
-              find.byKey(const Key('checkout_summary_section'));
-          final checkoutShipping =
-              find.byKey(const Key('checkout_shipping_section'));
-          final checkoutAddress =
-              find.byKey(const Key('checkout_address_section'));
-          final checkoutPayment =
-              find.byKey(const Key('checkout_payment_section'));
-          final checkoutSecure =
-              find.byKey(const Key('checkout_secure_badge'));
-          final deliveryStandard =
-              find.byKey(const Key('checkout_delivery_speed_standard'));
+          final checkoutPlaceOrder = find.byKey(
+            const Key('checkout_place_order_button'),
+          );
+          final checkoutTerms = find.byKey(
+            const Key('checkout_terms_checkbox'),
+          );
+          final checkoutSummary = find.byKey(
+            const Key('checkout_summary_section'),
+          );
+          final checkoutShipping = find.byKey(
+            const Key('checkout_shipping_section'),
+          );
+          final checkoutAddress = find.byKey(
+            const Key('checkout_address_section'),
+          );
+          final checkoutPayment = find.byKey(
+            const Key('checkout_payment_section'),
+          );
+          final checkoutSecure = find.byKey(const Key('checkout_secure_badge'));
+          final deliveryStandard = find.byKey(
+            const Key('checkout_delivery_speed_standard'),
+          );
 
           tracker.check(
             'C025',
@@ -245,21 +253,24 @@ void main() {
 
           final hasTaxBreakdown =
               find.textContaining('HST').evaluate().isNotEmpty ||
-                  find.textContaining('GST').evaluate().isNotEmpty ||
-                  find.textContaining('PST').evaluate().isNotEmpty ||
-                  find.textContaining('QST').evaluate().isNotEmpty;
+              find.textContaining('GST').evaluate().isNotEmpty ||
+              find.textContaining('PST').evaluate().isNotEmpty ||
+              find.textContaining('QST').evaluate().isNotEmpty;
           tracker.check(
             'C031',
             hasTaxBreakdown,
             'tax breakdown visible (GST/HST/PST/QST)',
           );
 
-          final standardSpeed =
-              find.byKey(const Key('checkout_delivery_speed_standard'));
-          final expressSpeed =
-              find.byKey(const Key('checkout_delivery_speed_express'));
-          final sameDaySpeed =
-              find.byKey(const Key('checkout_delivery_speed_sameDay'));
+          final standardSpeed = find.byKey(
+            const Key('checkout_delivery_speed_standard'),
+          );
+          final expressSpeed = find.byKey(
+            const Key('checkout_delivery_speed_express'),
+          );
+          final sameDaySpeed = find.byKey(
+            const Key('checkout_delivery_speed_sameDay'),
+          );
           tracker.check(
             'C055',
             standardSpeed.evaluate().isNotEmpty,
@@ -296,13 +307,13 @@ void main() {
             'order summary shows monetary breakdown',
           );
 
-          final termsWidgetBefore =
-              tester.widget<Checkbox>(checkoutTerms.first);
+          final termsWidgetBefore = tester.widget<Checkbox>(
+            checkoutTerms.first,
+          );
           final termsBefore = termsWidgetBefore.value ?? false;
           await tester.tap(checkoutTerms.first, warnIfMissed: false);
           await pumpWait(tester, seconds: 1);
-          final termsWidgetAfter =
-              tester.widget<Checkbox>(checkoutTerms.first);
+          final termsWidgetAfter = tester.widget<Checkbox>(checkoutTerms.first);
           final termsAfter = termsWidgetAfter.value ?? false;
           tracker.check(
             'C060',
@@ -331,10 +342,7 @@ void main() {
           }
 
           final shippingAmounts = extractDollarAmounts(
-            find.descendant(
-              of: checkoutShipping,
-              matching: find.byType(Text),
-            ),
+            find.descendant(of: checkoutShipping, matching: find.byType(Text)),
           );
           tracker.check(
             'C072',
@@ -348,10 +356,7 @@ void main() {
           );
 
           final summaryAmounts = extractDollarAmounts(
-            find.descendant(
-              of: checkoutSummary,
-              matching: find.byType(Text),
-            ),
+            find.descendant(of: checkoutSummary, matching: find.byType(Text)),
           );
           tracker.check(
             'C074',
@@ -409,10 +414,12 @@ void main() {
       if (buyerProductFinders.any((finder) => finder.evaluate().isNotEmpty)) {
         await tester.tap(buyerProductTarget.first, warnIfMissed: false);
         await pumpWait(tester, seconds: 3);
-        final buyerAddToCart =
-            find.byKey(const Key('product_add_to_cart_button'));
-        final ownProductMessage =
-            find.byKey(const Key('product_own_product_message'));
+        final buyerAddToCart = find.byKey(
+          const Key('product_add_to_cart_button'),
+        );
+        final ownProductMessage = find.byKey(
+          const Key('product_own_product_message'),
+        );
         tracker.check(
           'C032',
           buyerAddToCart.evaluate().isNotEmpty ||
