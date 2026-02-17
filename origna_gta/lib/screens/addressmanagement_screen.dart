@@ -66,6 +66,7 @@ class AddressManagementScreen extends ConsumerWidget {
                     button: true,
                     label: 'btn-add-address',
                     child: ModernButton(
+                    key: const Key('btn_add_address'),
                     label: 'address.add_address'.tr(),
                     icon: Icons.add_location_alt_outlined,
                     onPressed: () {
@@ -143,6 +144,7 @@ class AddressManagementScreen extends ConsumerWidget {
                 button: true,
                 label: 'btn-edit-address',
                 child: Material(
+                key: const Key('btn_edit_address'),
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {

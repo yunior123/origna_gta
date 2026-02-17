@@ -13,7 +13,20 @@ Future<void> main() async {
 		await _seedDevAdminData();
 	}
 
-	await integrationDriver();
+	await integrationDriver(
+		responseDataCallback: (data) async {
+			stdout.writeln(
+				'[integration] reportData received: ${data == null ? 'null' : data.keys.toList()}',
+			);
+			final failed = data?['failedCases'];
+			if (failed is List && failed.isNotEmpty) {
+				stdout.writeln('[integration] Failed cases (${failed.length}):');
+				for (final item in failed) {
+					stdout.writeln('  - $item');
+				}
+			}
+		},
+	);
 }
 
 Future<void> _seedDevAdminData() async {

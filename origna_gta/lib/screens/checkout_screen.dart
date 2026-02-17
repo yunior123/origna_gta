@@ -307,8 +307,11 @@ class _CheckoutContent extends ConsumerWidget {
 
     if (address == null) {
       if (!hasPhysicalItems) {
-        // Digital-only: use profile address province for tax, fallback to ON
-        final digitalProvince = userModel.address?.state ?? 'ON';
+        // Digital-only: use profile address province for tax, fallback to Ontario
+        final rawState = userModel.address?.state;
+        final digitalProvince = (rawState != null && rawState.trim().isNotEmpty)
+          ? rawState.trim()
+          : ProvinceCodeValues.ontario;
         final digitalTaxRate = getTaxRate(digitalProvince);
         final digitalTax = subtotal * digitalTaxRate;
         final digitalTotal = subtotal + digitalTax;

@@ -188,7 +188,13 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: titleFontSize,
+                          height: 1.25,
                           color: isDark ? Colors.white : DesignTokens.textPrimary,
+                        ),
+                        strutStyle: StrutStyle(
+                          fontSize: titleFontSize,
+                          height: 1.25,
+                          forceStrutHeight: true,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,

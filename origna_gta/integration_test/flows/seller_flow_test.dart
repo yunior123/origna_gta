@@ -28,28 +28,15 @@ void main() {
 
       debugStep('C01', 'Seller Flow — seller tools + seller orders');
 
-      debugPrint('  Calling establishSession...');
-
-      debugPrint('  ⚙️  Looking for settings button...');
-      final settingsButton = find.byKey(const Key('home_settings_button'));
-      if (settingsButton.evaluate().isEmpty) {
-        debugPrint('  ❌ Settings button not found');
-      }
-      debugPrint('  ✅ Settings button found, tapping...');
-
-      await tester.tap(settingsButton.first, warnIfMissed: false);
-
-      debugPrint('  ⏳ Waiting 4s for popup/profile to appear...');
-      await pumpWait(tester, seconds: 2);
-
-      debugPrint('  💬 Checking for sign-in popup...');
-      final _ = await handleSignInPopup(
+      final _seller = await establishSession(
         tester,
-        email: sellerCredentialCandidates.first.email,
-        password: sellerCredentialCandidates.first.password,
+        sellerCredentialCandidates,
+        'seller',
+        tracker,
+        'S001',
+        '[seller] session/login failed',
       );
-
-      debugPrint('  ✅ establishSession completed');
+      if (_seller == null) return;
 
       final sellerAddButton = find.byKey(const Key('home_add_product_button'));
       tracker.check(
@@ -80,10 +67,18 @@ void main() {
         final sellerAdminPanel = find.byKey(
           const Key('profile_admin_panel_button'),
         );
+        final isUsingAdminAccount = isAdminAccountEmail(_seller.email);
+        debugPrint(
+          '🔎 Seller flow account: email=${_seller.email} isUsingAdminAccount=$isUsingAdminAccount',
+        );
         tracker.check(
           'C036',
-          sellerAdminPanel.evaluate().isEmpty,
-          '[buyer,seller] admin panel cache',
+          isUsingAdminAccount
+              ? sellerAdminPanel.evaluate().isNotEmpty
+              : sellerAdminPanel.evaluate().isEmpty,
+          isUsingAdminAccount
+              ? '[buyer,seller,admin] admin panel visible'
+              : '[buyer,seller] admin panel cache',
         );
 
         final sellerOrdersButton = find.byKey(
@@ -174,6 +169,7 @@ void main() {
         );
 
         if (signOutButton.evaluate().isNotEmpty) {
+          await ensureFinderOnScreen(tester, signOutButton);
           await tester.tap(signOutButton.first, warnIfMissed: false);
           await pumpWait(tester, seconds: 2);
 

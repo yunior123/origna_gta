@@ -25,6 +25,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
 
   void addImage(ImageModel image) =>
       state = state.copyWith(imageModels: [...state.imageModels, image]);
+
+  /// Clear error message to allow re-triggering SnackBar on next error
+  void clearError() => state = state.copyWith(errorMessage: null);
+
   Future<void> addProduct({
     required String name,
     required String description,

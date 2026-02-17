@@ -690,10 +690,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   double _getCardAspectRatio(BuildContext context) {
     return ResponsiveBreakpoints.getValue(
       context: context,
-      mobile: 0.75, // 2 columns - shorter cards
-      mobilePlus: 0.85, // 480px - medium phones
-      tablet: 0.9, // 768px - tablets
-      desktop: 1.0, // 1024px+ - desktop
+      // Higher ratio = shorter cards (more items visible)
+      mobile: 0.9,
+      mobilePlus: 0.95,
+      tablet: 1.0,
+      desktop: 1.05,
     );
   }
 
@@ -821,7 +822,7 @@ class _ProductGrid extends ConsumerWidget {
     }
 
     if (isLoading) {
-      final spacing = ResponsiveBreakpoints.getSpacing(context, SpacingSize.md);
+      final spacing = ResponsiveBreakpoints.getSpacing(context, SpacingSize.sm);
       final columns = ResponsiveBreakpoints.getGridColumns(context);
       return SliverPadding(
         padding: EdgeInsets.all(spacing),
@@ -840,7 +841,7 @@ class _ProductGrid extends ConsumerWidget {
       );
     }
 
-    final spacing = ResponsiveBreakpoints.getSpacing(context, SpacingSize.md);
+    final spacing = ResponsiveBreakpoints.getSpacing(context, SpacingSize.sm);
 
     return SliverPadding(
       padding: EdgeInsets.all(spacing),

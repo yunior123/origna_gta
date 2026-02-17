@@ -100,8 +100,9 @@ class FavoritesScreen extends ConsumerWidget {
 
   double _getCardAspectRatio(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < 360) return 0.6;
-    if (width < 600) return 0.65;
-    return 0.75;
+    // Higher ratio = shorter cards (more items visible)
+    if (width < 360) return 0.8;
+    if (width < 600) return 0.85;
+    return 0.95;
   }
 }

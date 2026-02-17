@@ -6,7 +6,7 @@ export 'package:easy_localization/easy_localization.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
 // Re-export schema constants so existing imports keep working
-export 'package:origna_gta/core/schema/schema_constants.dart' show Collections, Fields, OrderStatusValues, PaymentStatusValues, DeliveryStatusValues, PayoutStatusValues, ShippingApprovalStatusValues, UserRoleValues, ProductStatusValues, SchemaRegistry, BusinessRules, CategoryIds, ApiKeys;
+export 'package:origna_gta/core/schema/schema_constants.dart' show Collections, Fields, OrderStatusValues, PaymentStatusValues, DeliveryStatusValues, PayoutStatusValues, ShippingApprovalStatusValues, UserRoleValues, ProductStatusValues, SchemaRegistry, BusinessRules, CategoryIds, ApiKeys, ProvinceCodeValues;
 
 // ============================================================================
 // APP CONFIGURATION

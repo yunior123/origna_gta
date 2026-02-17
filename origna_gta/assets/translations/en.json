@@ -448,6 +448,7 @@
     "dimensions_positive": "Package dimensions must be positive",
     "image_required": "Please add at least one product image",
     "delivery_tier_required": "Enable at least one delivery option for physical products",
+    "fix_errors_before_submit": "Please fix the highlighted errors before publishing",
     "add_product_failed": "Failed to add product",
     "sold_out": "Sold Out",
     "restrict_50km": "Restrict to buyers within 50km",
@@ -650,6 +651,7 @@
   },
   "checkout": {
     "checkout": "Checkout",
+    "place_order": "Place Order",
     "delivery_address_title": "Delivery Address",
     "edit_action": "Edit",
     "add_address": "Add Address",
@@ -714,6 +716,7 @@
     "refunded": "Refunded",
     "delivery_address": "Delivery Address",
     "no_orders": "No orders yet",
+    "no_orders_found": "No orders found",
     "no_orders_desc": "Your purchases will appear here",
     "order_history_desc": "Your order history will appear here.",
     "filter_all": "All",
@@ -1028,5 +1031,20 @@
     "cancel_label": "Cancel rating",
     "submit_label": "Submit rating",
     "star_label": "Rate {count} out of 5 stars"
+  },
+  "payment_status": {
+    "awaiting_payment": "Awaiting Payment",
+    "processing": "Processing",
+    "authorized": "Authorized",
+    "paid": "Paid",
+    "captured": "Captured",
+    "payment_failed": "Payment Failed",
+    "refunded": "Refunded",
+    "session_expired": "Session Expired",
+    "cancelled": "Cancelled",
+    "authorization_expired": "Authorization Expired",
+    "capturing": "Capturing",
+    "cancelling": "Cancelling",
+    "expiring": "Expiring"
   }
 }

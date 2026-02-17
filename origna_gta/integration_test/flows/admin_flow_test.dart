@@ -236,8 +236,10 @@ void main() {
         );
 
         if (signOutButton.evaluate().isNotEmpty) {
+          // Ensure sign out button is scrolled into view before tapping
+          await ensureFinderOnScreen(tester, signOutButton);
           await tester.tap(signOutButton.first, warnIfMissed: false);
-          await pumpWait(tester, seconds: 2);
+          await pumpWait(tester, seconds: 4);
 
           final signedOut = await verifySignedOutState(tester);
           tracker.check(

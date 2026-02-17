@@ -180,6 +180,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
     ];
 
     return Scaffold(
+      key: const Key('admin_screen_title'),
       body: Row(
         children: [
           // Side Navigation Rail
@@ -284,6 +285,13 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                   ),
                   child: Row(
                     children: [
+                      IconButton(
+                        key: const Key('admin_back_button'),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        tooltip: 'Back',
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      const SizedBox(width: 8),
                       Icon(_tabs[_selectedIndex].icon, color: DesignTokens.primary, size: 24),
                       const SizedBox(width: 12),
                       Text(

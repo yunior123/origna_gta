@@ -1,4 +1,5 @@
 import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:flutter/foundation.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 
 class ConfigService {
@@ -19,7 +20,17 @@ class ConfigService {
 
   String get algoliaSearchApiKey => _remoteConfig.getString(RemoteConfigKeys.algoliaSearchApiKey);
   // Getters for your keys
-  String get geoapifyKey => _remoteConfig.getString(RemoteConfigKeys.geoapifyApiKey);
+  String get geoapifyKey {
+    // Allow integration/dev to override Remote Config via --dart-define.
+    // Key name matches RemoteConfigKeys.geoapifyApiKey ('geoapify_api_key').
+    final override = const String.fromEnvironment(
+      RemoteConfigKeys.geoapifyApiKey,
+      defaultValue: '',
+    );
+    if (override.trim().isNotEmpty) return override.trim();
+
+    return _remoteConfig.getString(RemoteConfigKeys.geoapifyApiKey);
+  }
 
   // Inside ConfigService
   String get imageBaseUrl => _remoteConfig.getString(RemoteConfigKeys.imageBaseUrl);
@@ -48,8 +59,12 @@ class ConfigService {
 
     try {
       await _remoteConfig.fetchAndActivate();
+      debugPrint(
+        '🗺️ RemoteConfig geoapify_api_key loaded: ${geoapifyKey.trim().isNotEmpty}',
+      );
     } catch (_) {
       // Remote Config fetch is best-effort. Defaults remain in place.
+      debugPrint('🗺️ RemoteConfig fetch failed (geoapify_api_key may be empty)');
     }
   }
 }

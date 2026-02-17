@@ -448,6 +448,7 @@
     "dimensions_positive": "Les dimensions du colis doivent être positives",
     "image_required": "Veuillez ajouter au moins une image du produit",
     "delivery_tier_required": "Activez au moins une option de livraison pour les produits physiques",
+    "fix_errors_before_submit": "Veuillez corriger les erreurs en surbrillance avant de publier",
     "add_product_failed": "Échec de l'ajout du produit",
     "sold_out": "Épuisé",
     "restrict_50km": "Restreindre aux acheteurs dans un rayon de 50 km",
@@ -650,6 +651,7 @@
   },
   "checkout": {
     "checkout": "Payer",
+    "place_order": "Passer la commande",
     "delivery_address_title": "Adresse de livraison",
     "edit_action": "Modifier",
     "add_address": "Ajouter une adresse",
@@ -714,6 +716,7 @@
     "refunded": "Remboursée",
     "delivery_address": "Adresse de livraison",
     "no_orders": "Aucune commande",
+    "no_orders_found": "Aucune commande trouvée",
     "no_orders_desc": "Vos achats apparaîtront ici",
     "order_history_desc": "Votre historique de commandes apparaîtra ici.",
     "filter_all": "Toutes",
@@ -1028,5 +1031,20 @@
     "cancel_label": "Annuler l'évaluation",
     "submit_label": "Soumettre l'évaluation",
     "star_label": "Évaluer à {count} étoiles sur 5"
+  },
+  "payment_status": {
+    "awaiting_payment": "En attente de paiement",
+    "processing": "En traitement",
+    "authorized": "Autorisé",
+    "paid": "Payé",
+    "captured": "Capturé",
+    "payment_failed": "Échec du paiement",
+    "refunded": "Remboursé",
+    "session_expired": "Session expirée",
+    "cancelled": "Annulé",
+    "authorization_expired": "Autorisation expirée",
+    "capturing": "Capture en cours",
+    "cancelling": "Annulation en cours",
+    "expiring": "Expiration en cours"
   }
 }

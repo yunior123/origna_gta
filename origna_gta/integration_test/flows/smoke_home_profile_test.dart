@@ -43,28 +43,16 @@ void main() {
     debugPrint(
       '  Using adminCredentialCandidates for session establishment...',
     );
-    debugPrint('  Calling establishSession...');
 
-    debugPrint('  ⚙️  Looking for settings button...');
-    final settingsButton = find.byKey(const Key('home_settings_button'));
-    if (settingsButton.evaluate().isEmpty) {
-      debugPrint('  ❌ Settings button not found');
-    }
-    debugPrint('  ✅ Settings button found, tapping...');
-
-    await tester.tap(settingsButton.first, warnIfMissed: false);
-
-    debugPrint('  ⏳ Waiting 4s for popup/profile to appear...');
-    await pumpWait(tester, seconds: 4);
-
-    debugPrint('  💬 Checking for sign-in popup...');
-    final _ = await handleSignInPopup(
+    final _admin = await establishSession(
       tester,
-      email: adminCredentialCandidates.first.email,
-      password: adminCredentialCandidates.first.password,
+      adminCredentialCandidates,
+      'admin',
+      tracker,
+      'S001',
+      '[admin] session/login failed',
     );
-
-    debugPrint('  ✅ establishSession completed');
+    if (_admin == null) return;
 
     debugPrint('✅ C078 passed: Admin session valid');
     debugPrint('✅ Admin session established successfully');

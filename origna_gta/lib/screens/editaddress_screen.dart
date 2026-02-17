@@ -154,6 +154,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                           ),
                           if (state.showSuggestions && state.addressSuggestions.isNotEmpty)
                             Container(
+                              key: const Key('address_suggestions'),
                               margin: const EdgeInsets.only(top: 8, bottom: 8),
                               decoration: BoxDecoration(
                                 color: isDark ? DesignTokens.textPrimary : Colors.white,
@@ -175,7 +176,21 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius8)),
                                     onTap: () {
                                       viewModel.selectAddress(s);
-                                      _streetController.text = s['properties']?['street'] ?? '';
+                                      final props = s['properties'] as Map<String, dynamic>?;
+                                      final street = (props?['street'] as String?)?.trim() ?? '';
+                                      final houseNumber =
+                                          (props?['housenumber'] as String?)?.trim() ??
+                                          (props?['house_number'] as String?)?.trim() ??
+                                          (props?['address_line1'] as String?)?.trim() ??
+                                          '';
+                                      final formatted = (props?['formatted'] as String?)?.trim() ?? '';
+
+                                      final fullStreet =
+                                          (houseNumber.isNotEmpty && street.isNotEmpty)
+                                              ? '$houseNumber $street'
+                                              : (street.isNotEmpty ? street : formatted);
+
+                                      _streetController.text = fullStreet;
                                       _cityController.text = s['properties']?['city'] ?? '';
                                       _postalCodeController.text = s['properties']?['postcode'] ?? '';
                                     },
@@ -265,6 +280,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                       button: true,
                       label: 'btn-save-address',
                       child: ModernButton(
+                      key: const Key('btn_save_address'),
                       label: state.isLoading ? 'address.saving'.tr() : 'address.save_address'.tr(),
                       icon: Icons.save_outlined,
                       isLoading: state.isLoading,

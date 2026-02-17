@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/screens/cartitem_screen.dart';
 import 'package:origna_gta/utils/constants.dart';
@@ -485,6 +486,53 @@ class _CartTotalDisplay extends ConsumerWidget {
                   ),
                 ),
               ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final profileProvince = ref
+                    .watch(userProfileProvider)
+                    .valueOrNull
+                    ?.address
+                    ?.state;
+                  final province = (profileProvince == null ||
+                      profileProvince.trim().isEmpty)
+                      ? ProvinceCodeValues.ontario
+                    : profileProvince.trim();
+
+                  final subtotalAsync = ref.watch(
+                    cartWithDetailsProvider.select(
+                      (async) => async.whenData(
+                        (items) => items.fold(
+                          0.0,
+                          (total, item) =>
+                              total + (item.price * item.quantity),
+                        ),
+                      ),
+                    ),
+                  );
+
+                  return subtotalAsync.when(
+                    loading: () => const SizedBox(width: 70, height: 16),
+                    error: (_, _) => const SizedBox.shrink(),
+                    data: (subtotal) {
+                      final estimatedTax = subtotal * getTaxRate(province);
+                      return Text(
+                        NumberFormat.currency(
+                          locale: "en_CA",
+                          symbol: "CAD \$",
+                        ).format(estimatedTax),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: isDark
+                              ? DesignTokens.outlineVariant
+                              : DesignTokens.textPrimary,
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
               Tooltip(
                 message:
                     'cart.tax_tooltip'.tr(),

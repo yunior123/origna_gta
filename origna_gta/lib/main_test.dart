@@ -150,8 +150,28 @@ Future<void> mainTest() async {
   }
 
   await _timedStep('Step 5: ConfigService', () async {
-    await ConfigService().initialize(skipFetch: true);
+    // Web integration tests rely on Remote Config for keys like geoapify_api_key.
+    // Keep skipFetch for non-web to reduce flakiness and speed up local runs.
+    await ConfigService().initialize(skipFetch: !kIsWeb);
   });
+
+  // Web + headless Chrome can emit an invalid lifecycle transition (hidden -> resumed)
+  // that triggers a Flutter framework assertion inside AppLifecycleListener.
+  // Ignore it in web test runs without touching FlutterError.onError (flutter_test is sensitive to that).
+  final isTestRun = const bool.fromEnvironment('IS_TEST', defaultValue: false);
+  if (kIsWeb && isTestRun) {
+    WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
+      final message = error.toString();
+      if (message.contains(
+        'Invalid state transition from AppLifecycleState.hidden to AppLifecycleState.resumed',
+      )) {
+        // ignore: avoid_print
+        print('⚠️ Ignored web lifecycle assertion in test run');
+        return true;
+      }
+      return false;
+    };
+  }
 
   _appInitialized = true;
 

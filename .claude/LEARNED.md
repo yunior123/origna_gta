@@ -187,3 +187,62 @@
 - **Home-first auth**: Home renders before login; actions like cart/settings can open sign-in dialog, so tests should route to login via the dialog before asserting login UI
 - **Web integration**: `flutter drive` on web requires ChromeDriver running on port 4444
 - **Resilient test pattern**: Always check `finder.evaluate().isNotEmpty` before `tester.tap()` — never hard `expect` for optional UI elements
+
+---
+
+## Mac RAM Management During Dev Sessions (Feb 2026)
+
+### Quick Health Check
+```bash
+# One-liner: swap + free RAM + process count
+sysctl vm.swapusage && vm_stat | grep "Pages free" && echo "Chrome: $(ps aux | grep -c '[C]hrome')" && echo "Dart: $(ps aux | grep -c '[d]art')"
+```
+
+### Danger Thresholds
+- **Swap > 4 GB** → performance degrades noticeably, kills start happening
+- **Swap > 8 GB** → critical, close everything non-essential immediately
+- **Pages free < 200 (~3 MB)** → macOS will start swapping aggressively
+- **Chrome processes > 10** → too many tabs/instances, kill orphans
+- **Dart processes > 6** → stale `flutter drive` sessions accumulating
+
+### Cleanup Commands (Safe)
+```bash
+# Kill ALL orphan Chrome instances (stale from flutter drive)
+pkill -f "Chrome.*--headless" 2>/dev/null
+pkill -f "Google Chrome for Testing" 2>/dev/null
+
+# Kill stale Dart processes (leftover from crashed flutter drive)
+ps aux | grep dart | grep -v grep | grep -v "dart-sdk/bin/dart " | awk '{print $2}' | xargs kill -9 2>/dev/null
+
+# Kill orphan chromedriver instances
+pkill -f chromedriver 2>/dev/null
+
+# Purge inactive RAM (macOS only, safe)
+sudo purge
+```
+
+### Prevention Rules
+1. **Always kill chromedriver + Chrome after flutter drive** — orphans accumulate fast
+2. **One flutter drive at a time** — each spawns Chrome + Dart VM + chromedriver
+3. **Close Chrome DevTools tabs** — each one is ~100-200 MB
+4. **Avoid `isBackground: true` for flutter drive** — use foreground so it auto-cleans
+5. **Monitor swap between test runs** — if > 4 GB, clean before next run
+6. **32 open terminals = problem** — close unused ones, each holds shell memory
+
+### Recovery When Swap > 8 GB
+```bash
+# Nuclear cleanup: kill all test-related processes
+pkill -f chromedriver; pkill -f "Chrome.*Testing"; ps aux | grep dart | grep -v grep | grep -v "dart-sdk/bin/dart " | awk '{print $2}' | xargs kill -9 2>/dev/null
+# Wait for OS to reclaim
+sleep 5
+# Verify recovery
+sysctl vm.swapusage && vm_stat | grep "Pages free"
+```
+
+### Typical RAM Usage (MacBook Pro M-series, 8 GB)
+- VS Code + extensions: ~800 MB
+- Flutter Web build (debug): ~1.5 GB
+- Chrome (flutter drive): ~500-800 MB per instance
+- Dart VM (tests): ~200-400 MB each
+- chromedriver: ~50 MB
+- **Budget**: 1 VS Code + 1 flutter drive + 1 Chrome = ~3.5 GB, leaves ~4.5 GB headroom

@@ -109,8 +109,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     ref.listen(addProductViewModelProvider, (previous, next) {
       if (next.isSuccess) {
         _onSuccess();
-      } else if (next.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next.errorMessage!), backgroundColor: DesignTokens.error));
+      } else if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          key: const Key('addproduct_error_snackbar'),
+          content: Text(next.errorMessage!),
+          backgroundColor: DesignTokens.error,
+          duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+        ));
       }
     });
 
@@ -1314,6 +1321,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
 
   Widget _buildAddressSuggestions(AddProductState state, AddProductViewModel viewModel) {
     return Container(
+      key: const Key('addproduct_address_suggestions'),
       margin: const EdgeInsets.only(top: 8),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1335,7 +1343,21 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               title: Text(s['properties']?['formatted'] ?? '', style: const TextStyle(fontSize: 13)),
               onTap: () {
                 viewModel.selectAddress(s);
-                _streetController.text = s['properties']?['street'] ?? '';
+                final props = s['properties'] as Map<String, dynamic>?;
+                final street = (props?['street'] as String?)?.trim() ?? '';
+                final houseNumber =
+                    (props?['housenumber'] as String?)?.trim() ??
+                    (props?['house_number'] as String?)?.trim() ??
+                    (props?['address_line1'] as String?)?.trim() ??
+                    '';
+                final formatted = (props?['formatted'] as String?)?.trim() ?? '';
+
+                final fullStreet =
+                    (houseNumber.isNotEmpty && street.isNotEmpty)
+                        ? '$houseNumber $street'
+                        : (street.isNotEmpty ? street : formatted);
+
+                _streetController.text = fullStreet;
                 _cityController.text = s['properties']?['city'] ?? '';
                 _postalCodeController.text = s['properties']?['postcode'] ?? '';
               },
@@ -1483,7 +1505,20 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                     if (!_hasAttemptedSubmit) {
                       setState(() => _hasAttemptedSubmit = true);
                     }
-                    if (_formKey.currentState!.validate()) {
+                    // Clear previous error before re-validation
+                    viewModel.clearError();
+                    if (!_formKey.currentState!.validate()) {
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        key: const Key('addproduct_error_snackbar'),
+                        content: Text('product.fix_errors_before_submit'.tr()),
+                        backgroundColor: DesignTokens.error,
+                        duration: const Duration(seconds: 5),
+                        behavior: SnackBarBehavior.floating,
+                      ));
+                      return;
+                    }
+                    {
                       SupplierInfo? supplierInfo;
                       final hasCost = _costController.text.trim().isNotEmpty;
                       final hasSku = _supplierSkuController.text.trim().isNotEmpty;

@@ -28,28 +28,15 @@ void main() {
 
       debugStep('P00', 'Add Product Flow — Login as seller');
 
-      debugPrint('  Calling establishSession...');
-
-      debugPrint('  ⚙️  Looking for settings button...');
-      final settingsButton = find.byKey(const Key('home_settings_button'));
-      if (settingsButton.evaluate().isEmpty) {
-        debugPrint('  ❌ Settings button not found');
-      }
-      debugPrint('  ✅ Settings button found, tapping...');
-
-      await tester.tap(settingsButton.first, warnIfMissed: false);
-
-      debugPrint('  ⏳ Waiting 4s for popup/profile to appear...');
-      await pumpWait(tester, seconds: 2);
-
-      debugPrint('  💬 Checking for sign-in popup...');
-      final _ = await handleSignInPopup(
+      final _seller = await establishSession(
         tester,
-        email: sellerCredentialCandidates.first.email,
-        password: sellerCredentialCandidates.first.password,
+        sellerCredentialCandidates,
+        'seller',
+        tracker,
+        'S001',
+        '[seller] session/login failed',
       );
-
-      debugPrint('  ✅ establishSession completed');
+      if (_seller == null) return;
 
       final runStamp = DateTime.now().millisecondsSinceEpoch.toString();
       final p01Name = 'T01 Standard Ship $runStamp';
@@ -348,6 +335,7 @@ void main() {
         );
 
         if (signOutButton.evaluate().isNotEmpty) {
+          await ensureFinderOnScreen(tester, signOutButton);
           await tester.tap(signOutButton.first, warnIfMissed: false);
           await pumpWait(tester, seconds: 2);
 

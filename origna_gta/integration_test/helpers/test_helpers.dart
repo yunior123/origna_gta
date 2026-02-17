@@ -7,13 +7,18 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:origna_gta/main_test.dart' as app;
 
 bool _appBootstrapped = false;
 
 void debugStep(String id, String message) {
-  debugPrint('[$id] $message');
+  // Integration tests often run in profile mode on web; `debugPrint` output can
+  // be suppressed/throttled. Use `print` so PASS/FAIL case logs are always
+  // visible in `flutter drive` output.
+  // ignore: avoid_print
+  print('[$id] $message');
 }
 
 class CaseTracker {
@@ -44,6 +49,7 @@ class CaseTracker {
   }
 
   void throwIfFailed() {
+    _publishReportData();
     if (strictIntegration && failedCases.isNotEmpty) {
       final preview = failedCases.take(20).join(' | ');
       fail(
@@ -54,6 +60,22 @@ class CaseTracker {
         'Z03',
         'Non-strict mode: ${failedCases.length} failed checks recorded but not fatal',
       );
+    }
+  }
+
+  void _publishReportData() {
+    // When running Flutter web integration tests via `-d web-server`, stdout
+    // from the browser isn't streamed to the terminal. The driver *does* receive
+    // `reportData`, so we publish our checklist summary there.
+    try {
+      final binding = IntegrationTestWidgetsFlutterBinding.instance;
+      binding.reportData ??= <String, dynamic>{};
+      binding.reportData!['caseCount'] = caseCount;
+      binding.reportData!['strictIntegration'] = strictIntegration;
+      binding.reportData!['failedCases'] = List<String>.from(failedCases);
+    } catch (_) {
+      // ignore: avoid_print
+      print('[Z99] WARN — unable to publish reportData to driver');
     }
   }
 }
@@ -1169,68 +1191,104 @@ Future<void> tapGlassToggle(WidgetTester tester, String identifier) async {
   await tester.pump(const Duration(milliseconds: 500));
 }
 
-Future<void> fillAddress(WidgetTester tester) async {
+Future<void> fillAddress(
+  WidgetTester tester, {
+  bool requireGeoapify = true,
+}) async {
   // Scroll down to make address fields visible
   await scrollUntilVisible(
     tester,
     find.byKey(const Key('addproduct_section_package')),
   );
   await tester.pump(const Duration(milliseconds: 500));
-  // Street (triggers Geoapify suggestions)
-  await enterTextByKey(tester, 'addproduct_street_field', '123 Test Street');
-  await tester.pump(const Duration(milliseconds: 900));
 
+  // Type a PARTIAL real address so Geoapify autocomplete returns quickly.
+  // (Avoid full manual address filling; prefer tapping a real suggestion.)
+  await enterTextByKey(tester, 'addproduct_street_field', '350 King');
+
+  final suggestionsContainer = find.byKey(
+    const Key('addproduct_address_suggestions'),
+  );
+
+  // Wait up to ~10s for Geoapify suggestions to render.
   var suggestionSelected = false;
-  final suggestionTiles = find.byType(ListTile);
-  if (suggestionTiles.evaluate().isNotEmpty) {
+  for (var i = 0; i < 25; i++) {
+    await tester.pump(const Duration(milliseconds: 400));
+
+    if (suggestionsContainer.evaluate().isEmpty) {
+      continue;
+    }
+
+    final tiles = find.descendant(
+      of: suggestionsContainer,
+      matching: find.byType(ListTile),
+    );
+
+    if (tiles.evaluate().isEmpty) {
+      continue;
+    }
+
     final ready = await _ensureFinderOnScreen(
       tester,
-      suggestionTiles,
+      tiles,
       maxAttempts: 8,
     );
-    if (ready) {
-      await tester.tap(suggestionTiles.first, warnIfMissed: false);
-      await tester.pump(const Duration(milliseconds: 600));
-      suggestionSelected = true;
-      debugPrint('✓ fillAddress: selected first address suggestion');
+    if (!ready) {
+      continue;
     }
+
+    await tester.tap(tiles.first, warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 800));
+    suggestionSelected = true;
+    debugPrint('✓ fillAddress: selected first Geoapify suggestion');
+    break;
   }
 
-  if (!suggestionSelected) {
-    // Manual fallback when suggestions are unavailable.
-    await enterTextByKey(tester, 'addproduct_city_field', 'Toronto');
+  if (suggestionSelected) {
+    debugPrint('✓ Filled address fields via Geoapify suggestion');
+    return;
+  }
 
-    final provinceDropdown = find.byKey(
-      const Key('addproduct_province_dropdown'),
+  if (requireGeoapify) {
+    fail(
+      'fillAddress: Geoapify suggestions did not appear / were not tappable. '
+      'Check geoapifyKey, network, or suggestion UI rendering.',
     );
-    if (provinceDropdown.evaluate().isNotEmpty) {
-      final provinceReady = await _ensureFinderOnScreen(
-        tester,
-        provinceDropdown,
-        maxAttempts: 14,
-      );
-      if (!provinceReady) {
-        fail(
-          'fillAddress: province dropdown is present but off-screen/non-hit-testable',
-        );
-      }
-
-      await tester.tap(provinceDropdown.first, warnIfMissed: false);
-      await tester.pump(const Duration(milliseconds: 500));
-
-      final ontarioOption = find.text('ON');
-      if (ontarioOption.evaluate().isNotEmpty) {
-        await tester.tap(ontarioOption.last, warnIfMissed: false);
-        await tester.pump(const Duration(milliseconds: 500));
-      }
-    } else {
-      fail('fillAddress: addproduct_province_dropdown not found');
-    }
-
-    await enterTextByKey(tester, 'addproduct_postal_code_field', 'M5V 3L9');
   }
 
-  debugPrint('✓ Filled address fields using keys/suggestions');
+  // Manual fallback when suggestions are unavailable (kept for local debugging).
+  debugPrint('⚠ fillAddress: no Geoapify suggestions, using manual fallback');
+  await enterTextByKey(tester, 'addproduct_city_field', 'Toronto');
+
+  final provinceDropdown = find.byKey(
+    const Key('addproduct_province_dropdown'),
+  );
+  if (provinceDropdown.evaluate().isNotEmpty) {
+    final provinceReady = await _ensureFinderOnScreen(
+      tester,
+      provinceDropdown,
+      maxAttempts: 14,
+    );
+    if (!provinceReady) {
+      fail(
+        'fillAddress: province dropdown is present but off-screen/non-hit-testable',
+      );
+    }
+
+    await tester.tap(provinceDropdown.first, warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final ontarioOption = find.text('ON');
+    if (ontarioOption.evaluate().isNotEmpty) {
+      await tester.tap(ontarioOption.last, warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+  } else {
+    fail('fillAddress: addproduct_province_dropdown not found');
+  }
+
+  await enterTextByKey(tester, 'addproduct_postal_code_field', 'M5V 3L9');
+  debugPrint('✓ Filled address fields via manual fallback');
 }
 
 /// Attempt to submit the product form.
@@ -1248,11 +1306,49 @@ Future<String?> tapPublishProduct(WidgetTester tester) async {
     'ℹ️ Publish auth context: uid=${currentUser?.uid} email=${currentUser?.email}',
   );
 
+  // DEBUG: Dump all TextFormField error states before publish
+  debugPrint('🔍 PRE-PUBLISH: scanning TextFormField values...');
+  final allFields = find.byType(TextFormField);
+  for (var idx = 0; idx < allFields.evaluate().length; idx++) {
+    final element = allFields.evaluate().elementAt(idx);
+    final w = element.widget;
+    final keyStr = w.key?.toString() ?? 'no-key';
+    if (w is TextFormField) {
+      final controller = (w as dynamic).controller as TextEditingController?;
+      final text = controller?.text ?? '(no ctrl)';
+      debugPrint('  📝 field[$idx] key=$keyStr text="${text.substring(0, text.length > 40 ? 40 : text.length)}"');
+    }
+  }
+  // Also check DropdownButtonFormField state
+  final allDropdowns = find.byType(DropdownButtonFormField<String>);
+  for (var idx = 0; idx < allDropdowns.evaluate().length; idx++) {
+    final element = allDropdowns.evaluate().elementAt(idx);
+    final keyStr = element.widget.key?.toString() ?? 'no-key';
+    debugPrint('  🔽 dropdown[$idx] key=$keyStr');
+  }
+
   await tester.tap(submitBtn.first);
 
   String? latestSnack;
-  for (var i = 0; i < 90; i++) {
+  for (var i = 0; i < 20; i++) {
     await tester.pump(const Duration(milliseconds: 500));
+
+    // DEBUG: After first pump, check for field-level error decorations
+    if (i == 1) {
+      debugPrint('🔍 POST-SUBMIT: scanning for validation errors...');
+      final errorTexts = find.byType(Text);
+      for (var idx = 0; idx < errorTexts.evaluate().length; idx++) {
+        final w = tester.widget<Text>(errorTexts.at(idx));
+        final t = w.data ?? w.textSpan?.toPlainText() ?? '';
+        if (t.contains('required') || t.contains('Required') ||
+            t.contains('requis') || t.contains('invalid') ||
+            t.contains('too_short') || t.contains('trop court') ||
+            t.contains('Veuillez') || t.contains('erreur') ||
+            t.contains('error') || t.contains('Obligatoire')) {
+          debugPrint('  ❌ error-text[$idx]: "$t"');
+        }
+      }
+    }
 
     final errorSnackText = find.descendant(
       of: find.byType(SnackBar),
@@ -1288,7 +1384,7 @@ Future<String?> tapPublishProduct(WidgetTester tester) async {
 }
 
 Future<bool> didPublishSucceed(WidgetTester tester) async {
-  for (var i = 0; i < 90; i++) {
+  for (var i = 0; i < 20; i++) {
     final hasSuccessSnack = find
         .byKey(const Key('addproduct_success_snackbar'))
         .evaluate()
