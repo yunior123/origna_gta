@@ -11,41 +11,45 @@ void main() {
   testWidgets(
     'Add Product — standard/digital/free/local/perishable/validation',
     (tester) async {
+      debugPrint('🛍️🛍️🛍️ ========== ADD PRODUCT TEST START ========== 🛍️🛍️🛍️');
+      debugPrint('🔍 Checking STRICT_INTEGRATION env var...');
       const strictIntegration = bool.fromEnvironment(
         'STRICT_INTEGRATION',
         defaultValue: true,
       );
+      debugPrint('  strictIntegration=$strictIntegration');
+
+      debugPrint('🛠️  Initializing integration test...');
       final tracker = await initializeIntegrationTest(
         tester,
         strictIntegration: strictIntegration,
       );
+      debugPrint('✅ Integration test initialized');
 
       debugStep('P00', 'Add Product Flow — Login as seller');
-   
 
+      debugPrint('  Calling establishSession...');
 
-       debugPrint('  Calling establishSession...');
+      debugPrint('  ⚙️  Looking for settings button...');
+      final settingsButton = find.byKey(const Key('home_settings_button'));
+      if (settingsButton.evaluate().isEmpty) {
+        debugPrint('  ❌ Settings button not found');
+      }
+      debugPrint('  ✅ Settings button found, tapping...');
 
-    debugPrint('  ⚙️  Looking for settings button...');
-    final settingsButton = find.byKey(const Key('home_settings_button'));
-    if (settingsButton.evaluate().isEmpty) {
-      debugPrint('  ❌ Settings button not found');
-    }
-    debugPrint('  ✅ Settings button found, tapping...');
+      await tester.tap(settingsButton.first, warnIfMissed: false);
 
-    await tester.tap(settingsButton.first, warnIfMissed: false);
+      debugPrint('  ⏳ Waiting 4s for popup/profile to appear...');
+      await pumpWait(tester, seconds: 2);
 
-    debugPrint('  ⏳ Waiting 4s for popup/profile to appear...');
-    await pumpWait(tester, seconds: 2);
+      debugPrint('  💬 Checking for sign-in popup...');
+      final _ = await handleSignInPopup(
+        tester,
+        email: sellerCredentialCandidates.first.email,
+        password: sellerCredentialCandidates.first.password,
+      );
 
-    debugPrint('  💬 Checking for sign-in popup...');
-    final _ = await handleSignInPopup(
-      tester,
-      email: sellerCredentialCandidates.first.email,
-      password: sellerCredentialCandidates.first.password,
-    );
-
-    debugPrint('  ✅ establishSession completed');
+      debugPrint('  ✅ establishSession completed');
 
       final runStamp = DateTime.now().millisecondsSinceEpoch.toString();
       final p01Name = 'T01 Standard Ship $runStamp';
@@ -83,7 +87,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       tracker.check(
         'C012',
-        find.byKey(const Key('addproduct_standard_delivery_card'))
+        find
+            .byKey(const Key('addproduct_standard_delivery_card'))
             .evaluate()
             .isNotEmpty,
         'Standard delivery visible',
@@ -102,8 +107,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       await tapGlassToggle(tester, 'addproduct_digital_toggle');
       await tester.pump(const Duration(milliseconds: 500));
-      final digitalBanner =
-          find.byKey(const Key('addproduct_digital_info_banner'));
+      final digitalBanner = find.byKey(
+        const Key('addproduct_digital_info_banner'),
+      );
       if (digitalBanner.evaluate().isEmpty) {
         await tapGlassToggle(tester, 'addproduct_digital_toggle');
         await tester.pump(const Duration(milliseconds: 500));
@@ -132,7 +138,8 @@ void main() {
       );
       tracker.check(
         'C014',
-        find.byKey(const Key('addproduct_standard_delivery_card'))
+        find
+            .byKey(const Key('addproduct_standard_delivery_card'))
             .evaluate()
             .isNotEmpty,
         'Free shipping ne cache pas standard delivery',
@@ -170,8 +177,9 @@ void main() {
         find.byKey(const Key('addproduct_same_day_delivery_card')),
       );
       await tester.pump(const Duration(milliseconds: 300));
-      final sameDaySwitch =
-          find.byKey(const Key('addproduct_same_day_delivery_card'));
+      final sameDaySwitch = find.byKey(
+        const Key('addproduct_same_day_delivery_card'),
+      );
       if (sameDaySwitch.evaluate().isNotEmpty) {
         await tester.tap(sameDaySwitch.first);
         await tester.pump(const Duration(milliseconds: 500));
@@ -192,11 +200,14 @@ void main() {
         );
         await tester.pump(const Duration(milliseconds: 300));
 
-        final expressSwitch =
-            find.byKey(const Key('addproduct_express_delivery_card'));
+        final expressSwitch = find.byKey(
+          const Key('addproduct_express_delivery_card'),
+        );
         if (expressSwitch.evaluate().isNotEmpty) {
-          final tappedExpress =
-              await tapByKey(tester, 'addproduct_express_delivery_card');
+          final tappedExpress = await tapByKey(
+            tester,
+            'addproduct_express_delivery_card',
+          );
           if (!tappedExpress) {
             tracker.stopOnSkip(
               'S018',
@@ -209,11 +220,14 @@ void main() {
           tester,
           find.byKey(const Key('addproduct_same_day_delivery_card')),
         );
-        final sameDaySwitch2 =
-            find.byKey(const Key('addproduct_same_day_delivery_card'));
+        final sameDaySwitch2 = find.byKey(
+          const Key('addproduct_same_day_delivery_card'),
+        );
         if (sameDaySwitch2.evaluate().isNotEmpty) {
-          final tappedSameDay =
-              await tapByKey(tester, 'addproduct_same_day_delivery_card');
+          final tappedSameDay = await tapByKey(
+            tester,
+            'addproduct_same_day_delivery_card',
+          );
           if (!tappedSameDay) {
             tracker.stopOnSkip(
               'S019',
@@ -234,7 +248,10 @@ void main() {
           );
         }
 
-        if (find.byKey(const Key('addproduct_screen_title')).evaluate().isNotEmpty) {
+        if (find
+            .byKey(const Key('addproduct_screen_title'))
+            .evaluate()
+            .isNotEmpty) {
           await goBack(tester);
           await pumpSettle(tester, iterations: 3);
         }
@@ -283,8 +300,9 @@ void main() {
         await enterTextByKey(tester, 'product_stock_field', '5');
         await tapPublishProduct(tester);
 
-        final stillOnAddProduct =
-            find.byKey(const Key('addproduct_screen_title'));
+        final stillOnAddProduct = find.byKey(
+          const Key('addproduct_screen_title'),
+        );
         tracker.check(
           'C018',
           stillOnAddProduct.evaluate().isNotEmpty,
@@ -301,8 +319,9 @@ void main() {
         await fillBasicProductFields(tester, name: p12Name, price: '0');
         await tapPublishProduct(tester);
 
-        final stillOnAddProduct2 =
-            find.byKey(const Key('addproduct_screen_title'));
+        final stillOnAddProduct2 = find.byKey(
+          const Key('addproduct_screen_title'),
+        );
         tracker.check(
           'C019',
           stillOnAddProduct2.evaluate().isNotEmpty,
@@ -313,7 +332,19 @@ void main() {
         await pumpSettle(tester, iterations: 3);
       }
 
+      debugPrint('🧪 Running final tracker validation...');
+      debugPrint('📊 Test Statistics:');
+      debugPrint('  Total checks performed: ${tracker.caseCount}');
+      debugPrint('  ✅ Passed: ${tracker.caseCount - tracker.failedCases.length}');
+      debugPrint('  ❌ Failed: ${tracker.failedCases.length}');
+      if (tracker.failedCases.isNotEmpty) {
+        debugPrint('  ⚠️  Failed cases:');
+        for (final failure in tracker.failedCases) {
+          debugPrint('    - $failure');
+        }
+      }
       tracker.throwIfFailed();
+      debugPrint('🎉🎉🎉 ========== ADD PRODUCT TEST COMPLETE ========== 🎉🎉🎉');
     },
     timeout: const Timeout(Duration(minutes: 8)),
   );

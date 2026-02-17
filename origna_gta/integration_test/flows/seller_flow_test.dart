@@ -11,14 +11,20 @@ void main() {
   testWidgets(
     'Seller Flow — seller tools + seller orders',
     (tester) async {
+      debugPrint('🏪🏪🏪 ========== SELLER FLOW TEST START ========== 🏪🏪🏪');
+      debugPrint('🔍 Checking STRICT_INTEGRATION env var...');
       const strictIntegration = bool.fromEnvironment(
         'STRICT_INTEGRATION',
         defaultValue: true,
       );
+      debugPrint('  strictIntegration=$strictIntegration');
+
+      debugPrint('🛠️  Initializing integration test...');
       final tracker = await initializeIntegrationTest(
         tester,
         strictIntegration: strictIntegration,
       );
+      debugPrint('✅ Integration test initialized');
 
       debugStep('C01', 'Seller Flow — seller tools + seller orders');
 
@@ -152,7 +158,19 @@ void main() {
         '[buyer,seller] conserve acces buyer side',
       );
 
+      debugPrint('🧪 Running final tracker validation...');
+      debugPrint('📊 Test Statistics:');
+      debugPrint('  Total checks performed: ${tracker.caseCount}');
+      debugPrint('  ✅ Passed: ${tracker.caseCount - tracker.failedCases.length}');
+      debugPrint('  ❌ Failed: ${tracker.failedCases.length}');
+      if (tracker.failedCases.isNotEmpty) {
+        debugPrint('  ⚠️  Failed cases:');
+        for (final failure in tracker.failedCases) {
+          debugPrint('    - $failure');
+        }
+      }
       tracker.throwIfFailed();
+      debugPrint('🎉🎉🎉 ========== SELLER FLOW TEST COMPLETE ========== 🎉🎉🎉');
     },
     timeout: const Timeout(Duration(minutes: 6)),
   );

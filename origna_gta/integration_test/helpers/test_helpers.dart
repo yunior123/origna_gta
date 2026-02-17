@@ -138,7 +138,7 @@ Future<bool> waitForAppBootstrap(
     final hasHomeSettings = homeSettings.evaluate().isNotEmpty;
 
     if (i % 10 == 0) {
-      debugPrint('  [${i}/$maxTicks] MaterialApp=$hasMaterialApp Scaffold=$hasScaffold HomeSettings=$hasHomeSettings');
+      debugPrint('  [$i/$maxTicks] MaterialApp=$hasMaterialApp Scaffold=$hasScaffold HomeSettings=$hasHomeSettings');
     }
 
     if (hasMaterialApp && (hasScaffold || hasHomeSettings)) {

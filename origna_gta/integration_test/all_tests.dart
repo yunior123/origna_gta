@@ -1,3 +1,6 @@
+import 'dart:math';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -47,11 +50,42 @@ import 'flows/admin_flow_test.dart' as admin;
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
+  // Randomly select ONE test to run (0-4)
+  final random = Random();
+  final selectedTest = random.nextInt(5);
+  
+  final testNames = [
+    'Smoke Test (Home + Profile)',
+    'Add Product Flow',
+    'Buyer Flow',
+    'Seller Flow',
+    'Admin Flow',
+  ];
+  
+  debugPrint('');
+  debugPrint('═══════════════════════════════════════════════════════');
+  debugPrint('🎲 RANDOM TEST SELECTION MODE');
+  debugPrint('   Selected: ${testNames[selectedTest]} (index $selectedTest)');
+  debugPrint('═══════════════════════════════════════════════════════');
+  debugPrint('');
+
   group('G00 — All Integration Flows', () {
-    // smoke.main();
-    add_product.main();
-    // buyer.main();
-    // seller.main();
-    // admin.main();
+    switch (selectedTest) {
+      case 0:
+        smoke.main();
+        break;
+      case 1:
+        add_product.main();
+        break;
+      case 2:
+        buyer.main();
+        break;
+      case 3:
+        seller.main();
+        break;
+      case 4:
+        admin.main();
+        break;
+    }
   });
 }
