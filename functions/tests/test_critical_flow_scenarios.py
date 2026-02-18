@@ -1112,7 +1112,7 @@ class TestEmailNotifications:
 
     def test_emulator_mode_skips_real_email(self):
         """Scenario 70: Emulator mode doesn't send real emails."""
-        with patch("services.email_service.IS_EMULATOR", True):
+        with patch("services.email_service.IS_EMULATOR", True), patch("services.email_service.FORCE_REAL_EMAIL", False):
             from services.email_service import send_email
 
             result = send_email("test@example.com", "Test", "<p>Test</p>")

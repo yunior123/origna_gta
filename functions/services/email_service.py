@@ -30,7 +30,8 @@ UNSUBSCRIBE_URL = EmailConfig.UNSUBSCRIBE_URL_DEV if IS_EMULATOR else EmailConfi
 
 # HMAC secret for signed unsubscribe tokens (prevents unauthorized unsubscription)
 # Loaded from GCP Secret Manager in production, from .env in emulator
-_UNSUBSCRIBE_SECRET = get_unsubscribe_hmac_secret() or "origna-unsub-default-dev-key"
+_raw_unsub_secret = get_unsubscribe_hmac_secret()
+_UNSUBSCRIBE_SECRET = _raw_unsub_secret if isinstance(_raw_unsub_secret, str) and _raw_unsub_secret else "origna-unsub-default-dev-key"
 
 
 # ============================================================
