@@ -279,7 +279,7 @@ def _run_auto_capture() -> None:
             # Fee is calculated on subtotal, so we must divide by subtotal to get the rate
             stored_fee_total = order_data.get(Fields.PLATFORM_FEE_TOTAL_CENTS)
             order_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 1)
-            
+
             stored_fee_rate = (
                 (stored_fee_total / order_subtotal)
                 if stored_fee_total and order_subtotal > 0
@@ -736,8 +736,9 @@ def cleanup_orphaned_r2_images(event: scheduler_fn.ScheduledEvent) -> None:
     logger.info("Running cleanup_orphaned_r2_images cron job")
 
     # Collect all image URLs currently referenced by products
+    # select() fetches only imageUrls field — avoids reading full product docs
     referenced_keys = set()
-    products = get_db().collection(Collections.PRODUCTS).stream()
+    products = get_db().collection(Collections.PRODUCTS).select([Fields.IMAGE_URLS]).stream()
 
     for product_doc in products:
         product_data = product_doc.to_dict()

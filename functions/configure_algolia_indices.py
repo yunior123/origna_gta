@@ -1,7 +1,8 @@
 
 import os
-import sys
 import ssl
+import sys
+
 import aiohttp
 
 # Strongly bypass SSL verification by patching aiohttp (for local proxy envs)
@@ -18,19 +19,19 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
 
 from dotenv import load_dotenv
+
 load_dotenv() # Load .env variables (API keys)
 
 # Force re-evaluation removed to avoid duplicate param registration error
 import config
-
 from services.algolia_service import configure_algolia_index
 
 if __name__ == "__main__":
     print(f"🔧 Configuring Algolia for environment: {config.CURRENT_ENV.value}")
     print(f"   Project ID: {os.environ.get('GCP_PROJECT')}")
-    
+
     success = configure_algolia_index()
-    
+
     if success:
         print("✅ Configuration successful!")
     else:

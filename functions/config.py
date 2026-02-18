@@ -396,7 +396,7 @@ def init_sentry():
     """Initialize Sentry SDK for backend error monitoring (production only)."""
     if IS_EMULATOR:
         return
-        
+
     dsn = get_sentry_dsn()
     if not dsn:
         return

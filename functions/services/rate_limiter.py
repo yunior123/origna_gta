@@ -61,12 +61,12 @@ class RateLimiter:
                 if doc.exists:
                     data = doc.to_dict()
                     count = data.get(Fields.COUNT, 0)
-                    
+
                     # Fix: Handle both timezone-aware (UTC) and naive timestamps
                     first_request = data.get(Fields.FIRST_REQUEST)
                     if first_request.tzinfo is None:
                         first_request = first_request.replace(tzinfo=UTC)
-                    
+
                     # Window expired, reset
                     if first_request < window_start:
                         transaction.set(ref, {Fields.COUNT: 1, Fields.FIRST_REQUEST: now, Fields.LAST_REQUEST: now})

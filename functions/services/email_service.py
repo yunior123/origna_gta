@@ -300,24 +300,24 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
     # We take the maximum days from all items to be safe
     max_delivery_days = 0
     delivery_speed = order_data.get(Fields.DELIVERY_SPEED, DeliveryTypeValues.STANDARD)
-    
+
     for item in order_data.get(Fields.ITEMS, []):
         # Get item details for estimation
         supplier_info = item.get(Fields.SUPPLIER)
         estimated_ship_days = item.get(Fields.ESTIMATED_SHIP_DAYS, ShippingTiers.DEFAULT_SELLER_SHIP_DAYS)
-        
+
         # Determine if international (naive check based on supplier or extended ship days)
         # Ideally we would check seller address country, but that might not be in item data.
         # Dropshipped items are definitely international if they have supplier info.
         is_international = bool(supplier_info) or estimated_ship_days > 10
-        
+
         estimate = shipping_service.estimate_delivery_date_range(
             supplier_info=supplier_info,
             seller_estimated_days=estimated_ship_days,
             is_international=is_international,
             speed=delivery_speed
         )
-        
+
         if estimate.get("max_days", 0) > max_delivery_days:
             max_delivery_days = estimate.get("max_days", 0)
 
@@ -328,7 +328,7 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
     estimated_delivery_date = datetime.now() + timedelta(days=max(1, max_delivery_days))
     if delivery_speed == DeliveryTypeValues.SAME_DAY:
         estimated_delivery_date = datetime.now()
-        
+
     if lang == "fr":
         estimated_delivery = estimated_delivery_date.strftime("%-d %B %Y")
     else:
@@ -1417,13 +1417,6 @@ def send_authorization_expired_email(order_id: str, order_data: dict, lang: str 
 
         customer_email = order_data.get(Fields.CUSTOMER_EMAIL)
         total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
-        items_summary = ", ".join(
-            [
-                f"{html.escape(str(item.get(Fields.NAME, '')))} x{item.get(Fields.QUANTITY, 1)}"
-                for item in order_data.get(Fields.ITEMS, [])[:3]
-            ]
-        )
-
         # Email to buyer
         buyer_message = {
             "Messages": [

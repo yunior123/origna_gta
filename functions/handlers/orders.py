@@ -29,6 +29,8 @@ from schema_constants import (
 )
 from services.email_service import (
     _t as _email_t,
+)
+from services.email_service import (
     get_order_cancelled_email,
     get_order_delivered_email,
     get_order_in_transit_email,
@@ -606,7 +608,7 @@ def cancel_order(req: https_fn.CallableRequest) -> dict[str, Any]:
         return fresh_payment_status
 
     payment_status = lock_for_cancel(transaction)
-    
+
     # Initialize Stripe key
     stripe.api_key = get_stripe_secret_key()
 
@@ -1471,10 +1473,13 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
 
             # Also notify sellers that shipment confirmed — filtered to their items only
             seller_ids = set(item.get(Fields.SELLER_ID) for item in after_data.get(Fields.ITEMS, []))
+            # Batch-read all seller docs in one RPC (avoids N sequential reads for multi-seller orders)
+            seller_refs = [get_db().collection(Collections.USERS).document(sid) for sid in seller_ids]
+            seller_docs = {doc.id: doc for doc in get_db().get_all(seller_refs)}
             for sid in seller_ids:
                 try:
-                    seller_doc = get_db().collection(Collections.USERS).document(sid).get()
-                    if seller_doc.exists:
+                    seller_doc = seller_docs.get(sid)
+                    if seller_doc and seller_doc.exists:
                         seller_data = seller_doc.to_dict()
                         seller_email = seller_data.get(Fields.EMAIL)
                         if seller_email:

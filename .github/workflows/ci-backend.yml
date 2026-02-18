@@ -8,7 +8,7 @@ on:
 
 jobs:
   pytest:
-    name: pytest (Python 3.11)
+    name: pytest (Python 3.13)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -19,12 +19,14 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
           cache: pip
-          cache-dependency-path: functions/requirements.txt
+          cache-dependency-path: |
+            functions/requirements.txt
+            functions/requirements-dev.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run tests
         run: pytest tests/ -v --tb=short --junitxml=test-results.xml

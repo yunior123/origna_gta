@@ -6,7 +6,6 @@ Handles syncing Firestore products to Algolia search index
 import asyncio
 import concurrent.futures
 import logging
-from typing import Union
 
 from algoliasearch.search.client import SearchClient
 from pydantic import ValidationError
@@ -45,7 +44,7 @@ def _get_index_name() -> str:
     return AlgoliaConfig.get_index_name()
 
 
-def format_product_for_algolia(product_id: str, product_data: Union[dict, Product]) -> dict:
+def format_product_for_algolia(product_id: str, product_data: dict | Product) -> dict:
     """
     Format product document for Algolia indexing.
 

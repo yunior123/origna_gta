@@ -179,7 +179,7 @@ def estimate_delivery_date_range(
         # Use helper to get estimates based on speed (standard/express)
         # Note: Dropshipping generally doesn't support 'same_day'
         estimate_speed = speed if speed in [DeliveryTypeValues.STANDARD, DeliveryTypeValues.EXPRESS] else DeliveryTypeValues.STANDARD
-        
+
         # If specific override exists and we are in standard mode, use it
         if shipping_days and "-" in shipping_days and estimate_speed == DeliveryTypeValues.STANDARD:
             try:
@@ -218,7 +218,7 @@ def estimate_delivery_date_range(
         else:
              min_days = ShippingTiers.INTL_GENERIC_MIN_DAYS
              max_days = ShippingTiers.INTL_GENERIC_MAX_DAYS
-             
+
         return {
             "min_days": min_days,
             "max_days": max_days,
@@ -236,7 +236,7 @@ def estimate_delivery_date_range(
             "source": ShippingSourceValues.DOMESTIC,
             "has_tracking": True,
         }
-    
+
     if speed == DeliveryTypeValues.EXPRESS:
         # Express is typically 1-3 business days domestically
         return {

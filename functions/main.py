@@ -16,8 +16,6 @@ All Firebase Cloud Functions are organized by domain:
 import os
 
 import firebase_admin
-import stripe
-from google.cloud import secretmanager
 
 # ===============================================
 # MONKEY-PATCH: firebase-functions 0.4.x crashes with KeyError: 'authtype'
@@ -25,7 +23,8 @@ from google.cloud import secretmanager
 # raw._get_attributes() returns a dict missing 'authtype' and 'authid'.
 # See: https://github.com/firebase/firebase-functions-python/issues/187
 # ===============================================
-import firebase_functions.firestore_fn as _ff_firestore
+import stripe
+from google.cloud import secretmanager
 
 _original_get_attributes = None
 

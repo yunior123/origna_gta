@@ -15,8 +15,6 @@ import stripe
 from firebase_functions import https_fn
 
 # Initializing Stripe key lazily in handlers
-
-
 from config import (
     AUTHORIZATION_VALID_DAYS,
     CATEGORY_TAX_CODE_MAP,
@@ -53,7 +51,8 @@ from schema_constants import (
     ValidationLimits,
     WebhookStatusValues,
 )
-from services.email_service import _t as _email_t, get_order_confirmation_email, get_seller_notification_email, send_email
+from services.email_service import _t as _email_t
+from services.email_service import get_order_confirmation_email, get_seller_notification_email, send_email
 from services.pdf_invoice_service import generate_invoice_pdf
 from services.rate_limiter import RateLimiter
 from services.shipping_service import calculate_shipping_cost, get_tax_rate
@@ -553,15 +552,15 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     postal_code = shipping_address.get(Fields.POSTAL_CODE, "")
     country = shipping_address.get(Fields.COUNTRY, AppConfig.DEFAULT_COUNTRY_NAME)
-    
+
     # Current logic only supports Canada
     if country.lower() != "canada":
          raise https_fn.HttpsError("invalid-argument", f"Shipping to {country} is not currently supported")
 
     try:
         validate_postal_code(postal_code)
-    except ValueError:
-        raise https_fn.HttpsError("invalid-argument", f"Invalid Canadian postal code format: {postal_code}")
+    except ValueError as err:
+        raise https_fn.HttpsError("invalid-argument", f"Invalid Canadian postal code format: {postal_code}") from err
 
     # Validate subtotal is positive number
     if not isinstance(client_subtotal, (int, float)) or client_subtotal <= 0:

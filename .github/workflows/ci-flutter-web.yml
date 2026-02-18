@@ -38,11 +38,18 @@ jobs:
       - name: Install Playwright
         run: cd e2e && npm ci && npx playwright install chromium --with-deps
 
+      - name: Install serve
+        run: npm install -g serve
+
       - name: Serve Flutter web
         run: |
-          npx serve -s origna_gta/build/web -l 5005 &
-          sleep 5
-          curl -sf http://localhost:5005 > /dev/null || (echo "Server not up" && exit 1)
+          serve -s origna_gta/build/web -l 5005 &
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:5005 > /dev/null && echo "Server ready" && break
+            echo "Waiting for server... ($i/15)"
+            sleep 1
+          done
+          curl -sf http://localhost:5005 > /dev/null || (echo "Server not up after 15s" && exit 1)
 
       - name: Run Playwright E2E
         run: cd e2e && npx playwright test --config=playwright.config.dev.ts

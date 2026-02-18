@@ -16,7 +16,14 @@ import requests
 from botocore.config import Config
 from firebase_functions import firestore_fn, https_fn
 
-from config import R2_ACCESS_KEY_NEW, R2_ACCOUNT_ID_NEW, R2_SECRET_KEY_NEW, R2Config, get_geoapify_api_key, get_r2_credentials
+from config import (
+    R2_ACCESS_KEY_NEW,
+    R2_ACCOUNT_ID_NEW,
+    R2_SECRET_KEY_NEW,
+    R2Config,
+    get_geoapify_api_key,
+    get_r2_credentials,
+)
 from schema_constants import (
     AppConfig,
     CategoryIds,
@@ -497,10 +504,10 @@ def _verify_address_with_geoapify(
 ) -> tuple[bool, str]:
     """
     SECURITY: Verify seller address coordinates via Geoapify reverse geocoding.
-    
+
     Returns:
         (is_valid, reason) — bool indicates if address is valid, reason is error message
-    
+
     Validation rules:
     - Address MUST be verified via Geoapify for non-digital products
     - Coordinates must match declared city/postal/country (fuzzy matching)

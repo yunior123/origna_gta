@@ -17,7 +17,7 @@ import hmac
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Union
+from typing import Any
 
 import requests
 
@@ -255,7 +255,7 @@ class AirwallexService:
     # ===== P2.5: Webhooks & Error Handling =====
     def verify_webhook_signature(
         self,
-        body: Union[str, bytes, bytearray],
+        body: str | bytes | bytearray,
         signature: str,
         *,
         timestamp: str | None = None,
