@@ -28,10 +28,8 @@ test.describe('PW IT Replica — Buyer Flow', () => {
         await waitForFlutter(page);
         await checkSemantics(page);
 
-        // B01: Login as buyer
+        // B01: Login as buyer (returns on home page)
         await ensureLoggedInAsAdmin(page, TARGET_URL, BUYER_EMAIL, BUYER_PASSWORD);
-        await page.goto(`${TARGET_URL}/`);
-        await waitForFlutter(page);
 
         const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
         await expect(settingsBtn).toBeAttached();
@@ -97,8 +95,8 @@ test.describe('PW IT Replica — Buyer Flow', () => {
             await waitForFlutter(page);
         }
 
-        // Return to home robustly
-        await page.goto(`${TARGET_URL}/`);
+        // Return to home (use goBack, not page.goto which kills auth)
+        await page.goBack();
         await waitForFlutter(page);
 
         // C025-C031: Cart → Checkout checks

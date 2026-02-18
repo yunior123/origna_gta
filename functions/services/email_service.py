@@ -33,6 +33,161 @@ UNSUBSCRIBE_URL = EmailConfig.UNSUBSCRIBE_URL_DEV if IS_EMULATOR else EmailConfi
 _UNSUBSCRIBE_SECRET = get_unsubscribe_hmac_secret() or "origna-unsub-default-dev-key"
 
 
+# ============================================================
+# Bilingual string table — EN / FR (Quebec Bill 96 compliance)
+# ============================================================
+_EMAIL_STRINGS: dict[str, dict[str, str]] = {
+    # Order status tracker
+    "status.confirmed":  {"en": "Confirmed",    "fr": "Confirmée"},
+    "status.processing": {"en": "Processing",   "fr": "En traitement"},
+    "status.shipped":    {"en": "Shipped",       "fr": "Expédiée"},
+    "status.delivered":  {"en": "Delivered",     "fr": "Livrée"},
+    # Table column headers
+    "col.product":       {"en": "Product",       "fr": "Produit"},
+    "col.qty":           {"en": "Qty",           "fr": "Qté"},
+    "col.price":         {"en": "Price",         "fr": "Prix"},
+    # Section headings
+    "section.items_ordered":  {"en": "Items Ordered",            "fr": "Articles commandés"},
+    "section.items_to_ship":  {"en": "Items to Ship",            "fr": "Articles à expédier"},
+    "section.order_receipt":  {"en": "Order Receipt",            "fr": "Reçu de commande"},
+    "section.ship_to":        {"en": "Shipping To",              "fr": "Livraison à"},
+    "section.ship_to_seller": {"en": "Ship To",                  "fr": "Expédier à"},
+    "section.customer_info":  {"en": "Customer Info",            "fr": "Info client"},
+    "section.tracking":       {"en": "Tracking Details",         "fr": "Détails de suivi"},
+    "section.return_policy":  {"en": "Return &amp; Refund Policy","fr": "Politique de retour et remboursement"},
+    # Price summary
+    "price.subtotal":    {"en": "Subtotal",      "fr": "Sous-total"},
+    "price.shipping":    {"en": "Shipping",      "fr": "Livraison"},
+    "price.taxes":       {"en": "Taxes",         "fr": "Taxes"},
+    "price.total":       {"en": "Total",         "fr": "Total"},
+    "price.free":        {"en": "Free",          "fr": "Gratuit"},
+    # Common labels
+    "label.order":         {"en": "Order",           "fr": "Commande"},
+    "label.order_id":      {"en": "Order ID:",        "fr": "N° de commande :"},
+    "label.carrier":       {"en": "Carrier:",         "fr": "Transporteur :"},
+    "label.tracking_num":  {"en": "Tracking #:",      "fr": "N° de suivi :"},
+    "label.amount":        {"en": "Amount:",          "fr": "Montant :"},
+    "label.reason":        {"en": "Reason:",          "fr": "Raison :"},
+    "label.ordered":       {"en": "Ordered:",         "fr": "Commandé le :"},
+    "label.email":         {"en": "Email:",           "fr": "Courriel :"},
+    "label.refund_amount": {"en": "Refund Amount:",   "fr": "Montant remboursé :"},
+    "label.orig_total":    {"en": "Original Total:",  "fr": "Total original :"},
+    "label.status":        {"en": "Status:",          "fr": "Statut :"},
+    "label.revenue":       {"en": "Revenue",          "fr": "Revenu"},
+    "label.items_stat":    {"en": "Items",            "fr": "Articles"},
+    "label.issue":         {"en": "Issue:",           "fr": "Problème :"},
+    # CTA buttons
+    "cta.track_order":    {"en": "Track Your Order →", "fr": "Suivre ma commande →"},
+    "cta.view_order":     {"en": "View Order →",       "fr": "Voir ma commande →"},
+    "cta.view_orders":    {"en": "View Orders →",      "fr": "Voir mes commandes →"},
+    "cta.manage_orders":  {"en": "Manage Orders →",    "fr": "Gérer les commandes →"},
+    "cta.confirm_receipt":{"en": "Confirm Receipt →",  "fr": "Confirmer la réception →"},
+    # Footer
+    "footer.unsubscribe": {"en": "Unsubscribe from marketing emails",   "fr": "Se désabonner des courriels promotionnels"},
+    "footer.privacy":     {"en": "Privacy Policy",                      "fr": "Politique de confidentialité"},
+    # Seller notification
+    "seller.action_banner": {
+        "en": "⚡ ACTION REQUIRED — Confirm and ship this order within 48 hours",
+        "fr": "⚡ ACTION REQUISE — Confirmez et expédiez cette commande dans les 48 heures",
+    },
+    "seller.hero_h": {"en": "New Order Received!", "fr": "Nouvelle commande reçue !"},
+    "seller.hero_s": {"en": "You have a new order to fulfill. Ship it fast!", "fr": "Vous avez une nouvelle commande à traiter. Expédiez-la rapidement !"},
+    "seller.order_total": {"en": "Order Total", "fr": "Total commande"},
+    # Order confirmation
+    "confirm.hero_h": {"en": "Order Confirmed!", "fr": "Commande confirmée !"},
+    "confirm.hero_s": {"en": "Thank you for shopping with us, your order is being prepared.", "fr": "Merci pour votre achat. Votre commande est en cours de préparation."},
+    "confirm.order_date":   {"en": "🕐 Ordered on",         "fr": "🕐 Commandé le"},
+    "confirm.est_delivery": {"en": "📦 Estimated delivery by","fr": "📦 Livraison estimée avant le"},
+    "confirm.sold_by":      {"en": "Sold by: Origna Ventures Inc.", "fr": "Vendu par : Origna Ventures Inc."},
+    "confirm.return_title": {"en": "Return &amp; Refund Policy",   "fr": "Politique de retour et remboursement"},
+    "confirm.return_body": {
+        "en": "Returns and refunds are accepted within <strong>7 days of delivery</strong>. After 7 days post-delivery, all sales are final. If the goods are defective or not as described, contact {support} with your order ID within the return window. Under Ontario's Consumer Protection Act, you may cancel before shipment.",
+        "fr": "Les retours et remboursements sont acceptés dans les <strong>7 jours suivant la livraison</strong>. Après ce délai, toutes les ventes sont définitives. Si les articles sont défectueux ou non conformes, contactez {support} avec votre numéro de commande. Conformément à la Loi sur la protection du consommateur de l'Ontario, vous pouvez annuler avant l'expédition.",
+    },
+    # Shipped
+    "shipped.hero_h": {"en": "Your Order Has Shipped!",  "fr": "Votre commande a été expédiée !"},
+    "shipped.hero_s": {"en": "Your items are on the way.","fr": "Vos articles sont en route."},
+    # In transit
+    "in_transit.hero_h": {"en": "Your Order Is In Transit!", "fr": "Votre commande est en transit !"},
+    "in_transit.hero_s": {"en": "Your package is on its way to you.", "fr": "Votre colis est en chemin."},
+    "in_transit.move_text": {
+        "en": "on the move. You'll receive another update once it's delivered.",
+        "fr": "en transit. Vous recevrez une autre mise à jour à la livraison.",
+    },
+    # Delivered
+    "delivered.hero_h":    {"en": "Your Order Has Been Delivered!", "fr": "Votre commande a été livrée !"},
+    "delivered.hero_s":    {"en": "We hope you love your items.",   "fr": "Nous espérons que vos articles vous plaisent."},
+    "delivered.confirm_t": {"en": "📋 Please Confirm Receipt",      "fr": "📋 Veuillez confirmer la réception"},
+    "delivered.confirm_b": {"en": "Confirming receipt helps us release payment to the seller and improves the marketplace for everyone.", "fr": "Confirmer la réception nous permet de libérer le paiement au vendeur et d'améliorer la marketplace pour tous."},
+    "delivered.auto_release": {
+        "en": "<strong>Note:</strong> Payment will be auto-released after {days} days if not confirmed.",
+        "fr": "<strong>Remarque :</strong> Le paiement sera libéré automatiquement après {days} jours si non confirmé.",
+    },
+    "delivered.return_body": {
+        "en": "Returns and refunds are accepted within <strong>{days} days of delivery</strong>. After that, all sales are final. Contact {support} with your order ID within the return window.",
+        "fr": "Les retours et remboursements sont acceptés dans les <strong>{days} jours suivant la livraison</strong>. Après ce délai, toutes les ventes sont définitives. Contactez {support} avec votre numéro de commande.",
+    },
+    # Cancelled
+    "cancelled.hero_h":   {"en": "Order Cancelled",              "fr": "Commande annulée"},
+    "cancelled.hero_s":   {"en": "Your order has been cancelled.","fr": "Votre commande a été annulée."},
+    "cancelled.refund_t": {"en": "💰 Refund Information",         "fr": "💰 Information de remboursement"},
+    "cancelled.refund_b": {
+        "en": "If payment was captured, a full refund will be issued to your original payment method within 5-10 business days. If you don't see the refund, contact your bank or {support}.",
+        "fr": "Si le paiement a été capturé, un remboursement complet sera effectué sur votre moyen de paiement original dans les 5 à 10 jours ouvrables. Si vous ne voyez pas le remboursement, contactez votre banque ou {support}.",
+    },
+    # Processing
+    "processing.hero_h":    {"en": "Your Order Is Being Processed!", "fr": "Votre commande est en cours de traitement !"},
+    "processing.hero_s":    {"en": "Payment confirmed — sellers are preparing your items.", "fr": "Paiement confirmé — les vendeurs préparent vos articles."},
+    "processing.payment_t": {"en": "✅ Payment Confirmed",            "fr": "✅ Paiement confirmé"},
+    "processing.shipping_n": {
+        "en": "You'll receive a shipping notification with tracking details once your items are on the way.",
+        "fr": "Vous recevrez une notification d'expédition avec les détails de suivi dès que vos articles seront en route.",
+    },
+    # Refunded
+    "refunded.hero_h":     {"en": "Your Refund Has Been Processed",            "fr": "Votre remboursement a été traité"},
+    "refunded.hero_s":     {"en": "A full refund has been issued for your order.", "fr": "Un remboursement complet a été émis pour votre commande."},
+    "refunded.status":     {"en": "Full Refund",                               "fr": "Remboursement complet"},
+    "refunded.timeline_t": {"en": "🏦 When Will I See My Refund?",              "fr": "🏦 Quand vais-je voir mon remboursement ?"},
+    "refunded.timeline_b": {
+        "en": "Refunds typically appear on your statement within <strong>5-10 business days</strong>, depending on your bank. If you don't see the refund after 10 business days, contact your bank or reach out to {support}.",
+        "fr": "Les remboursements apparaissent généralement sur votre relevé dans les <strong>5 à 10 jours ouvrables</strong>, selon votre banque. Si vous ne voyez pas le remboursement après 10 jours ouvrables, contactez votre banque ou {support}.",
+    },
+    # Partial refund
+    "partial.hero_h":     {"en": "Partial Refund Processed",                   "fr": "Remboursement partiel traité"},
+    "partial.hero_s":     {"en": "A partial refund has been issued for your order.", "fr": "Un remboursement partiel a été émis pour votre commande."},
+    "partial.status":     {"en": "Partial Refund",                             "fr": "Remboursement partiel"},
+    "partial.timeline_t": {"en": "🏦 When Will I See My Refund?",               "fr": "🏦 Quand vais-je voir mon remboursement ?"},
+    # Payment capture failed
+    "capture.hero_h":   {"en": "Payment Issue",                         "fr": "Problème de paiement"},
+    "capture.alert_t":  {"en": "⚠️ Action Required",                    "fr": "⚠️ Action requise"},
+    "capture.alert_b":  {"en": "We couldn't complete the payment for your order.", "fr": "Nous n'avons pas pu effectuer le paiement pour votre commande."},
+    # Auth expired
+    "auth_exp.hero_h":  {"en": "⏰ Payment Authorization Expired",        "fr": "⏰ Autorisation de paiement expirée"},
+    "auth_exp.body_1":  {"en": "Your order authorization has expired after 7 days without seller confirmation.",    "fr": "L'autorisation de votre commande a expiré après 7 jours sans confirmation du vendeur."},
+    "auth_exp.body_2":  {"en": "The hold on your payment has been released. No charge was made to your card.",     "fr": "Le blocage sur votre paiement a été levé. Aucun montant n'a été débité de votre carte."},
+    "auth_exp.body_3":  {"en": "If you still want these items, please place a new order.",                         "fr": "Si vous souhaitez toujours ces articles, veuillez passer une nouvelle commande."},
+    "auth_exp.subject": {"en": "Order {oid} - Authorization Expired",    "fr": "Commande {oid} - Autorisation expirée"},
+    # Email subjects (used in handlers)
+    "sub.confirmed":    {"en": "Order Confirmation - Origna",                  "fr": "Confirmation de commande - Origna"},
+    "sub.new_order":    {"en": "New Order Received - Origna",                  "fr": "Nouvelle commande reçue - Origna"},
+    "sub.processing":   {"en": "Order #{oid} Is Being Processed - Origna",     "fr": "Commande #{oid} en cours de traitement - Origna"},
+    "sub.shipped":      {"en": "Your Order #{oid} Has Shipped - Origna",       "fr": "Votre commande #{oid} a été expédiée - Origna"},
+    "sub.shipped_seller":{"en": "Order {oid} Shipped Successfully - Origna",   "fr": "Commande {oid} expédiée avec succès - Origna"},
+    "sub.in_transit":   {"en": "Order #{oid} Is In Transit - Origna",          "fr": "Commande #{oid} en transit - Origna"},
+    "sub.delivered":    {"en": "Order #{oid} Delivered - Please Confirm Receipt","fr": "Commande #{oid} livrée - Veuillez confirmer la réception"},
+    "sub.cancelled":    {"en": "Order #{oid} Cancelled - Origna",              "fr": "Commande #{oid} annulée - Origna"},
+    "sub.refunded":     {"en": "Refund Processed for Order #{oid} - Origna",   "fr": "Remboursement traité pour la commande #{oid} - Origna"},
+    "sub.partial":      {"en": "Partial Refund for Order #{oid} - Origna",     "fr": "Remboursement partiel pour la commande #{oid} - Origna"},
+    "sub.payment_issue":{"en": "Payment Issue - Order #{oid}",                 "fr": "Problème de paiement - Commande #{oid}"},
+}
+
+
+def _t(key: str, lang: str) -> str:
+    """Translate email string to the given language. Falls back to 'en' if not found."""
+    strings = _EMAIL_STRINGS.get(key, {})
+    return strings.get(lang) or strings.get("en", key)
+
+
 def _generate_unsubscribe_token(email: str) -> str:
     """Generate an HMAC-SHA256 token for secure unsubscribe links.
     Prevents attackers from unsubscribing arbitrary emails."""
@@ -45,19 +200,21 @@ def _get_signed_unsubscribe_url(email: str) -> str:
     return f"{UNSUBSCRIBE_URL}?email={quote(email)}&token={token}"
 
 
-def _casl_compliant_footer(include_gst: bool = False) -> str:
+def _casl_compliant_footer(include_gst: bool = False, lang: str = "en") -> str:
     """Generate CASL-compliant email footer with physical address, unsubscribe, and optional GST/HST.
 
     Required by:
     - CASL (Canadian Anti-Spam Legislation): Physical address + unsubscribe link
     - Excise Tax Act: GST/HST registration number on receipts
-    - Quebec Law 25: Privacy officer contact
+    - Quebec Law 25: Privacy officer contact (bilingual for French users)
     """
     gst_line = (
         f'<p style="margin: 0 0 8px 0; font-size: 11px; color: rgba(255,255,255,0.35);">GST/HST Registration: {EmailConfig.GST_HST_NUMBER}</p>'
         if include_gst
         else ""
     )
+    t_unsub = _t("footer.unsubscribe", lang)
+    t_privacy = _t("footer.privacy", lang)
     return f"""
         <tr><td bgcolor="#1a1a2e" style="background-color: #1a1a2e; padding: 32px 40px; text-align: center;">
             <div style="margin-bottom: 16px;">
@@ -67,19 +224,20 @@ def _casl_compliant_footer(include_gst: bool = False) -> str:
             <p style="margin: 0 0 8px 0; font-size: 12px; color: rgba(255,255,255,0.35);">{EmailConfig.PHYSICAL_ADDRESS}</p>
             {gst_line}
             <p style="margin: 0 0 8px 0; font-size: 12px; color: rgba(255,255,255,0.35);">Questions? <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA; text-decoration: none;">{EmailConfig.SUPPORT_EMAIL}</a> | Privacy: <a href="mailto:{EmailConfig.PRIVACY_OFFICER_EMAIL}" style="color: #667EEA; text-decoration: none;">{EmailConfig.PRIVACY_OFFICER_EMAIL}</a></p>
-            <p style="margin: 0 0 12px 0; font-size: 12px; color: rgba(255,255,255,0.35);"><a href="{UNSUBSCRIBE_URL}" style="color: #667EEA; text-decoration: underline;">Unsubscribe from marketing emails</a> | <a href="{APP_BASE_URL}/privacy-policy" style="color: #667EEA; text-decoration: none;">Privacy Policy</a></p>
+            <p style="margin: 0 0 12px 0; font-size: 12px; color: rgba(255,255,255,0.35);"><a href="{UNSUBSCRIBE_URL}" style="color: #667EEA; text-decoration: underline;">{t_unsub}</a> | <a href="{APP_BASE_URL}/privacy-policy" style="color: #667EEA; text-decoration: none;">{t_privacy}</a></p>
             <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
                 <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.25);">{EmailConfig.COPYRIGHT_TEXT}</p>
             </div>
         </td></tr>"""
 
 
-def get_order_confirmation_email(order_data, order_id=None):
+def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
     """Generate HTML email for customer order confirmation
 
     Args:
         order_data: Dict containing order information
         order_id: Optional order ID (can be in order_data[Fields.ORDER_ID] instead)
+        lang: User preferred language ('en' or 'fr')
     """
     oid = order_data.get(Fields.ORDER_ID, order_id or "N/A")
     short_oid = oid[:8] if len(oid) > 8 else oid
@@ -170,11 +328,46 @@ def get_order_confirmation_email(order_data, order_id=None):
     if delivery_speed == DeliveryTypeValues.SAME_DAY:
         estimated_delivery_date = datetime.now()
         
-    estimated_delivery = estimated_delivery_date.strftime("%B %d, %Y")
+    if lang == "fr":
+        estimated_delivery = estimated_delivery_date.strftime("%-d %B %Y")
+    else:
+        estimated_delivery = estimated_delivery_date.strftime("%B %d, %Y")
+
+    # Bilingual string aliases for the inline HTML below
+    _t_hero_h       = _t("confirm.hero_h", lang)
+    _t_hero_s       = _t("confirm.hero_s", lang)
+    _t_order        = _t("label.order", lang)
+    _t_confirmed    = _t("status.confirmed", lang)
+    _t_processing   = _t("status.processing", lang)
+    _t_shipped      = _t("status.shipped", lang)
+    _t_delivered    = _t("status.delivered", lang)
+    _t_product      = _t("col.product", lang)
+    _t_qty          = _t("col.qty", lang)
+    _t_price        = _t("col.price", lang)
+    _t_subtotal     = _t("price.subtotal", lang)
+    _t_shipping_lbl = _t("price.shipping", lang)
+    _t_taxes        = _t("price.taxes", lang)
+    _t_free         = _t("price.free", lang)
+    _t_total        = _t("price.total", lang)
+    _t_ship_to      = _t("section.ship_to", lang)
+    _t_order_date_lbl = _t("confirm.order_date", lang)
+    _t_est_delivery = _t("confirm.est_delivery", lang)
+    _t_sold_by      = _t("confirm.sold_by", lang)
+    _t_ret_title    = _t("confirm.return_title", lang)
+    _support_link   = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+    _t_ret_body     = _t("confirm.return_body", lang).format(support=_support_link)
+    _t_cta          = _t("cta.track_order", lang)
+    _t_footer_unsub = _t("footer.unsubscribe", lang)
+    _t_footer_priv  = _t("footer.privacy", lang)
+    if lang == "fr":
+        _items_label = f"{num_items} article{'s' if num_items != 1 else ''} commandé{'s' if num_items != 1 else ''}"
+    else:
+        _items_label = f"{num_items} Item{'s' if num_items != 1 else ''} Ordered"
+    _shipping_val = _t_free if shipping == 0 else f"${shipping:.2f}"
 
     return f"""
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="{lang}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -201,11 +394,11 @@ def get_order_confirmation_email(order_data, order_id=None):
             <div style="width: 72px; height: 72px; margin: 16px auto; background: rgba(16, 185, 129, 0.2); border-radius: 50%; line-height: 72px; font-size: 36px;">
                 ✅
             </div>
-            <h1 style="margin: 16px 0 8px 0; font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">Order Confirmed!</h1>
-            <p style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.75);">Thank you for shopping with us, your order is being prepared.</p>
+            <h1 style="margin: 16px 0 8px 0; font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">{_t_hero_h}</h1>
+            <p style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.75);">{_t_hero_s}</p>
             <!-- Order badge -->
             <div style="display: inline-block; margin-top: 20px; background: rgba(255,255,255,0.12); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); border-radius: 50px; padding: 10px 24px;">
-                <span style="font-size: 12px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 1px;">Order</span>
+                <span style="font-size: 12px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 1px;">{_t_order}</span>
                 <span style="font-size: 15px; color: #ffffff; font-weight: 700; margin-left: 6px; font-family: 'Courier New', monospace;">#{short_oid}</span>
             </div>
         </td></tr>
@@ -216,19 +409,19 @@ def get_order_confirmation_email(order_data, order_id=None):
             <tr>
                 <td width="25%" align="center">
                     <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #667EEA, #764BA2); border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: white;">✓</div>
-                    <div style="font-size: 11px; font-weight: 700; color: #667EEA; text-transform: uppercase; letter-spacing: 0.5px;">Confirmed</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #667EEA; text-transform: uppercase; letter-spacing: 0.5px;">{_t_confirmed}</div>
                 </td>
                 <td width="25%" align="center">
                     <div style="width: 36px; height: 36px; background: #e8ebf0; border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: #999;">📦</div>
-                    <div style="font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">Processing</div>
+                    <div style="font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">{_t_processing}</div>
                 </td>
                 <td width="25%" align="center">
                     <div style="width: 36px; height: 36px; background: #e8ebf0; border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: #999;">🚚</div>
-                    <div style="font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">Shipped</div>
+                    <div style="font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">{_t_shipped}</div>
                 </td>
                 <td width="25%" align="center">
                     <div style="width: 36px; height: 36px; background: #e8ebf0; border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: #999;">🏠</div>
-                    <div style="font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">Delivered</div>
+                    <div style="font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">{_t_delivered}</div>
                 </td>
             </tr>
             <!-- Progress bar -->
@@ -246,14 +439,14 @@ def get_order_confirmation_email(order_data, order_id=None):
         <!-- ITEMS TABLE -->
         <tr><td style="padding: 28px 40px 0 40px;">
             <h2 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 1px;">
-                <span style="border-bottom: 3px solid #667EEA; padding-bottom: 6px;">{num_items} Item{"s" if num_items != 1 else ""} Ordered</span>
+                <span style="border-bottom: 3px solid #667EEA; padding-bottom: 6px;">{_items_label}</span>
             </h2>
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-radius: 12px; overflow: hidden; border: 1px solid #e8ebf0;">
                 <thead>
                     <tr bgcolor="#667EEA" style="background-color: #667EEA;">
-                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Product</th>
-                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: center; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Qty</th>
-                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Price</th>
+                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">{_t_product}</th>
+                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: center; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">{_t_qty}</th>
+                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">{_t_price}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -265,21 +458,21 @@ def get_order_confirmation_email(order_data, order_id=None):
         <!-- ORDER RECEIPT (Gmail-safe: uses bgcolor fallbacks) -->
         <tr><td style="padding: 24px 40px;">
             <h2 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 1px;">
-                <span style="border-bottom: 3px solid #667EEA; padding-bottom: 6px;">Order Receipt</span>
+                <span style="border-bottom: 3px solid #667EEA; padding-bottom: 6px;">{_t("section.order_receipt", lang)}</span>
             </h2>
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#f8f9ff" style="background-color: #f8f9ff; border-radius: 16px; border: 1px solid #e0e3f0; overflow: hidden;">
                 <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 20px 24px 4px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Subtotal ({num_items} item{"s" if num_items != 1 else ""})</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">{_t_subtotal}</td>
                             <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">${subtotal:.2f}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Shipping</td>
-                            <td style="padding: 6px 0; font-size: 14px; color: {"#10B981" if shipping == 0 else "#1a1a2e"}; text-align: right; font-weight: 500;">{"Free" if shipping == 0 else f"${shipping:.2f}"}</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">{_t_shipping_lbl}</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: {"#10B981" if shipping == 0 else "#1a1a2e"}; text-align: right; font-weight: 500;">{_shipping_val}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Taxes</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">{_t_taxes}</td>
                             <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">${taxes:.2f}</td>
                         </tr>
                         {tax_rows_html}
@@ -289,7 +482,7 @@ def get_order_confirmation_email(order_data, order_id=None):
                 <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 16px 24px 20px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                         <tr>
-                            <td style="font-size: 16px; font-weight: 700; color: #1a1a2e;">Total (CAD)</td>
+                            <td style="font-size: 16px; font-weight: 700; color: #1a1a2e;">{_t_total} (CAD)</td>
                             <td style="font-size: 22px; font-weight: 800; color: #667EEA; text-align: right; letter-spacing: -0.5px;">${total:.2f}</td>
                         </tr>
                     </table>
@@ -302,7 +495,7 @@ def get_order_confirmation_email(order_data, order_id=None):
             <div style="background: #ffffff; border: 1px solid #e8ebf0; border-radius: 16px; padding: 20px 24px;">
                 <div style="display: flex; align-items: center; margin-bottom: 12px;">
                     <span style="font-size: 18px; margin-right: 8px;">📍</span>
-                    <span style="font-size: 14px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.5px;">Shipping To</span>
+                    <span style="font-size: 14px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.5px;">{_t_ship_to}</span>
                 </div>
                 <p style="margin: 0; font-size: 14px; line-height: 1.8; color: #555;">
                     {formatted_address}{phone_html}
@@ -312,16 +505,16 @@ def get_order_confirmation_email(order_data, order_id=None):
 
         <!-- ORDER DATE -->
         <tr><td style="padding: 0 40px 24px 40px; text-align: center;">
-            <p style="margin: 0 0 4px 0; font-size: 12px; color: #999;">🕐 Ordered on {order_date}</p>
-            <p style="margin: 0 0 4px 0; font-size: 12px; color: #999;">📦 Estimated delivery by {estimated_delivery}</p>
-            <p style="margin: 0; font-size: 12px; color: #999;">Sold by: Origna Ventures Inc. | GST/HST: {EmailConfig.GST_HST_NUMBER}</p>
+            <p style="margin: 0 0 4px 0; font-size: 12px; color: #999;">{_t_order_date_lbl} {order_date}</p>
+            <p style="margin: 0 0 4px 0; font-size: 12px; color: #999;">{_t_est_delivery} {estimated_delivery}</p>
+            <p style="margin: 0; font-size: 12px; color: #999;">{_t_sold_by} | GST/HST: {EmailConfig.GST_HST_NUMBER}</p>
         </td></tr>
 
         <!-- CTA BUTTON -->
         <tr><td style="padding: 0 40px 32px 40px; text-align: center;">
             <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin: 0 auto;"><tr>
             <td align="center" bgcolor="#667EEA" style="background-color: #667EEA; border-radius: 50px;">
-                <a href="{APP_BASE_URL}/orders" target="_blank" style="display: inline-block; padding: 16px 48px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 50px; letter-spacing: 0.5px;">Track Your Order →</a>
+                <a href="{APP_BASE_URL}/orders" target="_blank" style="display: inline-block; padding: 16px 48px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 50px; letter-spacing: 0.5px;">{_t_cta}</a>
             </td>
             </tr></table>
         </td></tr>
@@ -329,13 +522,13 @@ def get_order_confirmation_email(order_data, order_id=None):
         <!-- CPA ONTARIO COMPLIANCE: Cancellation rights notice -->
         <tr><td style="padding: 0 40px 24px 40px;">
             <div style="background-color: #f8f9ff; border: 1px solid #e8ebf0; border-radius: 12px; padding: 16px 20px;">
-                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">Return &amp; Refund Policy</p>
-                <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.6;">Returns and refunds are accepted within <strong>7 days of delivery</strong>. After 7 days post-delivery, all sales are final. If the goods are defective or not as described, contact <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a> with your order ID within the return window. Under Ontario's Consumer Protection Act, you may cancel before shipment.</p>
+                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">{_t_ret_title}</p>
+                <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.6;">{_t_ret_body}</p>
             </div>
         </td></tr>
 
         <!-- CASL-COMPLIANT FOOTER with GST/HST (Excise Tax Act) -->
-        {_casl_compliant_footer(include_gst=True)}
+        {_casl_compliant_footer(include_gst=True, lang=lang)}
 
         </table>
         </td></tr>
@@ -345,7 +538,7 @@ def get_order_confirmation_email(order_data, order_id=None):
     """
 
 
-def get_seller_notification_email(order_data, order_id=None, seller_id=None):
+def get_seller_notification_email(order_data, order_id=None, seller_id=None, lang: str = "en"):
     """Generate HTML email for seller notification
 
     Args:
@@ -402,12 +595,15 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
     address_html = "<br>".join(p for p in addr_parts if p and p.strip())
     phone_html = f"<br>📱 {delivery_info[Fields.PHONE_NUMBER]}" if delivery_info.get(Fields.PHONE_NUMBER) else ""
 
-    order_date = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    if lang == "fr":
+        order_date = datetime.now().strftime("%d %B %Y à %H:%M")
+    else:
+        order_date = datetime.now().strftime("%B %d, %Y at %I:%M %p")
     customer_email = html.escape(order_data.get(Fields.CUSTOMER_EMAIL, "N/A"))
 
     return f"""
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="{lang}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -431,8 +627,8 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
             <div style="width: 72px; height: 72px; margin: 16px auto; background: rgba(245, 158, 11, 0.2); border-radius: 50%; line-height: 72px; font-size: 36px;">
                 💰
             </div>
-            <h1 style="margin: 16px 0 8px 0; font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">New Order Received!</h1>
-            <p style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.75);">You have a new order to fulfill. Ship it fast!</p>
+            <h1 style="margin: 16px 0 8px 0; font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">{_t("seller.hero_h", lang)}</h1>
+            <p style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.75);">{_t("seller.hero_s", lang)}</p>
 
             <!-- Stats row -->
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top: 28px;">
@@ -440,13 +636,13 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
                 <td width="33%" align="center">
                     <div style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 14px 8px;">
                         <div style="font-size: 22px; font-weight: 800; color: #ffffff;">${total:.2f}</div>
-                        <div style="font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">Revenue</div>
+                        <div style="font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">{_t("label.revenue", lang)}</div>
                     </div>
                 </td>
                 <td width="33%" align="center">
                     <div style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 14px 8px;">
                         <div style="font-size: 22px; font-weight: 800; color: #ffffff;">{num_items}</div>
-                        <div style="font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">Items</div>
+                        <div style="font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">{_t("label.items_stat", lang)}</div>
                     </div>
                 </td>
                 <td width="33%" align="center">
@@ -461,7 +657,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
 
         <!-- URGENT ACTION BANNER -->
         <tr><td bgcolor="#F59E0B" style="background-color: #F59E0B; background-image: linear-gradient(90deg, #F59E0B, #F97316); padding: 14px 40px; text-align: center;">
-            <span style="font-size: 13px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">⚡ ACTION REQUIRED — Confirm and ship this order within 48 hours</span>
+            <span style="font-size: 13px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">{_t("seller.action_banner", lang)}</span>
         </td></tr>
 
         <!-- CUSTOMER INFO -->
@@ -469,15 +665,15 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
             <div style="background-color: #f8f9ff; border: 1px solid #e0e3f0; border-radius: 16px; padding: 20px 24px;">
                 <div style="margin-bottom: 12px;">
                     <span style="font-size: 18px; margin-right: 8px;">👤</span>
-                    <span style="font-size: 14px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.5px;">Customer Info</span>
+                    <span style="font-size: 14px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.5px;">{_t("section.customer_info", lang)}</span>
                 </div>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888; width: 90px;">Email:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888; width: 90px;">{_t("label.email", lang)}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 500;">{customer_email}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888;">Ordered:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888;">{_t("label.ordered", lang)}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 500;">{order_date}</td>
                     </tr>
                 </table>
@@ -487,14 +683,14 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
         <!-- ITEMS TABLE -->
         <tr><td style="padding: 24px 40px 0 40px;">
             <h2 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 1px;">
-                <span style="border-bottom: 3px solid #764BA2; padding-bottom: 6px;">Items to Ship</span>
+                <span style="border-bottom: 3px solid #764BA2; padding-bottom: 6px;">{_t("section.items_to_ship", lang)}</span>
             </h2>
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-radius: 12px; overflow: hidden; border: 1px solid #e8ebf0;">
                 <thead>
                     <tr bgcolor="#667EEA" style="background-color: #667EEA; background-image: linear-gradient(135deg, #667EEA, #764BA2);">
-                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Product</th>
-                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: center; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Qty</th>
-                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Price</th>
+                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">{_t("col.product", lang)}</th>
+                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: center; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">{_t("col.qty", lang)}</th>
+                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">{_t("col.price", lang)}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -509,15 +705,15 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
                 <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 20px 24px 4px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Subtotal</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">{_t("price.subtotal", lang)}</td>
                             <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">${subtotal:.2f}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Shipping</td>
-                            <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">{"Free" if shipping == 0 else f"${shipping:.2f}"}</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">{_t("price.shipping", lang)}</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">{_t("price.free", lang) if shipping == 0 else f"${shipping:.2f}"}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Taxes</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">{_t("price.taxes", lang)}</td>
                             <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">${taxes:.2f}</td>
                         </tr>
                     </table>
@@ -526,7 +722,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
                 <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 16px 24px 20px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                         <tr>
-                            <td style="font-size: 16px; font-weight: 700; color: #1a1a2e;">Order Total</td>
+                            <td style="font-size: 16px; font-weight: 700; color: #1a1a2e;">{_t("seller.order_total", lang)}</td>
                             <td style="font-size: 22px; font-weight: 800; color: #10B981; text-align: right; letter-spacing: -0.5px;">${total:.2f} <span style="font-size: 13px; font-weight: 600; color: #999999;">CAD</span></td>
                         </tr>
                     </table>
@@ -539,7 +735,7 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
             <div style="background: #ffffff; border: 1px solid #e8ebf0; border-radius: 16px; padding: 20px 24px;">
                 <div style="margin-bottom: 12px;">
                     <span style="font-size: 18px; margin-right: 8px;">📦</span>
-                    <span style="font-size: 14px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.5px;">Ship To</span>
+                    <span style="font-size: 14px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.5px;">{_t("section.ship_to_seller", lang)}</span>
                 </div>
                 <p style="margin: 0; font-size: 14px; line-height: 1.8; color: #555;">
                     {address_html}{phone_html}
@@ -551,13 +747,13 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
         <tr><td style="padding: 0 40px 32px 40px; text-align: center;">
             <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin: 0 auto;"><tr>
             <td align="center" bgcolor="#667EEA" style="background-color: #667EEA; border-radius: 50px;">
-                <a href="{APP_BASE_URL}/seller/orders" target="_blank" style="display: inline-block; padding: 16px 48px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 50px; letter-spacing: 0.5px;">Manage Orders →</a>
+                <a href="{APP_BASE_URL}/seller/orders" target="_blank" style="display: inline-block; padding: 16px 48px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 50px; letter-spacing: 0.5px;">{_t("cta.manage_orders", lang)}</a>
             </td>
             </tr></table>
         </td></tr>
 
         <!-- CASL-COMPLIANT FOOTER -->
-        {_casl_compliant_footer(include_gst=False)}
+        {_casl_compliant_footer(include_gst=False, lang=lang)}
 
         </table>
         </td></tr>
@@ -567,14 +763,14 @@ def get_seller_notification_email(order_data, order_id=None, seller_id=None):
     """
 
 
-def _email_wrapper(title: str, content_html: str, include_gst: bool = False) -> str:
+def _email_wrapper(title: str, content_html: str, include_gst: bool = False, lang: str = "en") -> str:
     """Wrap email content in full branded HTML email template with CASL-compliant footer.
 
     Gmail-safe: uses bgcolor fallbacks, no CSS-only gradients for backgrounds.
     """
     return f"""
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="{lang}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -587,7 +783,7 @@ def _email_wrapper(title: str, content_html: str, include_gst: bool = False) -> 
 
         {content_html}
 
-        {_casl_compliant_footer(include_gst=include_gst)}
+        {_casl_compliant_footer(include_gst=include_gst, lang=lang)}
 
         </table>
         </td></tr>
@@ -613,13 +809,13 @@ def _hero_header(icon: str, heading: str, subtext: str, icon_bg: str = "rgba(102
     """
 
 
-def _order_status_tracker(active_step: int) -> str:
+def _order_status_tracker(active_step: int, lang: str = "en") -> str:
     """Generate order status progress tracker. active_step: 1=Confirmed, 2=Processing, 3=Shipped, 4=Delivered."""
     steps = [
-        ("Confirmed", "✓"),
-        ("Processing", "📦"),
-        ("Shipped", "🚚"),
-        ("Delivered", "🏠"),
+        (_t("status.confirmed", lang), "✓"),
+        (_t("status.processing", lang), "📦"),
+        (_t("status.shipped", lang), "🚚"),
+        (_t("status.delivered", lang), "🏠"),
     ]
     rows = ""
     for i, (label, icon) in enumerate(steps):
@@ -668,7 +864,7 @@ def _cta_button(url: str, label: str, color: str = "#667EEA") -> str:
     """
 
 
-def _items_summary_table(items: list) -> str:
+def _items_summary_table(items: list, lang: str = "en") -> str:
     """Generate a table of order items for receipt emails."""
     if not items:
         return ""
@@ -692,17 +888,21 @@ def _items_summary_table(items: list) -> str:
             </td>
         </tr>"""
 
+    t_heading = _t("section.items_ordered", lang)
+    t_product = _t("col.product", lang)
+    t_qty = _t("col.qty", lang)
+    t_price = _t("col.price", lang)
     return f"""
         <tr><td style="padding: 28px 40px 0 40px;">
             <h2 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 1px;">
-                <span style="border-bottom: 3px solid #667EEA; padding-bottom: 6px;">Items Ordered</span>
+                <span style="border-bottom: 3px solid #667EEA; padding-bottom: 6px;">{t_heading}</span>
             </h2>
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-radius: 12px; overflow: hidden; border: 1px solid #e8ebf0;">
                 <thead>
                     <tr bgcolor="#667EEA" style="background-color: #667EEA;">
-                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Product</th>
-                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: center; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Qty</th>
-                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">Price</th>
+                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">{t_product}</th>
+                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: center; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">{t_qty}</th>
+                        <th bgcolor="#667EEA" style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 1px;">{t_price}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -713,23 +913,28 @@ def _items_summary_table(items: list) -> str:
     """
 
 
-def _price_summary_block(subtotal: float, shipping: float, taxes: float, total: float) -> str:
+def _price_summary_block(subtotal: float, shipping: float, taxes: float, total: float, lang: str = "en") -> str:
     """Generate Gmail-safe price summary block with receipt-style layout."""
+    t_subtotal = _t("price.subtotal", lang)
+    t_shipping = _t("price.shipping", lang)
+    t_taxes = _t("price.taxes", lang)
+    t_total = _t("price.total", lang)
+    t_free = _t("price.free", lang)
     return f"""
         <tr><td style="padding: 24px 40px;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#f8f9ff" style="background-color: #f8f9ff; border-radius: 16px; border: 1px solid #e0e3f0; overflow: hidden;">
                 <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 20px 24px 4px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Subtotal</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">{t_subtotal}</td>
                             <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">${subtotal:.2f}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Shipping</td>
-                            <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">{"Free" if shipping == 0 else f"${shipping:.2f}"}</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">{t_shipping}</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">{t_free if shipping == 0 else f"${shipping:.2f}"}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">Taxes</td>
+                            <td style="padding: 6px 0; font-size: 14px; color: #555555;">{t_taxes}</td>
                             <td style="padding: 6px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 500;">${taxes:.2f}</td>
                         </tr>
                     </table>
@@ -738,7 +943,7 @@ def _price_summary_block(subtotal: float, shipping: float, taxes: float, total: 
                 <tr><td bgcolor="#f8f9ff" style="background-color: #f8f9ff; padding: 16px 24px 20px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                         <tr>
-                            <td style="font-size: 16px; font-weight: 700; color: #1a1a2e;">Total</td>
+                            <td style="font-size: 16px; font-weight: 700; color: #1a1a2e;">{t_total}</td>
                             <td style="font-size: 22px; font-weight: 800; color: #667EEA; text-align: right; letter-spacing: -0.5px;">${total:.2f} <span style="font-size: 13px; font-weight: 600; color: #999999;">CAD</span></td>
                         </tr>
                     </table>
@@ -748,7 +953,7 @@ def _price_summary_block(subtotal: float, shipping: float, taxes: float, total: 
     """
 
 
-def get_order_shipped_email(order_data: dict, order_id: str, tracking_number: str = "N/A", carrier: str = "N/A") -> str:
+def get_order_shipped_email(order_data: dict, order_id: str, tracking_number: str = "N/A", carrier: str = "N/A", lang: str = "en") -> str:
     """Generate branded HTML email for order shipped notification."""
     short_oid = order_id[:8] if len(order_id) > 8 else order_id
     safe_tracking = html.escape(str(tracking_number))
@@ -760,9 +965,13 @@ def get_order_shipped_email(order_data: dict, order_id: str, tracking_number: st
     taxes = sum(order_data.get(Fields.TAXES, {}).values())
     total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
 
-    content = _hero_header("🚚", "Your Order Has Shipped!", "Your items are on the way.", "rgba(59, 130, 246, 0.2)")
-    content += _order_status_tracker(3)
+    content = _hero_header("🚚", _t("shipped.hero_h", lang), _t("shipped.hero_s", lang), "rgba(59, 130, 246, 0.2)")
+    content += _order_status_tracker(3, lang)
 
+    t_tracking = _t("section.tracking", lang)
+    t_order_id = _t("label.order_id", lang)
+    t_carrier = _t("label.carrier", lang)
+    t_tracking_num = _t("label.tracking_num", lang)
     content += f"""
         <tr><td style="padding: 0 40px;"><div style="height: 1px; background-color: #e8ebf0;"></div></td></tr>
 
@@ -771,19 +980,19 @@ def get_order_shipped_email(order_data: dict, order_id: str, tracking_number: st
             <div style="background-color: #f8f9ff; border: 1px solid #e0e3f0; border-radius: 16px; padding: 20px 24px;">
                 <div style="margin-bottom: 12px;">
                     <span style="font-size: 18px; margin-right: 8px;">📦</span>
-                    <span style="font-size: 14px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.5px;">Tracking Details</span>
+                    <span style="font-size: 14px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.5px;">{t_tracking}</span>
                 </div>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 120px;">Order ID:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 120px;">{t_order_id}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600; font-family: 'Courier New', monospace;">#{short_oid}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">Carrier:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_carrier}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 500;">{safe_carrier}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">Tracking #:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_tracking_num}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #667EEA; font-weight: 600;">{safe_tracking}</td>
                     </tr>
                 </table>
@@ -791,14 +1000,14 @@ def get_order_shipped_email(order_data: dict, order_id: str, tracking_number: st
         </td></tr>
     """
 
-    content += _items_summary_table(items)
-    content += _price_summary_block(subtotal, shipping, taxes, total)
-    content += _cta_button(f"{APP_BASE_URL}/orders", "Track Your Order →")
+    content += _items_summary_table(items, lang)
+    content += _price_summary_block(subtotal, shipping, taxes, total, lang)
+    content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.track_order", lang))
 
-    return _email_wrapper("Order Shipped", content, include_gst=True)
+    return _email_wrapper("Order Shipped", content, include_gst=True, lang=lang)
 
 
-def get_order_in_transit_email(order_data: dict, order_id: str) -> str:
+def get_order_in_transit_email(order_data: dict, order_id: str, lang: str = "en") -> str:
     """Generate branded HTML email for order in-transit notification."""
     short_oid = order_id[:8] if len(order_id) > 8 else order_id
 
@@ -811,10 +1020,16 @@ def get_order_in_transit_email(order_data: dict, order_id: str) -> str:
     total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
 
     content = _hero_header(
-        "🚚", "Your Order Is In Transit!", "Your package is on its way to you.", "rgba(59, 130, 246, 0.2)"
+        "🚚", _t("in_transit.hero_h", lang), _t("in_transit.hero_s", lang), "rgba(59, 130, 246, 0.2)"
     )
-    content += _order_status_tracker(3)  # Between shipped and delivered
+    content += _order_status_tracker(3, lang)
 
+    t_tracking = _t("section.tracking", lang)
+    t_order_id = _t("label.order_id", lang)
+    t_carrier = _t("label.carrier", lang)
+    t_tracking_num = _t("label.tracking_num", lang)
+    t_move_text = _t("in_transit.move_text", lang)
+    item_word = "article" if lang == "fr" and len(items) == 1 else ("articles" if lang == "fr" else ("item" if len(items) == 1 else "items"))
     content += f"""
         <tr><td style="padding: 0 40px;"><div style="height: 1px; background-color: #e8ebf0;"></div></td></tr>
 
@@ -823,19 +1038,19 @@ def get_order_in_transit_email(order_data: dict, order_id: str) -> str:
             <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 16px; padding: 20px 24px;">
                 <div style="margin-bottom: 12px;">
                     <span style="font-size: 18px; margin-right: 8px;">📍</span>
-                    <span style="font-size: 14px; font-weight: 700; color: #1E40AF; text-transform: uppercase; letter-spacing: 0.5px;">Tracking Details</span>
+                    <span style="font-size: 14px; font-weight: 700; color: #1E40AF; text-transform: uppercase; letter-spacing: 0.5px;">{t_tracking}</span>
                 </div>
                 <table role="presentation" cellspacing="0" cellpadding="0">
                     <tr>
-                        <td style="padding: 4px 16px 4px 0; font-size: 13px; color: #888888;">Order:</td>
+                        <td style="padding: 4px 16px 4px 0; font-size: 13px; color: #888888;">{t_order_id}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600; font-family: 'Courier New', monospace;">#{short_oid}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 16px 4px 0; font-size: 13px; color: #888888;">Carrier:</td>
+                        <td style="padding: 4px 16px 4px 0; font-size: 13px; color: #888888;">{t_carrier}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 500;">{safe_carrier}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 16px 4px 0; font-size: 13px; color: #888888;">Tracking #:</td>
+                        <td style="padding: 4px 16px 4px 0; font-size: 13px; color: #888888;">{t_tracking_num}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #667EEA; font-weight: 600;">{safe_tracking}</td>
                     </tr>
                 </table>
@@ -843,16 +1058,16 @@ def get_order_in_transit_email(order_data: dict, order_id: str) -> str:
         </td></tr>
 
         <tr><td style="padding: 0 40px 16px 40px; text-align: center;">
-            <p style="margin: 0; font-size: 13px; color: #6B7280; line-height: 1.6;">Your package with {len(items)} item{"s" if len(items) != 1 else ""} worth <strong>${total:.2f} CAD</strong> is on the move. You'll receive another update once it's delivered.</p>
+            <p style="margin: 0; font-size: 13px; color: #6B7280; line-height: 1.6;">Your package with {len(items)} {item_word} worth <strong>${total:.2f} CAD</strong> is {t_move_text}</p>
         </td></tr>
     """
 
-    content += _cta_button(f"{APP_BASE_URL}/orders", "Track Your Order →")
+    content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.track_order", lang))
 
-    return _email_wrapper("Order In Transit", content, include_gst=False)
+    return _email_wrapper("Order In Transit", content, include_gst=False, lang=lang)
 
 
-def get_order_delivered_email(order_data: dict, order_id: str) -> str:
+def get_order_delivered_email(order_data: dict, order_id: str, lang: str = "en") -> str:
     """Generate branded HTML email for order delivered notification."""
     short_oid = order_id[:8] if len(order_id) > 8 else order_id
 
@@ -865,50 +1080,56 @@ def get_order_delivered_email(order_data: dict, order_id: str) -> str:
     from schema_constants import BusinessRules
 
     content = _hero_header(
-        "🏠", "Your Order Has Been Delivered!", "We hope you love your items.", "rgba(16, 185, 129, 0.2)"
+        "🏠", _t("delivered.hero_h", lang), _t("delivered.hero_s", lang), "rgba(16, 185, 129, 0.2)"
     )
-    content += _order_status_tracker(4)
+    content += _order_status_tracker(4, lang)
 
+    t_confirm_t = _t("delivered.confirm_t", lang)
+    t_confirm_b = _t("delivered.confirm_b", lang)
+    t_auto_release = _t("delivered.auto_release", lang).format(days=BusinessRules.AUTO_CONFIRM_DAYS)
+    t_order_label = _t("label.order", lang)
+    t_return_title = _t("section.return_policy", lang)
+    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+    t_return_body = _t("delivered.return_body", lang).format(days=BusinessRules.RETURN_WINDOW_DAYS, support=support_link)
     content += f"""
         <tr><td style="padding: 0 40px;"><div style="height: 1px; background-color: #e8ebf0;"></div></td></tr>
 
         <!-- Confirmation Notice -->
         <tr><td style="padding: 24px 40px;">
             <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 16px; padding: 20px 24px;">
-                <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #065F46;">📋 Please Confirm Receipt</p>
-                <p style="margin: 0 0 8px 0; font-size: 13px; color: #047857; line-height: 1.6;">Confirming receipt helps us release payment to the seller and improves the marketplace for everyone.</p>
-                <p style="margin: 0; font-size: 12px; color: #6B7280;"><strong>Note:</strong> Payment will be auto-released after {BusinessRules.AUTO_CONFIRM_DAYS} days if not confirmed.</p>
+                <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #065F46;">{t_confirm_t}</p>
+                <p style="margin: 0 0 8px 0; font-size: 13px; color: #047857; line-height: 1.6;">{t_confirm_b}</p>
+                <p style="margin: 0; font-size: 12px; color: #6B7280;">{t_auto_release}</p>
             </div>
         </td></tr>
 
         <!-- Order ID badge -->
         <tr><td style="padding: 0 40px 16px 40px; text-align: center;">
             <div style="display: inline-block; background-color: #f8f9ff; border: 1px solid #e0e3f0; border-radius: 50px; padding: 10px 24px;">
-                <span style="font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px;">Order</span>
+                <span style="font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px;">{t_order_label}</span>
                 <span style="font-size: 15px; color: #1a1a2e; font-weight: 700; margin-left: 6px; font-family: 'Courier New', monospace;">#{short_oid}</span>
             </div>
         </td></tr>
     """
 
-    content += _items_summary_table(items)
-    content += _price_summary_block(subtotal, shipping, taxes, total)
+    content += _items_summary_table(items, lang)
+    content += _price_summary_block(subtotal, shipping, taxes, total, lang)
 
-    # Return & refund policy notice
     content += f"""
         <tr><td style="padding: 0 40px 24px 40px;">
             <div style="background-color: #f8f9ff; border: 1px solid #e8ebf0; border-radius: 12px; padding: 16px 20px;">
-                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">Return &amp; Refund Policy</p>
-                <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.6;">Returns and refunds are accepted within <strong>{BusinessRules.RETURN_WINDOW_DAYS} days of delivery</strong>. After that, all sales are final. Contact <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a> with your order ID within the return window.</p>
+                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">{t_return_title}</p>
+                <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.6;">{t_return_body}</p>
             </div>
         </td></tr>
     """
 
-    content += _cta_button(f"{APP_BASE_URL}/orders", "Confirm Receipt →", "#10B981")
+    content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.confirm_receipt", lang), "#10B981")
 
-    return _email_wrapper("Order Delivered", content, include_gst=True)
+    return _email_wrapper("Order Delivered", content, include_gst=True, lang=lang)
 
 
-def get_order_cancelled_email(order_data: dict, order_id: str, reason: str = "Unknown") -> str:
+def get_order_cancelled_email(order_data: dict, order_id: str, reason: str = "Unknown", lang: str = "en") -> str:
     """Generate branded HTML email for order cancelled notification."""
     short_oid = order_id[:8] if len(order_id) > 8 else order_id
     safe_reason = html.escape(str(reason))
@@ -916,23 +1137,29 @@ def get_order_cancelled_email(order_data: dict, order_id: str, reason: str = "Un
     items = order_data.get(Fields.ITEMS, [])
     total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
 
-    content = _hero_header("❌", "Order Cancelled", "Your order has been cancelled.", "rgba(220, 38, 38, 0.2)")
+    content = _hero_header("❌", _t("cancelled.hero_h", lang), _t("cancelled.hero_s", lang), "rgba(220, 38, 38, 0.2)")
 
+    t_order_id = _t("label.order_id", lang)
+    t_amount = _t("label.amount", lang)
+    t_reason = _t("label.reason", lang)
+    t_refund_t = _t("cancelled.refund_t", lang)
+    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+    t_refund_b = _t("cancelled.refund_b", lang).format(support=support_link)
     content += f"""
         <!-- Cancellation details -->
         <tr><td style="padding: 24px 40px;">
             <div style="background-color: #FEF2F2; border: 1px solid #FECACA; border-radius: 16px; padding: 20px 24px;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 100px;">Order ID:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 100px;">{t_order_id}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600; font-family: 'Courier New', monospace;">#{short_oid}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">Amount:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_amount}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600;">${total:.2f} CAD</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">Reason:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_reason}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #DC2626; font-weight: 500;">{safe_reason}</td>
                     </tr>
                 </table>
@@ -942,19 +1169,19 @@ def get_order_cancelled_email(order_data: dict, order_id: str, reason: str = "Un
         <!-- Refund notice -->
         <tr><td style="padding: 0 40px 24px 40px;">
             <div style="background-color: #f8f9ff; border: 1px solid #e8ebf0; border-radius: 12px; padding: 16px 20px;">
-                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">💰 Refund Information</p>
-                <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.6;">If payment was captured, a full refund will be issued to your original payment method within 5-10 business days. If you don't see the refund, contact your bank or <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>.</p>
+                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">{t_refund_t}</p>
+                <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.6;">{t_refund_b}</p>
             </div>
         </td></tr>
     """
 
-    content += _items_summary_table(items)
-    content += _cta_button(f"{APP_BASE_URL}/orders", "View Orders →")
+    content += _items_summary_table(items, lang)
+    content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.view_orders", lang))
 
-    return _email_wrapper("Order Cancelled", content, include_gst=False)
+    return _email_wrapper("Order Cancelled", content, include_gst=False, lang=lang)
 
 
-def get_order_processing_email(order_data: dict, order_id: str) -> str:
+def get_order_processing_email(order_data: dict, order_id: str, lang: str = "en") -> str:
     """Generate branded HTML email for order processing (payment captured successfully)."""
     short_oid = order_id[:8] if len(order_id) > 8 else order_id
 
@@ -966,41 +1193,49 @@ def get_order_processing_email(order_data: dict, order_id: str) -> str:
 
     content = _hero_header(
         "⚙️",
-        "Your Order Is Being Processed!",
-        "Payment confirmed — sellers are preparing your items.",
+        _t("processing.hero_h", lang),
+        _t("processing.hero_s", lang),
         "rgba(99, 102, 241, 0.2)",
     )
-    content += _order_status_tracker(2)
+    content += _order_status_tracker(2, lang)
 
+    t_payment_t = _t("processing.payment_t", lang)
+    # Build bilingual payment body with interpolated amount
+    if lang == "fr":
+        t_payment_b = f"Votre paiement de <strong>{total:.2f} $ CAD</strong> a été capturé. Les vendeurs ont été notifiés et préparent vos articles."
+    else:
+        t_payment_b = f"Your payment of <strong>${total:.2f} CAD</strong> has been captured. Sellers have been notified and are now preparing your items for shipment."
+    t_shipping_n = _t("processing.shipping_n", lang)
+    t_order_label = _t("label.order", lang)
     content += f"""
         <tr><td style="padding: 0 40px;"><div style="height: 1px; background-color: #e8ebf0;"></div></td></tr>
 
         <!-- Processing notice -->
         <tr><td style="padding: 24px 40px;">
             <div style="background-color: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 16px; padding: 20px 24px;">
-                <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #3730A3;">✅ Payment Confirmed</p>
-                <p style="margin: 0 0 8px 0; font-size: 13px; color: #4338CA; line-height: 1.6;">Your payment of <strong>${total:.2f} CAD</strong> has been captured. Sellers have been notified and are now preparing your items for shipment.</p>
-                <p style="margin: 0; font-size: 12px; color: #6B7280;">You'll receive a shipping notification with tracking details once your items are on the way.</p>
+                <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #3730A3;">{t_payment_t}</p>
+                <p style="margin: 0 0 8px 0; font-size: 13px; color: #4338CA; line-height: 1.6;">{t_payment_b}</p>
+                <p style="margin: 0; font-size: 12px; color: #6B7280;">{t_shipping_n}</p>
             </div>
         </td></tr>
 
         <!-- Order ID badge -->
         <tr><td style="padding: 0 40px 16px 40px; text-align: center;">
             <div style="display: inline-block; background-color: #f8f9ff; border: 1px solid #e0e3f0; border-radius: 50px; padding: 10px 24px;">
-                <span style="font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px;">Order</span>
+                <span style="font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px;">{t_order_label}</span>
                 <span style="font-size: 15px; color: #1a1a2e; font-weight: 700; margin-left: 6px; font-family: 'Courier New', monospace;">#{short_oid}</span>
             </div>
         </td></tr>
     """
 
-    content += _items_summary_table(items)
-    content += _price_summary_block(subtotal, shipping, taxes, total)
-    content += _cta_button(f"{APP_BASE_URL}/orders", "View Order →")
+    content += _items_summary_table(items, lang)
+    content += _price_summary_block(subtotal, shipping, taxes, total, lang)
+    content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.view_order", lang))
 
-    return _email_wrapper("Order Processing", content, include_gst=True)
+    return _email_wrapper("Order Processing", content, include_gst=True, lang=lang)
 
 
-def get_order_refunded_email(order_data: dict, order_id: str, refund_amount_cents: int = 0) -> str:
+def get_order_refunded_email(order_data: dict, order_id: str, refund_amount_cents: int = 0, lang: str = "en") -> str:
     """Generate branded HTML email for full refund notification."""
     short_oid = order_id[:8] if len(order_id) > 8 else order_id
 
@@ -1008,29 +1243,31 @@ def get_order_refunded_email(order_data: dict, order_id: str, refund_amount_cent
     total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
     refund_amount = refund_amount_cents / 100 if refund_amount_cents else total
 
-    content = _hero_header(
-        "💰",
-        "Your Refund Has Been Processed",
-        "A full refund has been issued for your order.",
-        "rgba(16, 185, 129, 0.2)",
-    )
+    content = _hero_header("💰", _t("refunded.hero_h", lang), _t("refunded.hero_s", lang), "rgba(16, 185, 129, 0.2)")
 
+    t_order_id = _t("label.order_id", lang)
+    t_refund_amt = _t("label.refund_amount", lang)
+    t_status = _t("label.status", lang)
+    t_full_refund = _t("refunded.status", lang)
+    t_timeline_t = _t("refunded.timeline_t", lang)
+    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+    t_timeline_b = _t("refunded.timeline_b", lang).format(support=support_link)
     content += f"""
         <!-- Refund details -->
         <tr><td style="padding: 24px 40px;">
             <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 16px; padding: 20px 24px;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 120px;">Order ID:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 120px;">{t_order_id}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600; font-family: 'Courier New', monospace;">#{short_oid}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">Refund Amount:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_refund_amt}</td>
                         <td style="padding: 4px 0; font-size: 16px; color: #059669; font-weight: 700;">${refund_amount:.2f} CAD</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">Status:</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #059669; font-weight: 600;">Full Refund</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_status}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #059669; font-weight: 600;">{t_full_refund}</td>
                     </tr>
                 </table>
             </div>
@@ -1039,50 +1276,60 @@ def get_order_refunded_email(order_data: dict, order_id: str, refund_amount_cent
         <!-- Timeline notice -->
         <tr><td style="padding: 0 40px 24px 40px;">
             <div style="background-color: #f8f9ff; border: 1px solid #e8ebf0; border-radius: 12px; padding: 16px 20px;">
-                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">🏦 When Will I See My Refund?</p>
-                <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.6;">Refunds typically appear on your statement within <strong>5-10 business days</strong>, depending on your bank. If you don't see the refund after 10 business days, contact your bank or reach out to <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>.</p>
+                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">{t_timeline_t}</p>
+                <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.6;">{t_timeline_b}</p>
             </div>
         </td></tr>
     """
 
-    content += _items_summary_table(items)
-    content += _cta_button(f"{APP_BASE_URL}/orders", "View Orders →")
+    content += _items_summary_table(items, lang)
+    content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.view_orders", lang))
 
-    return _email_wrapper("Order Refunded", content, include_gst=False)
+    return _email_wrapper("Order Refunded", content, include_gst=False, lang=lang)
 
 
-def get_order_partially_refunded_email(order_data: dict, order_id: str, refund_amount_cents: int = 0) -> str:
+def get_order_partially_refunded_email(order_data: dict, order_id: str, refund_amount_cents: int = 0, lang: str = "en") -> str:
     """Generate branded HTML email for partial refund notification."""
     short_oid = order_id[:8] if len(order_id) > 8 else order_id
 
     items = order_data.get(Fields.ITEMS, [])
     total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
     refund_amount = refund_amount_cents / 100 if refund_amount_cents else 0
+    remaining = total - refund_amount
 
-    content = _hero_header(
-        "💸", "Partial Refund Processed", "A partial refund has been issued for your order.", "rgba(245, 158, 11, 0.2)"
-    )
+    content = _hero_header("💸", _t("partial.hero_h", lang), _t("partial.hero_s", lang), "rgba(245, 158, 11, 0.2)")
 
+    t_order_id = _t("label.order_id", lang)
+    t_orig_total = _t("label.orig_total", lang)
+    t_refund_amt = _t("label.refund_amount", lang)
+    t_status = _t("label.status", lang)
+    t_partial = _t("partial.status", lang)
+    t_timeline_t = _t("partial.timeline_t", lang)
+    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+    if lang == "fr":
+        t_timeline_b = f"Les remboursements partiels apparaissent généralement sur votre relevé dans les <strong>5 à 10 jours ouvrables</strong>. Le solde restant de <strong>{remaining:.2f} $ CAD</strong> n'est pas affecté. Des questions ? Contactez {support_link}."
+    else:
+        t_timeline_b = f"Partial refunds typically appear on your statement within <strong>5-10 business days</strong>. The remaining balance of <strong>${remaining:.2f} CAD</strong> is not affected. Questions? Contact {support_link}."
     content += f"""
         <!-- Partial refund details -->
         <tr><td style="padding: 24px 40px;">
             <div style="background-color: #FFFBEB; border: 1px solid #FDE68A; border-radius: 16px; padding: 20px 24px;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 120px;">Order ID:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888; width: 120px;">{t_order_id}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600; font-family: 'Courier New', monospace;">#{short_oid}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">Original Total:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_orig_total}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 500;">${total:.2f} CAD</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">Refund Amount:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_refund_amt}</td>
                         <td style="padding: 4px 0; font-size: 16px; color: #D97706; font-weight: 700;">${refund_amount:.2f} CAD</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">Status:</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #D97706; font-weight: 600;">Partial Refund</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_status}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #D97706; font-weight: 600;">{t_partial}</td>
                     </tr>
                 </table>
             </div>
@@ -1091,16 +1338,16 @@ def get_order_partially_refunded_email(order_data: dict, order_id: str, refund_a
         <!-- Timeline notice -->
         <tr><td style="padding: 0 40px 24px 40px;">
             <div style="background-color: #f8f9ff; border: 1px solid #e8ebf0; border-radius: 12px; padding: 16px 20px;">
-                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">🏦 When Will I See My Refund?</p>
-                <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.6;">Partial refunds typically appear on your statement within <strong>5-10 business days</strong>. The remaining balance of <strong>${(total - refund_amount):.2f} CAD</strong> is not affected. Questions? Contact <a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>.</p>
+                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1a1a2e;">{t_timeline_t}</p>
+                <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.6;">{t_timeline_b}</p>
             </div>
         </td></tr>
     """
 
-    content += _items_summary_table(items)
-    content += _cta_button(f"{APP_BASE_URL}/orders", "View Orders →")
+    content += _items_summary_table(items, lang)
+    content += _cta_button(f"{APP_BASE_URL}/orders", _t("cta.view_orders", lang))
 
-    return _email_wrapper("Partial Refund", content, include_gst=False)
+    return _email_wrapper("Partial Refund", content, include_gst=False, lang=lang)
 
 
 def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_EMAIL, attachments=None):
@@ -1154,7 +1401,7 @@ def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_E
         return False
 
 
-def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
+def send_authorization_expired_email(order_id: str, order_data: dict, lang: str = "en") -> None:
     """Send notification when payment authorization expires after 7 days"""
     if IS_EMULATOR and not FORCE_REAL_EMAIL:
         logger.info(f"🔧 EMULATOR: Would send authorization expired email for order {order_id}")
@@ -1182,27 +1429,25 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
                 {
                     "From": {"Email": EmailConfig.SUPPORT_EMAIL, "Name": EmailConfig.SENDER_NAME},
                     "To": [{"Email": customer_email}],
-                    "Subject": f"Order {order_id[:8]} - Authorization Expired",
+                    "Subject": _t("auth_exp.subject", lang).replace("{oid}", order_id[:8]),
                     "HTMLPart": f"""
-                <html>
+                <html lang="{lang}">
                 <body style="font-family: Arial, sans-serif; color: #333;">
                     <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                        <h2 style="color: #FF6B35;">⏰ Payment Authorization Expired</h2>
-                        <p>Your order authorization has expired after 7 days without seller confirmation.</p>
+                        <h2 style="color: #FF6B35;">{_t("auth_exp.hero_h", lang)}</h2>
+                        <p>{_t("auth_exp.body_1", lang)}</p>
 
                         <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                            <p><strong>Order ID:</strong> {order_id}</p>
-                            <p><strong>Items:</strong> {items_summary}</p>
-                            <p><strong>Amount:</strong> ${total:.2f} CAD</p>
+                            <p><strong>{_t("label.order_id", lang)}</strong> {order_id}</p>
+                            <p><strong>{_t("label.amount", lang)}</strong> ${total:.2f} CAD</p>
                         </div>
 
-                        <p>The hold on your payment has been released. No charge was made to your card.</p>
-                        <p>If you still want these items, please place a new order.</p>
+                        <p>{_t("auth_exp.body_2", lang)}</p>
+                        <p>{_t("auth_exp.body_3", lang)}</p>
 
                         <p style="margin-top: 20px; font-size: 12px; color: #666;">
                             {EmailConfig.PHYSICAL_ADDRESS}<br>
-                            Questions? Contact <a href="mailto:{EmailConfig.SUPPORT_EMAIL}">{EmailConfig.SUPPORT_EMAIL}</a><br>
-                            <a href="{UNSUBSCRIBE_URL}">Unsubscribe</a> | <a href="{APP_BASE_URL}/privacy-policy">Privacy Policy</a>
+                            <a href="{UNSUBSCRIBE_URL}">{_t("footer.unsubscribe", lang)}</a> | <a href="{APP_BASE_URL}/privacy-policy">{_t("footer.privacy", lang)}</a>
                         </p>
                         <p style="margin-top: 8px; font-size: 11px; color: #999;">{EmailConfig.COPYRIGHT_TEXT}</p>
                     </div>
@@ -1221,7 +1466,7 @@ def send_authorization_expired_email(order_id: str, order_data: dict) -> None:
 
 
 def send_payment_capture_failed_email(
-    order_id: str, customer_email: str, customer_name: str, amount: float, error_message: str
+    order_id: str, customer_email: str, customer_name: str, amount: float, error_message: str, lang: str = "en"
 ):
     """
     Send email notification when payment capture fails.
@@ -1247,10 +1492,10 @@ def send_payment_capture_failed_email(
     # Initialize Mailjet client
     mailjet = Client(auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version=EmailConfig.MAILJET_API_VERSION)
 
-    subject = f"Payment Issue - Order #{order_id[:8]}"
+    subject = _t("sub.payment_issue", lang).replace("{oid}", order_id[:8])
     html_body = f"""
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="{lang}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1268,14 +1513,14 @@ def send_payment_capture_failed_email(
                 <span style="font-size: 14px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: #9999b3;">O R I G N A</span>
             </div>
             <div style="font-size: 48px; margin: 12px 0;">⚠️</div>
-            <h1 style="margin: 12px 0 8px 0; font-size: 24px; font-weight: 800; color: #ffffff;">Payment Issue</h1>
+            <h1 style="margin: 12px 0 8px 0; font-size: 24px; font-weight: 800; color: #ffffff;">{_t("capture.hero_h", lang)}</h1>
             <p style="margin: 0; font-size: 14px; color: #b0b0cc;">Action required for Order #{order_id[:8]}</p>
         </td></tr>
 
         <!-- Alert Banner -->
         <tr><td bgcolor="#FEF3C7" style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px 40px;">
-            <span style="font-size: 14px; font-weight: 700; color: #92400E;">⚠️ Action Required</span><br>
-            <span style="font-size: 14px; color: #78350F;">We couldn't complete the payment for your order.</span>
+            <span style="font-size: 14px; font-weight: 700; color: #92400E;">{_t("capture.alert_t", lang)}</span><br>
+            <span style="font-size: 14px; color: #78350F;">{_t("capture.alert_b", lang)}</span>
         </td></tr>
 
         <!-- Content -->
@@ -1286,15 +1531,15 @@ def send_payment_capture_failed_email(
             <tr><td style="padding: 16px 20px;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888;">Order ID:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888;">{_t("label.order_id", lang)}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 600;">{order_id[:8]}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888;">Amount:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888;">{_t("label.amount", lang)}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 600;">${amount:.2f} CAD</td>
                     </tr>
                     <tr>
-                        <td style="padding: 4px 0; font-size: 13px; color: #888;">Issue:</td>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888;">{_t("label.issue", lang)}</td>
                         <td style="padding: 4px 0; font-size: 14px; color: #dc2626; text-align: right; font-weight: 500;">{safe_error}</td>
                     </tr>
                 </table>
@@ -1327,7 +1572,7 @@ def send_payment_capture_failed_email(
         </td></tr>
 
         <!-- CASL-COMPLIANT FOOTER -->
-        {_casl_compliant_footer(include_gst=False)}
+        {_casl_compliant_footer(include_gst=False, lang=lang)}
 
         </table>
         </td></tr>

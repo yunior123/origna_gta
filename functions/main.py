@@ -20,6 +20,33 @@ import stripe
 from google.cloud import secretmanager
 
 # ===============================================
+# MONKEY-PATCH: firebase-functions 0.4.x crashes with KeyError: 'authtype'
+# when Firestore on_document_updated triggers are invoked by service accounts.
+# raw._get_attributes() returns a dict missing 'authtype' and 'authid'.
+# See: https://github.com/firebase/firebase-functions-python/issues/187
+# ===============================================
+import firebase_functions.firestore_fn as _ff_firestore
+
+_original_get_attributes = None
+
+
+def _patch_cloud_event_get_attributes(self):
+    """Inject missing 'authtype'/'authid' into Firestore trigger event attributes."""
+    attrs = _original_get_attributes(self)
+    if isinstance(attrs, dict):
+        attrs.setdefault('authtype', 'SERVICE')
+        attrs.setdefault('authid', '')
+    return attrs
+
+
+try:
+    from cloudevents.http.event import CloudEvent as _CE
+    _original_get_attributes = _CE._get_attributes
+    _CE._get_attributes = _patch_cloud_event_get_attributes
+except Exception:
+    pass  # Fail silently — worst case, the original bug remains
+
+# ===============================================
 # PAYMENT HANDLERS - STRIPE
 # ===============================================
 # ===============================================

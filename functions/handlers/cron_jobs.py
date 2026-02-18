@@ -277,7 +277,7 @@ def _run_auto_capture() -> None:
 
             # AUDIT FIX (CRITICAL-001): Use stored fee rate from checkout, not current config
             # Fee is calculated on subtotal, so we must divide by subtotal to get the rate
-            stored_fee_total = order_data.get(Fields.PLATFORM_FEE_CENTS)
+            stored_fee_total = order_data.get(Fields.PLATFORM_FEE_TOTAL_CENTS)
             order_subtotal = order_data.get(Fields.SUBTOTAL_CENTS, 1)
             
             stored_fee_rate = (
@@ -846,7 +846,7 @@ def cleanup_stale_webhook_events(event: scheduler_fn.ScheduledEvent) -> None:
     cutoff_time = datetime.now() - timedelta(days=BusinessRules.WEBHOOK_EVENT_RETENTION_DAYS)
 
     webhook_docs = (
-        get_db().collection(Collections.WEBHOOK_EVENTS).where(Fields.CREATED_AT, "<=", cutoff_time).limit(500).stream()
+        get_db().collection(Collections.WEBHOOK_EVENTS).where(Fields.TIMESTAMP, "<=", cutoff_time).limit(500).stream()
     )
 
     deleted_count = 0

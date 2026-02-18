@@ -56,6 +56,24 @@
 
 ---
 
+## ENVIRONMENTS
+
+| Env | Flutter | dart-define | Firebase project | Playwright |
+|-----|---------|-------------|-----------------|------------|
+| emulator | debug | `ENVIRONMENT=emulator USE_EMULATORS=true` | local | `playwright.config.ts` |
+| dev | debug | `ENVIRONMENT=dev` | `orignagta-dev` | `playwright.config.dev.ts` |
+| staging | **profile** | `ENVIRONMENT=staging FORCE_SEMANTICS=true` | `orignagta-staging` | `playwright.config.staging.ts` |
+| prod | **release** | `ENVIRONMENT=production` | `orignagta` | ❌ never |
+
+- Build scripts: `./scripts/build/build_dev.sh <web|apk|ios>` etc.
+- Admin CLI: `./admin <group> <cmd> --env=dev|staging|prod` (activates venv automatically)
+- **FORCE_SEMANTICS**: profile mode strips semantics — staging build MUST pass `--dart-define=FORCE_SEMANTICS=true` so Playwright can see the ARIA tree
+- Every `firebase deploy` MUST pass `--project orignagta-dev|orignagta-staging|orignagta`
+- Algolia indices: `products_emulator` | `products_dev` | `products_staging` | `products`
+- R2 prefixes: `emulator/` | `dev/` | `staging/` | (base)
+
+---
+
 ## KEY GOTCHAS (from `.claude/LEARNED.md`)
 
 - `get_server_timestamp()` CANNOT be nested in arrays/ArrayUnion → use `datetime.now(timezone.utc)`

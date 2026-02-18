@@ -684,6 +684,7 @@ interface DiscoveredProduct {
   price: number;
   sellerId: string;
   stockQuantity: number;
+  isActive: boolean;
 }
 
 let _cachedProducts: DiscoveredProduct[] | null = null;
@@ -710,6 +711,9 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
   const body = await res.json() as any;
   const docs = body.documents || [];
 
+  // Known seller UIDs that have Stripe Connect accounts
+  const knownSellers = new Set([TEST_UIDS.ADMIN, TEST_UIDS.SELLER]);
+
   _cachedProducts = docs
     .map((doc: any) => {
       const id = doc.name?.split('/').pop();
@@ -721,10 +725,11 @@ export async function discoverProducts(_token?: string): Promise<DiscoveredProdu
         price: fields.price || 0,
         sellerId: fields.sellerId || '',
         stockQuantity: fields.stockQuantity || 0,
+        isActive: fields.isActive === true,
       } as DiscoveredProduct;
     })
     .filter((p: DiscoveredProduct | null): p is DiscoveredProduct =>
-      p !== null && p.price > 0 && p.stockQuantity > 0 && p.sellerId.length > 0
+      p !== null && p.price > 0 && p.stockQuantity > 0 && p.isActive && knownSellers.has(p.sellerId)
     )
     // Sort by stock descending — prefer products with the most stock
     .sort((a: DiscoveredProduct, b: DiscoveredProduct) => b.stockQuantity - a.stockQuantity);

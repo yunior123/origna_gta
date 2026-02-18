@@ -15,7 +15,7 @@ import {
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 
 test.describe('Checkout Validation', () => {
-  test.setTimeout(60_000);
+  test.setTimeout(180_000); // Needs extra time for rate limit retries
 
   let productId: string;
   let buyerAuth: Awaited<ReturnType<typeof signIn>>;

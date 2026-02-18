@@ -2,32 +2,32 @@
  * OrignaGTA — Shipping Calculation E2E Tests
  * =============================================
  * Tests shipping cost calculation and tax logic against dev Firebase.
+ * Each test discovers its own product to avoid stock exhaustion.
  */
 import { test, expect } from '@playwright/test';
 import {
   signIn, callOk,
   buildCheckoutPayload,
   readDoc, parseDoc,
-  getTestProduct,
+  getTestProduct, invalidateProductCache,
   TEST_ACCOUNTS,
 } from './api-helpers';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 
 test.describe('Shipping Calculation', () => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
 
-  let productId: string;
   let buyerAuth: Awaited<ReturnType<typeof signIn>>;
 
   test.beforeAll(async () => {
     buyerAuth = await signIn(BUYER_EMAIL);
-    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
-    productId = product.id;
   });
 
   test('Checkout includes tax calculation for Ontario address', async () => {
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
+    invalidateProductCache();
+    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     // Ensure Ontario address
     data.shippingAddress.state = 'ON';
     data.shippingAddress.postalCode = 'M5V 3A8';
@@ -48,7 +48,9 @@ test.describe('Shipping Calculation', () => {
   });
 
   test('Order total = subtotal + tax + shipping', async () => {
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 2, buyerAuth.idToken);
+    invalidateProductCache();
+    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 2, buyerAuth.idToken);
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
     const doc = await readDoc(`orders/${result.orderId}`, buyerAuth.idToken);
     const order = parseDoc(doc);
@@ -60,7 +62,9 @@ test.describe('Shipping Calculation', () => {
   });
 
   test('Currency is always CAD', async () => {
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
+    invalidateProductCache();
+    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
     const doc = await readDoc(`orders/${result.orderId}`, buyerAuth.idToken);
     const order = parseDoc(doc);
@@ -69,18 +73,17 @@ test.describe('Shipping Calculation', () => {
   });
 
   test('Multiple quantity correctly multiplies subtotal', async () => {
+    invalidateProductCache();
+    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
     // This test creates 2 checkout sessions (qty=1 and qty=2). Needs stock >= 3.
-    // Skip if the product doesn't have enough stock.
-    const prodDoc = await readDoc(`products/${productId}`, buyerAuth.idToken);
-    const product = parseDoc(prodDoc);
-    const stock = product?.stockQuantity ?? 0;
+    const stock = product.stockQuantity;
     test.skip(stock < 3, `Product has only ${stock} stock, need >= 3 for this test`);
 
-    const { data: data1 } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
+    const { data: data1 } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     const result1 = await callOk('create_checkout_session', data1, buyerAuth.idToken);
     const order1 = parseDoc(await readDoc(`orders/${result1.orderId}`, buyerAuth.idToken));
 
-    const { data: data2 } = await buildCheckoutPayload(buyerAuth.localId, productId, 2, buyerAuth.idToken);
+    const { data: data2 } = await buildCheckoutPayload(buyerAuth.localId, product.id, 2, buyerAuth.idToken);
     const result2 = await callOk('create_checkout_session', data2, buyerAuth.idToken);
     const order2 = parseDoc(await readDoc(`orders/${result2.orderId}`, buyerAuth.idToken));
 

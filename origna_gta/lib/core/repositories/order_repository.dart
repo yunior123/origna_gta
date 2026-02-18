@@ -50,7 +50,7 @@ class FirebaseOrderRepository implements OrderRepository {
     await _functions.httpsCallable(CloudFunctionEndpoints.updateItemStatus).call({
       Fields.orderId: orderId,
       Fields.productId: itemId,
-      Fields.status: status,
+      ApiKeys.newStatus: status,
       Fields.trackingNumber: ?trackingNumber,
       Fields.carrier: ?carrier,
     });

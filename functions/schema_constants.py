@@ -380,6 +380,7 @@ class Fields:
     PARTIAL_REVERSALS = "partialReversals"
     DISPUTE_ID = "disputeId"
     PRE_DISPUTE_STATUS = "preDisputeStatus"
+    DISPUTE_STATUS = "disputeStatus"
     DISPUTE_RESOLVED_AT = "disputeResolvedAt"
     DISPUTE_RESOLUTION = "disputeResolution"
     DISPUTED_AT = "disputedAt"

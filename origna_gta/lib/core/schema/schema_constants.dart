@@ -301,6 +301,7 @@ abstract final class Fields {
   static const partialReversals = 'partialReversals';
   static const disputeId = 'disputeId';
   static const preDisputeStatus = 'preDisputeStatus';
+  static const disputeStatus = 'disputeStatus';
   static const disputeResolvedAt = 'disputeResolvedAt';
   static const disputeResolution = 'disputeResolution';
   static const failureReason = 'failureReason';

@@ -53,7 +53,7 @@ from schema_constants import (
     ValidationLimits,
     WebhookStatusValues,
 )
-from services.email_service import get_order_confirmation_email, get_seller_notification_email, send_email
+from services.email_service import _t as _email_t, get_order_confirmation_email, get_seller_notification_email, send_email
 from services.pdf_invoice_service import generate_invoice_pdf
 from services.rate_limiter import RateLimiter
 from services.shipping_service import calculate_shipping_cost, get_tax_rate
@@ -977,12 +977,13 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.PAYMENT_PROVIDER: PaymentProvider.STRIPE,
         Fields.DELIVERY_SPEED: delivery_speed,
         # Platform fee on product subtotal only (not taxes/shipping — those aren't platform revenue)
-        Fields.PLATFORM_FEE_CENTS: round(actual_subtotal_cents * PLATFORM_FEE_PERCENT),
+        Fields.PLATFORM_FEE_TOTAL_CENTS: round(actual_subtotal_cents * PLATFORM_FEE_PERCENT),
         Fields.ARCHIVED: False,
         Fields.STOCK_RESTORED: False,
         Fields.TAX_EXEMPTION: tax_exemption if gst_number else None,
         Fields.TAX_EXEMPT: is_tax_exempt,
         Fields.ITEM_TAXES: item_taxes,
+        Fields.PREFERRED_LANGUAGE: user_data.get(Fields.PREFERRED_LANGUAGE, "en"),
     }
 
     # SECURITY FIX (CRITICAL-014): Snapshot seller Stripe account IDs at checkout.
@@ -1432,8 +1433,9 @@ def process_checkout_session_completed(session: dict) -> str | None:
             if buyer_doc.exists:
                 buyer_email = buyer_doc.to_dict().get(Fields.EMAIL)
 
+        buyer_lang = order_data.get(Fields.PREFERRED_LANGUAGE, "en")
         if buyer_email:
-            buyer_email_html = get_order_confirmation_email(order_data, order_id)
+            buyer_email_html = get_order_confirmation_email(order_data, order_id, lang=buyer_lang)
 
             # Generate PDF invoice attachment
             pdf_attachments = None
@@ -1455,7 +1457,7 @@ def process_checkout_session_completed(session: dict) -> str | None:
 
             send_email(
                 to_email=buyer_email,
-                subject="Order Confirmation - Origna",
+                subject=_email_t("sub.confirmed", buyer_lang),
                 html_content=buyer_email_html,
                 attachments=pdf_attachments,
             )
@@ -1469,9 +1471,12 @@ def process_checkout_session_completed(session: dict) -> str | None:
                 seller_data = seller_doc.to_dict()
                 seller_email = seller_data.get(Fields.EMAIL)
                 if seller_email:
-                    seller_email_html = get_seller_notification_email(order_data, order_id, seller_id)
+                    seller_lang = seller_data.get(Fields.PREFERRED_LANGUAGE, "en")
+                    seller_email_html = get_seller_notification_email(order_data, order_id, seller_id, lang=seller_lang)
                     send_email(
-                        to_email=seller_email, subject="New Order Received - Origna", html_content=seller_email_html
+                        to_email=seller_email,
+                        subject=_email_t("sub.new_order", seller_lang),
+                        html_content=seller_email_html,
                     )
     except Exception as e:
         logger.error(f"Failed to send confirmation emails: {str(e)}")
@@ -1655,23 +1660,37 @@ def process_session_expired(session: dict) -> str | None:
         return None
 
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
-    order_doc = order_ref.get()
 
-    if order_doc.exists:
+    @get_transactional()
+    def _expire_in_transaction(transaction):
+        order_doc = order_ref.get(transaction=transaction)
+        if not order_doc.exists:
+            return False
+
         order_data = order_doc.to_dict()
 
-        # IDEMPOTENCY FIX: Only restore stock once per order
+        # IDEMPOTENCY FIX: Only restore stock once per order (atomic via transaction)
         if not order_data.get(Fields.STOCK_RESTORED, False):
-            _restore_stock_for_order(order_data)
+            global _firestore
+            if _firestore is None:
+                from firebase_admin import firestore as fs
+                _firestore = fs
+            for item in order_data.get(Fields.ITEMS, []):
+                product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
+                transaction.update(product_ref, {Fields.STOCK_QUANTITY: _firestore.Increment(item[Fields.QUANTITY])})
 
-        order_ref.update(
+        transaction.update(
+            order_ref,
             {
                 Fields.ORDER_STATUS: OrderStatusValues.EXPIRED,
                 Fields.PAYMENT_STATUS: PaymentStatusValues.SESSION_EXPIRED,
                 Fields.STOCK_RESTORED: True,
                 Fields.UPDATED_AT: get_server_timestamp(),
-            }
+            },
         )
+        return True
+
+    _expire_in_transaction(get_db().transaction())
 
     return f"Order {order_id} expired"
 
@@ -1726,25 +1745,37 @@ def process_payment_intent_failed(payment_intent: dict) -> str | None:
         return None
 
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
-    order_doc = order_ref.get()
 
-    if not order_doc.exists:
-        return None
+    @get_transactional()
+    def _fail_in_transaction(transaction):
+        order_doc = order_ref.get(transaction=transaction)
+        if not order_doc.exists:
+            return False
 
-    order_data = order_doc.to_dict()
+        order_data = order_doc.to_dict()
 
-    # CRITICAL FIX: Restore stock on payment failure (was missing — caused phantom stock)
-    if not order_data.get(Fields.STOCK_RESTORED, False):
-        _restore_stock_for_order(order_data)
+        # CRITICAL FIX: Restore stock on payment failure (atomic via transaction)
+        if not order_data.get(Fields.STOCK_RESTORED, False):
+            global _firestore
+            if _firestore is None:
+                from firebase_admin import firestore as fs
+                _firestore = fs
+            for item in order_data.get(Fields.ITEMS, []):
+                product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
+                transaction.update(product_ref, {Fields.STOCK_QUANTITY: _firestore.Increment(item[Fields.QUANTITY])})
 
-    order_ref.update(
-        {
-            Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
-            Fields.PAYMENT_STATUS: PaymentStatusValues.PAYMENT_FAILED,
-            Fields.STOCK_RESTORED: True,
-            Fields.UPDATED_AT: get_server_timestamp(),
-        }
-    )
+        transaction.update(
+            order_ref,
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.PAYMENT_FAILED,
+                Fields.STOCK_RESTORED: True,
+                Fields.UPDATED_AT: get_server_timestamp(),
+            },
+        )
+        return True
+
+    _fail_in_transaction(get_db().transaction())
 
     return f"Payment failed for order {order_id}"
 
@@ -1761,32 +1792,47 @@ def process_payment_intent_canceled(payment_intent: dict) -> str | None:
         return None
 
     order_ref = get_db().collection(Collections.ORDERS).document(order_id)
-    order_doc = order_ref.get()
 
-    if not order_doc.exists:
-        return None
+    @get_transactional()
+    def _cancel_in_transaction(transaction):
+        order_doc = order_ref.get(transaction=transaction)
+        if not order_doc.exists:
+            return None
 
-    order_data = order_doc.to_dict()
+        order_data = order_doc.to_dict()
 
-    # Skip if already in terminal state
-    current_status = order_data.get(Fields.ORDER_STATUS)
-    terminal_states = {OrderStatusValues.CANCELLED, OrderStatusValues.REFUNDED, OrderStatusValues.EXPIRED}
-    if current_status in terminal_states:
-        return f"Order {order_id} already in terminal state: {current_status} (idempotent)"
+        # Skip if already in terminal state
+        current_status = order_data.get(Fields.ORDER_STATUS)
+        terminal_states = {OrderStatusValues.CANCELLED, OrderStatusValues.REFUNDED, OrderStatusValues.EXPIRED}
+        if current_status in terminal_states:
+            return f"already_terminal:{current_status}"
 
-    # Restore stock idempotently
-    if not order_data.get(Fields.STOCK_RESTORED, False):
-        _restore_stock_for_order(order_data)
+        # Restore stock idempotently (atomic via transaction)
+        if not order_data.get(Fields.STOCK_RESTORED, False):
+            global _firestore
+            if _firestore is None:
+                from firebase_admin import firestore as fs
+                _firestore = fs
+            for item in order_data.get(Fields.ITEMS, []):
+                product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
+                transaction.update(product_ref, {Fields.STOCK_QUANTITY: _firestore.Increment(item[Fields.QUANTITY])})
 
-    order_ref.update(
-        {
-            Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
-            Fields.PAYMENT_STATUS: PaymentStatusValues.CANCELLED,
-            Fields.STOCK_RESTORED: True,
-            Fields.CANCELLED_AT: get_server_timestamp(),
-            Fields.UPDATED_AT: get_server_timestamp(),
-        }
-    )
+        transaction.update(
+            order_ref,
+            {
+                Fields.ORDER_STATUS: OrderStatusValues.CANCELLED,
+                Fields.PAYMENT_STATUS: PaymentStatusValues.CANCELLED,
+                Fields.STOCK_RESTORED: True,
+                Fields.CANCELLED_AT: get_server_timestamp(),
+                Fields.UPDATED_AT: get_server_timestamp(),
+            },
+        )
+        return "cancelled"
+
+    result = _cancel_in_transaction(get_db().transaction())
+    if result and result.startswith("already_terminal:"):
+        status = result.split(":")[1]
+        return f"Order {order_id} already in terminal state: {status} (idempotent)"
 
     return f"Payment canceled for order {order_id}"
 
@@ -2313,7 +2359,7 @@ def process_dispute_funds_reinstated(dispute: dict) -> str | None:
     get_db().collection(Collections.SECURITY_ALERTS).add(
         {
             Fields.TYPE: SecurityAlertTypes.DISPUTE_CREATED,
-            Fields.SEVERITY: SeverityLevels.INFO if amount_reinstated > 0 else SeverityLevels.HIGH,
+            Fields.SEVERITY: SeverityLevels.LOW if amount_reinstated > 0 else SeverityLevels.HIGH,
             Fields.CHARGE_ID: charge_id,
             Fields.PAYMENT_INTENT_ID: payment_intent_id,
             Fields.AMOUNT: amount_reinstated,
@@ -2892,10 +2938,10 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
             if len(existing_payouts) == 0:
                 items = order_data.get(Fields.ITEMS, [])
-                stored_fee_total = order_data.get(Fields.PLATFORM_FEE_CENTS)
-                total_cents = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 1)
+                stored_fee_total = order_data.get(Fields.PLATFORM_FEE_TOTAL_CENTS)
+                subtotal_cents = order_data.get(Fields.SUBTOTAL_CENTS, 1)
                 fee_rate = (
-                    (stored_fee_total / total_cents) if stored_fee_total and total_cents else PLATFORM_FEE_PERCENT
+                    (stored_fee_total / subtotal_cents) if stored_fee_total and subtotal_cents else PLATFORM_FEE_PERCENT
                 )
 
                 sellers_total = {}
@@ -3118,9 +3164,9 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
 
         # AUDIT FIX (CRITICAL-001): Use fee rate stored at checkout, not current config.
         # Prevents config manipulation between checkout and capture.
-        stored_fee_total = order_data.get(Fields.PLATFORM_FEE_CENTS)
+        stored_fee_total = order_data.get(Fields.PLATFORM_FEE_TOTAL_CENTS)
         stored_fee_rate = (
-            (stored_fee_total / order_data.get(Fields.TOTAL_AMOUNT_CENTS, 1))
+            (stored_fee_total / order_data.get(Fields.SUBTOTAL_CENTS, 1))
             if stored_fee_total
             else PLATFORM_FEE_PERCENT
         )

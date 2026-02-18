@@ -2,13 +2,14 @@
  * OrignaGTA — Payment Edge Cases E2E Tests
  * ==========================================
  * Tests declined cards, 3DS, and edge cases against dev Firebase + real Stripe test mode.
+ * Each test discovers its own product to avoid stock exhaustion.
  */
 import { test, expect } from '@playwright/test';
 import {
   signIn, callOk,
   buildCheckoutPayload, readDoc, parseDoc,
   fillStripeCheckout, dismissStripeModals,
-  getTestProduct,
+  getTestProduct, invalidateProductCache,
   TEST_ACCOUNTS, STRIPE_CARD,
 } from './api-helpers';
 
@@ -20,17 +21,16 @@ const THREE_DS_CARD = { ...STRIPE_CARD, number: '4000002500003155' };
 test.describe('Payment Edge Cases', () => {
   test.setTimeout(120_000);
 
-  let productId: string;
   let buyerAuth: Awaited<ReturnType<typeof signIn>>;
 
   test.beforeAll(async () => {
     buyerAuth = await signIn(BUYER_EMAIL);
-    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
-    productId = product.id;
   });
 
   test('Declined card shows error on Stripe page', async ({ page }) => {
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
+    invalidateProductCache();
+    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
 
     await page.goto(result.checkoutUrl);
@@ -75,7 +75,9 @@ test.describe('Payment Edge Cases', () => {
   });
 
   test('3D Secure card triggers authentication challenge', async ({ page }) => {
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
+    invalidateProductCache();
+    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
 
     await page.goto(result.checkoutUrl);
@@ -134,7 +136,9 @@ test.describe('Payment Edge Cases', () => {
   });
 
   test('Currency is always CAD for Canadian buyers', async () => {
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
+    invalidateProductCache();
+    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
     const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
 
     const doc = await readDoc(`orders/${result.orderId}`, buyerAuth.idToken);

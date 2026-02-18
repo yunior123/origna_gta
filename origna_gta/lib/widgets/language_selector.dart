@@ -1,5 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 
 /// Language selector widget for Quebec Bill 96 compliance.
@@ -20,9 +23,9 @@ class LanguageSelector extends StatelessWidget {
   }
 }
 
-class _CompactLanguageButton extends StatelessWidget {
+class _CompactLanguageButton extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final currentLocale = context.locale;
     final isEn = currentLocale.languageCode == 'en';
 
@@ -33,9 +36,9 @@ class _CompactLanguageButton extends StatelessWidget {
         message: 'language.select_language'.tr(),
         child: IconButton(
           onPressed: () {
-            // Toggle between EN and FR
             final newLocale = isEn ? const Locale('fr') : const Locale('en');
             context.setLocale(newLocale);
+            _persistLang(ref, newLocale.languageCode);
           },
           icon: Text(
             isEn ? 'FR' : 'EN',
@@ -52,9 +55,9 @@ class _CompactLanguageButton extends StatelessWidget {
   }
 }
 
-class _LanguageDropdown extends StatelessWidget {
+class _LanguageDropdown extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final currentLocale = context.locale;
 
     return Semantics(
@@ -76,9 +79,19 @@ class _LanguageDropdown extends StatelessWidget {
         onChanged: (locale) {
           if (locale != null) {
             context.setLocale(locale);
+            _persistLang(ref, locale.languageCode);
           }
         },
       ),
     );
   }
+}
+
+void _persistLang(WidgetRef ref, String langCode) {
+  final userId = ref.read(userIdProvider);
+  if (userId == null) return;
+  final lang = langCode == LanguageValues.french ? LanguageValues.french : LanguageValues.english;
+  ref.read(userRepositoryProvider).updatePreferredLanguage(userId, lang).catchError((_) {
+    // Fire-and-forget — UI locale is already set; Firestore failure is non-critical
+  });
 }

@@ -1,3 +1,5 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,6 +11,12 @@ import 'package:origna_gta/utils/utils.dart';
 
 // Hardened email validation matching login_screen.dart
 final _emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+
+/// Returns the device's preferred language if it's one we support (en/fr), else 'en'.
+String _deviceLanguage() {
+  final code = PlatformDispatcher.instance.locale.languageCode;
+  return code == LanguageValues.french ? LanguageValues.french : LanguageValues.english;
+}
 
 abstract class AuthRepository {
   Future<void> deleteAccount();
@@ -407,7 +415,7 @@ class FirebaseAuthRepository implements AuthRepository {
         Fields.marketingOptIn: false, // CASL requires explicit opt-in, default false
         Fields.privacyPolicyVersion: PolicyVersionValues.defaultVersion,
         Fields.termsVersion: PolicyVersionValues.defaultVersion,
-        Fields.preferredLanguage: LanguageValues.english, // Bill 96 — track user language preference
+        Fields.preferredLanguage: _deviceLanguage(), // Bill 96 — detect device locale at signup
       });
     } else {
       final data = docSnapshot.data();

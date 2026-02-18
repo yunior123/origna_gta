@@ -29,10 +29,8 @@ test.describe('PW IT Replica — Seller Flow', () => {
         await waitForFlutter(page);
         await checkSemantics(page);
 
-        // C01: Login as seller
+        // C01: Login as seller (returns on home page)
         await ensureLoggedInAsAdmin(page, TARGET_URL, SELLER_EMAIL, SELLER_PASSWORD);
-        await page.goto(`${TARGET_URL}/`);
-        await waitForFlutter(page);
 
         const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
         await expect(settingsBtn).toBeAttached();

@@ -5,6 +5,7 @@ import {
     checkSemantics,
     ensureLoggedInAsAdmin,
     performSignOut,
+    navigateHome,
     BTN_SETTINGS,
     BTN_CART,
 } from './flutter-helpers';
@@ -29,12 +30,8 @@ test.describe('PW IT Replica — Smoke Home + Profile (admin)', () => {
         await waitForFlutter(page);
         await checkSemantics(page);
 
-        // Establish admin session
+        // Establish admin session (returns on home page)
         await ensureLoggedInAsAdmin(page, TARGET_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
-
-        // Back to home
-        await page.goto(`${TARGET_URL}/`);
-        await waitForFlutter(page);
 
         // C004: settings button visible after login
         const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();

@@ -819,6 +819,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     """
     product_id = event.params[Fields.PRODUCT_ID]
     product_data = event.data.after.to_dict()
+    before_data = event.data.before.to_dict() if event.data.before else {}
 
     if not product_data:
         logger.info(f"No data for product {product_id}")
@@ -832,6 +833,32 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         except Exception as e:
             logger.error(f"Failed to delete from Algolia: {str(e)}")
         return
+
+    # ── SKIP RE-VALIDATION FOR NON-SECURITY-RELEVANT UPDATES ──
+    # When create_checkout_session or stock-restore updates stockQuantity, or when only
+    # metadata fields change, we must NOT re-validate address/geocoding — this would
+    # deactivate products that were already validated at creation time.
+    _SKIP_VALIDATION_FIELDS = {
+        Fields.STOCK_QUANTITY, Fields.UPDATED_AT, Fields.STOCK_RESTORED,
+        Fields.IS_ACTIVE, Fields.DEACTIVATION_REASON,
+    }
+    _address_changed = False
+    if before_data:
+        changed_fields = {
+            key for key in set(list(product_data.keys()) + list(before_data.keys()))
+            if product_data.get(key) != before_data.get(key)
+        }
+        if changed_fields and changed_fields.issubset(_SKIP_VALIDATION_FIELDS):
+            # Non-security-relevant update — just re-index and return
+            if product_data.get(Fields.IS_ACTIVE, True):
+                try:
+                    product_data["id"] = product_id
+                    index_product(product_id, product_data)
+                except Exception as e:
+                    logger.error(f"Failed to index product {product_id} after metadata update: {str(e)}")
+            return
+        # Track whether address changed — skip geocoding if it didn't
+        _address_changed = before_data.get(Fields.SELLER_ADDRESS) != product_data.get(Fields.SELLER_ADDRESS)
 
     # ── SERVER-SIDE VALIDATION on update (same as on_product_created) ──
     from utils.helpers import sanitized_text
@@ -886,38 +913,42 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         )
         return
 
-    # SECURITY: Validate address coordinates on updates too
-    seller_lat = seller_address.get(Fields.LATITUDE)
-    seller_lon = seller_address.get(Fields.LONGITUDE)
-    seller_street = seller_address.get(Fields.STREET, "")
-    seller_city = seller_address.get(Fields.CITY, "")
-    seller_postal = seller_address.get(Fields.POSTAL_CODE, "")
-    is_digital = product_data.get(Fields.IS_DIGITAL, False)
+    # SECURITY: Validate address coordinates on updates — only if address actually changed
+    # Skip geocoding re-validation if the sellerAddress is unchanged from the previous version.
+    # Products are fully validated at creation time; re-validating on every stock/metadata update
+    # is wasteful and can deactivate products due to transient geocoding API failures.
+    if _address_changed:
+        seller_lat = seller_address.get(Fields.LATITUDE)
+        seller_lon = seller_address.get(Fields.LONGITUDE)
+        seller_street = seller_address.get(Fields.STREET, "")
+        seller_city = seller_address.get(Fields.CITY, "")
+        seller_postal = seller_address.get(Fields.POSTAL_CODE, "")
+        is_digital = product_data.get(Fields.IS_DIGITAL, False)
 
-    if not is_digital:
-        if seller_lat is None or seller_lon is None:
-            logger.info(f"SECURITY: Product {product_id} updated with missing coordinates — REJECTING")
-            get_db().collection(Collections.PRODUCTS).document(product_id).update(
-                {
-                    Fields.IS_ACTIVE: False,
-                    Fields.DEACTIVATION_REASON: "Address not verified via Geoapify (missing coordinates)",
-                }
+        if not is_digital:
+            if seller_lat is None or seller_lon is None:
+                logger.info(f"SECURITY: Product {product_id} updated with missing coordinates — REJECTING")
+                get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                    {
+                        Fields.IS_ACTIVE: False,
+                        Fields.DEACTIVATION_REASON: "Address not verified via Geoapify (missing coordinates)",
+                    }
+                )
+                return
+
+            is_valid, error_reason = _verify_address_with_geoapify(
+                product_id, seller_lat, seller_lon,
+                seller_street, seller_city, seller_postal, country,
             )
-            return
-        
-        is_valid, error_reason = _verify_address_with_geoapify(
-            product_id, seller_lat, seller_lon,
-            seller_street, seller_city, seller_postal, country,
-        )
-        if not is_valid:
-            logger.info(f"SECURITY: Product {product_id} updated with invalid address: {error_reason} — REJECTING")
-            get_db().collection(Collections.PRODUCTS).document(product_id).update(
-                {
-                    Fields.IS_ACTIVE: False,
-                    Fields.DEACTIVATION_REASON: f"Address verification failed: {error_reason}",
-                }
-            )
-            return
+            if not is_valid:
+                logger.info(f"SECURITY: Product {product_id} updated with invalid address: {error_reason} — REJECTING")
+                get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                    {
+                        Fields.IS_ACTIVE: False,
+                        Fields.DEACTIVATION_REASON: f"Address verification failed: {error_reason}",
+                    }
+                )
+                return
 
     # Sanitize text fields to prevent stored XSS
     xss_patches = {}

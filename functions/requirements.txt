@@ -10,7 +10,10 @@ click==8.1.8
 cloudevents==1.9.0
 cryptography==46.0.3
 firebase_admin==7.1.0
-firebase-functions==0.4.0
+firebase-functions==0.4.3
+# NOTE: 0.4.x has a bug in firestore_fn.py where event_attributes["authtype"]
+# crashes with KeyError when triggers are invoked by service accounts.
+# We monkey-patch this in main.py until upstream fixes it.
 Flask==3.1.2
 flask-cors==6.0.2
 functions-framework==3.9.2
@@ -21,7 +24,7 @@ google-cloud-firestore==2.23.0
 google-cloud-secret-manager==2.24.0
 google-cloud-storage==3.8.0
 google-crc32c==1.8.0
-google-events==0.14.0
+google-events==0.5.0
 google-resumable-media==2.8.0
 googleapis-common-protos==1.66.0
 grpcio==1.71.2

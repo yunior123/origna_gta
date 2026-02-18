@@ -354,3 +354,97 @@ Set at: GitHub repo → Settings → Secrets and variables → Actions
 - Activates functions/venv automatically
 - Groups: deploy, db, secrets, tests, users, orders, payments, products, webhooks
 - All prod destructive actions require typing 'yes' to confirm
+
+---
+
+## Environment & Build System (Feb 2026 — Session 5)
+
+### 4-Environment Build Mode Map
+
+| Env | Flutter mode | `--dart-define` | Firebase project | Playwright config | Semantics |
+|-----|-------------|-----------------|------------------|-------------------|-----------|
+| emulator | debug | `ENVIRONMENT=emulator USE_EMULATORS=true` | local emulators | playwright.config.ts (localhost:5005) | ✅ always on |
+| dev | debug | `ENVIRONMENT=dev` | `orignagta-dev` | playwright.config.dev.ts (localhost:5005) | ✅ always on |
+| staging | profile | `ENVIRONMENT=staging FORCE_SEMANTICS=true` | `orignagta-staging` | playwright.config.staging.ts (orignagta-staging.web.app) | ✅ via FORCE_SEMANTICS |
+| prod | release | `ENVIRONMENT=production` | `orignagta` | ❌ no Playwright | ❌ stripped |
+
+### Why FORCE_SEMANTICS is needed for staging
+Flutter `--profile` mode normally strips the semantics tree (performance optimization). Without semantics, Playwright cannot find any buttons/inputs (only sees `<canvas>`). Solution: compile with `--dart-define=FORCE_SEMANTICS=true` and guard in `main.dart`:
+```dart
+// origna_gta/lib/main.dart
+if (kIsWeb && (kDebugMode || const bool.fromEnvironment('FORCE_SEMANTICS'))) {
+  _semanticsHandle = SemanticsBinding.instance.ensureSemantics();
+}
+```
+Release mode NEVER enables semantics (performance + security).
+
+### Build Scripts
+```bash
+# All scripts accept: web | apk | ios | appbundle
+./scripts/build/build_dev.sh web        # --debug  --dart-define=ENVIRONMENT=dev
+./scripts/build/build_staging.sh apk   # --profile --dart-define=ENVIRONMENT=staging FORCE_SEMANTICS=true
+./scripts/build/build_prod.sh appbundle # --release --dart-define=ENVIRONMENT=production
+```
+
+### Playwright Config Selection
+```bash
+# Emulator (default e2e/playwright.config.ts)
+cd e2e && npx playwright test --config=playwright.config.ts
+
+# Dev (same app URL, explicit config)
+cd e2e && npx playwright test --config=playwright.config.dev.ts
+
+# Staging (cloud URL)
+cd e2e && npx playwright test --config=playwright.config.staging.ts
+
+# Prod: NEVER run Playwright against prod
+```
+
+### Firebase Project IDs
+| Env | Project ID | Alias in .firebaserc |
+|-----|------------|----------------------|
+| dev | `orignagta-dev` | `dev` |
+| staging | `orignagta-staging` | `staging` |
+| prod | `orignagta` | `prod` |
+
+Every `firebase deploy` MUST pass `--project orignagta-dev|orignagta-staging|orignagta` explicitly.
+
+### Algolia Index Names
+| Env | Index name |
+|-----|-----------|
+| emulator | `products_emulator` |
+| dev | `products_dev` |
+| staging | `products_staging` |
+| prod | `products` |
+
+### R2 / Cloudflare Folder Prefixes
+| Env | Folder prefix |
+|-----|--------------|
+| emulator | `emulator/` |
+| dev | `dev/` |
+| staging | `staging/` |
+| prod | (base/root) |
+
+### CI Workflows (GitHub Actions)
+| File | Trigger | What it does |
+|------|---------|--------------|
+| `.github/workflows/ci-backend.yml` | push/PR to main or develop | pytest backend tests (Python 3.11) |
+| `.github/workflows/ci-flutter-web.yml` | push/PR to main or develop | Flutter web debug build + Playwright E2E vs dev |
+| `.github/workflows/ci-mobile.yml` | PR to main only | Android APK + Firebase Test Lab instrumentation; iOS no-codesign + Robo crawl |
+
+Firebase Test Lab free tier: 5 virtual tests/day. CI uses 2 (Pixel 6 API33 + iPhone14 iOS16.6).
+
+### Admin CLI Quick Reference
+```bash
+./admin deploy all --env=dev
+./admin deploy functions --env=staging --only=on_order_status_changed
+./admin tests backend --env=dev
+./admin tests e2e --env=staging         # uses playwright.config.staging.ts automatically
+./admin users ban <uid> --env=prod      # prompts confirmation
+./admin orders refund <order_id> --env=prod --amount=5000
+./admin payments trigger-payouts --env=prod --dry-run
+./admin products approve <product_id> --env=prod
+./admin db seed --env=dev               # blocked in prod
+./admin secrets upload --env=prod
+./admin webhooks verify --env=prod
+```

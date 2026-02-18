@@ -30,10 +30,8 @@ test.describe('PW IT Replica — Add Product Flow', () => {
         await waitForFlutter(page);
         await checkSemantics(page);
 
-        // P00: Login as seller/admin
+        // P00: Login as seller/admin (returns on home page)
         await ensureLoggedInAsAdmin(page, TARGET_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
-        await page.goto(`${TARGET_URL}/`);
-        await waitForFlutter(page);
 
         const suffix = uniqueSuffix(testInfo);
         const p01Name = `T01 Standard Ship ${suffix}`;
@@ -133,8 +131,8 @@ test.describe('PW IT Replica — Add Product Flow', () => {
             expect(page.url()).toMatch(/\/add-product/i);
         }
 
-        // Return to home before sign-out
-        await page.goto(`${TARGET_URL}/`);
+        // Return to home before sign-out (use goBack, not page.goto which kills auth)
+        await page.goBack();
         await waitForFlutter(page);
 
         // C080/C099: Sign-out

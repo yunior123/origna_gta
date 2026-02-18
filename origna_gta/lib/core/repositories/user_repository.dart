@@ -47,6 +47,11 @@ class FirebaseUserRepository implements UserRepository {
   Future<void> updateAddress(String userId, Address address) async {
     await _firestore.collection(Collections.users).doc(userId).update({Fields.address: address.toMap()});
   }
+
+  @override
+  Future<void> updatePreferredLanguage(String userId, String lang) async {
+    await _firestore.collection(Collections.users).doc(userId).update({Fields.preferredLanguage: lang});
+  }
 }
 
 class SellerAccountStatus {
@@ -110,4 +115,5 @@ abstract class UserRepository {
   Stream<SellerAccountStatus> watchSellerAccountStatus(String userId);
   Future<UserModel?> getUserProfile(String userId);
   Future<void> updateAddress(String userId, Address address);
+  Future<void> updatePreferredLanguage(String userId, String lang);
 }

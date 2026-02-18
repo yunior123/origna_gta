@@ -137,7 +137,8 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     if (!isLoggedOut) {
         // Already logged in — might be on /profile or still at home
         console.log(`   ✅ Already logged in. Skipping login.`);
-        await page.goto(`${targetUrl}/`);
+        // Use in-app back navigation (NOT page.goto — kills auth in Playwright)
+        await page.goBack();
         await waitForFlutter(page, 30000);
         return;
     }
@@ -151,54 +152,86 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     //   1. Disabled one with the label ("Adresse courriel" / "Email Address")
     //   2. Enabled one with placeholder text ("you@example.com" / "••••••••")
     // We fill the ENABLED ones using their placeholder names.
+    // IMPORTANT: Flutter Web text inputs need careful handling.
+    // 1. fill() may not trigger Flutter's form state updates.
+    // 2. pressSequentially() can lose the first character if focus isn't settled.
+    // Solution: click → wait for focus → clear → type key-by-key.
     const emailInput = page.getByRole('textbox', { name: 'you@example.com' });
     await expect(emailInput).toBeVisible({ timeout: 30000 });
     await emailInput.click();
-    await emailInput.fill(email);
+    await page.waitForTimeout(800); // Wait for Flutter focus to settle
+    await page.keyboard.type(email, { delay: 30 });
+    await page.waitForTimeout(300);
 
     const passInput = page.getByRole('textbox', { name: '••••••••' });
     await passInput.click();
-    await passInput.fill(pass);
+    await page.waitForTimeout(800); // Wait for Flutter focus to settle
+    await page.keyboard.type(pass, { delay: 30 });
+    await page.waitForTimeout(300);
 
     // Submit via the semantic-labeled button (language-independent)
     const submitBtn = page.locator('[aria-label^="login_submit_button"]').first();
     await submitBtn.click();
 
-    // Flutter Web quirk: after successful login, the app rebuilds to show
-    // the home screen but the URL may stay at /login. Instead of waiting
-    // for URL change, wait for the login form to disappear (meaning auth
-    // state changed and Flutter rebuilt), then force-navigate to home.
-    await Promise.race([
-        // Option A: URL changes away from /login (ideal)
-        expect(page).not.toHaveURL(/\/login/i, { timeout: 15000 }).catch(() => {}),
-        // Option B: login form disappears (auth succeeded, URL lagging)
-        expect(emailInput).not.toBeVisible({ timeout: 15000 }).catch(() => {}),
-    ]);
+    // After login, Flutter rebuilds and shows the home screen in-place.
+    // The URL may stay at /login but the content changes.
+    // IMPORTANT: Do NOT use page.goto() — Firebase Auth indexedDB
+    // persistence does not survive full page reloads in Playwright's
+    // isolated browser contexts. Use in-app navigation only.
 
-    // Give Flutter a moment to settle auth state
-    await page.waitForTimeout(2000);
+    // Wait for the login form to disappear (auth succeeded, app rebuilt)
+    await expect(emailInput).not.toBeVisible({ timeout: 20000 });
 
-    // Force navigate to home to fix any stale URL
-    await page.goto(`${targetUrl}/`);
-    await waitForFlutter(page, 30000);
+    // Wait for the home screen to render with auth-dependent elements
+    await page.waitForTimeout(3000);
 
-    // Verify login actually succeeded: Settings click should NOT show sign-in dialog
+    // Verify login: Settings button should be visible (home screen loaded)
     const verifySettingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
     await expect(verifySettingsBtn).toBeAttached({ timeout: 15000 });
-    await verifySettingsBtn.click();
 
-    // If we see the sign-in dialog, login failed
+    // Extra check: clicking Settings should navigate to /profile (not show dialog)
+    await verifySettingsBtn.click();
     const signInCheck = page.getByRole('button', { name: BTN_SIGN_IN }).first();
     const stillLoggedOut = await signInCheck.isVisible({ timeout: 5000 }).catch(() => false);
     if (stillLoggedOut) {
         throw new Error(`Login failed for ${email} — sign-in dialog still showing after submit`);
     }
 
-    // We're on /profile now (logged in) — go back to home
-    await page.goto(`${targetUrl}/`);
+    // Navigate back to home via in-app back navigation (NOT page.goto)
+    await page.goBack();
     await waitForFlutter(page, 30000);
 
     console.log(`   ✅ Login successful for ${email}`);
+}
+
+// ─── NAVIGATE HOME (auth-safe, no full page reload) ────────────────
+
+/**
+ * Navigate to the home screen without page.goto() — which would kill
+ * Firebase Auth state in Playwright's isolated browser contexts.
+ * Uses the app heading / logo click or browser back navigation.
+ */
+export async function navigateHome(page: Page, targetUrl: string): Promise<void> {
+    const url = page.url();
+    // Already at home
+    if (url === `${targetUrl}/` || url === targetUrl || url.endsWith(':5005/') || url.endsWith(':5005')) {
+        return;
+    }
+    // Try clicking the app heading/logo to navigate home
+    const heading = page.getByRole('heading', { name: /origna/i }).first();
+    const hasHeading = await heading.isVisible({ timeout: 3000 }).catch(() => false);
+    if (hasHeading) {
+        await heading.click();
+        await waitForFlutter(page, 15000);
+        return;
+    }
+    // Fallback: use browser back until we reach home
+    for (let i = 0; i < 5; i++) {
+        await page.goBack();
+        await page.waitForTimeout(1000);
+        if (page.url() === `${targetUrl}/` || page.url() === targetUrl) break;
+    }
+    await waitForFlutter(page, 15000);
 }
 
 // ─── SIGN OUT HELPER ─────────────────────────────────────────────────
@@ -213,15 +246,20 @@ export async function performSignOut(page: Page, targetUrl: string): Promise<voi
     await expect(signOut).toBeAttached({ timeout: 15000 });
     await signOut.scrollIntoViewIfNeeded().catch(() => { });
     await signOut.click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
 
-    // Confirm sign-out: navigating to settings should show login dialog
-    await page.goto(`${targetUrl}/`);
-    await waitForFlutter(page, 30000);
-    await settingsBtn.click();
+    // After sign-out, the app rebuilds to home (logged out).
+    // Verify by clicking Settings — should show login dialog.
+    const homeSettingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
+    await expect(homeSettingsBtn).toBeAttached({ timeout: 15000 });
+    await homeSettingsBtn.click();
     await expect(
         page.getByRole('button', { name: BTN_SIGN_IN }).first()
     ).toBeVisible({ timeout: 20000 });
+    // Dismiss the dialog
+    const cancelBtn = page.getByRole('button', { name: /cancel|annuler/i }).first();
+    await cancelBtn.click().catch(() => {});
+    await page.waitForTimeout(500);
     console.log('   ✅ Sign-out confirmed');
 }
 

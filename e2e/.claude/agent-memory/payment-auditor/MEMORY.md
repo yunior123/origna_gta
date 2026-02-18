@@ -37,3 +37,9 @@
 - 4000000000000002 = decline
 - 4000000000009995 = insufficient funds
 - 4000002500003155 = 3DS required
+
+### Audit Findings (2026-02-18)
+- cron_jobs.py line 280: reads `Fields.PLATFORM_FEE_CENTS` (payout field) instead of `Fields.PLATFORM_FEE_TOTAL_CENTS` (order field). Always returns None -> falls back to config.
+- payment_stripe.py line 2330: `SeverityLevels.INFO` does not exist (only LOW/MEDIUM/HIGH/CRITICAL). Runtime AttributeError.
+- process_payment_intent_failed (line 1751): stock restore is NOT inside a Firestore transaction -- race condition with duplicate webhooks.
+- Dart schema_constants.dart has `disputeStatus` (line 304) and `platformFeeTotalCents` (line 194) -- both match Python.

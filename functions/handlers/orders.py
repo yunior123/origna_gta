@@ -28,6 +28,7 @@ from schema_constants import (
     UserRoleValues,
 )
 from services.email_service import (
+    _t as _email_t,
     get_order_cancelled_email,
     get_order_delivered_email,
     get_order_in_transit_email,
@@ -1444,12 +1445,15 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
         logger.warning(f"⚠️ No email found for user {user_id}, skipping notification for order {order_id}")
         return
 
+    lang = after_data.get(Fields.PREFERRED_LANGUAGE, "en")
+    oid_short = order_id[:8]
+
     try:
         if new_status == OrderStatusValues.PROCESSING:
-            processing_html = get_order_processing_email(after_data, order_id)
+            processing_html = get_order_processing_email(after_data, order_id, lang=lang)
             send_email(
                 to_email=buyer_email,
-                subject=f"Order #{order_id[:8]} Is Being Processed - Origna",
+                subject=_email_t("sub.processing", lang).replace("{oid}", oid_short),
                 html_content=processing_html,
             )
 
@@ -1458,10 +1462,10 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
             carrier = after_data.get(Fields.CARRIER, "N/A")
 
             # Email buyer — branded template with receipt
-            shipped_html = get_order_shipped_email(after_data, order_id, tracking_number, carrier)
+            shipped_html = get_order_shipped_email(after_data, order_id, tracking_number, carrier, lang=lang)
             send_email(
                 to_email=buyer_email,
-                subject=f"Your Order #{order_id[:8]} Has Shipped - Origna",
+                subject=_email_t("sub.shipped", lang).replace("{oid}", oid_short),
                 html_content=shipped_html,
             )
 
@@ -1471,13 +1475,15 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                 try:
                     seller_doc = get_db().collection(Collections.USERS).document(sid).get()
                     if seller_doc.exists:
-                        seller_email = seller_doc.to_dict().get(Fields.EMAIL)
+                        seller_data = seller_doc.to_dict()
+                        seller_email = seller_data.get(Fields.EMAIL)
                         if seller_email:
+                            seller_lang = seller_data.get(Fields.PREFERRED_LANGUAGE, "en")
                             # Use seller notification with seller_id filter (multi-seller privacy)
-                            seller_shipped_html = get_seller_notification_email(after_data, order_id, sid)
+                            seller_shipped_html = get_seller_notification_email(after_data, order_id, sid, lang=seller_lang)
                             send_email(
                                 to_email=seller_email,
-                                subject=f"Order {order_id[:8]} Shipped Successfully - Origna",
+                                subject=_email_t("sub.shipped_seller", seller_lang).replace("{oid}", oid_short),
                                 html_content=seller_shipped_html,
                             )
                 except Exception as e:
@@ -1485,44 +1491,46 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
 
         elif new_status == OrderStatusValues.IN_TRANSIT:
             # Email buyer — in transit update with tracking info
-            in_transit_html = get_order_in_transit_email(after_data, order_id)
+            in_transit_html = get_order_in_transit_email(after_data, order_id, lang=lang)
             send_email(
                 to_email=buyer_email,
-                subject=f"Order #{order_id[:8]} Is In Transit - Origna",
+                subject=_email_t("sub.in_transit", lang).replace("{oid}", oid_short),
                 html_content=in_transit_html,
             )
 
         elif new_status == OrderStatusValues.DELIVERED:
             # Email buyer — branded template with receipt + confirm receipt CTA
-            delivered_html = get_order_delivered_email(after_data, order_id)
+            delivered_html = get_order_delivered_email(after_data, order_id, lang=lang)
             send_email(
                 to_email=buyer_email,
-                subject=f"Order #{order_id[:8]} Delivered - Please Confirm Receipt",
+                subject=_email_t("sub.delivered", lang).replace("{oid}", oid_short),
                 html_content=delivered_html,
             )
 
         elif new_status == OrderStatusValues.CANCELLED:
             reason = after_data.get(Fields.CANCELLATION_REASON, "Unknown")
-            cancelled_html = get_order_cancelled_email(after_data, order_id, reason)
+            cancelled_html = get_order_cancelled_email(after_data, order_id, reason, lang=lang)
             send_email(
-                to_email=buyer_email, subject=f"Order #{order_id[:8]} Cancelled - Origna", html_content=cancelled_html
+                to_email=buyer_email,
+                subject=_email_t("sub.cancelled", lang).replace("{oid}", oid_short),
+                html_content=cancelled_html,
             )
 
         elif new_status == OrderStatusValues.REFUNDED:
             refund_amount = after_data.get(Fields.CUMULATIVE_REFUNDED_CENTS, 0)
-            refunded_html = get_order_refunded_email(after_data, order_id, refund_amount)
+            refunded_html = get_order_refunded_email(after_data, order_id, refund_amount, lang=lang)
             send_email(
                 to_email=buyer_email,
-                subject=f"Refund Processed for Order #{order_id[:8]} - Origna",
+                subject=_email_t("sub.refunded", lang).replace("{oid}", oid_short),
                 html_content=refunded_html,
             )
 
         elif new_status == OrderStatusValues.PARTIALLY_REFUNDED:
             refund_amount = after_data.get(Fields.PARTIAL_REFUND_AMOUNT_CENTS, 0)
-            partial_html = get_order_partially_refunded_email(after_data, order_id, refund_amount)
+            partial_html = get_order_partially_refunded_email(after_data, order_id, refund_amount, lang=lang)
             send_email(
                 to_email=buyer_email,
-                subject=f"Partial Refund for Order #{order_id[:8]} - Origna",
+                subject=_email_t("sub.partial", lang).replace("{oid}", oid_short),
                 html_content=partial_html,
             )
 
