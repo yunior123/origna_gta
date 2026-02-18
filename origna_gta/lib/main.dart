@@ -41,7 +41,8 @@ void main() {
       // Flutter Web renders to <canvas> — this generates a parallel <flt-semantics>
       // DOM tree with ARIA attributes that Playwright can target.
       // IMPORTANT: Store the handle — if it's GC'd, semantics gets disabled.
-      if (kIsWeb) {
+      // debug always on, profile only if FORCE_SEMANTICS=true, release never
+      if (kIsWeb && (kDebugMode || const bool.fromEnvironment('FORCE_SEMANTICS'))) {
         _semanticsHandle = SemanticsBinding.instance.ensureSemantics();
       }
 
