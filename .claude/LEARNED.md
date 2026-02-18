@@ -77,6 +77,26 @@
 - ModernButton: auto-wraps with `Semantics(button: true, label: widget.label)`
 - Login form: 2 textboxes (login) / 3 textboxes (signup) — detect with `getByRole('textbox').count()`
 
+### Smoke Test Pattern (Feb 2026)
+- **Prod/release can hide semantics** → if `<flt-semantics>` count is 0, UI tests using `getByRole/getByLabel` must skip or run against a **debug** web build.
+- **Debug web + DEV Firebase (no emulators)**:
+  - `flutter run -d chrome --web-port=5005 --dart-define=ENVIRONMENT=dev --dart-define=USE_EMULATORS=false`
+  - Playwright: prefer `getByRole('textbox', { name: /search|rechercher/i })` over strict `[aria-label="input-home-search"]` (technical labels can be missing).
+- **Path URL strategy** is enabled on web → prefer navigation to `/` (not `/#/`).
+- **Home Settings button behavior**: on Home, the Settings IconButton navigates to `AppRoutes.profile` (`/profile`) if the user is logged in; otherwise it opens `showLoginPrompt()` (AlertDialog with Cancel + Sign In). In Playwright smoke, assert `/profile` OR the presence of the Sign In/Cancel buttons.
+
+### Playwright Headless vs Headed (Feb 2026)
+- **Headless (default)**: fastest/CI-friendly, but you *won’t see* dialogs even if they open.
+  - Example: `E2E_TARGET_URL=http://localhost:5005 npx playwright test home-smoke-semantics.spec.ts --project=chromium`
+- **Headed (visual demo)**: use `--headed` (+ `--workers=1`) to watch the UI.
+  - Example: `E2E_TARGET_URL=http://localhost:5005 npx playwright test home-smoke-semantics.spec.ts --project=chromium --headed --workers=1`
+- **Force guest to guarantee login prompt dialogs** (Firebase Auth uses web persistence):
+  - `E2E_FORCE_GUEST=1` wipes cookies/storage (best-effort incl. IndexedDB) then reloads.
+  - Example: `E2E_FORCE_GUEST=1 E2E_TARGET_URL=http://localhost:5005 npx playwright test home-smoke-semantics.spec.ts --project=chromium --headed --workers=1`
+- **Verify app is using DEV Firebase (no emulators)**:
+  - Run app: `flutter run -d chrome --web-port=5005 --dart-define=ENVIRONMENT=dev --dart-define=USE_EMULATORS=false`
+  - Run test: `E2E_EXPECT_FIREBASE_PROJECT_ID=orignagta-dev ...`
+
 ### Semantic Labels Per Screen
 - **login**: `checkbox-accept-terms`, `btn-forgot-password`, `btn-toggle-auth-mode`
 - **home**: `input-home-search`, `btn-clear-search`, `btn-home-privacy-policy`

@@ -37,6 +37,6 @@ description: Distance-based and province-based shipping cost tables, surcharges,
 | Default dimensions | 10×10×10cm |
 
 ## Implementation Files
-- Backend: `functions/shipping_service.py`
+- Backend: `functions/services/shipping_service.py`
 - Frontend preview: `origna_gta/lib/features/checkout/checkout_provider.dart`
 - Tests: `functions/tests/test_shipping_service_estimates.py`, `functions/tests/test_shipping_security.py`

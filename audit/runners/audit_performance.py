@@ -20,12 +20,12 @@ PERFORMANCE_FILES = [
     "functions/handlers/cron_jobs.py",
     "functions/handlers/admin.py",
     # Backend infra
-    "functions/rate_limiter.py",
+    "functions/services/rate_limiter.py",
     "functions/config.py",
     "functions/main.py",
-    "functions/function_options.py",
-    "functions/algolia_service.py",
-    "functions/shipping_service.py",
+    "functions/utils/function_options.py",
+    "functions/services/algolia_service.py",
+    "functions/services/shipping_service.py",
     # Firestore indexes & rules
     "firestore.indexes.json",
     "firestore.rules",

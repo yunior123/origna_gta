@@ -25,7 +25,7 @@ description: >
 | Component | File | Use Case |
 |-----------|------|----------|
 | `ModernButton` | `widgets/modern_button.dart` | Primary/secondary CTAs |
-| `GlassButton` | `utils/glassmorphism_widgets.dart` | Premium overlaid CTAs |
+| `GlassButton` | `utils/glassmorphism.dart` | Premium overlaid CTAs |
 | `ScaleBounce` | `widgets/animations.dart` | Icon/small tap targets |
 
 #### ModernButton Variants
@@ -44,7 +44,7 @@ ModernButton(text: 'Cancel', onPressed: _cancel, isOutline: true)
 | Component | File | Use Case |
 |-----------|------|----------|
 | `ModernCard` | `widgets/modern_card.dart` | Content containers |
-| `GlassCard` | `utils/glassmorphism_widgets.dart` | Premium feature cards |
+| `GlassCard` | `utils/glassmorphism.dart` | Premium feature cards |
 | `ModernProductCard` | `widgets/modern_product_card.dart` | Product grid items |
 
 ### Text Fields
@@ -57,7 +57,7 @@ ModernButton(text: 'Cancel', onPressed: _cancel, isOutline: true)
 |-----------|------|----------|
 | `ModernAppBar` | `widgets/modern_navbar.dart` | Glassmorphic top bar |
 | `ModernBottomNavBar` | `widgets/modern_navbar.dart` | Bottom navigation |
-| `GlassAppBar` | `utils/glassmorphism_widgets.dart` | Immersive top bar |
+| `GlassAppBar` | `utils/glassmorphism.dart` | Immersive top bar |
 | `CustomAppBar` | `widgets/custom_appbar.dart` | Standard gradient bar |
 
 ### Layout

@@ -22,12 +22,12 @@ ERROR_HANDLING_FILES = [
     "functions/handlers/admin.py",
     "functions/handlers/cron_jobs.py",
     # Backend services (external API calls)
-    "functions/email_service.py",
-    "functions/shipping_service.py",
-    "functions/algolia_service.py",
-    "functions/rate_limiter.py",
+    "functions/services/email_service.py",
+    "functions/services/shipping_service.py",
+    "functions/services/algolia_service.py",
+    "functions/services/rate_limiter.py",
     "functions/config.py",
-    "functions/utils.py",
+    "functions/utils/helpers.py",
     # Backend models (validation)
     "functions/models/order.py",
     "functions/models/product.py",

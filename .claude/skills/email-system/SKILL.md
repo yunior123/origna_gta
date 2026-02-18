@@ -9,7 +9,7 @@ description: Email configuration, templates, and trigger points for Mailjet-base
 - **Sender:** support@orignaventures.ca
 - **Provider:** Mailjet (real API, real sends)
 - **Env var:** `FORCE_REAL_EMAIL=true` in `functions/.env` for real emails in emulator
-- **File:** `functions/email_service.py` (~733 lines)
+- **File:** `functions/services/email_service.py` (~733 lines)
 
 ## APP_BASE_URL
 ```python

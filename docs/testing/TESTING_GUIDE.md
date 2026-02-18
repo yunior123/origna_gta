@@ -15,13 +15,13 @@ This script hits the actual Production URLs (or Emulator if specified).
 **Test Production:**
 ```bash
 cd functions
-python3 run_api_tests.py
+python3 scripts/run_api_tests.py
 ```
 
 **Test Emulator:**
 ```bash
 cd functions
-python3 run_api_tests.py --emulator
+python3 scripts/run_api_tests.py --emulator
 ```
 
 ### Endpoints Covered
@@ -31,7 +31,7 @@ python3 run_api_tests.py --emulator
 4. **Get R2 Presigned URL**: Verifies validation logic.
 
 ### Adding New Tests
-Edit `functions/run_api_tests.py` and add entries to the `tests` list.
+Edit `functions/scripts/run_api_tests.py` and add entries to the `tests` list.
 ```python
 {
     "name": "My New Function",

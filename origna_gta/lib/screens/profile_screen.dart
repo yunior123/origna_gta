@@ -195,6 +195,7 @@ class ProfileScreen extends ConsumerWidget {
                               context,
                               key: const Key('profile_my_orders_button'),
                               icon: Icons.shopping_bag_outlined,
+                              semanticLabel: 'menu-my-orders',
                               title: 'profile.my_orders'.tr(),
                               subtitle: 'profile.view_purchases'.tr(),
                               onTap: () => Navigator.pushNamed(
@@ -207,6 +208,7 @@ class ProfileScreen extends ConsumerWidget {
                                 context,
                                 key: const Key('profile_seller_orders_button'),
                                 icon: Icons.store_outlined,
+                                semanticLabel: 'menu-seller-orders',
                                 title: 'profile.seller_orders'.tr(),
                                 subtitle: 'profile.manage_sales'.tr(),
                                 onTap: () => Navigator.pushNamed(
@@ -218,6 +220,7 @@ class ProfileScreen extends ConsumerWidget {
                                 context,
                                 key: const Key('profile_seller_dashboard_button'),
                                 icon: Icons.dashboard_outlined,
+                                semanticLabel: 'menu-seller-dashboard',
                                 title: 'profile.seller_dashboard'.tr(),
                                 subtitle: 'profile.manage_products_account'.tr(),
                                 onTap: () => Navigator.pushNamed(
@@ -230,6 +233,7 @@ class ProfileScreen extends ConsumerWidget {
                                 context,
                                 key: const Key('profile_become_seller_button'),
                                 icon: Icons.storefront,
+                                semanticLabel: 'menu-become-seller',
                                 title: 'profile.become_seller'.tr(),
                                 subtitle: 'profile.start_selling'.tr(),
                                 onTap: () => Navigator.pushNamed(
@@ -242,6 +246,7 @@ class ProfileScreen extends ConsumerWidget {
                                 context,
                                 key: const Key('profile_admin_panel_button'),
                                 icon: Icons.admin_panel_settings,
+                                semanticLabel: 'menu-admin-panel',
                                 title: 'profile.admin_panel'.tr(),
                                 subtitle: 'profile.platform_management'.tr(),
                                 onTap: () => Navigator.pushNamed(
@@ -263,6 +268,7 @@ class ProfileScreen extends ConsumerWidget {
                               context,
                               key: const Key('profile_favorites_button'),
                               icon: Icons.bookmark_border_rounded,
+                              semanticLabel: 'menu-favorites',
                               title: 'favorites.my_favorites'.tr(),
                               subtitle: 'profile.your_saved_products'.tr(),
                               onTap: () => Navigator.pushNamed(
@@ -274,6 +280,7 @@ class ProfileScreen extends ConsumerWidget {
                               context,
                               key: const Key('profile_address_button'),
                               icon: Icons.location_on_outlined,
+                              semanticLabel: 'menu-address',
                               title: 'profile.address'.tr(),
                               subtitle: 'profile.manage_delivery_address'.tr(),
                               onTap: () => Navigator.pushNamed(
@@ -285,6 +292,7 @@ class ProfileScreen extends ConsumerWidget {
                               context,
                               key: const Key('profile_terms_button'),
                               icon: Icons.description_outlined,
+                              semanticLabel: 'menu-terms',
                               title: 'profile.terms_conditions'.tr(),
                               subtitle: 'profile.legal_agreements'.tr(),
                               onTap: () => openTermsOfService(context),
@@ -293,6 +301,7 @@ class ProfileScreen extends ConsumerWidget {
                               context,
                               key: const Key('profile_privacy_button'),
                               icon: Icons.lock_outline,
+                              semanticLabel: 'menu-privacy',
                               title: 'profile.privacy_policy'.tr(),
                               subtitle: 'profile.how_we_protect'.tr(),
                               onTap: () => openPrivacyPolicy(context),
@@ -301,6 +310,7 @@ class ProfileScreen extends ConsumerWidget {
                               context,
                               key: const Key('profile_contact_button'),
                               icon: Icons.mail_outline,
+                              semanticLabel: 'menu-contact-us',
                               title: 'profile.contact_us'.tr(),
                               subtitle: 'profile.get_in_touch'.tr(),
                               onTap: () => _showContactDialog(context),
@@ -315,19 +325,23 @@ class ProfileScreen extends ConsumerWidget {
                         delay: const Duration(milliseconds: 150),
                         child: Column(
                           children: [
-                            ModernButton(
-                              key: const Key('profile_sign_out_button'),
-                              label: 'auth.sign_out'.tr(),
-                              onPressed: () async {
-                                await viewModel.signOut();
-                                if (context.mounted) {
-                                  Navigator.of(context).pushNamedAndRemoveUntil(
-                                    AppRoutes.home,
-                                    (route) => false,
-                                  );
-                                }
-                              },
-                              icon: Icons.logout,
+                            Semantics(
+                              button: true,
+                              label: 'btn-sign-out',
+                              child: ModernButton(
+                                key: const Key('profile_sign_out_button'),
+                                label: 'auth.sign_out'.tr(),
+                                onPressed: () async {
+                                  await viewModel.signOut();
+                                  if (context.mounted) {
+                                    Navigator.of(context).pushNamedAndRemoveUntil(
+                                      AppRoutes.home,
+                                      (route) => false,
+                                    );
+                                  }
+                                },
+                                icon: Icons.logout,
+                              ),
                             ),
                             const SizedBox(height: 12),
                             Semantics(
@@ -378,6 +392,7 @@ class ProfileScreen extends ConsumerWidget {
     BuildContext context, {
     Key? key,
     required IconData icon,
+    String? semanticLabel,
     required String title,
     String? subtitle,
     required VoidCallback onTap,
@@ -404,7 +419,7 @@ class ProfileScreen extends ConsumerWidget {
       ),
       child: Semantics(
         button: true,
-        label: 'menu-${title.toLowerCase().replaceAll(' ', '-')}',
+        label: semanticLabel ?? 'menu-${title.toLowerCase().replaceAll(' ', '-')}',
         child: Material(
         color: Colors.transparent,
         child: InkWell(

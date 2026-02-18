@@ -22,7 +22,7 @@ FRONTEND:
 BACKEND:
   functions/handlers/payment_stripe.py                      # create_checkout, capture, refund, webhooks
   functions/handlers/orders.py                              # create_order, update_order_status
-  functions/shipping_service.py                             # Shipping cost calculation
+  functions/services/shipping_service.py                    # Shipping cost calculation
   functions/schema_constants.py                             # Field names, enums, status values
 
 SCHEMA/RULES:
@@ -72,7 +72,7 @@ BACKEND:
   functions/handlers/orders.py                                   # update_order_status, state transitions
   functions/handlers/payment_stripe.py                           # capture on ship, refund on cancel
   functions/handlers/cron_jobs.py                                # auto_confirm_delivery, check_expired_authorizations
-  functions/email_service.py                                     # Order status notification emails
+  functions/services/email_service.py                            # Order status notification emails
 
 MODELS:
   origna_gta/lib/models/generated/order_models.dart              # Order, OrderItem Freezed models
@@ -123,7 +123,7 @@ FRONTEND:
 
 BACKEND:
   functions/handlers/products.py                                 # CRUD, Algolia sync, image management
-  functions/algolia_service.py                                   # Algolia indexing
+  functions/services/algolia_service.py                           # Algolia indexing
   functions/models/product.py                                    # Python Product model
 
 SCHEMA:
@@ -168,7 +168,7 @@ BACKEND:
   functions/handlers/admin.py                                    # register, roles, MFA, GDPR, seller onboarding
   functions/handlers/payment_stripe.py                           # create_stripe_connect_account
   functions/models/user.py                                       # Python User model
-  functions/rate_limiter.py                                      # Rate limiting
+  functions/services/rate_limiter.py                              # Rate limiting
 
 SCHEMA:
   docs/database_schema.json                                      # users, sellers collections
@@ -192,7 +192,7 @@ SCHEMA:
 ### Files to read together:
 ```
 BACKEND:
-  functions/email_service.py                                     # All email templates + sending
+  functions/services/email_service.py                            # All email templates + sending
   functions/handlers/orders.py                                   # Triggers email on status change
   functions/handlers/payment_stripe.py                           # Payment failure emails
   functions/handlers/cron_jobs.py                                # Expiry notification emails
@@ -238,7 +238,7 @@ FRONTEND:
   origna_gta/lib/services/algolia_service.dart                   # Algolia client
 
 BACKEND:
-  functions/algolia_service.py                                   # Index sync
+  functions/services/algolia_service.py                           # Index sync
   functions/handlers/products.py                                 # Product indexing on create/update/delete
 ```
 
@@ -249,8 +249,8 @@ BACKEND:
 ### Files that must stay in sync for security:
 ```
 firestore.rules                                                  # Database security rules
-functions/rate_limiter.py                                        # API rate limiting
-functions/utils.py                                               # Auth validation helpers
+functions/services/rate_limiter.py                                # API rate limiting
+functions/utils/helpers.py                                       # Auth validation helpers
 functions/handlers/admin.py                                      # Role management
 origna_gta/lib/core/repositories/auth_repository.dart            # Frontend auth
 origna_gta/lib/features/auth/auth_provider.dart                  # Auth state

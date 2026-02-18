@@ -37,7 +37,7 @@ DATAFLOW_FILES = [
     "firestore.rules",
     "firestore.indexes.json",
     # Algolia sync
-    "functions/algolia_service.py",
+    "functions/services/algolia_service.py",
     "CLAUDE.md",
 ]
 

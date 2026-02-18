@@ -19,7 +19,7 @@ Audit the complete payment pipeline for financial correctness, security, and edg
 2. `functions/handlers/payment_stripe.py` — Backend payment processing
 3. `functions/handlers/orders.py` — Order creation linked to payment
 4. `functions/handlers/cron_jobs.py` — Authorization expiry handling
-5. `functions/email_service.py` — Payment failure notification emails
+5. `functions/services/email_service.py` — Payment failure notification emails
 6. `origna_gta/lib/screens/checkout_screen.dart` — Checkout UI
 7. `firestore.rules` — Payment/order security rules
 8. `functions/schema_constants.py` — Field names used in payment docs

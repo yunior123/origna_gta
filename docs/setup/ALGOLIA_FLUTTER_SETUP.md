@@ -79,7 +79,7 @@ ProductRepository (Provider)
 
 ### Backend
 - ✅ `functions/config.py` - Credentials Algolia
-- ✅ `functions/algolia_service.py` - Service d'indexation
+- ✅ `functions/services/algolia_service.py` - Service d'indexation
 - ✅ `functions/main.py` - Triggers Firestore
 
 ### Frontend

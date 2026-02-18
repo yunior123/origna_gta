@@ -25,7 +25,7 @@ Use the `uiux-expert` agent to design and build a new screen.
 
 3. **Read Design System** — Load these before coding:
    - `origna_gta/lib/utils/design_tokens.dart`
-   - `origna_gta/lib/utils/glassmorphism_widgets.dart`
+   - `origna_gta/lib/utils/glassmorphism.dart`
    - `origna_gta/lib/utils/responsive_layout.dart`
    - `origna_gta/lib/widgets/*.dart` (all available components)
 

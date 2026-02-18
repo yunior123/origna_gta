@@ -96,9 +96,9 @@ flutter drive --driver=test_driver/integration_test.dart \
 ## CI / E2E
 - GitHub Actions runs backend + Flutter tests and a stable Playwright suite.
 - Local E2E stack:
-  - Start: `./start-e2e-services.sh`
+  - Start: `./scripts/start-e2e-services.sh`
   - Run: `(cd e2e && E2E_WORKERS=2 ./run-e2e-tests.sh flutter)`
-  - Stop: `./stop-e2e-services.sh`
+  - Stop: `./scripts/stop-e2e-services.sh`
 - Flutter web integration test:
   - Run: `./scripts/run_flutter_integration_tests_web.sh integration_test/app_test.dart`
 - Playwright parallelism:

@@ -8,7 +8,7 @@ description: >
 
 # 🪟 Glassmorphism Toolkit
 
-## Source: `origna_gta/lib/utils/glassmorphism_widgets.dart`
+## Source: `origna_gta/lib/utils/glassmorphism.dart`
 
 ## The Glass Design Philosophy
 Glassmorphism creates **depth and hierarchy** through translucent layers with backdrop blur.

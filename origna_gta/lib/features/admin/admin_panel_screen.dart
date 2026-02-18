@@ -26,12 +26,12 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
   int _selectedIndex = 0;
 
   static List<_AdminTab> get _tabs => [
-    _AdminTab(icon: Icons.store_rounded, label: 'admin.sellers_tab'.tr(), key: const Key('admin_tab_sellers')),
-    _AdminTab(icon: Icons.people_rounded, label: 'admin.users_tab'.tr(), key: const Key('admin_tab_users')),
-    _AdminTab(icon: Icons.receipt_long_rounded, label: 'admin.orders_tab'.tr(), key: const Key('admin_tab_orders')),
-    _AdminTab(icon: Icons.inventory_2_rounded, label: 'admin.products_tab'.tr(), key: const Key('admin_tab_products')),
-    _AdminTab(icon: Icons.payment_rounded, label: 'admin.payments_tab'.tr(), key: const Key('admin_tab_payments')),
-    _AdminTab(icon: Icons.security_rounded, label: 'admin.security_tab'.tr(), key: const Key('admin_tab_security')),
+    _AdminTab(icon: Icons.store_rounded, label: 'admin.sellers_tab'.tr(), semanticLabel: 'admin-tab-sellers', key: const Key('admin_tab_sellers')),
+    _AdminTab(icon: Icons.people_rounded, label: 'admin.users_tab'.tr(), semanticLabel: 'admin-tab-users', key: const Key('admin_tab_users')),
+    _AdminTab(icon: Icons.receipt_long_rounded, label: 'admin.orders_tab'.tr(), semanticLabel: 'admin-tab-orders', key: const Key('admin_tab_orders')),
+    _AdminTab(icon: Icons.inventory_2_rounded, label: 'admin.products_tab'.tr(), semanticLabel: 'admin-tab-products', key: const Key('admin_tab_products')),
+    _AdminTab(icon: Icons.payment_rounded, label: 'admin.payments_tab'.tr(), semanticLabel: 'admin-tab-payments', key: const Key('admin_tab_payments')),
+    _AdminTab(icon: Icons.security_rounded, label: 'admin.security_tab'.tr(), semanticLabel: 'admin-tab-security', key: const Key('admin_tab_security')),
   ];
 
   @override
@@ -154,10 +154,14 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
           labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 12),
           tabs: _tabs
-                  .map((t) => Tab(
-                        key: t.key,
-                        icon: Icon(t.icon, size: 20),
-                        text: t.label,
+                  .map((t) => Semantics(
+                        button: true,
+                        label: t.semanticLabel,
+                        child: Tab(
+                          key: t.key,
+                          icon: Icon(t.icon, size: 20),
+                          text: t.label,
+                        ),
                       ))
               .toList(),
         ),
@@ -228,36 +232,40 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
                     final isSelected = _selectedIndex == index;
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                      child: Material(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                        child: InkWell(
-                          key: tab.key,
-                          onTap: () {
-                            setState(() => _selectedIndex = index);
-                            _tabController.animateTo(index);
-                          },
+                      child: Semantics(
+                        button: true,
+                        label: tab.semanticLabel,
+                        child: Material(
+                          color: Colors.transparent,
                           borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                          child: AnimatedContainer(
-                            duration: DesignTokens.durationFast,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: isSelected ? Colors.white.withValues(alpha: 0.15) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(tab.icon, color: isSelected ? Colors.white : Colors.white54, size: 20),
-                                const SizedBox(width: 12),
-                                Text(
-                                  tab.label,
-                                  style: TextStyle(
-                                    color: isSelected ? Colors.white : Colors.white54,
-                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                    fontSize: 14,
+                          child: InkWell(
+                            key: tab.key,
+                            onTap: () {
+                              setState(() => _selectedIndex = index);
+                              _tabController.animateTo(index);
+                            },
+                            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                            child: AnimatedContainer(
+                              duration: DesignTokens.durationFast,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isSelected ? Colors.white.withValues(alpha: 0.15) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(tab.icon, color: isSelected ? Colors.white : Colors.white54, size: 20),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    tab.label,
+                                    style: TextStyle(
+                                      color: isSelected ? Colors.white : Colors.white54,
+                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                      fontSize: 14,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -363,6 +371,7 @@ class _AdminQuickStats extends StatelessWidget {
 class _AdminTab {
   final IconData icon;
   final String label;
+  final String semanticLabel;
   final Key? key;
-  const _AdminTab({required this.icon, required this.label, this.key});
+  const _AdminTab({required this.icon, required this.label, required this.semanticLabel, this.key});
 }

@@ -15,7 +15,7 @@ from prompt_api_security import API_SECURITY_AUDIT_PROMPT
 API_SECURITY_FILES = [
     # Cloud Function entry point & route registration
     "functions/main.py",
-    "functions/function_options.py",
+    "functions/utils/function_options.py",
     # ALL handlers (complete attack surface)
     "functions/handlers/payment_stripe.py",
     "functions/handlers/payment_airwallex.py",
@@ -26,16 +26,16 @@ API_SECURITY_FILES = [
     "functions/handlers/cron_jobs.py",
     # Auth & config
     "functions/config.py",
-    "functions/utils.py",
-    "functions/rate_limiter.py",
+    "functions/utils/helpers.py",
+    "functions/services/rate_limiter.py",
     # Input validation models
     "functions/models/base.py",
     "functions/models/user.py",
     "functions/models/product.py",
     "functions/models/order.py",
     # External service clients (key usage)
-    "functions/algolia_service.py",
-    "functions/email_service.py",
+    "functions/services/algolia_service.py",
+    "functions/services/email_service.py",
     # Firestore security rules
     "firestore.rules",
     # Schema (field names for injection testing)

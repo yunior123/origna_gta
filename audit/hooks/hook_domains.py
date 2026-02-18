@@ -65,13 +65,12 @@ class AuthHook(BaseHook):
 
     watch_patterns = [
         "functions/handlers/admin.py",
-        "functions/rate_limiter.py",
-        "functions/utils.py",
+        "functions/services/rate_limiter.py",
+        "functions/utils/helpers.py",
         "functions/models/user.py",
         "origna_gta/lib/features/auth/*",
         "origna_gta/lib/screens/login_screen.dart",
-        "origna_gta/lib/screens/register_screen.dart",
-        "origna_gta/lib/screens/admin_screen.dart",
+        "origna_gta/lib/features/admin/admin_panel_screen.dart",
         "firestore.rules",
     ]
 
@@ -79,11 +78,11 @@ class AuthHook(BaseHook):
     target_files = [
         "functions/handlers/admin.py",              # 21K — admin/role logic
         "firestore.rules",                          # 19K — access control rules
-        "functions/utils.py",                       # 12K — auth helpers
+        "functions/utils/helpers.py",               # 12K — auth helpers
         "origna_gta/lib/core/repositories/auth_repository.dart",  # 12K — auth repo
         "functions/config.py",                      # 12K — auth config
         "functions/models/user.py",                 # 5K  — user model
-        "functions/rate_limiter.py",                # 3K  — rate limiting
+        "functions/services/rate_limiter.py",        # 3K  — rate limiting
         "origna_gta/lib/features/auth/auth_provider.dart",  # 0.6K — auth state
     ]
 
@@ -125,8 +124,8 @@ class ProductHook(BaseHook):
     watch_patterns = [
         "functions/handlers/products.py",
         "functions/handlers/orders.py",
-        "functions/algolia_service.py",
-        "functions/shipping_service.py",
+        "functions/services/algolia_service.py",
+        "functions/services/shipping_service.py",
         "functions/models/product.py",
         "origna_gta/lib/screens/addproduct_screen.dart",
         "origna_gta/lib/screens/editproduct_screen.dart",
@@ -137,10 +136,10 @@ class ProductHook(BaseHook):
     target_files = [
         "functions/handlers/products.py",            # 29K — product CRUD logic
         "functions/models/product.py",               # 15K — product model
-        "functions/algolia_service.py",              # 12K — search sync
+        "functions/services/algolia_service.py",      # 12K — search sync
         "origna_gta/lib/features/checkout/checkout_provider.dart",  # 11K — cart-to-checkout
         "origna_gta/lib/features/cart/cart_provider.dart",          # 10K — cart logic
-        "functions/shipping_service.py",             # 17K — shipping validation
+        "functions/services/shipping_service.py",     # 17K — shipping validation
     ]
 
     def get_prompt(self) -> str:

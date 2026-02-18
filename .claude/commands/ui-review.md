@@ -17,7 +17,7 @@ Run the `uiux-expert` agent on the target screen(s).
 
 2. **Read Context** — Read these files first:
    - `origna_gta/lib/utils/design_tokens.dart` (current tokens)
-   - `origna_gta/lib/utils/glassmorphism_widgets.dart` (glass components)
+   - `origna_gta/lib/utils/glassmorphism.dart` (glass components)
    - `origna_gta/lib/utils/responsive_layout.dart` (responsive system)
    - The target screen file(s)
    - Any related widgets in `origna_gta/lib/widgets/`

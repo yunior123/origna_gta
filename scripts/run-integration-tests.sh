@@ -1,7 +1,7 @@
 #!/bin/bash
 # Run Flutter Integration Tests
 # DISABLED: Flutter integration tests are temporarily disabled until they are stabilized.
-# For E2E testing, use Playwright tests via ./e2e-with-services.sh
+# For E2E testing, use Playwright tests via ./scripts/e2e-with-services.sh
 
 set -e
 
@@ -21,7 +21,7 @@ echo -e "${YELLOW}   These tests require further stabilization before being${NC}
 echo -e "${YELLOW}   included in the CI/CD pipeline.${NC}"
 echo ""
 echo -e "${GREEN}✓ Use Playwright E2E tests instead:${NC}"
-echo -e "    ./e2e-with-services.sh"
+echo -e "    ./scripts/e2e-with-services.sh"
 echo ""
 echo -e "${GREEN}✓ Or run unit tests:${NC}"
 echo -e "    cd origna_gta && flutter test"

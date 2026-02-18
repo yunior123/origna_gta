@@ -95,14 +95,14 @@ Guide détaillé avec :
 cd /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta
 
 # Démarrer tous les services
-./start-e2e-services.sh
+./scripts/start-e2e-services.sh
 
 # Dans un autre terminal, exécuter les tests
 cd e2e
 npx playwright test full-marketplace-e2e.spec.ts
 
 # Arrêter les services
-./stop-e2e-services.sh
+./scripts/stop-e2e-services.sh
 ```
 
 ### Option 2 : Démarrage Manuel
@@ -199,7 +199,7 @@ flutter build web --release
 lsof -ti :5005,8080,9099,5001,9199 | xargs kill -9
 
 # Ou utiliser le script
-./stop-e2e-services.sh
+./scripts/stop-e2e-services.sh
 ```
 
 ### Firebase Emulators ne démarrent pas
@@ -209,8 +209,8 @@ lsof -ti :5005,8080,9099,5001,9199 | xargs kill -9
 tail -f /tmp/origna_e2e_logs/firebase.log
 
 # Redémarrer proprement
-./stop-e2e-services.sh
-./start-e2e-services.sh
+./scripts/stop-e2e-services.sh
+./scripts/start-e2e-services.sh
 ```
 
 ## 📁 Structure des Fichiers
@@ -280,7 +280,7 @@ Pour valider que tout fonctionne :
 
 1. **Démarrer les services:**
    ```bash
-   ./start-e2e-services.sh
+   ./scripts/start-e2e-services.sh
    ```
 
 2. **Vérifier les URLs:**

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script pour démarrer tous les services nécessaires aux tests E2E
-# Usage: ./start-e2e-services.sh
+# Usage: ./scripts/start-e2e-services.sh
 
 # Options:
 #   --rebuild  : force flutter build web
@@ -17,7 +17,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$SCRIPT_DIR"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 LOG_DIR="/tmp/origna_e2e_logs"
 
 NO_WAIT=false
@@ -215,7 +215,7 @@ echo "     npx playwright test full-marketplace-e2e.spec.ts"
 echo ""
 echo -e "${YELLOW}Pour arrêter les services:${NC}"
 echo "     kill $FIREBASE_PID $WEB_PID $STRIPE_PID"
-echo "     ou: ./stop-e2e-services.sh"
+echo "     ou: ./scripts/stop-e2e-services.sh"
 echo ""
 
 # Sauvegarder les PIDs pour le script d'arrêt
@@ -225,7 +225,7 @@ echo "$STRIPE_PID" > "$LOG_DIR/stripe.pid"
 
 if [ "$NO_WAIT" = true ]; then
     echo -e "${GREEN}Mode détaché activé (--no-wait).${NC}"
-    echo -e "${YELLOW}Pour arrêter: ./stop-e2e-services.sh${NC}"
+    echo -e "${YELLOW}Pour arrêter: ./scripts/stop-e2e-services.sh${NC}"
     exit 0
 fi
 

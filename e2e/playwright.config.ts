@@ -65,7 +65,7 @@ export default defineConfig({
 
   /*
   webServer: {
-    command: 'cd /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta && ./start-e2e-services.sh',
+    command: 'cd .. && ./scripts/start-e2e-services.sh',
     url: 'http://localhost:5005',
     reuseExistingServer: true,
     timeout: 120000, // 2 minutes

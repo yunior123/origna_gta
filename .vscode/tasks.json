@@ -191,7 +191,7 @@
 			"type": "shell",
 			"command": "python3",
 			"args": [
-				"functions/run_api_tests.py"
+				"functions/scripts/run_api_tests.py"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}",

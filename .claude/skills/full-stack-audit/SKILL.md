@@ -34,7 +34,7 @@ Run a comprehensive audit of ALL cross-stack interfaces in the project.
 - `origna_gta/lib/models/generated/user_models.dart` ↔ `functions/models/user.py`
 
 ### 7. Shipping
-- `origna_gta/lib/features/checkout/checkout_provider.dart` ↔ `functions/shipping_service.py`
+- `origna_gta/lib/features/checkout/checkout_provider.dart` ↔ `functions/services/shipping_service.py`
 
 ## For Each Pair
 1. Read both files completely

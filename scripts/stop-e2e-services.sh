@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script pour arrêter tous les services E2E
-# Usage: ./stop-e2e-services.sh
+# Usage: ./scripts/stop-e2e-services.sh
 
 LOG_DIR="/tmp/origna_e2e_logs"
 

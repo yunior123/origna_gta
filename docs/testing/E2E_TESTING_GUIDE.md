@@ -51,7 +51,7 @@ Le hook `pre-push` exécute automatiquement **6 étapes** avant chaque push :
 
 **Pour activer les tests E2E avant push :**
 ```bash
-./start-e2e-services.sh
+./scripts/start-e2e-services.sh
 ```
 
 ---
@@ -75,9 +75,9 @@ e2e/
 └── playwright.config.ts
 
 # Scripts
-e2e-with-services.sh           # Script complet E2E
-start-e2e-services.sh          # Démarrer Firebase + Web Server
-stop-e2e-services.sh           # Arrêter les services
+scripts/e2e-with-services.sh           # Script complet E2E
+scripts/start-e2e-services.sh          # Démarrer Firebase + Web Server
+scripts/stop-e2e-services.sh           # Arrêter les services
 ```
 
 ---
@@ -86,20 +86,20 @@ stop-e2e-services.sh           # Arrêter les services
 
 ### Démarrer les services E2E
 ```bash
-./start-e2e-services.sh
+./scripts/start-e2e-services.sh
 ```
 
 ### Arrêter les services E2E
 ```bash
-./stop-e2e-services.sh
+./scripts/stop-e2e-services.sh
 ```
 
 ### Lancer tous les E2E avec gestion des services
 ```bash
-./e2e-with-services.sh all      # Tous les tests
-./e2e-with-services.sh playwright  # Playwright uniquement
-./e2e-with-services.sh flutter     # Flutter integration uniquement
-./e2e-with-services.sh patrol      # Patrol uniquement
+./scripts/e2e-with-services.sh all      # Tous les tests
+./scripts/e2e-with-services.sh playwright  # Playwright uniquement
+./scripts/e2e-with-services.sh flutter     # Flutter integration uniquement
+./scripts/e2e-with-services.sh patrol      # Patrol uniquement
 ```
 
 ### Vérifier si les services sont actifs
@@ -141,5 +141,5 @@ chromedriver --port=4444
 # Tuer tous les processus sur les ports
 lsof -ti:5005,9099,8080,4000 | xargs kill -9
 # Redémarrer
-./start-e2e-services.sh
+./scripts/start-e2e-services.sh
 ```

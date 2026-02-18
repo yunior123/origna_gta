@@ -52,13 +52,13 @@ premium, and delightful.
 | Layer | Location | Pattern |
 |-------|----------|---------|
 | Design Tokens | `origna_gta/lib/utils/design_tokens.dart` | Centralized tokens — **SINGLE SOURCE OF TRUTH** |
-| Glassmorphism | `origna_gta/lib/utils/glassmorphism_widgets.dart` | 7 Glass* components |
+| Glassmorphism | `origna_gta/lib/utils/glassmorphism.dart` | 7 Glass* components |
 | Animations | `origna_gta/lib/utils/animations.dart` + `widgets/animations.dart` | 12+ animation widgets |
 | Responsive | `origna_gta/lib/utils/responsive_layout.dart` | 4 breakpoints, grid system |
 | Widgets | `origna_gta/lib/widgets/*.dart` | 9 Modern* reusable widgets |
 | Screens | `origna_gta/lib/screens/*.dart` | 28 screens |
 | ViewModels | `origna_gta/lib/features/**/*.dart` | MVVM + Riverpod |
-| Routing | `origna_gta/lib/app_router.dart` | Deep link support |
+| Routing | `origna_gta/lib/origna_app.dart` | Deep link support |
 
 ---
 
@@ -449,7 +449,7 @@ Step indicator: ● ─── ○ ─── ○ ─── ○
 ```dart
 // 1. Import design system
 import 'package:origna_gta/utils/design_tokens.dart';
-import 'package:origna_gta/utils/glassmorphism_widgets.dart';
+import 'package:origna_gta/utils/glassmorphism.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/animations.dart';
 import 'package:origna_gta/widgets/animations.dart';

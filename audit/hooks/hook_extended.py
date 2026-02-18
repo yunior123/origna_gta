@@ -15,8 +15,8 @@ class SecurityHook(BaseHook):
         "firestore.rules",
         "storage.rules",
         "functions/handlers/*.py",
-        "functions/utils.py",
-        "functions/rate_limiter.py",
+        "functions/utils/helpers.py",
+        "functions/services/rate_limiter.py",
         "functions/config.py",
     ]
 
@@ -62,8 +62,8 @@ class PerformanceHook(BaseHook):
 
     watch_patterns = [
         "functions/handlers/*.py",
-        "functions/algolia_service.py",
-        "functions/shipping_service.py",
+        "functions/services/algolia_service.py",
+        "functions/services/shipping_service.py",
         "functions/handlers/cron_jobs.py",
         "firestore.indexes.json",
         "origna_gta/lib/features/**/*.dart",
@@ -75,7 +75,7 @@ class PerformanceHook(BaseHook):
         "functions/handlers/products.py",            # 29K — product queries
         "functions/handlers/orders.py",              # 43K — order queries
         "functions/handlers/cron_jobs.py",            # 22K — batch jobs
-        "functions/algolia_service.py",              # 12K — search indexing
+        "functions/services/algolia_service.py",      # 12K — search indexing
     ]
 
     def get_prompt(self) -> str:
@@ -170,7 +170,7 @@ class OrdersHook(BaseHook):
         "functions/handlers/payment_stripe.py",
         "functions/handlers/cron_jobs.py",
         "functions/models/order.py",
-        "functions/shipping_service.py",
+        "functions/services/shipping_service.py",
         "origna_gta/lib/features/orders/*",
     ]
 
@@ -178,7 +178,7 @@ class OrdersHook(BaseHook):
     target_files = [
         "functions/handlers/orders.py",              # 43K — order state machine
         "functions/handlers/cron_jobs.py",            # 22K — auto-capture, cleanup
-        "functions/shipping_service.py",             # 17K — shipping flow
+        "functions/services/shipping_service.py",     # 17K — shipping flow
         "functions/schema_constants.py",             # 16K — status constants
         "functions/models/order.py",                 # 8K  — order model
     ]
@@ -224,7 +224,7 @@ class ErrorHandlingHook(BaseHook):
     # Optimized: backend error paths, ~97K budget
     target_files = [
         "functions/handlers/payment_stripe.py",     # 94K — payment errors critical
-        "functions/utils.py",                       # 12K — error helpers
+        "functions/utils/helpers.py",               # 12K — error helpers
     ]
 
     def get_prompt(self) -> str:
