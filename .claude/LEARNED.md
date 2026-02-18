@@ -269,3 +269,88 @@ sysctl vm.swapusage && vm_stat | grep "Pages free"
 - Dart VM (tests): ~200-400 MB each
 - chromedriver: ~50 MB
 - **Budget**: 1 VS Code + 1 flutter drive + 1 Chrome = ~3.5 GB, leaves ~4.5 GB headroom
+
+---
+
+## Deployment & Infrastructure (Feb 2026 — Session 2)
+
+### firebase-functions 0.4.x `authtype` KeyError (CRITICAL)
+- `on_document_updated` and other Firestore triggers crash with `KeyError: 'authtype'`
+- `firebase_functions/firestore_fn.py` line 137: `event_attributes["authtype"]` fails when CloudEvent from service account doesn't include `authtype` attribute
+- Affects ALL versions through 0.5.0 — upstream hasn't fixed the dict access
+- **Fix**: Monkey-patch `CloudEvent._get_attributes()` in `main.py` to inject `authtype='SERVICE'` and `authid=''`
+- **Impact**: ALL email notifications for order status changes were silently failing
+
+### `.env` overrides Secret Manager in Cloud Run
+- Firebase Gen2 functions (Cloud Run) bundle `.env` at deploy time
+- `.env` values become environment variables that SHADOW `params.SecretParam().value`
+- **Rule**: Put production/dev secrets in `.env`, override locally with `.env.local`
+- `.env.local` is NOT deployed (gitignored)
+
+### Stripe Webhook Lifecycle
+- Old `stripe listen` secrets from local dev DON'T work in production
+- Must create webhook endpoint via `stripe webhook_endpoints create`
+- Webhook endpoint ID format: `we_XXXX`
+- Signing secret: `STRIPE_WEBHOOK_SECRET_REDACTED`
+- Dev endpoint: `we_1T2ESaPPD6r8xGIzV45SJGbm`
+
+### Firestore Composite Index Requirement
+- `create_checkout_session` idempotency query needs: `userId ASC + orderStatus ASC + paymentStatus ASC + createdAt DESC`
+- Missing index gives 400 error, not a helpful message
+- Added to `firestore.indexes.json`
+
+### Playwright E2E Against Dev Firebase
+- Products with `sellerId: "test-seller-uid"` → filter to known UIDs only (admin + seller)
+- Auth token caching (50-min TTL) avoids QUOTA_EXCEEDED
+- Rate limit retry: `callOk` waits 65s on rate limit, retries 3x
+- `getTestProduct()` re-checks live stock to avoid stale cache
+- Workers must be 1 (sequential) to avoid rate limits + auth quota
+- Real Canadian addresses set for buyer (Toronto), admin (Montreal), seller (Vancouver)
+
+## Critical Audit Fixes (Feb 2026 — Session 3)
+
+### Platform Fee Calculation (CRITICAL — Financial)
+- Platform fee rate = `platformFeeTotalCents / subtotalCents` (NOT totalAmountCents)
+- `PLATFORM_FEE_TOTAL_CENTS` ("platformFeeTotalCents") = order-level total fee
+- `PLATFORM_FEE_CENTS` ("platformFeeCents") = per-seller payout-level fee
+- Bug: All 3 capture paths used `TOTAL_AMOUNT_CENTS` as divisor → fee rate was ~2.1% instead of 2.5%
+- Fixed in: `payment_stripe.py` (2 paths), `cron_jobs.py` (1 path)
+
+### Stock Restore Race Conditions (CRITICAL — Data Integrity)
+- `process_session_expired`, `process_payment_intent_failed`, `process_payment_intent_canceled`
+- All had non-atomic read-check-restore: `STOCK_RESTORED` guard was not transactional
+- Two concurrent webhooks could both see `STOCK_RESTORED=False` and double-restore stock
+- **Fix**: All three now use `@get_transactional()` with `transaction.update(product_ref, {Fields.STOCK_QUANTITY: _firestore.Increment(qty)})` inside the transaction
+
+### SeverityLevels Class (Bug — Runtime Crash)
+- Only has: LOW, MEDIUM, HIGH, CRITICAL (NO `INFO` level)
+- `SeverityLevels.INFO` at line 2330 would cause `AttributeError` when dispute funds reinstated
+- Fixed to `SeverityLevels.LOW`
+
+### Cross-Stack Key Mismatch (CRITICAL — Item Status Updates Broken)
+- Dart `updateItemStatus` sent `Fields.status` ("status") but backend expected `ApiKeys.NEW_STATUS` ("newStatus")
+- Backend always read `None` for the new status → all item status updates silently failed
+- Fixed in `order_repository.dart` line 53: `Fields.status` → `ApiKeys.newStatus`
+
+### Webhook Cleanup Cron (Bug — Stale Events Never Cleaned)
+- Webhook events store `Fields.TIMESTAMP` ("timestamp")
+- Cron cleanup queried `Fields.CREATED_AT` ("createdAt") → no matches → nothing cleaned up
+- Fixed to query `Fields.TIMESTAMP`
+
+### Schema Sync: `DISPUTE_STATUS` Missing
+- Backend used `Fields.DISPUTE_STATUS` in dispute update handler but constant didn't exist
+- Added to both `schema_constants.py` and `schema_constants.dart`
+
+## GitHub Actions Secrets Required (CI)
+- FIREBASE_SERVICE_ACCOUNT_DEV — JSON service account key for orignagta-dev
+- GCLOUD_PROJECT_DEV — "orignagta-dev"  
+- STRIPE_TEST_KEY — sk_test_... (for E2E Playwright)
+- ALGOLIA_ADMIN_KEY — Algolia admin key (for E2E Playwright)
+
+Set at: GitHub repo → Settings → Secrets and variables → Actions
+
+## Admin CLI
+- Entry: `./admin <group> <cmd> --env=dev|staging|prod`
+- Activates functions/venv automatically
+- Groups: deploy, db, secrets, tests, users, orders, payments, products, webhooks
+- All prod destructive actions require typing 'yes' to confirm
