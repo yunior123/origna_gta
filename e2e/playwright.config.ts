@@ -14,9 +14,8 @@ export default defineConfig({
   ],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
-  // 6 workers locally (85% of tests are API-only and fully parallelizable)
-  workers: Number.isFinite(envWorkers) ? Math.max(1, envWorkers as number) : (process.env.CI ? 4 : 6),
+  retries: 0,
+  workers: 5,
   reporter: process.env.CI ? 'list' : 'html',
   // 60s default — only UI tests override to 120s via test.setTimeout()
   timeout: 60 * 1000,
@@ -38,29 +37,29 @@ export default defineConfig({
     // stability; enable cross-browser via `E2E_PROJECTS=all`.
     ...(runAllProjects
       ? [
-          {
-            name: 'chromium',
-            use: { ...devices['Desktop Chrome'] },
-          },
-          {
-            name: 'webkit',
-            use: { ...devices['Desktop Safari'] },
-          },
-          {
-            name: 'Mobile Chrome',
-            use: { ...devices['Pixel 5'] },
-          },
-          {
-            name: 'Mobile Safari',
-            use: { ...devices['iPhone 12'] },
-          },
-        ]
+        {
+          name: 'chromium',
+          use: { ...devices['Desktop Chrome'] },
+        },
+        {
+          name: 'webkit',
+          use: { ...devices['Desktop Safari'] },
+        },
+        {
+          name: 'Mobile Chrome',
+          use: { ...devices['Pixel 5'] },
+        },
+        {
+          name: 'Mobile Safari',
+          use: { ...devices['iPhone 12'] },
+        },
+      ]
       : [
-          {
-            name: 'chromium',
-            use: { ...devices['Desktop Chrome'] },
-          },
-        ]),
+        {
+          name: 'chromium',
+          use: { ...devices['Desktop Chrome'] },
+        },
+      ]),
   ],
 
   /*

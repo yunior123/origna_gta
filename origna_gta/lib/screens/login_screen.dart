@@ -128,6 +128,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                   ],
                                   ModernTextField(
                                     key: const Key('login_email_field'),
+                                    semanticsLabel: 'login_email_field',
                                     label: 'auth.email_address'.tr(),
                                     hint: 'you@example.com',
                                     controller: _emailController,
@@ -146,6 +147,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                   const SizedBox(height: DesignTokens.spacing16),
                                   ModernTextField(
                                     key: const Key('login_password_field'),
+                                    semanticsLabel: 'login_password_field',
                                     label: 'auth.password'.tr(),
                                     hint: '••••••••',
                                     controller: _passwordController,
@@ -194,8 +196,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                                     fontWeight: FontWeight.w600,
                                                     decoration: TextDecoration.underline,
                                                   ),
-                                                  recognizer: TapGestureRecognizer()
-                                                    ..onTap = () => openTermsOfService(context),
+                                                  recognizer: TapGestureRecognizer()..onTap = () => openTermsOfService(context),
                                                 ),
                                                 const TextSpan(text: ' and '),
                                                 TextSpan(
@@ -205,8 +206,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                                     fontWeight: FontWeight.w600,
                                                     decoration: TextDecoration.underline,
                                                   ),
-                                                  recognizer: TapGestureRecognizer()
-                                                    ..onTap = () => openPrivacyPolicy(context),
+                                                  recognizer: TapGestureRecognizer()..onTap = () => openPrivacyPolicy(context),
                                                 ),
                                               ],
                                             ),
@@ -249,6 +249,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                           // Primary action button
                           ModernButton(
                             key: const Key('login_submit_button'),
+                            semanticsLabel: 'login_submit_button',
                             label: state.isLogin ? 'auth.sign_in'.tr() : 'auth.create_account'.tr(),
                             isLoading: state.isLoading,
                             isPrimary: true,
@@ -328,18 +329,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                       _formKey.currentState?.reset();
                                     },
                               child: RichText(
-                              text: TextSpan(
-                                style: const TextStyle(fontSize: 14, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
-                                children: [
-                                  TextSpan(text: state.isLogin ? "auth.no_account".tr() : 'auth.already_have_account'.tr()),
-                                  TextSpan(
-                                    text: state.isLogin ? 'auth.sign_up'.tr() : 'auth.sign_in'.tr(),
-                                    style: const TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w700),
-                                  ),
-                                ],
+                                text: TextSpan(
+                                  style: const TextStyle(fontSize: 14, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+                                  children: [
+                                    TextSpan(text: state.isLogin ? "auth.no_account".tr() : 'auth.already_have_account'.tr()),
+                                    TextSpan(
+                                      text: state.isLogin ? 'auth.sign_up'.tr() : 'auth.sign_in'.tr(),
+                                      style: const TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w700),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
                           ),
                         ],
                       ),
@@ -425,29 +426,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                   label: 'btn-forgot-send',
                   button: true,
                   child: ElevatedButton(
-                  onPressed: isSending
-                      ? null
-                      : () async {
-                          final messanger = ScaffoldMessenger.of(context);
+                    onPressed: isSending
+                        ? null
+                        : () async {
+                            final messanger = ScaffoldMessenger.of(context);
 
-                          if (!formKey.currentState!.validate()) return;
-                          setState(() => isSending = true);
-                          try {
-                            await ref.read(loginViewModelProvider.notifier).resetPassword(emailController.text.trim());
-                            if (dialogContext.mounted) {
-                              Navigator.pop(dialogContext);
-                              ScaffoldMessenger.of(
-                                context,
-                              ).showSnackBar(SnackBar(content: Text('auth.reset_link_sent'.tr()), backgroundColor: DesignTokens.success));
+                            if (!formKey.currentState!.validate()) return;
+                            setState(() => isSending = true);
+                            try {
+                              await ref.read(loginViewModelProvider.notifier).resetPassword(emailController.text.trim());
+                              if (dialogContext.mounted) {
+                                Navigator.pop(dialogContext);
+                                ScaffoldMessenger.of(
+                                  context,
+                                ).showSnackBar(SnackBar(content: Text('auth.reset_link_sent'.tr()), backgroundColor: DesignTokens.success));
+                              }
+                            } catch (e) {
+                              messanger.showSnackBar(SnackBar(content: Text('auth.reset_link_failed'.tr()), backgroundColor: DesignTokens.error));
+                            } finally {
+                              setState(() => isSending = false);
                             }
-                          } catch (e) {
-                            messanger.showSnackBar(SnackBar(content: Text('auth.reset_link_failed'.tr()), backgroundColor: DesignTokens.error));
-                          } finally {
-                            setState(() => isSending = false);
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
-                  child: isSending ? const ModernLoadingIndicator.small(color: Colors.white) : Text('auth.send'.tr()),
+                          },
+                    style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.primary, foregroundColor: Colors.white),
+                    child: isSending ? const ModernLoadingIndicator.small(color: Colors.white) : Text('auth.send'.tr()),
                   ),
                 ),
               ],

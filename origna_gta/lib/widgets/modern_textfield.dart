@@ -20,6 +20,7 @@ class ModernTextField extends StatefulWidget {
   final int? maxLength;
   final bool showCounter;
   final Key? textFieldKey;
+  final String? semanticsLabel;
 
   const ModernTextField({
     super.key,
@@ -39,6 +40,7 @@ class ModernTextField extends StatefulWidget {
     this.maxLength,
     this.showCounter = false,
     this.textFieldKey,
+    this.semanticsLabel,
   });
 
   @override
@@ -64,65 +66,66 @@ class _ModernTextFieldState extends State<ModernTextField> {
           const SizedBox(height: DesignTokens.spacing8),
         ],
         Semantics(
-          label: widget.label,
+          label: widget.semanticsLabel ?? widget.label,
           textField: true,
+          container: true,
           child: TextFormField(
-          key: widget.textFieldKey,
-          controller: widget.controller,
-          focusNode: _focusNode,
-          keyboardType: widget.keyboardType,
-          obscureText: _obscureText,
-          maxLines: _obscureText ? 1 : widget.maxLines,
-          minLines: widget.minLines,
-          maxLength: widget.maxLength,
-          validator: widget.validator,
-          onChanged: widget.onChanged,
-          cursorColor: DesignTokens.primary,
-          decoration: InputDecoration(
-            hintText: widget.hint,
-            hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 14),
-            filled: true,
-            fillColor: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.surfaceVariant.withValues(alpha: 0.7),
-            prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon, color: DesignTokens.primary, size: 20) : null,
-            suffixIcon: widget.suffixIcon != null
-                ? Semantics(
-                    button: true,
-                    label: 'Toggle password visibility',
-                    child: SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: GestureDetector(
-                        onTap: widget.onSuffixTap,
-                        child: Center(child: Icon(widget.suffixIcon, color: DesignTokens.primary, size: 20)),
+            key: widget.textFieldKey,
+            controller: widget.controller,
+            focusNode: _focusNode,
+            keyboardType: widget.keyboardType,
+            obscureText: _obscureText,
+            maxLines: _obscureText ? 1 : widget.maxLines,
+            minLines: widget.minLines,
+            maxLength: widget.maxLength,
+            validator: widget.validator,
+            onChanged: widget.onChanged,
+            cursorColor: DesignTokens.primary,
+            decoration: InputDecoration(
+              hintText: widget.hint,
+              hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 14),
+              filled: true,
+              fillColor: isDark ? DesignTokens.darkSurfaceVariant.withValues(alpha: 0.5) : DesignTokens.surfaceVariant.withValues(alpha: 0.7),
+              prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon, color: DesignTokens.primary, size: 20) : null,
+              suffixIcon: widget.suffixIcon != null
+                  ? Semantics(
+                      button: true,
+                      label: 'Toggle password visibility',
+                      child: SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: GestureDetector(
+                          onTap: widget.onSuffixTap,
+                          child: Center(child: Icon(widget.suffixIcon, color: DesignTokens.primary, size: 20)),
+                        ),
                       ),
-                    ),
-                  )
-                : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              borderSide: BorderSide(color: Colors.transparent),
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                borderSide: BorderSide(color: Colors.transparent),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.2), width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                borderSide: BorderSide(color: DesignTokens.primary, width: 2),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                borderSide: BorderSide(color: DesignTokens.error, width: 1.5),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                borderSide: BorderSide(color: DesignTokens.error, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing16, vertical: DesignTokens.spacing12),
+              counterText: widget.showCounter ? null : '',
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.2), width: 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              borderSide: BorderSide(color: DesignTokens.primary, width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              borderSide: BorderSide(color: DesignTokens.error, width: 1.5),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              borderSide: BorderSide(color: DesignTokens.error, width: 2),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing16, vertical: DesignTokens.spacing12),
-            counterText: widget.showCounter ? null : '',
+            style: TextStyle(fontSize: 15, color: isDark ? Colors.white : DesignTokens.textPrimary),
           ),
-          style: TextStyle(fontSize: 15, color: isDark ? Colors.white : DesignTokens.textPrimary),
-        ),
         ),
       ],
     );

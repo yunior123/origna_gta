@@ -16,6 +16,7 @@ class ModernButton extends StatefulWidget {
   final double height;
   final bool fullWidth;
   final Color? backgroundColor;
+  final String? semanticsLabel;
 
   const ModernButton({
     super.key,
@@ -29,14 +30,14 @@ class ModernButton extends StatefulWidget {
     this.height = 52,
     this.fullWidth = true,
     this.backgroundColor,
+    this.semanticsLabel,
   });
 
   @override
   State<ModernButton> createState() => _ModernButtonState();
 }
 
-class _ModernButtonState extends State<ModernButton>
-    with SingleTickerProviderStateMixin {
+class _ModernButtonState extends State<ModernButton> with SingleTickerProviderStateMixin {
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
 
@@ -48,7 +49,8 @@ class _ModernButtonState extends State<ModernButton>
     return Semantics(
       button: true,
       enabled: !isDisabled,
-      label: widget.label,
+      label: widget.semanticsLabel ?? widget.label,
+      container: true,
       child: GestureDetector(
         onTapDown: isDisabled
             ? null
@@ -67,85 +69,60 @@ class _ModernButtonState extends State<ModernButton>
               },
         onTapCancel: isDisabled ? null : () => _scaleController.reverse(),
         child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: Container(
-          width: widget.fullWidth ? double.infinity : widget.width,
-          height: widget.height,
-          decoration: BoxDecoration(
-            gradient: widget.isPrimary && !widget.isOutlined && !isDisabled
-                ? DesignTokens.primaryGradient
-                : null,
-            color:
-                widget.backgroundColor ??
-                (widget.isOutlined
-                    ? Colors.transparent
-                    : (!widget.isPrimary
-                          ? DesignTokens.surface
-                          : (isDisabled ? DesignTokens.textDisabled : null))),
-            borderRadius: BorderRadius.circular(DesignTokens.radius16),
-            border: widget.isOutlined
-                ? Border.all(color: DesignTokens.primary, width: 1.5)
-                : null,
-            boxShadow: !widget.isOutlined && widget.isPrimary && !isDisabled
-                ? DesignTokens.shadowMd
-                : null,
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: isDisabled ? null : widget.onPressed,
+          scale: _scaleAnimation,
+          child: Container(
+            width: widget.fullWidth ? double.infinity : widget.width,
+            height: widget.height,
+            decoration: BoxDecoration(
+              gradient: widget.isPrimary && !widget.isOutlined && !isDisabled ? DesignTokens.primaryGradient : null,
+              color:
+                  widget.backgroundColor ??
+                  (widget.isOutlined ? Colors.transparent : (!widget.isPrimary ? DesignTokens.surface : (isDisabled ? DesignTokens.textDisabled : null))),
               borderRadius: BorderRadius.circular(DesignTokens.radius16),
-              child: Center(
-                child: widget.isLoading
-                    ? ModernLoadingIndicator(
-                        size: 20,
-                        color: widget.isPrimary && !widget.isOutlined
-                            ? Colors.white
-                            : DesignTokens.primary,
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: DesignTokens.spacing12,
-                        ),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (widget.icon != null) ...[
-                                Icon(
-                                  widget.icon,
-                                  color: widget.isPrimary && !widget.isOutlined
-                                      ? Colors.white
-                                      : DesignTokens.primary,
-                                  size: 18,
+              border: widget.isOutlined ? Border.all(color: DesignTokens.primary, width: 1.5) : null,
+              boxShadow: !widget.isOutlined && widget.isPrimary && !isDisabled ? DesignTokens.shadowMd : null,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: isDisabled ? null : widget.onPressed,
+                borderRadius: BorderRadius.circular(DesignTokens.radius16),
+                child: Center(
+                  child: widget.isLoading
+                      ? ModernLoadingIndicator(size: 20, color: widget.isPrimary && !widget.isOutlined ? Colors.white : DesignTokens.primary)
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: DesignTokens.spacing12),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (widget.icon != null) ...[
+                                  Icon(widget.icon, color: widget.isPrimary && !widget.isOutlined ? Colors.white : DesignTokens.primary, size: 18),
+                                  const SizedBox(width: DesignTokens.spacing8),
+                                ],
+                                Text(
+                                  widget.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
+                                    color: widget.isPrimary && !widget.isOutlined ? Colors.white : DesignTokens.primary,
+                                  ),
                                 ),
-                                const SizedBox(width: DesignTokens.spacing8),
                               ],
-                              Text(
-                                widget.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.5,
-                                  color: widget.isPrimary && !widget.isOutlined
-                                      ? Colors.white
-                                      : DesignTokens.primary,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
     );
   }
 
@@ -158,12 +135,7 @@ class _ModernButtonState extends State<ModernButton>
   @override
   void initState() {
     super.initState();
-    _scaleController = AnimationController(
-      duration: DesignTokens.durationFast,
-      vsync: this,
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
-    );
+    _scaleController = AnimationController(duration: DesignTokens.durationFast, vsync: this);
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut));
   }
 }
