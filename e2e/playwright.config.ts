@@ -1,40 +1,29 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const envWorkersRaw = process.env.E2E_WORKERS;
-const envWorkers = envWorkersRaw ? Number.parseInt(envWorkersRaw, 10) : undefined;
 const runAllProjects = process.env.E2E_PROJECTS === 'all' || process.env.E2E_ALL_PROJECTS === '1';
 
 export default defineConfig({
-  testDir: '.',
-  // Ignore non-test files and seed scripts
-  testIgnore: [
-    'seed-emulator.ts',
-    'mega-seed.ts',
-    '*.py',  // Python helper scripts
-  ],
+  testDir: './playwright_ui',
+  testMatch: '**/*.spec.ts',
+  testIgnore: ['*.py'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
   workers: 5,
   reporter: process.env.CI ? 'list' : 'html',
-  // 60s default — only UI tests override to 120s via test.setTimeout()
-  timeout: 60 * 1000,
+  timeout: 300 * 1000, // 5min per test (Stripe + Flutter init are slow)
   expect: {
     timeout: 15 * 1000,
   },
   use: {
     actionTimeout: 15 * 1000,
-    baseURL: 'http://localhost:5005',
+    baseURL: process.env.E2E_TARGET_URL ?? 'https://orignagta-dev.web.app',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    // Enable for Flutter Web canvas accessibility
     bypassCSP: true,
   },
 
   projects: [
-    // Flutter Web + CanvasKit is significantly slower/flakier on WebKit + mobile
-    // emulation. Keep the default run focused on Chromium for speed and
-    // stability; enable cross-browser via `E2E_PROJECTS=all`.
     ...(runAllProjects
       ? [
         {
@@ -61,14 +50,4 @@ export default defineConfig({
         },
       ]),
   ],
-
-  /*
-  webServer: {
-    command: 'cd .. && ./scripts/start-e2e-services.sh',
-    url: 'http://localhost:5005',
-    reuseExistingServer: true,
-    timeout: 120000, // 2 minutes
-    stdout: 'pipe',
-  },
-  */
 });
