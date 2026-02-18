@@ -9,18 +9,27 @@ import {
   signIn, callOk, callExpectError,
   fullCheckoutAndPay,
   waitForOrderStatus, getOrder,
+  getTestProduct, getSellerAuth,
   TEST_ACCOUNTS,
 } from './api-helpers';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
-const SELLER_EMAIL = TEST_ACCOUNTS.SELLER_EMAIL;
-const PRODUCT_ID = 'product_001';
 
 test.describe('Order Lifecycle', () => {
   test.setTimeout(180_000);
 
+  let productId: string;
+  let productSellerId: string;
+
+  test.beforeAll(async () => {
+    const auth = await signIn(BUYER_EMAIL);
+    const product = await getTestProduct(auth.idToken, auth.localId);
+    productId = product.id;
+    productSellerId = product.sellerId;
+  });
+
   test('Order created after payment has confirmed status', async ({ page }) => {
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, PRODUCT_ID, 1);
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
     expect(result.orderId).toBeTruthy();
 
     const auth = await signIn(BUYER_EMAIL);
@@ -30,11 +39,11 @@ test.describe('Order Lifecycle', () => {
   });
 
   test('Seller can transition confirmed → processing', async ({ page }) => {
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, PRODUCT_ID, 1);
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
     const buyerAuth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
 
-    const sellerAuth = await signIn(SELLER_EMAIL);
+    const sellerAuth = await getSellerAuth(productSellerId);
     await callOk('update_order_status', {
       orderId: result.orderId,
       newStatus: 'processing',
@@ -45,11 +54,11 @@ test.describe('Order Lifecycle', () => {
   });
 
   test('Seller can transition processing → shipped with tracking', async ({ page }) => {
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, PRODUCT_ID, 1);
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
     const buyerAuth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
 
-    const sellerAuth = await signIn(SELLER_EMAIL);
+    const sellerAuth = await getSellerAuth(productSellerId);
     await callOk('update_order_status', {
       orderId: result.orderId,
       newStatus: 'processing',
@@ -68,11 +77,11 @@ test.describe('Order Lifecycle', () => {
   });
 
   test('Invalid transition confirmed → delivered is rejected', async ({ page }) => {
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, PRODUCT_ID, 1);
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
     const buyerAuth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
 
-    const sellerAuth = await signIn(SELLER_EMAIL);
+    const sellerAuth = await getSellerAuth(productSellerId);
     const error = await callExpectError('update_order_status', {
       orderId: result.orderId,
       newStatus: 'delivered',
@@ -82,7 +91,7 @@ test.describe('Order Lifecycle', () => {
   });
 
   test('Buyer cannot update order status (only seller/admin can)', async ({ page }) => {
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, PRODUCT_ID, 1);
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
     const buyerAuth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
 

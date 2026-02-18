@@ -61,11 +61,18 @@ export interface AuthData {
   [key: string]: any;
 }
 
+// Auth token cache — avoids redundant signIn calls that hit Firebase quota
+const _authCache = new Map<string, { data: AuthData; expiresAt: number }>();
+
 /**
  * Sign in to Firebase Auth via Identity Toolkit REST API.
- * Returns idToken for authenticating subsequent requests.
+ * Caches tokens for 50 minutes (Firebase tokens expire after 60 min).
  */
 export async function signIn(email: string, password: string = DEFAULT_PASS): Promise<AuthData> {
+  const cacheKey = `${email}:${password}`;
+  const cached = _authCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiresAt) return cached.data;
+
   const res = await fetch(
     `${AUTH_URL}/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
     {
@@ -81,6 +88,7 @@ export async function signIn(email: string, password: string = DEFAULT_PASS): Pr
     throw new Error(`signIn FAILED for ${email}: ${errMsg}`);
   }
 
+  _authCache.set(cacheKey, { data: data as AuthData, expiresAt: Date.now() + 50 * 60_000 });
   return data as AuthData;
 }
 
@@ -174,18 +182,34 @@ export async function callCallable(fn: string, data: any, token: string): Promis
     },
     body: JSON.stringify({ data }),
   });
-  return res.json();
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Non-JSON response (e.g. HTML 404 for missing function)
+    return { error: { message: `Non-JSON response (${res.status}): ${text.substring(0, 200)}`, status: res.status >= 400 ? 'NOT_FOUND' : 'INTERNAL' } };
+  }
 }
 
 /**
  * Call a callable function and throw if it returns an error.
+ * Auto-retries on rate limit (waits 65s then retries up to 3 times).
  */
 export async function callOk(fn: string, data: any, token: string): Promise<any> {
-  const body = await callCallable(fn, data, token);
-  if (body.error) {
-    throw new Error(`${fn} failed: ${body.error.message || JSON.stringify(body.error)}`);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const body = await callCallable(fn, data, token);
+    if (body.error) {
+      const msg = (body.error.message || '').toLowerCase();
+      if (msg.includes('rate limit') && attempt < 2) {
+        console.log(`⏳ Rate limited on ${fn}, waiting 65s... (attempt ${attempt + 1}/3)`);
+        await new Promise(r => setTimeout(r, 65_000));
+        continue;
+      }
+      throw new Error(`${fn} failed: ${body.error.message || JSON.stringify(body.error)}`);
+    }
+    return body.result || body;
   }
-  return body.result || body;
+  throw new Error(`${fn} failed after 3 retries`);
 }
 
 /**
@@ -648,6 +672,155 @@ export async function fullMultiSellerCheckoutAndPay(
   await page.waitForTimeout(5_000);
 
   return { orderId: result.orderId };
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PRODUCT DISCOVERY — Dev Firestore has auto-generated product IDs
+// ════════════════════════════════════════════════════════════════════
+
+interface DiscoveredProduct {
+  id: string;
+  name: string;
+  price: number;
+  sellerId: string;
+  stockQuantity: number;
+}
+
+let _cachedProducts: DiscoveredProduct[] | null = null;
+
+/** Clear the product cache so the next call re-fetches from Firestore. */
+export function invalidateProductCache(): void {
+  _cachedProducts = null;
+}
+
+/**
+ * Discover available products in dev Firestore.
+ * Products have auto-generated IDs, so we list them and pick suitable ones.
+ * Results are cached for the test run (call invalidateProductCache() to refresh).
+ */
+export async function discoverProducts(_token?: string): Promise<DiscoveredProduct[]> {
+  if (_cachedProducts) return _cachedProducts;
+
+  // Admin auth required for listing products collection
+  const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
+  const res = await fetch(`${FIRESTORE_BASE}/products?pageSize=50`, {
+    headers: { 'Authorization': `Bearer ${adminAuth.idToken}` },
+  });
+  if (!res.ok) throw new Error(`Failed to list products: ${res.status}`);
+  const body = await res.json() as any;
+  const docs = body.documents || [];
+
+  _cachedProducts = docs
+    .map((doc: any) => {
+      const id = doc.name?.split('/').pop();
+      const fields = parseDoc(doc);
+      if (!fields) return null;
+      return {
+        id,
+        name: fields.name || '',
+        price: fields.price || 0,
+        sellerId: fields.sellerId || '',
+        stockQuantity: fields.stockQuantity || 0,
+      } as DiscoveredProduct;
+    })
+    .filter((p: DiscoveredProduct | null): p is DiscoveredProduct =>
+      p !== null && p.price > 0 && p.stockQuantity > 0 && p.sellerId.length > 0
+    )
+    // Sort by stock descending — prefer products with the most stock
+    .sort((a: DiscoveredProduct, b: DiscoveredProduct) => b.stockQuantity - a.stockQuantity);
+
+  if (_cachedProducts!.length === 0) {
+    throw new Error('No purchasable products found in dev Firestore. Add products first.');
+  }
+
+  return _cachedProducts!;
+}
+
+/**
+ * Get a single test product with live stock check.
+ * Prefers products with highest stock. The buyer must NOT be the seller.
+ */
+export async function getTestProduct(token: string, excludeSellerId?: string): Promise<DiscoveredProduct> {
+  const products = await discoverProducts(token);
+  const candidates = excludeSellerId
+    ? products.filter(p => p.sellerId !== excludeSellerId)
+    : products;
+
+  if (candidates.length === 0) {
+    throw new Error('No purchasable products found (after excluding seller).');
+  }
+
+  // Re-check stock for top candidates (cache may be stale)
+  const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
+  for (const product of candidates.slice(0, 5)) {
+    try {
+      const doc = await readDoc(`products/${product.id}`, adminAuth.idToken);
+      const live = parseDoc(doc);
+      if (live && live.stockQuantity > 0) {
+        product.stockQuantity = live.stockQuantity; // update cache
+        return product;
+      }
+    } catch { /* skip, try next */ }
+  }
+
+  // Fallback: invalidate cache and re-discover
+  invalidateProductCache();
+  const fresh = await discoverProducts(token);
+  const freshCandidates = excludeSellerId
+    ? fresh.filter(p => p.sellerId !== excludeSellerId)
+    : fresh;
+
+  if (freshCandidates.length === 0) {
+    throw new Error('All products are out of stock. Restock dev Firestore.');
+  }
+  return freshCandidates[0];
+}
+
+/**
+ * Get two products from different sellers (for multi-seller tests).
+ * Returns null if only one seller has products with stock.
+ */
+export async function getTwoSellerProducts(token: string): Promise<[DiscoveredProduct, DiscoveredProduct] | null> {
+  const products = await discoverProducts(token);
+  const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
+  const sellers = new Map<string, DiscoveredProduct>();
+
+  for (const p of products) {
+    if (sellers.has(p.sellerId)) continue;
+    // Live stock check
+    try {
+      const doc = await readDoc(`products/${p.id}`, adminAuth.idToken);
+      const live = parseDoc(doc);
+      if (live && live.stockQuantity > 0) {
+        p.stockQuantity = live.stockQuantity;
+        sellers.set(p.sellerId, p);
+      }
+    } catch { /* skip */ }
+    if (sellers.size >= 2) break;
+  }
+
+  if (sellers.size < 2) return null;
+  const [a, b] = [...sellers.values()];
+  return [a, b];
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SELLER AUTH — Map known seller UIDs to test accounts
+// ════════════════════════════════════════════════════════════════════
+
+const SELLER_UID_TO_EMAIL: Record<string, string> = {
+  [TEST_UIDS.ADMIN]: TEST_ACCOUNTS.ADMIN_EMAIL,
+  [TEST_UIDS.SELLER]: TEST_ACCOUNTS.SELLER_EMAIL,
+};
+
+/**
+ * Sign in as the seller who owns a product (by sellerId).
+ * In dev, all products are owned by the admin account.
+ */
+export async function getSellerAuth(sellerId: string): Promise<AuthData> {
+  const email = SELLER_UID_TO_EMAIL[sellerId];
+  if (!email) throw new Error(`Unknown seller UID: ${sellerId}. Add mapping to SELLER_UID_TO_EMAIL.`);
+  return signIn(email);
 }
 
 // ════════════════════════════════════════════════════════════════════

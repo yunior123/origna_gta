@@ -9,7 +9,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
-  workers: 5,
+  workers: 1,
   reporter: process.env.CI ? 'list' : 'html',
   timeout: 300 * 1000, // 5min per test (Stripe + Flutter init are slow)
   expect: {

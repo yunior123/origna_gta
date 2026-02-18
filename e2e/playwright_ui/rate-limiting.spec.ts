@@ -7,6 +7,7 @@ import { test, expect } from '@playwright/test';
 import {
   signIn, callCallable,
   buildCheckoutPayload,
+  getTestProduct,
   TEST_ACCOUNTS,
 } from './api-helpers';
 
@@ -15,44 +16,47 @@ const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 test.describe('Rate Limiting', () => {
   test.setTimeout(120_000);
 
-  test('Rapid checkout requests are rate-limited', async () => {
-    const auth = await signIn(BUYER_EMAIL);
-    const { data } = await buildCheckoutPayload(auth.localId, 'product_001', 1, auth.idToken);
+  let productId: string;
+  let buyerAuth: Awaited<ReturnType<typeof signIn>>;
+
+  test.beforeAll(async () => {
+    buyerAuth = await signIn(BUYER_EMAIL);
+    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    productId = product.id;
+  });
+
+  test('Rapid checkout requests trigger rate limiting', async () => {
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
 
     // Fire 10 rapid checkout requests
     const results = await Promise.all(
       Array.from({ length: 10 }, () =>
-        callCallable('create_checkout_session', data, auth.idToken)
+        callCallable('create_checkout_session', data, buyerAuth.idToken)
       )
     );
 
-    // At least some should succeed, but if rate limiting is active,
-    // later requests should be throttled or rejected
     const errors = results.filter(r => r.error);
     const successes = results.filter(r => !r.error);
 
-    // We expect at least 1 success (first request)
-    expect(successes.length).toBeGreaterThan(0);
+    // Rate limiting should reject at least some requests.
+    // In dev, the limit is 5 requests per minute — so with 10 rapid requests,
+    // we expect some to fail (either from rate limit or prior test activity).
+    // The key assertion: not ALL 10 should succeed.
+    const rateLimitErrors = errors.filter(r =>
+      r.error?.message?.toLowerCase().includes('rate') ||
+      r.error?.status === 'RESOURCE_EXHAUSTED'
+    );
 
-    // If rate limiting is properly configured, some should fail
-    // (but in dev environment, rate limiting may not be active)
-    if (errors.length > 0) {
-      const rateLimitErrors = errors.filter(r =>
-        r.error?.message?.toLowerCase().includes('rate') ||
-        r.error?.status === 'RESOURCE_EXHAUSTED'
-      );
-      // Log for visibility
-      console.log(`Rate limit test: ${successes.length} success, ${errors.length} errors (${rateLimitErrors.length} rate-limit specific)`);
-    }
+    // At least one request should be rate-limited OR all fail (already at limit)
+    expect(errors.length).toBeGreaterThan(0);
+    console.log(`Rate limit test: ${successes.length} success, ${errors.length} errors (${rateLimitErrors.length} rate-limit specific)`);
   });
 
   test('Multiple rapid API calls do not crash the service', async () => {
-    const auth = await signIn(BUYER_EMAIL);
-
     // Fire 5 rapid read requests
     const results = await Promise.all(
       Array.from({ length: 5 }, () =>
-        callCallable('get_connect_account_status', {}, auth.idToken).catch(e => ({ error: e }))
+        callCallable('get_connect_account_status', {}, buyerAuth.idToken).catch(e => ({ error: e }))
       )
     );
 

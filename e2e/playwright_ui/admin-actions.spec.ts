@@ -63,32 +63,31 @@ test.describe('Admin Actions', () => {
     await performSignOut(page, TARGET_URL);
   });
 
-  test('Admin can view all orders via API', async () => {
+  test('Admin can call admin-only endpoints via API', async () => {
     const auth = await signIn(ADMIN_EMAIL, ADMIN_PASSWORD);
-    const result = await callCallable('admin_get_orders', {
-      limit: 5,
+    // admin_update_product_stock is an admin-only endpoint
+    const result = await callCallable('admin_update_product_stock', {
+      productId: 'nonexistent_test',
+      newStock: 10,
     }, auth.idToken);
 
-    // Should return orders or an acceptable response
+    // Should either succeed or return a business-logic error (not permission-denied)
     if (result.error) {
-      // Endpoint may not exist or may have different name
-      expect(result.error).toBeTruthy();
-    } else {
-      const data = result.result || result;
-      expect(data).toBeTruthy();
+      const msg = (result.error.message || '').toLowerCase();
+      // Acceptable: product not found, invalid argument — NOT permission-denied
+      expect(msg).not.toContain('permission');
+      expect(msg).not.toContain('unauthenticated');
     }
   });
 
   test('Non-admin cannot access admin endpoints', async () => {
     const buyerAuth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
-    const result = await callCallable('admin_get_orders', {
-      limit: 5,
+    const result = await callCallable('admin_update_product_stock', {
+      productId: 'nonexistent_test',
+      newStock: 10,
     }, buyerAuth.idToken);
 
     // Should be rejected — buyer is not admin
-    if (result.error) {
-      expect(result.error).toBeTruthy();
-    }
-    // If no error, the endpoint may not enforce admin-only (worth investigating)
+    expect(result.error).toBeTruthy();
   });
 });

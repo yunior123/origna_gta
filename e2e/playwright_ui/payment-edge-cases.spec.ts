@@ -8,44 +8,42 @@ import {
   signIn, callOk,
   buildCheckoutPayload, readDoc, parseDoc,
   fillStripeCheckout, dismissStripeModals,
+  getTestProduct,
   TEST_ACCOUNTS, STRIPE_CARD,
 } from './api-helpers';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
-const PRODUCT_ID = 'product_001';
 
-/** Stripe test card that always declines */
 const DECLINED_CARD = { ...STRIPE_CARD, number: '4000000000000002' };
-
-/** Stripe test card for insufficient funds */
-const INSUFFICIENT_FUNDS_CARD = { ...STRIPE_CARD, number: '4000000000009995' };
-
-/** Stripe test card that triggers 3D Secure */
 const THREE_DS_CARD = { ...STRIPE_CARD, number: '4000002500003155' };
 
 test.describe('Payment Edge Cases', () => {
   test.setTimeout(120_000);
 
+  let productId: string;
+  let buyerAuth: Awaited<ReturnType<typeof signIn>>;
+
+  test.beforeAll(async () => {
+    buyerAuth = await signIn(BUYER_EMAIL);
+    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    productId = product.id;
+  });
+
   test('Declined card shows error on Stripe page', async ({ page }) => {
-    const auth = await signIn(BUYER_EMAIL);
-    const { data } = await buildCheckoutPayload(auth.localId, PRODUCT_ID, 1, auth.idToken);
-    const result = await callOk('create_checkout_session', data, auth.idToken);
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
+    const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
 
     await page.goto(result.checkoutUrl);
     await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
-
-    // Fill with declined card — expect Stripe to show error, NOT redirect
     await dismissStripeModals(page);
 
     const emailInput = page.locator('#email, input[name="email"]').first();
     if (await emailInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      const safeEmail = `test-decline-${Date.now()}@origna-test.ca`;
-      await emailInput.fill(safeEmail);
+      await emailInput.fill(`test-decline-${Date.now()}@origna-test.ca`);
       await page.waitForTimeout(1_500);
       await dismissStripeModals(page);
     }
 
-    // Select card payment method if needed
     const cardField = page.locator('#cardNumber, input[name="cardNumber"]').first();
     if (!(await cardField.isVisible({ timeout: 3_000 }).catch(() => false))) {
       const cardRadio = page.locator('#payment-method-accordion-item-title-card, [data-testid="card-accordion-item-button"], button:has-text("Card")').first();
@@ -71,15 +69,14 @@ test.describe('Payment Edge Cases', () => {
     await payBtn.waitFor({ state: 'visible', timeout: 10_000 });
     await payBtn.click();
 
-    // Should stay on Stripe page with an error (not redirect)
+    // Should stay on Stripe page with an error
     await page.waitForTimeout(10_000);
     expect(page.url()).toContain('checkout.stripe.com');
   });
 
   test('3D Secure card triggers authentication challenge', async ({ page }) => {
-    const auth = await signIn(BUYER_EMAIL);
-    const { data } = await buildCheckoutPayload(auth.localId, PRODUCT_ID, 1, auth.idToken);
-    const result = await callOk('create_checkout_session', data, auth.idToken);
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
+    const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
 
     await page.goto(result.checkoutUrl);
     await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
@@ -117,7 +114,6 @@ test.describe('Payment Edge Cases', () => {
     await payBtn.waitFor({ state: 'visible', timeout: 10_000 });
     await payBtn.click();
 
-    // 3DS challenge should appear (iframe or redirect)
     await page.waitForTimeout(10_000);
 
     // Try to complete 3DS challenge if it appears
@@ -129,23 +125,19 @@ test.describe('Payment Edge Cases', () => {
       if (await completeBtn.isVisible({ timeout: 10_000 }).catch(() => false)) {
         await completeBtn.click();
         await page.waitForTimeout(5_000);
-        // After completing 3DS, should redirect away from Stripe
-        const url = page.url();
-        // Either redirected or still processing — both are valid outcomes
-        expect(url).toBeTruthy();
       }
     } catch {
-      // 3DS frame may not appear in all environments — test passes if card was accepted
+      // 3DS frame may not appear in all environments
     }
+    // Test passes as long as no crash
+    expect(page.url()).toBeTruthy();
   });
 
   test('Currency is always CAD for Canadian buyers', async () => {
-    const auth = await signIn(BUYER_EMAIL);
-    const { data } = await buildCheckoutPayload(auth.localId, PRODUCT_ID, 1, auth.idToken);
-    const result = await callOk('create_checkout_session', data, auth.idToken);
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
+    const result = await callOk('create_checkout_session', data, buyerAuth.idToken);
 
-    // Verify the order uses CAD currency
-    const doc = await readDoc(`orders/${result.orderId}`, auth.idToken);
+    const doc = await readDoc(`orders/${result.orderId}`, buyerAuth.idToken);
     const order = parseDoc(doc);
     expect(order.currency).toBe('cad');
   });

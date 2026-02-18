@@ -47,12 +47,12 @@ test.describe('Admin Security', () => {
     expect(body.error || res.status !== 200).toBeTruthy();
   });
 
-  test('Non-seller cannot add products via API', async () => {
+  test('Non-seller cannot access seller-only endpoints via API', async () => {
     const buyerAuth = await signIn(BUYER_EMAIL);
-    const error = await callExpectError('add_product', {
-      name: 'Fake Product',
-      price: 10.00,
-      description: 'Should be rejected',
+    // upload_product_images requires seller role
+    const error = await callExpectError('upload_product_images', {
+      productId: 'nonexistent_test',
+      images: [],
     }, buyerAuth.idToken);
 
     // Should be rejected — buyer doesn't have seller role

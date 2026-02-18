@@ -9,11 +9,22 @@
 - Platform fee applied to subtotal only (not shipping/tax): `round(subtotalCents * 0.025)`
 - `totalAmountCents = subtotalCents + shippingCostCents + taxAmountCents`
 
-### Country Validation Bug (CRITICAL)
+### Country Validation (FIXED in api-helpers.ts)
 - Backend: `country.lower() != "canada"` -- only accepts full name "Canada"
 - `BusinessRules.ALLOWED_SHIPPING_COUNTRIES = {"Canada", "CA"}` exists but is NOT used in the check
-- E2E test helpers default to `'CA'` which will be rejected
-- See: [e2e-audit-findings.md](./e2e-audit-findings.md)
+- E2E test helpers now default to `'Canada'` (was `'CA'`, now fixed)
+- Backend bug still exists (should use ALLOWED_SHIPPING_COUNTRIES)
+
+### Item Status vs Order Status
+- `update_item_status` uses `DeliveryStatusValues`: pending, shipped, delivered, refunded
+- `update_order_status` uses `OrderStatusValues`: pending, confirmed, processing, shipped, etc.
+- NO "processing" in DeliveryStatusValues -- tests must use "shipped" for item-level updates
+- Multi-seller orders: backend blocks `update_order_status` -- must use `update_item_status`
+
+### update_shipping_cost API Contract
+- Backend expects: `newShippingCost` (dollars, float), `reason` (string)
+- Backend rejects if `paymentStatus != "authorized"` -- but auto-capture mode sets "captured"
+- This means `update_shipping_cost` is UNREACHABLE in current auto-capture flow
 
 ### Test Architecture
 - E2E tests target `orignagta-dev` (deployed, not emulator)

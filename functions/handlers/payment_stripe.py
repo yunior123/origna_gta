@@ -1352,30 +1352,35 @@ def process_checkout_session_completed(session: dict) -> str | None:
     # Fix 4: Address Injection Protection
     # Verify that the address used in Stripe matches the one in Firestore.
     # Prevents users from getting cheap shipping quote for Address A, then swapping to Address B in Stripe.
+    # NOTE: Only applies when Stripe collects shipping address (shipping_address_collection enabled).
+    # If shipping_details is empty, we don't collect address in Stripe — skip check.
     session_shipping = session.get("shipping_details", {}) or {}
     stripe_address = session_shipping.get("address", {}) or {}
-    order_address = order_data.get(Fields.SHIPPING_ADDRESS, {})
 
-    def normalize(val):
-        return str(val).strip().lower() if val else ""
+    # Only compare if Stripe actually collected a shipping address
+    if stripe_address and any(stripe_address.get(k) for k in ("country", "state", "postal_code")):
+        order_address = order_data.get(Fields.SHIPPING_ADDRESS, {})
 
-    # Compare critical fields that affect shipping/tax: Country, State, Postal Code
-    # precise street match is skipped to allow minor typo corrections by user
-    mismatches = []
-    if normalize(stripe_address.get("country")) != normalize(order_address.get(Fields.COUNTRY)):
-        mismatches.append("country")
-    if normalize(stripe_address.get("state")) != normalize(order_address.get(Fields.STATE)):
-        mismatches.append("state")
-    # Fuzzy match postal code (remove spaces)
-    stripe_zip = normalize(stripe_address.get("postal_code")).replace(" ", "")
-    order_zip = normalize(order_address.get(Fields.POSTAL_CODE)).replace(" ", "")
-    if stripe_zip != order_zip:
-        mismatches.append(f"postal_code ({stripe_zip} vs {order_zip})")
+        def normalize(val):
+            return str(val).strip().lower() if val else ""
 
-    if mismatches:
-        logger.warning(f"⚠️ Address mismatch for order {order_id}: {mismatches}. Cancelling.")
-        _restore_stock_and_cancel_order(order_id, order_data, f"Shipping address mismatch: {', '.join(mismatches)}")
-        return f"Order {order_id} cancelled - address mismatch"
+        # Compare critical fields that affect shipping/tax: Country, State, Postal Code
+        # precise street match is skipped to allow minor typo corrections by user
+        mismatches = []
+        if normalize(stripe_address.get("country")) != normalize(order_address.get(Fields.COUNTRY)):
+            mismatches.append("country")
+        if normalize(stripe_address.get("state")) != normalize(order_address.get(Fields.STATE)):
+            mismatches.append("state")
+        # Fuzzy match postal code (remove spaces)
+        stripe_zip = normalize(stripe_address.get("postal_code")).replace(" ", "")
+        order_zip = normalize(order_address.get(Fields.POSTAL_CODE)).replace(" ", "")
+        if stripe_zip != order_zip:
+            mismatches.append(f"postal_code ({stripe_zip} vs {order_zip})")
+
+        if mismatches:
+            logger.warning(f"⚠️ Address mismatch for order {order_id}: {mismatches}. Cancelling.")
+            _restore_stock_and_cancel_order(order_id, order_data, f"Shipping address mismatch: {', '.join(mismatches)}")
+            return f"Order {order_id} cancelled - address mismatch"
 
     # SECURITY FIX: Re-validate products before confirming order
     # Products could be deactivated or sellers suspended between checkout and payment

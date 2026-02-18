@@ -8,18 +8,27 @@ import {
   signIn, callOk, callExpectError,
   fullCheckoutAndPay,
   waitForOrderStatus, getOrder, getProductStock,
+  getTestProduct, getSellerAuth,
   TEST_ACCOUNTS,
 } from './api-helpers';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
-const SELLER_EMAIL = TEST_ACCOUNTS.SELLER_EMAIL;
-const PRODUCT_ID = 'product_001';
 
 test.describe('Order Cancellation & Refund', () => {
   test.setTimeout(180_000);
 
+  let productId: string;
+  let productSellerId: string;
+
+  test.beforeAll(async () => {
+    const auth = await signIn(BUYER_EMAIL);
+    const product = await getTestProduct(auth.idToken, auth.localId);
+    productId = product.id;
+    productSellerId = product.sellerId;
+  });
+
   test('Buyer can cancel order before shipping', async ({ page }) => {
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, PRODUCT_ID, 1);
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
     const buyerAuth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
 
@@ -32,12 +41,12 @@ test.describe('Order Cancellation & Refund', () => {
   });
 
   test('Cannot cancel a shipped order', async ({ page }) => {
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, PRODUCT_ID, 1);
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
     const buyerAuth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
 
     // Seller processes and ships
-    const sellerAuth = await signIn(SELLER_EMAIL);
+    const sellerAuth = await getSellerAuth(productSellerId);
     await callOk('update_order_status', {
       orderId: result.orderId,
       newStatus: 'processing',
@@ -58,9 +67,9 @@ test.describe('Order Cancellation & Refund', () => {
 
   test('Stock restores after cancellation', async ({ page }) => {
     const buyerAuth = await signIn(BUYER_EMAIL);
-    const stockBefore = await getProductStock(PRODUCT_ID, buyerAuth.idToken);
+    const stockBefore = await getProductStock(productId, buyerAuth.idToken);
 
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, PRODUCT_ID, 1);
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
     await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
 
     // Cancel the order
@@ -70,7 +79,7 @@ test.describe('Order Cancellation & Refund', () => {
     const start = Date.now();
     let stockAfter = 0;
     while (Date.now() - start < 30_000) {
-      stockAfter = await getProductStock(PRODUCT_ID, buyerAuth.idToken);
+      stockAfter = await getProductStock(productId, buyerAuth.idToken);
       if (stockAfter >= stockBefore) break;
       await new Promise(r => setTimeout(r, 2_000));
     }
@@ -80,7 +89,7 @@ test.describe('Order Cancellation & Refund', () => {
   });
 
   test('Cannot cancel an already cancelled order', async ({ page }) => {
-    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, PRODUCT_ID, 1);
+    const result = await fullCheckoutAndPay(page, BUYER_EMAIL, productId, 1);
     const buyerAuth = await signIn(BUYER_EMAIL);
     await waitForOrderStatus(result.orderId, ['confirmed'], buyerAuth.idToken, 90_000);
 
