@@ -31,9 +31,13 @@ while IFS= read -r file; do
   esac
 done < <(cd "$PROJECT_DIR" && git diff --name-only HEAD 2>/dev/null; git diff --name-only --cached HEAD 2>/dev/null)
 
-# Remove duplicates
-DART_FILES=($(printf "%s\n" "${DART_FILES[@]}" 2>/dev/null | sort -u))
-PY_FILES=($(printf "%s\n" "${PY_FILES[@]}" 2>/dev/null | sort -u))
+# Remove duplicates (guard empty arrays for set -u)
+if [ ${#DART_FILES[@]} -gt 0 ]; then
+  DART_FILES=($(printf "%s\n" "${DART_FILES[@]}" | sort -u))
+fi
+if [ ${#PY_FILES[@]} -gt 0 ]; then
+  PY_FILES=($(printf "%s\n" "${PY_FILES[@]}" | sort -u))
+fi
 
 # If no files changed, nothing to verify
 if [ ${#DART_FILES[@]} -eq 0 ] && [ ${#PY_FILES[@]} -eq 0 ]; then

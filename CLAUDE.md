@@ -42,7 +42,7 @@
 | Payment | `lib/features/checkout/checkout_provider.dart` | `functions/handlers/payment_stripe.py` | — |
 | Orders | `lib/features/orders/*.dart` | `functions/handlers/orders.py` | — |
 
-**Deep context (on demand):** @docs/WORKFLOW_INDEX.md, @docs/REPO_MAP.md, @docs/AGENT_GUIDE.md, @docs/SYMBOL_MAP.md
+**Deep context (read when needed, NOT auto-loaded):** `docs/WORKFLOW_INDEX.md`, `docs/REPO_MAP.md`, `docs/AGENT_GUIDE.md`, `docs/SYMBOL_MAP.md`
 
 ---
 

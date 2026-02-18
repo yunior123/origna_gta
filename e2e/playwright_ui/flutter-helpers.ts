@@ -1,21 +1,43 @@
 /**
  * Flutter Web E2E Test Helpers (Isolated)
  *
- * Selector conventions:
- *  - Home Settings button  → getByRole('button', { name: /settings/i })   (tooltip="Settings")
- *  - Home Cart button      → getByRole('button', { name: /cart|shopping/i }) (tooltip="Shopping cart")
- *  - Home Add Product btn  → getByRole('button', { name: /add product/i }) (tooltip="Add product")
- *  - Profile menu items    → locator('[aria-label="menu-my-orders"]') etc.   (semanticLabel set in profile_screen.dart)
- *  - Sign-out              → locator('[aria-label="btn-sign-out"]')
- *  - Login email           → getByRole('textbox', { name: /email/i })
- *  - Login password        → getByRole('textbox', { name: /password/i })
- *  - Login submit          → getByRole('button', { name: /sign\s*in/i })
+ * Bilingual (EN/FR) selector conventions — the app may render in French:
+ *  - Home Settings button  → /settings|paramètres/i
+ *  - Home Cart button      → /cart|shopping|panier/i
+ *  - Home Add Product btn  → /add product|ajouter/i
+ *  - Sign-in button        → /sign\s*in|se\s*connecter|connexion/i
+ *  - Profile menu items    → locator('[aria-label="menu-my-orders"]') etc.  (language-independent)
+ *  - Sign-out              → locator('[aria-label^="btn-sign-out"]')
+ *  - Login email           → getByRole('textbox', { name: 'you@example.com' })
+ *  - Login password        → getByRole('textbox', { name: '••••••••' })
+ *  - Login submit          → locator('[aria-label^="login_submit_button"]')
  *  - Home search bar       → locator('[aria-label="input-home-search"]')
  *  - Product cards         → locator('[aria-label^="product-card-"]')
  *  - Admin tabs            → locator('[aria-label="admin-tab-sellers"]') etc.
  */
 
 import { Page, Locator, test, expect } from '@playwright/test';
+
+// ─── BILINGUAL PATTERNS ────────────────────────────────────────────
+const BTN_SETTINGS = /settings|paramètres/i;
+const BTN_SIGN_IN = /sign\s*in|se\s*connecter|connexion/i;
+const BTN_CART = /cart|shopping|panier/i;
+const BTN_ADD_PRODUCT = /add\s*product|ajouter/i;
+
+export { BTN_SETTINGS, BTN_SIGN_IN, BTN_CART, BTN_ADD_PRODUCT };
+
+// ─── SERVICE WORKER CLEANUP ────────────────────────────────────────
+
+async function clearServiceWorkers(page: Page): Promise<void> {
+    try {
+        await page.evaluate(async () => {
+            const regs = await navigator.serviceWorker?.getRegistrations() ?? [];
+            for (const reg of regs) await reg.unregister();
+            const names = await caches?.keys() ?? [];
+            for (const n of names) await caches.delete(n);
+        });
+    } catch { /* SW not available */ }
+}
 
 // ─── FLUTTER INITIALIZATION ─────────────────────────────────────────
 
@@ -79,10 +101,9 @@ export async function checkSemantics(page: Page): Promise<void> {
 // ─── LOGIN HELPER ───────────────────────────────────────────────────
 // Flutter Web routing: page.goto('/login') shows the home screen underneath.
 // The login form is only rendered via IN-APP navigation:
-//   Settings button → profile page → "Sign in" button → LoginScreen appears at /login
+//   Settings button → "login required" dialog → "Se connecter" → LoginScreen at /login
 //
-// Session detection: click Settings → if "Sign in" button visible = logged out,
-//   else already logged in.
+// Session detection: click Settings → if dialog appears = logged out, else → /profile = logged in.
 
 export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email?: string, pass?: string): Promise<void> {
     if (!email || !pass) {
@@ -92,6 +113,9 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
 
     console.log(`   ⌨️  Logging in as ${email}...`);
 
+    // Clear service workers that might cache old builds
+    await clearServiceWorkers(page);
+
     // Ensure we're at home before checking auth state
     if (!page.url().startsWith(targetUrl) || page.url().includes('/login') || page.url().includes('/profile')) {
         await page.goto(`${targetUrl}/`);
@@ -99,50 +123,78 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
     }
 
     // Click Settings — this reveals auth state:
-    //   logged in  → navigates to /profile (no sign-in button)
-    //   logged out → shows sign-in prompt on profile page
-    const settingsBtn = page.getByRole('button', { name: /settings/i }).first();
+    //   logged in  → navigates to /profile (no dialog)
+    //   logged out → shows "Connexion requise" / "Login required" dialog
+    const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
     await expect(settingsBtn).toBeAttached({ timeout: 20000 });
     await settingsBtn.click();
 
-    // Check for "Sign in" button (unauthenticated state on profile page)
-    const signInPrompt = page.getByRole('button', { name: /sign\s*in|connexion/i }).first();
+    // Check for sign-in dialog button (unauthenticated state)
+    // Dialog shows "Se connecter" / "Sign in" button
+    const signInPrompt = page.getByRole('button', { name: BTN_SIGN_IN }).first();
     const isLoggedOut = await signInPrompt.isVisible({ timeout: 10000 }).catch(() => false);
 
     if (!isLoggedOut) {
-        // Already logged in — return to home
+        // Already logged in — might be on /profile or still at home
         console.log(`   ✅ Already logged in. Skipping login.`);
         await page.goto(`${targetUrl}/`);
         await waitForFlutter(page, 30000);
         return;
     }
 
-    // Tap "Sign in" to trigger in-app navigation to /login
+    // Tap "Se connecter" / "Sign in" to trigger in-app navigation to /login
     await signInPrompt.click();
-    await expect(page).toHaveURL(/\/login(?:\b|\/|\?|#|$)/i, { timeout: 20000 });
+    await expect(page).toHaveURL(/\/login/i, { timeout: 20000 });
     await waitForFlutter(page, 120000);
 
-    // Flutter Web text input quirk: the <input> elements start disabled.
-    // The flt-semantics label node IS clickable and triggers Flutter focus.
-    // Approach: click the flt-semantics label node → keyboard.type() → Tab → type pass.
-    const emailLabel = page.locator('flt-semantics').filter({ hasText: 'Email Address' }).first();
-    await expect(emailLabel).toBeVisible({ timeout: 30000 });
-    await emailLabel.click();
-    await page.waitForTimeout(200);
-    await page.keyboard.type(email);
+    // Flutter Web text inputs: there are two textboxes per field:
+    //   1. Disabled one with the label ("Adresse courriel" / "Email Address")
+    //   2. Enabled one with placeholder text ("you@example.com" / "••••••••")
+    // We fill the ENABLED ones using their placeholder names.
+    const emailInput = page.getByRole('textbox', { name: 'you@example.com' });
+    await expect(emailInput).toBeVisible({ timeout: 30000 });
+    await emailInput.click();
+    await emailInput.fill(email);
 
-    await page.keyboard.press('Tab');
-    await page.waitForTimeout(200);
-    await page.keyboard.type(pass);
+    const passInput = page.getByRole('textbox', { name: '••••••••' });
+    await passInput.click();
+    await passInput.fill(pass);
 
-    // Submit: 'auth.sign_in'.tr() = "Sign In"
-    const submitBtn = page.getByRole('button', { name: /sign\s*in|connexion|log\s*in/i }).first();
-    await submitBtn.click({ force: true });
+    // Submit via the semantic-labeled button (language-independent)
+    const submitBtn = page.locator('[aria-label^="login_submit_button"]').first();
+    await submitBtn.click();
 
-    // Wait until login completes (navigates away from /login)
-    await expect(page).not.toHaveURL(/\/login(?:\b|\/|\?|#|$)/i, { timeout: 30000 });
+    // Flutter Web quirk: after successful login, the app rebuilds to show
+    // the home screen but the URL may stay at /login. Instead of waiting
+    // for URL change, wait for the login form to disappear (meaning auth
+    // state changed and Flutter rebuilt), then force-navigate to home.
+    await Promise.race([
+        // Option A: URL changes away from /login (ideal)
+        expect(page).not.toHaveURL(/\/login/i, { timeout: 15000 }).catch(() => {}),
+        // Option B: login form disappears (auth succeeded, URL lagging)
+        expect(emailInput).not.toBeVisible({ timeout: 15000 }).catch(() => {}),
+    ]);
 
-    // Return to home
+    // Give Flutter a moment to settle auth state
+    await page.waitForTimeout(2000);
+
+    // Force navigate to home to fix any stale URL
+    await page.goto(`${targetUrl}/`);
+    await waitForFlutter(page, 30000);
+
+    // Verify login actually succeeded: Settings click should NOT show sign-in dialog
+    const verifySettingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
+    await expect(verifySettingsBtn).toBeAttached({ timeout: 15000 });
+    await verifySettingsBtn.click();
+
+    // If we see the sign-in dialog, login failed
+    const signInCheck = page.getByRole('button', { name: BTN_SIGN_IN }).first();
+    const stillLoggedOut = await signInCheck.isVisible({ timeout: 5000 }).catch(() => false);
+    if (stillLoggedOut) {
+        throw new Error(`Login failed for ${email} — sign-in dialog still showing after submit`);
+    }
+
+    // We're on /profile now (logged in) — go back to home
     await page.goto(`${targetUrl}/`);
     await waitForFlutter(page, 30000);
 
@@ -152,23 +204,23 @@ export async function ensureLoggedInAsAdmin(page: Page, targetUrl: string, email
 // ─── SIGN OUT HELPER ─────────────────────────────────────────────────
 
 export async function performSignOut(page: Page, targetUrl: string): Promise<void> {
-    const settingsBtn = page.getByRole('button', { name: /settings/i }).first();
+    const settingsBtn = page.getByRole('button', { name: BTN_SETTINGS }).first();
     await settingsBtn.click();
-    await page.waitForURL(/\/profile(?:\b|\/|\?|#|$)/i, { timeout: 20000 }).catch(() => { });
+    await page.waitForURL(/\/profile/i, { timeout: 20000 }).catch(() => { });
     await waitForFlutter(page, 30000);
 
-    const signOut = page.locator('[aria-label="btn-sign-out"]').first();
+    const signOut = page.locator('[aria-label^="btn-sign-out"]').first();
     await expect(signOut).toBeAttached({ timeout: 15000 });
     await signOut.scrollIntoViewIfNeeded().catch(() => { });
     await signOut.click();
     await page.waitForTimeout(2000);
 
-    // Confirm sign-out: navigating to settings should show login prompt
+    // Confirm sign-out: navigating to settings should show login dialog
     await page.goto(`${targetUrl}/`);
     await waitForFlutter(page, 30000);
     await settingsBtn.click();
     await expect(
-        page.getByRole('button', { name: /sign\s*in|connexion/i }).first()
+        page.getByRole('button', { name: BTN_SIGN_IN }).first()
     ).toBeVisible({ timeout: 20000 });
     console.log('   ✅ Sign-out confirmed');
 }
