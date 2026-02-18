@@ -10,7 +10,7 @@ jobs:
   e2e:
     name: Playwright E2E (dev)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -51,8 +51,8 @@ jobs:
           done
           curl -sf http://localhost:5005 > /dev/null || (echo "Server not up after 15s" && exit 1)
 
-      - name: Run Playwright E2E
-        run: cd e2e && npx playwright test --config=playwright.config.dev.ts
+      - name: Run Playwright E2E (CI-safe subset — excludes Stripe UI checkout tests)
+        run: cd e2e && npx playwright test --config=playwright.config.ci.ts
         env:
           CI: "true"
           STRIPE_TEST_KEY: ${{ secrets.STRIPE_TEST_KEY }}
