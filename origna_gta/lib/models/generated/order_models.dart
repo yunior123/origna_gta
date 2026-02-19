@@ -129,6 +129,8 @@ OrderItem _parseOrderItem(dynamic raw) {
     isDigital: _safeBool(map[Fields.isDigital]),
     licenseKey: map[Fields.licenseKey] != null ? _safeString(map[Fields.licenseKey]) : null,
     digitalUnlocked: _safeBool(map[Fields.digitalUnlocked]),
+    digitalType: map[Fields.digitalType] != null ? _safeString(map[Fields.digitalType]) : null,
+    digitalBuilds: map[Fields.digitalBuilds] != null ? Map<String, String>.from(map[Fields.digitalBuilds] as Map) : null,
     taxCode: map[Fields.taxCode] != null ? _safeString(map[Fields.taxCode]) : null,
   );
 }
@@ -466,6 +468,8 @@ abstract class OrderItem with _$OrderItem {
     @Default(false) bool isDigital,
     @Default(null) String? licenseKey,
     @Default(false) bool digitalUnlocked,
+    @Default(null) String? digitalType,
+    @Default(null) Map<String, String>? digitalBuilds,
     // Tax field (new)
     String? taxCode,
   }) = _OrderItem;

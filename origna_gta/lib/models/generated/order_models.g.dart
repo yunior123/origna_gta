@@ -270,6 +270,12 @@ _OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => _OrderItem(
   isDigital: json['isDigital'] as bool? ?? false,
   licenseKey: json['licenseKey'] as String? ?? null,
   digitalUnlocked: json['digitalUnlocked'] as bool? ?? false,
+  digitalType: json['digitalType'] as String? ?? null,
+  digitalBuilds:
+      (json['digitalBuilds'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(k, e as String),
+      ) ??
+      null,
   taxCode: json['taxCode'] as String?,
 );
 
@@ -307,6 +313,8 @@ Map<String, dynamic> _$OrderItemToJson(_OrderItem instance) =>
       'isDigital': instance.isDigital,
       'licenseKey': instance.licenseKey,
       'digitalUnlocked': instance.digitalUnlocked,
+      'digitalType': instance.digitalType,
+      'digitalBuilds': instance.digitalBuilds,
       'taxCode': instance.taxCode,
     };
 

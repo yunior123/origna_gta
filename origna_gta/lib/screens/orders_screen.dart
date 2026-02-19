@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -15,6 +17,7 @@ import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:origna_gta/widgets/rating_dialog.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ============================================================================
 // STATUS CONFIGURATION
@@ -587,8 +590,8 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
                         _infoPill('\$${item.price.toStringAsFixed(2)}', isDark),
                       ],
                     ),
-                    // Tracking number
-                    if (item.trackingNumber != null && item.trackingNumber!.isNotEmpty) ...[
+                    // Tracking number — hidden for digital items
+                    if (!item.isDigital && item.trackingNumber != null && item.trackingNumber!.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -645,6 +648,12 @@ class _BuyerOrderCardState extends ConsumerState<_BuyerOrderCard> {
               ),
             ],
           ),
+
+          // ── Digital item: license key + download actions ──
+          if (item.isDigital && item.digitalUnlocked == true) ...[
+            const SizedBox(height: 12),
+            _DigitalItemActions(item: item),
+          ],
 
           // ── Action Buttons (delivered items) ──
           if (isDelivered) ...[
@@ -1220,6 +1229,145 @@ class _PendingApprovalsBanner extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ============================================================================
+// DIGITAL ITEM ACTIONS
+// ============================================================================
+
+class _DigitalItemActions extends ConsumerWidget {
+  final OrderItem item;
+  const _DigitalItemActions({required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(128),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (item.licenseKey != null) ...[
+            const Text('License Key', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: SelectableText(
+                    item.licenseKey!,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 13, letterSpacing: 1.2),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 18),
+                  tooltip: 'Copy',
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: item.licenseKey!));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('License key copied'), duration: Duration(seconds: 2)),
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (item.digitalType == DigitalTypeValues.software && item.digitalBuilds != null)
+            _SoftwareDownloadLinks(item: item),
+          if (item.digitalType == DigitalTypeValues.book)
+            _BookDownloadButton(item: item),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// SOFTWARE DOWNLOAD LINKS
+// ============================================================================
+
+class _SoftwareDownloadLinks extends StatelessWidget {
+  final OrderItem item;
+  const _SoftwareDownloadLinks({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final builds = item.digitalBuilds ?? {};
+    if (builds.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Download', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: builds.entries.map((e) {
+            final platformLabel = const {
+              'macos': 'macOS',
+              'windows': 'Windows',
+              'linux': 'Linux',
+            }[e.key] ?? e.key;
+            return OutlinedButton.icon(
+              icon: const Icon(Icons.download_outlined, size: 16),
+              label: Text(platformLabel),
+              onPressed: () => launchUrl(Uri.parse(e.value), mode: LaunchMode.externalApplication),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
+// ============================================================================
+// BOOK DOWNLOAD BUTTON
+// ============================================================================
+
+class _BookDownloadButton extends ConsumerStatefulWidget {
+  final OrderItem item;
+  const _BookDownloadButton({required this.item});
+
+  @override
+  ConsumerState<_BookDownloadButton> createState() => _BookDownloadButtonState();
+}
+
+class _BookDownloadButtonState extends ConsumerState<_BookDownloadButton> {
+  bool _loading = false;
+
+  Future<void> _download() async {
+    setState(() => _loading = true);
+    try {
+      final functions = FirebaseFunctions.instanceFor(region: 'us-central1');
+      final result = await functions
+          .httpsCallable('generate_book_download_session')
+          .call({'licenseKey': widget.item.licenseKey});
+      final downloadUrl = result.data['downloadUrl'] as String;
+      await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Download failed: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      icon: _loading
+          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.download_outlined, size: 16),
+      label: const Text('Download Book'),
+      onPressed: _loading ? null : _download,
     );
   }
 }

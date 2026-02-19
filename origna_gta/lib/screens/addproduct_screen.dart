@@ -1478,6 +1478,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           children: [
             Expanded(
               child: _DigitalTypeCard(
+                key: const Key('addproduct_digital_type_software'),
                 label: 'Software',
                 icon: Icons.computer_outlined,
                 selected: state.digitalType == DigitalTypeValues.software,
@@ -1487,6 +1488,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             const SizedBox(width: 8),
             Expanded(
               child: _DigitalTypeCard(
+                key: const Key('addproduct_digital_type_book'),
                 label: 'Book',
                 icon: Icons.menu_book_outlined,
                 selected: state.digitalType == DigitalTypeValues.book,
@@ -1855,6 +1857,7 @@ class _DigitalTypeCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _DigitalTypeCard({
+    super.key,
     required this.label,
     required this.icon,
     required this.selected,
