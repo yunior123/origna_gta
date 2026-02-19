@@ -25,6 +25,12 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           isLocalDeliveryOnly: _product.isLocalDeliveryOnly,
           isPerishable: _product.isPerishable,
           isDigital: _product.isDigital,
+          digitalType: _product.digitalType,
+          macosDownloadUrl: _product.digitalBuilds?[DigitalPlatformValues.macos],
+          windowsDownloadUrl: _product.digitalBuilds?[DigitalPlatformValues.windows],
+          linuxDownloadUrl: _product.digitalBuilds?[DigitalPlatformValues.linux],
+          bookSourceUrl: null, // server-side only, seller must re-enter
+          deviceLimit: _product.deviceLimit,
           existingImageUrls: List.from(_product.imageUrls),
           selectedProvince: _product.sellerAddress.state.isNotEmpty ? _product.sellerAddress.state : ProvinceCodeValues.ontario,
           latitude: _product.sellerAddress.latitude,
@@ -86,7 +92,21 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     standardEnabled: value ? false : _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.standard),
     expressEnabled: value ? false : state.expressEnabled,
     sameDayEnabled: value ? false : state.sameDayEnabled,
+    // Clear digital sub-fields when turning off
+    digitalType: value ? state.digitalType : null,
+    macosDownloadUrl: value ? state.macosDownloadUrl : null,
+    windowsDownloadUrl: value ? state.windowsDownloadUrl : null,
+    linuxDownloadUrl: value ? state.linuxDownloadUrl : null,
+    bookSourceUrl: value ? state.bookSourceUrl : null,
+    deviceLimit: value ? state.deviceLimit : null,
   );
+
+  void setDigitalType(String? type) => state = state.copyWith(digitalType: type);
+  void setMacosDownloadUrl(String? url) => state = state.copyWith(macosDownloadUrl: url);
+  void setWindowsDownloadUrl(String? url) => state = state.copyWith(windowsDownloadUrl: url);
+  void setLinuxDownloadUrl(String? url) => state = state.copyWith(linuxDownloadUrl: url);
+  void setBookSourceUrl(String? url) => state = state.copyWith(bookSourceUrl: url);
+  void setDeviceLimit(int? limit) => state = state.copyWith(deviceLimit: limit);
 
   void toggleFreeShipping(bool value) => state = state.copyWith(freeShipping: value);
 
@@ -164,6 +184,30 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       }
     }
 
+    // Digital product validation
+    if (state.isDigital) {
+      if (state.digitalType == null) {
+        state = state.copyWith(errorMessage: 'Select a digital product type');
+        return;
+      }
+      if (state.digitalType == DigitalTypeValues.software) {
+        final urls = [state.macosDownloadUrl, state.windowsDownloadUrl, state.linuxDownloadUrl];
+        if (urls.every((u) => u == null || u.isEmpty)) {
+          state = state.copyWith(errorMessage: 'Add at least one platform download URL');
+          return;
+        }
+        if (urls.whereType<String>().where((u) => u.isNotEmpty).any((u) => !u.startsWith('https://'))) {
+          state = state.copyWith(errorMessage: 'Download URLs must start with https://');
+          return;
+        }
+      } else if (state.digitalType == DigitalTypeValues.book) {
+        if (state.bookSourceUrl != null && state.bookSourceUrl!.isNotEmpty && !state.bookSourceUrl!.startsWith('https://')) {
+          state = state.copyWith(errorMessage: 'Book URL must start with https://');
+          return;
+        }
+      }
+    }
+
     final totalImages = state.existingImageUrls.length + state.newImages.length;
     if (totalImages == 0) {
       state = state.copyWith(errorMessage: 'Please have at least one product image');
@@ -210,11 +254,27 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
         isPerishable: state.isDigital ? false : state.isPerishable,
         deliveryOptions: sanitizedDeliveryOptions,
         isDigital: state.isDigital,
+        digitalType: state.isDigital ? state.digitalType : null,
+        digitalBuilds: state.isDigital && state.digitalType == DigitalTypeValues.software
+            ? {
+                if (state.macosDownloadUrl?.isNotEmpty == true) DigitalPlatformValues.macos: state.macosDownloadUrl!,
+                if (state.windowsDownloadUrl?.isNotEmpty == true) DigitalPlatformValues.windows: state.windowsDownloadUrl!,
+                if (state.linuxDownloadUrl?.isNotEmpty == true) DigitalPlatformValues.linux: state.linuxDownloadUrl!,
+              }
+            : null,
+        deviceLimit: state.isDigital ? state.deviceLimit : null,
         minimumOrderQuantity: state.minimumOrderQuantity,
         freeShipping: state.freeShipping,
       );
 
-      await _repository.updateProduct(_product.productId, updatedProduct.toJson());
+      // Build update map and add bookSourceUrl only if seller re-entered it
+      // Note: bookSourceUrl is server-side only — not in Fields constants by design
+      final updateMap = updatedProduct.toJson();
+      if (state.isDigital && state.digitalType == DigitalTypeValues.book && state.bookSourceUrl?.isNotEmpty == true) {
+        updateMap['bookSourceUrl'] = state.bookSourceUrl!;
+      }
+
+      await _repository.updateProduct(_product.productId, updateMap);
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e));
