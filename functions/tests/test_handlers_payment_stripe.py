@@ -927,3 +927,66 @@ def test_generate_digital_licenses_book():
     # licenses collection must be written
     calls = [str(c) for c in mock_db.collection.call_args_list]
     assert any("licenses" in c for c in calls)
+
+
+def test_digital_item_status_set_to_delivered_after_license_generation():
+    """Digital items get status=delivered immediately after license generation"""
+    from handlers.payment_stripe import _generate_digital_licenses
+    from unittest.mock import MagicMock, call, patch
+
+    # Product doc returned for the product lookup
+    mock_product = MagicMock()
+    mock_product.exists = True
+    mock_product.to_dict.return_value = {
+        "digitalType": "software",
+        "digitalBuilds": {"macos": "https://example.com/app.dmg"},
+        "deviceLimit": None,
+    }
+
+    # License collision check doc: exists=False so the candidate key is accepted
+    mock_license_not_found = MagicMock()
+    mock_license_not_found.exists = False
+
+    # Order ref for the final update
+    mock_order_ref = MagicMock()
+
+    # Route .document().get() differently depending on collection name
+    def make_collection(name):
+        coll = MagicMock()
+        if name == "products":
+            coll.document.return_value.get.return_value = mock_product
+        elif name == "licenses":
+            # .document(candidate).get() → not found (no collision)
+            coll.document.return_value.get.return_value = mock_license_not_found
+            coll.document.return_value.set = MagicMock()
+        elif name == "orders":
+            coll.document.return_value = mock_order_ref
+        else:
+            coll.document.return_value.get.return_value = mock_license_not_found
+        return coll
+
+    mock_db = MagicMock()
+    mock_db.collection.side_effect = make_collection
+
+    order_data = {
+        "userId": "buyer123",
+        "items": [{
+            "productId": "prod123",
+            "isDigital": True,
+            "digitalUnlocked": False,
+            "name": "Test App",
+            "price": 29.99,
+            "quantity": 1,
+        }]
+    }
+    with patch("handlers.payment_stripe.get_db", return_value=mock_db):
+        _generate_digital_licenses("order123", order_data)
+
+    # Verify order was updated and items carry status=delivered
+    mock_order_ref.update.assert_called_once()
+    update_payload = mock_order_ref.update.call_args[0][0]
+    updated_items = update_payload.get("items", [])
+    assert updated_items, "items list should not be empty in the update payload"
+    assert any(item.get("status") == "delivered" for item in updated_items), (
+        f"Expected status='delivered' in updated items, got: {updated_items}"
+    )

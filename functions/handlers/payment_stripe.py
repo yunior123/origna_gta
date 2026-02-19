@@ -1398,6 +1398,7 @@ def _generate_digital_licenses(order_id: str, order_data: dict) -> None:
         updated_item = dict(updated_items[idx])
         updated_item[Fields.LICENSE_KEY] = license_key
         updated_item[Fields.DIGITAL_UNLOCKED] = True
+        updated_item[Fields.STATUS] = DeliveryStatusValues.DELIVERED  # Digital: instant delivery
         updated_items[idx] = updated_item
         any_generated = True
         logger.info(f"License {license_key} generated for product {product_id} (type={digital_type})")

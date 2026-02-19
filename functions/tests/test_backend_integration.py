@@ -121,14 +121,14 @@ def test_validate_item_invalid_quantity():
 
 
 def test_validate_item_missing_required_field():
-    """Test that validate_item fails for missing required field"""
+    """Test that validate_item fails for missing required field (sellerId)"""
     item_dict = {
         "productId": "prod123",
         "name": "Test Product",
-        # Missing description (required field)
+        "description": "A great product",
         "price": 29.99,
         "quantity": 2,
-        "sellerId": "seller123",
+        # Missing sellerId (required field)
         "imageUrls": ["https://example.com/image.jpg"],
         "categoryId": 5,
         "sellerAddress": {
@@ -143,7 +143,7 @@ def test_validate_item_missing_required_field():
     is_valid, error_msg = validate_item(item_dict)
 
     assert is_valid is False
-    assert "description" in error_msg.lower()
+    assert "sellerid" in error_msg.lower() or "seller" in error_msg.lower()
 
 
 def test_validate_order_data_valid():
