@@ -8,6 +8,8 @@ Stripe Payment Handlers
 
 import contextlib
 import logging
+import secrets
+import string as _string
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -1305,6 +1307,106 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response("Internal processing error", status=500)
 
 
+def _generate_license_key() -> str:
+    """Generate a XXXX-XXXX-XXXX-XXXX format license key using crypto-random characters."""
+    alphabet = _string.ascii_uppercase + _string.digits
+    segments = ["".join(secrets.choice(alphabet) for _ in range(4)) for _ in range(4)]
+    return "-".join(segments)
+
+
+def _generate_digital_licenses(order_id: str, order_data: dict) -> None:
+    """Generate license keys for all digital items in an order.
+    Idempotent: skips items where digitalUnlocked=True.
+    Called immediately after order is confirmed on payment capture.
+    """
+    from datetime import datetime, timezone
+
+    from schema_constants import Collections, DigitalTypeValues, Fields
+
+    db = get_db()
+    items = order_data.get(Fields.ITEMS, [])
+    buyer_id = order_data.get(Fields.USER_ID, "")
+    updated_items = list(items)
+    any_generated = False
+
+    for idx, item in enumerate(items):
+        if not item.get(Fields.IS_DIGITAL, False):
+            continue
+        if item.get(Fields.DIGITAL_UNLOCKED, False):
+            logger.info(f"Digital item {item.get(Fields.PRODUCT_ID)} already unlocked, skipping")
+            continue
+
+        product_id = item.get(Fields.PRODUCT_ID)
+        product_doc = db.collection(Collections.PRODUCTS).document(product_id).get()
+        if not product_doc.exists:
+            logger.warning(f"Product {product_id} not found for digital license generation")
+            continue
+
+        product_data = product_doc.to_dict()
+        digital_type = product_data.get(Fields.DIGITAL_TYPE)
+        if not digital_type:
+            logger.warning(f"Product {product_id} has isDigital=True but no digitalType")
+            continue
+
+        # Generate unique license key — doc ID = key for O(1) lookup
+        license_key = None
+        for _ in range(5):
+            candidate = _generate_license_key()
+            existing = db.collection(Collections.LICENSES).document(candidate).get()
+            if not existing.exists:
+                license_key = candidate
+                break
+        if not license_key:
+            logger.error(f"Could not generate unique license key for product {product_id}")
+            continue
+
+        now = datetime.now(timezone.utc)
+
+        if digital_type == DigitalTypeValues.SOFTWARE:
+            builds = product_data.get(Fields.DIGITAL_BUILDS, {})
+            supported_platforms = list(builds.keys())
+            license_doc = {
+                Fields.LICENSE_KEY: license_key,
+                Fields.PRODUCT_ID: product_id,
+                Fields.ORDER_ID: order_id,
+                Fields.USER_ID: buyer_id,
+                Fields.DIGITAL_TYPE: DigitalTypeValues.SOFTWARE,
+                Fields.STATUS: "active",
+                Fields.SUPPORTED_PLATFORMS: supported_platforms,
+                Fields.DEVICE_LIMIT: product_data.get(Fields.DEVICE_LIMIT),
+                Fields.ACTIVATIONS: [],
+                Fields.DIGITAL_BUILDS: builds,
+                Fields.CREATED_AT: now,
+            }
+            db.collection(Collections.LICENSES).document(license_key).set(license_doc)
+
+        elif digital_type == DigitalTypeValues.BOOK:
+            book_source_url = product_data.get(Fields.BOOK_SOURCE_URL, "")
+            license_doc = {
+                Fields.LICENSE_KEY: license_key,
+                Fields.PRODUCT_ID: product_id,
+                Fields.ORDER_ID: order_id,
+                Fields.USER_ID: buyer_id,
+                Fields.DIGITAL_TYPE: DigitalTypeValues.BOOK,
+                Fields.STATUS: "active",
+                Fields.BOOK_SOURCE_URL: book_source_url,
+                Fields.CREATED_AT: now,
+            }
+            db.collection(Collections.LICENSES).document(license_key).set(license_doc)
+
+        # Update item in order
+        updated_item = dict(updated_items[idx])
+        updated_item[Fields.LICENSE_KEY] = license_key
+        updated_item[Fields.DIGITAL_UNLOCKED] = True
+        updated_items[idx] = updated_item
+        any_generated = True
+        logger.info(f"License {license_key} generated for product {product_id} (type={digital_type})")
+
+    if any_generated:
+        order_ref = db.collection(Collections.ORDERS).document(order_id)
+        order_ref.update({Fields.ITEMS: updated_items, Fields.UPDATED_AT: datetime.now(timezone.utc)})
+
+
 def process_checkout_session_completed(session: dict) -> str | None:
     """
     Processes checkout.session.completed event.
@@ -1479,6 +1581,13 @@ def process_checkout_session_completed(session: dict) -> str | None:
                     )
     except Exception as e:
         logger.error(f"Failed to send confirmation emails: {str(e)}")
+
+    # Generate digital licenses for any digital items
+    try:
+        _generate_digital_licenses(order_id, order_data)
+    except Exception as e:
+        logger.error(f"Digital license generation failed for order {order_id}: {str(e)}")
+        # Non-fatal: order is confirmed, license can be re-generated by admin
 
     # Clear user's cart
     try:

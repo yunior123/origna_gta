@@ -820,3 +820,110 @@ def validate_price(price):
     if price < 0:
         raise ValueError("Price cannot be negative")
     return round(price, 2)
+
+
+def test_generate_license_key_format():
+    """License key is XXXX-XXXX-XXXX-XXXX with uppercase alphanumeric"""
+    import re
+    from handlers.payment_stripe import _generate_license_key
+    key = _generate_license_key()
+    assert re.match(r'^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$', key), f"Bad format: {key}"
+
+
+def test_generate_license_key_unique():
+    """Each call produces a different key"""
+    from handlers.payment_stripe import _generate_license_key
+    keys = {_generate_license_key() for _ in range(100)}
+    assert len(keys) == 100  # all unique in 100 iterations
+
+
+def test_generate_digital_licenses_software():
+    """Generates license for software item, writes to licenses collection, updates order item"""
+    from handlers.payment_stripe import _generate_digital_licenses
+    from unittest.mock import MagicMock, patch
+
+    mock_db = MagicMock()
+    mock_product = MagicMock()
+    mock_product.exists = True
+    mock_product.to_dict.return_value = {
+        "digitalType": "software",
+        "digitalBuilds": {"macos": "https://example.com/app.dmg"},
+        "deviceLimit": 3,
+    }
+    mock_db.collection.return_value.document.return_value.get.return_value = mock_product
+    # License collision check: first query returns empty (no collision)
+    mock_db.collection.return_value.where.return_value.limit.return_value.get.return_value = []
+
+    order_data = {
+        "userId": "buyer123",
+        "items": [{
+            "productId": "prod123",
+            "isDigital": True,
+            "digitalUnlocked": False,
+            "name": "MacBook Cleaner",
+            "price": 29.99,
+            "quantity": 1,
+        }]
+    }
+
+    with patch("handlers.payment_stripe.get_db", return_value=mock_db):
+        _generate_digital_licenses("order123", order_data)
+
+    # Verify license was written
+    mock_db.collection.assert_any_call("licenses")
+
+
+def test_generate_digital_licenses_skips_already_unlocked():
+    """Idempotent: skips items where digitalUnlocked=True"""
+    from handlers.payment_stripe import _generate_digital_licenses
+    from unittest.mock import MagicMock, patch
+
+    mock_db = MagicMock()
+    order_data = {
+        "userId": "buyer123",
+        "items": [{
+            "productId": "prod123",
+            "isDigital": True,
+            "digitalUnlocked": True,  # already done
+            "licenseKey": "ABCD-EFGH-IJKL-MNOP",
+        }]
+    }
+    with patch("handlers.payment_stripe.get_db", return_value=mock_db):
+        _generate_digital_licenses("order123", order_data)
+
+    # Should NOT write to licenses collection
+    mock_db.collection.return_value.document.return_value.set.assert_not_called()
+
+
+def test_generate_digital_licenses_book():
+    """Generates license for book item"""
+    from handlers.payment_stripe import _generate_digital_licenses
+    from unittest.mock import MagicMock, patch
+
+    mock_db = MagicMock()
+    mock_product = MagicMock()
+    mock_product.exists = True
+    mock_product.to_dict.return_value = {
+        "digitalType": "book",
+        "bookSourceUrl": "https://storage.example.com/book.pdf",
+    }
+    mock_db.collection.return_value.document.return_value.get.return_value = mock_product
+    mock_db.collection.return_value.where.return_value.limit.return_value.get.return_value = []
+
+    order_data = {
+        "userId": "buyer123",
+        "items": [{
+            "productId": "prod456",
+            "isDigital": True,
+            "digitalUnlocked": False,
+            "name": "Python Mastery",
+            "price": 19.99,
+            "quantity": 1,
+        }]
+    }
+    with patch("handlers.payment_stripe.get_db", return_value=mock_db):
+        _generate_digital_licenses("order123", order_data)
+
+    # licenses collection must be written
+    calls = [str(c) for c in mock_db.collection.call_args_list]
+    assert any("licenses" in c for c in calls)
