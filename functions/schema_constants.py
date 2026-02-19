@@ -51,6 +51,8 @@ class Collections:
     # Subcollections
     CART = "cart"  # users/{userId}/cart
     FAVORITES = "favorites"  # users/{userId}/favorites
+    LICENSES = "licenses"
+    BOOK_ACCESS_TOKENS = "book_access_tokens"
 
 
 class Documents:
@@ -228,6 +230,20 @@ class Fields:
     SEARCH_KEYWORDS = "searchKeywords"
     IS_ACTIVE = "isActive"
     IS_DIGITAL = "isDigital"
+    # Digital product extended fields
+    DIGITAL_TYPE = "digitalType"
+    SLUG = "slug"
+    DIGITAL_BUILDS = "digitalBuilds"
+    BOOK_SOURCE_URL = "bookSourceUrl"
+    DEVICE_LIMIT = "deviceLimit"
+    LICENSE_KEY = "licenseKey"
+    DIGITAL_UNLOCKED = "digitalUnlocked"
+    SUPPORTED_PLATFORMS = "supportedPlatforms"
+    ACTIVATIONS = "activations"
+    DEVICE_ID = "deviceId"
+    LAST_VERIFIED_AT = "lastVerifiedAt"
+    ACCESS_TOKEN = "accessToken"
+    BOOK_ACCESS_TOKEN = "bookAccessToken"
     WEIGHT_KG = "weightKg"
     LENGTH_CM = "lengthCm"
     WIDTH_CM = "widthCm"
@@ -1185,3 +1201,16 @@ class PlaceholderAddressValues:
     DEFAULT_STATE = "ON"
     DEFAULT_POSTAL_CODE = "M5V 3A8"
     DEFAULT_COUNTRY = "Canada"
+
+
+class DigitalTypeValues:
+    SOFTWARE = "software"
+    BOOK = "book"
+    ALL = [SOFTWARE, BOOK]
+
+
+class DigitalPlatformValues:
+    MACOS = "macos"
+    WINDOWS = "windows"
+    LINUX = "linux"
+    ALL = [MACOS, WINDOWS, LINUX]
