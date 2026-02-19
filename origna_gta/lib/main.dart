@@ -133,8 +133,14 @@ void main() {
 
       await SentryFlutter.init((options) {
         options.dsn = ConfigService().sentryDnsKey;
-        // Use env_config for environment naming
-        options.environment = envConfig.isProduction ? 'production' : 'emulator';
+        // Use env_config for environment naming (dev/staging must not be labeled 'emulator')
+        options.environment = envConfig.isProduction
+            ? 'production'
+            : envConfig.isStaging
+                ? 'staging'
+                : envConfig.isDev
+                    ? 'dev'
+                    : 'emulator';
         options.tracesSampleRate = 0.1; // 10% of transactions
         options.beforeSend = (event, hint) {
           // Filter sensitive data - strip emails before sending

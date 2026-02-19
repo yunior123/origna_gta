@@ -1163,7 +1163,11 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
 
             # AUDIT FIX (H4): Call Stripe BEFORE Firestore commit
             # If Stripe fails, the transaction is not committed — consistent state preserved
-            if difference_cents + tax_difference_cents > 0:
+            # AUTO-CAPTURE MODE: PaymentIntent is already captured — cannot modify its amount.
+            # Skip PI modification for captured payments; Firestore is the source of truth for totals.
+            # The shipping difference is absorbed by the platform and flagged for reconciliation.
+            payment_status_at_approval = fresh_data.get(Fields.PAYMENT_STATUS)
+            if difference_cents + tax_difference_cents > 0 and payment_status_at_approval != PaymentStatusValues.CAPTURED:
                 payment_intent_id = fresh_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
                 if payment_intent_id:
                     try:
@@ -1186,6 +1190,13 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                             "internal",
                             "Shipping approved but payment update failed. Flagged for manual review.",
                         ) from e
+            elif difference_cents + tax_difference_cents > 0 and payment_status_at_approval == PaymentStatusValues.CAPTURED:
+                # Auto-capture mode: payment already captured for original amount.
+                # Log the discrepancy for manual reconciliation — seller absorbs the difference.
+                logger.warning(
+                    f"Shipping cost approved on already-captured order {order_id}: "
+                    f"+{(difference_cents + tax_difference_cents) / 100:.2f} CAD difference flagged for reconciliation."
+                )
 
             txn.update(order_ref, update_fields)
             return new_total_cents
@@ -1195,7 +1206,9 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Buyer rejected, cancel order
         cancel_payment_status = order_data.get(Fields.PAYMENT_STATUS)
 
-        # CRITICAL FIX: Cancel PaymentIntent to release buyer funds
+        # Release buyer funds depending on capture mode:
+        # - AUTHORIZED (manual-capture): cancel the PaymentIntent
+        # - CAPTURED (auto-capture): issue a full refund
         payment_intent_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
         if payment_intent_id and cancel_payment_status == PaymentStatusValues.AUTHORIZED:
             try:
@@ -1206,6 +1219,30 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                 cancel_payment_status = PaymentStatusValues.CANCELLED
             except stripe.error.StripeError as e:
                 logger.error(f"PaymentIntent cancel failed on shipping rejection: {str(e)}")
+        elif payment_intent_id and cancel_payment_status == PaymentStatusValues.CAPTURED:
+            # Auto-capture mode: refund the full captured amount
+            try:
+                stripe.Refund.create(
+                    payment_intent=payment_intent_id,
+                    reason="requested_by_customer",
+                    metadata={Fields.ORDER_ID: order_id, "reason": "shipping_cost_rejected"},
+                    idempotency_key=f"shipping_reject_refund_{order_id}",
+                )
+                cancel_payment_status = PaymentStatusValues.REFUNDED
+            except stripe.error.StripeError as e:
+                logger.error(f"Refund failed on shipping rejection (captured order): {str(e)}")
+                order_ref.update({
+                    Fields.REQUIRES_MANUAL_REVIEW: True,
+                    Fields.MANUAL_REVIEW_REASON: (
+                        f"Refund failed after shipping cost rejection: {type(e).__name__}. "
+                        "Buyer funds remain captured. Manual refund required."
+                    ),
+                    Fields.UPDATED_AT: get_server_timestamp(),
+                })
+                raise https_fn.HttpsError(
+                    "internal",
+                    "Shipping rejected but refund failed. Flagged for manual review.",
+                ) from e
 
         # AUDIT FIX: Use atomic batch for order cancel + stock restore
         # Prevents stock leakage if process crashes between order update and stock restore
@@ -1302,9 +1339,14 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
     if order_data.get(Fields.ORDER_STATUS) not in [OrderStatusValues.CONFIRMED, OrderStatusValues.PROCESSING]:
         raise https_fn.HttpsError("failed-precondition", "Can only update shipping on confirmed/processing orders")
 
-    # Only allow update on authorized payment (not yet captured)
-    if order_data.get(Fields.PAYMENT_STATUS) != PaymentStatusValues.AUTHORIZED:
-        raise https_fn.HttpsError("failed-precondition", "Payment must be in authorized state")
+    # Allow shipping cost update for both authorized (manual-capture) and captured (auto-capture) payments.
+    # In auto-capture mode paymentStatus is always 'captured'; AUTHORIZED path is kept for compatibility.
+    allowed_payment_statuses = [PaymentStatusValues.AUTHORIZED, PaymentStatusValues.CAPTURED]
+    if order_data.get(Fields.PAYMENT_STATUS) not in allowed_payment_statuses:
+        raise https_fn.HttpsError(
+            "failed-precondition",
+            f"Cannot update shipping cost: payment status is '{order_data.get(Fields.PAYMENT_STATUS)}'"
+        )
 
     original_shipping_cents = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
     new_shipping_cents = round(new_shipping_cost * 100)
