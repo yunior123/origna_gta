@@ -11,6 +11,12 @@ class EditProductState {
   final bool isLocalDeliveryOnly;
   final bool isPerishable;
   final bool isDigital;
+  final String? digitalType;
+  final String? macosDownloadUrl;
+  final String? windowsDownloadUrl;
+  final String? linuxDownloadUrl;
+  final String? bookSourceUrl;
+  final int? deviceLimit;
   final List<String> existingImageUrls;
   final List<ImageModel> newImages;
   final List<Map<String, dynamic>> addressSuggestions;
@@ -32,6 +38,12 @@ class EditProductState {
     this.isLocalDeliveryOnly = false,
     this.isPerishable = false,
     this.isDigital = false,
+    this.digitalType,
+    this.macosDownloadUrl,
+    this.windowsDownloadUrl,
+    this.linuxDownloadUrl,
+    this.bookSourceUrl,
+    this.deviceLimit,
     this.existingImageUrls = const [],
     this.newImages = const [],
     this.addressSuggestions = const [],
@@ -54,6 +66,12 @@ class EditProductState {
     bool? isLocalDeliveryOnly,
     bool? isPerishable,
     bool? isDigital,
+    Object? digitalType = _sentinel,
+    Object? macosDownloadUrl = _sentinel,
+    Object? windowsDownloadUrl = _sentinel,
+    Object? linuxDownloadUrl = _sentinel,
+    Object? bookSourceUrl = _sentinel,
+    Object? deviceLimit = _sentinel,
     List<String>? existingImageUrls,
     List<ImageModel>? newImages,
     List<Map<String, dynamic>>? addressSuggestions,
@@ -75,6 +93,12 @@ class EditProductState {
       isLocalDeliveryOnly: isLocalDeliveryOnly ?? this.isLocalDeliveryOnly,
       isPerishable: isPerishable ?? this.isPerishable,
       isDigital: isDigital ?? this.isDigital,
+      digitalType: digitalType == _sentinel ? this.digitalType : digitalType as String?,
+      macosDownloadUrl: macosDownloadUrl == _sentinel ? this.macosDownloadUrl : macosDownloadUrl as String?,
+      windowsDownloadUrl: windowsDownloadUrl == _sentinel ? this.windowsDownloadUrl : windowsDownloadUrl as String?,
+      linuxDownloadUrl: linuxDownloadUrl == _sentinel ? this.linuxDownloadUrl : linuxDownloadUrl as String?,
+      bookSourceUrl: bookSourceUrl == _sentinel ? this.bookSourceUrl : bookSourceUrl as String?,
+      deviceLimit: deviceLimit == _sentinel ? this.deviceLimit : deviceLimit as int?,
       existingImageUrls: existingImageUrls ?? this.existingImageUrls,
       newImages: newImages ?? this.newImages,
       addressSuggestions: addressSuggestions ?? this.addressSuggestions,
