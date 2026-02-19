@@ -549,5 +549,186 @@ def test_product_json_serialization():
     assert product2.price == product.price
 
 
+# ============================================================================
+# DIGITAL PRODUCT TESTS (Task 3 & 4)
+# ============================================================================
+
+
+def test_product_digital_software_fields():
+    """Product model accepts digital software fields"""
+    from models.product import Product
+    p = Product(
+        name="MacBook Cleaner Pro",
+        description="Cleans your macOS system thoroughly for better performance",
+        price=29.99,
+        categoryId=1,
+        stockQuantity=9999,
+        imageUrls=["https://cdn.example.com/img.jpg"],
+        sellerId="seller123",
+        isDigital=True,
+        digitalType="software",
+        slug="macbook-cleaner-pro-a4f2",
+        digitalBuilds={"macos": "https://releases.example.com/cleaner.dmg"},
+        deviceLimit=3,
+    )
+    assert p.digitalType == "software"
+    assert p.slug == "macbook-cleaner-pro-a4f2"
+    assert p.digitalBuilds["macos"] == "https://releases.example.com/cleaner.dmg"
+    assert p.deviceLimit == 3
+
+def test_product_digital_book_fields():
+    """Product model accepts digital book fields"""
+    from models.product import Product
+    p = Product(
+        name="Python Mastery",
+        description="Complete guide to Python programming for developers",
+        price=19.99,
+        categoryId=1,
+        stockQuantity=9999,
+        imageUrls=["https://cdn.example.com/book.jpg"],
+        sellerId="seller123",
+        isDigital=True,
+        digitalType="book",
+        slug="python-mastery-b3c1",
+        bookSourceUrl="https://storage.example.com/python-mastery.pdf",
+    )
+    assert p.digitalType == "book"
+    assert p.bookSourceUrl == "https://storage.example.com/python-mastery.pdf"
+
+def test_product_digital_type_invalid():
+    """Invalid digitalType is rejected"""
+    import pytest
+    from pydantic import ValidationError
+    from models.product import Product
+    with pytest.raises(ValidationError):
+        Product(
+            name="Test",
+            description="Test description for product validation testing",
+            price=9.99,
+            categoryId=1,
+            stockQuantity=1,
+            imageUrls=["https://cdn.example.com/img.jpg"],
+            sellerId="seller123",
+            isDigital=True,
+            digitalType="video",
+        )
+
+def test_product_software_requires_https_build_urls():
+    """Software build URLs must be https"""
+    import pytest
+    from pydantic import ValidationError
+    from models.product import Product
+    with pytest.raises(ValidationError):
+        Product(
+            name="Test App",
+            description="Test description for product validation testing",
+            price=9.99,
+            categoryId=1,
+            stockQuantity=1,
+            imageUrls=["https://cdn.example.com/img.jpg"],
+            sellerId="seller123",
+            isDigital=True,
+            digitalType="software",
+            digitalBuilds={"macos": "http://insecure.example.com/app.dmg"},
+        )
+
+def test_product_software_requires_at_least_one_platform():
+    """Software product must have at least one platform URL"""
+    import pytest
+    from pydantic import ValidationError
+    from models.product import Product
+    with pytest.raises(ValidationError):
+        Product(
+            name="Test App",
+            description="Test description for product validation testing",
+            price=9.99,
+            categoryId=1,
+            stockQuantity=1,
+            imageUrls=["https://cdn.example.com/img.jpg"],
+            sellerId="seller123",
+            isDigital=True,
+            digitalType="software",
+            digitalBuilds={},
+        )
+
+def test_product_book_requires_https_source_url():
+    """Book source URL must be https"""
+    import pytest
+    from pydantic import ValidationError
+    from models.product import Product
+    with pytest.raises(ValidationError):
+        Product(
+            name="Test Book",
+            description="Test description for product validation testing",
+            price=9.99,
+            categoryId=1,
+            stockQuantity=1,
+            imageUrls=["https://cdn.example.com/img.jpg"],
+            sellerId="seller123",
+            isDigital=True,
+            digitalType="book",
+            bookSourceUrl="http://insecure.example.com/book.pdf",
+        )
+
+def test_product_book_requires_source_url():
+    """Book product must have bookSourceUrl"""
+    import pytest
+    from pydantic import ValidationError
+    from models.product import Product
+    with pytest.raises(ValidationError):
+        Product(
+            name="Test Book",
+            description="Test description for product validation testing",
+            price=9.99,
+            categoryId=1,
+            stockQuantity=1,
+            imageUrls=["https://cdn.example.com/img.jpg"],
+            sellerId="seller123",
+            isDigital=True,
+            digitalType="book",
+        )
+
+def test_product_software_invalid_platform_key():
+    """Invalid platform key in digitalBuilds is rejected"""
+    import pytest
+    from pydantic import ValidationError
+    from models.product import Product
+    with pytest.raises(ValidationError):
+        Product(
+            name="Test App",
+            description="Test description for product validation testing",
+            price=9.99,
+            categoryId=1,
+            stockQuantity=1,
+            imageUrls=["https://cdn.example.com/img.jpg"],
+            sellerId="seller123",
+            isDigital=True,
+            digitalType="software",
+            digitalBuilds={"android": "https://example.com/app.apk"},
+        )
+
+
+def test_order_item_digital_fields():
+    """OrderItem model accepts digital unlock fields"""
+    from models.order import OrderItem
+    item = OrderItem(
+        productId="prod123",
+        name="MacBook Cleaner Pro",
+        price=29.99,
+        quantity=1,
+        imageUrls=["https://cdn.example.com/img.jpg"],
+        sellerId="seller123",
+        isDigital=True,
+        licenseKey="ABCD-EFGH-IJKL-MNOP",
+        digitalUnlocked=True,
+        digitalType="software",
+        digitalBuilds={"macos": "https://example.com/app.dmg"},
+    )
+    assert item.licenseKey == "ABCD-EFGH-IJKL-MNOP"
+    assert item.digitalUnlocked is True
+    assert item.digitalType == "software"
+    assert item.digitalBuilds["macos"] == "https://example.com/app.dmg"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

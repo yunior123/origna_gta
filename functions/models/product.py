@@ -215,13 +215,13 @@ class Product(BaseModel):
         }
     )
 
-    productId: str = Field(..., min_length=1, max_length=100, description="Unique product identifier")
+    productId: str = Field(default="", max_length=100, description="Unique product identifier (assigned by Firestore on create)")
     name: str = Field(..., min_length=1, max_length=120, description="Product name")
     price: float = Field(..., gt=0, le=100000, description="Price in CAD")
     description: str = Field(..., min_length=10, max_length=4000, description="Product description")
     imageUrls: list[str] = Field(..., min_length=1, max_length=5, description="Product image URLs (1-5 images)")
     sellerId: str = Field(..., min_length=1, description="Seller user ID")
-    sellerAddress: Address = Field(..., description="Seller's address for shipping calculations")
+    sellerAddress: Address | None = Field(default=None, description="Seller's address for shipping calculations")
     categoryId: int = Field(..., ge=CategoryIds.MIN, le=CategoryIds.MAX, description="Product category ID")
     stockQuantity: int = Field(..., ge=0, description="Available stock quantity")
     rating: float = Field(default=0.0, ge=0, le=5, description="Average product rating (0-5)")
@@ -247,6 +247,31 @@ class Product(BaseModel):
 
     # Digital product flag
     isDigital: bool = Field(default=False, description="Whether this is a digital product (no shipping required)")
+
+    # Digital product extended fields
+    digitalType: str | None = Field(
+        default=None,
+        description="Type of digital product: 'software' or 'book'",
+    )
+    slug: str | None = Field(
+        default=None,
+        max_length=80,
+        description="URL-safe unique slug for sharing (e.g., macbook-cleaner-a4f2)",
+    )
+    digitalBuilds: dict[str, str] | None = Field(
+        default=None,
+        description="Platform -> external download URL map (software only)",
+    )
+    bookSourceUrl: str | None = Field(
+        default=None,
+        max_length=2048,
+        description="External PDF/EPUB download URL (book only, NEVER sent to client)",
+    )
+    deviceLimit: int | None = Field(
+        default=None,
+        ge=1,
+        description="Max activations allowed (software only, null = unlimited)",
+    )
 
     # Tax and metadata
     taxCode: str | None = Field(default=None, description="Tax code override for specific products")
@@ -299,6 +324,33 @@ class Product(BaseModel):
                 raise ValueError("Description contains disallowed content")
         return v
 
+    @field_validator("digitalType")
+    @classmethod
+    def validate_digital_type(cls, v: str | None) -> str | None:
+        if v is not None and v not in ["software", "book"]:
+            raise ValueError(f"digitalType must be 'software' or 'book', got '{v}'")
+        return v
+
+    @field_validator("digitalBuilds")
+    @classmethod
+    def validate_digital_builds(cls, v: dict[str, str] | None) -> dict[str, str] | None:
+        if v is None:
+            return v
+        valid_platforms = {"macos", "windows", "linux"}
+        for platform, url in v.items():
+            if platform not in valid_platforms:
+                raise ValueError(f"Invalid platform '{platform}'. Must be one of: {valid_platforms}")
+            if not url.startswith("https://"):
+                raise ValueError(f"Build URL for '{platform}' must start with https://")
+        return v
+
+    @field_validator("bookSourceUrl")
+    @classmethod
+    def validate_book_source_url(cls, v: str | None) -> str | None:
+        if v is not None and not v.startswith("https://"):
+            raise ValueError("bookSourceUrl must start with https://")
+        return v
+
     @model_validator(mode="after")
     def validate_status_active_consistency(self) -> "Product":
         """Ensure isActive and status are not contradictory"""
@@ -307,6 +359,20 @@ class Product(BaseModel):
             object.__setattr__(self, "status", ProductStatusValues.PAUSED)
         elif self.status in {ProductStatusValues.ARCHIVED, ProductStatusValues.PAUSED} and self.isActive:
             object.__setattr__(self, "isActive", False)
+        return self
+
+    @model_validator(mode="after")
+    def validate_digital_consistency(self) -> "Product":
+        """Ensure digital product sub-fields are consistent."""
+        if self.isDigital:
+            if self.digitalType not in ["software", "book"]:
+                raise ValueError("digitalType must be 'software' or 'book' when isDigital=True")
+            if self.digitalType == "software":
+                if not self.digitalBuilds:
+                    raise ValueError("digitalBuilds must have at least one platform URL for software products")
+            elif self.digitalType == "book":
+                if not self.bookSourceUrl:
+                    raise ValueError("bookSourceUrl is required for book products")
         return self
 
 

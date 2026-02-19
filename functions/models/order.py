@@ -45,12 +45,12 @@ class OrderItem(BaseModel):
 
     productId: str = Field(..., min_length=1)
     name: str = Field(..., min_length=1, max_length=120)
-    description: str = Field(..., max_length=4000)
+    description: str = Field(default="", max_length=4000)
     price: float = Field(..., gt=0)
     quantity: int = Field(..., gt=0, le=1000)
     imageUrls: list[str] = Field(..., min_length=1, description="Product image URLs")
     sellerId: str = Field(..., min_length=1)
-    sellerAddress: Address
+    sellerAddress: Address | None = Field(default=None)
     deliveryStatus: DeliveryStatusEnum = Field(
         default=DeliveryStatusEnum.PENDING, deprecated=True, description="Deprecated: use 'status' field instead"
     )
@@ -82,6 +82,13 @@ class OrderItem(BaseModel):
     minimumOrderQuantity: int = Field(default=1, ge=1)
     freeShipping: bool = Field(default=False)
     isDigital: bool = Field(default=False, description="Whether this item is a digital product")
+
+    # Digital product delivery fields (set on payment capture)
+    licenseKey: str | None = Field(default=None, description="License key reference into licenses collection")
+    digitalUnlocked: bool = Field(default=False, description="True after license has been generated on payment")
+    digitalType: str | None = Field(default=None, description="Type of digital product: 'software' or 'book'")
+    digitalBuilds: dict[str, str] | None = Field(default=None, description="Platform -> download URL map (software only)")
+
     taxCode: str | None = Field(default=None, description="Tax code for this item")
 
     @field_validator("name")
