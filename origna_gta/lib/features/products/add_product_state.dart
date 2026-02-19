@@ -16,6 +16,12 @@ class AddProductState {
   final bool addressVerified; // true when address selected from Geoapify
   final bool isPerishable;
   final bool isDigital;
+  final String? digitalType;          // 'software' | 'book' | null
+  final String? macosDownloadUrl;
+  final String? windowsDownloadUrl;
+  final String? linuxDownloadUrl;
+  final String? bookSourceUrl;
+  final int? deviceLimit;
   final bool standardEnabled;
   final bool expressEnabled;
   final bool sameDayEnabled;
@@ -39,6 +45,12 @@ class AddProductState {
     this.addressVerified = false,
     this.isPerishable = false,
     this.isDigital = false,
+    this.digitalType,
+    this.macosDownloadUrl,
+    this.windowsDownloadUrl,
+    this.linuxDownloadUrl,
+    this.bookSourceUrl,
+    this.deviceLimit,
     this.standardEnabled = true,
     this.expressEnabled = false,
     this.sameDayEnabled = false,
@@ -65,6 +77,12 @@ class AddProductState {
     bool? addressVerified,
     bool? isPerishable,
     bool? isDigital,
+    Object? digitalType = _sentinel,
+    Object? macosDownloadUrl = _sentinel,
+    Object? windowsDownloadUrl = _sentinel,
+    Object? linuxDownloadUrl = _sentinel,
+    Object? bookSourceUrl = _sentinel,
+    Object? deviceLimit = _sentinel,
     bool? standardEnabled,
     bool? expressEnabled,
     bool? sameDayEnabled,
@@ -88,6 +106,12 @@ class AddProductState {
       addressVerified: addressVerified ?? this.addressVerified,
       isPerishable: isPerishable ?? this.isPerishable,
       isDigital: isDigital ?? this.isDigital,
+      digitalType: digitalType == _sentinel ? this.digitalType : digitalType as String?,
+      macosDownloadUrl: macosDownloadUrl == _sentinel ? this.macosDownloadUrl : macosDownloadUrl as String?,
+      windowsDownloadUrl: windowsDownloadUrl == _sentinel ? this.windowsDownloadUrl : windowsDownloadUrl as String?,
+      linuxDownloadUrl: linuxDownloadUrl == _sentinel ? this.linuxDownloadUrl : linuxDownloadUrl as String?,
+      bookSourceUrl: bookSourceUrl == _sentinel ? this.bookSourceUrl : bookSourceUrl as String?,
+      deviceLimit: deviceLimit == _sentinel ? this.deviceLimit : deviceLimit as int?,
       standardEnabled: standardEnabled ?? this.standardEnabled,
       expressEnabled: expressEnabled ?? this.expressEnabled,
       sameDayEnabled: sameDayEnabled ?? this.sameDayEnabled,
