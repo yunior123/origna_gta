@@ -9,6 +9,7 @@ import 'package:origna_gta/screens/productaddimages_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 import '../../features/products/add_product_state.dart';
@@ -401,6 +402,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           DesignTokens.info,
                                         ),
                                       ),
+                                    if (state.isDigital)
+                                      _buildDigitalProductSection(context, state, viewModel),
                                     if (!state.isDigital) ...[
                                       const SizedBox(height: 12),
                                       _buildGlassToggle(
@@ -1465,6 +1468,98 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
+  Widget _buildDigitalProductSection(BuildContext context, AddProductState state, AddProductViewModel viewModel) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        // Sub-type selector
+        Row(
+          children: [
+            Expanded(
+              child: _DigitalTypeCard(
+                label: 'Software',
+                icon: Icons.computer_outlined,
+                selected: state.digitalType == DigitalTypeValues.software,
+                onTap: () => viewModel.setDigitalType(DigitalTypeValues.software),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _DigitalTypeCard(
+                label: 'Book',
+                icon: Icons.menu_book_outlined,
+                selected: state.digitalType == DigitalTypeValues.book,
+                onTap: () => viewModel.setDigitalType(DigitalTypeValues.book),
+              ),
+            ),
+          ],
+        ),
+        if (state.digitalType == DigitalTypeValues.software) ...[
+          const SizedBox(height: 16),
+          Text('Download Links', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          _buildUrlField(
+            label: 'macOS (.dmg)',
+            placeholder: 'https://releases.yoursite.com/app.dmg',
+            value: state.macosDownloadUrl,
+            onChanged: viewModel.setMacosDownloadUrl,
+          ),
+          _buildUrlField(
+            label: 'Windows (.exe / .msi)',
+            placeholder: 'https://releases.yoursite.com/app.exe',
+            value: state.windowsDownloadUrl,
+            onChanged: viewModel.setWindowsDownloadUrl,
+          ),
+          _buildUrlField(
+            label: 'Linux (.deb / .AppImage) — optional',
+            placeholder: 'https://releases.yoursite.com/app.deb',
+            value: state.linuxDownloadUrl,
+            onChanged: viewModel.setLinuxDownloadUrl,
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            initialValue: state.deviceLimit?.toString(),
+            decoration: const InputDecoration(
+              labelText: 'Device limit',
+              hintText: 'Leave blank for unlimited',
+            ),
+            keyboardType: TextInputType.number,
+            onChanged: (v) => viewModel.setDeviceLimit(int.tryParse(v.trim())),
+          ),
+        ],
+        if (state.digitalType == DigitalTypeValues.book) ...[
+          const SizedBox(height: 16),
+          Text('Book Download URL', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          _buildUrlField(
+            label: 'Download source URL',
+            placeholder: 'https://storage.yoursite.com/book.pdf',
+            value: state.bookSourceUrl,
+            onChanged: viewModel.setBookSourceUrl,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildUrlField({
+    required String label,
+    required String placeholder,
+    required String? value,
+    required void Function(String?) onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: TextFormField(
+        initialValue: value,
+        decoration: InputDecoration(labelText: label, hintText: placeholder),
+        keyboardType: TextInputType.url,
+        onChanged: (v) => onChanged(v.trim().isEmpty ? null : v.trim()),
+      ),
+    );
+  }
+
   Widget _buildSubmitButton(AddProductState state, AddProductViewModel viewModel) {
     return Semantics(
       button: true,
@@ -1750,5 +1845,53 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     _additionalItemCostController.dispose();
     _maxItemsPerShipmentController.dispose();
     super.dispose();
+  }
+}
+
+class _DigitalTypeCard extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _DigitalTypeCard({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: selected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
+          border: Border.all(
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).dividerColor,
+            width: selected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: selected ? Theme.of(context).colorScheme.primary : null),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                color: selected ? Theme.of(context).colorScheme.primary : null,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
