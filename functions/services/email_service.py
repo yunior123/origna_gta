@@ -9,12 +9,13 @@ from urllib.parse import quote
 from mailjet_rest import Client
 
 from config import (
+    CURRENT_ENV,
     IS_EMULATOR,
     get_mailjet_api_key,
     get_mailjet_secret_key,
     get_unsubscribe_hmac_secret,
 )
-from schema_constants import AppConfig, DeliveryTypeValues, EmailConfig, Fields, ShippingTiers
+from schema_constants import AppConfig, DeliveryTypeValues, DigitalPlatformValues, DigitalTypeValues, EmailConfig, Fields, ShippingTiers
 from services import shipping_service
 
 logger = logging.getLogger(__name__)
@@ -22,11 +23,11 @@ logger = logging.getLogger(__name__)
 # Allow real email sending in emulator mode for E2E testing
 FORCE_REAL_EMAIL = os.environ.get("FORCE_REAL_EMAIL", "false").lower() == "true"
 
-# Dynamic base URL for email links — Flutter web local in emulator, prod otherwise
-APP_BASE_URL = EmailConfig.DEV_URL if IS_EMULATOR else EmailConfig.PROD_URL
+# Dynamic base URL for email links — Environment-aware
+APP_BASE_URL = CURRENT_ENV.get_base_url()
 
-# Dynamic unsubscribe URL
-UNSUBSCRIBE_URL = EmailConfig.UNSUBSCRIBE_URL_DEV if IS_EMULATOR else EmailConfig.UNSUBSCRIBE_URL_PROD
+# Dynamic unsubscribe URL — Environment-aware
+UNSUBSCRIBE_URL = CURRENT_ENV.get_unsubscribe_url()
 
 # HMAC secret for signed unsubscribe tokens (prevents unauthorized unsubscription)
 # Loaded from GCP Secret Manager in production, from .env in emulator
@@ -243,8 +244,11 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
     oid = order_data.get(Fields.ORDER_ID, order_id or "N/A")
     short_oid = oid[:8] if len(oid) > 8 else oid
 
+    items_list = order_data.get(Fields.ITEMS, [])
+    all_digital_order = bool(items_list) and all(item.get(Fields.IS_DIGITAL, False) for item in items_list)
+
     items_html = ""
-    for i, item in enumerate(order_data.get(Fields.ITEMS, [])):
+    for i, item in enumerate(items_list):
         safe_name = html.escape(str(item.get(Fields.NAME, "Product")))
         qty = item.get(Fields.QUANTITY, 1)
         price = item.get(Fields.PRICE, 0)
@@ -366,6 +370,129 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
         _items_label = f"{num_items} Item{'s' if num_items != 1 else ''} Ordered"
     _shipping_val = _t_free if shipping == 0 else f"${shipping:.2f}"
 
+    # ── Digital-only status tracker (2-step: Confirmed + Delivered Instantly) ──
+    if all_digital_order:
+        _t_instant_delivery = "Delivered Instantly" if lang == "en" else "Livré instantanément"
+        _status_tracker_html = f"""
+        <!-- ORDER STATUS TRACKER — DIGITAL -->
+        <tr><td style="padding: 32px 40px 24px 40px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+                <td width="50%" align="center">
+                    <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #667EEA, #764BA2); border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: white;">✓</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #667EEA; text-transform: uppercase; letter-spacing: 0.5px;">{_t_confirmed}</div>
+                </td>
+                <td width="50%" align="center">
+                    <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #10B981, #059669); border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: white;">⚡</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #10B981; text-transform: uppercase; letter-spacing: 0.5px;">{_t_instant_delivery}</div>
+                </td>
+            </tr>
+            <tr><td colspan="2" style="padding-top: 12px;">
+                <div style="height: 4px; background: #e8ebf0; border-radius: 4px; overflow: hidden;">
+                    <div style="width: 100%; height: 100%; background: linear-gradient(90deg, #10B981, #059669); border-radius: 4px;"></div>
+                </div>
+            </td></tr>
+            </table>
+        </td></tr>"""
+    else:
+        _status_tracker_html = f"""
+        <!-- ORDER STATUS TRACKER — PHYSICAL -->
+        <tr><td style="padding: 32px 40px 24px 40px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+                <td width="25%" align="center">
+                    <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #667EEA, #764BA2); border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: white;">✓</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #667EEA; text-transform: uppercase; letter-spacing: 0.5px;">{_t_confirmed}</div>
+                </td>
+                <td width="25%" align="center">
+                    <div style="width: 36px; height: 36px; background: #e8ebf0; border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: #999;">📦</div>
+                    <div style="font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">{_t_processing}</div>
+                </td>
+                <td width="25%" align="center">
+                    <div style="width: 36px; height: 36px; background: #e8ebf0; border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: #999;">🚚</div>
+                    <div style="font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">{_t_shipped}</div>
+                </td>
+                <td width="25%" align="center">
+                    <div style="width: 36px; height: 36px; background: #e8ebf0; border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: #999;">🏠</div>
+                    <div style="font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">{_t_delivered}</div>
+                </td>
+            </tr>
+            <!-- Progress bar -->
+            <tr><td colspan="4" style="padding-top: 12px;">
+                <div style="height: 4px; background: #e8ebf0; border-radius: 4px; overflow: hidden;">
+                    <div style="width: 12%; height: 100%; background: linear-gradient(90deg, #667EEA, #764BA2); border-radius: 4px;"></div>
+                </div>
+            </td></tr>
+            </table>
+        </td></tr>"""
+
+    # ── License key block (software: key + download links; book: access CTA) ──
+    _digital_block_html = ""
+    digital_items = [
+        item for item in items_list
+        if item.get(Fields.IS_DIGITAL) and item.get(Fields.DIGITAL_UNLOCKED)
+    ]
+    if digital_items:
+        license_rows = ""
+        platform_labels = {
+            DigitalPlatformValues.MACOS: "macOS",
+            DigitalPlatformValues.WINDOWS: "Windows",
+            DigitalPlatformValues.LINUX: "Linux",
+        }
+        for item in digital_items:
+            safe_name = html.escape(str(item.get(Fields.NAME, "Digital Product")))
+            license_key = item.get(Fields.LICENSE_KEY, "")
+            digital_type = item.get(Fields.DIGITAL_TYPE, "")
+            builds = item.get(Fields.DIGITAL_BUILDS) or {}
+
+            if digital_type == DigitalTypeValues.SOFTWARE and license_key:
+                platform_links = "".join(
+                    f'<a href="{url}" style="color: #667EEA; text-decoration: none; margin-right: 16px; font-size: 13px;">'
+                    f'{platform_labels.get(platform, platform.capitalize())} ↓</a>'
+                    for platform, url in builds.items()
+                )
+                instructions = (
+                    "Open the app → click <strong>Enter License</strong> → paste your key"
+                    if lang == "en" else
+                    "Ouvrez l'application → cliquez <strong>Entrer la licence</strong> → collez votre clé"
+                )
+                license_rows += f"""
+                <tr style="background-color: #f8f9ff;">
+                    <td style="padding: 16px 20px;">
+                        <div style="font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 8px;">{safe_name}</div>
+                        <div style="font-family: 'Courier New', monospace; font-size: 18px; font-weight: 700; color: #667EEA; letter-spacing: 2px; background: #eef0ff; padding: 10px 16px; border-radius: 8px; display: inline-block; margin-bottom: 8px;">{html.escape(license_key)}</div>
+                        {f'<div style="margin-bottom: 8px;">{platform_links}</div>' if platform_links else ""}
+                        <div style="font-size: 12px; color: #555;">{instructions}</div>
+                    </td>
+                </tr>"""
+
+            elif digital_type == DigitalTypeValues.BOOK and license_key:
+                access_label = (
+                    "Access your book in the Origna app"
+                    if lang == "en" else
+                    "Accédez à votre livre dans l'application Origna"
+                )
+                license_rows += f"""
+                <tr style="background-color: #f8f9ff;">
+                    <td style="padding: 16px 20px;">
+                        <div style="font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 8px;">{safe_name}</div>
+                        <div style="font-size: 13px; color: #555; margin-bottom: 6px;">{access_label}</div>
+                        <div style="font-family: 'Courier New', monospace; font-size: 12px; color: #888;">Key: {html.escape(license_key)}</div>
+                    </td>
+                </tr>"""
+
+        if license_rows:
+            heading = "Your Digital Downloads" if lang == "en" else "Vos téléchargements numériques"
+            _digital_block_html = f"""
+        <tr><td style="padding: 0 40px 28px 40px;">
+            <h2 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 1px;">
+                <span style="border-bottom: 3px solid #10B981; padding-bottom: 6px;">🔑 {html.escape(heading)}</span>
+            </h2>
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-radius: 12px; overflow: hidden; border: 2px solid #10B981;">
+                {license_rows}
+            </table>
+        </td></tr>"""
+
     return f"""
     <!DOCTYPE html>
     <html lang="{lang}">
@@ -405,34 +532,7 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
         </td></tr>
 
         <!-- ORDER STATUS TRACKER -->
-        <tr><td style="padding: 32px 40px 24px 40px;">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-            <tr>
-                <td width="25%" align="center">
-                    <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #667EEA, #764BA2); border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: white;">✓</div>
-                    <div style="font-size: 11px; font-weight: 700; color: #667EEA; text-transform: uppercase; letter-spacing: 0.5px;">{_t_confirmed}</div>
-                </td>
-                <td width="25%" align="center">
-                    <div style="width: 36px; height: 36px; background: #e8ebf0; border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: #999;">📦</div>
-                    <div style="font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">{_t_processing}</div>
-                </td>
-                <td width="25%" align="center">
-                    <div style="width: 36px; height: 36px; background: #e8ebf0; border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: #999;">🚚</div>
-                    <div style="font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">{_t_shipped}</div>
-                </td>
-                <td width="25%" align="center">
-                    <div style="width: 36px; height: 36px; background: #e8ebf0; border-radius: 50%; margin: 0 auto 8px; line-height: 36px; font-size: 16px; color: #999;">🏠</div>
-                    <div style="font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px;">{_t_delivered}</div>
-                </td>
-            </tr>
-            <!-- Progress bar -->
-            <tr><td colspan="4" style="padding-top: 12px;">
-                <div style="height: 4px; background: #e8ebf0; border-radius: 4px; overflow: hidden;">
-                    <div style="width: 12%; height: 100%; background: linear-gradient(90deg, #667EEA, #764BA2); border-radius: 4px;"></div>
-                </div>
-            </td></tr>
-            </table>
-        </td></tr>
+        {_status_tracker_html}
 
         <!-- DIVIDER -->
         <tr><td style="padding: 0 40px;"><div style="height: 1px; background-color: #e8ebf0;"></div></td></tr>
@@ -455,6 +555,8 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
                 </tbody>
             </table>
         </td></tr>
+
+        {_digital_block_html}
 
         <!-- ORDER RECEIPT (Gmail-safe: uses bgcolor fallbacks) -->
         <tr><td style="padding: 24px 40px;">

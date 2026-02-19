@@ -259,3 +259,91 @@ def test_generate_book_download_session_wrong_buyer(mocker):
     with patch("handlers.digital.get_db", return_value=mock_db):
         with pytest.raises(Exception, match="unauthorized"):
             _generate_book_download_session_impl("ABCD-EFGH-IJKL-MNOP", "attacker-uid")
+
+
+# ── Task 3: productName in activate_license response ─────────────────────────
+
+def test_activate_license_returns_product_name():
+    """activate_license response includes productName from license doc."""
+    from handlers.digital import _activate_license_impl
+    license_data = {
+        "licenseKey": "ABCD-EFGH-IJKL-MNOP",
+        "productId": "prod123",
+        "orderId": "order123",
+        "userId": "buyer123",
+        "digitalType": "software",
+        "status": "active",
+        "supportedPlatforms": ["macos"],
+        "deviceLimit": 3,
+        "activations": [],
+        "digitalBuilds": {"macos": "https://example.com/app.dmg"},
+        "productName": "FXCleaner",
+    }
+    mock_doc = MagicMock()
+    mock_doc.exists = True
+    mock_doc.to_dict.return_value = license_data
+    mock_db = MagicMock()
+    mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+
+    with patch("handlers.digital.get_db", return_value=mock_db):
+        result = _activate_license_impl("ABCD-EFGH-IJKL-MNOP", "device-001", "macos")
+
+    assert result["productName"] == "FXCleaner"
+
+
+# ── Task 5: license revocation ────────────────────────────────────────────────
+
+def test_revoke_licenses_for_order_full_refund():
+    """Full refund: all active digital licenses in order are set to status=revoked."""
+    from handlers.digital import _revoke_digital_licenses_for_order
+
+    mock_db = MagicMock()
+    license1 = MagicMock()
+    license1.id = "AAAA-BBBB-CCCC-DDDD"
+    license1.to_dict.return_value = {"status": "active"}
+    license2 = MagicMock()
+    license2.id = "EEEE-FFFF-GGGG-HHHH"
+    license2.to_dict.return_value = {"status": "active"}
+
+    mock_db.collection.return_value.where.return_value.stream.return_value = [license1, license2]
+
+    with patch("handlers.digital.get_db", return_value=mock_db):
+        count = _revoke_digital_licenses_for_order("order123")
+
+    assert count == 2
+    assert license1.reference.update.called
+    assert license2.reference.update.called
+    revoke_payload = license1.reference.update.call_args[0][0]
+    assert revoke_payload["status"] == "revoked"
+    assert revoke_payload["revokedReason"] == "refunded"
+
+
+def test_revoke_licenses_idempotent_when_none_found():
+    """Order with no digital licenses: revoke returns 0, no error."""
+    from handlers.digital import _revoke_digital_licenses_for_order
+
+    mock_db = MagicMock()
+    mock_db.collection.return_value.where.return_value.stream.return_value = []
+
+    with patch("handlers.digital.get_db", return_value=mock_db):
+        count = _revoke_digital_licenses_for_order("order_no_digital")
+
+    assert count == 0
+
+
+def test_revoke_skips_already_revoked():
+    """Already-revoked licenses are not double-updated."""
+    from handlers.digital import _revoke_digital_licenses_for_order
+
+    mock_db = MagicMock()
+    lic = MagicMock()
+    lic.id = "AAAA-BBBB-CCCC-DDDD"
+    lic.to_dict.return_value = {"status": "revoked"}  # already revoked
+
+    mock_db.collection.return_value.where.return_value.stream.return_value = [lic]
+
+    with patch("handlers.digital.get_db", return_value=mock_db):
+        count = _revoke_digital_licenses_for_order("order123")
+
+    assert count == 0
+    lic.reference.update.assert_not_called()

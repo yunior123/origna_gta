@@ -85,8 +85,10 @@ class EmailConfig:
     SENDER_NAME_SECURITY = "Origna GTA Security"
     COPYRIGHT_TEXT = "\u00a9 2026 Origna Ventures Inc. All rights reserved."
     APP_TAGLINE = "Canada's Modern Marketplace"
-    PROD_URL = "https://orignagta.ca"
-    DEV_URL = "http://localhost:5005"
+    URL_PROD = "https://orignagta.ca"
+    URL_STAGING = "https://orignagta-staging.web.app"
+    URL_DEV = "https://orignagta-dev.web.app"
+    URL_EMULATOR = "http://localhost:5005"
     MAILJET_API_VERSION = "v3.1"
 
     # === CASL COMPLIANCE (Canadian Anti-Spam Legislation) ===
@@ -96,7 +98,9 @@ class EmailConfig:
     GST_HST_NUMBER = "708286364RC0001"
     # Unsubscribe URL — REQUIRED by CASL
     UNSUBSCRIBE_URL_PROD = "https://orignagta.ca/unsubscribe"
-    UNSUBSCRIBE_URL_DEV = "http://localhost:5005/unsubscribe"
+    UNSUBSCRIBE_URL_STAGING = "https://orignagta-staging.web.app/unsubscribe"
+    UNSUBSCRIBE_URL_DEV = "https://orignagta-dev.web.app/unsubscribe"
+    UNSUBSCRIBE_URL_EMULATOR = "http://localhost:5005/unsubscribe"
     # Privacy Officer contact — REQUIRED by Quebec Law 25 (since Sept 2022)
     # NOTE: Using support@ until dedicated privacy@ mailbox is provisioned
     PRIVACY_OFFICER_EMAIL = "support@orignaventures.ca"
@@ -244,6 +248,7 @@ class Fields:
     LAST_VERIFIED_AT = "lastVerifiedAt"
     ACCESS_TOKEN = "accessToken"
     BOOK_ACCESS_TOKEN = "bookAccessToken"
+    PRODUCT_NAME = "productName"  # stored in license doc; denormalized from product
     WEIGHT_KG = "weightKg"
     LENGTH_CM = "lengthCm"
     WIDTH_CM = "widthCm"

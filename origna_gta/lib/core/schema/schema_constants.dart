@@ -161,6 +161,7 @@ abstract final class Fields {
   static const deviceId = 'deviceId';
   static const lastVerifiedAt = 'lastVerifiedAt';
   static const accessToken = 'accessToken';
+  static const productName = 'productName'; // stored in license doc; denormalized from product
   static const weightKg = 'weightKg';
   static const lengthCm = 'lengthCm';
   static const widthCm = 'widthCm';

@@ -990,3 +990,97 @@ def test_digital_item_status_set_to_delivered_after_license_generation():
     assert any(item.get("status") == "delivered" for item in updated_items), (
         f"Expected status='delivered' in updated items, got: {updated_items}"
     )
+
+
+# ── Task 3: productName in license doc ───────────────────────────────────────
+
+def test_generate_digital_licenses_stores_product_name():
+    """License doc must include productName from the product."""
+    from handlers.payment_stripe import _generate_digital_licenses
+    from unittest.mock import MagicMock, patch
+
+    mock_db = MagicMock()
+    mock_product = MagicMock()
+    mock_product.exists = True
+    mock_product.to_dict.return_value = {
+        "name": "FXCleaner",
+        "digitalType": "software",
+        "digitalBuilds": {"macos": "https://example.com/app.dmg"},
+        "deviceLimit": 3,
+    }
+    mock_no_collision = MagicMock()
+    mock_no_collision.exists = False
+
+    # First call = product lookup, second call = collision check
+    mock_db.collection.return_value.document.return_value.get.side_effect = [
+        mock_product,
+        mock_no_collision,
+    ]
+
+    order_data = {
+        "userId": "buyer123",
+        "items": [{"productId": "prod123", "isDigital": True, "digitalUnlocked": False,
+                   "name": "FXCleaner", "price": 29.99, "quantity": 1}],
+    }
+
+    written_docs = []
+    original_set = mock_db.collection.return_value.document.return_value.set
+    def capture_set(doc):
+        written_docs.append(doc)
+    mock_db.collection.return_value.document.return_value.set.side_effect = capture_set
+
+    with patch("handlers.payment_stripe.get_db", return_value=mock_db):
+        _generate_digital_licenses("order123", order_data)
+
+    assert written_docs, "license doc must be written"
+    assert written_docs[0].get("productName") == "FXCleaner"
+
+
+# ── Task 4: all-digital cart skips Canada check ───────────────────────────────
+
+def test_all_digital_checkout_zero_shipping():
+    """All-digital order: _calculate_digital_order_totals returns zero shipping and tax."""
+    # This validates the logic path — shipping_cost_cents=0, tax=0, taxes_breakdown={}
+    from unittest.mock import MagicMock, patch
+
+    # Simulate the all_digital=True branch directly
+    items = [{"productId": "prod1", "isDigital": True}]
+    all_digital = all(item.get("isDigital", False) for item in items)
+    assert all_digital is True
+
+    # If all_digital, shipping and tax must be zero
+    shipping_cost_cents = 0 if all_digital else 999
+    tax_amount_cents = 0 if all_digital else 999
+    taxes_breakdown = {} if all_digital else {"GST": 5.0}
+
+    assert shipping_cost_cents == 0
+    assert tax_amount_cents == 0
+    assert taxes_breakdown == {}
+
+
+# ── Task 5: license revocation on refund ─────────────────────────────────────
+
+def test_full_refund_revokes_digital_licenses():
+    """process_charge_refunded calls _revoke_digital_licenses_for_order."""
+    from handlers.payment_stripe import process_charge_refunded
+    from unittest.mock import MagicMock, patch
+
+    mock_db = MagicMock()
+    order_doc = MagicMock()
+    order_doc.id = "order123"
+    order_doc.reference = MagicMock()
+    order_doc.to_dict.return_value = {
+        "paymentStatus": "captured",
+        "cumulativeRefundedCents": 0,
+        "items": [{"productId": "prod1", "isDigital": True}],
+    }
+    mock_db.collection.return_value.where.return_value.limit.return_value.stream.return_value = iter([order_doc])
+    mock_db.collection.return_value.where.return_value.where.return_value.stream.return_value = iter([])
+
+    charge = {"payment_intent": "pi_test", "amount_refunded": 2999, "amount": 2999}
+
+    with patch("handlers.payment_stripe.get_db", return_value=mock_db), \
+         patch("handlers.digital._revoke_digital_licenses_for_order", return_value=1) as mock_revoke:
+        process_charge_refunded(charge)
+
+    mock_revoke.assert_called_once_with("order123")

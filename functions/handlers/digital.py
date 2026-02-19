@@ -70,6 +70,7 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str) -> d
                 "licenseKey": license_key,
                 "downloadUrls": lic.get(Fields.DIGITAL_BUILDS, {}),
                 "activatedAt": act.get("activatedAt"),
+                Fields.PRODUCT_NAME: lic.get(Fields.PRODUCT_NAME, ""),
             }
 
     # Check device limit
@@ -94,6 +95,7 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str) -> d
         "licenseKey": license_key,
         "downloadUrls": lic.get(Fields.DIGITAL_BUILDS, {}),
         "activatedAt": now.isoformat(),
+        Fields.PRODUCT_NAME: lic.get(Fields.PRODUCT_NAME, ""),
     }
 
 
@@ -191,6 +193,36 @@ def _get_book_redirect_impl(token: str) -> str:
     if not book_url:
         raise ValueError("missing_source_url")
     return book_url
+
+
+def _revoke_digital_licenses_for_order(order_id: str) -> int:
+    """Revoke all active licenses belonging to an order.
+
+    Idempotent: already-revoked licenses are skipped.
+    Returns count of licenses updated to revoked.
+    Called on any refund (partial or full) — lifetime license model means
+    any refund invalidates the license.
+    """
+    db = get_db()
+    licenses = (
+        db.collection(Collections.LICENSES)
+        .where(Fields.ORDER_ID, "==", order_id)
+        .stream()
+    )
+    count = 0
+    now = datetime.now(timezone.utc)
+    for lic_doc in licenses:
+        lic = lic_doc.to_dict()
+        if lic.get(Fields.STATUS) == LicenseStatusValues.ACTIVE:
+            lic_doc.reference.update({
+                Fields.STATUS: LicenseStatusValues.REVOKED,
+                "revokedAt": now,
+                "revokedReason": "refunded",
+                Fields.UPDATED_AT: now,
+            })
+            count += 1
+            logger.info(f"License {lic_doc.id} revoked for order {order_id} (refund)")
+    return count
 
 
 # ── Cloud Function endpoints ──────────────────────────────────────────────────

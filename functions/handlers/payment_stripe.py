@@ -19,6 +19,7 @@ from firebase_functions import https_fn
 # Initializing Stripe key lazily in handlers
 from config import (
     AUTHORIZATION_VALID_DAYS,
+    BASE_URL,
     CATEGORY_TAX_CODE_MAP,
     IS_EMULATOR,
     PLATFORM_FEE_PERCENT,
@@ -525,46 +526,55 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not items or len(items) == 0:
         raise https_fn.HttpsError("invalid-argument", "No items in cart")
 
-    if not shipping_address:
-        raise https_fn.HttpsError("invalid-argument", "Shipping address required")
+    # Detect all-digital cart early — bypasses physical shipping/address rules.
+    # NOTE: isDigital is re-verified server-side per item during product validation below.
+    all_digital = all(item.get(Fields.IS_DIGITAL, False) for item in items)
 
-    # NORMALIZE: Prefer canonical schema field `state` (province code),
-    # but also accept `province` from older clients.
-    if Fields.STATE not in shipping_address and "province" in shipping_address:
-        shipping_address[Fields.STATE] = shipping_address["province"]
+    if not all_digital:
+        if not shipping_address:
+            raise https_fn.HttpsError("invalid-argument", "Shipping address required")
 
-    # Validate shipping address fields
-    required_address_fields = [Fields.STREET, Fields.CITY, Fields.POSTAL_CODE, Fields.STATE, Fields.COUNTRY]
-    for field in required_address_fields:
-        if field not in shipping_address or not shipping_address[field]:
-            raise https_fn.HttpsError("invalid-argument", f"Missing required address field: {field}")
+        # NORMALIZE: Prefer canonical schema field `state` (province code),
+        # but also accept `province` from older clients.
+        if Fields.STATE not in shipping_address and "province" in shipping_address:
+            shipping_address[Fields.STATE] = shipping_address["province"]
 
-    # Validate address field lengths (prevent injection attacks)
-    address_length_limits = {
-        Fields.STREET: 100,
-        Fields.CITY: 50,
-        Fields.POSTAL_CODE: 20,
-        Fields.STATE: 50,
-        Fields.COUNTRY: 50,
-    }
-    for field, max_length in address_length_limits.items():
-        if len(str(shipping_address.get(field, ""))) > max_length:
-            raise https_fn.HttpsError("invalid-argument", f"Address field {field} exceeds maximum length")
+        # Validate shipping address fields
+        required_address_fields = [Fields.STREET, Fields.CITY, Fields.POSTAL_CODE, Fields.STATE, Fields.COUNTRY]
+        for field in required_address_fields:
+            if field not in shipping_address or not shipping_address[field]:
+                raise https_fn.HttpsError("invalid-argument", f"Missing required address field: {field}")
 
-    # Validate postal code format
-    from utils.helpers import validate_postal_code
+        # Validate address field lengths (prevent injection attacks)
+        address_length_limits = {
+            Fields.STREET: 100,
+            Fields.CITY: 50,
+            Fields.POSTAL_CODE: 20,
+            Fields.STATE: 50,
+            Fields.COUNTRY: 50,
+        }
+        for field, max_length in address_length_limits.items():
+            if len(str(shipping_address.get(field, ""))) > max_length:
+                raise https_fn.HttpsError("invalid-argument", f"Address field {field} exceeds maximum length")
 
-    postal_code = shipping_address.get(Fields.POSTAL_CODE, "")
-    country = shipping_address.get(Fields.COUNTRY, AppConfig.DEFAULT_COUNTRY_NAME)
+        # Validate postal code format
+        from utils.helpers import validate_postal_code
 
-    # Current logic only supports Canada
-    if country.lower() != "canada":
-         raise https_fn.HttpsError("invalid-argument", f"Shipping to {country} is not currently supported")
+        postal_code = shipping_address.get(Fields.POSTAL_CODE, "")
+        country = shipping_address.get(Fields.COUNTRY, AppConfig.DEFAULT_COUNTRY_NAME)
 
-    try:
-        validate_postal_code(postal_code)
-    except ValueError as err:
-        raise https_fn.HttpsError("invalid-argument", f"Invalid Canadian postal code format: {postal_code}") from err
+        if country.lower() != "canada":
+            raise https_fn.HttpsError("invalid-argument", f"Shipping to {country} is not currently supported")
+
+        try:
+            validate_postal_code(postal_code)
+        except ValueError as err:
+            raise https_fn.HttpsError("invalid-argument", f"Invalid Canadian postal code format: {postal_code}") from err
+    else:
+        # All-digital: no physical address needed (worldwide sales).
+        # Normalize province from optional address if provided (for tax display only).
+        if Fields.STATE not in shipping_address and "province" in shipping_address:
+            shipping_address[Fields.STATE] = shipping_address["province"]
 
     # Validate subtotal is positive number
     if not isinstance(client_subtotal, (int, float)) or client_subtotal <= 0:
@@ -743,49 +753,96 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             "invalid-argument", f"Subtotal mismatch: expected ${actual_subtotal:.2f}, got ${client_subtotal:.2f}"
         )
 
-    # Calculate shipping (server-side) - returns dollars
-    # Bug #9: Read delivery speed from client request (express/same_day cost more)
-    delivery_speed = data.get(Fields.DELIVERY_SPEED, DeliveryTypeValues.STANDARD)
-    if delivery_speed not in (DeliveryTypeValues.STANDARD, DeliveryTypeValues.EXPRESS, DeliveryTypeValues.SAME_DAY):
-        delivery_speed = DeliveryTypeValues.STANDARD  # Sanitize to prevent injection
+    # Calculate shipping and taxes
+    if all_digital:
+        # Digital-only orders: worldwide delivery, zero shipping, zero Canadian tax
+        delivery_speed = DeliveryTypeValues.STANDARD
+        delivery_instructions = ""
+        shipping_cost_cents = 0
+        tax_amount_cents = 0
+        taxes_breakdown = {}
+        item_taxes = []
+        state_code = shipping_address.get(Fields.STATE, BusinessRules.DEFAULT_PROVINCE)
+        is_reverse_charge = False
+    else:
+        # Calculate shipping (server-side) - returns dollars
+        # Bug #9: Read delivery speed from client request (express/same_day cost more)
+        delivery_speed = data.get(Fields.DELIVERY_SPEED, DeliveryTypeValues.STANDARD)
+        if delivery_speed not in (DeliveryTypeValues.STANDARD, DeliveryTypeValues.EXPRESS, DeliveryTypeValues.SAME_DAY):
+            delivery_speed = DeliveryTypeValues.STANDARD  # Sanitize to prevent injection
 
-    # Get delivery instructions from client (optional)
-    delivery_instructions = data.get(Fields.DELIVERY_INSTRUCTIONS, "")
-    if delivery_instructions and len(delivery_instructions) > BusinessRules.MAX_DELIVERY_INSTRUCTIONS_LENGTH:
-        delivery_instructions = delivery_instructions[: BusinessRules.MAX_DELIVERY_INSTRUCTIONS_LENGTH]
+        # Get delivery instructions from client (optional)
+        delivery_instructions = data.get(Fields.DELIVERY_INSTRUCTIONS, "")
+        if delivery_instructions and len(delivery_instructions) > BusinessRules.MAX_DELIVERY_INSTRUCTIONS_LENGTH:
+            delivery_instructions = delivery_instructions[: BusinessRules.MAX_DELIVERY_INSTRUCTIONS_LENGTH]
 
-    try:
-        shipping_cost_dollars = calculate_shipping_cost(validated_items, shipping_address, speed=delivery_speed)
-        shipping_cost_cents = round(shipping_cost_dollars * 100)
-    except ValueError as e:
-        # UX FIX: Return specific validation error (e.g., Same Day distance limit)
-        logger.warning(f"Shipping validation error: {str(e)}")
-        raise https_fn.HttpsError("invalid-argument", str(e)) from e
-    except Exception as e:
-        logger.error(f"Shipping calculation error: {str(e)}")
-        raise https_fn.HttpsError("internal", "Shipping calculation failed. Please try again.") from e
+        try:
+            shipping_cost_dollars = calculate_shipping_cost(validated_items, shipping_address, speed=delivery_speed)
+            shipping_cost_cents = round(shipping_cost_dollars * 100)
+        except ValueError as e:
+            # UX FIX: Return specific validation error (e.g., Same Day distance limit)
+            logger.warning(f"Shipping validation error: {str(e)}")
+            raise https_fn.HttpsError("invalid-argument", str(e)) from e
+        except Exception as e:
+            logger.error(f"Shipping calculation error: {str(e)}")
+            raise https_fn.HttpsError("internal", "Shipping calculation failed. Please try again.") from e
 
-    # Calculate taxes per-item (server-side) - all in cents to avoid rounding errors
-    state_code = shipping_address.get(Fields.STATE, BusinessRules.DEFAULT_PROVINCE)
+        # Calculate taxes per-item (server-side) - all in cents to avoid rounding errors
+        state_code = shipping_address.get(Fields.STATE, BusinessRules.DEFAULT_PROVINCE)
 
-    if STRIPE_TAX_ENABLED:
-        # Use Stripe Tax API for automatic tax calculation
-        # Stripe will validate GST number and apply B2B exemption if valid
-        tax_result = calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_cents, gst_number)
-        if tax_result[0] is not None:
-            tax_amount_cents, taxes_breakdown, item_taxes, is_reverse_charge = tax_result
+    if not all_digital:
+        if STRIPE_TAX_ENABLED:
+            # Use Stripe Tax API for automatic tax calculation
+            # Stripe will validate GST number and apply B2B exemption if valid
+            tax_result = calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_cents, gst_number)
+            if tax_result[0] is not None:
+                tax_amount_cents, taxes_breakdown, item_taxes, is_reverse_charge = tax_result
 
-            # Log if Stripe applied reverse charge (B2B exemption)
-            if is_reverse_charge:
-                logger.info(f"✅ Stripe applied B2B reverse charge for user {user_id} with GST {gst_number[:6]}****")
+                # Log if Stripe applied reverse charge (B2B exemption)
+                if is_reverse_charge:
+                    logger.info(f"✅ Stripe applied B2B reverse charge for user {user_id} with GST {gst_number[:6]}****")
+            else:
+                # SECURITY FIX: Fall back to manual calculation on Stripe Tax API error
+                # IMPORTANT: Do NOT apply B2B exemption (GST-based) in fallback mode
+                # because we cannot validate the GST number without Stripe
+                logger.warning(f"⚠️ Stripe Tax API failed, falling back to manual calculation for user {user_id}")
+
+                tax_amount_cents = 0
+                item_taxes = []
+                for item in validated_items:
+                    item_subtotal_cents = int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY]
+                    item_tax_rate = get_item_tax_rate(item, state_code)
+                    item_tax_cents = round(item_subtotal_cents * item_tax_rate)
+                    tax_amount_cents += item_tax_cents
+                    item_taxes.append(
+                        {
+                            Fields.PRODUCT_ID: item[Fields.PRODUCT_ID],
+                            Fields.TAX_CENTS: item_tax_cents,
+                            Fields.TAX_RATE: item_tax_rate,
+                        }
+                    )
+
+                # CRA COMPLIANCE: GST/HST applies to shipping charges in Canada
+                if shipping_cost_cents > 0:
+                    shipping_tax_rate = get_tax_rate(state_code)
+                    shipping_tax_cents = round(shipping_cost_cents * shipping_tax_rate)
+                    tax_amount_cents += shipping_tax_cents
+
+                # Build tax breakdown dict (matches Flutter provinceTaxRates)
+                # Tax base includes subtotal + shipping (CRA requirement)
+                taxable_total = actual_subtotal + (shipping_cost_cents / 100)
+                province_rates = _PROVINCE_TAX_BREAKDOWN.get(
+                    state_code, _PROVINCE_TAX_BREAKDOWN.get(BusinessRules.DEFAULT_PROVINCE, {"GST": 0.05})
+                )
+                taxes_breakdown = {name: round(taxable_total * rate, 2) for name, rate in province_rates.items()}
+
+                # SECURITY: Force is_reverse_charge to False in fallback mode
+                is_reverse_charge = False
         else:
-            # SECURITY FIX: Fall back to manual calculation on Stripe Tax API error
-            # IMPORTANT: Do NOT apply B2B exemption (GST-based) in fallback mode
-            # because we cannot validate the GST number without Stripe
-            logger.warning(f"⚠️ Stripe Tax API failed, falling back to manual calculation for user {user_id}")
-
+            # Calculate per-item tax (manual calculation)
             tax_amount_cents = 0
-            item_taxes = []
+            item_taxes = []  # Store for breakdown
+
             for item in validated_items:
                 item_subtotal_cents = int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY]
                 item_tax_rate = get_item_tax_rate(item, state_code)
@@ -813,42 +870,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             )
             taxes_breakdown = {name: round(taxable_total * rate, 2) for name, rate in province_rates.items()}
 
-            # SECURITY: Force is_reverse_charge to False in fallback mode
+            # No Stripe Tax API available — B2B exemption not possible
             is_reverse_charge = False
-    else:
-        # Calculate per-item tax (manual calculation)
-        tax_amount_cents = 0
-        item_taxes = []  # Store for breakdown
-
-        for item in validated_items:
-            item_subtotal_cents = int(item[Fields.PRICE] * 100) * item[Fields.QUANTITY]
-            item_tax_rate = get_item_tax_rate(item, state_code)
-            item_tax_cents = round(item_subtotal_cents * item_tax_rate)
-            tax_amount_cents += item_tax_cents
-            item_taxes.append(
-                {
-                    Fields.PRODUCT_ID: item[Fields.PRODUCT_ID],
-                    Fields.TAX_CENTS: item_tax_cents,
-                    Fields.TAX_RATE: item_tax_rate,
-                }
-            )
-
-        # CRA COMPLIANCE: GST/HST applies to shipping charges in Canada
-        if shipping_cost_cents > 0:
-            shipping_tax_rate = get_tax_rate(state_code)
-            shipping_tax_cents = round(shipping_cost_cents * shipping_tax_rate)
-            tax_amount_cents += shipping_tax_cents
-
-        # Build tax breakdown dict (matches Flutter provinceTaxRates)
-        # Tax base includes subtotal + shipping (CRA requirement)
-        taxable_total = actual_subtotal + (shipping_cost_cents / 100)
-        province_rates = _PROVINCE_TAX_BREAKDOWN.get(
-            state_code, _PROVINCE_TAX_BREAKDOWN.get(BusinessRules.DEFAULT_PROVINCE, {"GST": 0.05})
-        )
-        taxes_breakdown = {name: round(taxable_total * rate, 2) for name, rate in province_rates.items()}
-
-        # No Stripe Tax API available — B2B exemption not possible
-        is_reverse_charge = False
 
     # Total in cents
     total_amount_cents = actual_subtotal_cents + shipping_cost_cents + tax_amount_cents
@@ -1059,8 +1082,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             mode="payment",
             # No payment_method_types — uses Stripe Dashboard settings
             # Enables Apple Pay, Google Pay, Interac (popular in Canada), etc.
-            success_url=f"{AppConfig.SITE_URL}{AppConfig.CHECKOUT_SUCCESS_PATH}?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{AppConfig.SITE_URL}{AppConfig.CHECKOUT_CANCEL_PATH}",
+            success_url=f"{BASE_URL}{AppConfig.CHECKOUT_SUCCESS_PATH}?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{BASE_URL}{AppConfig.CHECKOUT_CANCEL_PATH}",
             client_reference_id=user_id,
             metadata={Fields.ORDER_ID: order_id, Fields.USER_ID: user_id},
             payment_intent_data={
@@ -1376,6 +1399,7 @@ def _generate_digital_licenses(order_id: str, order_data: dict) -> None:
                 Fields.DEVICE_LIMIT: product_data.get(Fields.DEVICE_LIMIT),
                 Fields.ACTIVATIONS: [],
                 Fields.DIGITAL_BUILDS: builds,
+                Fields.PRODUCT_NAME: product_data.get(Fields.NAME, ""),
                 Fields.CREATED_AT: now,
             }
             db.collection(Collections.LICENSES).document(license_key).set(license_doc)
@@ -1390,6 +1414,7 @@ def _generate_digital_licenses(order_id: str, order_data: dict) -> None:
                 Fields.DIGITAL_TYPE: DigitalTypeValues.BOOK,
                 Fields.STATUS: LicenseStatusValues.ACTIVE,
                 Fields.BOOK_SOURCE_URL: book_source_url,
+                Fields.PRODUCT_NAME: product_data.get(Fields.NAME, ""),
                 Fields.CREATED_AT: now,
             }
             db.collection(Collections.LICENSES).document(license_key).set(license_doc)
@@ -2118,6 +2143,16 @@ def process_charge_refunded(charge: dict) -> str | None:
                             logger.critical(
                                 f"🚨 CRITICAL: Failed to suspend seller {fp_seller_id} after transfer reversal failure: {type(suspend_err).__name__}"
                             )
+
+        # Revoke digital licenses on any refund (lifetime license model — any refund invalidates)
+        try:
+            from handlers.digital import _revoke_digital_licenses_for_order
+            revoked_count = _revoke_digital_licenses_for_order(order_id)
+            if revoked_count:
+                logger.info(f"Revoked {revoked_count} digital license(s) for refunded order {order_id}")
+        except Exception as revoke_err:
+            # Non-fatal: log but do not fail the refund webhook
+            logger.error(f"License revocation failed for order {order_id}: {revoke_err}")
 
         if is_full_refund:
             order_ref.update(
@@ -2874,8 +2909,8 @@ def create_account_link(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Build URLs from server-side config only — never trust client URLs
     # This prevents open redirect attacks via malicious refreshUrl/returnUrl
-    refresh_url = f"{AppConfig.SITE_URL}{AppConfig.SELLER_REFRESH_PATH}"
-    return_url = f"{AppConfig.SITE_URL}{AppConfig.SELLER_RETURN_PATH}"
+    refresh_url = f"{BASE_URL}{AppConfig.SELLER_REFRESH_PATH}"
+    return_url = f"{BASE_URL}{AppConfig.SELLER_RETURN_PATH}"
 
     user_ref = get_db().collection(Collections.USERS).document(user_id)
     user_doc = user_ref.get()

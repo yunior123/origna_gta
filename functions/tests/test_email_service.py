@@ -558,9 +558,9 @@ class TestModuleConstants:
         import services.email_service as mod
 
         # Module-level APP_BASE_URL depends on import order across test files.
-        # Verify the logic: when IS_EMULATOR is True, URL should be dev.
+        # Verify the logic: when IS_EMULATOR is True, URL should be localhost.
         original = mod.APP_BASE_URL
-        mod.APP_BASE_URL = EmailConfig.DEV_URL  # simulate emulator
+        mod.APP_BASE_URL = EmailConfig.URL_EMULATOR  # simulate emulator
         try:
             assert "localhost" in mod.APP_BASE_URL or "127.0.0.1" in mod.APP_BASE_URL
         finally:
@@ -569,3 +569,122 @@ class TestModuleConstants:
     def test_email_config_mailjet_version(self):
         """Mailjet API version should be v3.1."""
         assert EmailConfig.MAILJET_API_VERSION == "v3.1"
+
+
+# ── Tasks 6 & 7: Digital product email ───────────────────────────────────────
+
+def test_digital_order_shows_instant_delivery_tracker():
+    """Digital-only order: status tracker shows Confirmed + Delivered Instantly (no shipping steps)."""
+    from services.email_service import get_order_confirmation_email
+    order = {
+        "orderId": "ord-digital-001",
+        "userId": "buyer1",
+        "items": [{"name": "FXCleaner", "price": 29.99, "quantity": 1, "isDigital": True}],
+        "subtotalCents": 2999,
+        "shippingCostCents": 0,
+        "taxAmountCents": 0,
+        "totalAmountCents": 2999,
+        "taxes": {},
+        "shippingAddress": {},
+    }
+    html_out = get_order_confirmation_email(order, lang="en")
+    assert "Delivered Instantly" in html_out, "Must show instant delivery for digital order"
+    assert "🚚" not in html_out, "Must NOT show shipping truck icon for digital-only order"
+
+
+def test_physical_order_shows_full_tracker():
+    """Physical order: status tracker still shows all 4 steps including truck."""
+    from services.email_service import get_order_confirmation_email
+    order = {
+        "orderId": "ord-phys-001",
+        "userId": "buyer1",
+        "items": [{"name": "Widget", "price": 19.99, "quantity": 1, "isDigital": False}],
+        "subtotalCents": 1999,
+        "shippingCostCents": 500,
+        "taxAmountCents": 260,
+        "totalAmountCents": 2759,
+        "taxes": {"HST": 2.60},
+        "shippingAddress": {
+            "street": "123 Main St", "city": "Toronto", "state": "ON",
+            "postalCode": "M5V1A1", "country": "Canada",
+        },
+    }
+    html_out = get_order_confirmation_email(order, lang="en")
+    assert "🚚" in html_out, "Physical order must show shipping truck icon"
+
+
+def test_digital_order_email_contains_license_key():
+    """Software digital item: order confirmation email shows license key and download link."""
+    from services.email_service import get_order_confirmation_email
+    order = {
+        "orderId": "ord-digital-002",
+        "userId": "buyer1",
+        "items": [{
+            "name": "FXCleaner",
+            "price": 29.99,
+            "quantity": 1,
+            "isDigital": True,
+            "digitalType": "software",
+            "digitalUnlocked": True,
+            "licenseKey": "ABCD-EFGH-IJKL-MNOP",
+            "digitalBuilds": {"macos": "https://r2.example.com/fxcleaner.dmg"},
+        }],
+        "subtotalCents": 2999,
+        "shippingCostCents": 0,
+        "taxAmountCents": 0,
+        "totalAmountCents": 2999,
+        "taxes": {},
+        "shippingAddress": {},
+    }
+    html_out = get_order_confirmation_email(order, lang="en")
+    assert "ABCD-EFGH-IJKL-MNOP" in html_out, "License key must appear in email"
+    assert "FXCleaner" in html_out
+    assert "macOS" in html_out, "Download platform label must appear"
+
+
+def test_book_order_email_contains_access_instructions():
+    """Book digital item: email shows access instructions and license key."""
+    from services.email_service import get_order_confirmation_email
+    order = {
+        "orderId": "ord-book-001",
+        "userId": "buyer1",
+        "items": [{
+            "name": "Python Mastery",
+            "price": 19.99,
+            "quantity": 1,
+            "isDigital": True,
+            "digitalType": "book",
+            "digitalUnlocked": True,
+            "licenseKey": "BOOK-ABCD-EFGH-IJKL",
+        }],
+        "subtotalCents": 1999,
+        "shippingCostCents": 0,
+        "taxAmountCents": 0,
+        "totalAmountCents": 1999,
+        "taxes": {},
+        "shippingAddress": {},
+    }
+    html_out = get_order_confirmation_email(order, lang="en")
+    assert "BOOK-ABCD-EFGH-IJKL" in html_out, "Book license key must appear in email"
+    assert "Python Mastery" in html_out
+
+
+def test_physical_order_email_has_no_license_block():
+    """Physical-only order: no license key section in email."""
+    from services.email_service import get_order_confirmation_email
+    order = {
+        "orderId": "ord-phys-002",
+        "items": [{"name": "Widget", "price": 19.99, "quantity": 1, "isDigital": False}],
+        "subtotalCents": 1999,
+        "shippingCostCents": 500,
+        "taxAmountCents": 260,
+        "totalAmountCents": 2759,
+        "taxes": {"HST": 2.60},
+        "shippingAddress": {
+            "street": "123 Main St", "city": "Toronto", "state": "ON",
+            "postalCode": "M5V1A1", "country": "Canada",
+        },
+    }
+    html_out = get_order_confirmation_email(order, lang="en")
+    assert "License Key" not in html_out
+    assert "licenseKey" not in html_out.lower()
