@@ -148,6 +148,19 @@ abstract final class Fields {
   static const keywords = 'keywords';
   static const isActive = 'isActive';
   static const isDigital = 'isDigital';
+  // Digital product extended fields
+  static const digitalType = 'digitalType';
+  static const slug = 'slug';
+  static const digitalBuilds = 'digitalBuilds';
+  // bookSourceUrl intentionally server-side only — do NOT expose in client
+  static const deviceLimit = 'deviceLimit';
+  static const licenseKey = 'licenseKey';
+  static const digitalUnlocked = 'digitalUnlocked';
+  static const supportedPlatforms = 'supportedPlatforms';
+  static const activations = 'activations';
+  static const deviceId = 'deviceId';
+  static const lastVerifiedAt = 'lastVerifiedAt';
+  static const accessToken = 'accessToken';
   static const weightKg = 'weightKg';
   static const lengthCm = 'lengthCm';
   static const widthCm = 'widthCm';
@@ -1028,4 +1041,21 @@ abstract final class RemoteConfigKeys {
 abstract final class UIMessages {
   static const sessionExpired = 'Session expired due to inactivity. Please login again.';
   static const sessionExpiredTitle = 'Session Expired';
+}
+
+/// Valid values for digitalType field
+abstract final class DigitalTypeValues {
+  static const software = 'software';
+  static const book = 'book';
+
+  static const all = [software, book];
+}
+
+/// Valid values for supportedPlatforms field
+abstract final class DigitalPlatformValues {
+  static const macos = 'macos';
+  static const windows = 'windows';
+  static const linux = 'linux';
+
+  static const all = [macos, windows, linux];
 }
