@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 
@@ -28,7 +27,6 @@ class SellerIntegrationScreen extends ConsumerWidget {
           slivers: [
             CustomAppBar(
               title: 'Developer Integration Guide',
-              subtitle: 'Connect your software to Origna license validation',
             ),
             SliverPadding(
               padding: const EdgeInsets.all(20),
@@ -368,7 +366,7 @@ class _GuideCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? DesignTokens.surface.withValues(alpha: 0.7) : Colors.white,
-        borderRadius: BorderRadius.circular(DesignTokens.radiusMd),
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
         border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.3)),
       ),
       padding: const EdgeInsets.all(20),

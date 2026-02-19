@@ -97,6 +97,7 @@ class SellerOrdersScreen extends ConsumerWidget {
           ],
         ),
         backgroundColor: Colors.transparent,
+        body: ordersAsync.when(
           loading: () => Center(
             child: Container(
               padding: const EdgeInsets.all(16),
