@@ -29,15 +29,7 @@ while IFS= read -r file; do
     origna_gta/lib/*.dart) DART_FILES+=("$file") ;;
     functions/*.py)        PY_FILES+=("$file") ;;
   esac
-done < <(cd "$PROJECT_DIR" && git diff --name-only HEAD 2>/dev/null; git diff --name-only --cached HEAD 2>/dev/null)
-
-# Remove duplicates (guard empty arrays for set -u)
-if [ ${#DART_FILES[@]} -gt 0 ]; then
-  DART_FILES=($(printf "%s\n" "${DART_FILES[@]}" | sort -u))
-fi
-if [ ${#PY_FILES[@]} -gt 0 ]; then
-  PY_FILES=($(printf "%s\n" "${PY_FILES[@]}" | sort -u))
-fi
+done < <(cd "$PROJECT_DIR" && { git diff --name-only HEAD 2>/dev/null; git diff --name-only --cached HEAD 2>/dev/null; } | sort -u)
 
 # If no files changed, nothing to verify
 if [ ${#DART_FILES[@]} -eq 0 ] && [ ${#PY_FILES[@]} -eq 0 ]; then
@@ -55,8 +47,8 @@ if [ ${#DART_FILES[@]} -gt 0 ]; then
     DART_OUTPUT=$(cd "$FLUTTER_DIR" && dart analyze --fatal-infos 2>&1) || true
 
     # Count errors and warnings
-    DART_ERRORS=$(echo "$DART_OUTPUT" | grep -c " error " 2>/dev/null || echo "0")
-    DART_WARNS=$(echo "$DART_OUTPUT" | grep -c " warning " 2>/dev/null || echo "0")
+    DART_ERRORS=$(echo "$DART_OUTPUT" | grep -c " error " || true)
+    DART_WARNS=$(echo "$DART_OUTPUT" | grep -c " warning " || true)
 
     if [ "$DART_ERRORS" -gt 0 ]; then
       ERROR_DETAILS=$(echo "$DART_OUTPUT" | grep " error " | head -5)
@@ -82,7 +74,7 @@ if [ ${#PY_FILES[@]} -gt 0 ]; then
     done
 
     RUFF_OUTPUT=$(cd "$FUNCTIONS_DIR" && ruff check "${RUFF_TARGETS[@]}" 2>&1) || true
-    RUFF_ERRORS=$(echo "$RUFF_OUTPUT" | grep -cE "^[^:]+:[0-9]+:" 2>/dev/null || echo "0")
+    RUFF_ERRORS=$(echo "$RUFF_OUTPUT" | grep -cE "^[^:]+:[0-9]+:" || true)
 
     if [ "$RUFF_ERRORS" -gt 0 ]; then
       RUFF_DETAILS=$(echo "$RUFF_OUTPUT" | head -5)
@@ -141,10 +133,10 @@ TOTAL_WARNINGS=${#WARNINGS[@]}
 
 if [ "$TOTAL_ERRORS" -gt 0 ]; then
   ERROR_MSG=""
-  for err in "${ERRORS[@]}"; do
+  for err in ${ERRORS[@]+"${ERRORS[@]}"}; do
     ERROR_MSG+="$err\n"
   done
-  for warn in "${WARNINGS[@]}"; do
+  for warn in ${WARNINGS[@]+"${WARNINGS[@]}"}; do
     ERROR_MSG+="$warn\n"
   done
 
@@ -167,7 +159,7 @@ fi
 # All clear
 if [ "$TOTAL_WARNINGS" -gt 0 ]; then
   echo "STOP HOOK — Quality Gate PASSED ✅ (with ${TOTAL_WARNINGS} warning(s))"
-  for warn in "${WARNINGS[@]}"; do
+  for warn in ${WARNINGS[@]+"${WARNINGS[@]}"}; do
     echo "  $warn"
   done
 else

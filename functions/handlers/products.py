@@ -19,9 +19,9 @@ from botocore.config import Config
 from firebase_functions import firestore_fn, https_fn
 
 from config import (
-    R2_ACCESS_KEY_NEW,
-    R2_ACCOUNT_ID_NEW,
-    R2_SECRET_KEY_NEW,
+    R2_ACCESS_KEY_PARAM,
+    R2_ACCOUNT_ID_PARAM,
+    R2_SECRET_KEY_PARAM,
     R2Config,
     get_geoapify_api_key,
     get_r2_credentials,
@@ -95,7 +95,7 @@ def _generate_product_slug(title: str) -> str:
 # CORS is configured in DEFAULT_OPTIONS via function_options.py
 
 
-@https_fn.on_call(secrets=[R2_ACCESS_KEY_NEW, R2_SECRET_KEY_NEW, R2_ACCOUNT_ID_NEW])
+@https_fn.on_call(secrets=[R2_ACCESS_KEY_PARAM, R2_SECRET_KEY_PARAM, R2_ACCOUNT_ID_PARAM])
 def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Generates presigned URLs for uploading product images to Cloudflare R2.

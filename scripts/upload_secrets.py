@@ -8,7 +8,6 @@ SECRETS_MAP = {
     "STRIPE_SECRET_KEY": "STRIPE_SECRET_KEY",
     "STRIPE_WEBHOOK_SECRET": "STRIPE_WEBHOOK_SECRET",
     "ALGOLIA_APP_ID": "ALGOLIA_APP_ID",
-    "ALGOLIA_SEARCH_API_KEY": "ALGOLIA_SEARCH_API_KEY",
     "ALGOLIA_WRITE_API_KEY": "ALGOLIA_WRITE_API_KEY",
     "GEOAPIFY_API_KEY": "GEOAPIFY_API_KEY",
     "MAILJET_API_KEY": "MAILJET_CREDENTIAL_REDACTED",
@@ -50,6 +49,14 @@ def upload_secret(project_id, secret_name, secret_value):
             capture_output=True
         )
         
+        # Get list of currently enabled versions to disable them later
+        old_versions_raw = subprocess.run(
+            ["gcloud", "secrets", "versions", "list", secret_name, "--project", project_id, "--filter", "state=enabled", "--format", "value(name)"],
+            capture_output=True,
+            text=True
+        ).stdout.strip().split("\n")
+        old_versions = [v.split("/")[-1] for v in old_versions_raw if v]
+
         # Add secret version
         process = subprocess.Popen(
             ["gcloud", "secrets", "versions", "add", secret_name, "--project", project_id, "--data-file=-"],
@@ -62,6 +69,13 @@ def upload_secret(project_id, secret_name, secret_value):
         
         if process.returncode == 0:
             print(f"✅ Successfully set {secret_name}")
+            # Disable old versions to save costs
+            for v_id in old_versions:
+                print(f"  Disabling old version {v_id} to save costs...")
+                subprocess.run(
+                    ["gcloud", "secrets", "versions", "disable", v_id, "--secret", secret_name, "--project", project_id],
+                    capture_output=True
+                )
         else:
             print(f"❌ Failed to set {secret_name}: {stderr}")
             

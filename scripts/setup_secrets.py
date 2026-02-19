@@ -23,8 +23,6 @@ SECRETS = {
     "MAILJET_API_KEY": MAILJET_CREDENTIAL_REDACTED("MAILJET_API_KEY"),
     "MAILJET_SECRET_KEY": MAILJET_CREDENTIAL_REDACTED("MAILJET_SECRET_KEY"),
     "NVIDIA_NIM_API_KEY": os.getenv("NVIDIA_NIM_API_KEY"),
-    "NVIDIA_NIM_QWEN_API_KEY": os.getenv("NVIDIA_NIM_QWEN_API_KEY"),
-    "TELEGRAM_BOT_TOKEN": os.getenv("TELEGRAM_BOT_TOKEN"),
     "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY"),
     "GITHUB_TOKEN": os.getenv("GITHUB_TOKEN"),
     "GOOGLE_GEMINI_API_KEY": os.getenv("GOOGLE_GEMINI_API_KEY"),
@@ -54,8 +52,8 @@ def setup_project_secrets(project_id):
         if not value:
             continue
             
-        # Convert env var name to secret name (lowercase, hyphens)
-        secret_name = key.lower().replace("_", "-")
+        # Use canonical UPPERCASE name
+        secret_name = key
         
         print(f"Configuring {secret_name}...")
         

@@ -184,8 +184,10 @@ def airwallex_process_payment(req: https_fn.CallableRequest) -> dict[str, Any]:
     Collections = get_collections()
     Fields = get_fields()
 
+    from config import BASE_URL
+
     order_id = data.get(Fields.ORDER_ID)
-    return_url = data.get(ApiKeys.RETURN_URL, f"{AppConfig.SITE_URL}{AppConfig.CHECKOUT_SUCCESS_PATH}")
+    return_url = data.get(ApiKeys.RETURN_URL, f"{BASE_URL}{AppConfig.CHECKOUT_SUCCESS_PATH}")
 
     if not order_id:
         raise https_fn.HttpsError("invalid-argument", "orderId required")

@@ -43,6 +43,30 @@ class Environment(Enum):
     STAGING = "staging"    # Staging Firebase project (orignagta-staging)
     PRODUCTION = "production"  # Production Firebase project (orignagta)
 
+    def get_base_url(self) -> str:
+        """Get the base web URL for this environment."""
+        from schema_constants import EmailConfig
+
+        if self == Environment.EMULATOR:
+            return EmailConfig.URL_EMULATOR
+        elif self == Environment.STAGING:
+            return EmailConfig.URL_STAGING
+        elif self == Environment.DEV:
+            return EmailConfig.URL_DEV
+        return EmailConfig.URL_PROD
+
+    def get_unsubscribe_url(self) -> str:
+        """Get the unsubscribe URL for this environment."""
+        from schema_constants import EmailConfig
+
+        if self == Environment.EMULATOR:
+            return EmailConfig.UNSUBSCRIBE_URL_EMULATOR
+        elif self == Environment.STAGING:
+            return EmailConfig.UNSUBSCRIBE_URL_STAGING
+        elif self == Environment.DEV:
+            return EmailConfig.UNSUBSCRIBE_URL_DEV
+        return EmailConfig.UNSUBSCRIBE_URL_PROD
+
 
 # Auto-detect environment
 # 1. Check if running in emulator
@@ -69,6 +93,11 @@ def get_environment() -> Environment:
 def is_emulator() -> bool:
     """Check if running in emulator mode."""
     return IS_EMULATOR
+
+
+# Module-level environment URL helpers
+BASE_URL = CURRENT_ENV.get_base_url()
+UNSUBSCRIBE_URL = CURRENT_ENV.get_unsubscribe_url()
 
 
 # ============================================================================
@@ -298,7 +327,11 @@ def get_geoapify_api_key() -> str:
     """Get Geoapify API Key."""
     if IS_EMULATOR:
         return _load_secret("GEOAPIFY_API_KEY", required=False)
-    return _GEOAPIFY_API_KEY_PARAM.value
+    try:
+        return _GEOAPIFY_API_KEY_PARAM.value
+    except Exception:
+        # Fallback to lowercase for safety
+        return _load_secret("geoapify-key", required=False)
 
 
 # ============================================================================
@@ -320,7 +353,11 @@ def get_algolia_write_api_key() -> str:
     """Get Algolia Write API Key."""
     if IS_EMULATOR:
         return _load_secret("ALGOLIA_WRITE_API_KEY", required=False)
-    return _ALGOLIA_WRITE_API_KEY_PARAM.value
+    try:
+        return _ALGOLIA_WRITE_API_KEY_PARAM.value
+    except Exception:
+        # Fallback to lowercase for safety
+        return _load_secret("ALGOLIA_API_KEY", required=False)
 
 
 # ============================================================================
@@ -328,10 +365,9 @@ def get_algolia_write_api_key() -> str:
 # ============================================================================
 
 # These are params.SecretParam for Firebase deployment (resolved at runtime in prod)
-R2_ACCESS_KEY_NEW = params.SecretParam("R2_ACCESS_KEY")
-R2_SECRET_KEY_NEW = params.SecretParam("R2_SECRET_KEY")
-R2_ACCOUNT_ID_NEW = params.SecretParam("R2_ACCOUNT_ID")
-
+R2_ACCESS_KEY_PARAM = params.SecretParam("R2_ACCESS_KEY")
+R2_SECRET_KEY_PARAM = params.SecretParam("R2_SECRET_KEY")
+R2_ACCOUNT_ID_PARAM = params.SecretParam("R2_ACCOUNT_ID")
 
 
 def get_r2_credentials() -> dict:
@@ -342,12 +378,11 @@ def get_r2_credentials() -> dict:
             "secret_key": os.environ.get("R2_SECRET_KEY", ""),
             "account_id": os.environ.get("R2_ACCOUNT_ID", ""),
         }
-    else:
-        return {
-            "access_key": R2_ACCESS_KEY_NEW.value if hasattr(R2_ACCESS_KEY_NEW, "value") else "",
-            "secret_key": R2_SECRET_KEY_NEW.value if hasattr(R2_SECRET_KEY_NEW, "value") else "",
-            "account_id": R2_ACCOUNT_ID_NEW.value if hasattr(R2_ACCOUNT_ID_NEW, "value") else "",
-        }
+    return {
+        "access_key": R2_ACCESS_KEY_PARAM.value,
+        "secret_key": R2_SECRET_KEY_PARAM.value,
+        "account_id": R2_ACCOUNT_ID_PARAM.value,
+    }
 
 
 # ============================================================================

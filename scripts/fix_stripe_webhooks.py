@@ -123,7 +123,7 @@ def main():
         existing_dev = dev_webhook
         
         # Update Secret Manager
-        update_secret("orignagta-dev", "stripe-webhook-secret", dev_webhook.secret)
+        update_secret("orignagta-dev", "STRIPE_WEBHOOK_SECRET", dev_webhook.secret)
     else:
         # Verify secret matches (optional, but good practice if we could read it - we can't read from Stripe)
         # We assume if it exists, the secret is already in GSM. But to be safe, we might want to *rotate* it if we can't read it.
@@ -143,7 +143,7 @@ def main():
         print(f"✅ Created Staging Webhook: {staging_webhook.id}")
         
         # Update Secret Manager
-        update_secret("orignagta-staging", "stripe-webhook-secret", staging_webhook.secret)
+        update_secret("orignagta-staging", "STRIPE_WEBHOOK_SECRET", staging_webhook.secret)
 
     print("\n🎉 Webhook setup complete!")
 

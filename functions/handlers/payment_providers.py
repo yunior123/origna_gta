@@ -83,12 +83,12 @@ def _is_provider_configured(provider: str) -> tuple:
 
     elif provider == PaymentProviderValues.AIRWALLEX:
         # Airwallex secrets are optional/legacy for now
-        from config import AIRWALLEX_API_KEY, AIRWALLEX_CLIENT_ID
+        from config import get_airwallex_api_key, get_airwallex_client_id
 
         missing = []
-        if not AIRWALLEX_API_KEY:
+        if not get_airwallex_api_key():
             missing.append("AIRWALLEX_API_KEY")
-        if not AIRWALLEX_CLIENT_ID:
+        if not get_airwallex_client_id():
             missing.append("AIRWALLEX_CLIENT_ID")
         return (len(missing) == 0, missing)
 

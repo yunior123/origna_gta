@@ -489,6 +489,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final userProfileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
+      key: const Key('checkout_screen_root'),
       appBar: AppBarFactory.simple(title: 'checkout.checkout'.tr()),
       body: Center(
         child: ConstrainedBox(

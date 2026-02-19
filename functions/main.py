@@ -173,20 +173,12 @@ from config import init_sentry  # noqa: E402
 init_sentry()
 
 
-def get_secret(secret_id: str) -> str:
-    """Retrieve secret from GCP Secret Manager"""
-    client = secretmanager.SecretManagerServiceClient()
-    project_id = os.environ.get("GCLOUD_PROJECT", os.environ.get("GCP_PROJECT", "orignagta"))
-    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-    response = client.access_secret_version(request={Fields.NAME: name})
-    return response.payload.data.decode("UTF-8")
-
-
 # Lazy initialization of Stripe API key
 def _init_stripe():
     """Initialize Stripe API key lazily"""
     if not stripe.api_key:
-        stripe.api_key = get_secret("stripe-secret-key")
+        from config import get_stripe_secret_key
+        stripe.api_key = get_stripe_secret_key()
 
 
 # Only initialize in production (not in test environment)

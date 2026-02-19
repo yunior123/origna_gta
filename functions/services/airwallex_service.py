@@ -23,6 +23,7 @@ import requests
 
 from config import (
     AIRWALLEX_BASE_URL,
+    BASE_URL,
     get_airwallex_api_key,
     get_airwallex_client_id,
     get_airwallex_webhook_secret,
