@@ -147,6 +147,8 @@ abstract final class Fields {
   static const warehouseStock = 'warehouseStock';
   static const shipFromCity = 'shipFromCity';
   static const shipFromProvince = 'shipFromProvince';
+  static const shipFromCountry = 'shipFromCountry';
+  static const shipFromCountries = 'shipFromCountries';
   static const categoryId = 'categoryId';
   static const stockQuantity = 'stockQuantity';
   static const rating = 'rating';

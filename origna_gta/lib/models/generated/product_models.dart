@@ -199,6 +199,12 @@ abstract class Product with _$Product {
 
     /// Province code of primary warehouse (denormalized for O(1) card rendering)
     String? shipFromProvince,
+
+    /// Country of primary warehouse (denormalized for O(1) card rendering)
+    String? shipFromCountry,
+
+    /// All unique countries across all warehouses (for multi-country display on card)
+    @Default(null) List<String>? shipFromCountries,
   }) = _Product;
 
   factory Product.fromFirestore(DocumentSnapshot doc) {
@@ -269,6 +275,8 @@ abstract class ProductCreate with _$ProductCreate {
     @Default(null) Map<String, int>? warehouseStock,
     String? shipFromCity,
     String? shipFromProvince,
+    String? shipFromCountry,
+    @Default(null) List<String>? shipFromCountries,
   }) = _ProductCreate;
 
   factory ProductCreate.fromJson(Map<String, dynamic> json) => _$ProductCreateFromJson(json);

@@ -6,6 +6,7 @@ import 'package:origna_gta/core/config/supplier_config.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
+import 'package:origna_gta/screens/seller/seller_warehouses_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -14,6 +15,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 import '../../features/products/add_product_state.dart';
 import '../../features/products/add_product_viewmodel.dart';
+import '../../features/seller/warehouses_viewmodel.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
   const AddProductScreen({super.key});
@@ -43,6 +45,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   // Supplier Info Controllers
   final _costController = TextEditingController();
   final _supplierSkuController = TextEditingController();
+  final _sellerSkuController = TextEditingController();
   final _supplierUrlController = TextEditingController();
   final _supplierShippingDaysController = TextEditingController(text: '7-15');
   final _supplierNotesController = TextEditingController();
@@ -357,6 +360,20 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       'product.stripe_tax_codes'.tr(),
                                       'product.stripe_tax_codes_body'.tr(),
                                     ),
+                                    const SizedBox(height: 16),
+                                    _buildGlassTextField(
+                                      key: const Key('addproduct_seller_sku_field'),
+                                      controller: _sellerSkuController,
+                                      label: 'Your SKU (optional)',
+                                      icon: Icons.qr_code_rounded,
+                                      hint: 'e.g. T-SHIRT-BLK-M',
+                                      onChanged: (v) => viewModel.setSellerSku(v),
+                                    ),
+                                    _buildTappableInfoHint(
+                                      'What is a SKU?',
+                                      'Seller SKU',
+                                      'Your internal product code (Stock Keeping Unit). Two listings with the same SKU from your store will be merged — helps prevent duplicate products on the platform.',
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 16),
@@ -528,95 +545,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         ),
                                       ],
                                       const SizedBox(height: 20),
-                                      // Location fields
-                                      _buildSubSectionHeader('product.pickup_address'.tr(), Icons.pin_drop_rounded),
-                                      const SizedBox(height: 8),
-                                      // Address verification status banner
-                                      if (state.addressVerified)
-                                        _buildInfoBanner(
-                                          'product.address_verified'.tr(),
-                                          Icons.verified_rounded,
-                                          DesignTokens.success,
-                                        )
-                                      else if (_streetController.text.trim().isNotEmpty && !state.addressVerified)
-                                        _buildInfoBanner(
-                                          'product.address_select_from_suggestions'.tr(),
-                                          Icons.warning_amber_rounded,
-                                          DesignTokens.warning,
-                                        ),
-                                      const SizedBox(height: 12),
-                                      _buildGlassTextField(
-                                        key: const Key('addproduct_street_field'),
-                                        controller: _streetController,
-                                        label: 'product.street_address'.tr(),
-                                        icon: Icons.home_rounded,
-                                        onChanged: viewModel.onStreetChanged,
-                                        validator: _validateStreet,
-                                        hint: 'product.street_hint'.tr(),
-                                      ),
-                                      if (state.showSuggestions && state.addressSuggestions.isNotEmpty)
-                                        _buildAddressSuggestions(state, viewModel),
-                                      const SizedBox(height: 12),
-                                      // FIX: Add apartment field UI (was declared but not rendered)
-                                      _buildGlassTextField(
-                                        controller: _apartmentController,
-                                        label: 'product.apartment_unit'.tr(),
-                                        icon: Icons.apartment_rounded,
-                                        hint: 'product.apartment_hint'.tr(),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      _buildGlassTextField(
-                                        key: const Key('addproduct_city_field'),
-                                        controller: _cityController,
-                                        label: 'product.city'.tr(),
-                                        validator: _validateCity,
-                                        readOnly: state.addressVerified,
-                                        onChanged: state.addressVerified ? null : (_) => viewModel.clearCoordinates(),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: _buildGlassDropdown(
-                                              key: const Key('addproduct_province_dropdown'),
-                                              label: 'product.province'.tr(),
-                                              value: state.selectedProvince,
-                                              items: _provinceNames.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.key))).toList(),
-                                              onChanged: state.addressVerified ? null : (v) => viewModel.setProvince(v!),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: _buildGlassTextField(
-                                              key: const Key('addproduct_postal_code_field'),
-                                              controller: _postalCodeController,
-                                              label: 'product.postal_code'.tr(),
-                                              textCapitalization: TextCapitalization.characters,
-                                              validator: _validatePostalCode,
-                                              readOnly: state.addressVerified,
-                                              onChanged: state.addressVerified ? null : (_) => viewModel.clearCoordinates(),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      // Clear verified address button
-                                      if (state.addressVerified) ...[
-                                        const SizedBox(height: 8),
-                                        Align(
-                                          alignment: Alignment.centerRight,
-                                          child: TextButton.icon(
-                                            key: const Key('addproduct_clear_address_button'),
-                                            onPressed: () {
-                                              _streetController.clear();
-                                              _cityController.clear();
-                                              _postalCodeController.clear();
-                                              viewModel.clearCoordinates();
-                                            },
-                                            icon: const Icon(Icons.clear_rounded, size: 16),
-                                            label: Text('product.clear_address'.tr(), style: const TextStyle(fontSize: 12)),
-                                          ),
-                                        ),
-                                      ],
+                                      // Location / Warehouse selection
+                                      _buildWarehouseSelector(context, state, viewModel),
                                     ],
                                   ),
                                 if (!state.isDigital) const SizedBox(height: 16),
@@ -1322,6 +1252,295 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
+  /// Warehouse selector — the primary shipping location system.
+  /// Shows seller's warehouses as checkboxes with per-warehouse stock input.
+  /// Falls back to manual address form when seller has no warehouses yet.
+  Widget _buildWarehouseSelector(BuildContext context, AddProductState state, AddProductViewModel viewModel) {
+    final warehousesAsync = ref.watch(sellerWarehousesStreamProvider);
+
+    return warehousesAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: ModernLoadingIndicator()),
+      ),
+      error: (e, _) => _buildInfoBanner('Failed to load warehouses: $e', Icons.error_outline_rounded, DesignTokens.error),
+      data: (warehouses) {
+        if (warehouses.isEmpty) {
+          // No warehouses — show address form + prompt to add warehouses
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSubSectionHeader('Shipping Location', Icons.pin_drop_rounded),
+              const SizedBox(height: 8),
+              _buildInfoBanner(
+                'Add your shipping locations in Warehouse Settings for faster listing.',
+                Icons.info_outline_rounded,
+                DesignTokens.info,
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                key: const Key('addproduct_manage_warehouses_button'),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SellerWarehousesScreen()),
+                ),
+                icon: const Icon(Icons.add_location_alt_rounded, size: 18),
+                label: const Text('Add Warehouse / Address'),
+                style: OutlinedButton.styleFrom(foregroundColor: DesignTokens.primary),
+              ),
+              const SizedBox(height: 16),
+              // Manual address fallback
+              _buildSubSectionHeader('Or enter address manually', Icons.edit_location_alt_rounded),
+              const SizedBox(height: 8),
+              if (state.addressVerified)
+                _buildInfoBanner('product.address_verified'.tr(), Icons.verified_rounded, DesignTokens.success)
+              else if (_streetController.text.trim().isNotEmpty && !state.addressVerified)
+                _buildInfoBanner('product.address_select_from_suggestions'.tr(), Icons.warning_amber_rounded, DesignTokens.warning),
+              const SizedBox(height: 12),
+              _buildGlassTextField(
+                key: const Key('addproduct_street_field'),
+                controller: _streetController,
+                label: 'product.street_address'.tr(),
+                icon: Icons.home_rounded,
+                onChanged: viewModel.onStreetChanged,
+                validator: _validateStreet,
+                hint: 'product.street_hint'.tr(),
+              ),
+              if (state.showSuggestions && state.addressSuggestions.isNotEmpty)
+                _buildAddressSuggestions(state, viewModel),
+              const SizedBox(height: 12),
+              _buildGlassTextField(
+                controller: _apartmentController,
+                label: 'product.apartment_unit'.tr(),
+                icon: Icons.apartment_rounded,
+                hint: 'product.apartment_hint'.tr(),
+              ),
+              const SizedBox(height: 12),
+              _buildGlassTextField(
+                key: const Key('addproduct_city_field'),
+                controller: _cityController,
+                label: 'product.city'.tr(),
+                validator: _validateCity,
+                readOnly: state.addressVerified,
+                onChanged: state.addressVerified ? null : (_) => viewModel.clearCoordinates(),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildGlassDropdown(
+                      key: const Key('addproduct_province_dropdown'),
+                      label: 'product.province'.tr(),
+                      value: state.selectedProvince,
+                      items: _provinceNames.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.key))).toList(),
+                      onChanged: state.addressVerified ? null : (v) => viewModel.setProvince(v!),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildGlassTextField(
+                      key: const Key('addproduct_postal_code_field'),
+                      controller: _postalCodeController,
+                      label: 'product.postal_code'.tr(),
+                      textCapitalization: TextCapitalization.characters,
+                      validator: _validatePostalCode,
+                      readOnly: state.addressVerified,
+                      onChanged: state.addressVerified ? null : (_) => viewModel.clearCoordinates(),
+                    ),
+                  ),
+                ],
+              ),
+              if (state.addressVerified) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    key: const Key('addproduct_clear_address_button'),
+                    onPressed: () {
+                      _streetController.clear();
+                      _cityController.clear();
+                      _postalCodeController.clear();
+                      viewModel.clearCoordinates();
+                    },
+                    icon: const Icon(Icons.clear_rounded, size: 16),
+                    label: Text('product.clear_address'.tr(), style: const TextStyle(fontSize: 12)),
+                  ),
+                ),
+              ],
+            ],
+          );
+        }
+
+        // Warehouses available — show selector
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _buildSubSectionHeader('Ships From', Icons.warehouse_rounded),
+                const Spacer(),
+                TextButton.icon(
+                  key: const Key('addproduct_manage_warehouses_button'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SellerWarehousesScreen()),
+                  ),
+                  icon: const Icon(Icons.settings_rounded, size: 14),
+                  label: const Text('Manage', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(foregroundColor: DesignTokens.primary),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            // Info hint about warehouse vs personal address
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Tooltip(
+                    message: 'Select one or more locations to ship this product from. '
+                        'Can be a warehouse facility or a home/business address. '
+                        'Buyers see the closest one.',
+                    triggerMode: TooltipTriggerMode.tap,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.info_outline_rounded, size: 14, color: DesignTokens.textTertiary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Select locations & set stock per location',
+                          style: TextStyle(fontSize: 12, color: DesignTokens.textTertiary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ...warehouses.map((warehouse) {
+              final isSelected = state.selectedWarehouseIds.contains(warehouse.warehouseId);
+              final stockQty = state.warehouseStockMap[warehouse.warehouseId] ?? 0;
+              final typeIcon = warehouse.type == WarehouseTypeValues.warehouse
+                  ? Icons.warehouse_rounded
+                  : Icons.home_work_rounded;
+              return Padding(
+                key: Key('addproduct_warehouse_${warehouse.warehouseId}'),
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Color.fromRGBO(102, 126, 234, 0.08)
+                        : DesignTokens.surfaceVariant,
+                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                    border: Border.all(
+                      color: isSelected ? DesignTokens.primary : DesignTokens.outline,
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      CheckboxListTile(
+                        key: Key('addproduct_warehouse_checkbox_${warehouse.warehouseId}'),
+                        value: isSelected,
+                        onChanged: (_) => viewModel.toggleWarehouseSelection(warehouse.warehouseId),
+                        title: Row(
+                          children: [
+                            Icon(typeIcon, size: 16, color: DesignTokens.primary),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                warehouse.label,
+                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                              ),
+                            ),
+                            if (warehouse.isDefault)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Color.fromRGBO(102, 126, 234, 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text('Default', style: TextStyle(fontSize: 10, color: DesignTokens.primary, fontWeight: FontWeight.w600)),
+                              ),
+                          ],
+                        ),
+                        subtitle: Text(
+                          '${warehouse.address.city}, ${warehouse.address.state} · ${warehouse.address.postalCode}',
+                          style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
+                        ),
+                        controlAffinity: ListTileControlAffinity.trailing,
+                        checkColor: Colors.white,
+                        fillColor: WidgetStateProperty.resolveWith((states) =>
+                          states.contains(WidgetState.selected) ? DesignTokens.primary : null),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+                      ),
+                      if (isSelected) ...[
+                        Divider(height: 1, color: DesignTokens.outline),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                          child: Row(
+                            children: [
+                              Icon(Icons.inventory_2_rounded, size: 16, color: DesignTokens.textTertiary),
+                              const SizedBox(width: 8),
+                              Text('Stock at this location:', style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+                              const SizedBox(width: 12),
+                              SizedBox(
+                                width: 80,
+                                child: TextFormField(
+                                  key: Key('addproduct_warehouse_stock_${warehouse.warehouseId}'),
+                                  initialValue: stockQty > 0 ? stockQty.toString() : '',
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                  decoration: InputDecoration(
+                                    hintText: '0',
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    isDense: true,
+                                  ),
+                                  onChanged: (v) => viewModel.setWarehouseStock(
+                                    warehouse.warehouseId,
+                                    int.tryParse(v) ?? 0,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('units', style: TextStyle(fontSize: 12, color: DesignTokens.textTertiary)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+            if (state.selectedWarehouseIds.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Select at least one shipping location',
+                  style: TextStyle(fontSize: 12, color: DesignTokens.error),
+                ),
+              ),
+            if (state.selectedWarehouseIds.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.inventory_rounded, size: 14, color: DesignTokens.success),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Total stock: ${state.warehouseStockMap.values.fold(0, (a, b) => a + b)} units across ${state.selectedWarehouseIds.length} location${state.selectedWarehouseIds.length > 1 ? 's' : ''}',
+                      style: TextStyle(fontSize: 12, color: DesignTokens.success, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildAddressSuggestions(AddProductState state, AddProductViewModel viewModel) {
     return Container(
       key: const Key('addproduct_address_suggestions'),
@@ -1847,6 +2066,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     _sameDayPriceController.dispose();
     _costController.dispose();
     _supplierSkuController.dispose();
+    _sellerSkuController.dispose();
     _supplierUrlController.dispose();
     _supplierShippingDaysController.dispose();
     _supplierNotesController.dispose();

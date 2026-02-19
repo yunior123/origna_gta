@@ -232,6 +232,8 @@ class Fields:
     WAREHOUSE_STOCK = "warehouseStock"
     SHIP_FROM_CITY = "shipFromCity"
     SHIP_FROM_PROVINCE = "shipFromProvince"
+    SHIP_FROM_COUNTRY = "shipFromCountry"
+    SHIP_FROM_COUNTRIES = "shipFromCountries"
     CATEGORY_ID = "categoryId"
     STOCK_QUANTITY = "stockQuantity"
     RATING = "rating"

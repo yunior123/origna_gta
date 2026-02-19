@@ -304,6 +304,8 @@ class Product(BaseModel):
     # Denormalized for O(1) card rendering — set from default/primary warehouse on write
     shipFromCity: str | None = Field(default=None, max_length=100, description="City of primary shipping warehouse (denormalized)")
     shipFromProvince: str | None = Field(default=None, max_length=10, description="Province code of primary warehouse (denormalized)")
+    shipFromCountry: str | None = Field(default=None, max_length=100, description="Country of primary warehouse (denormalized)")
+    shipFromCountries: list[str] | None = Field(default=None, description="All unique countries across warehouses (denormalized for card display)")
 
     # Admin approval — all products start under_review, go live only when approved
     approvalStatus: str = Field(
@@ -451,6 +453,8 @@ class ProductCreate(BaseModel):
     warehouseStock: dict[str, int] | None = Field(default=None)
     shipFromCity: str | None = Field(default=None, max_length=100)
     shipFromProvince: str | None = Field(default=None, max_length=10)
+    shipFromCountry: str | None = Field(default=None, max_length=100)
+    shipFromCountries: list[str] | None = Field(default=None)
     # NEW: Structured objects
     supplier: SupplierInfo | None = Field(default=None)
     inventory: InventoryConfig | None = Field(default=None)

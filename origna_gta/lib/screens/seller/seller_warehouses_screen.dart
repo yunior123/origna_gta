@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/seller/warehouses_viewmodel.dart';
+import 'package:origna_gta/models/generated/base_models.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -133,12 +134,11 @@ class _SellerWarehousesScreenState extends ConsumerState<SellerWarehousesScreen>
   /// Convert raw form map back to an Address object
   Address _mapToAddress(Map<String, dynamic> m) => Address(
     street: m[Fields.street] as String? ?? '',
-    apartment: m[Fields.apartment] as String?,
+    apartment: m[Fields.apartment] as String? ?? '',
     city: m[Fields.city] as String? ?? '',
     state: m[Fields.state] as String? ?? '',
     postalCode: m[Fields.postalCode] as String? ?? '',
     country: m[Fields.country] as String? ?? '',
-    phoneNumber: m[Fields.phoneNumber] as String?,
     latitude: m[Fields.latitude] as double?,
     longitude: m[Fields.longitude] as double?,
     label: m[Fields.label] as String?,
@@ -611,7 +611,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                   Switch(
                     value: _isDefault,
                     onChanged: (v) => setState(() => _isDefault = v),
-                    activeColor: DesignTokens.primary,
+                    activeThumbColor: DesignTokens.primary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(

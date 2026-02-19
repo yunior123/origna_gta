@@ -43,24 +43,44 @@ class FirebaseProductRepository implements ProductRepository {
         }
       }
 
-      // Denormalize shipFromCity/Province from default warehouse if using warehouse system
+      // Denormalize shipFrom fields from warehouses for O(1) card rendering
       final warehouseIds = product.warehouseIds;
       if (warehouseIds != null && warehouseIds.isNotEmpty) {
         try {
-          final warehouseDoc = await _firestore
-              .collection(Collections.users)
-              .doc(product.sellerId)
-              .collection(Collections.warehouses)
-              .doc(warehouseIds.first)
-              .get();
-          if (warehouseDoc.exists) {
-            final data = warehouseDoc.data()!;
-            final address = data['address'] as Map<String, dynamic>?;
-            firestoreData[Fields.shipFromCity] = address?[Fields.city];
-            firestoreData[Fields.shipFromProvince] = address?[Fields.state];
+          // Fetch all warehouse docs in parallel
+          final warehouseDocs = await Future.wait(
+            warehouseIds.map((wId) => _firestore
+                .collection(Collections.users)
+                .doc(product.sellerId)
+                .collection(Collections.warehouses)
+                .doc(wId)
+                .get()),
+          );
+
+          // Primary (first) warehouse for city/province/country
+          final primaryData = warehouseDocs
+              .where((d) => d.exists)
+              .map((d) => d.data()!)
+              .firstOrNull;
+          if (primaryData != null) {
+            final addr = primaryData['address'] as Map<String, dynamic>?;
+            firestoreData[Fields.shipFromCity] = addr?[Fields.city];
+            firestoreData[Fields.shipFromProvince] = addr?[Fields.state];
+            firestoreData[Fields.shipFromCountry] = addr?[Fields.country];
+          }
+
+          // All unique countries across every warehouse
+          final countries = warehouseDocs
+              .where((d) => d.exists)
+              .map((d) => (d.data()!['address'] as Map<String, dynamic>?)?[Fields.country] as String?)
+              .whereType<String>()
+              .toSet()
+              .toList();
+          if (countries.isNotEmpty) {
+            firestoreData[Fields.shipFromCountries] = countries;
           }
         } catch (_) {
-          // Non-fatal — card will show fallback text
+          // Non-fatal — card falls back gracefully
         }
       }
 

@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -45,7 +44,7 @@ const _sentinel = Object();
 
 /// Real-time stream of the seller's warehouses (ordered: default first, then by creation)
 final sellerWarehousesStreamProvider = StreamProvider.autoDispose<List<SellerWarehouse>>((ref) {
-  final uid = ref.watch(currentUserIdProvider);
+  final uid = ref.watch(userIdProvider);
   if (uid == null) return const Stream.empty();
 
   return ref
@@ -146,7 +145,7 @@ class WarehousesViewModel extends StateNotifier<WarehousesState> {
 
   Map<String, dynamic> _addressToMap(Address address) => {
     Fields.street: address.street,
-    if (address.apartment != null) Fields.apartment: address.apartment,
+    if (address.apartment.isNotEmpty) Fields.apartment: address.apartment,
     Fields.city: address.city,
     Fields.state: address.state,
     Fields.postalCode: address.postalCode,

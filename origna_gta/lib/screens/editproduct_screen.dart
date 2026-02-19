@@ -376,10 +376,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _descriptionController = TextEditingController(text: p.description);
     _priceController = TextEditingController(text: p.price.toString());
     _categoryController = TextEditingController(text: p.categoryId.toString());
-    _streetController = TextEditingController(text: p.sellerAddress.street);
-    _apartmentController = TextEditingController(text: p.sellerAddress.apartment);
-    _cityController = TextEditingController(text: p.sellerAddress.city);
-    _postalCodeController = TextEditingController(text: p.sellerAddress.postalCode);
+    _streetController = TextEditingController(text: p.sellerAddress?.street ?? '');
+    _apartmentController = TextEditingController(text: p.sellerAddress?.apartment ?? '');
+    _cityController = TextEditingController(text: p.sellerAddress?.city ?? p.shipFromCity ?? '');
+    _postalCodeController = TextEditingController(text: p.sellerAddress?.postalCode ?? '');
     _stockController = TextEditingController(text: p.stockQuantity.toString());
     _weightController = TextEditingController(text: p.weightKg?.toString() ?? '');
     _lengthController = TextEditingController(text: p.lengthCm?.toString() ?? '');

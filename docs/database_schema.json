@@ -1,6 +1,6 @@
 {
-  "version": "2.0.0",
-  "lastUpdated": "2025-07-17",
+  "version": "2.1.0",
+  "lastUpdated": "2026-02-19",
   "description": "Complete Firestore database schema for OrignaGTA e-commerce platform. Marketplace serving Canadian buyers, with sellers worldwide.",
 
   "collections": {
@@ -344,6 +344,65 @@
               "description": "When product was favorited"
             }
           }
+        },
+        "warehouses": {
+          "description": "Seller shipping locations (warehouses or personal/business addresses). One seller can have multiple warehouses across different cities or countries.",
+          "documentId": "{warehouseId} - auto-generated",
+          "fields": {
+            "warehouseId": {
+              "type": "string",
+              "required": true,
+              "description": "Auto-generated document ID, also stored as field for convenience"
+            },
+            "sellerId": {
+              "type": "string",
+              "required": true,
+              "description": "Parent seller UID (mirrors the user document ID)"
+            },
+            "name": {
+              "type": "string",
+              "required": true,
+              "description": "Human label, e.g. 'Toronto Warehouse' or 'Home Office'"
+            },
+            "type": {
+              "type": "string",
+              "required": true,
+              "enum": ["warehouse", "personal"],
+              "description": "Warehouse type. 'personal' covers small-business/home addresses."
+            },
+            "address": {
+              "type": "map",
+              "required": true,
+              "description": "Physical address for this shipping location",
+              "schema": "$ref:Address"
+            },
+            "isDefault": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether this is the seller's primary/default shipping location"
+            },
+            "createdAt": {
+              "type": "timestamp",
+              "required": true,
+              "description": "Creation timestamp"
+            },
+            "updatedAt": {
+              "type": "timestamp",
+              "required": true,
+              "description": "Last update timestamp"
+            }
+          },
+          "indexes": [
+            {
+              "fields": ["isDefault desc", "createdAt asc"],
+              "description": "Default warehouse first, then oldest first"
+            }
+          ],
+          "notes": [
+            "Only sellers have warehouses. Security rules allow read/write only to the owner (sellerId == request.auth.uid).",
+            "A seller may have 1–N warehouses across different cities or countries.",
+            "Products reference warehouse IDs via the warehouseIds array field."
+          ]
         }
       },
       "indexes": [
@@ -390,11 +449,48 @@
           "required": true,
           "description": "Reference to seller's user document"
         },
+        "sellerSku": {
+          "type": "string",
+          "required": false,
+          "description": "Seller-defined SKU. Unique per seller (sellerId + sellerSku). Used for deduplication — a product is rejected (isActive=false) if a duplicate sellerId+sellerSku already exists.",
+          "maxLength": 100
+        },
         "sellerAddress": {
           "type": "map",
-          "required": true,
-          "description": "Seller's shipping address",
+          "required": false,
+          "description": "Seller's manual shipping address. Mutually exclusive with warehouseIds — physical products must have either sellerAddress OR warehouseIds, not both.",
           "schema": "$ref:Address"
+        },
+        "warehouseIds": {
+          "type": "array<string>",
+          "required": false,
+          "description": "IDs of warehouses (from users/{sellerId}/warehouses) this product ships from. When set, overrides sellerAddress. Stock is tracked per-warehouse via warehouseStock.",
+          "maxItems": 50
+        },
+        "warehouseStock": {
+          "type": "map<string, number>",
+          "required": false,
+          "description": "Per-warehouse stock quantities. Keys are warehouseId strings; values are integer stock counts. stockQuantity field equals the sum of all values. E.g. {\"wh_abc\": 10, \"wh_xyz\": 5} → stockQuantity=15."
+        },
+        "shipFromCity": {
+          "type": "string",
+          "required": false,
+          "description": "Denormalized city from the primary (first) warehouse. Set at write time by product_repository. Only present when warehouseIds is set."
+        },
+        "shipFromProvince": {
+          "type": "string",
+          "required": false,
+          "description": "Denormalized province/state from the primary warehouse."
+        },
+        "shipFromCountry": {
+          "type": "string",
+          "required": false,
+          "description": "Denormalized country from the primary warehouse."
+        },
+        "shipFromCountries": {
+          "type": "array<string>",
+          "required": false,
+          "description": "Deduplicated list of all countries across all warehouseIds. Powers smart multi-country display on product cards: 1 country→'Ships from: City, Province, Country'; 2–3→'Ships from: Canada · Germany'; 4+→'Ships from: N locations worldwide'."
         },
         "categoryId": {
           "type": "number",

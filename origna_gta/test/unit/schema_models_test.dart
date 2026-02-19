@@ -66,7 +66,7 @@ void main() {
 
       expect(product.name, 'Organic Apples');
       expect(product.price, 4.99);
-      expect(product.sellerAddress.city, 'Toronto');
+      expect(product.sellerAddress?.city, 'Toronto');
     });
 
     test('Product copyWith maintains immutability', () {

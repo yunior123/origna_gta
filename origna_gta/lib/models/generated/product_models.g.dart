@@ -119,6 +119,12 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
       null,
   shipFromCity: json['shipFromCity'] as String?,
   shipFromProvince: json['shipFromProvince'] as String?,
+  shipFromCountry: json['shipFromCountry'] as String?,
+  shipFromCountries:
+      (json['shipFromCountries'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      null,
 );
 
 Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
@@ -165,6 +171,8 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'warehouseStock': instance.warehouseStock,
   'shipFromCity': instance.shipFromCity,
   'shipFromProvince': instance.shipFromProvince,
+  'shipFromCountry': instance.shipFromCountry,
+  'shipFromCountries': instance.shipFromCountries,
 };
 
 _ProductCreate _$ProductCreateFromJson(
@@ -234,6 +242,12 @@ _ProductCreate _$ProductCreateFromJson(
       null,
   shipFromCity: json['shipFromCity'] as String?,
   shipFromProvince: json['shipFromProvince'] as String?,
+  shipFromCountry: json['shipFromCountry'] as String?,
+  shipFromCountries:
+      (json['shipFromCountries'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      null,
 );
 
 Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
@@ -276,6 +290,8 @@ Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
       'warehouseStock': instance.warehouseStock,
       'shipFromCity': instance.shipFromCity,
       'shipFromProvince': instance.shipFromProvince,
+      'shipFromCountry': instance.shipFromCountry,
+      'shipFromCountries': instance.shipFromCountries,
     };
 
 _SellerDeliveryOption _$SellerDeliveryOptionFromJson(

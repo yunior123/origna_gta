@@ -12,6 +12,10 @@ class ModernProductCard extends StatefulWidget {
   final int reviewCount;
   final VoidCallback onTap;
   final VoidCallback? onAddToCart;
+  final String? shipFromCity;
+  final String? shipFromProvince;
+  final String? shipFromCountry;
+  final List<String>? shipFromCountries;
 
   const ModernProductCard({
     super.key,
@@ -23,6 +27,10 @@ class ModernProductCard extends StatefulWidget {
     this.reviewCount = 0,
     required this.onTap,
     this.onAddToCart,
+    this.shipFromCity,
+    this.shipFromProvince,
+    this.shipFromCountry,
+    this.shipFromCountries,
   });
 
   @override
@@ -32,6 +40,27 @@ class ModernProductCard extends StatefulWidget {
 class _ModernProductCardState extends State<ModernProductCard> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
+
+  /// Computes the "Ships from" label:
+  /// - Single country: "Ships from: Toronto, ON, Canada"
+  /// - 2–3 countries:  "Ships from: Canada · Germany"
+  /// - 4+ countries:   "Ships from: 4 locations worldwide"
+  String get _shipFromLabel {
+    final countries = widget.shipFromCountries;
+    if (countries != null && countries.length > 1) {
+      if (countries.length <= 3) {
+        return 'Ships from: ${countries.join(' · ')}';
+      }
+      return 'Ships from: ${countries.length} locations worldwide';
+    }
+    // Single location — show full city, province, country
+    final parts = [
+      if (widget.shipFromCity != null) widget.shipFromCity!,
+      if (widget.shipFromProvince != null) widget.shipFromProvince!,
+      if (widget.shipFromCountry != null) widget.shipFromCountry!,
+    ];
+    return parts.isEmpty ? '' : 'Ships from: ${parts.join(', ')}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +142,22 @@ class _ModernProductCardState extends State<ModernProductCard> with SingleTicker
                             widget.sellerName,
                             style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
                           ),
+                          if (widget.shipFromCity != null || (widget.shipFromCountries != null && widget.shipFromCountries!.isNotEmpty)) ...[
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(Icons.location_on_rounded, size: 11, color: DesignTokens.textTertiary),
+                                const SizedBox(width: 2),
+                                Expanded(
+                                  child: Text(
+                                    _shipFromLabel,
+                                    style: TextStyle(fontSize: 11, color: DesignTokens.textTertiary),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                           const Spacer(),
                           // Rating
                           Row(

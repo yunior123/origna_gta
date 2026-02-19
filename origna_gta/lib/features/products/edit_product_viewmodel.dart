@@ -32,9 +32,9 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
           bookSourceUrl: null, // server-side only, seller must re-enter
           deviceLimit: _product.deviceLimit,
           existingImageUrls: List.from(_product.imageUrls),
-          selectedProvince: _product.sellerAddress.state.isNotEmpty ? _product.sellerAddress.state : ProvinceCodeValues.ontario,
-          latitude: _product.sellerAddress.latitude,
-          longitude: _product.sellerAddress.longitude,
+          selectedProvince: _product.sellerAddress?.state.isNotEmpty == true ? _product.sellerAddress!.state : ProvinceCodeValues.ontario,
+          latitude: _product.sellerAddress?.latitude,
+          longitude: _product.sellerAddress?.longitude,
           standardEnabled: _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.standard),
           expressEnabled: _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.express),
           sameDayEnabled: _product.deliveryOptions.any((o) => o.type == DeliveryTypeValues.sameDay),
