@@ -119,6 +119,11 @@ abstract class Product with _$Product {
     @Default(false) bool freeShipping,
     // Digital product flag
     @Default(false) bool isDigital,
+    @Default(null) String? digitalType,
+    @Default(null) String? slug,
+    @Default(null) Map<String, String>? digitalBuilds,
+    // bookSourceUrl intentionally NOT included — server-side only, never sent to client
+    @Default(null) int? deviceLimit,
     // Tax and metadata
     String? taxCode,
     @Default([]) List<String> keywords,
@@ -182,6 +187,11 @@ abstract class ProductCreate with _$ProductCreate {
     @Default(1) int minimumOrderQuantity,
     @Default(false) bool freeShipping,
     @Default(false) bool isDigital,
+    @Default(null) String? digitalType,
+    @Default(null) String? slug,
+    @Default(null) Map<String, String>? digitalBuilds,
+    // bookSourceUrl intentionally NOT included — server-side only, never sent to client
+    @Default(null) int? deviceLimit,
     String? taxCode,
     @Default([]) List<String> keywords,
     // Flat supplier fields (used when supplier object is not provided)

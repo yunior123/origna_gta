@@ -127,6 +127,8 @@ OrderItem _parseOrderItem(dynamic raw) {
     minimumOrderQuantity: _safeInt(map[Fields.minimumOrderQuantity] ?? map[Fields.minOrderQuantity], 1),
     freeShipping: _safeBool(map[Fields.freeShipping]),
     isDigital: _safeBool(map[Fields.isDigital]),
+    licenseKey: map[Fields.licenseKey] != null ? _safeString(map[Fields.licenseKey]) : null,
+    digitalUnlocked: _safeBool(map[Fields.digitalUnlocked]),
     taxCode: map[Fields.taxCode] != null ? _safeString(map[Fields.taxCode]) : null,
   );
 }
@@ -462,6 +464,8 @@ abstract class OrderItem with _$OrderItem {
     @Default(1) int minimumOrderQuantity,
     @Default(false) bool freeShipping,
     @Default(false) bool isDigital,
+    @Default(null) String? licenseKey,
+    @Default(false) bool digitalUnlocked,
     // Tax field (new)
     String? taxCode,
   }) = _OrderItem;

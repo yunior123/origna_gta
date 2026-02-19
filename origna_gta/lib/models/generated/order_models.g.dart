@@ -268,6 +268,8 @@ _OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => _OrderItem(
   minimumOrderQuantity: (json['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
   freeShipping: json['freeShipping'] as bool? ?? false,
   isDigital: json['isDigital'] as bool? ?? false,
+  licenseKey: json['licenseKey'] as String? ?? null,
+  digitalUnlocked: json['digitalUnlocked'] as bool? ?? false,
   taxCode: json['taxCode'] as String?,
 );
 
@@ -303,6 +305,8 @@ Map<String, dynamic> _$OrderItemToJson(_OrderItem instance) =>
       'minimumOrderQuantity': instance.minimumOrderQuantity,
       'freeShipping': instance.freeShipping,
       'isDigital': instance.isDigital,
+      'licenseKey': instance.licenseKey,
+      'digitalUnlocked': instance.digitalUnlocked,
       'taxCode': instance.taxCode,
     };
 

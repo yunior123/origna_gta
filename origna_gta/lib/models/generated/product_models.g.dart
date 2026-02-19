@@ -58,6 +58,14 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   minimumOrderQuantity: (json['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
   freeShipping: json['freeShipping'] as bool? ?? false,
   isDigital: json['isDigital'] as bool? ?? false,
+  digitalType: json['digitalType'] as String? ?? null,
+  slug: json['slug'] as String? ?? null,
+  digitalBuilds:
+      (json['digitalBuilds'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(k, e as String),
+      ) ??
+      null,
+  deviceLimit: (json['deviceLimit'] as num?)?.toInt() ?? null,
   taxCode: json['taxCode'] as String?,
   keywords:
       (json['keywords'] as List<dynamic>?)?.map((e) => e as String).toList() ??
@@ -99,6 +107,10 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'minimumOrderQuantity': instance.minimumOrderQuantity,
   'freeShipping': instance.freeShipping,
   'isDigital': instance.isDigital,
+  'digitalType': instance.digitalType,
+  'slug': instance.slug,
+  'digitalBuilds': instance.digitalBuilds,
+  'deviceLimit': instance.deviceLimit,
   'taxCode': instance.taxCode,
   'keywords': instance.keywords,
   'cost': instance.cost,
@@ -141,6 +153,14 @@ _ProductCreate _$ProductCreateFromJson(
   minimumOrderQuantity: (json['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
   freeShipping: json['freeShipping'] as bool? ?? false,
   isDigital: json['isDigital'] as bool? ?? false,
+  digitalType: json['digitalType'] as String? ?? null,
+  slug: json['slug'] as String? ?? null,
+  digitalBuilds:
+      (json['digitalBuilds'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(k, e as String),
+      ) ??
+      null,
+  deviceLimit: (json['deviceLimit'] as num?)?.toInt() ?? null,
   taxCode: json['taxCode'] as String?,
   keywords:
       (json['keywords'] as List<dynamic>?)?.map((e) => e as String).toList() ??
@@ -180,6 +200,10 @@ Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
       'minimumOrderQuantity': instance.minimumOrderQuantity,
       'freeShipping': instance.freeShipping,
       'isDigital': instance.isDigital,
+      'digitalType': instance.digitalType,
+      'slug': instance.slug,
+      'digitalBuilds': instance.digitalBuilds,
+      'deviceLimit': instance.deviceLimit,
       'taxCode': instance.taxCode,
       'keywords': instance.keywords,
       'cost': instance.cost,
