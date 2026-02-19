@@ -12,6 +12,7 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shimmer/shimmer.dart';
 
 class ProductDetailScreen extends ConsumerWidget {
@@ -50,6 +51,19 @@ class ProductDetailScreen extends ConsumerWidget {
                 floating: true,
                 expandedHeight: 340,
                 backgroundColor: isDark ? DesignTokens.textPrimary : Colors.white,
+                actions: [
+                  if (product.slug != null)
+                    IconButton(
+                      icon: const Icon(Icons.share_outlined),
+                      tooltip: 'Share',
+                      onPressed: () => SharePlus.instance.share(
+                        ShareParams(
+                          text: 'Check out ${product.name} on Origna!\nhttps://origna.com/p/${product.slug}',
+                          subject: product.name,
+                        ),
+                      ),
+                    ),
+                ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: Container(
                     decoration: BoxDecoration(
