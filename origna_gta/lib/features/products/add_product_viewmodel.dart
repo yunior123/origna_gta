@@ -182,6 +182,35 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
       }
     }
 
+    // Digital product validation
+    if (state.isDigital) {
+      if (state.digitalType == null) {
+        state = state.copyWith(errorMessage: 'Select a digital product type (Software or Book)');
+        return;
+      }
+      if (state.digitalType == DigitalTypeValues.software) {
+        final urls = [state.macosDownloadUrl, state.windowsDownloadUrl, state.linuxDownloadUrl];
+        if (urls.every((u) => u == null || u.trim().isEmpty)) {
+          state = state.copyWith(errorMessage: 'Add at least one platform download URL');
+          return;
+        }
+        final nonEmptyUrls = urls.whereType<String>().where((u) => u.trim().isNotEmpty);
+        if (nonEmptyUrls.any((u) => !u.startsWith('https://'))) {
+          state = state.copyWith(errorMessage: 'Download URLs must start with https://');
+          return;
+        }
+      } else if (state.digitalType == DigitalTypeValues.book) {
+        if (state.bookSourceUrl == null || state.bookSourceUrl!.trim().isEmpty) {
+          state = state.copyWith(errorMessage: 'Enter the book download URL');
+          return;
+        }
+        if (!state.bookSourceUrl!.startsWith('https://')) {
+          state = state.copyWith(errorMessage: 'Book URL must start with https://');
+          return;
+        }
+      }
+    }
+
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
@@ -265,6 +294,18 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         deliveryOptions: sanitizedDeliveryOptions,
         isPerishable: state.isDigital ? false : state.isPerishable,
         isDigital: state.isDigital,
+        digitalType: state.isDigital && state.digitalType != null ? state.digitalType : null,
+        digitalBuilds: state.isDigital && state.digitalType == DigitalTypeValues.software
+            ? {
+                if (state.macosDownloadUrl?.isNotEmpty == true)
+                  DigitalPlatformValues.macos: state.macosDownloadUrl!,
+                if (state.windowsDownloadUrl?.isNotEmpty == true)
+                  DigitalPlatformValues.windows: state.windowsDownloadUrl!,
+                if (state.linuxDownloadUrl?.isNotEmpty == true)
+                  DigitalPlatformValues.linux: state.linuxDownloadUrl!,
+              }
+            : null,
+        deviceLimit: state.isDigital ? state.deviceLimit : null,
         minimumOrderQuantity: minOrderQty,
         freeShipping: freeShipping ?? state.freeShipping,
         cost: cost,
@@ -360,7 +401,21 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         : true, // Re-enable standard when going back to physical
     expressEnabled: value ? false : state.expressEnabled,
     sameDayEnabled: value ? false : state.sameDayEnabled,
+    // Clear digital sub-fields when turning off
+    digitalType: value ? state.digitalType : null,
+    macosDownloadUrl: value ? state.macosDownloadUrl : null,
+    windowsDownloadUrl: value ? state.windowsDownloadUrl : null,
+    linuxDownloadUrl: value ? state.linuxDownloadUrl : null,
+    bookSourceUrl: value ? state.bookSourceUrl : null,
+    deviceLimit: value ? state.deviceLimit : null,
   );
+
+  void setDigitalType(String? type) => state = state.copyWith(digitalType: type);
+  void setMacosDownloadUrl(String? url) => state = state.copyWith(macosDownloadUrl: url);
+  void setWindowsDownloadUrl(String? url) => state = state.copyWith(windowsDownloadUrl: url);
+  void setLinuxDownloadUrl(String? url) => state = state.copyWith(linuxDownloadUrl: url);
+  void setBookSourceUrl(String? url) => state = state.copyWith(bookSourceUrl: url);
+  void setDeviceLimit(int? limit) => state = state.copyWith(deviceLimit: limit);
 
   void toggleFreeShipping(bool value) {
     final effectiveValue = state.isDigital ? true : value;
