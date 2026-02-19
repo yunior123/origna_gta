@@ -10,6 +10,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 // Deferred imports for code splitting — reduces initial JS bundle on Flutter Web
 import 'package:origna_gta/features/admin/admin_panel_screen.dart' deferred as admin_panel;
+import 'package:origna_gta/models/generated/models.dart' show Product;
 import 'package:origna_gta/models/models.dart' show Address;
 import 'package:origna_gta/screens/addproduct_screen.dart' deferred as add_product;
 import 'package:origna_gta/screens/addressmanagement_screen.dart';
@@ -173,6 +174,17 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return MaterialPageRoute(
       builder: (_) => const AuthRequiredGate(child: SellerSetupRefreshScreen()),
     );
+  }
+
+  // /p/{slug} — shareable product deep link
+  if (uri.path.startsWith('${AppRoutes.productBySlug}/')) {
+    final slug = uri.path.substring('${AppRoutes.productBySlug}/'.length);
+    if (slug.isNotEmpty) {
+      return MaterialPageRoute(
+        settings: settings,
+        builder: (_) => _ProductBySlugScreen(slug: slug),
+      );
+    }
   }
 
   // Login screen
@@ -486,6 +498,12 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
         }
         final navigator = _navigatorKey.currentState;
         if (navigator != null) {
+          final segs = uri.pathSegments;
+          // /p/{slug} — product share link
+          if (segs.length >= 2 && segs[0] == 'p') {
+            navigator.pushNamed('/p/${segs[1]}');
+            return;
+          }
           // Route the deep link through the existing route handler
           final path = uri.path.isNotEmpty ? uri.path : '/';
           final query = uri.query.isNotEmpty ? '?${uri.query}' : '';
@@ -509,5 +527,40 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
         _sessionTimeout.stopMonitoring();
       }
     });
+  }
+}
+
+/// Resolves a slug to a product and pushes the product detail screen.
+/// Used by [AppRoutes.productBySlug] (`/p/{slug}`) routes.
+class _ProductBySlugScreen extends ConsumerWidget {
+  final String slug;
+  const _ProductBySlugScreen({required this.slug});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return FutureBuilder<Product?>(
+      future: ref.read(productRepositoryProvider).getProductBySlug(slug),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        final product = snapshot.data;
+        if (product == null) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: const Center(child: Text('Product not found')),
+          );
+        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            Navigator.of(context).pushReplacementNamed(
+              AppRoutes.productDetails,
+              arguments: ProductDetailsArgs(productId: product.productId, product: product.toJson()),
+            );
+          }
+        });
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      },
+    );
   }
 }

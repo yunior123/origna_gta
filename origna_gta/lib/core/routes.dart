@@ -35,6 +35,7 @@ class AppRoutes {
   static const String paymentCancel = '/payment-cancel';
   static const String sellerReturn = '/seller/return';
   static const String sellerRefresh = '/seller/refresh';
+  static const String productBySlug = '/p';
 }
 
 // ─── Typed route arguments ─────────────────────────────────────────
@@ -61,4 +62,10 @@ class EditProductArgs {
   final Product product;
 
   const EditProductArgs({required this.product});
+}
+
+/// Arguments for [AppRoutes.productBySlug].
+class ProductSlugArgs {
+  final String slug;
+  const ProductSlugArgs({required this.slug});
 }

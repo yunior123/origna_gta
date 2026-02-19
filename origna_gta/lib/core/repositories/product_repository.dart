@@ -148,6 +148,17 @@ class FirebaseProductRepository implements ProductRepository {
   }
 
   @override
+  Future<Product?> getProductBySlug(String slug) async {
+    final snap = await _firestore
+        .collection(Collections.products)
+        .where(Fields.slug, isEqualTo: slug)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return null;
+    return Product.fromFirestore(snap.docs.first);
+  }
+
+  @override
   Future<ProductQueryResult> fetchProducts({
     String? searchQuery,
     int? categoryId,
@@ -422,6 +433,7 @@ abstract class ProductRepository {
   Future<List<Product>> fetchProductsByIds(List<String> productIds);
   String generateProductId();
   Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(String query);
+  Future<Product?> getProductBySlug(String slug);
   Future<String?> getUploadUrl(String fileName);
   Future<void> submitRating(String orderId, String productId, int rating);
   Future<void> toggleFavorite(String userId, String productId);

@@ -169,6 +169,17 @@ class AlgoliaProductRepository implements ProductRepository {
   }
 
   @override
+  Future<Product?> getProductBySlug(String slug) async {
+    final snap = await _firestore
+        .collection(Collections.products)
+        .where(Fields.slug, isEqualTo: slug)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return null;
+    return Product.fromFirestore(snap.docs.first);
+  }
+
+  @override
   Future<String?> getUploadUrl(String fileName) async {
     throw UnimplementedError(
       'Image upload URLs should be handled by FirebaseProductRepository',
