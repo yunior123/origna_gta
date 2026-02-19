@@ -2550,6 +2550,1129 @@ firebase deploy --project orignagta-dev
 
 ---
 
+---
+
+## Phase 13: Complete Add Product View (Semantic Keys + Algolia Safety)
+
+### Task 25: Add semantic keys for new digital UI elements
+
+**Files:**
+- Modify: `origna_gta/lib/screens/addproduct_screen.dart`
+
+**Purpose:** Playwright and Flutter integration tests find widgets via `Key()` or `Semantics` labels. Every new UI element added in Task 16 needs a named key so tests can interact with it.
+
+**Step 1: Add keys to the `_DigitalTypeCard` calls in `_buildDigitalProductSection`:**
+
+For the Software card:
+```dart
+_DigitalTypeCard(
+  key: const Key('addproduct_digital_type_software'),
+  label: 'Software',
+  ...
+),
+```
+
+For the Book card:
+```dart
+_DigitalTypeCard(
+  key: const Key('addproduct_digital_type_book'),
+  label: 'Book',
+  ...
+),
+```
+
+**Step 2: Add keys to the URL fields:**
+
+```dart
+_buildUrlField(
+  key: const Key('addproduct_macos_url'),
+  label: 'macOS (.dmg)',
+  ...
+),
+_buildUrlField(
+  key: const Key('addproduct_windows_url'),
+  label: 'Windows (.exe / .msi)',
+  ...
+),
+_buildUrlField(
+  key: const Key('addproduct_linux_url'),
+  label: 'Linux (.deb / .AppImage)  — optional',
+  ...
+),
+_buildUrlField(
+  key: const Key('addproduct_book_url'),
+  label: 'Download source URL',
+  ...
+),
+```
+
+**Step 3: Add key to the digital sub-type section container:**
+
+```dart
+Column(
+  key: const Key('addproduct_digital_section'),
+  ...
+)
+```
+
+**Step 4: Update `_buildUrlField` signature to accept key:**
+
+```dart
+Widget _buildUrlField({
+  Key? key,
+  required String label,
+  required String placeholder,
+  required String? value,
+  required void Function(String?) onChanged,
+}) {
+  return Padding(
+    key: key,
+    ...
+  );
+}
+```
+
+**Step 5: Verify no analysis errors**
+
+```bash
+cd origna_gta && flutter analyze lib/screens/addproduct_screen.dart
+```
+
+**Step 6: Verify `bookSourceUrl` NOT sent to Algolia**
+
+Open `functions/handlers/products.py`, find the Algolia indexing function (search for `algolia` or `save_object`). Confirm `bookSourceUrl` is either excluded explicitly or not included in the indexed object. If it IS included, add it to the exclusion list:
+
+```python
+# Fields that must never be indexed in Algolia (sensitive / server-side only)
+_ALGOLIA_EXCLUDED_FIELDS = {
+    "bookSourceUrl",  # Digital book source URL — never expose to client
+    "cost",
+    "supplierUrl",
+    "supplierSku",
+}
+```
+
+**Step 7: Commit**
+
+```bash
+git add origna_gta/lib/screens/addproduct_screen.dart functions/handlers/products.py
+git commit -m "feat(add-product): add semantic keys for digital UI + exclude bookSourceUrl from Algolia"
+```
+
+---
+
+## Phase 14: Modify Edit Product View
+
+### Task 26: Add digital fields to EditProductState
+
+**Files:**
+- Modify: `origna_gta/lib/features/products/edit_product_state.dart`
+
+**Step 1: Add fields** — after `isDigital` (line 13):
+
+```dart
+  final String? digitalType;
+  final String? macosDownloadUrl;
+  final String? windowsDownloadUrl;
+  final String? linuxDownloadUrl;
+  final String? bookSourceUrl;
+  final int? deviceLimit;
+```
+
+**Step 2: Update constructor** — after `this.isDigital = false`:
+
+```dart
+    this.digitalType,
+    this.macosDownloadUrl,
+    this.windowsDownloadUrl,
+    this.linuxDownloadUrl,
+    this.bookSourceUrl,
+    this.deviceLimit,
+```
+
+**Step 3: Update `copyWith`** — add params using sentinel pattern (these are nullable):
+
+```dart
+    Object? digitalType = _sentinel,
+    Object? macosDownloadUrl = _sentinel,
+    Object? windowsDownloadUrl = _sentinel,
+    Object? linuxDownloadUrl = _sentinel,
+    Object? bookSourceUrl = _sentinel,
+    Object? deviceLimit = _sentinel,
+```
+
+In return statement:
+
+```dart
+      digitalType: digitalType == _sentinel ? this.digitalType : digitalType as String?,
+      macosDownloadUrl: macosDownloadUrl == _sentinel ? this.macosDownloadUrl : macosDownloadUrl as String?,
+      windowsDownloadUrl: windowsDownloadUrl == _sentinel ? this.windowsDownloadUrl : windowsDownloadUrl as String?,
+      linuxDownloadUrl: linuxDownloadUrl == _sentinel ? this.linuxDownloadUrl : linuxDownloadUrl as String?,
+      bookSourceUrl: bookSourceUrl == _sentinel ? this.bookSourceUrl : bookSourceUrl as String?,
+      deviceLimit: deviceLimit == _sentinel ? this.deviceLimit : deviceLimit as int?,
+```
+
+**Step 4: Verify**
+
+```bash
+cd origna_gta && flutter analyze lib/features/products/edit_product_state.dart
+```
+
+**Step 5: Commit**
+
+```bash
+git add origna_gta/lib/features/products/edit_product_state.dart
+git commit -m "feat(edit-product-state): add digital type + URL fields"
+```
+
+---
+
+### Task 27: Add digital setters and validation to EditProductViewModel
+
+**Files:**
+- Modify: `origna_gta/lib/features/products/edit_product_viewmodel.dart`
+
+**Step 1: Read the file** to find `toggleDigital` and `updateProduct` method signatures.
+
+**Step 2: Add setters** — after existing `toggleDigital`:
+
+```dart
+  void setDigitalType(String? type) => state = state.copyWith(digitalType: type);
+  void setMacosDownloadUrl(String? url) => state = state.copyWith(macosDownloadUrl: url);
+  void setWindowsDownloadUrl(String? url) => state = state.copyWith(windowsDownloadUrl: url);
+  void setLinuxDownloadUrl(String? url) => state = state.copyWith(linuxDownloadUrl: url);
+  void setBookSourceUrl(String? url) => state = state.copyWith(bookSourceUrl: url);
+  void setDeviceLimit(int? limit) => state = state.copyWith(deviceLimit: limit);
+```
+
+**Step 3: Update `toggleDigital` to clear sub-fields on disable:**
+
+```dart
+  void toggleDigital(bool value) => state = state.copyWith(
+    isDigital: value,
+    freeShipping: value ? true : state.freeShipping,
+    isPerishable: value ? false : state.isPerishable,
+    isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
+    standardEnabled: value ? false : true,
+    expressEnabled: value ? false : state.expressEnabled,
+    sameDayEnabled: value ? false : state.sameDayEnabled,
+    digitalType: value ? state.digitalType : null,
+    macosDownloadUrl: value ? state.macosDownloadUrl : null,
+    windowsDownloadUrl: value ? state.windowsDownloadUrl : null,
+    linuxDownloadUrl: value ? state.linuxDownloadUrl : null,
+    bookSourceUrl: value ? state.bookSourceUrl : null,
+    deviceLimit: value ? state.deviceLimit : null,
+  );
+```
+
+**Step 4: Initialize state from existing product** — find where `EditProductViewModel` initializes its state from `widget.product`. Add digital field initialization:
+
+```dart
+  // In the initial state builder (typically a factory or build() method)
+  // Load existing digital fields from the product
+  digitalType: product.digitalType,
+  macosDownloadUrl: product.digitalBuilds?[DigitalPlatformValues.macos],
+  windowsDownloadUrl: product.digitalBuilds?[DigitalPlatformValues.windows],
+  linuxDownloadUrl: product.digitalBuilds?[DigitalPlatformValues.linux],
+  bookSourceUrl: null,  // bookSourceUrl is server-side only, do NOT load from product
+  deviceLimit: product.deviceLimit,
+```
+
+> **Critical:** `bookSourceUrl` is NEVER sent to client from the product doc. For editing, the seller must re-enter it. Show a helper text: "Re-enter the download URL to keep it active (it is not shown for security reasons)."
+
+**Step 5: Add validation + digital fields to `updateProduct` submission:**
+
+Find the `updateProduct` method. Add digital validation (same as add-product viewmodel Task 15 Step 3). Then add to the update map:
+
+```dart
+      if (state.isDigital && state.digitalType != null) ...{
+        Fields.digitalType: state.digitalType,
+        if (state.digitalType == DigitalTypeValues.software) ...{
+          Fields.digitalBuilds: {
+            if (state.macosDownloadUrl?.isNotEmpty == true)
+              DigitalPlatformValues.macos: state.macosDownloadUrl!,
+            if (state.windowsDownloadUrl?.isNotEmpty == true)
+              DigitalPlatformValues.windows: state.windowsDownloadUrl!,
+            if (state.linuxDownloadUrl?.isNotEmpty == true)
+              DigitalPlatformValues.linux: state.linuxDownloadUrl!,
+          },
+          if (state.deviceLimit != null)
+            Fields.deviceLimit: state.deviceLimit,
+        },
+        // Only update bookSourceUrl if seller re-entered it
+        if (state.digitalType == DigitalTypeValues.book &&
+            state.bookSourceUrl != null &&
+            state.bookSourceUrl!.isNotEmpty)
+          Fields.bookSourceUrl: state.bookSourceUrl,
+      },
+```
+
+**Step 6: Verify**
+
+```bash
+cd origna_gta && flutter analyze lib/features/products/edit_product_viewmodel.dart
+```
+
+**Step 7: Commit**
+
+```bash
+git add origna_gta/lib/features/products/edit_product_viewmodel.dart
+git commit -m "feat(edit-product-vm): add digital field setters, validation, and product load"
+```
+
+---
+
+### Task 28: Add digital section UI to editproduct_screen.dart
+
+**Files:**
+- Modify: `origna_gta/lib/screens/editproduct_screen.dart`
+
+**Step 1: Add URL-field text controllers** — in `_EditProductScreenState`, declare:
+
+```dart
+  late final TextEditingController _macosUrlController;
+  late final TextEditingController _windowsUrlController;
+  late final TextEditingController _linuxUrlController;
+  late final TextEditingController _bookUrlController;
+  late final TextEditingController _deviceLimitController;
+```
+
+**Step 2: Initialize from product in `initState`:**
+
+```dart
+  _macosUrlController = TextEditingController(
+    text: widget.product.digitalBuilds?[DigitalPlatformValues.macos] ?? '',
+  );
+  _windowsUrlController = TextEditingController(
+    text: widget.product.digitalBuilds?[DigitalPlatformValues.windows] ?? '',
+  );
+  _linuxUrlController = TextEditingController(
+    text: widget.product.digitalBuilds?[DigitalPlatformValues.linux] ?? '',
+  );
+  _bookUrlController = TextEditingController(); // empty — server-side only
+  _deviceLimitController = TextEditingController(
+    text: widget.product.deviceLimit?.toString() ?? '',
+  );
+```
+
+**Step 3: Dispose controllers** — in `dispose()`:
+
+```dart
+  _macosUrlController.dispose();
+  _windowsUrlController.dispose();
+  _linuxUrlController.dispose();
+  _bookUrlController.dispose();
+  _deviceLimitController.dispose();
+```
+
+**Step 4: Add digital section** — find where `isDigital` SwitchListTile is rendered (line ~144). After the toggle, add:
+
+```dart
+if (state.isDigital) ...[
+  const SizedBox(height: 12),
+  _buildEditDigitalSection(state, viewModel),
+],
+```
+
+**Step 5: Add `_buildEditDigitalSection` method** — identical UI to add-product but wired to edit controllers and viewmodel:
+
+```dart
+Widget _buildEditDigitalSection(EditProductState state, EditProductViewModel viewModel) {
+  return Column(
+    key: const Key('editproduct_digital_section'),
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // Sub-type selector (same _DigitalTypeCard pattern — extract to shared widget later)
+      Row(children: [
+        Expanded(child: _DigitalTypeChip(
+          key: const Key('editproduct_digital_type_software'),
+          label: 'Software', icon: Icons.computer_outlined,
+          selected: state.digitalType == DigitalTypeValues.software,
+          onTap: () => viewModel.setDigitalType(DigitalTypeValues.software),
+        )),
+        const SizedBox(width: 8),
+        Expanded(child: _DigitalTypeChip(
+          key: const Key('editproduct_digital_type_book'),
+          label: 'Book', icon: Icons.menu_book_outlined,
+          selected: state.digitalType == DigitalTypeValues.book,
+          onTap: () => viewModel.setDigitalType(DigitalTypeValues.book),
+        )),
+      ]),
+
+      if (state.digitalType == DigitalTypeValues.software) ...[
+        const SizedBox(height: 16),
+        _editUrlField(
+          key: const Key('editproduct_macos_url'),
+          label: 'macOS (.dmg)', controller: _macosUrlController,
+          onChanged: (v) => viewModel.setMacosDownloadUrl(v.isEmpty ? null : v),
+        ),
+        _editUrlField(
+          key: const Key('editproduct_windows_url'),
+          label: 'Windows (.exe / .msi)', controller: _windowsUrlController,
+          onChanged: (v) => viewModel.setWindowsDownloadUrl(v.isEmpty ? null : v),
+        ),
+        _editUrlField(
+          key: const Key('editproduct_linux_url'),
+          label: 'Linux (.deb / .AppImage) — optional', controller: _linuxUrlController,
+          onChanged: (v) => viewModel.setLinuxDownloadUrl(v.isEmpty ? null : v),
+        ),
+        TextFormField(
+          key: const Key('editproduct_device_limit'),
+          controller: _deviceLimitController,
+          decoration: const InputDecoration(labelText: 'Device limit', hintText: 'Blank = unlimited'),
+          keyboardType: TextInputType.number,
+          onChanged: (v) => viewModel.setDeviceLimit(int.tryParse(v)),
+        ),
+      ],
+
+      if (state.digitalType == DigitalTypeValues.book) ...[
+        const SizedBox(height: 16),
+        const Text('Re-enter the download URL to update it (not shown for security)',
+          style: TextStyle(fontSize: 12, color: Colors.orange)),
+        const SizedBox(height: 6),
+        _editUrlField(
+          key: const Key('editproduct_book_url'),
+          label: 'Book download URL (PDF/EPUB)',
+          controller: _bookUrlController,
+          onChanged: (v) => viewModel.setBookSourceUrl(v.isEmpty ? null : v),
+        ),
+      ],
+    ],
+  );
+}
+
+Widget _editUrlField({Key? key, required String label, required TextEditingController controller, required void Function(String) onChanged}) {
+  return Padding(
+    key: key,
+    padding: const EdgeInsets.only(bottom: 10),
+    child: TextFormField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label),
+      keyboardType: TextInputType.url,
+      onChanged: onChanged,
+    ),
+  );
+}
+```
+
+> `_DigitalTypeChip` is the same visual widget as `_DigitalTypeCard` in add-product. Extract to `lib/widgets/digital_type_chip.dart` to avoid duplication — both screens import from there.
+
+**Step 6: Extract shared `DigitalTypeChip` widget to avoid duplication**
+
+Create `origna_gta/lib/widgets/digital_type_chip.dart`:
+
+```dart
+import 'package:flutter/material.dart';
+
+class DigitalTypeChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const DigitalTypeChip({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: selected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
+          border: Border.all(
+            color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor,
+            width: selected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: selected ? Theme.of(context).colorScheme.primary : null),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(
+              fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+              color: selected ? Theme.of(context).colorScheme.primary : null,
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+```
+
+Update `addproduct_screen.dart` and `editproduct_screen.dart` to import and use `DigitalTypeChip` instead of the local `_DigitalTypeCard`.
+
+**Step 7: Verify**
+
+```bash
+cd origna_gta && flutter analyze lib/screens/editproduct_screen.dart lib/widgets/digital_type_chip.dart
+```
+
+**Step 8: Commit**
+
+```bash
+git add origna_gta/lib/screens/editproduct_screen.dart origna_gta/lib/widgets/digital_type_chip.dart origna_gta/lib/screens/addproduct_screen.dart
+git commit -m "feat(edit-product): add digital sub-type section with URL fields + extract DigitalTypeChip widget"
+```
+
+---
+
+## Phase 15: Review and Update Impacted Areas
+
+### Task 29: Product cards — add "Digital" badge
+
+**Files:**
+- Modify: `origna_gta/lib/screens/product_card_screen.dart`
+- Modify: `origna_gta/lib/widgets/modern_product_card.dart`
+
+**Step 1: In `product_card_screen.dart`**, find the section that renders product name/price. Add a "Digital" badge when `product.isDigital == true`:
+
+```dart
+if (product.isDigital)
+  Container(
+    margin: const EdgeInsets.only(bottom: 4),
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+      color: Colors.deepPurple.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(4),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.download_outlined, size: 10, color: Colors.deepPurple),
+        const SizedBox(width: 3),
+        Text(
+          product.digitalType == DigitalTypeValues.software ? 'Software' : 'Book',
+          style: const TextStyle(fontSize: 10, color: Colors.deepPurple, fontWeight: FontWeight.w600),
+        ),
+      ],
+    ),
+  ),
+```
+
+**Step 2: Same badge in `modern_product_card.dart`** at the same logical position.
+
+**Step 3: Commit**
+
+```bash
+git add origna_gta/lib/screens/product_card_screen.dart origna_gta/lib/widgets/modern_product_card.dart
+git commit -m "feat(product-card): add Digital badge for software/book products"
+```
+
+---
+
+### Task 30: Product detail screen — show platforms + digital info
+
+**Files:**
+- Modify: `origna_gta/lib/screens/productdetails_screen.dart`
+
+**Step 1: Find where product description/delivery options are shown**. After the product description or before the "Add to Cart" button, add:
+
+```dart
+if (product.isDigital) ...[
+  const SizedBox(height: 12),
+  _DigitalProductInfo(product: product),
+],
+```
+
+**Step 2: Add `_DigitalProductInfo` widget:**
+
+```dart
+class _DigitalProductInfo extends StatelessWidget {
+  final Product product;
+  const _DigitalProductInfo({required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    final builds = product.digitalBuilds ?? {};
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.deepPurple.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.deepPurple.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.download_outlined, size: 16, color: Colors.deepPurple),
+            const SizedBox(width: 6),
+            Text(
+              product.digitalType == DigitalTypeValues.software ? 'Desktop Software' : 'Digital Book',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple),
+            ),
+          ]),
+          if (builds.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Text('Available for:', style: TextStyle(fontSize: 12)),
+            const SizedBox(height: 4),
+            Wrap(spacing: 6, children: builds.keys.map((p) {
+              final label = {'macos': 'macOS', 'windows': 'Windows', 'linux': 'Linux'}[p] ?? p;
+              return Chip(label: Text(label, style: const TextStyle(fontSize: 11)), visualDensity: VisualDensity.compact);
+            }).toList()),
+          ],
+          if (product.digitalType == DigitalTypeValues.book)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text('License key + download link delivered after purchase.',
+                style: TextStyle(fontSize: 12)),
+            ),
+          if (product.digitalType == DigitalTypeValues.software)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text('License key delivered after purchase. Install and activate on up to N devices.',
+                style: TextStyle(fontSize: 12)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+```
+
+**Step 3: Suppress "Shipping" section for digital products**
+
+Find where the shipping/delivery section is rendered. Wrap it:
+
+```dart
+if (!product.isDigital)
+  _buildShippingSection(product),
+```
+
+**Step 4: Verify**
+
+```bash
+cd origna_gta && flutter analyze lib/screens/productdetails_screen.dart
+```
+
+**Step 5: Commit**
+
+```bash
+git add origna_gta/lib/screens/productdetails_screen.dart
+git commit -m "feat(product-detail): show platform badges + suppress shipping section for digital products"
+```
+
+---
+
+### Task 31: Orders screen — integrate license display + suppress tracking for digital items
+
+**Files:**
+- Modify: `origna_gta/lib/screens/orders_screen.dart`
+
+**Step 1: In `_buildOrderItem` (line 540)**, find where tracking number is shown (line 591). **Before** the tracking container, add:
+
+```dart
+// Digital products: show license key + download action instead of tracking
+if (item.isDigital && item.digitalUnlocked) ...[
+  const SizedBox(height: 10),
+  DigitalItemActions(item: item),
+],
+```
+
+**Step 2: Suppress the tracking number block for digital items:**
+
+Wrap the tracking number container (lines 591–617) with:
+
+```dart
+if (!item.isDigital && item.trackingNumber != null && item.trackingNumber!.isNotEmpty) ...[
+  // existing tracking container
+]
+```
+
+**Step 3: Extract `DigitalItemActions` to `lib/widgets/digital_item_actions.dart`**
+
+Move the `_DigitalItemActions` / `_SoftwareDownloadLinks` / `_BookDownloadButton` widgets designed in Task 19 into a dedicated file so both orders_screen and any future screens can import it:
+
+```dart
+// lib/widgets/digital_item_actions.dart
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:origna_gta/models/generated/order_models.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
+
+class DigitalItemActions extends ConsumerWidget {
+  final OrderItem item;
+  const DigitalItemActions({super.key, required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // ... (full implementation from Task 19)
+  }
+}
+```
+
+**Step 4: Verify**
+
+```bash
+cd origna_gta && flutter analyze lib/screens/orders_screen.dart lib/widgets/digital_item_actions.dart
+```
+
+**Step 5: Commit**
+
+```bash
+git add origna_gta/lib/screens/orders_screen.dart origna_gta/lib/widgets/digital_item_actions.dart
+git commit -m "feat(orders): show digital license actions + suppress tracking for digital items"
+```
+
+---
+
+### Task 32: Seller orders screen — digital badge + suppress shipping action
+
+**Files:**
+- Modify: `origna_gta/lib/screens/seller_orders_screen.dart`
+
+**Step 1: In `_buildSellerItem` (line 331)**, find the item name text. Add a "Digital" tag alongside it:
+
+```dart
+if (item.isDigital)
+  const Padding(
+    padding: EdgeInsets.only(top: 2),
+    child: Chip(
+      label: Text('Digital', style: TextStyle(fontSize: 10)),
+      backgroundColor: Colors.deepPurple,
+      labelStyle: TextStyle(color: Colors.white),
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+    ),
+  ),
+```
+
+**Step 2: Suppress "Mark as Shipped" / shipping action buttons for digital items** (lines 364–383). Wrap the shipping action with:
+
+```dart
+if (!item.isDigital)
+  _buildShippingAction(item, orderId),
+```
+
+**Step 3: Verify**
+
+```bash
+cd origna_gta && flutter analyze lib/screens/seller_orders_screen.dart
+```
+
+**Step 4: Commit**
+
+```bash
+git add origna_gta/lib/screens/seller_orders_screen.dart
+git commit -m "feat(seller-orders): show Digital badge + suppress shipping actions for digital items"
+```
+
+---
+
+### Task 33: Cart screen — suppress shipping UI for all-digital carts
+
+**Files:**
+- Modify: `origna_gta/lib/screens/cartitem_screen.dart` (or wherever cart item shows shipping info)
+
+**Step 1: In `cartitem_screen.dart`**, find if there's any shipping-related text or widget rendered per item. If yes, wrap with:
+
+```dart
+if (!(cartItem.isDigital ?? false))
+  _buildShippingNote(cartItem),
+```
+
+**Step 2: Add a small "Digital — No Shipping Required" note for digital cart items:**
+
+```dart
+if (cartItem.isDigital == true)
+  const Padding(
+    padding: EdgeInsets.only(top: 4),
+    child: Row(children: [
+      Icon(Icons.download_outlined, size: 12, color: Colors.deepPurple),
+      SizedBox(width: 4),
+      Text('Digital — No Shipping Required',
+        style: TextStyle(fontSize: 11, color: Colors.deepPurple)),
+    ]),
+  ),
+```
+
+**Step 3: Verify**
+
+```bash
+cd origna_gta && flutter analyze lib/screens/cartitem_screen.dart
+```
+
+**Step 4: Commit**
+
+```bash
+git add origna_gta/lib/screens/cartitem_screen.dart
+git commit -m "feat(cart): show digital indicator + suppress shipping note for digital items"
+```
+
+---
+
+### Task 34: Backend — mark digital order items as immediately "delivered" in status
+
+**Files:**
+- Modify: `functions/handlers/digital.py` (or `payment_stripe.py`)
+
+**Rationale:** Digital products have no physical shipping. Once `digitalUnlocked=true`, the item status should be `delivered` immediately so the buyer's status chip shows "Delivered" not "Pending".
+
+**Step 1: In `_generate_digital_licenses`** (Task 7), after updating `licenseKey` and `digitalUnlocked` on the item, also set:
+
+```python
+updated_item["status"] = "delivered"  # Digital: instant delivery
+```
+
+**Step 2: Write test** — add to `test_handlers_payment_stripe.py`:
+
+```python
+def test_digital_item_status_set_to_delivered_after_license_generation(mocker):
+    """Digital items get status=delivered immediately after license generation"""
+    from handlers.payment_stripe import _generate_digital_licenses
+    from unittest.mock import MagicMock, patch
+
+    mock_db = MagicMock()
+    mock_product = MagicMock()
+    mock_product.exists = True
+    mock_product.to_dict.return_value = {
+        "digitalType": "software",
+        "digitalBuilds": {"macos": "https://example.com/app.dmg"},
+        "deviceLimit": None,
+    }
+    mock_db.collection.return_value.document.return_value.get.return_value = mock_product
+    mock_db.collection.return_value.where.return_value.limit.return_value.get.return_value = []
+
+    captured_items = []
+    def capture_update(data):
+        if "items" in data:
+            captured_items.extend(data["items"])
+    mock_db.collection.return_value.document.return_value.update.side_effect = \
+        lambda data: capture_update(data)
+
+    order_data = {
+        "userId": "buyer123",
+        "items": [{
+            "productId": "prod123",
+            "isDigital": True,
+            "digitalUnlocked": False,
+            "name": "Test App",
+            "price": 29.99,
+            "quantity": 1,
+        }]
+    }
+    with patch("handlers.payment_stripe.get_db", return_value=mock_db):
+        _generate_digital_licenses("order123", order_data)
+
+    assert any(item.get("status") == "delivered" for item in captured_items)
+```
+
+**Step 3: Run test**
+
+```bash
+cd functions && python -m pytest tests/test_handlers_payment_stripe.py::test_digital_item_status_set_to_delivered_after_license_generation -v
+```
+
+**Step 4: Commit**
+
+```bash
+git add functions/handlers/payment_stripe.py functions/tests/test_handlers_payment_stripe.py
+git commit -m "feat(digital): set item status=delivered immediately after license generation"
+```
+
+---
+
+## Phase 16: Fix Tests + Add Playwright E2E Tests
+
+### Task 35: Fix existing backend tests broken by new validators
+
+**Files:**
+- Modify: `functions/tests/test_pydantic_models.py`
+- Modify: `functions/tests/test_handlers_products_orders.py`
+- Modify: `functions/tests/test_adversarial_scenarios.py`
+
+**Step 1: Run the full test suite to find failures**
+
+```bash
+cd functions && python -m pytest tests/ -x --tb=short 2>&1 | head -60
+```
+
+**Step 2: Fix any test that creates a `Product` with `isDigital=True` but no `digitalType`**
+
+The new `validate_digital_fields` model validator requires `digitalType` when `isDigital=True`. Find all tests that do:
+
+```python
+Product(..., isDigital=True)
+```
+
+And add `digitalType="software"` and at least one build URL:
+
+```python
+Product(
+    ...,
+    isDigital=True,
+    digitalType="software",
+    digitalBuilds={"macos": "https://example.com/app.dmg"},
+)
+```
+
+**Step 3: Run again to confirm all pass**
+
+```bash
+cd functions && python -m pytest tests/ --tb=short -q
+```
+Expected: all PASSED (or only pre-existing failures, zero new failures)
+
+**Step 4: Commit**
+
+```bash
+git add functions/tests/
+git commit -m "fix(tests): update existing tests for new digital product validators"
+```
+
+---
+
+### Task 36: Update Flutter integration test for digital sub-type
+
+**Files:**
+- Modify: `origna_gta/integration_test/flows/add_product_flow_test.dart`
+
+**Step 1: Read the existing P10 digital test** (around line 79-107 in the flow test). It toggles digital ON and checks sections hide. Add a new test case after P10 that verifies the new digital sub-type UI appears:
+
+```dart
+// P10b: Digital software sub-type selector appears after toggle
+testWidgets('P10b: Software sub-type selector visible after digital toggle', (tester) async {
+  // ... setup: navigate to add product screen
+
+  // Toggle digital ON
+  final digitalToggle = find.byKey(const Key('addproduct_digital_toggle'));
+  await tester.tap(digitalToggle);
+  await tester.pumpAndSettle();
+
+  // Digital section should appear
+  expect(find.byKey(const Key('addproduct_digital_section')), findsOneWidget);
+
+  // Tap Software chip
+  final softwareChip = find.byKey(const Key('addproduct_digital_type_software'));
+  expect(softwareChip, findsOneWidget);
+  await tester.tap(softwareChip);
+  await tester.pumpAndSettle();
+
+  // macOS URL field should appear
+  expect(find.byKey(const Key('addproduct_macos_url')), findsOneWidget);
+  expect(find.byKey(const Key('addproduct_windows_url')), findsOneWidget);
+
+  // Perishable, standard delivery, package — still hidden
+  expect(find.byKey(const Key('addproduct_perishable_toggle')), findsNothing);
+  expect(find.byKey(const Key('addproduct_standard_delivery_card')), findsNothing);
+});
+
+// P10c: Book sub-type — shows book URL field, hides platform fields
+testWidgets('P10c: Book sub-type shows book URL field', (tester) async {
+  // ... setup
+
+  // Toggle digital ON, then tap Book
+  final digitalToggle = find.byKey(const Key('addproduct_digital_toggle'));
+  await tester.tap(digitalToggle);
+  await tester.pumpAndSettle();
+
+  final bookChip = find.byKey(const Key('addproduct_digital_type_book'));
+  await tester.tap(bookChip);
+  await tester.pumpAndSettle();
+
+  // Book URL field appears, macOS URL does not
+  expect(find.byKey(const Key('addproduct_book_url')), findsOneWidget);
+  expect(find.byKey(const Key('addproduct_macos_url')), findsNothing);
+});
+```
+
+**Step 2: Verify the test file compiles**
+
+```bash
+cd origna_gta && flutter analyze integration_test/flows/add_product_flow_test.dart
+```
+
+**Step 3: Commit**
+
+```bash
+git add origna_gta/integration_test/flows/add_product_flow_test.dart
+git commit -m "test(integration): add P10b/P10c digital sub-type selector tests"
+```
+
+---
+
+### Task 37: Add 2 new Playwright E2E tests
+
+**Files:**
+- Modify: `e2e/playwright_ui/add-product-e2e.spec.ts`
+
+**Step 1: Append new test block at the end of the file** (after the last closing `}`):
+
+```typescript
+test.describe('PW Digital Products — Add Product', () => {
+    test.setTimeout(300_000);
+
+    test('D01: Software digital product — sub-type selector + macOS URL field visible', async ({ page }, testInfo) => {
+        await requireWebApp(page, TARGET_URL);
+        page.setDefaultTimeout(60_000);
+
+        await page.goto(`${TARGET_URL}/`);
+        await waitForFlutter(page);
+        await ensureLoggedInAsAdmin(page, TARGET_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
+
+        // Navigate to add product
+        const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
+        await expect(addProductBtn).toBeVisible({ timeout: 20_000 });
+        await addProductBtn.click();
+        await expect(page).toHaveURL(/\/add-product/i, { timeout: 30_000 });
+        await waitForFlutter(page);
+
+        // D01a: Toggle digital product ON
+        const digitalToggle = page.getByRole('switch', { name: /digital/i }).first();
+        await expect(digitalToggle).toBeVisible({ timeout: 15_000 });
+        if ((await digitalToggle.getAttribute('aria-checked')) !== 'true') {
+            await digitalToggle.click();
+            await page.waitForTimeout(800);
+        }
+        await expect(digitalToggle).toHaveAttribute('aria-checked', 'true');
+
+        // D01b: Digital section appears with sub-type chips
+        const softwareChip = page.getByRole('button', { name: /software/i }).first();
+        await expect(softwareChip).toBeVisible({ timeout: 10_000 });
+        await softwareChip.click();
+        await page.waitForTimeout(500);
+
+        // D01c: macOS URL field appears after selecting Software
+        const macosField = page.getByRole('textbox', { name: /macos/i }).first();
+        await expect(macosField).toBeVisible({ timeout: 10_000 });
+
+        // D01d: Windows URL field also appears
+        const windowsField = page.getByRole('textbox', { name: /windows/i }).first();
+        await expect(windowsField).toBeVisible({ timeout: 5_000 });
+
+        // D01e: Standard delivery card is hidden (digital products don't ship)
+        const standardCard = page.getByRole('button', { name: /standard/i });
+        await expect(standardCard).not.toBeVisible();
+
+        // D01f: Enter a macOS URL
+        await macosField.click();
+        await page.waitForTimeout(400);
+        await page.keyboard.type('https://releases.example.com/cleaner.dmg', { delay: 20 });
+        await page.waitForTimeout(300);
+
+        // D01g: Field retains value
+        await expect(macosField).toHaveValue(/releases\.example\.com/);
+    });
+
+    test('D02: Book digital product — book URL field visible, no platform fields', async ({ page }, testInfo) => {
+        await requireWebApp(page, TARGET_URL);
+        page.setDefaultTimeout(60_000);
+
+        await page.goto(`${TARGET_URL}/`);
+        await waitForFlutter(page);
+        await ensureLoggedInAsAdmin(page, TARGET_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
+
+        // Navigate to add product
+        const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
+        await expect(addProductBtn).toBeVisible({ timeout: 20_000 });
+        await addProductBtn.click();
+        await expect(page).toHaveURL(/\/add-product/i, { timeout: 30_000 });
+        await waitForFlutter(page);
+
+        // D02a: Toggle digital ON
+        const digitalToggle = page.getByRole('switch', { name: /digital/i }).first();
+        await expect(digitalToggle).toBeVisible({ timeout: 15_000 });
+        if ((await digitalToggle.getAttribute('aria-checked')) !== 'true') {
+            await digitalToggle.click();
+            await page.waitForTimeout(800);
+        }
+
+        // D02b: Select Book sub-type
+        const bookChip = page.getByRole('button', { name: /book/i }).first();
+        await expect(bookChip).toBeVisible({ timeout: 10_000 });
+        await bookChip.click();
+        await page.waitForTimeout(500);
+
+        // D02c: Book URL field visible
+        const bookUrlField = page.getByRole('textbox', { name: /download source url|book download/i }).first();
+        await expect(bookUrlField).toBeVisible({ timeout: 10_000 });
+
+        // D02d: macOS URL field NOT visible (software-only)
+        const macosField = page.getByRole('textbox', { name: /macos/i });
+        await expect(macosField).not.toBeVisible();
+
+        // D02e: Enter a book URL
+        await bookUrlField.click();
+        await page.waitForTimeout(400);
+        await page.keyboard.type('https://storage.example.com/python-mastery.pdf', { delay: 20 });
+        await page.waitForTimeout(300);
+
+        // D02f: Standard delivery card is still hidden
+        const standardCard = page.getByRole('button', { name: /standard/i });
+        await expect(standardCard).not.toBeVisible();
+
+        // D02g: Validate URL field value
+        await expect(bookUrlField).toHaveValue(/storage\.example\.com/);
+    });
+});
+```
+
+**Step 2: Run the two new tests locally (emulator must be running)**
+
+```bash
+cd e2e && npx playwright test add-product-e2e.spec.ts --grep "D01|D02" --project=chromium --reporter=list
+```
+Expected: both PASSED (or skip if emulator not running — tests are designed to be run against dev/staging)
+
+**Step 3: Commit**
+
+```bash
+git add e2e/playwright_ui/add-product-e2e.spec.ts
+git commit -m "test(playwright): add D01/D02 digital product E2E tests (software + book sub-type)"
+```
+
+---
+
+### Task 38: Final full test run + verification
+
+**Step 1: Backend full suite**
+
+```bash
+cd functions && python -m pytest tests/ -q --tb=short
+```
+Expected: 0 new failures vs baseline.
+
+**Step 2: Flutter analyze**
+
+```bash
+cd origna_gta && flutter analyze --no-fatal-infos
+```
+Expected: 0 errors.
+
+**Step 3: Firestore deploy (rules + indexes)**
+
+```bash
+firebase deploy --only firestore --project orignagta-dev
+```
+
+**Step 4: Functions deploy**
+
+```bash
+firebase deploy --only functions --project orignagta-dev
+```
+
+**Step 5: Tag the feature complete**
+
+```bash
+git tag -a "digital-products-v1" -m "Digital products MVP: license keys, book redirect, slug sharing"
+git push origin main --tags
+```
+
+---
+
 ## Adversarial Scenarios Covered
 
 | Scenario | Defense |
