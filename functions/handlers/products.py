@@ -8,6 +8,8 @@ Product Management Handlers
 """
 
 import logging
+import re
+import secrets
 import uuid
 from typing import Any
 
@@ -79,6 +81,15 @@ def get_server_timestamp():
 
         _firestore = fs
     return _firestore.SERVER_TIMESTAMP
+
+
+def _generate_product_slug(title: str) -> str:
+    """Generate a URL-safe slug: {title-slug}-{4 random hex chars}.
+    Collisions checked by caller — retry with new suffix if needed.
+    """
+    base = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:40]
+    suffix = secrets.token_hex(2)  # 4 hex chars
+    return f"{base}-{suffix}"
 
 
 # CORS is configured in DEFAULT_OPTIONS via function_options.py
@@ -725,6 +736,22 @@ def on_product_created(event: firestore_fn.Event) -> None:
 
     # ── DATA CONSISTENCY VALIDATION ──────────────────────────────────
     patches = {}
+
+    # Slug generation: assign on creation if missing (unique, URL-safe sharing URL)
+    if not product_data.get(Fields.SLUG):
+        product_name = product_data.get(Fields.NAME, "product")
+        slug_candidate = None
+        for _ in range(5):
+            candidate = _generate_product_slug(product_name)
+            existing = get_db().collection(Collections.PRODUCTS).where(Fields.SLUG, "==", candidate).limit(1).get()
+            if not existing:
+                slug_candidate = candidate
+                break
+        if not slug_candidate:
+            # Fallback: use doc ID suffix (guaranteed unique)
+            slug_candidate = f"product-{product_id[-8:]}"
+        patches[Fields.SLUG] = slug_candidate
+        logger.info(f"Slug assigned to product {product_id}: {slug_candidate}")
 
     # Bug #1: Digital products MUST have freeShipping=true
     is_digital = product_data.get(Fields.IS_DIGITAL, False)

@@ -794,3 +794,32 @@ def is_valid_transition(current_status, new_status):
 
     allowed = VALID_TRANSITIONS.get(current_status, [])
     return new_status in allowed
+
+
+def test_generate_product_slug_format():
+    """Slug is lowercase, hyphenated, ends with 4-char hex suffix"""
+    import re
+    from handlers.products import _generate_product_slug
+    slug = _generate_product_slug("MacBook Cleaner Pro!")
+    assert re.match(r'^[a-z0-9\-]+-[a-f0-9]{4}$', slug), f"Bad slug format: {slug}"
+    assert slug.startswith("macbook-cleaner-pro-")
+    assert len(slug) <= 85
+
+
+def test_generate_product_slug_strips_special_chars():
+    """Special characters are stripped from slug"""
+    from handlers.products import _generate_product_slug
+    slug = _generate_product_slug("C++ App & More!!!   ")
+    assert '+' not in slug
+    assert '&' not in slug
+    assert '!' not in slug
+    assert '  ' not in slug
+
+
+def test_generate_product_slug_different_each_call():
+    """Each call produces a different suffix"""
+    from handlers.products import _generate_product_slug
+    s1 = _generate_product_slug("Same Name")
+    s2 = _generate_product_slug("Same Name")
+    # Extremely unlikely to collide (1/65536 chance)
+    assert s1 != s2
