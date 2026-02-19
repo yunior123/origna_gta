@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/product_actions_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
@@ -200,6 +201,26 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (widget.product.isDigital)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.deepPurple.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.download_outlined, size: 10, color: Colors.deepPurple),
+                            const SizedBox(width: 3),
+                            Text(
+                              widget.product.digitalType == DigitalTypeValues.software ? 'Software' : 'Book',
+                              style: const TextStyle(fontSize: 10, color: Colors.deepPurple, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

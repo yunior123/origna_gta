@@ -21,6 +21,7 @@ class CartItemScreen extends StatelessWidget {
     final imageUrlsList = (item[Fields.imageUrls] as List<dynamic>?)?.cast<String>() ?? [];
     final name = item[Fields.name] as String? ?? 'product.product_fallback'.tr();
     final unitPrice = (item[Fields.price] ?? 0.0).toDouble();
+    final isDigital = item[Fields.isDigital] as bool? ?? false;
 
     return Dismissible(
       key: ValueKey('dismiss_$productId'),
@@ -93,6 +94,19 @@ class CartItemScreen extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (isDigital) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.download_outlined, size: 11, color: Colors.deepPurple.withValues(alpha: 0.8)),
+                        const SizedBox(width: 3),
+                        Text(
+                          'Digital product — instant delivery',
+                          style: TextStyle(fontSize: 11, color: Colors.deepPurple.withValues(alpha: 0.8), fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 6),
                   // Price display wrapped in Consumer - only this rebuilds when quantity changes
                   Consumer(

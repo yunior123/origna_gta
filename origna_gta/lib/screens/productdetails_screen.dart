@@ -7,6 +7,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -209,9 +210,11 @@ class ProductDetailScreen extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          // Delivery Information Card
-                          _DeliveryInfoCard(product: product),
-                          const SizedBox(height: 28),
+                          // Delivery Information Card — suppress for digital
+                          if (!product.isDigital)
+                            _DeliveryInfoCard(product: product),
+                          if (!product.isDigital)
+                            const SizedBox(height: 28),
                           Text(
                             'product.description'.tr(),
                             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
@@ -224,6 +227,10 @@ class ProductDetailScreen extends ConsumerWidget {
                               style: TextStyle(fontSize: 15, color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary, height: 1.6, fontWeight: FontWeight.w400),
                             ),
                           ),
+                          if (product.isDigital) ...[
+                            const SizedBox(height: 12),
+                            _DigitalProductInfo(product: product),
+                          ],
                           const SizedBox(height: 28),
                           _QuantitySelector(viewModel: viewModel),
                           const SizedBox(height: 24),
@@ -316,6 +323,50 @@ class ProductDetailScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _DigitalProductInfo extends StatelessWidget {
+  final Product product;
+  const _DigitalProductInfo({required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    final builds = product.digitalBuilds ?? {};
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.deepPurple.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.deepPurple.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.download_outlined, size: 16, color: Colors.deepPurple),
+            const SizedBox(width: 6),
+            Text(
+              product.digitalType == DigitalTypeValues.software ? 'Desktop Software' : 'Digital Book',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple),
+            ),
+          ]),
+          if (builds.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Text('Available for:', style: TextStyle(fontSize: 12)),
+            const SizedBox(height: 4),
+            Wrap(spacing: 6, children: builds.keys.map((p) {
+              final label = const {'macos': 'macOS', 'windows': 'Windows', 'linux': 'Linux'}[p] ?? p;
+              return Chip(label: Text(label, style: const TextStyle(fontSize: 11)), visualDensity: VisualDensity.compact);
+            }).toList()),
+          ],
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text('License key + download link delivered after purchase.', style: TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
     );
   }
 }

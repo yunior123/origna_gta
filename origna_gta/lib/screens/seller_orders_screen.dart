@@ -346,7 +346,29 @@ class _SellerOrderCard extends ConsumerWidget {
             child: Icon(Icons.image_outlined, color: DesignTokens.textDisabled, size: 20),
           )),
         ),
-        title: Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        title: Row(
+          children: [
+            Flexible(child: Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+            if (item.isDigital) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.download_outlined, size: 10, color: Colors.deepPurple),
+                    const SizedBox(width: 3),
+                    const Text('Digital', style: TextStyle(fontSize: 10, color: Colors.deepPurple, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -361,7 +383,8 @@ class _SellerOrderCard extends ConsumerWidget {
             if (item.refundedAt != null) Text('${'seller.refunded_prefix'.tr()} ${DateFormat.yMd().format(item.refundedAt!)}', style: TextStyle(fontSize: 11, color: DesignTokens.warning)),
           ],
         ),
-        trailing: !isAuthorized && statusStr == DeliveryStatusValues.pending && !isRefunded
+        // Suppress mark-shipped button for digital items — fulfilled automatically
+        trailing: !item.isDigital && !isAuthorized && statusStr == DeliveryStatusValues.pending && !isRefunded
             ? Container(
                 decoration: BoxDecoration(
                   color: DesignTokens.primary.withValues(alpha: 0.1),
