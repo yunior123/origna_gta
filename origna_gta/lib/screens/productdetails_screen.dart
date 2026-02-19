@@ -10,6 +10,7 @@ import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -57,11 +58,9 @@ class ProductDetailScreen extends ConsumerWidget {
                     IconButton(
                       icon: const Icon(Icons.share_outlined),
                       tooltip: 'Share',
-                      onPressed: () => SharePlus.instance.share(
-                        ShareParams(
-                          text: 'Check out ${product.name} on Origna!\nhttps://origna.com/p/${product.slug}',
-                          subject: product.name,
-                        ),
+                      onPressed: () => Share.share(
+                        'Check out ${product.name} on Origna!\n${envConfig.baseUrl}/p/${product.slug}',
+                        subject: product.name,
                       ),
                     ),
                 ],

@@ -31,8 +31,10 @@ from schema_constants import (
     CategoryIds,
     Collections,
     DeliveryTypeValues,
+    EmailConfig,
     Fields,
     OrderStatusValues,
+    ProductApprovalStatusValues,
     UserRoleValues,
 )
 from services.algolia_service import delete_product as algolia_delete_product
@@ -832,21 +834,335 @@ def on_product_created(event: firestore_fn.Event) -> None:
         if not has_local_or_same_day:
             logger.warning(f"WARNING: Perishable product {product_id} should have local/same-day delivery")
 
+    # ── DIGITAL URL VALIDATION: HTTPS-only enforcement ──
+    if is_digital:
+        bad_urls = []
+        book_source_url = product_data.get(Fields.BOOK_SOURCE_URL)
+        if book_source_url and not book_source_url.startswith("https://"):
+            bad_urls.append("bookSourceUrl")
+        digital_builds = product_data.get(Fields.DIGITAL_BUILDS) or {}
+        for platform, url in digital_builds.items():
+            if url and not url.startswith("https://"):
+                bad_urls.append(f"digitalBuilds.{platform}")
+        if bad_urls:
+            logger.warning(f"SECURITY: Product {product_id} has non-HTTPS digital URL(s): {bad_urls} — deactivating")
+            get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                {
+                    Fields.IS_ACTIVE: False,
+                    Fields.DEACTIVATION_REASON: f"Digital download URLs must use HTTPS: {', '.join(bad_urls)}",
+                    Fields.APPROVAL_STATUS: ProductApprovalStatusValues.REJECTED,
+                    Fields.APPROVAL_REJECTION_REASON: f"Download URLs must use HTTPS: {', '.join(bad_urls)}",
+                }
+            )
+            return
+
+    # ── ADMIN APPROVAL GATE: All products land in under_review ──
+    # Products are NOT indexed to Algolia until an admin explicitly approves them.
+    # The admin_approve_product callable sets isActive=True and triggers indexing.
     try:
-        # Add document ID to product data
-        product_data["id"] = product_id
-        # Ensure sanitized data is sent to Algolia
-        if Fields.NAME in product_data:
-            product_data[Fields.NAME] = sanitized_text(product_data[Fields.NAME])
-        if Fields.DESCRIPTION in product_data:
-            product_data[Fields.DESCRIPTION] = sanitized_text(product_data[Fields.DESCRIPTION])
-        index_product(product_id, product_data)
-        logger.info(f"Product {product_id} indexed to Algolia")
+        get_db().collection(Collections.PRODUCTS).document(product_id).update(
+            {
+                Fields.IS_ACTIVE: False,
+                Fields.APPROVAL_STATUS: ProductApprovalStatusValues.UNDER_REVIEW,
+            }
+        )
+        logger.info(f"Product {product_id} set to under_review — awaiting admin approval")
     except Exception as e:
-        logger.error(f"Failed to index product {product_id}: {str(e)}")
+        logger.error(f"Failed to set approval status for {product_id}: {e}")
+
+    # ── NOTIFY ALL ADMINS ──
+    try:
+        _notify_admins_new_product(product_id, product_data)
+    except Exception as e:
+        logger.error(f"Failed to notify admins of new product {product_id}: {e}")
 
 
-@firestore_fn.on_document_updated(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)
+# ─────────────────────────────────────────────────────────────────────────────
+# HELPERS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _notify_admins_new_product(product_id: str, product_data: dict) -> None:
+    """Email all admin users when a product is submitted for review."""
+    from services.email_service import send_email
+
+    product_name = product_data.get(Fields.NAME, "Unknown Product")
+    seller_id = product_data.get(Fields.SELLER_ID, "unknown")
+    is_digital = product_data.get(Fields.IS_DIGITAL, False)
+    digital_type = product_data.get(Fields.DIGITAL_TYPE, "")
+    price = product_data.get(Fields.PRICE, 0)
+    product_type_label = f"Digital ({digital_type})" if is_digital else "Physical"
+
+    # Fetch all admin users
+    admin_docs = (
+        get_db()
+        .collection(Collections.USERS)
+        .where(Fields.ROLES, "array-contains", UserRoleValues.ADMIN)
+        .get()
+    )
+
+    subject = f"[Origna] New Product Pending Review: {product_name}"
+    for admin_doc in admin_docs:
+        admin_data = admin_doc.to_dict() or {}
+        admin_email = admin_data.get(Fields.EMAIL)
+        if not admin_email:
+            continue
+        html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #5B30F6;">New Product Pending Review</h2>
+  <table style="width:100%; border-collapse:collapse;">
+    <tr><td style="padding:6px 0; color:#666; width:140px;">Product Name</td><td style="font-weight:bold;">{product_name}</td></tr>
+    <tr><td style="padding:6px 0; color:#666;">Product ID</td><td><code>{product_id}</code></td></tr>
+    <tr><td style="padding:6px 0; color:#666;">Seller ID</td><td><code>{seller_id}</code></td></tr>
+    <tr><td style="padding:6px 0; color:#666;">Type</td><td>{product_type_label}</td></tr>
+    <tr><td style="padding:6px 0; color:#666;">Price</td><td>CAD ${price:.2f}</td></tr>
+  </table>
+  <p style="margin-top:20px;">
+    <a href="https://orignagta.ca/admin" style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
+      Review in Admin Panel
+    </a>
+  </p>
+  <p style="color:#999; font-size:12px; margin-top:20px;">Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}</p>
+</div>"""
+        send_email(admin_email, subject, html)
+        logger.info(f"Admin notification sent to {admin_email} for product {product_id}")
+
+
+def _send_product_approval_email(seller_email: str, product_name: str, product_id: str) -> None:
+    """Notify seller that their product has been approved and is now live."""
+    from services.email_service import send_email
+
+    html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #22C55E;">🎉 Your Product is Live!</h2>
+  <p>Good news! Your product <strong>{product_name}</strong> has been reviewed and approved by our team.</p>
+  <p>It is now visible to buyers on Origna GTA.</p>
+  <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+    <tr><td style="padding:6px 0; color:#666; width:140px;">Product</td><td style="font-weight:bold;">{product_name}</td></tr>
+    <tr><td style="padding:6px 0; color:#666;">Status</td><td style="color:#22C55E; font-weight:bold;">✅ Approved &amp; Live</td></tr>
+  </table>
+  <p>Thank you for selling on Origna GTA!</p>
+  <p style="color:#999; font-size:12px; margin-top:20px;">Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}</p>
+</div>"""
+    send_email(seller_email, f"✅ Your product is live: {product_name}", html)
+
+
+def _send_product_rejection_email(seller_email: str, product_name: str, reason: str) -> None:
+    """Notify seller that their product has been rejected with the reason."""
+    from services.email_service import send_email
+
+    html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #EF4444;">Product Review Update</h2>
+  <p>Unfortunately, your product <strong>{product_name}</strong> could not be approved at this time.</p>
+  <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+    <tr><td style="padding:6px 0; color:#666; width:140px;">Product</td><td style="font-weight:bold;">{product_name}</td></tr>
+    <tr><td style="padding:6px 0; color:#666;">Status</td><td style="color:#EF4444; font-weight:bold;">❌ Rejected</td></tr>
+    <tr><td style="padding:6px 0; color:#666; vertical-align:top;">Reason</td><td>{reason}</td></tr>
+  </table>
+  <p>You can edit your product to address the issue and resubmit it for review.</p>
+  <p>If you have questions, contact us at <a href="mailto:{EmailConfig.SUPPORT_EMAIL}">{EmailConfig.SUPPORT_EMAIL}</a>.</p>
+  <p style="color:#999; font-size:12px; margin-top:20px;">Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}</p>
+</div>"""
+    send_email(seller_email, f"Product review update: {product_name}", html)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ADMIN CALLABLES
+# ─────────────────────────────────────────────────────────────────────────────
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Admin-only: Approve a product. Sets approvalStatus=approved, isActive=True,
+    and indexes it to Algolia so buyers can discover it.
+
+    Request data:
+        productId: str
+
+    Returns:
+        {success: True, message: "Product approved"}
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    user_doc = get_db().collection(Collections.USERS).document(user_id).get()
+    if not user_doc.exists:
+        raise https_fn.HttpsError("not-found", "User not found")
+    user_data = user_doc.to_dict() or {}
+    if UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
+        raise https_fn.HttpsError("permission-denied", "Admin role required")
+
+    product_id = req.data.get(Fields.PRODUCT_ID)
+    if not product_id:
+        raise https_fn.HttpsError("invalid-argument", "productId required")
+
+    product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+    product_doc = product_ref.get()
+    if not product_doc.exists:
+        raise https_fn.HttpsError("not-found", "Product not found")
+
+    product_data = product_doc.to_dict() or {}
+
+    # Validate digital URLs via HEAD request before approving
+    is_digital = product_data.get(Fields.IS_DIGITAL, False)
+    if is_digital:
+        dead_urls = _check_digital_url_reachability(product_id, product_data)
+        if dead_urls:
+            seller_email = _get_seller_email(product_data.get(Fields.SELLER_ID))
+            reason = f"Download URL(s) unreachable: {', '.join(dead_urls)}"
+            product_ref.update(
+                {
+                    Fields.APPROVAL_STATUS: ProductApprovalStatusValues.REJECTED,
+                    Fields.APPROVAL_REJECTION_REASON: reason,
+                    Fields.IS_ACTIVE: False,
+                }
+            )
+            if seller_email:
+                _send_product_rejection_email(seller_email, product_data.get(Fields.NAME, ""), reason)
+            return create_success_response(
+                {"approved": False, "rejected": True, "reason": reason},
+                message=f"Product auto-rejected: {reason}",
+            )
+
+    # Approve
+    product_ref.update(
+        {
+            Fields.APPROVAL_STATUS: ProductApprovalStatusValues.APPROVED,
+            Fields.APPROVAL_REJECTION_REASON: None,
+            Fields.IS_ACTIVE: True,
+        }
+    )
+
+    # Index to Algolia now that it's approved
+    try:
+        product_data.update(
+            {
+                "id": product_id,
+                Fields.IS_ACTIVE: True,
+                Fields.APPROVAL_STATUS: ProductApprovalStatusValues.APPROVED,
+            }
+        )
+        index_product(product_id, product_data)
+        logger.info(f"Product {product_id} indexed to Algolia after admin approval")
+    except Exception as e:
+        logger.error(f"Algolia indexing failed after approval for {product_id}: {e}")
+
+    # Email seller
+    seller_email = _get_seller_email(product_data.get(Fields.SELLER_ID))
+    if seller_email:
+        try:
+            _send_product_approval_email(seller_email, product_data.get(Fields.NAME, ""), product_id)
+        except Exception as e:
+            logger.error(f"Failed to send approval email for {product_id}: {e}")
+
+    logger.info(f"Admin {user_id} approved product {product_id}")
+    return create_success_response({}, message="Product approved and now live")
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def admin_reject_product(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Admin-only: Reject a product with a mandatory reason.
+    Sets approvalStatus=rejected, isActive=False, stores reason, emails seller.
+
+    Request data:
+        productId: str
+        reason: str  — mandatory rejection reason shown to seller
+
+    Returns:
+        {success: True, message: "Product rejected"}
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    user_doc = get_db().collection(Collections.USERS).document(user_id).get()
+    if not user_doc.exists:
+        raise https_fn.HttpsError("not-found", "User not found")
+    user_data = user_doc.to_dict() or {}
+    if UserRoleValues.ADMIN not in user_data.get(Fields.ROLES, []):
+        raise https_fn.HttpsError("permission-denied", "Admin role required")
+
+    product_id = req.data.get(Fields.PRODUCT_ID)
+    reason = (req.data.get("reason") or "").strip()
+    if not product_id:
+        raise https_fn.HttpsError("invalid-argument", "productId required")
+    if not reason:
+        raise https_fn.HttpsError("invalid-argument", "reason required for rejection")
+    if len(reason) > 1000:
+        raise https_fn.HttpsError("invalid-argument", "reason must be ≤ 1000 characters")
+
+    product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
+    product_doc = product_ref.get()
+    if not product_doc.exists:
+        raise https_fn.HttpsError("not-found", "Product not found")
+
+    product_data = product_doc.to_dict() or {}
+    product_name = product_data.get(Fields.NAME, "")
+
+    product_ref.update(
+        {
+            Fields.APPROVAL_STATUS: ProductApprovalStatusValues.REJECTED,
+            Fields.APPROVAL_REJECTION_REASON: reason,
+            Fields.IS_ACTIVE: False,
+        }
+    )
+
+    # Remove from Algolia if it was previously approved
+    try:
+        algolia_delete_product(product_id)
+    except Exception:
+        pass
+
+    # Email seller
+    seller_email = _get_seller_email(product_data.get(Fields.SELLER_ID))
+    if seller_email:
+        try:
+            _send_product_rejection_email(seller_email, product_name, reason)
+        except Exception as e:
+            logger.error(f"Failed to send rejection email for {product_id}: {e}")
+
+    logger.info(f"Admin {user_id} rejected product {product_id}: {reason}")
+    return create_success_response({}, message="Product rejected")
+
+
+def _get_seller_email(seller_id: str | None) -> str | None:
+    """Fetch seller email from Firestore users collection."""
+    if not seller_id:
+        return None
+    try:
+        doc = get_db().collection(Collections.USERS).document(seller_id).get()
+        return (doc.to_dict() or {}).get(Fields.EMAIL)
+    except Exception:
+        return None
+
+
+def _check_digital_url_reachability(product_id: str, product_data: dict) -> list[str]:
+    """HEAD-check all digital download URLs. Returns list of unreachable URL labels."""
+    dead = []
+    urls_to_check: list[tuple[str, str]] = []
+
+    book_url = product_data.get(Fields.BOOK_SOURCE_URL)
+    if book_url:
+        urls_to_check.append(("bookSourceUrl", book_url))
+
+    builds = product_data.get(Fields.DIGITAL_BUILDS) or {}
+    for platform, url in builds.items():
+        if url:
+            urls_to_check.append((f"digitalBuilds.{platform}", url))
+
+    for label, url in urls_to_check:
+        try:
+            resp = requests.head(url, timeout=10, allow_redirects=True, headers={"User-Agent": "OrignaBot/1.0"})
+            if resp.status_code >= 400:
+                logger.warning(f"Digital URL check: {label} returned {resp.status_code} for product {product_id}")
+                dead.append(label)
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Digital URL check: {label} unreachable for product {product_id}: {e}")
+            dead.append(label)
+
+    return dead
 def on_product_updated(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Updates product in Algolia when modified.
@@ -875,6 +1191,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     _SKIP_VALIDATION_FIELDS = {
         Fields.STOCK_QUANTITY, Fields.UPDATED_AT, Fields.STOCK_RESTORED,
         Fields.IS_ACTIVE, Fields.DEACTIVATION_REASON,
+        Fields.APPROVAL_STATUS, Fields.APPROVAL_REJECTION_REASON,
     }
     _address_changed = False
     if before_data:
@@ -882,6 +1199,35 @@ def on_product_updated(event: firestore_fn.Event) -> None:
             key for key in set(list(product_data.keys()) + list(before_data.keys()))
             if product_data.get(key) != before_data.get(key)
         }
+
+        # ── RESUBMIT: Seller edited a rejected product — reset to under_review ──
+        _SELLER_EDITABLE_FIELDS = {
+            Fields.NAME, Fields.DESCRIPTION, Fields.PRICE, Fields.IMAGE_URLS,
+            Fields.CATEGORY_ID, Fields.KEYWORDS, Fields.DIGITAL_BUILDS,
+            Fields.BOOK_SOURCE_URL, Fields.STOCK_QUANTITY, Fields.DIGITAL_TYPE,
+        }
+        before_approval = before_data.get(Fields.APPROVAL_STATUS)
+        after_approval = product_data.get(Fields.APPROVAL_STATUS)
+        if (
+            before_approval == ProductApprovalStatusValues.REJECTED
+            and after_approval == ProductApprovalStatusValues.REJECTED
+            and changed_fields & _SELLER_EDITABLE_FIELDS
+        ):
+            logger.info(f"Product {product_id}: rejected product edited by seller — resetting to under_review")
+            get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                {
+                    Fields.APPROVAL_STATUS: ProductApprovalStatusValues.UNDER_REVIEW,
+                    Fields.APPROVAL_REJECTION_REASON: None,
+                    Fields.IS_ACTIVE: False,
+                }
+            )
+            # Notify admins of the resubmission
+            try:
+                _notify_admins_new_product(product_id, product_data)
+            except Exception as e:
+                logger.error(f"Failed to notify admins of resubmission for {product_id}: {e}")
+            return
+
         if changed_fields and changed_fields.issubset(_SKIP_VALIDATION_FIELDS):
             # Non-security-relevant update — just re-index and return
             if product_data.get(Fields.IS_ACTIVE, True):
@@ -1000,10 +1346,15 @@ def on_product_updated(event: firestore_fn.Event) -> None:
 
     try:
         product_data["id"] = product_id
-        index_product(product_id, product_data)
-        logger.info(f"Product {product_id} updated in Algolia")
+        # Only index if product is approved — prevents bypassing the approval gate
+        approval_status = product_data.get(Fields.APPROVAL_STATUS, ProductApprovalStatusValues.UNDER_REVIEW)
+        if approval_status == ProductApprovalStatusValues.APPROVED and product_data.get(Fields.IS_ACTIVE, True):
+            index_product(product_id, product_data)
+            logger.info(f"Product {product_id} updated in Algolia")
+        else:
+            logger.info(f"Product {product_id} not indexed — approvalStatus={approval_status}")
     except Exception as e:
-        logger.error(f"Failed to update product {product_id} in Algolia: {str(e)}")
+        logger.error(f"Failed to update product {product_id} in Algolia: {str(e)}") 
 
 
 @firestore_fn.on_document_deleted(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)

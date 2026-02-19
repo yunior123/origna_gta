@@ -28,6 +28,7 @@ import 'package:origna_gta/screens/payment_screens.dart';
 import 'package:origna_gta/screens/privacy_policy_screen.dart' deferred as privacy;
 import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:origna_gta/screens/profile_screen.dart';
+import 'package:origna_gta/screens/seller_integration_screen.dart' deferred as seller_integration;
 import 'package:origna_gta/screens/seller_orders_screen.dart' deferred as seller_orders;
 import 'package:origna_gta/screens/seller_registration_screen.dart' deferred as seller_reg;
 import 'package:origna_gta/screens/seller_setup_screen.dart';
@@ -45,6 +46,20 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   final uri = Uri.tryParse(initialRoute);
   if (kDebugMode && uri != null) {
     debugPrint('🔗 Parsed path: ${uri.path}');
+  }
+
+  // Handle product by slug deep link (/p/{slug})
+  if (uri != null && uri.path.startsWith('${AppRoutes.productBySlug}/')) {
+    final slug = uri.path.substring('${AppRoutes.productBySlug}/'.length);
+    if (slug.isNotEmpty) {
+      return [
+        MaterialPageRoute(builder: (_) => const AuthWrapper()),
+        MaterialPageRoute(
+          settings: RouteSettings(name: initialRoute),
+          builder: (_) => _ProductBySlugScreen(slug: slug),
+        ),
+      ];
+    }
   }
 
   // Handle payment success redirect from Stripe
@@ -336,6 +351,14 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return MaterialPageRoute(
       settings: settings,
       builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: seller_orders.loadLibrary, builder: () => seller_orders.SellerOrdersScreen())),
+    );
+  }
+
+  // Seller Integration Guide
+  if (uri.path == AppRoutes.sellerIntegration) {
+    return MaterialPageRoute(
+      settings: settings,
+      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: seller_integration.loadLibrary, builder: () => seller_integration.SellerIntegrationScreen())),
     );
   }
 

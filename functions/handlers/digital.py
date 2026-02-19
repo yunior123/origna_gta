@@ -344,6 +344,143 @@ def get_book_redirect(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response("Internal error", status=500)
 
 
+def _generate_software_download_session_impl(license_key: str, platform: str, caller_uid: str) -> dict:
+    """Create a 15-min single-use redirect token for a software build.
+    The actual download URL (from digitalBuilds) is never sent to the client.
+    Returns { downloadUrl } pointing to /sdl?t={token}.
+    """
+    if not _LICENSE_KEY_RE.match(license_key):
+        raise ValueError("invalid_key_format")
+
+    db = get_db()
+    lic_doc = db.collection(Collections.LICENSES).document(license_key).get()
+    if not lic_doc.exists:
+        raise ValueError("not_found")
+
+    lic = lic_doc.to_dict()
+    if lic.get(Fields.USER_ID) != caller_uid:
+        raise ValueError("unauthorized")
+    if lic.get(Fields.STATUS) != LicenseStatusValues.ACTIVE:
+        raise ValueError("revoked")
+    if lic.get(Fields.DIGITAL_TYPE) != DigitalTypeValues.SOFTWARE:
+        raise ValueError("not_a_software_license")
+
+    builds = lic.get(Fields.DIGITAL_BUILDS) or {}
+    if platform not in builds:
+        raise ValueError("platform_not_supported")
+
+    download_url = builds[platform]
+
+    token = "tok_" + secrets.token_hex(32)
+    now = datetime.now(timezone.utc)
+    token_doc = {
+        Fields.ACCESS_TOKEN: token,
+        Fields.LICENSE_KEY: license_key,
+        Fields.USER_ID: caller_uid,
+        Fields.PRODUCT_ID: lic.get(Fields.PRODUCT_ID),
+        "platform": platform,
+        "downloadUrl": download_url,        # stored server-side only
+        "expiresAt": now + timedelta(minutes=15),
+        "used": False,
+        Fields.CREATED_AT: now,
+    }
+    db.collection(Collections.SOFTWARE_ACCESS_TOKENS).document(token).set(token_doc)
+
+    return {"downloadUrl": f"{APP_BASE_URL}/sdl?t={token}"}
+
+
+def _get_software_redirect_impl(token: str) -> str:
+    """Validate token, mark used, return the seller's download URL for redirect.
+    Raises ValueError with error code on any failure.
+    """
+    db = get_db()
+    token_ref = db.collection(Collections.SOFTWARE_ACCESS_TOKENS).document(token)
+    doc = token_ref.get()
+
+    if not doc.exists:
+        raise ValueError("not_found")
+
+    data = doc.to_dict()
+    if data.get("used"):
+        raise ValueError("already_used")
+
+    expires_at = data.get("expiresAt")
+    now = datetime.now(timezone.utc)
+    if hasattr(expires_at, "tzinfo"):
+        expires_dt = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=timezone.utc)
+    else:
+        expires_dt = expires_at
+    if expires_dt < now:
+        raise ValueError("expired")
+
+    token_ref.update({"used": True, "usedAt": now})
+
+    url = data.get("downloadUrl", "")
+    if not url:
+        raise ValueError("missing_source_url")
+    return url
+
+
+@https_fn.on_call()
+def generate_software_download_session(req: https_fn.CallableRequest) -> dict:
+    """Authenticated: generates a 15-min single-use redirect token for a software build.
+    Request: { licenseKey: string, platform: "macos"|"windows"|"linux" }
+    Response: { downloadUrl: string }  — points to /sdl?t={token}
+    The seller's actual download URL is never sent to the client.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "Login required")
+
+    license_key = str(req.data.get("licenseKey", "")).strip().upper()
+    platform = str(req.data.get("platform", "")).strip().lower()
+    if not license_key or not platform:
+        raise https_fn.HttpsError("invalid-argument", "licenseKey and platform required")
+
+    try:
+        return _generate_software_download_session_impl(license_key, platform, req.auth.uid)
+    except ValueError as e:
+        code = str(e)
+        error_map = {
+            "not_found": ("not-found", "License not found"),
+            "unauthorized": ("permission-denied", "Not your license"),
+            "revoked": ("failed-precondition", "License revoked"),
+            "not_a_software_license": ("failed-precondition", "Not a software license"),
+            "platform_not_supported": ("failed-precondition", "Platform not available for this license"),
+        }
+        fn_code, msg = error_map.get(code, ("invalid-argument", code))
+        raise https_fn.HttpsError(fn_code, msg)
+
+
+@https_fn.on_request()
+def get_software_redirect(req: https_fn.Request) -> https_fn.Response:
+    """GET /sdl?t={token} — public redirect, no auth.
+    Single-use, 15-min expiry. Seller's download URL never exposed to client.
+    """
+    token = req.args.get("t", "").strip()
+    if not token:
+        return https_fn.Response("Missing token", status=400)
+
+    try:
+        url = _get_software_redirect_impl(token)
+        return https_fn.Response(
+            "",
+            status=302,
+            headers={"Location": url, "Cache-Control": "no-store, no-cache"},
+        )
+    except ValueError as e:
+        code = str(e)
+        messages = {
+            "not_found": "Download link not found.",
+            "already_used": "This download link has already been used. Return to the app to generate a new one.",
+            "expired": "This download link has expired. Return to the app to generate a new one.",
+        }
+        msg = messages.get(code, "Invalid request.")
+        return https_fn.Response(msg, status=410)
+    except Exception:
+        logger.exception("get_software_redirect unexpected error")
+        return https_fn.Response("Internal error", status=500)
+
+
 @https_fn.on_request(cors=True)
 def verify_license(req: https_fn.Request) -> https_fn.Response:
     """POST /verify_license — no auth. App periodically re-verifies license.

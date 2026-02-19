@@ -20,10 +20,12 @@ from schema_constants import (
     Collections,
     CronLockStatusValues,
     DeliveryStatusValues,
+    EmailConfig,
     Fields,
     OrderStatusValues,
     PaymentStatusValues,
     PayoutStatusValues,
+    ProductApprovalStatusValues,
     SecurityAlertTypes,
     SeverityLevels,
 )
@@ -996,3 +998,79 @@ def retry_failed_algolia_syncs(event: scheduler_fn.ScheduledEvent) -> None:
             logger.warning(f"Algolia retry failed for {product_id}: {type(e).__name__}")
 
     logger.info(f"Algolia DLQ retry completed: {retried} retried, {resolved} resolved")
+
+
+@scheduler_fn.on_schedule(schedule="every 168 hours", **CRON_OPTIONS)  # weekly
+def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    Weekly: HEAD-check all approved digital product download URLs.
+    If a URL is unreachable, deactivate the product and notify the seller.
+    This catches URLs that go dead after approval.
+    """
+    import requests
+    from handlers.products import _get_seller_email, _send_product_rejection_email
+
+    logger.info("Starting weekly digital product URL revalidation")
+    checked = 0
+    deactivated = 0
+
+    products = (
+        get_db()
+        .collection(Collections.PRODUCTS)
+        .where(Fields.IS_DIGITAL, "==", True)
+        .where(Fields.APPROVAL_STATUS, "==", ProductApprovalStatusValues.APPROVED)
+        .where(Fields.IS_ACTIVE, "==", True)
+        .stream()
+    )
+
+    for doc in products:
+        product_data = doc.to_dict() or {}
+        product_id = doc.id
+        checked += 1
+
+        urls_to_check: list[tuple[str, str]] = []
+        book_url = product_data.get(Fields.BOOK_SOURCE_URL)
+        if book_url:
+            urls_to_check.append(("bookSourceUrl", book_url))
+        builds = product_data.get(Fields.DIGITAL_BUILDS) or {}
+        for platform, url in builds.items():
+            if url:
+                urls_to_check.append((f"digitalBuilds.{platform}", url))
+
+        dead = []
+        for label, url in urls_to_check:
+            try:
+                resp = requests.head(url, timeout=10, allow_redirects=True, headers={"User-Agent": "OrignaBot/1.0"})
+                if resp.status_code >= 400:
+                    dead.append(label)
+            except requests.exceptions.RequestException:
+                dead.append(label)
+
+        if dead:
+            reason = f"Download URL(s) became unreachable: {', '.join(dead)}"
+            doc.reference.update(
+                {
+                    Fields.IS_ACTIVE: False,
+                    Fields.APPROVAL_STATUS: ProductApprovalStatusValues.UNDER_REVIEW,
+                    Fields.APPROVAL_REJECTION_REASON: reason,
+                }
+            )
+            # Remove from Algolia
+            try:
+                from services.algolia_service import delete_product as algolia_delete
+                algolia_delete(product_id)
+            except Exception:
+                pass
+
+            # Notify seller
+            seller_email = _get_seller_email(product_data.get(Fields.SELLER_ID))
+            if seller_email:
+                try:
+                    _send_product_rejection_email(seller_email, product_data.get(Fields.NAME, ""), reason)
+                except Exception as e:
+                    logger.error(f"Failed to email seller for dead URL on {product_id}: {e}")
+
+            deactivated += 1
+            logger.warning(f"Deactivated product {product_id} — dead URLs: {dead}")
+
+    logger.info(f"Digital URL revalidation done: {checked} checked, {deactivated} deactivated")

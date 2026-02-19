@@ -122,11 +122,14 @@ abstract class Product with _$Product {
     @Default(null) String? digitalType,
     @Default(null) String? slug,
     @Default(null) Map<String, String>? digitalBuilds,
-    // bookSourceUrl intentionally NOT included — server-side only, never sent to client
+    // bookSourceUrl intentionally NOT included — buyer-protected: written by seller, never returned to client
     @Default(null) int? deviceLimit,
     // Tax and metadata
     String? taxCode,
     @Default([]) List<String> keywords,
+    // Admin approval — all products start under_review, go live only when approved
+    @Default(ProductApprovalStatusValues.underReview) String approvalStatus,
+    @Default(null) String? approvalRejectionReason,
     // Flat supplier fields (used when supplier object is not provided)
     double? cost,
     String? supplierSku,
@@ -190,10 +193,11 @@ abstract class ProductCreate with _$ProductCreate {
     @Default(null) String? digitalType,
     @Default(null) String? slug,
     @Default(null) Map<String, String>? digitalBuilds,
-    // bookSourceUrl intentionally NOT included — server-side only, never sent to client
+    // bookSourceUrl intentionally NOT included — buyer-protected: written by seller, never returned to client
     @Default(null) int? deviceLimit,
     String? taxCode,
     @Default([]) List<String> keywords,
+    // approvalStatus intentionally not in ProductCreate — backend sets it to under_review on creation
     // Flat supplier fields (used when supplier object is not provided)
     double? cost,
     String? supplierSku,

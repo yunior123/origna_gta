@@ -1776,15 +1776,25 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         key: const Key('addproduct_success_snackbar'),
         content: Row(
           children: [
-            Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            Icon(Icons.hourglass_top_rounded, color: Colors.white, size: 20),
             SizedBox(width: 10),
-            Text('product.published_success'.tr(), style: TextStyle(fontWeight: FontWeight.w600)),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('product.under_review_title'.tr(), style: TextStyle(fontWeight: FontWeight.w700)),
+                  Text('product.under_review_subtitle'.tr(), style: TextStyle(fontSize: 12, color: Colors.white70)),
+                ],
+              ),
+            ),
           ],
         ),
-        backgroundColor: DesignTokens.success,
+        backgroundColor: const Color(0xFFF59E0B),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 5),
       ),
     );
     Navigator.pop(context);

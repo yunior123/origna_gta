@@ -12,6 +12,7 @@ from schema_constants import (
     DeliveryTypeValues,
     DiscountTypeValues,
     Fields,
+    ProductApprovalStatusValues,
     ProductStatusValues,
     SupplierCurrencyValues,
 )
@@ -276,6 +277,17 @@ class Product(BaseModel):
     # Tax and metadata
     taxCode: str | None = Field(default=None, description="Tax code override for specific products")
     keywords: list[str] = Field(default_factory=list, description="Search keywords for Algolia")
+
+    # Admin approval — all products start under_review, go live only when approved
+    approvalStatus: str = Field(
+        default=ProductApprovalStatusValues.UNDER_REVIEW,
+        description="Admin approval status: under_review | approved | rejected",
+    )
+    approvalRejectionReason: str | None = Field(
+        default=None,
+        max_length=1000,
+        description="Admin rejection reason (only set when approvalStatus=rejected)",
+    )
 
     # NEW: Structured objects for scalability
     supplier: SupplierInfo | None = Field(

@@ -95,6 +95,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  _buildApprovalStatusBanner(),
                   _buildSectionTitle('product.basic_information'.tr()),
                   TextFormField(
                     key: const Key('product_edit_name_field'),
@@ -609,6 +610,60 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildApprovalStatusBanner() {
+    final status = widget.product.approvalStatus;
+    final reason = widget.product.approvalRejectionReason;
+    if (status == ProductApprovalStatusValues.approved) return const SizedBox.shrink();
+
+    Color bgColor;
+    Color textColor;
+    IconData icon;
+    String title;
+    String? subtitle;
+
+    if (status == ProductApprovalStatusValues.rejected) {
+      bgColor = const Color(0xFFFEE2E2);
+      textColor = const Color(0xFFDC2626);
+      icon = Icons.cancel_rounded;
+      title = 'product.approval_rejected_title'.tr();
+      subtitle = reason ?? 'product.approval_rejected_generic'.tr();
+    } else {
+      bgColor = const Color(0xFFFEF3C7);
+      textColor = const Color(0xFFB45309);
+      icon = Icons.hourglass_top_rounded;
+      title = 'product.under_review_title'.tr();
+      subtitle = 'product.under_review_edit_note'.tr();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: textColor, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: textColor, fontSize: 13)),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: TextStyle(color: textColor, fontSize: 12)),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

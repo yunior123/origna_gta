@@ -53,6 +53,7 @@ class Collections:
     FAVORITES = "favorites"  # users/{userId}/favorites
     LICENSES = "licenses"
     BOOK_ACCESS_TOKENS = "book_access_tokens"
+    SOFTWARE_ACCESS_TOKENS = "software_access_tokens"
 
 
 class Documents:
@@ -233,6 +234,8 @@ class Fields:
     KEYWORDS = "keywords"
     SEARCH_KEYWORDS = "searchKeywords"
     IS_ACTIVE = "isActive"
+    APPROVAL_STATUS = "approvalStatus"
+    APPROVAL_REJECTION_REASON = "approvalRejectionReason"
     IS_DIGITAL = "isDigital"
     # Digital product extended fields
     DIGITAL_TYPE = "digitalType"
@@ -688,6 +691,20 @@ class ProductStatusValues:
     OUT_OF_STOCK = "out_of_stock"
 
     ALL: frozenset[str] = frozenset({DRAFT, ACTIVE, PAUSED, ARCHIVED, OUT_OF_STOCK})
+
+
+class ProductApprovalStatusValues:
+    """Valid values for product approvalStatus field.
+
+    All new products land in UNDER_REVIEW until an admin explicitly approves them.
+    Only APPROVED products are marked isActive=True and indexed in Algolia.
+    """
+
+    UNDER_REVIEW = "under_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+    ALL: frozenset[str] = frozenset({UNDER_REVIEW, APPROVED, REJECTED})
 
 
 class ShippingApprovalStatusValues:

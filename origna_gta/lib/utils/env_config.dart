@@ -73,6 +73,20 @@ class EnvConfig {
   bool get isStaging => environment == AppEnvironment.staging;
   bool get isProduction => environment == AppEnvironment.production;
 
+  /// Get the base URL for the current environment
+  String get baseUrl {
+    switch (environment) {
+      case AppEnvironment.emulator:
+        return 'http://localhost:5005';
+      case AppEnvironment.dev:
+        return 'https://orignagta-dev.web.app';
+      case AppEnvironment.staging:
+        return 'https://orignagta-staging.web.app';
+      case AppEnvironment.production:
+        return 'https://orignagta.ca';
+    }
+  }
+
   /// Whether we are running in an integration test environment
   bool get isTest => const bool.fromEnvironment('IS_TEST', defaultValue: false);
 

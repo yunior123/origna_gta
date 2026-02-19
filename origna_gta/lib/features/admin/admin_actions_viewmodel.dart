@@ -27,6 +27,30 @@ class AdminActionsViewModel extends StateNotifier<AdminActionsState> {
 
   AdminRepository get _repository => _ref.read(adminRepositoryProvider);
 
+  Future<bool> approveProduct(String productId) async {
+    state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
+    try {
+      await _repository.approveProduct(productId);
+      state = state.copyWith(isLoading: false, isSuccess: true);
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to approve product'));
+      return false;
+    }
+  }
+
+  Future<bool> rejectProduct(String productId, String reason) async {
+    state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
+    try {
+      await _repository.rejectProduct(productId, reason);
+      state = state.copyWith(isLoading: false, isSuccess: true);
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to reject product'));
+      return false;
+    }
+  }
+
   Future<bool> deleteProduct(String productId) async {
     state = state.copyWith(isLoading: true, isSuccess: false, errorMessage: null);
     try {

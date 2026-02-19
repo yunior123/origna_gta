@@ -427,6 +427,17 @@
           "default": true,
           "description": "Soft delete flag for product visibility"
         },
+        "approvalStatus": {
+          "type": "string",
+          "enum": ["under_review", "approved", "rejected"],
+          "default": "under_review",
+          "description": "Admin approval gate: all products start under_review, go live only when approved"
+        },
+        "approvalRejectionReason": {
+          "type": "string",
+          "required": false,
+          "description": "Admin rejection reason (set only when approvalStatus=rejected)"
+        },
         "deletedAt": {
           "type": "timestamp",
           "required": false,

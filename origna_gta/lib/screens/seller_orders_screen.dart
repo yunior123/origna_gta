@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
 import 'package:origna_gta/features/orders/seller_orders_viewmodel.dart';
@@ -83,9 +84,19 @@ class SellerOrdersScreen extends ConsumerWidget {
       ),
       child: Scaffold(
         key: const Key('seller_orders_screen_title'),
-        appBar: AppBarFactory.simple(title: 'seller.manage_orders'.tr()),
+        appBar: AppBarFactory.custom(
+          title: 'seller.manage_orders'.tr(),
+          actions: [
+            Tooltip(
+              message: 'Integration Guide',
+              child: IconButton(
+                icon: const Icon(Icons.integration_instructions_outlined),
+                onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerIntegration),
+              ),
+            ),
+          ],
+        ),
         backgroundColor: Colors.transparent,
-        body: ordersAsync.when(
           loading: () => Center(
             child: Container(
               padding: const EdgeInsets.all(16),

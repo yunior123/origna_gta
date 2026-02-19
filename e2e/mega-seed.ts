@@ -258,6 +258,12 @@ interface SeedProduct {
   estimatedShipDays: number;
   weightKg: number;
   deliveryOptions: any[];
+  // Digital-only fields (optional)
+  digitalType?: 'software' | 'book';
+  digitalBuilds?: { macos?: string; windows?: string; linux?: string };
+  bookSourceUrl?: string;
+  supportedPlatforms?: string[];
+  deviceLimit?: number | null;
 }
 
 const PRODUCTS: SeedProduct[] = [
@@ -277,7 +283,7 @@ const PRODUCTS: SeedProduct[] = [
   { id: 'product_009', name: 'Wireless Bluetooth Earbuds Pro', price: 79.99, description: 'ANC earbuds with 30hr battery life. IPX5 waterproof.', categoryId: 1, stockQuantity: 45, sellerEmail: 'seller3@test.origna.ca', imageUrls: ['https://picsum.photos/seed/earbuds/400/400'], keywords: ['earbuds','bluetooth','wireless'], freeShipping: false, isDigital: false, isLocalDeliveryOnly: false, isPerishable: false, estimatedShipDays: 2, weightKg: 0.1, deliveryOptions: [{ speed: 'standard', isEnabled: true, estimatedDays: 4, price: 0 }] },
 
   // ── Seller 4 (ON) ──────────────────
-  { id: 'product_010', name: 'Canadian History eBook Bundle', price: 14.99, description: 'Digital collection of 5 eBooks covering Canadian history.', categoryId: 5, stockQuantity: 999, sellerEmail: 'seller4@test.origna.ca', imageUrls: ['https://picsum.photos/seed/ebook/400/400'], keywords: ['ebook','history','digital'], freeShipping: true, isDigital: true, isLocalDeliveryOnly: false, isPerishable: false, estimatedShipDays: 0, weightKg: 0, deliveryOptions: [] },
+  { id: 'product_010', name: 'Canadian History eBook Bundle', price: 14.99, description: 'Digital collection of 5 eBooks covering Canadian history.', categoryId: 5, stockQuantity: 999, sellerEmail: 'seller4@test.origna.ca', imageUrls: ['https://picsum.photos/seed/ebook/400/400'], keywords: ['ebook','history','digital'], freeShipping: true, isDigital: true, isLocalDeliveryOnly: false, isPerishable: false, estimatedShipDays: 0, weightKg: 0, deliveryOptions: [], digitalType: 'book', bookSourceUrl: 'https://r2.origna.com/emulator/books/canadian-history-bundle.pdf', deviceLimit: null },
   { id: 'product_011', name: 'Ottawa Parliament Puzzle 1000pc', price: 39.99, description: '1000-piece jigsaw puzzle. Made in Canada.', categoryId: 6, stockQuantity: 35, sellerEmail: 'seller4@test.origna.ca', imageUrls: ['https://picsum.photos/seed/puzzle/400/400'], keywords: ['puzzle','ottawa','game'], freeShipping: false, isDigital: false, isLocalDeliveryOnly: false, isPerishable: false, estimatedShipDays: 3, weightKg: 0.8, deliveryOptions: [{ speed: 'standard', isEnabled: true, estimatedDays: 5, price: 0 }] },
   { id: 'product_012', name: 'Organic Maple Syrup (1L)', price: 22.50, description: 'Grade A amber organic maple syrup from Eastern Ontario.', categoryId: 19, stockQuantity: 80, sellerEmail: 'seller4@test.origna.ca', imageUrls: ['https://picsum.photos/seed/maple/400/400'], keywords: ['maple','syrup','organic'], freeShipping: false, isDigital: false, isLocalDeliveryOnly: false, isPerishable: false, estimatedShipDays: 3, weightKg: 1.1, deliveryOptions: [{ speed: 'standard', isEnabled: true, estimatedDays: 5, price: 0 }] },
 
@@ -305,7 +311,8 @@ const PRODUCTS: SeedProduct[] = [
   // ── SPECIAL PRODUCTS for edge-case testing ──────────────────
   { id: 'product_024', name: 'Budget Sticker Pack', price: 1.99, description: 'Minimum-price sticker pack for edge-case testing.', categoryId: 21, stockQuantity: 500, sellerEmail: 'seller1@test.origna.ca', imageUrls: ['https://picsum.photos/seed/sticker/400/400'], keywords: ['sticker','cheap','budget'], freeShipping: true, isDigital: false, isLocalDeliveryOnly: false, isPerishable: false, estimatedShipDays: 5, weightKg: 0.01, deliveryOptions: [{ speed: 'standard', isEnabled: true, estimatedDays: 7, price: 0 }] },
   { id: 'product_025', name: 'Luxury Diamond Earrings', price: 4999.99, description: 'High-value item for payment testing.', categoryId: 11, stockQuantity: 2, sellerEmail: 'seller3@test.origna.ca', imageUrls: ['https://picsum.photos/seed/diamond/400/400'], keywords: ['diamond','luxury','earrings'], freeShipping: true, isDigital: false, isLocalDeliveryOnly: false, isPerishable: false, estimatedShipDays: 1, weightKg: 0.02, deliveryOptions: [{ speed: 'express', isEnabled: true, estimatedDays: 1, price: 0 }] },
-  { id: 'product_026', name: 'Digital Photography Course', price: 49.99, description: 'Online course — digital product, no shipping.', categoryId: 20, stockQuantity: 9999, sellerEmail: 'seller4@test.origna.ca', imageUrls: ['https://picsum.photos/seed/course/400/400'], keywords: ['course','digital','photography'], freeShipping: true, isDigital: true, isLocalDeliveryOnly: false, isPerishable: false, estimatedShipDays: 0, weightKg: 0, deliveryOptions: [] },
+  { id: 'product_026', name: 'Digital Photography Course', price: 49.99, description: 'Online course — digital product, no shipping.', categoryId: 20, stockQuantity: 9999, sellerEmail: 'seller4@test.origna.ca', imageUrls: ['https://picsum.photos/seed/course/400/400'], keywords: ['course','digital','photography'], freeShipping: true, isDigital: true, isLocalDeliveryOnly: false, isPerishable: false, estimatedShipDays: 0, weightKg: 0, deliveryOptions: [], digitalType: 'book', bookSourceUrl: 'https://r2.origna.com/emulator/books/photography-course.pdf', deviceLimit: null },
+  { id: 'product_031', name: 'FXCleaner — Mac Disk Cleaner', price: 29.99, description: 'Native macOS disk cleaner, privacy sweeper and system optimizer. License key delivered instantly after purchase.', categoryId: 1, stockQuantity: 9999, sellerEmail: 'seller4@test.origna.ca', imageUrls: ['https://picsum.photos/seed/fxcleaner/400/400'], keywords: ['macos','cleaner','software','disk','utility'], freeShipping: true, isDigital: true, isLocalDeliveryOnly: false, isPerishable: false, estimatedShipDays: 0, weightKg: 0, deliveryOptions: [], digitalType: 'software', digitalBuilds: { macos: 'https://github.com/yunior123/fxcleaner/releases/download/v1.0.0/FXCleaner-1.0.0.dmg' }, supportedPlatforms: ['macos'], deviceLimit: 3 },
   { id: 'product_027', name: 'Zero Stock Product', price: 25.00, description: 'This product is out of stock for testing.', categoryId: 21, stockQuantity: 0, sellerEmail: 'seller2@test.origna.ca', imageUrls: ['https://picsum.photos/seed/empty/400/400'], keywords: ['out-of-stock','test'], freeShipping: false, isDigital: false, isLocalDeliveryOnly: false, isPerishable: false, estimatedShipDays: 5, weightKg: 0.5, deliveryOptions: [{ speed: 'standard', isEnabled: true, estimatedDays: 5, price: 0 }] },
   { id: 'product_028', name: 'Local-Only Fresh Salmon', price: 32.99, description: 'Wild salmon. Local delivery only — perishable.', categoryId: 13, stockQuantity: 20, sellerEmail: 'seller2@test.origna.ca', imageUrls: ['https://picsum.photos/seed/salmon/400/400'], keywords: ['salmon','fish','perishable'], freeShipping: false, isDigital: false, isLocalDeliveryOnly: true, isPerishable: true, estimatedShipDays: 0, weightKg: 1.1, deliveryOptions: [{ speed: 'same_day', isEnabled: true, estimatedDays: 0, price: 14.99, maxRadiusKm: 30 }] },
   { id: 'product_029', name: 'Inuit Soapstone Carving', price: 350.00, description: 'Hand-carved soapstone bear by Inuit artist.', categoryId: 14, stockQuantity: 3, sellerEmail: 'combo2@test.origna.ca', imageUrls: ['https://picsum.photos/seed/carving/400/400'], keywords: ['inuit','carving','art'], freeShipping: true, isDigital: false, isLocalDeliveryOnly: false, isPerishable: false, estimatedShipDays: 5, weightKg: 3.0, deliveryOptions: [{ speed: 'standard', isEnabled: true, estimatedDays: 7, price: 0 }] },
@@ -445,6 +452,14 @@ async function seedProducts(uidMap: Map<string, string>) {
       deliveryOptions: product.deliveryOptions, minimumOrderQuantity: 1,
     };
     if (product.weightKg) doc.weightKg = product.weightKg;
+    // Write digital product fields when present
+    if (product.isDigital) {
+      if (product.digitalType) doc.digitalType = product.digitalType;
+      if (product.digitalBuilds) doc.digitalBuilds = product.digitalBuilds;
+      if (product.bookSourceUrl) doc.bookSourceUrl = product.bookSourceUrl;
+      if (product.supportedPlatforms) doc.supportedPlatforms = product.supportedPlatforms;
+      doc.deviceLimit = product.deviceLimit ?? null;
+    }
 
     if (await writeFirestoreDoc(`products/${product.id}`, doc)) {
       count++;

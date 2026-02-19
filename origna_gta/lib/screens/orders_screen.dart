@@ -1291,14 +1291,52 @@ class _DigitalItemActions extends ConsumerWidget {
 // SOFTWARE DOWNLOAD LINKS
 // ============================================================================
 
-class _SoftwareDownloadLinks extends StatelessWidget {
+// ============================================================================
+// SOFTWARE DOWNLOAD LINKS — secure tokenized redirect (seller URL never exposed)
+// ============================================================================
+
+class _SoftwareDownloadLinks extends ConsumerStatefulWidget {
   final OrderItem item;
   const _SoftwareDownloadLinks({required this.item});
 
   @override
+  ConsumerState<_SoftwareDownloadLinks> createState() => _SoftwareDownloadLinksState();
+}
+
+class _SoftwareDownloadLinksState extends ConsumerState<_SoftwareDownloadLinks> {
+  final Map<String, bool> _loading = {};
+
+  Future<void> _download(String platform) async {
+    setState(() => _loading[platform] = true);
+    try {
+      final functions = FirebaseFunctions.instanceFor(region: 'us-central1');
+      final result = await functions
+          .httpsCallable('generate_software_download_session')
+          .call({'licenseKey': widget.item.licenseKey, 'platform': platform});
+      final downloadUrl = result.data['downloadUrl'] as String;
+      await launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Download failed: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading[platform] = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final builds = item.digitalBuilds ?? {};
+    final builds = widget.item.digitalBuilds ?? {};
     if (builds.isEmpty) return const SizedBox.shrink();
+
+    const platformLabels = {
+      'macos': 'macOS',
+      'windows': 'Windows',
+      'linux': 'Linux',
+    };
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1307,16 +1345,15 @@ class _SoftwareDownloadLinks extends StatelessWidget {
         Wrap(
           spacing: 8,
           runSpacing: 4,
-          children: builds.entries.map((e) {
-            final platformLabel = const {
-              'macos': 'macOS',
-              'windows': 'Windows',
-              'linux': 'Linux',
-            }[e.key] ?? e.key;
+          children: builds.keys.map((platform) {
+            final isLoading = _loading[platform] == true;
+            final label = platformLabels[platform] ?? platform;
             return OutlinedButton.icon(
-              icon: const Icon(Icons.download_outlined, size: 16),
-              label: Text(platformLabel),
-              onPressed: () => launchUrl(Uri.parse(e.value), mode: LaunchMode.externalApplication),
+              icon: isLoading
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.download_outlined, size: 16),
+              label: Text(label),
+              onPressed: isLoading ? null : () => _download(platform),
             );
           }).toList(),
         ),

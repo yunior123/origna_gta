@@ -70,6 +70,10 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   keywords:
       (json['keywords'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
+  approvalStatus:
+      json['approvalStatus'] as String? ??
+      ProductApprovalStatusValues.underReview,
+  approvalRejectionReason: json['approvalRejectionReason'] as String? ?? null,
   cost: (json['cost'] as num?)?.toDouble(),
   supplierSku: json['supplierSku'] as String?,
   supplierUrl: json['supplierUrl'] as String?,
@@ -113,6 +117,8 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'deviceLimit': instance.deviceLimit,
   'taxCode': instance.taxCode,
   'keywords': instance.keywords,
+  'approvalStatus': instance.approvalStatus,
+  'approvalRejectionReason': instance.approvalRejectionReason,
   'cost': instance.cost,
   'supplierSku': instance.supplierSku,
   'supplierUrl': instance.supplierUrl,

@@ -147,6 +147,8 @@ abstract final class Fields {
   static const ratingCount = 'ratingCount';
   static const keywords = 'keywords';
   static const isActive = 'isActive';
+  static const approvalStatus = 'approvalStatus';
+  static const approvalRejectionReason = 'approvalRejectionReason';
   static const isDigital = 'isDigital';
   // Digital product extended fields
   static const digitalType = 'digitalType';
@@ -699,6 +701,16 @@ abstract final class ProductStatusValues {
   static const all = {draft, active, paused, archived, outOfStock};
 }
 
+/// Valid values for product approvalStatus field.
+/// All new products start as underReview until an admin approves them.
+abstract final class ProductApprovalStatusValues {
+  static const underReview = 'under_review';
+  static const approved = 'approved';
+  static const rejected = 'rejected';
+
+  static const all = {underReview, approved, rejected};
+}
+
 /// Valid values for country fields
 abstract final class CountryValues {
   static const canada = 'Canada';
@@ -970,6 +982,8 @@ abstract final class CloudFunctionEndpoints {
   static const adminMfaEnroll = 'admin_mfa_enroll';
   static const adminMfaVerify = 'admin_mfa_verify';
   static const adminMfaDisable = 'admin_mfa_disable';
+  static const adminApproveProduct = 'admin_approve_product';
+  static const adminRejectProduct = 'admin_reject_product';
 
   // === PRODUCT ENDPOINTS ===
   static const deleteProduct = 'delete_product';

@@ -5,11 +5,13 @@ import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 abstract class AdminRepository {
+  Future<void> approveProduct(String productId);
   Future<void> deleteProduct(String productId);
   Future<void> disableAdminMfa(String code);
   Future<Map<String, dynamic>> enableAdminMfa();
   Future<UserModel?> fetchUserById(String userId);
   Future<Map<String, dynamic>> getPaymentProviders();
+  Future<void> rejectProduct(String productId, String reason);
   Future<void> setUserSuspended(String userId, bool suspended);
   Future<void> updatePaymentProvider(String provider, bool enabled, {String? reason});
   Future<void> updateProductStock(String productId, int quantity);
@@ -26,6 +28,11 @@ class FirebaseAdminRepository implements AdminRepository {
   final FirebaseFunctions _functions;
 
   FirebaseAdminRepository(this._firestore, this._functions);
+
+  @override
+  Future<void> approveProduct(String productId) async {
+    await _functions.httpsCallable(CloudFunctionEndpoints.adminApproveProduct).call({Fields.productId: productId});
+  }
 
   @override
   Future<void> deleteProduct(String productId) async {
@@ -85,6 +92,14 @@ class FirebaseAdminRepository implements AdminRepository {
     await _functions.httpsCallable(CloudFunctionEndpoints.adminUpdateProductStock).call({
       Fields.productId: productId,
       Fields.stockQuantity: quantity,
+    });
+  }
+
+  @override
+  Future<void> rejectProduct(String productId, String reason) async {
+    await _functions.httpsCallable(CloudFunctionEndpoints.adminRejectProduct).call({
+      Fields.productId: productId,
+      'reason': reason,
     });
   }
 

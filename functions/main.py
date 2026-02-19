@@ -55,7 +55,9 @@ from handlers.digital import (  # noqa: E402
     activate_license,
     deactivate_license,
     generate_book_download_session,
+    generate_software_download_session,
     get_book_redirect,
+    get_software_redirect,
     verify_license,
 )
 
@@ -88,6 +90,7 @@ from handlers.cron_jobs import (  # noqa: E402
     cleanup_stale_security_alerts,
     cleanup_stale_webhook_events,
     monitor_algolia_sync,
+    revalidate_digital_product_urls,
     retry_failed_algolia_syncs,
 )
 
@@ -134,6 +137,8 @@ from handlers.payment_stripe import (  # noqa: E402
     verify_cart_prices,
 )
 from handlers.products import (  # noqa: E402
+    admin_approve_product,
+    admin_reject_product,
     configure_algolia,
     delete_product,
     get_product_ratings_paginated,
@@ -218,6 +223,8 @@ __all__ = [
     "delete_product",
     "submit_product_rating",
     "configure_algolia",
+    "admin_approve_product",
+    "admin_reject_product",
     "get_products_paginated",
     "get_seller_products_paginated",
     "get_product_ratings_paginated",
@@ -258,6 +265,7 @@ __all__ = [
     "check_expired_authorizations",
     "auto_archive_old_orders",
     "monitor_algolia_sync",
+    "revalidate_digital_product_urls",
     "cleanup_stale_rate_limits",
     "cleanup_orphaned_r2_images",
     "cleanup_stale_webhook_events",
@@ -269,7 +277,9 @@ __all__ = [
     "activate_license",
     "deactivate_license",
     "generate_book_download_session",
+    "generate_software_download_session",
     "get_book_redirect",
+    "get_software_redirect",
     "verify_license",
 ]
 

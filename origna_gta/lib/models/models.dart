@@ -636,6 +636,10 @@ class ProductModel {
   final bool isActive;
   final Timestamp? deletedAt;
   final bool isDigital; // True if product is digital (no shipping required)
+  final String? digitalType; // 'software' | 'book'
+  final Map<String, String>? digitalBuilds; // platform -> download URL (software only)
+  final String approvalStatus; // 'under_review' | 'approved' | 'rejected'
+  final String? approvalRejectionReason;
 
   ProductModel({
     required this.id,
@@ -665,6 +669,10 @@ class ProductModel {
     this.isActive = true,
     this.deletedAt,
     this.isDigital = false,
+    this.digitalType,
+    this.digitalBuilds,
+    this.approvalStatus = 'under_review',
+    this.approvalRejectionReason,
   }) : deliveryOptions = deliveryOptions ?? SellerDeliveryOption.defaultOptions(),
        searchKeywords = keywords;
 
@@ -705,6 +713,12 @@ class ProductModel {
       keywords: _parseStringList(map[Fields.keywords]),
       stockQuantity: _parseInt(map[Fields.stockQuantity]),
       isDigital: map[Fields.isDigital] as bool? ?? false,
+      digitalType: map[Fields.digitalType]?.toString(),
+      digitalBuilds: map[Fields.digitalBuilds] != null
+          ? Map<String, String>.from(map[Fields.digitalBuilds] as Map)
+          : null,
+      approvalStatus: map[Fields.approvalStatus]?.toString() ?? 'under_review',
+      approvalRejectionReason: map[Fields.approvalRejectionReason]?.toString(),
       weightKg: map[Fields.weightKg] != null ? _parseDouble(map[Fields.weightKg]) : null,
       lengthCm: map[Fields.lengthCm] != null ? _parseDouble(map[Fields.lengthCm]) : null,
       widthCm: map[Fields.widthCm] != null ? _parseDouble(map[Fields.widthCm]) : null,

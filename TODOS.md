@@ -46,20 +46,9 @@ cd /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta/origna_gta && sed -i
 Les 3 références CODE_SIGN_ENTITLEMENTS sont supprimées. Tu peux maintenant relancer flutter run. Le fichier Runner.entitlements reste dans le repo pour plus tard quand tu auras le Apple Developer Program — il suffira de réajouter les lignes dans le pbxproj.
 //For the future
 
-TODO new feature, users should be able to chat with the sellers of each product
-
-TODO The mascots, users should be able to chat with them
 
 
-TODO Add referrals links with 10 cad discount for friend and also the person that referred
 
--TODO create cli for admin
-
--TODO multiple env dev staging prod
-
--TODO increase security Geoapify API key sent client-side? No – only backend. Safe.
-
--TODO add sentry to backend
 
 -TODO new tiny feature for ux. when showing products, prioritize by address if possible, ex. user lives in toronto, it should first see the products near the area as priority. if u add new index make sure to update it properly. ultrathink about this
 
