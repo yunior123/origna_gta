@@ -13,6 +13,7 @@ from schema_constants import (
     DigitalTypeValues,
     LicenseStatusValues,
 )
+from services.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,6 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str) -> d
             return {
                 "approved": True,
                 "licenseKey": license_key,
-                "downloadUrls": lic.get(Fields.DIGITAL_BUILDS, {}),
                 "activatedAt": act.get("activatedAt"),
                 Fields.PRODUCT_NAME: lic.get(Fields.PRODUCT_NAME, ""),
             }
@@ -93,7 +93,6 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str) -> d
     return {
         "approved": True,
         "licenseKey": license_key,
-        "downloadUrls": lic.get(Fields.DIGITAL_BUILDS, {}),
         "activatedAt": now.isoformat(),
         Fields.PRODUCT_NAME: lic.get(Fields.PRODUCT_NAME, ""),
     }
@@ -246,6 +245,20 @@ def activate_license(req: https_fn.Request) -> https_fn.Response:
             return https_fn.Response(
                 json.dumps({"error": "licenseKey, deviceId, and platform are required"}),
                 status=400,
+                content_type="application/json",
+            )
+
+        # Rate limit: 10 attempts per device per 10 min to block brute-force
+        rate_id = f"device:{device_id[:64]}"
+        limiter = RateLimiter(get_db())
+        allowed, msg = limiter.check_rate_limit(
+            identifier=rate_id, action="activate_license",
+            max_requests=10, window_minutes=10, fail_closed=True,
+        )
+        if not allowed:
+            return https_fn.Response(
+                json.dumps({"error": "rate_limited", "message": msg}),
+                status=429,
                 content_type="application/json",
             )
 
@@ -500,6 +513,19 @@ def verify_license(req: https_fn.Request) -> https_fn.Response:
             return https_fn.Response(
                 json.dumps({"error": "licenseKey, deviceId, platform required"}),
                 status=400,
+                content_type="application/json",
+            )
+
+        # Rate limit: 60 verify calls per device per hour (app calls this on launch)
+        limiter = RateLimiter(get_db())
+        allowed, msg = limiter.check_rate_limit(
+            identifier=f"device:{device_id[:64]}", action="verify_license",
+            max_requests=60, window_minutes=60, fail_closed=False,
+        )
+        if not allowed:
+            return https_fn.Response(
+                json.dumps({"error": "rate_limited"}),
+                status=429,
                 content_type="application/json",
             )
 

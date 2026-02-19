@@ -1419,11 +1419,15 @@ def _generate_digital_licenses(order_id: str, order_data: dict) -> None:
             }
             db.collection(Collections.LICENSES).document(license_key).set(license_doc)
 
-        # Update item in order
+        # Update item in order — write platform availability without real URLs
         updated_item = dict(updated_items[idx])
         updated_item[Fields.LICENSE_KEY] = license_key
         updated_item[Fields.DIGITAL_UNLOCKED] = True
         updated_item[Fields.STATUS] = DeliveryStatusValues.DELIVERED  # Digital: instant delivery
+        if digital_type == DigitalTypeValues.SOFTWARE:
+            # Store platform keys only (no URLs) so the client can show download buttons
+            # without exposing the seller's actual download URL.
+            updated_item[Fields.DIGITAL_BUILDS] = {p: "" for p in supported_platforms}
         updated_items[idx] = updated_item
         any_generated = True
         logger.info(f"License {license_key} generated for product {product_id} (type={digital_type})")

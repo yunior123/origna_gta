@@ -41,7 +41,8 @@ abstract final class Collections {
   static const algoliaSyncFailures = 'algolia_sync_failures';
   static const cronLocks = '_cron_locks';
 
-  // Subcollections
+    // Subcollections
+  static const warehouses = 'warehouses'; // users/{sellerId}/warehouses
   static const cart = 'cart'; // users/{userId}/cart
   static const favorites = 'favorites'; // users/{userId}/favorites
 }
@@ -141,6 +142,11 @@ abstract final class Fields {
   static const imageUrls = 'imageUrls';
   static const sellerId = 'sellerId';
   static const sellerAddress = 'sellerAddress';
+  static const sellerSku = 'sellerSku';
+  static const warehouseIds = 'warehouseIds';
+  static const warehouseStock = 'warehouseStock';
+  static const shipFromCity = 'shipFromCity';
+  static const shipFromProvince = 'shipFromProvince';
   static const categoryId = 'categoryId';
   static const stockQuantity = 'stockQuantity';
   static const rating = 'rating';
@@ -767,6 +773,13 @@ abstract final class DiscountTypeValues {
   static const all = {percent, fixed, flatRate};
 }
 
+abstract final class WarehouseTypeValues {
+  static const warehouse = 'warehouse';
+  static const personal = 'personal';
+
+  static const all = {warehouse, personal};
+}
+
 // =============================================================================
 // EMAIL & COMPLIANCE CONFIGURATION
 // =============================================================================
@@ -989,6 +1002,12 @@ abstract final class CloudFunctionEndpoints {
   static const deleteProduct = 'delete_product';
   static const getR2PresignedUrl = 'get_r2_presigned_url';
   static const submitProductRating = 'submit_product_rating';
+
+  // === WAREHOUSE ENDPOINTS ===
+  static const createWarehouse = 'create_warehouse';
+  static const updateWarehouse = 'update_warehouse';
+  static const deleteWarehouse = 'delete_warehouse';
+  static const getSellerWarehouses = 'get_seller_warehouses';
 
   // === ORDER ENDPOINTS ===
   static const confirmOrderReceipt = 'confirm_order_receipt';

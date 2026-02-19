@@ -15,6 +15,7 @@ from schema_constants import (
     ProductApprovalStatusValues,
     ProductStatusValues,
     SupplierCurrencyValues,
+    WarehouseTypeValues,
 )
 
 from .base import Address
@@ -185,6 +186,24 @@ class InventoryConfig(BaseModel):
     )
 
 
+class SellerWarehouse(BaseModel):
+    """Seller shipping location — can be a warehouse facility or a personal/home address."""
+
+    warehouseId: str = Field(default="", max_length=100, description="Unique ID (assigned by Firestore)")
+    label: str = Field(..., min_length=1, max_length=100, description="Display name, e.g. 'Toronto Warehouse'")
+    type: str = Field(default=WarehouseTypeValues.WAREHOUSE, description="'warehouse' or 'personal'")
+    address: Address = Field(..., description="Physical location of this warehouse")
+    isDefault: bool = Field(default=False, description="Primary shipping origin for this seller")
+    createdAt: datetime | None = Field(default=None)
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        if v not in WarehouseTypeValues.ALL:
+            raise ValueError(f"type must be one of: {WarehouseTypeValues.ALL}")
+        return v
+
+
 class Product(BaseModel):
     """
     Complete product model
@@ -277,6 +296,14 @@ class Product(BaseModel):
     # Tax and metadata
     taxCode: str | None = Field(default=None, description="Tax code override for specific products")
     keywords: list[str] = Field(default_factory=list, description="Search keywords for Algolia")
+
+    # Multi-warehouse support
+    sellerSku: str | None = Field(default=None, max_length=100, description="Seller's unique product identifier — enforced unique per seller at write time")
+    warehouseIds: list[str] | None = Field(default=None, description="IDs of seller warehouses this product ships from")
+    warehouseStock: dict[str, int] | None = Field(default=None, description="Stock per warehouse: {warehouseId: quantity}")
+    # Denormalized for O(1) card rendering — set from default/primary warehouse on write
+    shipFromCity: str | None = Field(default=None, max_length=100, description="City of primary shipping warehouse (denormalized)")
+    shipFromProvince: str | None = Field(default=None, max_length=10, description="Province code of primary warehouse (denormalized)")
 
     # Admin approval — all products start under_review, go live only when approved
     approvalStatus: str = Field(
@@ -400,7 +427,7 @@ class ProductCreate(BaseModel):
     description: str = Field(..., min_length=10, max_length=4000)
     imageUrls: list[str] = Field(..., min_length=1, max_length=5)
     sellerId: str = Field(..., min_length=1)
-    sellerAddress: Address
+    sellerAddress: Address | None = Field(default=None, description="Legacy single-address; required if warehouseIds is not provided")
     categoryId: int = Field(..., ge=CategoryIds.MIN, le=CategoryIds.MAX)
     stockQuantity: int = Field(..., ge=0)
     rating: float = Field(default=0.0, ge=0, le=5)
@@ -418,16 +445,29 @@ class ProductCreate(BaseModel):
     isDigital: bool = Field(default=False)
     taxCode: str | None = None
     keywords: list[str] = Field(default_factory=list)
+    # Multi-warehouse support
+    sellerSku: str | None = Field(default=None, max_length=100)
+    warehouseIds: list[str] | None = Field(default=None)
+    warehouseStock: dict[str, int] | None = Field(default=None)
+    shipFromCity: str | None = Field(default=None, max_length=100)
+    shipFromProvince: str | None = Field(default=None, max_length=10)
     # NEW: Structured objects
     supplier: SupplierInfo | None = Field(default=None)
     inventory: InventoryConfig | None = Field(default=None)
     status: str = Field(default=ProductStatusValues.ACTIVE)
 
+    @model_validator(mode="after")
+    def validate_shipping_source(self) -> "ProductCreate":
+        """Require either sellerAddress or warehouseIds"""
+        if not self.isDigital and not self.sellerAddress and not self.warehouseIds:
+            raise ValueError("A product must have either a sellerAddress or at least one warehouseId")
+        return self
+
     @field_validator("sellerAddress")
     @classmethod
-    def validate_seller_address(cls, v: Address) -> Address:
+    def validate_seller_address(cls, v: Address | None) -> Address | None:
         """Validate seller address has a non-empty country (sellers can be from any country)"""
-        if not v.country or not v.country.strip():
+        if v is not None and (not v.country or not v.country.strip()):
             raise ValueError("Seller address must include a country")
         return v
 

@@ -1350,7 +1350,7 @@ class _SoftwareDownloadLinksState extends ConsumerState<_SoftwareDownloadLinks> 
             final label = platformLabels[platform] ?? platform;
             return OutlinedButton.icon(
               icon: isLoading
-                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(width: 14, height: 14, child: ModernLoadingIndicator(size: 14, strokeWidth: 2, centered: false))
                   : const Icon(Icons.download_outlined, size: 16),
               label: Text(label),
               onPressed: isLoading ? null : () => _download(platform),

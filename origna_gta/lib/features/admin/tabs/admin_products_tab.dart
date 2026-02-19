@@ -18,8 +18,25 @@ class AdminProductsTab extends ConsumerStatefulWidget {
 }
 
 class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
+  final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _stockFilter = 'all';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,10 +54,19 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
           child: Column(
             children: [
               TextField(
+                controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'admin.sellers.search_hint'.tr(),
                   hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 14),
                   prefixIcon: Icon(Icons.search_rounded, color: DesignTokens.primary),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.close_rounded, color: DesignTokens.textSecondary, size: 20),
+                          onPressed: () {
+                            _searchController.clear();
+                          },
+                        )
+                      : null,
                   filled: true,
                   fillColor: DesignTokens.surfaceVariant,
                   border: OutlineInputBorder(
@@ -49,7 +75,6 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                   ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
-                onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
               ),
               const SizedBox(height: 10),
               SingleChildScrollView(

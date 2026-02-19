@@ -25,6 +25,45 @@ class FirebaseProductRepository implements ProductRepository {
         product.toJson(),
         ensureDateCreated: true,
       );
+
+      // Pre-write sellerSku uniqueness check (safety net; on_product_created trigger is 2nd layer)
+      final sellerSku = product.sellerSku;
+      if (sellerSku != null && sellerSku.isNotEmpty) {
+        final existing = await _firestore
+            .collection(Collections.products)
+            .where(Fields.sellerId, isEqualTo: product.sellerId)
+            .where(Fields.sellerSku, isEqualTo: sellerSku)
+            .limit(1)
+            .get();
+        if (existing.docs.isNotEmpty) {
+          throw Exception(
+            'A product with SKU "$sellerSku" already exists. '
+            'Use a unique seller SKU per product.',
+          );
+        }
+      }
+
+      // Denormalize shipFromCity/Province from default warehouse if using warehouse system
+      final warehouseIds = product.warehouseIds;
+      if (warehouseIds != null && warehouseIds.isNotEmpty) {
+        try {
+          final warehouseDoc = await _firestore
+              .collection(Collections.users)
+              .doc(product.sellerId)
+              .collection(Collections.warehouses)
+              .doc(warehouseIds.first)
+              .get();
+          if (warehouseDoc.exists) {
+            final data = warehouseDoc.data()!;
+            final address = data['address'] as Map<String, dynamic>?;
+            firestoreData[Fields.shipFromCity] = address?[Fields.city];
+            firestoreData[Fields.shipFromProvince] = address?[Fields.state];
+          }
+        } catch (_) {
+          // Non-fatal — card will show fallback text
+        }
+      }
+
       final docRef = await _firestore
           .collection(Collections.products)
           .add(firestoreData);

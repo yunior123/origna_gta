@@ -140,14 +140,18 @@ from handlers.products import (  # noqa: E402
     admin_approve_product,
     admin_reject_product,
     configure_algolia,
+    create_warehouse,
     delete_product,
+    delete_warehouse,
     get_product_ratings_paginated,
     get_products_paginated,
     get_seller_products_paginated,
+    get_seller_warehouses,
     on_product_created,
     on_product_deleted,
     on_product_updated,
     submit_product_rating,
+    update_warehouse,
     upload_product_images,
 )
 from handlers.users import (  # noqa: E402
@@ -231,6 +235,11 @@ __all__ = [
     "on_product_created",
     "on_product_updated",
     "on_product_deleted",
+    # Warehouses
+    "create_warehouse",
+    "update_warehouse",
+    "delete_warehouse",
+    "get_seller_warehouses",
     # Orders
     "confirm_order_receipt",
     "update_order_status",

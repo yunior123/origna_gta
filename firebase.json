@@ -66,6 +66,16 @@
         "destination": "/terms-of-service.html"
       },
       {
+        "source": "/dl",
+        "function": "get_book_redirect",
+        "region": "us-central1"
+      },
+      {
+        "source": "/sdl",
+        "function": "get_software_redirect",
+        "region": "us-central1"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

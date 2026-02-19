@@ -10,6 +10,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/routes.dart';
 // Deferred imports for code splitting — reduces initial JS bundle on Flutter Web
 import 'package:origna_gta/features/admin/admin_panel_screen.dart' deferred as admin_panel;
+import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/models/generated/models.dart' show Product;
 import 'package:origna_gta/models/models.dart' show Address;
 import 'package:origna_gta/screens/addproduct_screen.dart' deferred as add_product;
@@ -500,6 +501,22 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
     );
   }
 
+  void _handleDeepLink(Uri uri) {
+    final navigator = _navigatorKey.currentState;
+    if (navigator != null) {
+      final segs = uri.pathSegments;
+      // /p/{slug} — product share link
+      if (segs.length >= 2 && segs[0] == 'p') {
+        navigator.pushNamed('/p/${segs[1]}');
+        return;
+      }
+      // Route the deep link through the existing route handler
+      final path = uri.path.isNotEmpty ? uri.path : '/';
+      final query = uri.query.isNotEmpty ? '?${uri.query}' : '';
+      navigator.pushNamed('$path$query');
+    }
+  }
+
   @override
   void dispose() {
     _authSubscription?.cancel();
@@ -515,23 +532,19 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
     // Listen for incoming deep links (Universal Links / URL schemes on iOS)
     if (!kIsWeb) {
       final appLinks = AppLinks();
+      
+      // Handle initial link if app was closed
+      appLinks.getInitialLink().then((uri) {
+        if (uri != null) {
+          _handleDeepLink(uri);
+        }
+      });
+
       _deepLinkSubscription = appLinks.uriLinkStream.listen((Uri uri) {
         if (kDebugMode) {
           debugPrint('🔗 Incoming deep link: $uri');
         }
-        final navigator = _navigatorKey.currentState;
-        if (navigator != null) {
-          final segs = uri.pathSegments;
-          // /p/{slug} — product share link
-          if (segs.length >= 2 && segs[0] == 'p') {
-            navigator.pushNamed('/p/${segs[1]}');
-            return;
-          }
-          // Route the deep link through the existing route handler
-          final path = uri.path.isNotEmpty ? uri.path : '/';
-          final query = uri.query.isNotEmpty ? '?${uri.query}' : '';
-          navigator.pushNamed('$path$query');
-        }
+        _handleDeepLink(uri);
       });
     }
 
@@ -553,37 +566,47 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
   }
 }
 
-/// Resolves a slug to a product and pushes the product detail screen.
-/// Used by [AppRoutes.productBySlug] (`/p/{slug}`) routes.
+/// Resolves a slug to a product and renders the product detail screen directly.
+/// This preserves the /p/{slug} URL on Web for better SEO and sharing support.
 class _ProductBySlugScreen extends ConsumerWidget {
   final String slug;
   const _ProductBySlugScreen({required this.slug});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder<Product?>(
-      future: ref.read(productRepositoryProvider).getProductBySlug(slug),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
-        final product = snapshot.data;
+    return ref.watch(productBySlugProvider(slug)).when(
+      data: (product) {
         if (product == null) {
           return Scaffold(
             appBar: AppBar(),
-            body: const Center(child: Text('Product not found')),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.search_off_rounded, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text('product.not_found'.tr(), style: const TextStyle(fontSize: 18, color: Colors.grey)),
+                ],
+              ),
+            ),
           );
         }
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (context.mounted) {
-            Navigator.of(context).pushReplacementNamed(
-              AppRoutes.productDetails,
-              arguments: ProductDetailsArgs(productId: product.productId, product: product.toJson()),
-            );
-          }
-        });
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        return ProductDetailScreen(
+          productId: product.productId,
+          product: product.toJson(),
+        );
       },
+      loading: () => const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (error, _) => Scaffold(
+        appBar: AppBar(),
+        body: Center(
+          child: Text('Error loading product: $error'),
+        ),
+      ),
     );
   }
 }

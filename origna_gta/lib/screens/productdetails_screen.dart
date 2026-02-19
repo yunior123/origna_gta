@@ -58,9 +58,11 @@ class ProductDetailScreen extends ConsumerWidget {
                     IconButton(
                       icon: const Icon(Icons.share_outlined),
                       tooltip: 'Share',
-                      onPressed: () => Share.share(
-                        'Check out ${product.name} on Origna!\n${envConfig.baseUrl}/p/${product.slug}',
-                        subject: product.name,
+                      onPressed: () => SharePlus.instance.share(
+                        ShareParams(
+                          text: 'Check out ${product.name} on Origna!\n${envConfig.baseUrl}/p/${product.slug}',
+                          subject: product.name,
+                        ),
                       ),
                     ),
                 ],

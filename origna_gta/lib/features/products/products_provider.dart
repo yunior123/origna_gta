@@ -58,6 +58,12 @@ final productByIdProvider = FutureProvider.autoDispose.family<Product?, String>(
   return repository.fetchProductById(productId);
 });
 
+/// Fetches a single product by slug
+final productBySlugProvider = FutureProvider.autoDispose.family<Product?, String>((ref, slug) async {
+  final repository = ref.watch(productRepositoryProvider);
+  return repository.getProductBySlug(slug);
+});
+
 /// Fetches products based on query parameters
 final productsProvider = FutureProvider.autoDispose.family<List<Product>, ProductQuery>((ref, query) async {
   final repository = ref.watch(productRepositoryProvider);

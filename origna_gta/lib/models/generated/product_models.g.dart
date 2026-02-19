@@ -25,6 +25,28 @@ Map<String, dynamic> _$InventoryConfigToJson(_InventoryConfig instance) =>
       'reservationHoldMinutes': instance.reservationHoldMinutes,
     };
 
+_SellerWarehouse _$SellerWarehouseFromJson(Map<String, dynamic> json) =>
+    _SellerWarehouse(
+      warehouseId: json['warehouseId'] as String,
+      label: json['label'] as String,
+      type: json['type'] as String? ?? 'warehouse',
+      address: Address.fromJson(json['address'] as Map<String, dynamic>),
+      isDefault: json['isDefault'] as bool? ?? false,
+      createdAt: json['createdAt'] == null
+          ? null
+          : DateTime.parse(json['createdAt'] as String),
+    );
+
+Map<String, dynamic> _$SellerWarehouseToJson(_SellerWarehouse instance) =>
+    <String, dynamic>{
+      'warehouseId': instance.warehouseId,
+      'label': instance.label,
+      'type': instance.type,
+      'address': instance.address,
+      'isDefault': instance.isDefault,
+      'createdAt': instance.createdAt?.toIso8601String(),
+    };
+
 _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   productId: json['productId'] as String,
   name: json['name'] as String,
@@ -34,9 +56,9 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
       .map((e) => e as String)
       .toList(),
   sellerId: json['sellerId'] as String,
-  sellerAddress: Address.fromJson(
-    json['sellerAddress'] as Map<String, dynamic>,
-  ),
+  sellerAddress: json['sellerAddress'] == null
+      ? null
+      : Address.fromJson(json['sellerAddress'] as Map<String, dynamic>),
   categoryId: (json['categoryId'] as num).toInt(),
   stockQuantity: (json['stockQuantity'] as num).toInt(),
   rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
@@ -84,6 +106,19 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
       ? null
       : InventoryConfig.fromJson(json['inventory'] as Map<String, dynamic>),
   status: json['status'] as String? ?? ProductStatusValues.active,
+  sellerSku: json['sellerSku'] as String?,
+  warehouseIds:
+      (json['warehouseIds'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      null,
+  warehouseStock:
+      (json['warehouseStock'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(k, (e as num).toInt()),
+      ) ??
+      null,
+  shipFromCity: json['shipFromCity'] as String?,
+  shipFromProvince: json['shipFromProvince'] as String?,
 );
 
 Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
@@ -125,6 +160,11 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'supplier': instance.supplier,
   'inventory': instance.inventory,
   'status': instance.status,
+  'sellerSku': instance.sellerSku,
+  'warehouseIds': instance.warehouseIds,
+  'warehouseStock': instance.warehouseStock,
+  'shipFromCity': instance.shipFromCity,
+  'shipFromProvince': instance.shipFromProvince,
 };
 
 _ProductCreate _$ProductCreateFromJson(
@@ -137,9 +177,9 @@ _ProductCreate _$ProductCreateFromJson(
       .map((e) => e as String)
       .toList(),
   sellerId: json['sellerId'] as String,
-  sellerAddress: Address.fromJson(
-    json['sellerAddress'] as Map<String, dynamic>,
-  ),
+  sellerAddress: json['sellerAddress'] == null
+      ? null
+      : Address.fromJson(json['sellerAddress'] as Map<String, dynamic>),
   categoryId: (json['categoryId'] as num).toInt(),
   stockQuantity: (json['stockQuantity'] as num).toInt(),
   rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
@@ -181,6 +221,19 @@ _ProductCreate _$ProductCreateFromJson(
       ? null
       : InventoryConfig.fromJson(json['inventory'] as Map<String, dynamic>),
   status: json['status'] as String? ?? ProductStatusValues.active,
+  sellerSku: json['sellerSku'] as String?,
+  warehouseIds:
+      (json['warehouseIds'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      null,
+  warehouseStock:
+      (json['warehouseStock'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(k, (e as num).toInt()),
+      ) ??
+      null,
+  shipFromCity: json['shipFromCity'] as String?,
+  shipFromProvince: json['shipFromProvince'] as String?,
 );
 
 Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
@@ -218,6 +271,11 @@ Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
       'supplier': instance.supplier,
       'inventory': instance.inventory,
       'status': instance.status,
+      'sellerSku': instance.sellerSku,
+      'warehouseIds': instance.warehouseIds,
+      'warehouseStock': instance.warehouseStock,
+      'shipFromCity': instance.shipFromCity,
+      'shipFromProvince': instance.shipFromProvince,
     };
 
 _SellerDeliveryOption _$SellerDeliveryOptionFromJson(

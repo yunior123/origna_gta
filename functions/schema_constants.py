@@ -49,6 +49,7 @@ class Collections:
     CRON_LOCKS = "_cron_locks"
 
     # Subcollections
+    WAREHOUSES = "warehouses"  # users/{sellerId}/warehouses
     CART = "cart"  # users/{userId}/cart
     FAVORITES = "favorites"  # users/{userId}/favorites
     LICENSES = "licenses"
@@ -226,6 +227,11 @@ class Fields:
     IMAGE_URLS = "imageUrls"
     SELLER_ID = "sellerId"
     SELLER_ADDRESS = "sellerAddress"
+    SELLER_SKU = "sellerSku"
+    WAREHOUSE_IDS = "warehouseIds"
+    WAREHOUSE_STOCK = "warehouseStock"
+    SHIP_FROM_CITY = "shipFromCity"
+    SHIP_FROM_PROVINCE = "shipFromProvince"
     CATEGORY_ID = "categoryId"
     STOCK_QUANTITY = "stockQuantity"
     RATING = "rating"
@@ -845,6 +851,15 @@ class WebhookResponseStatus:
     ERROR = "error"
 
 
+class WarehouseTypeValues:
+    """Valid values for seller warehouse location type"""
+
+    WAREHOUSE = "warehouse"
+    PERSONAL = "personal"
+
+    ALL: frozenset[str] = frozenset({WAREHOUSE, PERSONAL})
+
+
 class ShippingSourceValues:
     """Source type for delivery estimate."""
 
@@ -939,7 +954,6 @@ class SchemaRegistry:
             Fields.DESCRIPTION,
             Fields.IMAGE_URLS,
             Fields.SELLER_ID,
-            Fields.SELLER_ADDRESS,
             Fields.CATEGORY_ID,
             Fields.STOCK_QUANTITY,
             Fields.CREATED_AT,

@@ -647,15 +647,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ? Semantics(
                     label: 'btn-clear-search',
                     button: true,
-                    child: GestureDetector(
-                      onTap: () {
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: DesignTokens.textSecondary,
+                        size: 20,
+                      ),
+                      onPressed: () {
                         _searchController.clear();
                         homeNotifier.onSearchChanged('');
                       },
-                      child: Icon(
-                        Icons.close,
-                        color: DesignTokens.textSecondary,
-                      ),
                     ),
                   )
                 : null,

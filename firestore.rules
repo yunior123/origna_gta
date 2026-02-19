@@ -223,6 +223,31 @@ service cloud.firestore {
         
         // No deletes (audit trail)
         allow delete: if false;
+            // --- WAREHOUSES SUBCOLLECTION (Seller shipping locations) ---
+      match /warehouses/{warehouseId} {
+        // Only the seller (owner) can read/write their warehouses
+        // Buyers never read warehouse docs directly — only denormalized fields on products are public
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) &&
+          get(/databases/$(database)/documents/users/$(userId)).data.roles.hasAny(['seller']) &&
+          request.resource.data.keys().hasOnly([
+            'label', 'type', 'address', 'isDefault', 'createdAt'
+          ]) &&
+          request.resource.data.label is string &&
+          request.resource.data.label.size() >= 1 &&
+          request.resource.data.label.size() <= 100 &&
+          request.resource.data.type in ['warehouse', 'personal'] &&
+          request.resource.data.address is map &&
+          request.resource.data.isDefault is bool;
+        allow update: if isOwner(userId) &&
+          get(/databases/$(database)/documents/users/$(userId)).data.roles.hasAny(['seller']) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'label', 'type', 'address', 'isDefault'
+          ]) &&
+          request.resource.data.label is string &&
+          request.resource.data.label.size() >= 1 &&
+          request.resource.data.type in ['warehouse', 'personal'];
+        allow delete: if isOwner(userId) || isAdmin();
       }
     }
     
@@ -258,14 +283,20 @@ service cloud.firestore {
           // Supplier / inventory (structured)
           'supplier', 'inventory',
           // Legacy supplier fields (backward compatibility)
-          'cost', 'supplierSku', 'supplierUrl'
+          'cost', 'supplierSku', 'supplierUrl',
+          // Multi-warehouse fields
+          'sellerSku', 'warehouseIds', 'warehouseStock', 'shipFromCity', 'shipFromProvince'
         ]) &&
         isStringWithLen(request.resource.data.name, 2, 120) &&
         isStringWithLen(request.resource.data.description, 10, 4000) &&
-        ((request.resource.data.isDigital == true &&
+        // sellerAddress is optional when warehouseIds is provided
+        (!request.resource.data.keys().hasAny(['sellerAddress']) ||
+         (request.resource.data.isDigital == true &&
           isValidDigitalSellerAddress(request.resource.data.sellerAddress)) ||
-         (request.resource.data.isDigital != true &&
-          isValidSellerAddress(request.resource.data.sellerAddress))) &&
+         isValidSellerAddress(request.resource.data.sellerAddress)) &&
+        // Must have either sellerAddress or warehouseIds for physical products
+        (request.resource.data.isDigital == true ||
+         request.resource.data.keys().hasAny(['sellerAddress', 'warehouseIds'])) &&
         // Sellers can be from any country — no geographic restriction on seller addresses
         request.resource.data.createdAt is timestamp &&
         request.resource.data.imageUrls is list &&
@@ -303,6 +334,8 @@ service cloud.firestore {
             'digitalType', 'slug', 'digitalBuilds', 'bookSourceUrl', 'deviceLimit',
             'supplier', 'inventory', 'status',
             'cost', 'supplierSku', 'supplierUrl',
+            // Multi-warehouse fields
+            'sellerSku', 'warehouseIds', 'warehouseStock', 'shipFromCity', 'shipFromProvince',
             // Admin-only toggles
             'isActive'
           ]) &&
@@ -311,10 +344,11 @@ service cloud.firestore {
           request.resource.data.sellerId == resource.data.sellerId &&
           isStringWithLen(request.resource.data.name, 2, 120) &&
           isStringWithLen(request.resource.data.description, 10, 4000) &&
-          ((request.resource.data.isDigital == true &&
+          // sellerAddress is optional when warehouseIds is provided
+          (!request.resource.data.keys().hasAny(['sellerAddress']) ||
+           (request.resource.data.isDigital == true &&
             isValidDigitalSellerAddress(request.resource.data.sellerAddress)) ||
-           (request.resource.data.isDigital != true &&
-            isValidSellerAddress(request.resource.data.sellerAddress))) &&
+           isValidSellerAddress(request.resource.data.sellerAddress)) &&
           request.resource.data.imageUrls is list &&
           request.resource.data.imageUrls.size() >= 1 && request.resource.data.imageUrls.size() <= 5 &&
           request.resource.data.keywords is list &&

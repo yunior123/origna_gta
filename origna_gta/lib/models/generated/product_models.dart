@@ -86,6 +86,45 @@ abstract class InventoryConfig with _$InventoryConfig {
 }
 
 // ============================================================================
+// SELLER WAREHOUSE MODEL
+// ============================================================================
+
+@Freezed(toJson: true, fromJson: true)
+abstract class SellerWarehouse with _$SellerWarehouse {
+  const factory SellerWarehouse({
+    required String warehouseId,
+
+    /// Display name, e.g. 'Toronto Warehouse' or 'Home Office'
+    required String label,
+
+    /// Location type: 'warehouse' | 'personal'
+    @Default('warehouse') String type,
+
+    /// Physical address of this location
+    required Address address,
+
+    /// Whether this is the seller's default shipping origin
+    @Default(false) bool isDefault,
+
+    DateTime? createdAt,
+  }) = _SellerWarehouse;
+
+  factory SellerWarehouse.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return SellerWarehouse.fromJson({...data, 'warehouseId': doc.id});
+  }
+
+  factory SellerWarehouse.fromJson(Map<String, dynamic> json) => _$SellerWarehouseFromJson(json);
+}
+
+extension SellerWarehouseExtension on SellerWarehouse {
+  bool get isWarehouse => type == 'warehouse';
+  bool get isPersonal => type == 'personal';
+  String get typeLabel => isWarehouse ? 'Warehouse' : 'Personal Address';
+  String get cityProvince => '${address.city}, ${address.state}';
+}
+
+// ============================================================================
 // PRODUCT MODEL
 // ============================================================================
 
@@ -98,7 +137,8 @@ abstract class Product with _$Product {
     required String description,
     required List<String> imageUrls,
     required String sellerId,
-    required Address sellerAddress,
+    // sellerAddress is optional — products with warehouses use warehouseIds instead
+    Address? sellerAddress,
     required int categoryId,
     required int stockQuantity,
     @Default(0.0) double rating,
@@ -143,6 +183,22 @@ abstract class Product with _$Product {
 
     /// Product status: draft, active, paused, archived, out_of_stock
     @Default(ProductStatusValues.active) String status,
+
+    // Multi-warehouse support
+    /// Seller's unique product identifier — enforced unique per seller at write time
+    String? sellerSku,
+
+    /// IDs of seller warehouses this product ships from
+    @Default(null) List<String>? warehouseIds,
+
+    /// Stock per warehouse: {warehouseId: quantity}
+    @Default(null) Map<String, int>? warehouseStock,
+
+    /// City of primary shipping warehouse (denormalized for O(1) card rendering)
+    String? shipFromCity,
+
+    /// Province code of primary warehouse (denormalized for O(1) card rendering)
+    String? shipFromProvince,
   }) = _Product;
 
   factory Product.fromFirestore(DocumentSnapshot doc) {
@@ -174,7 +230,8 @@ abstract class ProductCreate with _$ProductCreate {
     required String description,
     required List<String> imageUrls,
     required String sellerId,
-    required Address sellerAddress,
+    // sellerAddress is optional — required only when warehouseIds is not provided
+    Address? sellerAddress,
     required int categoryId,
     required int stockQuantity,
     @Default(0.0) double rating,
@@ -206,6 +263,12 @@ abstract class ProductCreate with _$ProductCreate {
     SupplierInfo? supplier,
     InventoryConfig? inventory,
     @Default(ProductStatusValues.active) String status,
+    // Multi-warehouse support
+    String? sellerSku,
+    @Default(null) List<String>? warehouseIds,
+    @Default(null) Map<String, int>? warehouseStock,
+    String? shipFromCity,
+    String? shipFromProvince,
   }) = _ProductCreate;
 
   factory ProductCreate.fromJson(Map<String, dynamic> json) => _$ProductCreateFromJson(json);
@@ -332,7 +395,7 @@ extension ProductExtension on Product {
       estimateText: deliveryEstimateText,
       supplierRegion: isInternationalSupplier 
           ? _getSupplierRegion(supplier?.type) 
-          : '${sellerAddress.city}, ${sellerAddress.state}',
+          : '${sellerAddress?.city ?? shipFromCity ?? 'Unknown'}, ${sellerAddress?.state ?? shipFromProvince ?? ''}',
     );
   }
 

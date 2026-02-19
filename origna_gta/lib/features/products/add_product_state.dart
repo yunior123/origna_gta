@@ -32,6 +32,10 @@ class AddProductState {
   final bool savedSameDayEnabled; // Saved state when free shipping toggled on
   final String? errorMessage;
   final bool isSuccess;
+  // Multi-warehouse fields
+  final String? sellerSku;
+  final List<String> selectedWarehouseIds;
+  final Map<String, int> warehouseStockMap; // warehouseId → stock qty
 
   AddProductState({
     this.isLoading = false,
@@ -61,6 +65,9 @@ class AddProductState {
     this.savedSameDayEnabled = false,
     this.errorMessage,
     this.isSuccess = false,
+    this.sellerSku,
+    this.selectedWarehouseIds = const [],
+    this.warehouseStockMap = const {},
   });
 
   /// Use `clearError()` to explicitly set errorMessage to null.
@@ -93,6 +100,9 @@ class AddProductState {
     bool? savedSameDayEnabled,
     Object? errorMessage = _sentinel,
     bool? isSuccess,
+    Object? sellerSku = _sentinel,
+    List<String>? selectedWarehouseIds,
+    Map<String, int>? warehouseStockMap,
   }) {
     return AddProductState(
       isLoading: isLoading ?? this.isLoading,
@@ -122,6 +132,9 @@ class AddProductState {
       savedSameDayEnabled: savedSameDayEnabled ?? this.savedSameDayEnabled,
       errorMessage: errorMessage == _sentinel ? this.errorMessage : errorMessage as String?,
       isSuccess: isSuccess ?? this.isSuccess,
+      sellerSku: sellerSku == _sentinel ? this.sellerSku : sellerSku as String?,
+      selectedWarehouseIds: selectedWarehouseIds ?? this.selectedWarehouseIds,
+      warehouseStockMap: warehouseStockMap ?? this.warehouseStockMap,
     );
   }
 }

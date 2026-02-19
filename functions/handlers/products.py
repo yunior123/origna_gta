@@ -36,6 +36,7 @@ from schema_constants import (
     OrderStatusValues,
     ProductApprovalStatusValues,
     UserRoleValues,
+    WarehouseTypeValues,
 )
 from services.algolia_service import delete_product as algolia_delete_product
 from services.algolia_service import index_product
@@ -629,6 +630,34 @@ def on_product_created(event: firestore_fn.Event) -> None:
                 )
                 return
 
+    # CRITICAL: Enforce sellerSku uniqueness per seller
+    # sellerId + sellerSku must be unique in the products collection
+    seller_sku = product_data.get(Fields.SELLER_SKU)
+    if seller_sku and seller_id:
+        existing = (
+            get_db()
+            .collection(Collections.PRODUCTS)
+            .where(Fields.SELLER_ID, "==", seller_id)
+            .where(Fields.SELLER_SKU, "==", seller_sku)
+            .where(Fields.IS_ACTIVE, "!=", False)
+            .limit(2)
+            .get()
+        )
+        # If more than one document matches (including this new one), it's a duplicate
+        duplicate_ids = [doc.id for doc in existing if doc.id != product_id]
+        if duplicate_ids:
+            logger.warning(
+                f"SECURITY: Duplicate sellerSku '{seller_sku}' for seller {seller_id} — "
+                f"existing product(s): {duplicate_ids} — deactivating new product {product_id}"
+            )
+            get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                {
+                    Fields.IS_ACTIVE: False,
+                    Fields.DEACTIVATION_REASON: f"Duplicate sellerSku: '{seller_sku}' already exists for this seller",
+                }
+            )
+            return
+
     # CRITICAL: Validate price > 0 and <= 100000 CAD
     price = product_data.get(Fields.PRICE)
     if price is None or not isinstance(price, (int, float)) or price <= 0 or price > 100000:
@@ -654,31 +683,30 @@ def on_product_created(event: firestore_fn.Event) -> None:
         return
 
     # Seller address validation — verify address exists via Geoapify geocoding
-    seller_address = product_data.get(Fields.SELLER_ADDRESS, {})
-    country = seller_address.get(Fields.COUNTRY) or ""
-    if not country:
-        logger.info(f"SECURITY: Product {product_id} has empty seller country — deactivating")
-        get_db().collection(Collections.PRODUCTS).document(product_id).update(
-            {
-                Fields.IS_ACTIVE: False,
-                Fields.DEACTIVATION_REASON: "Missing seller country",
-            }
-        )
-        return
-
-    # SECURITY: Validate address coordinates via Geoapify reverse geocoding
-    # Ensures the seller address is a real, verified location
-    seller_lat = seller_address.get(Fields.LATITUDE)
-    seller_lon = seller_address.get(Fields.LONGITUDE)
-    seller_street = seller_address.get(Fields.STREET, "")
-    seller_city = seller_address.get(Fields.CITY, "")
-    seller_postal = seller_address.get(Fields.POSTAL_CODE, "")
-
-    # Skip digital products (no physical address needed)
+    # Skip if product uses warehouse IDs (warehouses are validated at creation time)
+    warehouse_ids = product_data.get(Fields.WAREHOUSE_IDS) or []
+    seller_address = product_data.get(Fields.SELLER_ADDRESS) or {}
     is_digital = product_data.get(Fields.IS_DIGITAL, False)
 
-    if not is_digital:
-        # Require lat/lng from frontend Geoapify autocomplete
+    if not is_digital and not warehouse_ids:
+        country = seller_address.get(Fields.COUNTRY) or ""
+        if not country:
+            logger.info(f"SECURITY: Product {product_id} has empty seller country — deactivating")
+            get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                {
+                    Fields.IS_ACTIVE: False,
+                    Fields.DEACTIVATION_REASON: "Missing seller country",
+                }
+            )
+            return
+
+        # SECURITY: Validate address coordinates via Geoapify reverse geocoding
+        seller_lat = seller_address.get(Fields.LATITUDE)
+        seller_lon = seller_address.get(Fields.LONGITUDE)
+        seller_street = seller_address.get(Fields.STREET, "")
+        seller_city = seller_address.get(Fields.CITY, "")
+        seller_postal = seller_address.get(Fields.POSTAL_CODE, "")
+
         if seller_lat is None or seller_lon is None:
             logger.info(f"SECURITY: Product {product_id} missing lat/lng — address not verified via Geoapify — REJECTING")
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
@@ -689,7 +717,6 @@ def on_product_created(event: firestore_fn.Event) -> None:
             )
             return
         else:
-            # Verify coordinates match the declared address via Geoapify reverse geocoding
             is_valid, error_reason = _verify_address_with_geoapify(
                 product_id, seller_lat, seller_lon,
                 seller_street, seller_city, seller_postal, country,
@@ -705,7 +732,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
                 return
 
     # CRITICAL: Sanitize text fields to prevent stored XSS
-    xss_patches = {}
+    xss_patches: dict = {}
     name = product_data.get(Fields.NAME, "")
     description = product_data.get(Fields.DESCRIPTION, "")
 
@@ -1777,3 +1804,196 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
     except Exception as e:
         logger.error(f"ERROR: Failed to fetch ratings: {e}")
         raise https_fn.HttpsError("internal", "Failed to fetch ratings. Please try again.") from e
+
+
+# =============================================================================
+# WAREHOUSE CRUD — Seller shipping location management
+# =============================================================================
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def create_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Create a warehouse for the authenticated seller.
+    Path: users/{sellerId}/warehouses/{warehouseId}
+    """
+    try:
+        if not req.auth:
+            raise https_fn.HttpsError("unauthenticated", "Authentication required")
+
+        seller_id = req.auth.uid
+        data = req.data or {}
+
+        label = (data.get("label") or "").strip()
+        if not label or len(label) > 100:
+            raise https_fn.HttpsError("invalid-argument", "label must be 1–100 characters")
+
+        w_type = data.get("type", WarehouseTypeValues.WAREHOUSE)
+        if w_type not in WarehouseTypeValues.ALL:
+            raise https_fn.HttpsError("invalid-argument", f"type must be one of: {WarehouseTypeValues.ALL}")
+
+        address = data.get("address")
+        if not isinstance(address, dict) or not address.get(Fields.CITY):
+            raise https_fn.HttpsError("invalid-argument", "address must include at least a city")
+
+        is_default = bool(data.get("isDefault", False))
+
+        # If setting as default, clear any existing default
+        if is_default:
+            _clear_default_warehouse(seller_id)
+
+        from datetime import UTC
+        warehouse_doc = get_db().collection(Collections.USERS).document(seller_id).collection(Collections.WAREHOUSES).document()
+        warehouse_doc.set({
+            "label": label,
+            "type": w_type,
+            "address": address,
+            "isDefault": is_default,
+            "createdAt": get_server_timestamp(),
+        })
+
+        logger.info(f"Warehouse {warehouse_doc.id} created for seller {seller_id}")
+        return create_success_response({"warehouseId": warehouse_doc.id})
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to create warehouse: {e}")
+        raise https_fn.HttpsError("internal", "Failed to create warehouse") from e
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def update_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """Update a warehouse label, type, address, or default status."""
+    try:
+        if not req.auth:
+            raise https_fn.HttpsError("unauthenticated", "Authentication required")
+
+        seller_id = req.auth.uid
+        data = req.data or {}
+
+        warehouse_id = data.get("warehouseId", "").strip()
+        if not warehouse_id:
+            raise https_fn.HttpsError("invalid-argument", "warehouseId is required")
+
+        # Verify ownership
+        wh_ref = get_db().collection(Collections.USERS).document(seller_id).collection(Collections.WAREHOUSES).document(warehouse_id)
+        wh_doc = wh_ref.get()
+        if not wh_doc.exists:
+            raise https_fn.HttpsError("not-found", "Warehouse not found")
+
+        patches: dict = {}
+        if "label" in data:
+            label = data["label"].strip()
+            if not label or len(label) > 100:
+                raise https_fn.HttpsError("invalid-argument", "label must be 1–100 characters")
+            patches["label"] = label
+
+        if "type" in data:
+            if data["type"] not in WarehouseTypeValues.ALL:
+                raise https_fn.HttpsError("invalid-argument", f"type must be one of: {WarehouseTypeValues.ALL}")
+            patches["type"] = data["type"]
+
+        if "address" in data:
+            if not isinstance(data["address"], dict) or not data["address"].get(Fields.CITY):
+                raise https_fn.HttpsError("invalid-argument", "address must include at least a city")
+            patches["address"] = data["address"]
+
+        if "isDefault" in data:
+            patches["isDefault"] = bool(data["isDefault"])
+            if patches["isDefault"]:
+                _clear_default_warehouse(seller_id, exclude_id=warehouse_id)
+
+        if not patches:
+            raise https_fn.HttpsError("invalid-argument", "No valid fields to update")
+
+        wh_ref.update(patches)
+        logger.info(f"Warehouse {warehouse_id} updated for seller {seller_id}: {list(patches.keys())}")
+        return create_success_response({"warehouseId": warehouse_id})
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update warehouse: {e}")
+        raise https_fn.HttpsError("internal", "Failed to update warehouse") from e
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """Delete a warehouse. Products referencing it will retain the ID but lose that location."""
+    try:
+        if not req.auth:
+            raise https_fn.HttpsError("unauthenticated", "Authentication required")
+
+        seller_id = req.auth.uid
+        data = req.data or {}
+
+        warehouse_id = data.get("warehouseId", "").strip()
+        if not warehouse_id:
+            raise https_fn.HttpsError("invalid-argument", "warehouseId is required")
+
+        wh_ref = get_db().collection(Collections.USERS).document(seller_id).collection(Collections.WAREHOUSES).document(warehouse_id)
+        if not wh_ref.get().exists:
+            raise https_fn.HttpsError("not-found", "Warehouse not found")
+
+        wh_ref.delete()
+        logger.info(f"Warehouse {warehouse_id} deleted for seller {seller_id}")
+        return create_success_response({"warehouseId": warehouse_id})
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete warehouse: {e}")
+        raise https_fn.HttpsError("internal", "Failed to delete warehouse") from e
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def get_seller_warehouses(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """Return all warehouses for the authenticated seller, ordered by default first."""
+    try:
+        if not req.auth:
+            raise https_fn.HttpsError("unauthenticated", "Authentication required")
+
+        seller_id = req.auth.uid
+        docs = (
+            get_db()
+            .collection(Collections.USERS)
+            .document(seller_id)
+            .collection(Collections.WAREHOUSES)
+            .order_by("isDefault", direction="DESCENDING")
+            .order_by("createdAt", direction="ASCENDING")
+            .get()
+        )
+
+        warehouses = []
+        for doc in docs:
+            d = doc.to_dict() or {}
+            d["warehouseId"] = doc.id
+            # Serialize timestamps
+            created_at = d.get("createdAt")
+            if hasattr(created_at, "isoformat"):
+                d["createdAt"] = created_at.isoformat()
+            warehouses.append(d)
+
+        return create_success_response({"warehouses": warehouses})
+
+    except https_fn.HttpsError:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch warehouses: {e}")
+        raise https_fn.HttpsError("internal", "Failed to fetch warehouses") from e
+
+
+def _clear_default_warehouse(seller_id: str, exclude_id: str | None = None) -> None:
+    """Remove isDefault=True from all warehouses of a seller (except exclude_id)."""
+    docs = (
+        get_db()
+        .collection(Collections.USERS)
+        .document(seller_id)
+        .collection(Collections.WAREHOUSES)
+        .where("isDefault", "==", True)
+        .get()
+    )
+    for doc in docs:
+        if exclude_id and doc.id == exclude_id:
+            continue
+        doc.reference.update({"isDefault": False})

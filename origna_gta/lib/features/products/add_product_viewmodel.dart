@@ -257,15 +257,21 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         }
       }
 
+      final useWarehouses = state.selectedWarehouseIds.isNotEmpty;
+      // When using warehouses, stock = sum of all warehouseStockMap values
+      final effectiveStock = useWarehouses && state.warehouseStockMap.isNotEmpty
+          ? state.warehouseStockMap.values.fold(0, (a, b) => a + b)
+          : stock;
+
       final product = models.Product(
         productId: tempProductId,
         sellerId: _ref.read(userIdProvider)!,
         name: name,
         keywords: generateSearchKeywords(name),
-        stockQuantity: stock,
+        stockQuantity: effectiveStock,
         price: price,
         imageUrls: urls,
-        sellerAddress: models.Address(
+        sellerAddress: useWarehouses ? null : models.Address(
           street: streetTrimmed,
           apartment: apartmentTrimmed,
           city: cityTrimmed,
@@ -314,6 +320,11 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         supplier: supplier,
         inventory: inventory,
         status: status ?? ProductStatusValues.active,
+        sellerSku: state.sellerSku,
+        warehouseIds: useWarehouses ? state.selectedWarehouseIds : null,
+        warehouseStock: useWarehouses && state.warehouseStockMap.isNotEmpty
+            ? state.warehouseStockMap
+            : null,
       );
 
       await productRepository.addProductWithId(tempProductId, product);
@@ -416,6 +427,27 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   void setLinuxDownloadUrl(String? url) => state = state.copyWith(linuxDownloadUrl: url);
   void setBookSourceUrl(String? url) => state = state.copyWith(bookSourceUrl: url);
   void setDeviceLimit(int? limit) => state = state.copyWith(deviceLimit: limit);
+
+  void setSellerSku(String? sku) => state = state.copyWith(sellerSku: sku?.trim().isEmpty == true ? null : sku?.trim());
+
+  void toggleWarehouseSelection(String warehouseId) {
+    final current = List<String>.from(state.selectedWarehouseIds);
+    if (current.contains(warehouseId)) {
+      current.remove(warehouseId);
+      // Remove stock entry too
+      final stockMap = Map<String, int>.from(state.warehouseStockMap)..remove(warehouseId);
+      state = state.copyWith(selectedWarehouseIds: current, warehouseStockMap: stockMap);
+    } else {
+      current.add(warehouseId);
+      state = state.copyWith(selectedWarehouseIds: current);
+    }
+  }
+
+  void setWarehouseStock(String warehouseId, int qty) {
+    final stockMap = Map<String, int>.from(state.warehouseStockMap);
+    stockMap[warehouseId] = qty;
+    state = state.copyWith(warehouseStockMap: stockMap);
+  }
 
   void toggleFreeShipping(bool value) {
     final effectiveValue = state.isDigital ? true : value;
