@@ -40,8 +40,10 @@ from schema_constants import (
     Collections,
     DeliveryStatusValues,
     DeliveryTypeValues,
+    DigitalTypeValues,
     ErrorCodeValues,
     Fields,
+    LicenseStatusValues,
     OrderStatusValues,
     PaymentProviderValues,
     PaymentStatusValues,
@@ -1321,8 +1323,6 @@ def _generate_digital_licenses(order_id: str, order_data: dict) -> None:
     """
     from datetime import datetime, timezone
 
-    from schema_constants import Collections, DigitalTypeValues, Fields
-
     db = get_db()
     items = order_data.get(Fields.ITEMS, [])
     buyer_id = order_data.get(Fields.USER_ID, "")
@@ -1371,7 +1371,7 @@ def _generate_digital_licenses(order_id: str, order_data: dict) -> None:
                 Fields.ORDER_ID: order_id,
                 Fields.USER_ID: buyer_id,
                 Fields.DIGITAL_TYPE: DigitalTypeValues.SOFTWARE,
-                Fields.STATUS: "active",
+                Fields.STATUS: LicenseStatusValues.ACTIVE,
                 Fields.SUPPORTED_PLATFORMS: supported_platforms,
                 Fields.DEVICE_LIMIT: product_data.get(Fields.DEVICE_LIMIT),
                 Fields.ACTIVATIONS: [],
@@ -1388,7 +1388,7 @@ def _generate_digital_licenses(order_id: str, order_data: dict) -> None:
                 Fields.ORDER_ID: order_id,
                 Fields.USER_ID: buyer_id,
                 Fields.DIGITAL_TYPE: DigitalTypeValues.BOOK,
-                Fields.STATUS: "active",
+                Fields.STATUS: LicenseStatusValues.ACTIVE,
                 Fields.BOOK_SOURCE_URL: book_source_url,
                 Fields.CREATED_AT: now,
             }

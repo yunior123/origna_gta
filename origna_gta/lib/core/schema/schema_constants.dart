@@ -1059,3 +1059,11 @@ abstract final class DigitalPlatformValues {
 
   static const all = [macos, windows, linux];
 }
+
+/// Valid values for license status field
+abstract final class LicenseStatusValues {
+  LicenseStatusValues._();
+  static const active = 'active';
+  static const revoked = 'revoked';
+  static const all = [active, revoked];
+}

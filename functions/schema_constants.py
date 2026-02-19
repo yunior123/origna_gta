@@ -1214,3 +1214,9 @@ class DigitalPlatformValues:
     WINDOWS = "windows"
     LINUX = "linux"
     ALL = [MACOS, WINDOWS, LINUX]
+
+
+class LicenseStatusValues:
+    ACTIVE = "active"
+    REVOKED = "revoked"
+    ALL = [ACTIVE, REVOKED]
