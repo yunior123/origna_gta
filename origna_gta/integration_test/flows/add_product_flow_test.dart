@@ -368,4 +368,155 @@ void main() {
     },
     timeout: const Timeout(Duration(minutes: 8)),
   );
+
+  // P10b: Software sub-type selector appears after digital toggle
+  testWidgets(
+    'P10b: Software sub-type selector visible after digital toggle',
+    (tester) async {
+      debugPrint('🛍️ ========== P10b START ========== 🛍️');
+      const strictIntegration = bool.fromEnvironment(
+        'STRICT_INTEGRATION',
+        defaultValue: true,
+      );
+      final tracker = await initializeIntegrationTest(
+        tester,
+        strictIntegration: strictIntegration,
+      );
+
+      final seller = await establishSession(
+        tester,
+        sellerCredentialCandidates,
+        'seller',
+        tracker,
+        'S001',
+        '[P10b] seller session/login failed',
+      );
+      if (seller == null) return;
+
+      final navOk = await navigateToAddProduct(tester);
+      if (!navOk) {
+        tracker.stopOnSkip('S006', '[P10b] Unable to navigate to add product screen');
+        tracker.throwIfFailed();
+        return;
+      }
+
+      // Toggle digital ON
+      await scrollUntilVisible(
+        tester,
+        find.byKey(const Key('addproduct_digital_toggle')),
+      );
+      await tapGlassToggle(tester, 'addproduct_digital_toggle');
+      await tester.pump(const Duration(milliseconds: 800));
+
+      // Digital section should appear
+      tracker.check(
+        'C10b1',
+        find.byKey(const Key('addproduct_digital_section')).evaluate().isNotEmpty,
+        'P10b: digital section visible after toggle',
+      );
+
+      // Scroll to Software chip and tap it
+      await scrollUntilVisible(
+        tester,
+        find.byKey(const Key('addproduct_digital_type_software')),
+      );
+      await tapByKey(tester, 'addproduct_digital_type_software');
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // macOS URL field should appear after selecting Software
+      await scrollUntilVisible(
+        tester,
+        find.byKey(const Key('addproduct_macos_url')),
+      );
+      tracker.check(
+        'C10b2',
+        find.byKey(const Key('addproduct_macos_url')).evaluate().isNotEmpty,
+        'P10b: macOS URL field visible after Software chip',
+      );
+      tracker.check(
+        'C10b3',
+        find.byKey(const Key('addproduct_windows_url')).evaluate().isNotEmpty,
+        'P10b: Windows URL field visible after Software chip',
+      );
+
+      await goBack(tester);
+      await pumpSettle(tester, iterations: 3);
+      tracker.throwIfFailed();
+      debugPrint('🎉 ========== P10b COMPLETE ========== 🎉');
+    },
+    timeout: const Timeout(Duration(minutes: 4)),
+  );
+
+  // P10c: Book sub-type — shows book URL field, hides platform fields
+  testWidgets(
+    'P10c: Book sub-type shows book URL field',
+    (tester) async {
+      debugPrint('🛍️ ========== P10c START ========== 🛍️');
+      const strictIntegration = bool.fromEnvironment(
+        'STRICT_INTEGRATION',
+        defaultValue: true,
+      );
+      final tracker = await initializeIntegrationTest(
+        tester,
+        strictIntegration: strictIntegration,
+      );
+
+      final seller = await establishSession(
+        tester,
+        sellerCredentialCandidates,
+        'seller',
+        tracker,
+        'S001',
+        '[P10c] seller session/login failed',
+      );
+      if (seller == null) return;
+
+      final navOk = await navigateToAddProduct(tester);
+      if (!navOk) {
+        tracker.stopOnSkip('S006', '[P10c] Unable to navigate to add product screen');
+        tracker.throwIfFailed();
+        return;
+      }
+
+      // Toggle digital ON
+      await scrollUntilVisible(
+        tester,
+        find.byKey(const Key('addproduct_digital_toggle')),
+      );
+      await tapGlassToggle(tester, 'addproduct_digital_toggle');
+      await tester.pump(const Duration(milliseconds: 800));
+
+      // Scroll to Book chip and tap it
+      await scrollUntilVisible(
+        tester,
+        find.byKey(const Key('addproduct_digital_type_book')),
+      );
+      await tapByKey(tester, 'addproduct_digital_type_book');
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Book URL field should appear
+      await scrollUntilVisible(
+        tester,
+        find.byKey(const Key('addproduct_book_url')),
+      );
+      tracker.check(
+        'C10c1',
+        find.byKey(const Key('addproduct_book_url')).evaluate().isNotEmpty,
+        'P10c: book URL field visible after Book chip',
+      );
+
+      // macOS URL field must NOT be present (software-only)
+      tracker.check(
+        'C10c2',
+        find.byKey(const Key('addproduct_macos_url')).evaluate().isEmpty,
+        'P10c: macOS URL field hidden after Book chip',
+      );
+
+      await goBack(tester);
+      await pumpSettle(tester, iterations: 3);
+      tracker.throwIfFailed();
+      debugPrint('🎉 ========== P10c COMPLETE ========== 🎉');
+    },
+    timeout: const Timeout(Duration(minutes: 4)),
+  );
 }
