@@ -139,3 +139,110 @@ test.describe('PW IT Replica — Add Product Flow', () => {
         await performSignOut(page, TARGET_URL);
     });
 });
+
+test.describe('PW Digital Products — Add Product', () => {
+    test.setTimeout(300_000);
+
+    test('D01: Software digital product — sub-type selector + macOS URL field visible', async ({ page }, testInfo) => {
+        await requireWebApp(page, TARGET_URL);
+        page.setDefaultTimeout(60_000);
+
+        await page.goto(`${TARGET_URL}/`);
+        await waitForFlutter(page);
+        await ensureLoggedInAsAdmin(page, TARGET_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
+
+        // Navigate to add product
+        const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
+        await expect(addProductBtn).toBeVisible({ timeout: 20_000 });
+        await addProductBtn.click();
+        await expect(page).toHaveURL(/\/add-product/i, { timeout: 30_000 });
+        await waitForFlutter(page);
+
+        // D01a: Toggle digital product ON
+        const digitalToggle = page.getByRole('switch', { name: /digital/i }).first();
+        await expect(digitalToggle).toBeVisible({ timeout: 15_000 });
+        if ((await digitalToggle.getAttribute('aria-checked')) !== 'true') {
+            await digitalToggle.click();
+            await page.waitForTimeout(800);
+        }
+        await expect(digitalToggle).toHaveAttribute('aria-checked', 'true');
+
+        // D01b: Software chip visible
+        const softwareChip = page.getByRole('button', { name: /software/i }).first();
+        await expect(softwareChip).toBeVisible({ timeout: 10_000 });
+        await softwareChip.click();
+        await page.waitForTimeout(500);
+
+        // D01c: macOS URL field appears after selecting Software
+        const macosField = page.getByRole('textbox', { name: /macos/i }).first();
+        await expect(macosField).toBeVisible({ timeout: 10_000 });
+
+        // D01d: Windows URL field also appears
+        const windowsField = page.getByRole('textbox', { name: /windows/i }).first();
+        await expect(windowsField).toBeVisible({ timeout: 5_000 });
+
+        // D01e: Enter a macOS URL
+        await macosField.click();
+        await page.waitForTimeout(400);
+        await page.keyboard.type('https://releases.example.com/cleaner.dmg', { delay: 20 });
+        await page.waitForTimeout(300);
+
+        // D01f: Field retains value
+        await expect(macosField).toHaveValue(/releases\.example\.com/);
+
+        await page.goBack();
+        await waitForFlutter(page);
+        await performSignOut(page, TARGET_URL);
+    });
+
+    test('D02: Book digital product — book URL field visible, no platform fields', async ({ page }, testInfo) => {
+        await requireWebApp(page, TARGET_URL);
+        page.setDefaultTimeout(60_000);
+
+        await page.goto(`${TARGET_URL}/`);
+        await waitForFlutter(page);
+        await ensureLoggedInAsAdmin(page, TARGET_URL, ADMIN_EMAIL, ADMIN_PASSWORD);
+
+        // Navigate to add product
+        const addProductBtn = page.getByRole('button', { name: BTN_ADD_PRODUCT }).first();
+        await expect(addProductBtn).toBeVisible({ timeout: 20_000 });
+        await addProductBtn.click();
+        await expect(page).toHaveURL(/\/add-product/i, { timeout: 30_000 });
+        await waitForFlutter(page);
+
+        // D02a: Toggle digital ON
+        const digitalToggle = page.getByRole('switch', { name: /digital/i }).first();
+        await expect(digitalToggle).toBeVisible({ timeout: 15_000 });
+        if ((await digitalToggle.getAttribute('aria-checked')) !== 'true') {
+            await digitalToggle.click();
+            await page.waitForTimeout(800);
+        }
+
+        // D02b: Select Book sub-type
+        const bookChip = page.getByRole('button', { name: /book/i }).first();
+        await expect(bookChip).toBeVisible({ timeout: 10_000 });
+        await bookChip.click();
+        await page.waitForTimeout(500);
+
+        // D02c: Book URL field visible
+        const bookUrlField = page.getByRole('textbox', { name: /download source url|book download/i }).first();
+        await expect(bookUrlField).toBeVisible({ timeout: 10_000 });
+
+        // D02d: macOS URL field NOT visible (software-only)
+        const macosField = page.getByRole('textbox', { name: /macos/i });
+        await expect(macosField).not.toBeVisible();
+
+        // D02e: Enter a book URL
+        await bookUrlField.click();
+        await page.waitForTimeout(400);
+        await page.keyboard.type('https://storage.example.com/python-mastery.pdf', { delay: 20 });
+        await page.waitForTimeout(300);
+
+        // D02f: Validate URL field value
+        await expect(bookUrlField).toHaveValue(/storage\.example\.com/);
+
+        await page.goBack();
+        await waitForFlutter(page);
+        await performSignOut(page, TARGET_URL);
+    });
+});
