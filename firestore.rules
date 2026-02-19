@@ -253,6 +253,8 @@ service cloud.firestore {
           'isLocalDeliveryOnly', 'isPerishable', 'estimatedShipDays',
           'deliveryOptions', 'minimumOrderQuantity', 'freeShipping',
           'isDigital',
+          // Digital product fields
+          'digitalType', 'slug', 'digitalBuilds', 'bookSourceUrl', 'deviceLimit',
           // Supplier / inventory (structured)
           'supplier', 'inventory',
           // Legacy supplier fields (backward compatibility)
@@ -297,6 +299,8 @@ service cloud.firestore {
             'isLocalDeliveryOnly', 'isPerishable', 'estimatedShipDays',
             'deliveryOptions', 'minimumOrderQuantity', 'freeShipping',
             'isDigital', 'taxCode',
+            // Digital product fields
+            'digitalType', 'slug', 'digitalBuilds', 'bookSourceUrl', 'deviceLimit',
             'supplier', 'inventory', 'status',
             'cost', 'supplierSku', 'supplierUrl',
             // Admin-only toggles
@@ -460,6 +464,28 @@ service cloud.firestore {
     match /algolia_sync_failures/{failureId} {
       allow read: if isAdmin();
       allow create, update, delete: if false;
+    }
+
+    // ================================================================
+    // LICENSES COLLECTION
+    // Buyers read their own licenses. Backend-only write.
+    // ================================================================
+    match /licenses/{licenseKey} {
+      // Buyer reads their own license
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Admin reads all
+      allow read: if isAdmin();
+      // Backend-only writes (Cloud Functions only)
+      allow create, update, delete: if false;
+    }
+
+    // ================================================================
+    // BOOK_ACCESS_TOKENS COLLECTION
+    // Single-use redirect tokens — backend creates, no client read.
+    // ================================================================
+    match /book_access_tokens/{token} {
+      // No client reads — token is consumed server-side via redirect
+      allow read, write: if false;
     }
 
     // ================================================================
