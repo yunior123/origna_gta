@@ -49,6 +49,17 @@ except Exception:
 # PAYMENT HANDLERS - STRIPE
 # ===============================================
 # ===============================================
+# DIGITAL PRODUCT HANDLERS
+# ===============================================
+from handlers.digital import (  # noqa: E402
+    activate_license,
+    deactivate_license,
+    generate_book_download_session,
+    get_book_redirect,
+    verify_license,
+)
+
+# ===============================================
 # ADMIN HANDLERS
 # ===============================================
 from handlers.admin import (  # noqa: E402
@@ -262,6 +273,12 @@ __all__ = [
     "retry_failed_algolia_syncs",
     # Shipping
     "calculate_shipping_cost",
+    # Digital products
+    "activate_license",
+    "deactivate_license",
+    "generate_book_download_session",
+    "get_book_redirect",
+    "verify_license",
 ]
 
 print(f"""
