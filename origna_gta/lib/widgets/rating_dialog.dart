@@ -8,6 +8,7 @@ import 'package:origna_gta/features/products/product_rating_viewmodel.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:origna_gta/core/routes.dart';
 
 /// Shows the rating dialog
 Future<void> showRatingDialog({
@@ -122,25 +123,35 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
         ),
         const SizedBox(height: 8),
         if (!isPremium)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-            decoration: BoxDecoration(
-              color: DesignTokens.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: DesignTokens.outlineVariant),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.lock_rounded, color: DesignTokens.textDisabled, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'rating.photos_premium_only'.tr(),
-                    style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
-                  ),
+          Tooltip(
+            message: 'Upgrade to add photos',
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pushNamed(AppRoutes.subscription);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                decoration: BoxDecoration(
+                  color: DesignTokens.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: DesignTokens.outlineVariant),
                 ),
-              ],
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock_rounded, color: DesignTokens.textDisabled, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'rating.photos_premium_only'.tr(),
+                        style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: DesignTokens.textDisabled, size: 18),
+                  ],
+                ),
+              ),
             ),
           )
         else
