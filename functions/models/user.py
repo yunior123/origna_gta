@@ -61,8 +61,8 @@ class User(BaseModel):
     updatedAt: datetime | None = Field(default=None, description="Last update timestamp")
 
     # Tax exemption for businesses (GST/HST number)
-    taxExemption: dict[str, str] | None = Field(
-        default=None, description="Tax exemption details: {gstNumber: '123456789RT0001'}"
+    taxExemption: str | None = Field(
+        default=None, description="Tax exemption details (e.g., GST/HST number)"
     )
 
     # === CONSENT & COMPLIANCE (CASL + PIPEDA + Quebec Law 25) ===
@@ -85,13 +85,23 @@ class User(BaseModel):
     )
 
     # === PREMIUM SUBSCRIPTION ===
-    isPremium: bool = Field(default=False, description="Cached premium status — authoritative source: subscriptions/{uid}")
+    isPremium: bool = Field(
+        default=False, description="Cached premium status — authoritative source: subscriptions/{uid}"
+    )
     premiumSince: datetime | None = Field(default=None, description="When premium subscription started")
-    premiumExpiresAt: datetime | None = Field(default=None, description="Current billing period end (premium expires after this)")
+    premiumExpiresAt: datetime | None = Field(
+        default=None, description="Current billing period end (premium expires after this)"
+    )
     stripeSubscriptionId: str | None = Field(default=None, description="Stripe Subscription ID")
-    notifyNewProducts: bool = Field(default=False, description="Opt-in: receive FCM notification when new products are added (premium only)")
-    notifyTrending: bool = Field(default=False, description="Opt-in: receive FCM notification for trending products (premium only)")
-    fcmToken: str | None = Field(default=None, description="Firebase Cloud Messaging device token for push notifications")
+    notifyNewProducts: bool = Field(
+        default=False, description="Opt-in: receive FCM notification when new products are added (premium only)"
+    )
+    notifyTrending: bool = Field(
+        default=False, description="Opt-in: receive FCM notification for trending products (premium only)"
+    )
+    fcmToken: str | None = Field(
+        default=None, description="Firebase Cloud Messaging device token for push notifications"
+    )
     fcmTokenUpdatedAt: datetime | None = Field(default=None, description="Last FCM token update timestamp")
 
     @field_validator("name")

@@ -35,13 +35,18 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/validate-ui-design.sh",
             "statusMessage": "Checking UI design system compliance..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/validate-premium.sh",
+            "statusMessage": "Checking premium subscription impact..."
           }
         ]
       }
     ],
     "SubagentStop": [
       {
-        "matcher": "logic-auditor|payment-auditor|cross-stack-auditor|schema-sync-checker|order-lifecycle-auditor|uiux-expert",
+        "matcher": "logic-auditor|payment-auditor|cross-stack-auditor|schema-sync-checker|order-lifecycle-auditor|uiux-expert|premium-auditor|security-auditor|frontend-auditor|rival-agent|cost-monitor",
         "hooks": [
           {
             "type": "prompt",

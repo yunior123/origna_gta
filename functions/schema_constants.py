@@ -52,6 +52,7 @@ class Collections:
     WAREHOUSES = "warehouses"  # users/{sellerId}/warehouses
     CART = "cart"  # users/{userId}/cart
     FAVORITES = "favorites"  # users/{userId}/favorites
+    NOTIFICATIONS = "notifications"  # users/{uid}/notifications
     LICENSES = "licenses"
     BOOK_ACCESS_TOKENS = "book_access_tokens"
     SOFTWARE_ACCESS_TOKENS = "software_access_tokens"
@@ -149,8 +150,8 @@ class AppConfig:
         "https://orignagta-staging.web.app",
         "https://orignagta-staging.firebaseapp.com",
         # Local development (Firebase Emulator & Flutter Web)
-        "http://localhost:5005",      # Firebase Emulator hosting / Flutter Web
-        "http://localhost:5001",      # Firebase Functions (for preflight checks)
+        "http://localhost:5005",  # Firebase Emulator hosting / Flutter Web
+        "http://localhost:5001",  # Firebase Functions (for preflight checks)
     ]
 
 
@@ -1324,6 +1325,7 @@ class LicenseStatusValues:
 
 class SubscriptionStatusValues:
     """Stripe subscription status values"""
+
     ACTIVE = "active"
     CANCELED = "canceled"
     PAST_DUE = "past_due"

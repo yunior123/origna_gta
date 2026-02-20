@@ -116,6 +116,39 @@ export async function getDoc(path: string, token?: string): Promise<any> {
   return doc ? parseDoc(doc) : null;
 }
 
+/**
+ * Write a Firestore document via REST API.
+ * Fields must already be in Firestore REST format (use toFirestoreFields).
+ */
+export async function writeDoc(path: string, fields: Record<string, any>, token?: string): Promise<boolean> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  // path includes collection/document. REST API PATCH uses document path directly.
+  const res = await fetch(`${FIRESTORE_BASE}/${path}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ fields }),
+  });
+
+  return res.ok;
+}
+
+/**
+ * Delete a Firestore document via REST API.
+ */
+export async function deleteDoc(path: string, token?: string): Promise<boolean> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${FIRESTORE_BASE}/${path}`, {
+    method: 'DELETE',
+    headers,
+  });
+
+  return res.ok;
+}
+
 // ════════════════════════════════════════════════════════════════════
 // FIRESTORE VALUE CONVERSION
 // ════════════════════════════════════════════════════════════════════
@@ -430,7 +463,7 @@ export async function dismissStripeModals(page: Page): Promise<void> {
     '[aria-label="Close"]'
   ).first();
   if (await linkDismiss.isVisible({ timeout: 2_000 }).catch(() => false)) {
-    await linkDismiss.click().catch(() => {});
+    await linkDismiss.click().catch(() => { });
     await page.waitForTimeout(500);
   }
 
@@ -441,7 +474,7 @@ export async function dismissStripeModals(page: Page): Promise<void> {
       'button:has-text("Complete"), button:has-text("Approve"), #test-source-authorize-3ds'
     ).first();
     if (await completeBtn.isVisible({ timeout: 1_000 }).catch(() => false)) {
-      await completeBtn.click().catch(() => {});
+      await completeBtn.click().catch(() => { });
       await page.waitForTimeout(1_000);
     }
   } catch {
@@ -451,7 +484,7 @@ export async function dismissStripeModals(page: Page): Promise<void> {
   // Dismiss generic overlays
   const overlay = page.locator('.Modal-overlay, .VerificationModal, [data-testid="modal-overlay"]').first();
   if (await overlay.isVisible({ timeout: 500 }).catch(() => false)) {
-    await page.keyboard.press('Escape').catch(() => {});
+    await page.keyboard.press('Escape').catch(() => { });
     await page.waitForTimeout(300);
   }
 }
@@ -465,7 +498,7 @@ export async function fillStripeCheckout(
   email: string,
   card = STRIPE_CARD
 ): Promise<void> {
-  await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
+  await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => { });
   await dismissStripeModals(page);
 
   // Fill email if visible
@@ -489,7 +522,7 @@ export async function fillStripeCheckout(
       for (const sel of dismissSelectors) {
         const el = page.locator(sel).first();
         if (await el.isVisible({ timeout: 1_000 }).catch(() => false)) {
-          await el.click().catch(() => {});
+          await el.click().catch(() => { });
           await page.waitForTimeout(1_500);
           break;
         }
@@ -505,7 +538,7 @@ export async function fillStripeCheckout(
     const cardRadio = page.locator('#payment-method-accordion-item-title-card').first();
     if (await cardRadio.isVisible({ timeout: 3_000 }).catch(() => false)) {
       const cardLabel = page.locator('label[for="payment-method-accordion-item-title-card"], #payment-method-accordion-item-title-card').first();
-      await cardLabel.click({ force: true }).catch(() => {});
+      await cardLabel.click({ force: true }).catch(() => { });
       await page.waitForTimeout(3_000);
     } else {
       const fallbackSelectors = [
@@ -518,7 +551,7 @@ export async function fillStripeCheckout(
       for (const sel of fallbackSelectors) {
         const el = page.locator(sel).first();
         if (await el.isVisible({ timeout: 1_500 }).catch(() => false)) {
-          await el.click().catch(() => {});
+          await el.click().catch(() => { });
           await page.waitForTimeout(2_000);
           break;
         }
@@ -552,7 +585,7 @@ export async function fillStripeCheckout(
       } catch { /* frame not accessible */ }
     }
     if (!foundInFrame) {
-      await page.screenshot({ path: '/tmp/stripe-checkout-debug.png', fullPage: true }).catch(() => {});
+      await page.screenshot({ path: '/tmp/stripe-checkout-debug.png', fullPage: true }).catch(() => { });
       throw new Error(`Stripe card field not found. URL: ${page.url()}`);
     }
   } else {
@@ -809,6 +842,52 @@ export async function getTwoSellerProducts(token: string): Promise<[DiscoveredPr
   if (sellers.size < 2) return null;
   const [a, b] = [...sellers.values()];
   return [a, b];
+}
+
+/**
+ * Ensures two products from different sellers exist on the dev environment.
+ * If not, it uses the Admin REST API to create dummy products.
+ */
+export async function ensureTwoSellerProducts(token: string): Promise<[DiscoveredProduct, DiscoveredProduct]> {
+  const existing = await getTwoSellerProducts(token);
+  if (existing) return existing;
+
+  // We need to create products for admin and seller
+  const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
+
+  const createDummyProduct = async (sellerUid: string, prefix: string): Promise<DiscoveredProduct> => {
+    const productId = `test_dummy_${prefix}_${Date.now()}`;
+    const productData = {
+      sellerId: sellerUid,
+      sellerSku: `DUMMY-${prefix}-${Date.now()}`,
+      name: `Dummy Test Product ${prefix}`,
+      price: 15.99,
+      isActive: true,
+      stockQuantity: 100,
+      categoryId: 1,
+      imageUrls: [],
+      keywords: ['dummy', prefix],
+      rating: 0,
+    };
+
+    const ok = await writeDoc(`products/${productId}`, toFirestoreFields(productData), adminAuth.idToken);
+    if (!ok) throw new Error(`Failed to create dummy product for ${sellerUid}`);
+
+    return {
+      id: productId,
+      name: productData.name,
+      price: productData.price,
+      sellerId: productData.sellerId,
+      stockQuantity: productData.stockQuantity,
+      isActive: productData.isActive,
+    };
+  };
+
+  const sellerA = await createDummyProduct(TEST_UIDS.ADMIN, 'A');
+  const sellerB = await createDummyProduct(TEST_UIDS.SELLER, 'B');
+
+  invalidateProductCache(); // clear cache so these new products are found next time
+  return [sellerA, sellerB];
 }
 
 // ════════════════════════════════════════════════════════════════════

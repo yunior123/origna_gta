@@ -1147,8 +1147,8 @@
           "description": "Per-seller payout breakdown",
           "schema": "$ref:SellerPayout"
         },
-        "platformFeeTotal": {
-          "type": "number",
+        "platformFeeTotalCents": {
+          "type": "integer",
           "default": 0,
           "description": "Total platform fee collected (2.5%)"
         },
@@ -1169,8 +1169,8 @@
           "required": false,
           "description": "Product ratings by productId (server-managed)"
         },
-        "refundAmount": {
-          "type": "number",
+        "refundAmountCents": {
+          "type": "integer",
           "required": false,
           "description": "Amount refunded if applicable"
         },
@@ -1195,13 +1195,13 @@
           "default": false,
           "description": "Whether shipping cost approval is required from buyer"
         },
-        "actualShipping": {
-          "type": "number",
+        "actualShippingCents": {
+          "type": "integer",
           "default": 0,
           "description": "Actual shipping cost set by seller (for approval flow)"
         },
-        "pendingTotal": {
-          "type": "number",
+        "pendingTotalCents": {
+          "type": "integer",
           "default": 0,
           "description": "Pending total awaiting shipping approval"
         },

@@ -1120,7 +1120,10 @@ class TestEmailNotifications:
 
     def test_send_email_missing_mailjet_key(self):
         """Scenario 71: Missing Mailjet key doesn't crash."""
-        with patch("services.email_service.IS_EMULATOR", False), patch("services.email_service.get_mailjet_api_key", return_value=""):
+        with (
+            patch("services.email_service.IS_EMULATOR", False),
+            patch("services.email_service.get_mailjet_api_key", return_value=""),
+        ):
             from services.email_service import send_email
 
             send_email("test@example.com", "Test", "<p>Test</p>")

@@ -9,7 +9,7 @@ import {
   signIn, callOk, callExpectError,
   fullCheckoutAndPay, fullMultiSellerCheckoutAndPay,
   waitForOrderStatus, getOrder,
-  getTestProduct, getTwoSellerProducts, getSellerAuth,
+  getTestProduct, ensureTwoSellerProducts, getSellerAuth,
   TEST_ACCOUNTS,
 } from './api-helpers';
 
@@ -24,10 +24,9 @@ test.describe('Multi-Seller Orders', () => {
 
   test.beforeAll(async () => {
     const auth = await signIn(BUYER_EMAIL);
-    const twoProducts = await getTwoSellerProducts(auth.idToken);
-    if (twoProducts) {
-      [productA, productB] = twoProducts;
-    }
+    const twoProducts = await ensureTwoSellerProducts(auth.idToken);
+    [productA, productB] = twoProducts;
+
     // Always have a fallback single product for basic multi-item test
     const product = await getTestProduct(auth.idToken, auth.localId);
     singleProductId = product.id;
@@ -44,8 +43,6 @@ test.describe('Multi-Seller Orders', () => {
   });
 
   test('Multi-seller cart creates order with correct items', async ({ page }) => {
-    test.skip(!productA || !productB, 'Skipped: dev environment has products from only one seller');
-
     const result = await fullMultiSellerCheckoutAndPay(page, BUYER_EMAIL, [
       { productId: productA!.id, quantity: 1 },
       { productId: productB!.id, quantity: 1 },
@@ -58,7 +55,6 @@ test.describe('Multi-Seller Orders', () => {
   });
 
   test('Per-item status tracking works for multi-item order', async ({ page }) => {
-    test.skip(!productA || !productB, 'Skipped: dev environment has products from only one seller');
 
     const result = await fullMultiSellerCheckoutAndPay(page, BUYER_EMAIL, [
       { productId: productA!.id, quantity: 1 },
@@ -86,8 +82,6 @@ test.describe('Multi-Seller Orders', () => {
   });
 
   test('Wrong seller cannot update another seller items', async ({ page }) => {
-    test.skip(!productA || !productB, 'Skipped: dev environment has products from only one seller');
-
     const result = await fullMultiSellerCheckoutAndPay(page, BUYER_EMAIL, [
       { productId: productA!.id, quantity: 1 },
       { productId: productB!.id, quantity: 1 },

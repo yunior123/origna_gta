@@ -216,7 +216,6 @@ class TestStripeWebhookSecurity:
         assert any(term in response_text.lower() for term in ["invalid", "error", "bad request", "internal"])
 
 
-
 class TestWebhookSignatureCryptography:
     """Tests de cryptographie pour les signatures"""
 
@@ -464,7 +463,6 @@ def valid_stripe_signature():
     signature = hmac.new(secret.encode(), signed_payload, hashlib.sha256).hexdigest()
 
     return f"t={timestamp},v1={signature}"
-
 
 
 # ===== COMMANDES D'EXÉCUTION =====

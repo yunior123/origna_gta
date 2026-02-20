@@ -31,13 +31,14 @@ def _patch_cloud_event_get_attributes(self):
     """Inject missing 'authtype'/'authid' into Firestore trigger event attributes."""
     attrs = _original_get_attributes(self)
     if isinstance(attrs, dict):
-        attrs.setdefault('authtype', 'SERVICE')
-        attrs.setdefault('authid', '')
+        attrs.setdefault("authtype", "SERVICE")
+        attrs.setdefault("authid", "")
     return attrs
 
 
 try:
     from cloudevents.http.event import CloudEvent as _CE
+
     _original_get_attributes = _CE._get_attributes
     _CE._get_attributes = _patch_cloud_event_get_attributes
 except Exception:
@@ -64,6 +65,10 @@ from handlers.admin import (  # noqa: E402
     unsubscribe_email,
     unsuspend_seller,
     update_user_roles,
+)
+from handlers.chat import (  # noqa: E402
+    get_or_create_chat,
+    mark_messages_read,
 )
 
 # ===============================================
@@ -127,15 +132,6 @@ from handlers.payment_stripe import (  # noqa: E402
     stripe_webhook,
     verify_cart_prices,
 )
-from handlers.subscriptions import (  # noqa: E402
-    cancel_subscription,
-    create_subscription,
-    get_subscription_status,
-)
-from handlers.chat import (  # noqa: E402
-    get_or_create_chat,
-    mark_messages_read,
-)
 from handlers.products import (  # noqa: E402
     admin_approve_product,
     admin_reject_product,
@@ -159,6 +155,11 @@ from handlers.products import (  # noqa: E402
     update_warehouse,
     upload_product_images,
     upload_review_images,
+)
+from handlers.subscriptions import (  # noqa: E402
+    cancel_subscription,
+    create_subscription,
+    get_subscription_status,
 )
 from handlers.users import (  # noqa: E402
     add_buyer_address,
@@ -195,6 +196,7 @@ def _init_stripe():
     """Initialize Stripe API key lazily"""
     if not stripe.api_key:
         from config import get_stripe_secret_key
+
         stripe.api_key = get_stripe_secret_key()
 
 
@@ -204,9 +206,6 @@ if os.environ.get("TESTING") != "true":
 
     with contextlib.suppress(Exception):
         _init_stripe()
-
-
-
 
 
 # Export all functions for Firebase deployment

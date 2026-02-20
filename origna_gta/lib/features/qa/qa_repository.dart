@@ -15,7 +15,7 @@ class FirebaseQARepository implements QARepository {
 
   @override
   Future<void> submitAnswer(String productId, String qaId, String sellerId, String answer) async {
-    final docRef = _firestore.collection(Collections.products).doc(productId).collection(Collections.qa).doc(qaId);
+    final docRef = _firestore.collection(Collections.products).doc(productId).collection(Collections.productQuestions).doc(qaId);
 
     // We only update the answer fields
     await docRef.update({Fields.answerText: answer.trim(), Fields.answeredAt: FieldValue.serverTimestamp(), Fields.answeredBy: sellerId});
@@ -23,7 +23,7 @@ class FirebaseQARepository implements QARepository {
 
   @override
   Future<void> submitQuestion(String productId, String buyerId, String question) async {
-    final docRef = _firestore.collection(Collections.products).doc(productId).collection(Collections.qa).doc();
+    final docRef = _firestore.collection(Collections.products).doc(productId).collection(Collections.productQuestions).doc();
 
     final model = QAModel(id: docRef.id, question: question.trim(), authorId: buyerId, createdAt: DateTime.now());
 
@@ -35,7 +35,7 @@ class FirebaseQARepository implements QARepository {
     return _firestore
         .collection(Collections.products)
         .doc(productId)
-        .collection(Collections.qa)
+        .collection(Collections.productQuestions)
         .orderBy(Fields.createdAt, descending: true)
         .limit(10)
         .snapshots()

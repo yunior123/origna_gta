@@ -15,7 +15,15 @@ from config import (
     get_mailjet_secret_key,
     get_unsubscribe_hmac_secret,
 )
-from schema_constants import AppConfig, DeliveryTypeValues, DigitalPlatformValues, DigitalTypeValues, EmailConfig, Fields, ShippingTiers
+from schema_constants import (
+    AppConfig,
+    DeliveryTypeValues,
+    DigitalPlatformValues,
+    DigitalTypeValues,
+    EmailConfig,
+    Fields,
+    ShippingTiers,
+)
 from services import shipping_service
 
 logger = logging.getLogger(__name__)
@@ -32,7 +40,9 @@ UNSUBSCRIBE_URL = CURRENT_ENV.get_unsubscribe_url()
 # HMAC secret for signed unsubscribe tokens (prevents unauthorized unsubscription)
 # Loaded from GCP Secret Manager in production, from .env in emulator
 _raw_unsub_secret = get_unsubscribe_hmac_secret()
-_UNSUBSCRIBE_SECRET = _raw_unsub_secret if isinstance(_raw_unsub_secret, str) and _raw_unsub_secret else "origna-unsub-default-dev-key"
+_UNSUBSCRIBE_SECRET = (
+    _raw_unsub_secret if isinstance(_raw_unsub_secret, str) and _raw_unsub_secret else "origna-unsub-default-dev-key"
+)
 
 
 # ============================================================
@@ -40,75 +50,84 @@ _UNSUBSCRIBE_SECRET = _raw_unsub_secret if isinstance(_raw_unsub_secret, str) an
 # ============================================================
 _EMAIL_STRINGS: dict[str, dict[str, str]] = {
     # Order status tracker
-    "status.confirmed":  {"en": "Confirmed",    "fr": "Confirmée"},
-    "status.processing": {"en": "Processing",   "fr": "En traitement"},
-    "status.shipped":    {"en": "Shipped",       "fr": "Expédiée"},
-    "status.delivered":  {"en": "Delivered",     "fr": "Livrée"},
+    "status.confirmed": {"en": "Confirmed", "fr": "Confirmée"},
+    "status.processing": {"en": "Processing", "fr": "En traitement"},
+    "status.shipped": {"en": "Shipped", "fr": "Expédiée"},
+    "status.delivered": {"en": "Delivered", "fr": "Livrée"},
     # Table column headers
-    "col.product":       {"en": "Product",       "fr": "Produit"},
-    "col.qty":           {"en": "Qty",           "fr": "Qté"},
-    "col.price":         {"en": "Price",         "fr": "Prix"},
+    "col.product": {"en": "Product", "fr": "Produit"},
+    "col.qty": {"en": "Qty", "fr": "Qté"},
+    "col.price": {"en": "Price", "fr": "Prix"},
     # Section headings
-    "section.items_ordered":  {"en": "Items Ordered",            "fr": "Articles commandés"},
-    "section.items_to_ship":  {"en": "Items to Ship",            "fr": "Articles à expédier"},
-    "section.order_receipt":  {"en": "Order Receipt",            "fr": "Reçu de commande"},
-    "section.ship_to":        {"en": "Shipping To",              "fr": "Livraison à"},
-    "section.ship_to_seller": {"en": "Ship To",                  "fr": "Expédier à"},
-    "section.customer_info":  {"en": "Customer Info",            "fr": "Info client"},
-    "section.tracking":       {"en": "Tracking Details",         "fr": "Détails de suivi"},
-    "section.return_policy":  {"en": "Return &amp; Refund Policy","fr": "Politique de retour et remboursement"},
+    "section.items_ordered": {"en": "Items Ordered", "fr": "Articles commandés"},
+    "section.items_to_ship": {"en": "Items to Ship", "fr": "Articles à expédier"},
+    "section.order_receipt": {"en": "Order Receipt", "fr": "Reçu de commande"},
+    "section.ship_to": {"en": "Shipping To", "fr": "Livraison à"},
+    "section.ship_to_seller": {"en": "Ship To", "fr": "Expédier à"},
+    "section.customer_info": {"en": "Customer Info", "fr": "Info client"},
+    "section.tracking": {"en": "Tracking Details", "fr": "Détails de suivi"},
+    "section.return_policy": {"en": "Return &amp; Refund Policy", "fr": "Politique de retour et remboursement"},
     # Price summary
-    "price.subtotal":    {"en": "Subtotal",      "fr": "Sous-total"},
-    "price.shipping":    {"en": "Shipping",      "fr": "Livraison"},
-    "price.taxes":       {"en": "Taxes",         "fr": "Taxes"},
-    "price.total":       {"en": "Total",         "fr": "Total"},
-    "price.free":        {"en": "Free",          "fr": "Gratuit"},
+    "price.subtotal": {"en": "Subtotal", "fr": "Sous-total"},
+    "price.shipping": {"en": "Shipping", "fr": "Livraison"},
+    "price.taxes": {"en": "Taxes", "fr": "Taxes"},
+    "price.total": {"en": "Total", "fr": "Total"},
+    "price.free": {"en": "Free", "fr": "Gratuit"},
     # Common labels
-    "label.order":         {"en": "Order",           "fr": "Commande"},
-    "label.order_id":      {"en": "Order ID:",        "fr": "N° de commande :"},
-    "label.carrier":       {"en": "Carrier:",         "fr": "Transporteur :"},
-    "label.tracking_num":  {"en": "Tracking #:",      "fr": "N° de suivi :"},
-    "label.amount":        {"en": "Amount:",          "fr": "Montant :"},
-    "label.reason":        {"en": "Reason:",          "fr": "Raison :"},
-    "label.ordered":       {"en": "Ordered:",         "fr": "Commandé le :"},
-    "label.email":         {"en": "Email:",           "fr": "Courriel :"},
-    "label.refund_amount": {"en": "Refund Amount:",   "fr": "Montant remboursé :"},
-    "label.orig_total":    {"en": "Original Total:",  "fr": "Total original :"},
-    "label.status":        {"en": "Status:",          "fr": "Statut :"},
-    "label.revenue":       {"en": "Revenue",          "fr": "Revenu"},
-    "label.items_stat":    {"en": "Items",            "fr": "Articles"},
-    "label.issue":         {"en": "Issue:",           "fr": "Problème :"},
+    "label.order": {"en": "Order", "fr": "Commande"},
+    "label.order_id": {"en": "Order ID:", "fr": "N° de commande :"},
+    "label.carrier": {"en": "Carrier:", "fr": "Transporteur :"},
+    "label.tracking_num": {"en": "Tracking #:", "fr": "N° de suivi :"},
+    "label.amount": {"en": "Amount:", "fr": "Montant :"},
+    "label.reason": {"en": "Reason:", "fr": "Raison :"},
+    "label.ordered": {"en": "Ordered:", "fr": "Commandé le :"},
+    "label.email": {"en": "Email:", "fr": "Courriel :"},
+    "label.refund_amount": {"en": "Refund Amount:", "fr": "Montant remboursé :"},
+    "label.orig_total": {"en": "Original Total:", "fr": "Total original :"},
+    "label.status": {"en": "Status:", "fr": "Statut :"},
+    "label.revenue": {"en": "Revenue", "fr": "Revenu"},
+    "label.items_stat": {"en": "Items", "fr": "Articles"},
+    "label.issue": {"en": "Issue:", "fr": "Problème :"},
     # CTA buttons
-    "cta.track_order":    {"en": "Track Your Order →", "fr": "Suivre ma commande →"},
-    "cta.view_order":     {"en": "View Order →",       "fr": "Voir ma commande →"},
-    "cta.view_orders":    {"en": "View Orders →",      "fr": "Voir mes commandes →"},
-    "cta.manage_orders":  {"en": "Manage Orders →",    "fr": "Gérer les commandes →"},
-    "cta.confirm_receipt":{"en": "Confirm Receipt →",  "fr": "Confirmer la réception →"},
+    "cta.track_order": {"en": "Track Your Order →", "fr": "Suivre ma commande →"},
+    "cta.view_order": {"en": "View Order →", "fr": "Voir ma commande →"},
+    "cta.view_orders": {"en": "View Orders →", "fr": "Voir mes commandes →"},
+    "cta.manage_orders": {"en": "Manage Orders →", "fr": "Gérer les commandes →"},
+    "cta.confirm_receipt": {"en": "Confirm Receipt →", "fr": "Confirmer la réception →"},
     # Footer
-    "footer.unsubscribe": {"en": "Unsubscribe from marketing emails",   "fr": "Se désabonner des courriels promotionnels"},
-    "footer.privacy":     {"en": "Privacy Policy",                      "fr": "Politique de confidentialité"},
+    "footer.unsubscribe": {
+        "en": "Unsubscribe from marketing emails",
+        "fr": "Se désabonner des courriels promotionnels",
+    },
+    "footer.privacy": {"en": "Privacy Policy", "fr": "Politique de confidentialité"},
     # Seller notification
     "seller.action_banner": {
         "en": "⚡ ACTION REQUIRED — Confirm and ship this order within 48 hours",
         "fr": "⚡ ACTION REQUISE — Confirmez et expédiez cette commande dans les 48 heures",
     },
     "seller.hero_h": {"en": "New Order Received!", "fr": "Nouvelle commande reçue !"},
-    "seller.hero_s": {"en": "You have a new order to fulfill. Ship it fast!", "fr": "Vous avez une nouvelle commande à traiter. Expédiez-la rapidement !"},
+    "seller.hero_s": {
+        "en": "You have a new order to fulfill. Ship it fast!",
+        "fr": "Vous avez une nouvelle commande à traiter. Expédiez-la rapidement !",
+    },
     "seller.order_total": {"en": "Order Total", "fr": "Total commande"},
     # Order confirmation
     "confirm.hero_h": {"en": "Order Confirmed!", "fr": "Commande confirmée !"},
-    "confirm.hero_s": {"en": "Thank you for shopping with us, your order is being prepared.", "fr": "Merci pour votre achat. Votre commande est en cours de préparation."},
-    "confirm.order_date":   {"en": "🕐 Ordered on",         "fr": "🕐 Commandé le"},
-    "confirm.est_delivery": {"en": "📦 Estimated delivery by","fr": "📦 Livraison estimée avant le"},
-    "confirm.sold_by":      {"en": "Sold by: Origna Ventures Inc.", "fr": "Vendu par : Origna Ventures Inc."},
-    "confirm.return_title": {"en": "Return &amp; Refund Policy",   "fr": "Politique de retour et remboursement"},
+    "confirm.hero_s": {
+        "en": "Thank you for shopping with us, your order is being prepared.",
+        "fr": "Merci pour votre achat. Votre commande est en cours de préparation.",
+    },
+    "confirm.order_date": {"en": "🕐 Ordered on", "fr": "🕐 Commandé le"},
+    "confirm.est_delivery": {"en": "📦 Estimated delivery by", "fr": "📦 Livraison estimée avant le"},
+    "confirm.sold_by": {"en": "Sold by: Origna Ventures Inc.", "fr": "Vendu par : Origna Ventures Inc."},
+    "confirm.return_title": {"en": "Return &amp; Refund Policy", "fr": "Politique de retour et remboursement"},
     "confirm.return_body": {
         "en": "Returns and refunds are accepted within <strong>7 days of delivery</strong>. After 7 days post-delivery, all sales are final. If the goods are defective or not as described, contact {support} with your order ID within the return window. Under Ontario's Consumer Protection Act, you may cancel before shipment.",
         "fr": "Les retours et remboursements sont acceptés dans les <strong>7 jours suivant la livraison</strong>. Après ce délai, toutes les ventes sont définitives. Si les articles sont défectueux ou non conformes, contactez {support} avec votre numéro de commande. Conformément à la Loi sur la protection du consommateur de l'Ontario, vous pouvez annuler avant l'expédition.",
     },
     # Shipped
-    "shipped.hero_h": {"en": "Your Order Has Shipped!",  "fr": "Votre commande a été expédiée !"},
-    "shipped.hero_s": {"en": "Your items are on the way.","fr": "Vos articles sont en route."},
+    "shipped.hero_h": {"en": "Your Order Has Shipped!", "fr": "Votre commande a été expédiée !"},
+    "shipped.hero_s": {"en": "Your items are on the way.", "fr": "Vos articles sont en route."},
     # In transit
     "in_transit.hero_h": {"en": "Your Order Is In Transit!", "fr": "Votre commande est en transit !"},
     "in_transit.hero_s": {"en": "Your package is on its way to you.", "fr": "Votre colis est en chemin."},
@@ -117,10 +136,13 @@ _EMAIL_STRINGS: dict[str, dict[str, str]] = {
         "fr": "en transit. Vous recevrez une autre mise à jour à la livraison.",
     },
     # Delivered
-    "delivered.hero_h":    {"en": "Your Order Has Been Delivered!", "fr": "Votre commande a été livrée !"},
-    "delivered.hero_s":    {"en": "We hope you love your items.",   "fr": "Nous espérons que vos articles vous plaisent."},
-    "delivered.confirm_t": {"en": "📋 Please Confirm Receipt",      "fr": "📋 Veuillez confirmer la réception"},
-    "delivered.confirm_b": {"en": "Confirming receipt helps us release payment to the seller and improves the marketplace for everyone.", "fr": "Confirmer la réception nous permet de libérer le paiement au vendeur et d'améliorer la marketplace pour tous."},
+    "delivered.hero_h": {"en": "Your Order Has Been Delivered!", "fr": "Votre commande a été livrée !"},
+    "delivered.hero_s": {"en": "We hope you love your items.", "fr": "Nous espérons que vos articles vous plaisent."},
+    "delivered.confirm_t": {"en": "📋 Please Confirm Receipt", "fr": "📋 Veuillez confirmer la réception"},
+    "delivered.confirm_b": {
+        "en": "Confirming receipt helps us release payment to the seller and improves the marketplace for everyone.",
+        "fr": "Confirmer la réception nous permet de libérer le paiement au vendeur et d'améliorer la marketplace pour tous.",
+    },
     "delivered.auto_release": {
         "en": "<strong>Note:</strong> Payment will be auto-released after {days} days if not confirmed.",
         "fr": "<strong>Remarque :</strong> Le paiement sera libéré automatiquement après {days} jours si non confirmé.",
@@ -130,57 +152,96 @@ _EMAIL_STRINGS: dict[str, dict[str, str]] = {
         "fr": "Les retours et remboursements sont acceptés dans les <strong>{days} jours suivant la livraison</strong>. Après ce délai, toutes les ventes sont définitives. Contactez {support} avec votre numéro de commande.",
     },
     # Cancelled
-    "cancelled.hero_h":   {"en": "Order Cancelled",              "fr": "Commande annulée"},
-    "cancelled.hero_s":   {"en": "Your order has been cancelled.","fr": "Votre commande a été annulée."},
-    "cancelled.refund_t": {"en": "💰 Refund Information",         "fr": "💰 Information de remboursement"},
+    "cancelled.hero_h": {"en": "Order Cancelled", "fr": "Commande annulée"},
+    "cancelled.hero_s": {"en": "Your order has been cancelled.", "fr": "Votre commande a été annulée."},
+    "cancelled.refund_t": {"en": "💰 Refund Information", "fr": "💰 Information de remboursement"},
     "cancelled.refund_b": {
         "en": "If payment was captured, a full refund will be issued to your original payment method within 5-10 business days. If you don't see the refund, contact your bank or {support}.",
         "fr": "Si le paiement a été capturé, un remboursement complet sera effectué sur votre moyen de paiement original dans les 5 à 10 jours ouvrables. Si vous ne voyez pas le remboursement, contactez votre banque ou {support}.",
     },
     # Processing
-    "processing.hero_h":    {"en": "Your Order Is Being Processed!", "fr": "Votre commande est en cours de traitement !"},
-    "processing.hero_s":    {"en": "Payment confirmed — sellers are preparing your items.", "fr": "Paiement confirmé — les vendeurs préparent vos articles."},
-    "processing.payment_t": {"en": "✅ Payment Confirmed",            "fr": "✅ Paiement confirmé"},
+    "processing.hero_h": {"en": "Your Order Is Being Processed!", "fr": "Votre commande est en cours de traitement !"},
+    "processing.hero_s": {
+        "en": "Payment confirmed — sellers are preparing your items.",
+        "fr": "Paiement confirmé — les vendeurs préparent vos articles.",
+    },
+    "processing.payment_t": {"en": "✅ Payment Confirmed", "fr": "✅ Paiement confirmé"},
     "processing.shipping_n": {
         "en": "You'll receive a shipping notification with tracking details once your items are on the way.",
         "fr": "Vous recevrez une notification d'expédition avec les détails de suivi dès que vos articles seront en route.",
     },
     # Refunded
-    "refunded.hero_h":     {"en": "Your Refund Has Been Processed",            "fr": "Votre remboursement a été traité"},
-    "refunded.hero_s":     {"en": "A full refund has been issued for your order.", "fr": "Un remboursement complet a été émis pour votre commande."},
-    "refunded.status":     {"en": "Full Refund",                               "fr": "Remboursement complet"},
-    "refunded.timeline_t": {"en": "🏦 When Will I See My Refund?",              "fr": "🏦 Quand vais-je voir mon remboursement ?"},
+    "refunded.hero_h": {"en": "Your Refund Has Been Processed", "fr": "Votre remboursement a été traité"},
+    "refunded.hero_s": {
+        "en": "A full refund has been issued for your order.",
+        "fr": "Un remboursement complet a été émis pour votre commande.",
+    },
+    "refunded.status": {"en": "Full Refund", "fr": "Remboursement complet"},
+    "refunded.timeline_t": {"en": "🏦 When Will I See My Refund?", "fr": "🏦 Quand vais-je voir mon remboursement ?"},
     "refunded.timeline_b": {
         "en": "Refunds typically appear on your statement within <strong>5-10 business days</strong>, depending on your bank. If you don't see the refund after 10 business days, contact your bank or reach out to {support}.",
         "fr": "Les remboursements apparaissent généralement sur votre relevé dans les <strong>5 à 10 jours ouvrables</strong>, selon votre banque. Si vous ne voyez pas le remboursement après 10 jours ouvrables, contactez votre banque ou {support}.",
     },
     # Partial refund
-    "partial.hero_h":     {"en": "Partial Refund Processed",                   "fr": "Remboursement partiel traité"},
-    "partial.hero_s":     {"en": "A partial refund has been issued for your order.", "fr": "Un remboursement partiel a été émis pour votre commande."},
-    "partial.status":     {"en": "Partial Refund",                             "fr": "Remboursement partiel"},
-    "partial.timeline_t": {"en": "🏦 When Will I See My Refund?",               "fr": "🏦 Quand vais-je voir mon remboursement ?"},
+    "partial.hero_h": {"en": "Partial Refund Processed", "fr": "Remboursement partiel traité"},
+    "partial.hero_s": {
+        "en": "A partial refund has been issued for your order.",
+        "fr": "Un remboursement partiel a été émis pour votre commande.",
+    },
+    "partial.status": {"en": "Partial Refund", "fr": "Remboursement partiel"},
+    "partial.timeline_t": {"en": "🏦 When Will I See My Refund?", "fr": "🏦 Quand vais-je voir mon remboursement ?"},
     # Payment capture failed
-    "capture.hero_h":   {"en": "Payment Issue",                         "fr": "Problème de paiement"},
-    "capture.alert_t":  {"en": "⚠️ Action Required",                    "fr": "⚠️ Action requise"},
-    "capture.alert_b":  {"en": "We couldn't complete the payment for your order.", "fr": "Nous n'avons pas pu effectuer le paiement pour votre commande."},
+    "capture.hero_h": {"en": "Payment Issue", "fr": "Problème de paiement"},
+    "capture.alert_t": {"en": "⚠️ Action Required", "fr": "⚠️ Action requise"},
+    "capture.alert_b": {
+        "en": "We couldn't complete the payment for your order.",
+        "fr": "Nous n'avons pas pu effectuer le paiement pour votre commande.",
+    },
     # Auth expired
-    "auth_exp.hero_h":  {"en": "⏰ Payment Authorization Expired",        "fr": "⏰ Autorisation de paiement expirée"},
-    "auth_exp.body_1":  {"en": "Your order authorization has expired after 7 days without seller confirmation.",    "fr": "L'autorisation de votre commande a expiré après 7 jours sans confirmation du vendeur."},
-    "auth_exp.body_2":  {"en": "The hold on your payment has been released. No charge was made to your card.",     "fr": "Le blocage sur votre paiement a été levé. Aucun montant n'a été débité de votre carte."},
-    "auth_exp.body_3":  {"en": "If you still want these items, please place a new order.",                         "fr": "Si vous souhaitez toujours ces articles, veuillez passer une nouvelle commande."},
-    "auth_exp.subject": {"en": "Order {oid} - Authorization Expired",    "fr": "Commande {oid} - Autorisation expirée"},
+    "auth_exp.hero_h": {"en": "⏰ Payment Authorization Expired", "fr": "⏰ Autorisation de paiement expirée"},
+    "auth_exp.body_1": {
+        "en": "Your order authorization has expired after 7 days without seller confirmation.",
+        "fr": "L'autorisation de votre commande a expiré après 7 jours sans confirmation du vendeur.",
+    },
+    "auth_exp.body_2": {
+        "en": "The hold on your payment has been released. No charge was made to your card.",
+        "fr": "Le blocage sur votre paiement a été levé. Aucun montant n'a été débité de votre carte.",
+    },
+    "auth_exp.body_3": {
+        "en": "If you still want these items, please place a new order.",
+        "fr": "Si vous souhaitez toujours ces articles, veuillez passer une nouvelle commande.",
+    },
+    "auth_exp.subject": {"en": "Order {oid} - Authorization Expired", "fr": "Commande {oid} - Autorisation expirée"},
     # Email subjects (used in handlers)
-    "sub.confirmed":    {"en": "Order Confirmation - Origna",                  "fr": "Confirmation de commande - Origna"},
-    "sub.new_order":    {"en": "New Order Received - Origna",                  "fr": "Nouvelle commande reçue - Origna"},
-    "sub.processing":   {"en": "Order #{oid} Is Being Processed - Origna",     "fr": "Commande #{oid} en cours de traitement - Origna"},
-    "sub.shipped":      {"en": "Your Order #{oid} Has Shipped - Origna",       "fr": "Votre commande #{oid} a été expédiée - Origna"},
-    "sub.shipped_seller":{"en": "Order {oid} Shipped Successfully - Origna",   "fr": "Commande {oid} expédiée avec succès - Origna"},
-    "sub.in_transit":   {"en": "Order #{oid} Is In Transit - Origna",          "fr": "Commande #{oid} en transit - Origna"},
-    "sub.delivered":    {"en": "Order #{oid} Delivered - Please Confirm Receipt","fr": "Commande #{oid} livrée - Veuillez confirmer la réception"},
-    "sub.cancelled":    {"en": "Order #{oid} Cancelled - Origna",              "fr": "Commande #{oid} annulée - Origna"},
-    "sub.refunded":     {"en": "Refund Processed for Order #{oid} - Origna",   "fr": "Remboursement traité pour la commande #{oid} - Origna"},
-    "sub.partial":      {"en": "Partial Refund for Order #{oid} - Origna",     "fr": "Remboursement partiel pour la commande #{oid} - Origna"},
-    "sub.payment_issue":{"en": "Payment Issue - Order #{oid}",                 "fr": "Problème de paiement - Commande #{oid}"},
+    "sub.confirmed": {"en": "Order Confirmation - Origna", "fr": "Confirmation de commande - Origna"},
+    "sub.new_order": {"en": "New Order Received - Origna", "fr": "Nouvelle commande reçue - Origna"},
+    "sub.processing": {
+        "en": "Order #{oid} Is Being Processed - Origna",
+        "fr": "Commande #{oid} en cours de traitement - Origna",
+    },
+    "sub.shipped": {
+        "en": "Your Order #{oid} Has Shipped - Origna",
+        "fr": "Votre commande #{oid} a été expédiée - Origna",
+    },
+    "sub.shipped_seller": {
+        "en": "Order {oid} Shipped Successfully - Origna",
+        "fr": "Commande {oid} expédiée avec succès - Origna",
+    },
+    "sub.in_transit": {"en": "Order #{oid} Is In Transit - Origna", "fr": "Commande #{oid} en transit - Origna"},
+    "sub.delivered": {
+        "en": "Order #{oid} Delivered - Please Confirm Receipt",
+        "fr": "Commande #{oid} livrée - Veuillez confirmer la réception",
+    },
+    "sub.cancelled": {"en": "Order #{oid} Cancelled - Origna", "fr": "Commande #{oid} annulée - Origna"},
+    "sub.refunded": {
+        "en": "Refund Processed for Order #{oid} - Origna",
+        "fr": "Remboursement traité pour la commande #{oid} - Origna",
+    },
+    "sub.partial": {
+        "en": "Partial Refund for Order #{oid} - Origna",
+        "fr": "Remboursement partiel pour la commande #{oid} - Origna",
+    },
+    "sub.payment_issue": {"en": "Payment Issue - Order #{oid}", "fr": "Problème de paiement - Commande #{oid}"},
 }
 
 
@@ -231,6 +292,25 @@ def _casl_compliant_footer(include_gst: bool = False, lang: str = "en") -> str:
                 <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.25);">{EmailConfig.COPYRIGHT_TEXT}</p>
             </div>
         </td></tr>"""
+
+
+def _log_email_for_testing(to_email: str, subject: str, html_body: str) -> None:
+    """Log an email to Firestore so E2E tests can verify it was "sent" in the emulator/dev."""
+    from config import Environment, CURRENT_ENV
+    if CURRENT_ENV == Environment.PRODUCTION:
+        return
+        
+    from firebase_admin import firestore
+    try:
+        db = firestore.client()
+        db.collection("_mail_logs").add({
+            "to": to_email,
+            "subject": subject,
+            "html": html_body,
+            "sentAt": firestore.SERVER_TIMESTAMP
+        })
+    except Exception as e:
+        logger.error(f"Failed to log email to _mail_logs for E2E testing: {e}")
 
 
 def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
@@ -319,7 +399,7 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
             supplier_info=supplier_info,
             seller_estimated_days=estimated_ship_days,
             is_international=is_international,
-            speed=delivery_speed
+            speed=delivery_speed,
         )
 
         if estimate.get("max_days", 0) > max_delivery_days:
@@ -339,31 +419,33 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
         estimated_delivery = estimated_delivery_date.strftime("%B %d, %Y")
 
     # Bilingual string aliases for the inline HTML below
-    _t_hero_h       = _t("confirm.hero_h", lang)
-    _t_hero_s       = _t("confirm.hero_s", lang)
-    _t_order        = _t("label.order", lang)
-    _t_confirmed    = _t("status.confirmed", lang)
-    _t_processing   = _t("status.processing", lang)
-    _t_shipped      = _t("status.shipped", lang)
-    _t_delivered    = _t("status.delivered", lang)
-    _t_product      = _t("col.product", lang)
-    _t_qty          = _t("col.qty", lang)
-    _t_price        = _t("col.price", lang)
-    _t_subtotal     = _t("price.subtotal", lang)
+    _t_hero_h = _t("confirm.hero_h", lang)
+    _t_hero_s = _t("confirm.hero_s", lang)
+    _t_order = _t("label.order", lang)
+    _t_confirmed = _t("status.confirmed", lang)
+    _t_processing = _t("status.processing", lang)
+    _t_shipped = _t("status.shipped", lang)
+    _t_delivered = _t("status.delivered", lang)
+    _t_product = _t("col.product", lang)
+    _t_qty = _t("col.qty", lang)
+    _t_price = _t("col.price", lang)
+    _t_subtotal = _t("price.subtotal", lang)
     _t_shipping_lbl = _t("price.shipping", lang)
-    _t_taxes        = _t("price.taxes", lang)
-    _t_free         = _t("price.free", lang)
-    _t_total        = _t("price.total", lang)
-    _t_ship_to      = _t("section.ship_to", lang)
+    _t_taxes = _t("price.taxes", lang)
+    _t_free = _t("price.free", lang)
+    _t_total = _t("price.total", lang)
+    _t_ship_to = _t("section.ship_to", lang)
     _t_order_date_lbl = _t("confirm.order_date", lang)
     _t_est_delivery = _t("confirm.est_delivery", lang)
-    _t_sold_by      = _t("confirm.sold_by", lang)
-    _t_ret_title    = _t("confirm.return_title", lang)
-    _support_link   = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
-    _t_ret_body     = _t("confirm.return_body", lang).format(support=_support_link)
-    _t_cta          = _t("cta.track_order", lang)
+    _t_sold_by = _t("confirm.sold_by", lang)
+    _t_ret_title = _t("confirm.return_title", lang)
+    _support_link = (
+        f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+    )
+    _t_ret_body = _t("confirm.return_body", lang).format(support=_support_link)
+    _t_cta = _t("cta.track_order", lang)
     _t_footer_unsub = _t("footer.unsubscribe", lang)
-    _t_footer_priv  = _t("footer.privacy", lang)
+    _t_footer_priv = _t("footer.privacy", lang)
     if lang == "fr":
         _items_label = f"{num_items} article{'s' if num_items != 1 else ''} commandé{'s' if num_items != 1 else ''}"
     else:
@@ -428,10 +510,7 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
 
     # ── License key block (software: key + download links; book: access CTA) ──
     _digital_block_html = ""
-    digital_items = [
-        item for item in items_list
-        if item.get(Fields.IS_DIGITAL) and item.get(Fields.DIGITAL_UNLOCKED)
-    ]
+    digital_items = [item for item in items_list if item.get(Fields.IS_DIGITAL) and item.get(Fields.DIGITAL_UNLOCKED)]
     if digital_items:
         license_rows = ""
         platform_labels = {
@@ -448,13 +527,13 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
             if digital_type == DigitalTypeValues.SOFTWARE and license_key:
                 platform_links = "".join(
                     f'<a href="{url}" style="color: #667EEA; text-decoration: none; margin-right: 16px; font-size: 13px;">'
-                    f'{platform_labels.get(platform, platform.capitalize())} ↓</a>'
+                    f"{platform_labels.get(platform, platform.capitalize())} ↓</a>"
                     for platform, url in builds.items()
                 )
                 instructions = (
                     "Open the app → click <strong>Enter License</strong> → paste your key"
-                    if lang == "en" else
-                    "Ouvrez l'application → cliquez <strong>Entrer la licence</strong> → collez votre clé"
+                    if lang == "en"
+                    else "Ouvrez l'application → cliquez <strong>Entrer la licence</strong> → collez votre clé"
                 )
                 license_rows += f"""
                 <tr style="background-color: #f8f9ff;">
@@ -469,8 +548,8 @@ def get_order_confirmation_email(order_data, order_id=None, lang: str = "en"):
             elif digital_type == DigitalTypeValues.BOOK and license_key:
                 access_label = (
                     "Access your book in the Origna app"
-                    if lang == "en" else
-                    "Accédez à votre livre dans l'application Origna"
+                    if lang == "en"
+                    else "Accédez à votre livre dans l'application Origna"
                 )
                 license_rows += f"""
                 <tr style="background-color: #f8f9ff;">
@@ -1056,7 +1135,9 @@ def _price_summary_block(subtotal: float, shipping: float, taxes: float, total: 
     """
 
 
-def get_order_shipped_email(order_data: dict, order_id: str, tracking_number: str = "N/A", carrier: str = "N/A", lang: str = "en") -> str:
+def get_order_shipped_email(
+    order_data: dict, order_id: str, tracking_number: str = "N/A", carrier: str = "N/A", lang: str = "en"
+) -> str:
     """Generate branded HTML email for order shipped notification."""
     short_oid = order_id[:8] if len(order_id) > 8 else order_id
     safe_tracking = html.escape(str(tracking_number))
@@ -1132,7 +1213,11 @@ def get_order_in_transit_email(order_data: dict, order_id: str, lang: str = "en"
     t_carrier = _t("label.carrier", lang)
     t_tracking_num = _t("label.tracking_num", lang)
     t_move_text = _t("in_transit.move_text", lang)
-    item_word = "article" if lang == "fr" and len(items) == 1 else ("articles" if lang == "fr" else ("item" if len(items) == 1 else "items"))
+    item_word = (
+        "article"
+        if lang == "fr" and len(items) == 1
+        else ("articles" if lang == "fr" else ("item" if len(items) == 1 else "items"))
+    )
     content += f"""
         <tr><td style="padding: 0 40px;"><div style="height: 1px; background-color: #e8ebf0;"></div></td></tr>
 
@@ -1182,9 +1267,7 @@ def get_order_delivered_email(order_data: dict, order_id: str, lang: str = "en")
 
     from schema_constants import BusinessRules
 
-    content = _hero_header(
-        "🏠", _t("delivered.hero_h", lang), _t("delivered.hero_s", lang), "rgba(16, 185, 129, 0.2)"
-    )
+    content = _hero_header("🏠", _t("delivered.hero_h", lang), _t("delivered.hero_s", lang), "rgba(16, 185, 129, 0.2)")
     content += _order_status_tracker(4, lang)
 
     t_confirm_t = _t("delivered.confirm_t", lang)
@@ -1192,8 +1275,12 @@ def get_order_delivered_email(order_data: dict, order_id: str, lang: str = "en")
     t_auto_release = _t("delivered.auto_release", lang).format(days=BusinessRules.AUTO_CONFIRM_DAYS)
     t_order_label = _t("label.order", lang)
     t_return_title = _t("section.return_policy", lang)
-    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
-    t_return_body = _t("delivered.return_body", lang).format(days=BusinessRules.RETURN_WINDOW_DAYS, support=support_link)
+    support_link = (
+        f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+    )
+    t_return_body = _t("delivered.return_body", lang).format(
+        days=BusinessRules.RETURN_WINDOW_DAYS, support=support_link
+    )
     content += f"""
         <tr><td style="padding: 0 40px;"><div style="height: 1px; background-color: #e8ebf0;"></div></td></tr>
 
@@ -1246,7 +1333,9 @@ def get_order_cancelled_email(order_data: dict, order_id: str, reason: str = "Un
     t_amount = _t("label.amount", lang)
     t_reason = _t("label.reason", lang)
     t_refund_t = _t("cancelled.refund_t", lang)
-    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+    support_link = (
+        f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+    )
     t_refund_b = _t("cancelled.refund_b", lang).format(support=support_link)
     content += f"""
         <!-- Cancellation details -->
@@ -1259,7 +1348,7 @@ def get_order_cancelled_email(order_data: dict, order_id: str, reason: str = "Un
                     </tr>
                     <tr>
                         <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_amount}</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600;">${total:.2f} CAD</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; font-weight: 600; font-family: 'Courier New', monospace;">${total:.2f} CAD</td>
                     </tr>
                     <tr>
                         <td style="padding: 4px 0; font-size: 13px; color: #888888;">{t_reason}</td>
@@ -1353,7 +1442,9 @@ def get_order_refunded_email(order_data: dict, order_id: str, refund_amount_cent
     t_status = _t("label.status", lang)
     t_full_refund = _t("refunded.status", lang)
     t_timeline_t = _t("refunded.timeline_t", lang)
-    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+    support_link = (
+        f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+    )
     t_timeline_b = _t("refunded.timeline_b", lang).format(support=support_link)
     content += f"""
         <!-- Refund details -->
@@ -1391,7 +1482,9 @@ def get_order_refunded_email(order_data: dict, order_id: str, refund_amount_cent
     return _email_wrapper("Order Refunded", content, include_gst=False, lang=lang)
 
 
-def get_order_partially_refunded_email(order_data: dict, order_id: str, refund_amount_cents: int = 0, lang: str = "en") -> str:
+def get_order_partially_refunded_email(
+    order_data: dict, order_id: str, refund_amount_cents: int = 0, lang: str = "en"
+) -> str:
     """Generate branded HTML email for partial refund notification."""
     short_oid = order_id[:8] if len(order_id) > 8 else order_id
 
@@ -1408,7 +1501,9 @@ def get_order_partially_refunded_email(order_data: dict, order_id: str, refund_a
     t_status = _t("label.status", lang)
     t_partial = _t("partial.status", lang)
     t_timeline_t = _t("partial.timeline_t", lang)
-    support_link = f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+    support_link = (
+        f'<a href="mailto:{EmailConfig.SUPPORT_EMAIL}" style="color: #667EEA;">{EmailConfig.SUPPORT_EMAIL}</a>'
+    )
     if lang == "fr":
         t_timeline_b = f"Les remboursements partiels apparaissent généralement sur votre relevé dans les <strong>5 à 10 jours ouvrables</strong>. Le solde restant de <strong>{remaining:.2f} $ CAD</strong> n'est pas affecté. Des questions ? Contactez {support_link}."
     else:
@@ -1467,13 +1562,17 @@ def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_E
             - Base64Content (str): Base64-encoded file content
     """
     try:
+        _log_email_for_testing(to_email, subject, html_content)
+        
         if (IS_EMULATOR and not FORCE_REAL_EMAIL) or not get_mailjet_api_key():
             logger.info(f"\U0001f4e7 [EMULATOR] Would send email to {to_email}: {subject}")
             if attachments:
                 logger.info(f"   📎 With {len(attachments)} attachment(s): {[a.get('Filename') for a in attachments]}")
             return True
 
-        mailjet = Client(auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version=EmailConfig.MAILJET_API_VERSION)
+        mailjet = Client(
+            auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version=EmailConfig.MAILJET_API_VERSION
+        )
 
         message = {
             "From": {"Email": from_email, "Name": EmailConfig.SENDER_NAME},
@@ -1506,6 +1605,34 @@ def send_email(to_email, subject, html_content, from_email=EmailConfig.SUPPORT_E
 
 def send_authorization_expired_email(order_id: str, order_data: dict, lang: str = "en") -> None:
     """Send notification when payment authorization expires after 7 days"""
+    customer_email = order_data.get(Fields.CUSTOMER_EMAIL)
+    total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
+    html_body = f"""
+    <html lang="{lang}">
+    <body style="font-family: Arial, sans-serif; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #FF6B35;">{_t("auth_exp.hero_h", lang)}</h2>
+            <p>{_t("auth_exp.body_1", lang)}</p>
+
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>{_t("label.order_id", lang)}</strong> {order_id}</p>
+                <p><strong>{_t("label.amount", lang)}</strong> ${total:.2f} CAD</p>
+            </div>
+
+            <p>{_t("auth_exp.body_2", lang)}</p>
+            <p>{_t("auth_exp.body_3", lang)}</p>
+
+            <p style="margin-top: 20px; font-size: 12px; color: #666;">
+                {EmailConfig.PHYSICAL_ADDRESS}<br>
+                <a href="{UNSUBSCRIBE_URL}">{_t("footer.unsubscribe", lang)}</a> | <a href="{APP_BASE_URL}/privacy-policy">{_t("footer.privacy", lang)}</a>
+            </p>
+            <p style="margin-top: 8px; font-size: 11px; color: #999;">{EmailConfig.COPYRIGHT_TEXT}</p>
+        </div>
+    </body>
+    </html>
+    """
+    _log_email_for_testing(customer_email, _t("auth_exp.subject", lang).replace("{oid}", order_id[:8]), html_body)
+
     if IS_EMULATOR and not FORCE_REAL_EMAIL:
         logger.info(f"🔧 EMULATOR: Would send authorization expired email for order {order_id}")
         return
@@ -1515,7 +1642,9 @@ def send_authorization_expired_email(order_id: str, order_data: dict, lang: str 
         return
 
     try:
-        mailjet = Client(auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version=EmailConfig.MAILJET_API_VERSION)
+        mailjet = Client(
+            auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version=EmailConfig.MAILJET_API_VERSION
+        )
 
         customer_email = order_data.get(Fields.CUSTOMER_EMAIL)
         total = order_data.get(Fields.TOTAL_AMOUNT_CENTS, 0) / 100
@@ -1571,6 +1700,99 @@ def send_payment_capture_failed_email(
     if not customer_email:
         logger.info("Cannot send capture failure email: missing customer_email")
         return
+
+    # Build HTML to log it for E2E and to send
+    safe_name = html.escape(str(customer_name or ""))
+    safe_error = html.escape(str(error_message or "Unknown error"))
+    html_body = f"""
+    <!DOCTYPE html>
+    <html lang="{lang}">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Issue - Origna</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f0f2f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+        <div style="display:none;font-size:1px;color:#f0f2f8;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Action required: payment issue with order #{order_id[:8]}</div>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f0f2f8;">
+        <tr><td align="center" style="padding: 24px 16px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 20px; overflow: hidden;">
+
+        <!-- Header -->
+        <tr><td bgcolor="#1F235A" style="background-color: #1F235A; padding: 40px 40px 32px 40px; text-align: center;">
+            <div style="margin-bottom: 8px;">
+                <span style="font-size: 14px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: #9999b3;">O R I G N A</span>
+            </div>
+            <div style="font-size: 48px; margin: 12px 0;">⚠️</div>
+            <h1 style="margin: 12px 0 8px 0; font-size: 24px; font-weight: 800; color: #ffffff;">{_t("capture.hero_h", lang)}</h1>
+            <p style="margin: 0; font-size: 14px; color: #b0b0cc;">Action required for Order #{order_id[:8]}</p>
+        </td></tr>
+
+        <!-- Alert Banner -->
+        <tr><td bgcolor="#FEF3C7" style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px 40px;">
+            <span style="font-size: 14px; font-weight: 700; color: #92400E;">{_t("capture.alert_t", lang)}</span><br>
+            <span style="font-size: 14px; color: #78350F;">{_t("capture.alert_b", lang)}</span>
+        </td></tr>
+
+        <!-- Content -->
+        <tr><td style="padding: 28px 40px;">
+            <p style="margin: 0 0 20px 0; font-size: 15px; color: #333;">Hi {safe_name},</p>
+
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8f9ff; border-radius: 12px; border: 1px solid #e5e8f5; margin-bottom: 24px;">
+            <tr><td style="padding: 16px 20px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888;">{_t("label.order_id", lang)}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 600;">{order_id[:8]}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888;">{_t("label.amount", lang)}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #1a1a2e; text-align: right; font-weight: 600;">${amount:.2f} CAD</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #888;">{_t("label.issue", lang)}</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #dc2626; text-align: right; font-weight: 500;">{safe_error}</td>
+                    </tr>
+                </table>
+            </td></tr>
+            </table>
+
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1a1a2e;">What happened?</p>
+            <p style="margin: 0 0 12px 0; font-size: 14px; color: #555; line-height: 1.6;">Your payment was authorized but couldn't be charged. Common causes:</p>
+            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">&bull; Card has insufficient funds</p>
+            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">&bull; Card was canceled or expired</p>
+            <p style="margin: 0 0 20px 0; font-size: 14px; color: #555;">&bull; Bank declined the transaction</p>
+
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1a1a2e;">Next steps:</p>
+            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">1. Log in to your account</p>
+            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">2. Update your payment method</p>
+            <p style="margin: 0 0 4px 0; font-size: 14px; color: #555;">3. Contact your bank if the issue persists</p>
+        </td></tr>
+
+        <!-- CTA Button -->
+        <tr><td style="padding: 0 40px 28px 40px; text-align: center;">
+            <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin: 0 auto;"><tr>
+            <td align="center" bgcolor="#667EEA" style="background-color: #667EEA; border-radius: 50px;">
+                <a href="{APP_BASE_URL}/orders/{order_id}" target="_blank" style="display: inline-block; padding: 14px 40px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 50px;">View Order</a>
+            </td>
+            </tr></table>
+        </td></tr>
+
+        <tr><td style="padding: 0 40px 24px 40px;">
+            <p style="margin: 0; font-size: 13px; color: #888; text-align: center;">Need help? Contact us with order ID: <strong>{order_id[:8]}</strong></p>
+        </td></tr>
+
+        <!-- CASL-COMPLIANT FOOTER -->
+        {_casl_compliant_footer(include_gst=False, lang=lang)}
+
+        </table>
+        </td></tr>
+        </table>
+    </body>
+    </html>
+    """
+    subject = _t("sub.payment_issue", lang).replace("{oid}", order_id[:8])
+    _log_email_for_testing(customer_email, subject, html_body)
 
     if IS_EMULATOR and not FORCE_REAL_EMAIL:
         logger.info(f"EMULATOR: Would send capture failure email for order {order_id[:8]}")

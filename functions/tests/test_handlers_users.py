@@ -1,5 +1,5 @@
 """
-Unit tests for handlers/users.py 
+Unit tests for handlers/users.py
 Focusing on buyer address book operations.
 """
 
@@ -12,7 +12,6 @@ from schema_constants import Collections, Fields
 
 
 class TestBuyerAddressHandlers:
-
     @patch("handlers.users.get_db")
     def test_add_buyer_address_first_is_default(self, mock_get_db):
         from handlers.users import add_buyer_address
@@ -24,10 +23,10 @@ class TestBuyerAddressHandlers:
         mock_addresses_ref = Mock()
         # No existing addresses
         mock_addresses_ref.get.return_value = []
-        
+
         mock_batch = Mock()
         mock_db.batch.return_value = mock_batch
-        
+
         mock_new_ref = Mock()
         mock_new_ref.id = "address_123"
         mock_addresses_ref.document.return_value = mock_new_ref
@@ -54,7 +53,7 @@ class TestBuyerAddressHandlers:
 
         assert result["success"] is True
         assert result[Fields.ADDRESS_ID] == "address_123"
-        
+
         # Verify it was added with isDefault=True and batch was used
         mock_batch.set.assert_called_once()
         added_data = mock_batch.set.call_args[0][1]
@@ -71,7 +70,7 @@ class TestBuyerAddressHandlers:
         mock_addresses_ref = Mock()
         # Exceed limit
         mock_addresses_ref.get.return_value = [Mock() for _ in range(10)]
-        
+
         mock_user_doc_ref = Mock()
         mock_user_doc_ref.collection.return_value = mock_addresses_ref
         mock_users_collection = Mock()
@@ -127,7 +126,7 @@ class TestBuyerAddressHandlers:
 
         mock_addresses_ref = Mock()
         mock_address_ref = Mock()
-        
+
         mock_doc = Mock()
         mock_doc.id = "address_123"
         mock_doc.exists = True
@@ -140,7 +139,7 @@ class TestBuyerAddressHandlers:
         mock_other_doc.reference = Mock()
         mock_addresses_ref.get.return_value = [mock_doc, mock_other_doc]
         mock_addresses_ref.document.return_value = mock_address_ref
-        
+
         mock_user_doc_ref = Mock()
         mock_user_doc_ref.collection.return_value = mock_addresses_ref
         mock_users_collection = Mock()
@@ -171,7 +170,7 @@ class TestBuyerAddressHandlers:
 
         mock_addresses_ref = Mock()
         mock_address_ref = Mock()
-        
+
         mock_doc = Mock()
         mock_doc.exists = True
         mock_address_ref.get.return_value = mock_doc
@@ -179,7 +178,7 @@ class TestBuyerAddressHandlers:
         mock_doc_1 = Mock()
         mock_doc_1.id = "address_123"
         mock_doc_1.reference = Mock()
-        
+
         mock_doc_2 = Mock()
         mock_doc_2.id = "address_456"
         mock_doc_2.reference = Mock()
@@ -187,7 +186,7 @@ class TestBuyerAddressHandlers:
 
         mock_addresses_ref.get.return_value = [mock_doc_1, mock_doc_2]
         mock_addresses_ref.document.return_value = mock_address_ref
-        
+
         mock_user_doc_ref = Mock()
         mock_user_doc_ref.collection.return_value = mock_addresses_ref
         mock_users_collection = Mock()
@@ -201,15 +200,15 @@ class TestBuyerAddressHandlers:
         result = set_default_buyer_address(mock_request)
 
         assert result["success"] is True
-        
+
         # Verify batch updates: set 123 to True, 456 to False
         assert mock_batch.update.call_count == 2
-        
+
         calls = mock_batch.update.call_args_list
         assert calls[0][0][0] == mock_doc_1.reference
         assert calls[0][0][1] == {Fields.IS_DEFAULT: True}
-        
+
         assert calls[1][0][0] == mock_doc_2.reference
         assert calls[1][0][1] == {Fields.IS_DEFAULT: False}
-        
+
         mock_batch.commit.assert_called_once()

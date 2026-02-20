@@ -178,7 +178,9 @@ def estimate_delivery_date_range(
 
         # Use helper to get estimates based on speed (standard/express)
         # Note: Dropshipping generally doesn't support 'same_day'
-        estimate_speed = speed if speed in [DeliveryTypeValues.STANDARD, DeliveryTypeValues.EXPRESS] else DeliveryTypeValues.STANDARD
+        estimate_speed = (
+            speed if speed in [DeliveryTypeValues.STANDARD, DeliveryTypeValues.EXPRESS] else DeliveryTypeValues.STANDARD
+        )
 
         # If specific override exists and we are in standard mode, use it
         if shipping_days and "-" in shipping_days and estimate_speed == DeliveryTypeValues.STANDARD:
@@ -187,12 +189,12 @@ def estimate_delivery_date_range(
                 min_days = int(parts[0])
                 max_days = int(parts[1])
             except (ValueError, IndexError):
-                 # Fallback
-                 estimate = get_international_shipping_estimate(supplier_type, estimate_speed)
-                 days_str = estimate["days"]
-                 parts = days_str.split("-")
-                 min_days = int(parts[0])
-                 max_days = int(parts[1])
+                # Fallback
+                estimate = get_international_shipping_estimate(supplier_type, estimate_speed)
+                days_str = estimate["days"]
+                parts = days_str.split("-")
+                min_days = int(parts[0])
+                max_days = int(parts[1])
         else:
             # For express or missing override, use supplier defaults
             estimate = get_international_shipping_estimate(supplier_type, estimate_speed)
@@ -213,11 +215,11 @@ def estimate_delivery_date_range(
         # Generic international (non-dropship)
         # Express is generally faster
         if speed == DeliveryTypeValues.EXPRESS:
-             min_days = 5
-             max_days = 10
+            min_days = 5
+            max_days = 10
         else:
-             min_days = ShippingTiers.INTL_GENERIC_MIN_DAYS
-             max_days = ShippingTiers.INTL_GENERIC_MAX_DAYS
+            min_days = ShippingTiers.INTL_GENERIC_MIN_DAYS
+            max_days = ShippingTiers.INTL_GENERIC_MAX_DAYS
 
         return {
             "min_days": min_days,

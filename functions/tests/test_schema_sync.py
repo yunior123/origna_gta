@@ -384,31 +384,33 @@ if __name__ == "__main__":
 
 
 def test_digital_product_constants_exist():
-    from schema_constants import Fields, Collections
-    assert hasattr(Fields, 'DIGITAL_TYPE')
-    assert hasattr(Fields, 'SLUG')
-    assert hasattr(Fields, 'DIGITAL_BUILDS')
-    assert hasattr(Fields, 'BOOK_SOURCE_URL')
-    assert hasattr(Fields, 'DEVICE_LIMIT')
-    assert hasattr(Fields, 'LICENSE_KEY')
-    assert hasattr(Fields, 'DIGITAL_UNLOCKED')
-    assert hasattr(Fields, 'SUPPORTED_PLATFORMS')
-    assert hasattr(Fields, 'ACTIVATIONS')
-    assert hasattr(Fields, 'DEVICE_ID')
-    assert hasattr(Fields, 'LAST_VERIFIED_AT')
-    assert hasattr(Fields, 'ACCESS_TOKEN')
-    assert hasattr(Fields, 'BOOK_ACCESS_TOKEN')
-    assert hasattr(Collections, 'LICENSES')
-    assert hasattr(Collections, 'BOOK_ACCESS_TOKENS')
+    from schema_constants import Collections, Fields
+
+    assert hasattr(Fields, "DIGITAL_TYPE")
+    assert hasattr(Fields, "SLUG")
+    assert hasattr(Fields, "DIGITAL_BUILDS")
+    assert hasattr(Fields, "BOOK_SOURCE_URL")
+    assert hasattr(Fields, "DEVICE_LIMIT")
+    assert hasattr(Fields, "LICENSE_KEY")
+    assert hasattr(Fields, "DIGITAL_UNLOCKED")
+    assert hasattr(Fields, "SUPPORTED_PLATFORMS")
+    assert hasattr(Fields, "ACTIVATIONS")
+    assert hasattr(Fields, "DEVICE_ID")
+    assert hasattr(Fields, "LAST_VERIFIED_AT")
+    assert hasattr(Fields, "ACCESS_TOKEN")
+    assert hasattr(Fields, "BOOK_ACCESS_TOKEN")
+    assert hasattr(Collections, "LICENSES")
+    assert hasattr(Collections, "BOOK_ACCESS_TOKENS")
 
 
 def test_digital_type_values_exist():
-    from schema_constants import DigitalTypeValues, DigitalPlatformValues
-    assert DigitalTypeValues.SOFTWARE == 'software'
-    assert DigitalTypeValues.BOOK == 'book'
-    assert 'macos' in DigitalPlatformValues.ALL
-    assert 'windows' in DigitalPlatformValues.ALL
-    assert 'linux' in DigitalPlatformValues.ALL
-    assert DigitalPlatformValues.MACOS == 'macos'
-    assert DigitalPlatformValues.WINDOWS == 'windows'
-    assert DigitalPlatformValues.LINUX == 'linux'
+    from schema_constants import DigitalPlatformValues, DigitalTypeValues
+
+    assert DigitalTypeValues.SOFTWARE == "software"
+    assert DigitalTypeValues.BOOK == "book"
+    assert "macos" in DigitalPlatformValues.ALL
+    assert "windows" in DigitalPlatformValues.ALL
+    assert "linux" in DigitalPlatformValues.ALL
+    assert DigitalPlatformValues.MACOS == "macos"
+    assert DigitalPlatformValues.WINDOWS == "windows"
+    assert DigitalPlatformValues.LINUX == "linux"

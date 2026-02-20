@@ -20,19 +20,22 @@ import {
   callOk,
   callExpectError,
   readDoc,
+  writeDoc,
+  toFirestoreFields,
   parseDoc,
   buildCheckoutPayload,
   discoverProducts,
   getTestProduct,
+  ensureTwoSellerProducts,
   FIRESTORE_BASE,
   TEST_ACCOUNTS,
   TEST_UIDS,
 } from './api-helpers';
 
-const BUYER_EMAIL  = TEST_ACCOUNTS.BUYER_EMAIL;
+const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const SELLER_EMAIL = TEST_ACCOUNTS.SELLER_EMAIL;
-const ADMIN_EMAIL  = TEST_ACCOUNTS.ADMIN_EMAIL;
-const ADMIN_PASS   = TEST_ACCOUNTS.ADMIN_PASS;
+const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
+const ADMIN_PASS = TEST_ACCOUNTS.ADMIN_PASS;
 
 /** Build a raw checkout payload without reading from Firestore (for negative tests). */
 function rawCheckoutPayload(buyerUid: string, productId: string, quantity: number, sellerId = TEST_UIDS.SELLER) {
@@ -43,6 +46,7 @@ function rawCheckoutPayload(buyerUid: string, productId: string, quantity: numbe
       name: 'Test Product',
       price: 10.00,
       quantity,
+      quantityLimit: 10,
       sellerId,
       imageUrls: ['https://picsum.photos/400'],
       isDigital: false,
@@ -70,16 +74,10 @@ test.describe('1. Self-Purchase Prevention', () => {
   test('Seller cannot purchase their own product via API', async () => {
     const sellerAuth = await signIn(SELLER_EMAIL);
 
-    // Find a product that belongs to this exact seller (don't exclude their own)
-    const allProducts = await discoverProducts(sellerAuth.idToken);
-    const ownProduct = allProducts.find(p => p.sellerId === sellerAuth.localId);
+    // Guaranteed to have a product by this seller inside ensureTwoSellerProducts 
+    const [_, productB] = await ensureTwoSellerProducts(sellerAuth.idToken);
 
-    if (!ownProduct) {
-      test.skip();
-      return;
-    }
-
-    const { data } = await buildCheckoutPayload(sellerAuth.localId, ownProduct.id, 1, sellerAuth.idToken);
+    const { data } = await buildCheckoutPayload(sellerAuth.localId, productB.id, 1, sellerAuth.idToken);
 
     // Backend guard: sellerId == userId → invalid-argument
     const error = await callExpectError('create_checkout_session', data, sellerAuth.idToken);
@@ -97,23 +95,30 @@ test.describe('2. Quantity Validation', () => {
 
   test('Checkout rejected when quantity exceeds live stock', async () => {
     const buyerAuth = await signIn(BUYER_EMAIL);
-    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
+    const adminAuth = await signIn(ADMIN_EMAIL, ADMIN_PASS);
 
-    const doc = await readDoc(`products/${product.id}`, buyerAuth.idToken);
-    const liveData = parseDoc(doc);
-    const currentStock: number = liveData?.stockQuantity ?? 1;
+    // Create a product with a known stock level to prevent skips when stock is >= 98
+    const liveStock = 50;
+    const productId = `test_stock_${Date.now()}`;
+    await writeDoc(`products/${productId}`, toFirestoreFields({
+      sellerId: TEST_UIDS.SELLER,
+      sellerSku: `STOCK-TEST-${Date.now()}`,
+      name: 'Stock Limited Product',
+      price: 10.00,
+      isActive: true,
+      stockQuantity: liveStock,
+      categoryId: 1,
+      imageUrls: [],
+      keywords: [],
+      rating: 0,
+    }), adminAuth.idToken);
 
-    // Request exactly one more than available (stays within max-100 if stock < 100)
-    const excessQty = Math.min(currentStock + 1, 99);
-    // If stock >= 98 we can't get a meaningful over-stock under the 100 cap — skip
-    if (currentStock >= 98) {
-      test.skip();
-      return;
-    }
+    // Request exactly one more than available
+    const excessQty = liveStock + 1;
 
-    const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, excessQty, buyerAuth.idToken);
+    const { data } = await buildCheckoutPayload(buyerAuth.localId, productId, excessQty, buyerAuth.idToken);
     data.items[0].quantity = excessQty;
-    data.subtotal = +(product.price * excessQty).toFixed(2);
+    data.subtotal = +(10.00 * excessQty).toFixed(2);
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);
     // Backend: "resource-exhausted" (stock) or "invalid-argument" (qty limit) — both correct
@@ -198,31 +203,25 @@ test.describe('3. Order Guards', () => {
   });
 
   test('Seller cannot update status of order they are not part of', async () => {
-    // Query for any real order that does NOT belong to the seller as seller
+    // Create an order belonging to another seller and buyer
     const adminAuth = await signIn(ADMIN_EMAIL, ADMIN_PASS);
     const sellerAuth = await signIn(SELLER_EMAIL);
+    const orderId = `test_order_unrelated_${Date.now()}`;
 
-    const res = await fetch(
-      `${FIRESTORE_BASE}/orders?pageSize=20`,
-      { headers: { 'Authorization': `Bearer ${adminAuth.idToken}` } }
-    );
-    const body = await res.json() as any;
-    const docs: any[] = body.documents || [];
+    await writeDoc(`orders/${orderId}`, toFirestoreFields({
+      userId: TEST_UIDS.BUYER,
+      orderStatus: 'pending', // Must be pending to transition to processing
+      totalAmount: 50.00,
+      createdAt: new Date().toISOString(),
+      items: [{
+        productId: 'some_prod',
+        sellerId: TEST_UIDS.ADMIN, // Belongs to admin, not SELLER
+        name: 'Item',
+        price: 50.00,
+        quantity: 1
+      }]
+    }), adminAuth.idToken);
 
-    // Find an order where the seller is NOT selling any item
-    const unrelatedOrder = docs.find(doc => {
-      const order = parseDoc(doc);
-      if (!order) return false;
-      const items: any[] = order.items || [];
-      return items.every((item: any) => item.sellerId !== sellerAuth.localId);
-    });
-
-    if (!unrelatedOrder) {
-      test.skip();
-      return;
-    }
-
-    const orderId = unrelatedOrder.name?.split('/').pop();
     const error = await callExpectError('update_order_status', {
       orderId,
       newStatus: 'processing',
@@ -291,30 +290,24 @@ test.describe('4. Product Rating Security', () => {
   test('Rating rejected when a different user owns the order', async () => {
     // Sign in as seller, try to rate a product using an order that belongs to the buyer
     const sellerAuth = await signIn(SELLER_EMAIL);
-    const adminAuth  = await signIn(ADMIN_EMAIL, ADMIN_PASS);
+    const adminAuth = await signIn(ADMIN_EMAIL, ADMIN_PASS);
 
-    // Find a delivered order that belongs to the buyer (not the seller)
-    const res = await fetch(
-      `${FIRESTORE_BASE}/orders?pageSize=20`,
-      { headers: { 'Authorization': `Bearer ${adminAuth.idToken}` } }
-    );
-    const body = await res.json() as any;
-    const docs: any[] = body.documents || [];
+    const orderId = `test_order_rating_${Date.now()}`;
+    const productId = `test_rating_prod_${Date.now()}`;
 
-    const buyerOrder = docs.find(doc => {
-      const order = parseDoc(doc);
-      return order && order.userId !== sellerAuth.localId && order.orderStatus === 'delivered';
-    });
-
-    if (!buyerOrder) {
-      test.skip();
-      return;
-    }
-
-    const orderId = buyerOrder.name?.split('/').pop();
-    const order   = parseDoc(buyerOrder);
-    const productId = order?.items?.[0]?.productId;
-    if (!productId) { test.skip(); return; }
+    await writeDoc(`orders/${orderId}`, toFirestoreFields({
+      userId: TEST_UIDS.BUYER, // Belongs to buyer
+      orderStatus: 'delivered',
+      totalAmount: 10.00,
+      createdAt: new Date().toISOString(),
+      items: [{
+        productId,
+        sellerId: TEST_UIDS.ADMIN,
+        name: 'Item',
+        price: 10.00,
+        quantity: 1
+      }]
+    }), adminAuth.idToken);
 
     const error = await callExpectError('submit_product_rating', {
       productId,
@@ -480,32 +473,25 @@ test.describe('8. Permission Isolation', () => {
 
   test('Buyer cannot call update_order_status (requires seller or admin role)', async () => {
     // With a real order the flow is: existence check → permission check.
-    // Query admin token to find any real order and then call as buyer.
+    // Create an order and then call as buyer.
     const adminAuth = await signIn(ADMIN_EMAIL, ADMIN_PASS);
     const buyerAuth = await signIn(BUYER_EMAIL);
 
-    const res = await fetch(
-      `${FIRESTORE_BASE}/orders?pageSize=10`,
-      { headers: { 'Authorization': `Bearer ${adminAuth.idToken}` } }
-    );
-    const body = await res.json() as any;
-    const docs: any[] = body.documents || [];
+    const orderId = `test_order_buyer_perms_${Date.now()}`;
+    await writeDoc(`orders/${orderId}`, toFirestoreFields({
+      userId: TEST_UIDS.BUYER,
+      orderStatus: 'pending', // Must be pending to transition to processing
+      totalAmount: 10.00,
+      createdAt: new Date().toISOString(),
+      items: [{
+        productId: 'some_prod',
+        sellerId: TEST_UIDS.SELLER,
+        name: 'Item',
+        price: 10.00,
+        quantity: 1
+      }]
+    }), adminAuth.idToken);
 
-    // Find an order that the buyer does NOT own (so buyer isn't the seller of any item)
-    const unrelatedOrder = docs.find(doc => {
-      const order = parseDoc(doc);
-      if (!order) return false;
-      const isBuyersOwnOrder = order.userId === buyerAuth.localId;
-      const isBuyerSeller = (order.items || []).some((item: any) => item.sellerId === buyerAuth.localId);
-      return !isBuyersOwnOrder && !isBuyerSeller;
-    });
-
-    if (!unrelatedOrder) {
-      test.skip();
-      return;
-    }
-
-    const orderId = unrelatedOrder.name?.split('/').pop();
     const error = await callExpectError('update_order_status', {
       orderId,
       newStatus: 'processing',

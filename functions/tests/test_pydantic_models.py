@@ -557,6 +557,7 @@ def test_product_json_serialization():
 def test_product_digital_software_fields():
     """Product model accepts digital software fields"""
     from models.product import Product
+
     p = Product(
         name="MacBook Cleaner Pro",
         description="Cleans your macOS system thoroughly for better performance",
@@ -576,9 +577,11 @@ def test_product_digital_software_fields():
     assert p.digitalBuilds["macos"] == "https://releases.example.com/cleaner.dmg"
     assert p.deviceLimit == 3
 
+
 def test_product_digital_book_fields():
     """Product model accepts digital book fields"""
     from models.product import Product
+
     p = Product(
         name="Python Mastery",
         description="Complete guide to Python programming for developers",
@@ -595,11 +598,14 @@ def test_product_digital_book_fields():
     assert p.digitalType == "book"
     assert p.bookSourceUrl == "https://storage.example.com/python-mastery.pdf"
 
+
 def test_product_digital_type_invalid():
     """Invalid digitalType is rejected"""
     import pytest
     from pydantic import ValidationError
+
     from models.product import Product
+
     with pytest.raises(ValidationError):
         Product(
             name="Test",
@@ -613,11 +619,14 @@ def test_product_digital_type_invalid():
             digitalType="video",
         )
 
+
 def test_product_software_requires_https_build_urls():
     """Software build URLs must be https"""
     import pytest
     from pydantic import ValidationError
+
     from models.product import Product
+
     with pytest.raises(ValidationError):
         Product(
             name="Test App",
@@ -632,11 +641,14 @@ def test_product_software_requires_https_build_urls():
             digitalBuilds={"macos": "http://insecure.example.com/app.dmg"},
         )
 
+
 def test_product_software_requires_at_least_one_platform():
     """Software product must have at least one platform URL"""
     import pytest
     from pydantic import ValidationError
+
     from models.product import Product
+
     with pytest.raises(ValidationError):
         Product(
             name="Test App",
@@ -651,11 +663,14 @@ def test_product_software_requires_at_least_one_platform():
             digitalBuilds={},
         )
 
+
 def test_product_book_requires_https_source_url():
     """Book source URL must be https"""
     import pytest
     from pydantic import ValidationError
+
     from models.product import Product
+
     with pytest.raises(ValidationError):
         Product(
             name="Test Book",
@@ -670,11 +685,14 @@ def test_product_book_requires_https_source_url():
             bookSourceUrl="http://insecure.example.com/book.pdf",
         )
 
+
 def test_product_book_requires_source_url():
     """Book product must have bookSourceUrl"""
     import pytest
     from pydantic import ValidationError
+
     from models.product import Product
+
     with pytest.raises(ValidationError):
         Product(
             name="Test Book",
@@ -688,11 +706,14 @@ def test_product_book_requires_source_url():
             digitalType="book",
         )
 
+
 def test_product_software_invalid_platform_key():
     """Invalid platform key in digitalBuilds is rejected"""
     import pytest
     from pydantic import ValidationError
+
     from models.product import Product
+
     with pytest.raises(ValidationError):
         Product(
             name="Test App",
@@ -711,6 +732,7 @@ def test_product_software_invalid_platform_key():
 def test_order_item_digital_fields():
     """OrderItem model accepts digital unlock fields"""
     from models.order import OrderItem
+
     item = OrderItem(
         productId="prod123",
         name="MacBook Cleaner Pro",
@@ -737,9 +759,11 @@ def test_order_item_digital_fields():
 
 _BASE_ADDR = dict(street="123 Test St", city="Toronto", state="ON", postalCode="M5V 3A8", country="Canada")
 
+
 def test_compare_at_price_must_be_higher_than_price():
     """compareAtPrice <= price must raise ValidationError."""
     from pydantic import ValidationError
+
     from models.product import Product
 
     # Equal price → rejected

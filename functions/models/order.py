@@ -87,7 +87,9 @@ class OrderItem(BaseModel):
     licenseKey: str | None = Field(default=None, description="License key reference into licenses collection")
     digitalUnlocked: bool = Field(default=False, description="True after license has been generated on payment")
     digitalType: str | None = Field(default=None, description="Type of digital product: 'software' or 'book'")
-    digitalBuilds: dict[str, str] | None = Field(default=None, description="Platform -> download URL map (software only)")
+    digitalBuilds: dict[str, str] | None = Field(
+        default=None, description="Platform -> download URL map (software only)"
+    )
 
     taxCode: str | None = Field(default=None, description="Tax code for this item")
 

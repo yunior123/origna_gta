@@ -30,6 +30,7 @@ def _get_db():
     global _db, _firestore
     if _db is None:
         from firebase_admin import firestore as fs
+
         _firestore = fs
         _db = fs.client()
     return _db
@@ -39,16 +40,18 @@ def _get_server_timestamp():
     global _firestore
     if _firestore is None:
         from firebase_admin import firestore as fs
+
         _firestore = fs
     return _firestore.SERVER_TIMESTAMP
 
 
 def _is_premium(uid: str) -> bool:
-    """Check if user has active premium subscription (uses cached isPremium field)."""
-    user_snap = _get_db().collection(Collections.USERS).document(uid).get()
-    if not user_snap.exists:
+    """Check if user has active premium subscription (reads authoritative subscriptions doc)."""
+    sub_snap = _get_db().collection(Collections.SUBSCRIPTIONS).document(uid).get()
+    if not sub_snap.exists:
         return False
-    return bool((user_snap.to_dict() or {}).get(Fields.IS_PREMIUM, False))
+    status = (sub_snap.to_dict() or {}).get(Fields.STATUS, "")
+    return status in SubscriptionStatusValues.PREMIUM_ACTIVE
 
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
@@ -74,7 +77,7 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not _is_premium(buyer_id):
         raise https_fn.HttpsError(
             "permission-denied",
-            "Premium subscription required to chat with sellers. Upgrade to Origna Premium to unlock this feature."
+            "Premium subscription required to chat with sellers. Upgrade to Origna Premium to unlock this feature.",
         )
 
     db = _get_db()
@@ -113,18 +116,20 @@ def get_or_create_chat(req: https_fn.CallableRequest) -> dict[str, Any]:
     now = datetime.now(UTC)
 
     chat_ref = db.collection(Collections.CHATS).document()
-    chat_ref.set({
-        Fields.CHAT_ID: chat_ref.id,
-        Fields.PRODUCT_ID: product_id,
-        Fields.PRODUCT_TITLE: product_title,
-        Fields.PRODUCT_IMAGE_URL: product_image_url,
-        Fields.BUYER_ID: buyer_id,
-        Fields.SELLER_ID: seller_id,
-        Fields.LAST_MESSAGE: None,
-        Fields.LAST_MESSAGE_AT: None,
-        Fields.CREATED_AT: now,
-        Fields.UPDATED_AT: now,
-    })
+    chat_ref.set(
+        {
+            Fields.CHAT_ID: chat_ref.id,
+            Fields.PRODUCT_ID: product_id,
+            Fields.PRODUCT_TITLE: product_title,
+            Fields.PRODUCT_IMAGE_URL: product_image_url,
+            Fields.BUYER_ID: buyer_id,
+            Fields.SELLER_ID: seller_id,
+            Fields.LAST_MESSAGE: None,
+            Fields.LAST_MESSAGE_AT: None,
+            Fields.CREATED_AT: now,
+            Fields.UPDATED_AT: now,
+        }
+    )
 
     logger.info(f"Chat thread created: {chat_ref.id} for buyer={buyer_id} product={product_id}")
     return {"chatId": chat_ref.id, "isNew": True}
@@ -157,7 +162,8 @@ def mark_messages_read(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Batch-mark unread messages sent by the OTHER party
     messages = (
-        db.collection(Collections.CHATS).document(chat_id)
+        db.collection(Collections.CHATS)
+        .document(chat_id)
         .collection(Collections.CHAT_MESSAGES)
         .where(Fields.IS_READ, "==", False)
         .where(Fields.SENDER_ID, "!=", uid)

@@ -52,6 +52,7 @@ from schema_constants import (
     PlaceholderAddressValues,
     SecurityAlertTypes,
     SeverityLevels,
+    SubscriptionStatusValues,
     UserRoleValues,
     ValidationLimits,
     WebhookStatusValues,
@@ -66,6 +67,15 @@ from utils.function_options import DEFAULT_OPTIONS, WEBHOOK_OPTIONS
 logger = logging.getLogger(__name__)
 
 # stripe.api_key = STRIPE_SECRET_KEY  # Removed global assignment
+
+
+def _check_premium_from_sub(uid: str) -> bool:
+    """P-03 FIX: Check premium status from authoritative subscriptions doc, not cached user field."""
+    sub_snap = get_db().collection(Collections.SUBSCRIPTIONS).document(uid).get()
+    if not sub_snap.exists:
+        return False
+    status = (sub_snap.to_dict() or {}).get(Fields.STATUS, "")
+    return status in SubscriptionStatusValues.PREMIUM_ACTIVE
 
 
 def get_tax_code_for_category(category_id):
@@ -469,6 +479,7 @@ def calculate_tax_with_stripe(validated_items, shipping_address, shipping_cost_c
         # Fall back to manual calculation
         return None, None, None, False
 
+
 # Helper to ensure stripe key is set before operations
 def ensure_stripe_key():
     if not stripe.api_key:
@@ -585,7 +596,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         try:
             validate_postal_code(postal_code)
         except ValueError as err:
-            raise https_fn.HttpsError("invalid-argument", f"Invalid Canadian postal code format: {postal_code}") from err
+            raise https_fn.HttpsError(
+                "invalid-argument", f"Invalid Canadian postal code format: {postal_code}"
+            ) from err
     else:
         # All-digital: no physical address needed (worldwide sales).
         # Normalize province from optional address if provided (for tax display only).
@@ -818,7 +831,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
                 # Log if Stripe applied reverse charge (B2B exemption)
                 if is_reverse_charge:
-                    logger.info(f"✅ Stripe applied B2B reverse charge for user {user_id} with GST {gst_number[:6]}****")
+                    logger.info(
+                        f"✅ Stripe applied B2B reverse charge for user {user_id} with GST {gst_number[:6]}****"
+                    )
             else:
                 # SECURITY FIX: Fall back to manual calculation on Stripe Tax API error
                 # IMPORTANT: Do NOT apply B2B exemption (GST-based) in fallback mode
@@ -1055,8 +1070,11 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
         Fields.PAYMENT_PROVIDER: PaymentProvider.STRIPE,
         Fields.DELIVERY_SPEED: delivery_speed,
-        # Platform fee: waived for premium subscribers (isPremium=True)
-        Fields.PLATFORM_FEE_TOTAL_CENTS: 0 if user_data.get(Fields.IS_PREMIUM, False) else round(actual_subtotal_cents * PLATFORM_FEE_PERCENT),
+        # Platform fee: waived for premium subscribers (verified from authoritative subscriptions doc)
+        # P-03 FIX: Read from subscriptions/{uid} instead of cached isPremium to prevent race condition
+        Fields.PLATFORM_FEE_TOTAL_CENTS: 0
+        if _check_premium_from_sub(user_id)
+        else round(actual_subtotal_cents * PLATFORM_FEE_PERCENT),
         Fields.ARCHIVED: False,
         Fields.STOCK_RESTORED: False,
         Fields.TAX_EXEMPTION: tax_exemption if gst_number else None,
@@ -1140,10 +1158,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             client_reference_id=user_id,
             metadata={Fields.ORDER_ID: order_id, Fields.USER_ID: user_id},
             payment_intent_data={
-                # Automatic capture: funds collected immediately at checkout.
-                # Seller payouts via stripe.Transfer.create() after delivery confirmation.
-                # This eliminates authorization expiry risk (7-day limit) for international sellers.
-                "metadata": {Fields.ORDER_ID: order_id}
+                "capture_method": "manual",
+                "metadata": {Fields.ORDER_ID: order_id},
             },
             # NOTE: automatic_tax disabled - we calculate tax server-side to avoid double taxation
             # AUDIT FIX (CRITICAL-001): Idempotency key prevents duplicate sessions on retry
@@ -1365,15 +1381,19 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             process_account_updated(event["data"]["object"])
         elif event_type == "customer.subscription.created":
             from handlers.subscriptions import handle_subscription_created
+
             handle_subscription_created(event)
         elif event_type == "customer.subscription.updated":
             from handlers.subscriptions import handle_subscription_updated
+
             handle_subscription_updated(event)
         elif event_type == "customer.subscription.deleted":
             from handlers.subscriptions import handle_subscription_deleted
+
             handle_subscription_deleted(event)
         elif event_type == "invoice.payment_failed":
             from handlers.subscriptions import handle_invoice_payment_failed
+
             handle_invoice_payment_failed(event)
         else:
             logger.info(f"ℹ️ Unhandled Stripe event type: {event_type}")
@@ -1409,7 +1429,7 @@ def _generate_digital_licenses(order_id: str, order_data: dict) -> None:
     Idempotent: skips items where digitalUnlocked=True.
     Called immediately after order is confirmed on payment capture.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     db = get_db()
     items = order_data.get(Fields.ITEMS, [])
@@ -1448,7 +1468,7 @@ def _generate_digital_licenses(order_id: str, order_data: dict) -> None:
             logger.error(f"Could not generate unique license key for product {product_id}")
             continue
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if digital_type == DigitalTypeValues.SOFTWARE:
             builds = product_data.get(Fields.DIGITAL_BUILDS, {})
@@ -1499,7 +1519,7 @@ def _generate_digital_licenses(order_id: str, order_data: dict) -> None:
 
     if any_generated:
         order_ref = db.collection(Collections.ORDERS).document(order_id)
-        order_ref.update({Fields.ITEMS: updated_items, Fields.UPDATED_AT: datetime.now(timezone.utc)})
+        order_ref.update({Fields.ITEMS: updated_items, Fields.UPDATED_AT: datetime.now(UTC)})
 
 
 def process_checkout_session_completed(session: dict) -> str | None:
@@ -1877,6 +1897,7 @@ def process_session_expired(session: dict) -> str | None:
             global _firestore
             if _firestore is None:
                 from firebase_admin import firestore as fs
+
                 _firestore = fs
             for item in order_data.get(Fields.ITEMS, []):
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
@@ -1962,6 +1983,7 @@ def process_payment_intent_failed(payment_intent: dict) -> str | None:
             global _firestore
             if _firestore is None:
                 from firebase_admin import firestore as fs
+
                 _firestore = fs
             for item in order_data.get(Fields.ITEMS, []):
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
@@ -2015,6 +2037,7 @@ def process_payment_intent_canceled(payment_intent: dict) -> str | None:
             global _firestore
             if _firestore is None:
                 from firebase_admin import firestore as fs
+
                 _firestore = fs
             for item in order_data.get(Fields.ITEMS, []):
                 product_ref = get_db().collection(Collections.PRODUCTS).document(item[Fields.PRODUCT_ID])
@@ -2216,6 +2239,7 @@ def process_charge_refunded(charge: dict) -> str | None:
         # Revoke digital licenses on any refund (lifetime license model — any refund invalidates)
         try:
             from handlers.digital import _revoke_digital_licenses_for_order
+
             revoked_count = _revoke_digital_licenses_for_order(order_id)
             if revoked_count:
                 logger.info(f"Revoked {revoked_count} digital license(s) for refunded order {order_id}")
@@ -3360,6 +3384,8 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
                 sellers_total_cents[seller_id] = sellers_total_cents.get(seller_id, 0) + item_total_cents
 
         # Capture the payment (with idempotency key to prevent duplicate captures)
+        # Note: we might only want to capture a partial amount if this was partial fulfillment,
+        # but for now we capture the full amount (downstream refund logic handles the rest if needed).
         payment_intent = stripe.PaymentIntent.capture(
             payment_intent_id, idempotency_key=f"capture_{order_id}_{payment_intent_id}"
         )
@@ -3371,6 +3397,20 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError(
                 "internal", f"No charge found after capturing PI {payment_intent_id}. Cannot create transfers."
             )
+            
+        # SECURITY FIX (CRITICAL-003): Capture-Dispute Race Window
+        # Check if a dispute was filed exactly as we captured
+        charge = stripe.Charge.retrieve(charge_id)
+        if charge.dispute:
+            logger.error(f"🚨 CRITICAL: Charge {charge_id} for order {order_id} is already disputed! Aborting payouts.")
+            # Update order status to reflect dispute, skipping payouts
+            get_db().collection(Collections.ORDERS).document(order_id).update({
+                Fields.PAYMENT_STATUS: PaymentStatusValues.DISPUTED,
+                Fields.UPDATED_AT: get_server_timestamp()
+            })
+            raise https_fn.HttpsError(
+                "failed-precondition", "Payment is currently disputed and cannot be processed for payout."
+            )
 
         # Execute Transfers / Payouts
         transfer_errors = []
@@ -3379,9 +3419,7 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Prevents config manipulation between checkout and capture.
         stored_fee_total = order_data.get(Fields.PLATFORM_FEE_TOTAL_CENTS)
         stored_fee_rate = (
-            (stored_fee_total / order_data.get(Fields.SUBTOTAL_CENTS, 1))
-            if stored_fee_total
-            else PLATFORM_FEE_PERCENT
+            (stored_fee_total / order_data.get(Fields.SUBTOTAL_CENTS, 1)) if stored_fee_total else PLATFORM_FEE_PERCENT
         )
 
         for seller_id, amount_cents in sellers_total_cents.items():

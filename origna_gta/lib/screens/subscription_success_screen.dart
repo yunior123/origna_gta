@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -10,33 +11,57 @@ class SubscriptionSuccessScreen extends StatefulWidget {
   State<SubscriptionSuccessScreen> createState() => _SubscriptionSuccessScreenState();
 }
 
-class _SubscriptionSuccessScreenState extends State<SubscriptionSuccessScreen>
-    with SingleTickerProviderStateMixin {
+class _BenefitRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool isDark;
+
+  const _BenefitRow({required this.icon, required this.title, required this.subtitle, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: DesignTokens.primary, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.check_circle_rounded, color: DesignTokens.success, size: 16),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(subtitle, style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubscriptionSuccessScreenState extends State<SubscriptionSuccessScreen> with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _scaleAnimation;
   late final Animation<double> _glowAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    )..repeat(reverse: true);
-
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-    _glowAnimation = Tween<double>(begin: 0.25, end: 0.55).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,9 +73,7 @@ class _SubscriptionSuccessScreenState extends State<SubscriptionSuccessScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDark
-                ? [DesignTokens.darkBackground, DesignTokens.darkSurface]
-                : [const Color(0xFFF0F2FF), Colors.white],
+            colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [const Color(0xFFF0F2FF), Colors.white],
           ),
         ),
         child: SafeArea(
@@ -86,11 +109,7 @@ class _SubscriptionSuccessScreenState extends State<SubscriptionSuccessScreen>
                             ),
                           ],
                         ),
-                        child: const Icon(
-                          Icons.workspace_premium,
-                          color: Colors.white,
-                          size: 50,
-                        ),
+                        child: const Icon(Icons.workspace_premium, color: Colors.white, size: 50),
                       ),
                     );
                   },
@@ -99,58 +118,49 @@ class _SubscriptionSuccessScreenState extends State<SubscriptionSuccessScreen>
                 const SizedBox(height: 32),
 
                 Text(
-                  'Welcome to Premium!',
+                  'subscription.welcome_to_premium'.tr(),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : DesignTokens.textPrimary,
-                    letterSpacing: -0.5,
-                  ),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: isDark ? Colors.white : DesignTokens.textPrimary, letterSpacing: -0.5),
                 ),
 
                 const SizedBox(height: 12),
 
                 Text(
-                  'Your subscription is active. Enjoy all the benefits below.',
+                  'subscription.subscription_active_desc'.tr(),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: DesignTokens.textSecondary,
-                    height: 1.5,
-                  ),
+                  style: const TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.5),
                 ),
 
                 const SizedBox(height: 40),
 
                 _BenefitRow(
                   icon: Icons.percent_rounded,
-                  title: 'No Platform Fee',
-                  subtitle: '0% platform fee on every purchase.',
+                  title: 'subscription.no_platform_fee'.tr(),
+                  subtitle: 'subscription.no_platform_fee_desc'.tr(),
                   isDark: isDark,
                 ),
                 _BenefitRow(
                   icon: Icons.chat_bubble_outline_rounded,
-                  title: 'Chat with Sellers',
-                  subtitle: 'Message sellers directly about products.',
+                  title: 'subscription.chat_with_sellers'.tr(),
+                  subtitle: 'subscription.chat_with_sellers_desc'.tr(),
                   isDark: isDark,
                 ),
                 _BenefitRow(
                   icon: Icons.question_answer_outlined,
-                  title: 'Ask Questions',
-                  subtitle: 'Post questions on any product Q&A board.',
+                  title: 'subscription.ask_questions'.tr(),
+                  subtitle: 'subscription.ask_questions_desc'.tr(),
                   isDark: isDark,
                 ),
                 _BenefitRow(
                   icon: Icons.photo_camera_outlined,
-                  title: 'Photo Reviews',
-                  subtitle: 'Add up to 3 photos to your product reviews.',
+                  title: 'subscription.photo_reviews'.tr(),
+                  subtitle: 'subscription.photo_reviews_desc'.tr(),
                   isDark: isDark,
                 ),
                 _BenefitRow(
                   icon: Icons.notifications_active_outlined,
-                  title: 'Smart Notifications',
-                  subtitle: 'Get notified on new products and trending items.',
+                  title: 'subscription.smart_notifications'.tr(),
+                  subtitle: 'subscription.smart_notifications_desc'.tr(),
                   isDark: isDark,
                 ),
 
@@ -160,11 +170,8 @@ class _SubscriptionSuccessScreenState extends State<SubscriptionSuccessScreen>
                   button: true,
                   label: 'btn-start-shopping',
                   child: ModernButton(
-                    label: 'Start Shopping',
-                    onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
-                      AppRoutes.home,
-                      (route) => false,
-                    ),
+                    label: 'subscription.start_shopping'.tr(),
+                    onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
                     icon: Icons.shopping_bag_outlined,
                   ),
                 ),
@@ -177,66 +184,19 @@ class _SubscriptionSuccessScreenState extends State<SubscriptionSuccessScreen>
       ),
     );
   }
-}
-
-class _BenefitRow extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool isDark;
-
-  const _BenefitRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.isDark,
-  });
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: DesignTokens.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: DesignTokens.primary, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: isDark ? Colors.white : DesignTokens.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.check_circle_rounded, color: DesignTokens.success, size: 16),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
+
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+    _glowAnimation = Tween<double>(begin: 0.25, end: 0.55).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
   }
 }

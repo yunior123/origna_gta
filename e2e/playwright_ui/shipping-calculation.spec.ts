@@ -8,9 +8,9 @@ import { test, expect } from '@playwright/test';
 import {
   signIn, callOk,
   buildCheckoutPayload,
-  readDoc, parseDoc,
+  readDoc, parseDoc, writeDoc, toFirestoreFields,
   getTestProduct, invalidateProductCache,
-  TEST_ACCOUNTS,
+  TEST_ACCOUNTS, TEST_UIDS,
 } from './api-helpers';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
@@ -73,17 +73,27 @@ test.describe('Shipping Calculation', () => {
   });
 
   test('Multiple quantity correctly multiplies subtotal', async () => {
-    invalidateProductCache();
-    const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
-    // This test creates 2 checkout sessions (qty=1 and qty=2). Needs stock >= 3.
-    const stock = product.stockQuantity;
-    test.skip(stock < 3, `Product has only ${stock} stock, need >= 3 for this test`);
+    const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
 
-    const { data: data1 } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
+    const productId = `test_ship_stock_${Date.now()}`;
+    await writeDoc(`products/${productId}`, toFirestoreFields({
+      sellerId: TEST_UIDS.SELLER,
+      sellerSku: `SHIP-TEST-${Date.now()}`,
+      name: 'Shipping Test Product',
+      price: 10.00,
+      isActive: true,
+      stockQuantity: 50, // Guaranteed >= 3
+      categoryId: 1,
+      imageUrls: [],
+      keywords: [],
+      rating: 0,
+    }), adminAuth.idToken);
+
+    const { data: data1 } = await buildCheckoutPayload(buyerAuth.localId, productId, 1, buyerAuth.idToken);
     const result1 = await callOk('create_checkout_session', data1, buyerAuth.idToken);
     const order1 = parseDoc(await readDoc(`orders/${result1.orderId}`, buyerAuth.idToken));
 
-    const { data: data2 } = await buildCheckoutPayload(buyerAuth.localId, product.id, 2, buyerAuth.idToken);
+    const { data: data2 } = await buildCheckoutPayload(buyerAuth.localId, productId, 2, buyerAuth.idToken);
     const result2 = await callOk('create_checkout_session', data2, buyerAuth.idToken);
     const order2 = parseDoc(await readDoc(`orders/${result2.orderId}`, buyerAuth.idToken));
 

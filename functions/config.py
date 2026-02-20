@@ -39,8 +39,8 @@ from firebase_functions import params
 
 class Environment(Enum):
     EMULATOR = "emulator"  # Local development with Firebase emulators
-    DEV = "dev"            # Development Firebase project (orignagta-dev)
-    STAGING = "staging"    # Staging Firebase project (orignagta-staging)
+    DEV = "dev"  # Development Firebase project (orignagta-dev)
+    STAGING = "staging"  # Staging Firebase project (orignagta-staging)
     PRODUCTION = "production"  # Production Firebase project (orignagta)
 
     def get_base_url(self) -> str:
@@ -244,7 +244,6 @@ def _load_secret(key: str, required: bool = True) -> str:
             if required:
                 raise RuntimeError(f"❌ Failed to load {key} from Secret Manager: {e}") from e
             return ""
-
 
 
 # ============================================================================

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:origna_gta/core/routes.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -15,9 +16,7 @@ class SubscriptionCancelScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDark
-                ? [DesignTokens.darkBackground, DesignTokens.darkSurface]
-                : [const Color(0xFFF8F9FA), Colors.white],
+            colors: isDark ? [DesignTokens.darkBackground, DesignTokens.darkSurface] : [const Color(0xFFF8F9FA), Colors.white],
           ),
         ),
         child: SafeArea(
@@ -35,40 +34,25 @@ class SubscriptionCancelScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: DesignTokens.textDisabled.withValues(alpha: 0.1),
-                    border: Border.all(
-                      color: DesignTokens.outline,
-                      width: 1.5,
-                    ),
+                    border: Border.all(color: DesignTokens.outline, width: 1.5),
                   ),
-                  child: const Icon(
-                    Icons.workspace_premium_outlined,
-                    color: DesignTokens.textSecondary,
-                    size: 44,
-                  ),
+                  child: const Icon(Icons.workspace_premium_outlined, color: DesignTokens.textSecondary, size: 44),
                 ),
 
                 const SizedBox(height: 32),
 
                 Text(
-                  'Checkout Cancelled',
+                  'subscription.checkout_cancelled'.tr(),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : DesignTokens.textPrimary,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
                 ),
 
                 const SizedBox(height: 12),
 
-                const Text(
-                  'No charge was made. You can upgrade to Premium anytime to unlock all benefits.',
+                Text(
+                  'subscription.no_charge_message'.tr(),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: DesignTokens.textSecondary,
-                    height: 1.5,
-                  ),
+                  style: const TextStyle(fontSize: 15, color: DesignTokens.textSecondary, height: 1.5),
                 ),
 
                 const SizedBox(height: 48),
@@ -82,10 +66,7 @@ class SubscriptionCancelScreen extends StatelessWidget {
                     child: ElevatedButton.icon(
                       onPressed: () => Navigator.of(context).pushReplacementNamed(AppRoutes.subscription),
                       icon: const Icon(Icons.workspace_premium),
-                      label: const Text(
-                        'Upgrade to Premium',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
+                      label: Text('subscription.upgrade_to_premium'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: DesignTokens.primary,
                         foregroundColor: Colors.white,
@@ -105,15 +86,9 @@ class SubscriptionCancelScreen extends StatelessWidget {
                   child: SizedBox(
                     width: double.infinity,
                     child: TextButton(
-                      onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
-                        AppRoutes.home,
-                        (route) => false,
-                      ),
-                      style: TextButton.styleFrom(
-                        foregroundColor: DesignTokens.textSecondary,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: const Text('Back to Home'),
+                      onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false),
+                      style: TextButton.styleFrom(foregroundColor: DesignTokens.textSecondary, padding: const EdgeInsets.symmetric(vertical: 14)),
+                      child: Text('subscription.back_to_home'.tr()),
                     ),
                   ),
                 ),

@@ -799,9 +799,11 @@ def is_valid_transition(current_status, new_status):
 def test_generate_product_slug_format():
     """Slug is lowercase, hyphenated, ends with 4-char hex suffix"""
     import re
+
     from handlers.products import _generate_product_slug
+
     slug = _generate_product_slug("MacBook Cleaner Pro!")
-    assert re.match(r'^[a-z0-9\-]+-[a-f0-9]{4}$', slug), f"Bad slug format: {slug}"
+    assert re.match(r"^[a-z0-9\-]+-[a-f0-9]{4}$", slug), f"Bad slug format: {slug}"
     assert slug.startswith("macbook-cleaner-pro-")
     assert len(slug) <= 85
 
@@ -809,16 +811,18 @@ def test_generate_product_slug_format():
 def test_generate_product_slug_strips_special_chars():
     """Special characters are stripped from slug"""
     from handlers.products import _generate_product_slug
+
     slug = _generate_product_slug("C++ App & More!!!   ")
-    assert '+' not in slug
-    assert '&' not in slug
-    assert '!' not in slug
-    assert '  ' not in slug
+    assert "+" not in slug
+    assert "&" not in slug
+    assert "!" not in slug
+    assert "  " not in slug
 
 
 def test_generate_product_slug_different_each_call():
     """Each call produces a different suffix"""
     from handlers.products import _generate_product_slug
+
     s1 = _generate_product_slug("Same Name")
     s2 = _generate_product_slug("Same Name")
     # Extremely unlikely to collide (1/65536 chance)
@@ -829,39 +833,48 @@ def test_generate_product_slug_different_each_call():
 # BUG-4: status ↔ isActive sync invariant tests
 # =============================================================================
 
+
 class TestComputeIsActive:
     """_compute_is_active() enforces: isActive = (status=='active' AND approvalStatus=='approved')"""
 
     def test_active_and_approved_returns_true(self):
         from handlers.products import _compute_is_active
+
         assert _compute_is_active("active", "approved") is True
 
     def test_active_but_under_review_returns_false(self):
         from handlers.products import _compute_is_active
+
         assert _compute_is_active("active", "under_review") is False
 
     def test_active_but_rejected_returns_false(self):
         from handlers.products import _compute_is_active
+
         assert _compute_is_active("active", "rejected") is False
 
     def test_draft_and_approved_returns_false(self):
         from handlers.products import _compute_is_active
+
         assert _compute_is_active("draft", "approved") is False
 
     def test_paused_and_approved_returns_false(self):
         from handlers.products import _compute_is_active
+
         assert _compute_is_active("paused", "approved") is False
 
     def test_archived_and_approved_returns_false(self):
         from handlers.products import _compute_is_active
+
         assert _compute_is_active("archived", "approved") is False
 
     def test_out_of_stock_and_approved_returns_false(self):
         from handlers.products import _compute_is_active
+
         assert _compute_is_active("out_of_stock", "approved") is False
 
     def test_empty_strings_return_false(self):
         from handlers.products import _compute_is_active
+
         assert _compute_is_active("", "") is False
 
 
@@ -931,9 +944,7 @@ class TestAdminRejectProductStatusSync:
     @patch("handlers.products._get_seller_email", return_value=None)
     @patch("handlers.products.create_success_response")
     @patch("handlers.products.get_db")
-    def test_reject_writes_status_paused(
-        self, mock_get_db, mock_create_response, mock_email, mock_algolia_delete
-    ):
+    def test_reject_writes_status_paused(self, mock_get_db, mock_create_response, mock_email, mock_algolia_delete):
         from handlers.products import admin_reject_product
 
         product_data = {

@@ -48,6 +48,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Import hooks — this triggers registration via @register_hook
 from hooks.hook_domains import PaymentHook, AuthHook, ProductHook
 from hooks.hook_schema_sync import SchemaSyncHook
+from hooks.hook_code_quality import CodeQualityHook
 from hooks.hook_extended import (
     SecurityHook, PerformanceHook, StateMgmtHook,
     OrdersHook, ErrorHandlingHook, SellerHook,
@@ -78,6 +79,7 @@ Available hooks:
   tax           🧾 Tax compliance (GST/HST/PST/QST, Stripe Tax, CRA compliance)
   infra         🏗️  Infrastructure verification (Functions, Rules, Indexes, Stripe, Secrets)
   qa            🧪 QA Engineer (test coverage, gap detection, framework recommendations)
+  code-quality  🧹 Code Quality: Comments, Refactoring, Organization & Cleanup
         """,
     )
 
@@ -166,7 +168,7 @@ Available hooks:
         args.staged = True
         # In pre-commit, only run fast hooks by default
         if not hooks:
-            hooks = ["schema-sync", "security", "payment"]
+            hooks = ["schema-sync", "security", "payment", "code-quality"]
 
     runner = HookRunner(
         hooks=hooks,

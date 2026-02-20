@@ -319,9 +319,11 @@ class TestCreateCheckoutSession:
 
         # Product with stock=0 but allowBackorder=True
         backorder_product = create_mock_product_doc("prod_123", price=50.00, stock_quantity=0)
-        backorder_product.to_dict.return_value.update({
-            "inventory": {"allowBackorder": True, "trackQuantity": True},
-        })
+        backorder_product.to_dict.return_value.update(
+            {
+                "inventory": {"allowBackorder": True, "trackQuantity": True},
+            }
+        )
 
         all_docs = {
             "prod_123": backorder_product,
@@ -346,7 +348,15 @@ class TestCreateCheckoutSession:
         mock_request = Mock()
         mock_request.auth = Mock(uid="test_user_123")
         mock_request.data = {
-            "items": [{"productId": "prod_123", "quantity": 2, "price": 50.00, "sellerId": "seller_123", "name": "Test Product"}],
+            "items": [
+                {
+                    "productId": "prod_123",
+                    "quantity": 2,
+                    "price": 50.00,
+                    "sellerId": "seller_123",
+                    "name": "Test Product",
+                }
+            ],
             "shippingAddress": valid_checkout_data["shippingAddress"],
             "subtotal": 100.00,
         }
@@ -379,9 +389,11 @@ class TestCreateCheckoutSession:
         mock_get_db.return_value = mock_db
 
         no_backorder_product = create_mock_product_doc("prod_123", price=50.00, stock_quantity=0)
-        no_backorder_product.to_dict.return_value.update({
-            "inventory": {"allowBackorder": False, "trackQuantity": True},
-        })
+        no_backorder_product.to_dict.return_value.update(
+            {
+                "inventory": {"allowBackorder": False, "trackQuantity": True},
+            }
+        )
 
         all_docs = {
             "prod_123": no_backorder_product,
@@ -406,7 +418,15 @@ class TestCreateCheckoutSession:
         mock_request = Mock()
         mock_request.auth = Mock(uid="test_user_123")
         mock_request.data = {
-            "items": [{"productId": "prod_123", "quantity": 1, "price": 50.00, "sellerId": "seller_123", "name": "Test Product"}],
+            "items": [
+                {
+                    "productId": "prod_123",
+                    "quantity": 1,
+                    "price": 50.00,
+                    "sellerId": "seller_123",
+                    "name": "Test Product",
+                }
+            ],
             "shippingAddress": valid_checkout_data["shippingAddress"],
             "subtotal": 50.00,
         }
@@ -941,22 +961,26 @@ def validate_price(price):
 def test_generate_license_key_format():
     """License key is XXXX-XXXX-XXXX-XXXX with uppercase alphanumeric"""
     import re
+
     from handlers.payment_stripe import _generate_license_key
+
     key = _generate_license_key()
-    assert re.match(r'^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$', key), f"Bad format: {key}"
+    assert re.match(r"^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$", key), f"Bad format: {key}"
 
 
 def test_generate_license_key_unique():
     """Each call produces a different key"""
     from handlers.payment_stripe import _generate_license_key
+
     keys = {_generate_license_key() for _ in range(100)}
     assert len(keys) == 100  # all unique in 100 iterations
 
 
 def test_generate_digital_licenses_software():
     """Generates license for software item, writes to licenses collection, updates order item"""
-    from handlers.payment_stripe import _generate_digital_licenses
     from unittest.mock import MagicMock, patch
+
+    from handlers.payment_stripe import _generate_digital_licenses
 
     mock_db = MagicMock()
     mock_product = MagicMock()
@@ -972,14 +996,16 @@ def test_generate_digital_licenses_software():
 
     order_data = {
         "userId": "buyer123",
-        "items": [{
-            "productId": "prod123",
-            "isDigital": True,
-            "digitalUnlocked": False,
-            "name": "MacBook Cleaner",
-            "price": 29.99,
-            "quantity": 1,
-        }]
+        "items": [
+            {
+                "productId": "prod123",
+                "isDigital": True,
+                "digitalUnlocked": False,
+                "name": "MacBook Cleaner",
+                "price": 29.99,
+                "quantity": 1,
+            }
+        ],
     }
 
     with patch("handlers.payment_stripe.get_db", return_value=mock_db):
@@ -991,18 +1017,21 @@ def test_generate_digital_licenses_software():
 
 def test_generate_digital_licenses_skips_already_unlocked():
     """Idempotent: skips items where digitalUnlocked=True"""
-    from handlers.payment_stripe import _generate_digital_licenses
     from unittest.mock import MagicMock, patch
+
+    from handlers.payment_stripe import _generate_digital_licenses
 
     mock_db = MagicMock()
     order_data = {
         "userId": "buyer123",
-        "items": [{
-            "productId": "prod123",
-            "isDigital": True,
-            "digitalUnlocked": True,  # already done
-            "licenseKey": "ABCD-EFGH-IJKL-MNOP",
-        }]
+        "items": [
+            {
+                "productId": "prod123",
+                "isDigital": True,
+                "digitalUnlocked": True,  # already done
+                "licenseKey": "ABCD-EFGH-IJKL-MNOP",
+            }
+        ],
     }
     with patch("handlers.payment_stripe.get_db", return_value=mock_db):
         _generate_digital_licenses("order123", order_data)
@@ -1013,8 +1042,9 @@ def test_generate_digital_licenses_skips_already_unlocked():
 
 def test_generate_digital_licenses_book():
     """Generates license for book item"""
-    from handlers.payment_stripe import _generate_digital_licenses
     from unittest.mock import MagicMock, patch
+
+    from handlers.payment_stripe import _generate_digital_licenses
 
     mock_db = MagicMock()
     mock_product = MagicMock()
@@ -1028,14 +1058,16 @@ def test_generate_digital_licenses_book():
 
     order_data = {
         "userId": "buyer123",
-        "items": [{
-            "productId": "prod456",
-            "isDigital": True,
-            "digitalUnlocked": False,
-            "name": "Python Mastery",
-            "price": 19.99,
-            "quantity": 1,
-        }]
+        "items": [
+            {
+                "productId": "prod456",
+                "isDigital": True,
+                "digitalUnlocked": False,
+                "name": "Python Mastery",
+                "price": 19.99,
+                "quantity": 1,
+            }
+        ],
     }
     with patch("handlers.payment_stripe.get_db", return_value=mock_db):
         _generate_digital_licenses("order123", order_data)
@@ -1047,8 +1079,9 @@ def test_generate_digital_licenses_book():
 
 def test_digital_item_status_set_to_delivered_after_license_generation():
     """Digital items get status=delivered immediately after license generation"""
-    from handlers.payment_stripe import _generate_digital_licenses
     from unittest.mock import MagicMock, call, patch
+
+    from handlers.payment_stripe import _generate_digital_licenses
 
     # Product doc returned for the product lookup
     mock_product = MagicMock()
@@ -1086,14 +1119,16 @@ def test_digital_item_status_set_to_delivered_after_license_generation():
 
     order_data = {
         "userId": "buyer123",
-        "items": [{
-            "productId": "prod123",
-            "isDigital": True,
-            "digitalUnlocked": False,
-            "name": "Test App",
-            "price": 29.99,
-            "quantity": 1,
-        }]
+        "items": [
+            {
+                "productId": "prod123",
+                "isDigital": True,
+                "digitalUnlocked": False,
+                "name": "Test App",
+                "price": 29.99,
+                "quantity": 1,
+            }
+        ],
     }
     with patch("handlers.payment_stripe.get_db", return_value=mock_db):
         _generate_digital_licenses("order123", order_data)
@@ -1110,10 +1145,12 @@ def test_digital_item_status_set_to_delivered_after_license_generation():
 
 # ── Task 3: productName in license doc ───────────────────────────────────────
 
+
 def test_generate_digital_licenses_stores_product_name():
     """License doc must include productName from the product."""
-    from handlers.payment_stripe import _generate_digital_licenses
     from unittest.mock import MagicMock, patch
+
+    from handlers.payment_stripe import _generate_digital_licenses
 
     mock_db = MagicMock()
     mock_product = MagicMock()
@@ -1135,14 +1172,23 @@ def test_generate_digital_licenses_stores_product_name():
 
     order_data = {
         "userId": "buyer123",
-        "items": [{"productId": "prod123", "isDigital": True, "digitalUnlocked": False,
-                   "name": "FXCleaner", "price": 29.99, "quantity": 1}],
+        "items": [
+            {
+                "productId": "prod123",
+                "isDigital": True,
+                "digitalUnlocked": False,
+                "name": "FXCleaner",
+                "price": 29.99,
+                "quantity": 1,
+            }
+        ],
     }
 
     written_docs = []
-    original_set = mock_db.collection.return_value.document.return_value.set
+
     def capture_set(doc):
         written_docs.append(doc)
+
     mock_db.collection.return_value.document.return_value.set.side_effect = capture_set
 
     with patch("handlers.payment_stripe.get_db", return_value=mock_db):
@@ -1153,6 +1199,7 @@ def test_generate_digital_licenses_stores_product_name():
 
 
 # ── Task 4: all-digital cart skips Canada check ───────────────────────────────
+
 
 def test_all_digital_checkout_zero_shipping():
     """All-digital order: _calculate_digital_order_totals returns zero shipping and tax."""
@@ -1176,10 +1223,12 @@ def test_all_digital_checkout_zero_shipping():
 
 # ── Task 5: license revocation on refund ─────────────────────────────────────
 
+
 def test_full_refund_revokes_digital_licenses():
     """process_charge_refunded calls _revoke_digital_licenses_for_order."""
-    from handlers.payment_stripe import process_charge_refunded
     from unittest.mock import MagicMock, patch
+
+    from handlers.payment_stripe import process_charge_refunded
 
     mock_db = MagicMock()
     order_doc = MagicMock()
@@ -1195,8 +1244,10 @@ def test_full_refund_revokes_digital_licenses():
 
     charge = {"payment_intent": "pi_test", "amount_refunded": 2999, "amount": 2999}
 
-    with patch("handlers.payment_stripe.get_db", return_value=mock_db), \
-         patch("handlers.digital._revoke_digital_licenses_for_order", return_value=1) as mock_revoke:
+    with (
+        patch("handlers.payment_stripe.get_db", return_value=mock_db),
+        patch("handlers.digital._revoke_digital_licenses_for_order", return_value=1) as mock_revoke,
+    ):
         process_charge_refunded(charge)
 
     mock_revoke.assert_called_once_with("order123")
@@ -1205,6 +1256,7 @@ def test_full_refund_revokes_digital_licenses():
 # =============================================================================
 # BUG-2: warehouseStock sync tests
 # =============================================================================
+
 
 def _make_warehouse_product(stock_quantity: int, warehouse_stock: dict):
     """Helper: create a product snapshot with warehouseStock populated."""

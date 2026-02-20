@@ -228,6 +228,7 @@ def update_email_consent(req: https_fn.CallableRequest) -> dict[str, Any]:
 # BUYER ADDRESS BOOK MANAGEMENT
 # ============================================================================
 
+
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def add_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
     """Add a new address to the buyer's address book."""
@@ -238,6 +239,7 @@ def add_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
     data = req.data
 
     from models.base import Address
+
     try:
         address = Address(**data)
     except Exception as e:
@@ -291,6 +293,7 @@ def update_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     # Validate syntax by passing through Pydantic
     from models.base import Address
+
     try:
         address = Address(**data)
     except Exception as e:
@@ -299,7 +302,9 @@ def update_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
     address_dict = address.model_dump()
 
     db = get_db()
-    address_ref = db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).document(address_id)
+    address_ref = (
+        db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).document(address_id)
+    )
     doc = address_ref.get()
 
     if not doc.exists:
@@ -316,7 +321,9 @@ def update_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
         batch.commit()
     elif not address_dict.get(Fields.IS_DEFAULT) and doc.to_dict().get(Fields.IS_DEFAULT):
         # Prevent unsetting default if it's the only one
-        existing_addresses = list(db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).get())
+        existing_addresses = list(
+            db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).get()
+        )
         if len(existing_addresses) > 1:
             # We enforce that AT LEAST one must be default
             # Auto-promote the first non-matching address

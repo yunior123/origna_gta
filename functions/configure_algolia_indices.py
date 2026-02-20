@@ -1,4 +1,3 @@
-
 import os
 import ssl
 import sys
@@ -9,9 +8,13 @@ import aiohttp
 ssl._create_default_https_context = ssl._create_unverified_context
 
 original_init = aiohttp.TCPConnector.__init__
+
+
 def new_init(self, *args, **kwargs):
-    kwargs['ssl'] = False
+    kwargs["ssl"] = False
     original_init(self, *args, **kwargs)
+
+
 aiohttp.TCPConnector.__init__ = new_init
 
 # Add current directory to path so imports work
@@ -20,7 +23,7 @@ sys.path.append(current_dir)
 
 from dotenv import load_dotenv
 
-load_dotenv() # Load .env variables (API keys)
+load_dotenv()  # Load .env variables (API keys)
 
 # Force re-evaluation removed to avoid duplicate param registration error
 import config

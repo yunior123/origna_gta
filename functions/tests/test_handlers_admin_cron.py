@@ -372,6 +372,7 @@ class TestSecurityEdgeCases:
 # BUG-3: Low-stock threshold seller alert cron
 # =============================================================================
 
+
 class TestCheckLowStockAlerts:
     """check_low_stock_alerts daily cron — emails sellers when stock <= threshold."""
 
@@ -496,9 +497,10 @@ class TestCheckLowStockAlerts:
     def test_cooldown_blocks_second_alert_within_23h(self, mock_send_email, mock_get_db):
         """lastLowStockAlertAt set 1 hour ago → cooldown active → no email."""
         from datetime import timezone
+
         from handlers.cron_jobs import check_low_stock_alerts
 
-        recent_alert = datetime.now(timezone.utc) - timedelta(hours=1)
+        recent_alert = datetime.now(UTC) - timedelta(hours=1)
         product_data = self._make_product(stock=2, threshold=5, last_alert=recent_alert)
         self._wire_db(mock_get_db, product_data)
 
@@ -511,9 +513,10 @@ class TestCheckLowStockAlerts:
     def test_alert_allowed_after_23h_cooldown_expires(self, mock_send_email, mock_get_db):
         """lastLowStockAlertAt set 24 hours ago → cooldown expired → email sent."""
         from datetime import timezone
+
         from handlers.cron_jobs import check_low_stock_alerts
 
-        old_alert = datetime.now(timezone.utc) - timedelta(hours=24)
+        old_alert = datetime.now(UTC) - timedelta(hours=24)
         product_data = self._make_product(stock=2, threshold=5, last_alert=old_alert)
         self._wire_db(mock_get_db, product_data)
 
@@ -574,6 +577,4 @@ class TestCheckLowStockAlerts:
             '"allowBackorder"',
         ]
         for literal in forbidden_literals:
-            assert literal not in source, (
-                f"Magic string {literal} found in cron_jobs.py — use Fields constant instead"
-            )
+            assert literal not in source, f"Magic string {literal} found in cron_jobs.py — use Fields constant instead"

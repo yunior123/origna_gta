@@ -1167,7 +1167,10 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
             # Skip PI modification for captured payments; Firestore is the source of truth for totals.
             # The shipping difference is absorbed by the platform and flagged for reconciliation.
             payment_status_at_approval = fresh_data.get(Fields.PAYMENT_STATUS)
-            if difference_cents + tax_difference_cents > 0 and payment_status_at_approval != PaymentStatusValues.CAPTURED:
+            if (
+                difference_cents + tax_difference_cents > 0
+                and payment_status_at_approval != PaymentStatusValues.CAPTURED
+            ):
                 payment_intent_id = fresh_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
                 if payment_intent_id:
                     try:
@@ -1190,7 +1193,10 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                             "internal",
                             "Shipping approved but payment update failed. Flagged for manual review.",
                         ) from e
-            elif difference_cents + tax_difference_cents > 0 and payment_status_at_approval == PaymentStatusValues.CAPTURED:
+            elif (
+                difference_cents + tax_difference_cents > 0
+                and payment_status_at_approval == PaymentStatusValues.CAPTURED
+            ):
                 # Auto-capture mode: payment already captured for original amount.
                 # Log the discrepancy for manual reconciliation — seller absorbs the difference.
                 logger.warning(
@@ -1231,14 +1237,16 @@ def approve_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
                 cancel_payment_status = PaymentStatusValues.REFUNDED
             except stripe.error.StripeError as e:
                 logger.error(f"Refund failed on shipping rejection (captured order): {str(e)}")
-                order_ref.update({
-                    Fields.REQUIRES_MANUAL_REVIEW: True,
-                    Fields.MANUAL_REVIEW_REASON: (
-                        f"Refund failed after shipping cost rejection: {type(e).__name__}. "
-                        "Buyer funds remain captured. Manual refund required."
-                    ),
-                    Fields.UPDATED_AT: get_server_timestamp(),
-                })
+                order_ref.update(
+                    {
+                        Fields.REQUIRES_MANUAL_REVIEW: True,
+                        Fields.MANUAL_REVIEW_REASON: (
+                            f"Refund failed after shipping cost rejection: {type(e).__name__}. "
+                            "Buyer funds remain captured. Manual refund required."
+                        ),
+                        Fields.UPDATED_AT: get_server_timestamp(),
+                    }
+                )
                 raise https_fn.HttpsError(
                     "internal",
                     "Shipping rejected but refund failed. Flagged for manual review.",
@@ -1345,7 +1353,7 @@ def update_shipping_cost(req: https_fn.CallableRequest) -> dict[str, Any]:
     if order_data.get(Fields.PAYMENT_STATUS) not in allowed_payment_statuses:
         raise https_fn.HttpsError(
             "failed-precondition",
-            f"Cannot update shipping cost: payment status is '{order_data.get(Fields.PAYMENT_STATUS)}'"
+            f"Cannot update shipping cost: payment status is '{order_data.get(Fields.PAYMENT_STATUS)}'",
         )
 
     original_shipping_cents = order_data.get(Fields.SHIPPING_COST_CENTS, 0)
@@ -1527,7 +1535,9 @@ def on_order_status_changed(event: firestore_fn.Event) -> None:
                         if seller_email:
                             seller_lang = seller_data.get(Fields.PREFERRED_LANGUAGE, "en")
                             # Use seller notification with seller_id filter (multi-seller privacy)
-                            seller_shipped_html = get_seller_notification_email(after_data, order_id, sid, lang=seller_lang)
+                            seller_shipped_html = get_seller_notification_email(
+                                after_data, order_id, sid, lang=seller_lang
+                            )
                             send_email(
                                 to_email=seller_email,
                                 subject=_email_t("sub.shipped_seller", seller_lang).replace("{oid}", oid_short),

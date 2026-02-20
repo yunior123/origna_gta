@@ -11,7 +11,7 @@ import logging
 import re
 import secrets
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import boto3
@@ -268,7 +268,9 @@ def upload_review_images(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Photo reviews are a premium-only feature
     _user_doc = get_db().collection(Collections.USERS).document(user_id).get()
     if not _user_doc.exists or not _user_doc.to_dict().get(Fields.IS_PREMIUM, False):
-        raise https_fn.HttpsError("permission-denied", "Photo reviews are a premium feature. Upgrade to add photos to your reviews.")
+        raise https_fn.HttpsError(
+            "permission-denied", "Photo reviews are a premium feature. Upgrade to add photos to your reviews."
+        )
 
     from utils.helpers import sanitize_path
 
@@ -330,7 +332,9 @@ def upload_review_images(req: https_fn.CallableRequest) -> dict[str, Any]:
                 ExpiresIn=3600,
             )
             public_url = f"{CDN_BASE_URL}/{unique_key}"
-            upload_urls.append({"uploadUrl": presigned_url, "publicUrl": public_url, "fileName": file_name, "key": unique_key})
+            upload_urls.append(
+                {"uploadUrl": presigned_url, "publicUrl": public_url, "fileName": file_name, "key": unique_key}
+            )
 
         return create_success_response({"uploadUrls": upload_urls})
 
@@ -499,7 +503,9 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         # Photo reviews require premium — verify before accepting URLs
         _user_doc = get_db().collection(Collections.USERS).document(user_id).get()
         if not _user_doc.exists or not _user_doc.to_dict().get(Fields.IS_PREMIUM, False):
-            raise https_fn.HttpsError("permission-denied", "Photo reviews are a premium feature. Upgrade to add photos to your reviews.")
+            raise https_fn.HttpsError(
+                "permission-denied", "Photo reviews are a premium feature. Upgrade to add photos to your reviews."
+            )
         for url in review_image_urls_raw:
             if not isinstance(url, str) or not url.startswith(CDN_BASE_URL):
                 raise https_fn.HttpsError("invalid-argument", "Review images must be uploaded to the platform CDN")
@@ -647,10 +653,7 @@ def _verify_address_with_geoapify(
         return False, "Address verification service not configured"
 
     try:
-        url = (
-            f"https://api.geoapify.com/v1/geocode/reverse"
-            f"?lat={lat}&lon={lon}&apiKey={geo_key}"
-        )
+        url = f"https://api.geoapify.com/v1/geocode/reverse?lat={lat}&lon={lon}&apiKey={geo_key}"
         response = requests.get(url, timeout=AppConfig.GEOAPIFY_TIMEOUT_SECONDS)
         if response.status_code != 200:
             return False, f"Address verification failed (HTTP {response.status_code})"
@@ -658,10 +661,7 @@ def _verify_address_with_geoapify(
         data = response.json()
         features = data.get("features", [])
         if not features:
-            return (
-                False,
-                f"Address verification returned no results — coordinates ({lat}, {lon}) may be invalid"
-            )
+            return (False, f"Address verification returned no results — coordinates ({lat}, {lon}) may be invalid")
 
         props = features[0].get("properties", {})
         geo_city = (props.get("city") or props.get("town") or props.get("village") or "").lower()
@@ -827,7 +827,9 @@ def on_product_created(event: firestore_fn.Event) -> None:
         seller_postal = seller_address.get(Fields.POSTAL_CODE, "")
 
         if seller_lat is None or seller_lon is None:
-            logger.info(f"SECURITY: Product {product_id} missing lat/lng — address not verified via Geoapify — REJECTING")
+            logger.info(
+                f"SECURITY: Product {product_id} missing lat/lng — address not verified via Geoapify — REJECTING"
+            )
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
                 {
                     Fields.IS_ACTIVE: False,
@@ -838,8 +840,13 @@ def on_product_created(event: firestore_fn.Event) -> None:
             return
         else:
             is_valid, error_reason = _verify_address_with_geoapify(
-                product_id, seller_lat, seller_lon,
-                seller_street, seller_city, seller_postal, country,
+                product_id,
+                seller_lat,
+                seller_lon,
+                seller_street,
+                seller_city,
+                seller_postal,
+                country,
             )
             if not is_valid:
                 logger.info(f"SECURITY: Product {product_id} failed address verification: {error_reason} — REJECTING")
@@ -1033,15 +1040,13 @@ def on_product_created(event: firestore_fn.Event) -> None:
 # HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _compute_is_active(status: str, approval_status: str) -> bool:
     """Single source of truth: isActive = status=='active' AND approvalStatus=='approved'.
 
     This invariant must be enforced at every product write path.
     """
-    return (
-        status == ProductStatusValues.ACTIVE
-        and approval_status == ProductApprovalStatusValues.APPROVED
-    )
+    return status == ProductStatusValues.ACTIVE and approval_status == ProductApprovalStatusValues.APPROVED
 
 
 def _notify_admins_new_product(product_id: str, product_data: dict) -> None:
@@ -1057,10 +1062,7 @@ def _notify_admins_new_product(product_id: str, product_data: dict) -> None:
 
     # Fetch all admin users
     admin_docs = (
-        get_db()
-        .collection(Collections.USERS)
-        .where(Fields.ROLES, "array-contains", UserRoleValues.ADMIN)
-        .get()
+        get_db().collection(Collections.USERS).where(Fields.ROLES, "array-contains", UserRoleValues.ADMIN).get()
     )
 
     subject = f"[Origna] New Product Pending Review: {product_name}"
@@ -1178,6 +1180,7 @@ def _notify_premium_users_new_product(product_data: dict, product_id: str) -> No
 # ─────────────────────────────────────────────────────────────────────────────
 # ADMIN CALLABLES
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
@@ -1329,10 +1332,10 @@ def admin_reject_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     )
 
     # Remove from Algolia if it was previously approved
-    try:
+    import contextlib
+
+    with contextlib.suppress(Exception):
         algolia_delete_product(product_id)
-    except Exception:
-        pass
 
     # Email seller
     seller_email = _get_seller_email(product_data.get(Fields.SELLER_ID))
@@ -1382,6 +1385,8 @@ def _check_digital_url_reachability(product_id: str, product_data: dict) -> list
             dead.append(label)
 
     return dead
+
+
 def on_product_updated(event: firestore_fn.Event) -> None:
     """
     Firestore trigger: Updates product in Algolia when modified.
@@ -1408,23 +1413,35 @@ def on_product_updated(event: firestore_fn.Event) -> None:
     # metadata fields change, we must NOT re-validate address/geocoding — this would
     # deactivate products that were already validated at creation time.
     _SKIP_VALIDATION_FIELDS = {
-        Fields.STOCK_QUANTITY, Fields.UPDATED_AT, Fields.STOCK_RESTORED,
-        Fields.IS_ACTIVE, Fields.DEACTIVATION_REASON,
-        Fields.APPROVAL_STATUS, Fields.APPROVAL_REJECTION_REASON,
+        Fields.STOCK_QUANTITY,
+        Fields.UPDATED_AT,
+        Fields.STOCK_RESTORED,
+        Fields.IS_ACTIVE,
+        Fields.DEACTIVATION_REASON,
+        Fields.APPROVAL_STATUS,
+        Fields.APPROVAL_REJECTION_REASON,
         Fields.STATUS,  # seller pause/unpause — synced via _compute_is_active below
     }
     _address_changed = False
     if before_data:
         changed_fields = {
-            key for key in set(list(product_data.keys()) + list(before_data.keys()))
+            key
+            for key in set(list(product_data.keys()) + list(before_data.keys()))
             if product_data.get(key) != before_data.get(key)
         }
 
         # ── RESUBMIT: Seller edited a rejected product — reset to under_review ──
         _SELLER_EDITABLE_FIELDS = {
-            Fields.NAME, Fields.DESCRIPTION, Fields.PRICE, Fields.IMAGE_URLS,
-            Fields.CATEGORY_ID, Fields.KEYWORDS, Fields.DIGITAL_BUILDS,
-            Fields.BOOK_SOURCE_URL, Fields.STOCK_QUANTITY, Fields.DIGITAL_TYPE,
+            Fields.NAME,
+            Fields.DESCRIPTION,
+            Fields.PRICE,
+            Fields.IMAGE_URLS,
+            Fields.CATEGORY_ID,
+            Fields.KEYWORDS,
+            Fields.DIGITAL_BUILDS,
+            Fields.BOOK_SOURCE_URL,
+            Fields.STOCK_QUANTITY,
+            Fields.DIGITAL_TYPE,
         }
         before_approval = before_data.get(Fields.APPROVAL_STATUS)
         after_approval = product_data.get(Fields.APPROVAL_STATUS)
@@ -1558,8 +1575,13 @@ def on_product_updated(event: firestore_fn.Event) -> None:
                 return
 
             is_valid, error_reason = _verify_address_with_geoapify(
-                product_id, seller_lat, seller_lon,
-                seller_street, seller_city, seller_postal, country,
+                product_id,
+                seller_lat,
+                seller_lon,
+                seller_street,
+                seller_city,
+                seller_postal,
+                country,
             )
             if not is_valid:
                 logger.info(f"SECURITY: Product {product_id} updated with invalid address: {error_reason} — REJECTING")
@@ -1596,7 +1618,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         else:
             logger.info(f"Product {product_id} not indexed — approvalStatus={approval_status}")
     except Exception as e:
-        logger.error(f"Failed to update product {product_id} in Algolia: {str(e)}") 
+        logger.error(f"Failed to update product {product_id} in Algolia: {str(e)}")
 
 
 @firestore_fn.on_document_deleted(document="products/{productId}", **FIRESTORE_TRIGGER_OPTIONS)
@@ -2025,6 +2047,7 @@ def get_product_ratings_paginated(req: https_fn.CallableRequest) -> dict[str, An
 # WAREHOUSE CRUD — Seller shipping location management
 # =============================================================================
 
+
 @https_fn.on_call(**DEFAULT_OPTIONS)
 def create_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
@@ -2056,15 +2079,18 @@ def create_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
         if is_default:
             _clear_default_warehouse(seller_id)
 
-        from datetime import UTC
-        warehouse_doc = get_db().collection(Collections.USERS).document(seller_id).collection(Collections.WAREHOUSES).document()
-        warehouse_doc.set({
-            "label": label,
-            "type": w_type,
-            "address": address,
-            "isDefault": is_default,
-            "createdAt": get_server_timestamp(),
-        })
+        warehouse_doc = (
+            get_db().collection(Collections.USERS).document(seller_id).collection(Collections.WAREHOUSES).document()
+        )
+        warehouse_doc.set(
+            {
+                "label": label,
+                "type": w_type,
+                "address": address,
+                "isDefault": is_default,
+                "createdAt": get_server_timestamp(),
+            }
+        )
 
         logger.info(f"Warehouse {warehouse_doc.id} created for seller {seller_id}")
         return create_success_response({"warehouseId": warehouse_doc.id})
@@ -2091,7 +2117,13 @@ def update_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError("invalid-argument", "warehouseId is required")
 
         # Verify ownership
-        wh_ref = get_db().collection(Collections.USERS).document(seller_id).collection(Collections.WAREHOUSES).document(warehouse_id)
+        wh_ref = (
+            get_db()
+            .collection(Collections.USERS)
+            .document(seller_id)
+            .collection(Collections.WAREHOUSES)
+            .document(warehouse_id)
+        )
         wh_doc = wh_ref.get()
         if not wh_doc.exists:
             raise https_fn.HttpsError("not-found", "Warehouse not found")
@@ -2146,7 +2178,13 @@ def delete_warehouse(req: https_fn.CallableRequest) -> dict[str, Any]:
         if not warehouse_id:
             raise https_fn.HttpsError("invalid-argument", "warehouseId is required")
 
-        wh_ref = get_db().collection(Collections.USERS).document(seller_id).collection(Collections.WAREHOUSES).document(warehouse_id)
+        wh_ref = (
+            get_db()
+            .collection(Collections.USERS)
+            .document(seller_id)
+            .collection(Collections.WAREHOUSES)
+            .document(warehouse_id)
+        )
         if not wh_ref.get().exists:
             raise https_fn.HttpsError("not-found", "Warehouse not found")
 
@@ -2218,9 +2256,9 @@ def _clear_default_warehouse(seller_id: str, exclude_id: str | None = None) -> N
 # TASK 07 — BACK-IN-STOCK NOTIFICATIONS
 # ================================================================
 
+
 def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_data: dict) -> None:
     """Send back-in-stock emails to subscribers when stockQuantity transitions 0 → >0."""
-    from datetime import timezone
 
     before_stock = before_data.get(Fields.STOCK_QUANTITY, 0)
     after_stock = after_data.get(Fields.STOCK_QUANTITY, 0)
@@ -2234,7 +2272,7 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
     from services.email_service import send_email
 
     product_name = after_data.get(Fields.NAME, "A product you wanted")
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
 
     subscriptions = (
         get_db()
@@ -2321,15 +2359,16 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
     if existing:
         return create_success_response({"alreadySubscribed": True})
 
-    from datetime import timezone
-    get_db().collection(Collections.STOCK_NOTIFICATIONS).add({
-        Fields.PRODUCT_ID: product_id,
-        Fields.USER_ID: user_id,
-        Fields.EMAIL: user_email,
-        Fields.NAME: product_data.get(Fields.NAME, ""),
-        Fields.NOTIFIED_AT: None,
-        Fields.CREATED_AT: datetime.now(timezone.utc),
-    })
+    get_db().collection(Collections.STOCK_NOTIFICATIONS).add(
+        {
+            Fields.PRODUCT_ID: product_id,
+            Fields.USER_ID: user_id,
+            Fields.EMAIL: user_email,
+            Fields.NAME: product_data.get(Fields.NAME, ""),
+            Fields.NOTIFIED_AT: None,
+            Fields.CREATED_AT: datetime.now(UTC),
+        }
+    )
     return create_success_response({"subscribed": True})
 
 
@@ -2368,6 +2407,7 @@ def unsubscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, A
 # TASK 09 — PRODUCT Q&A
 # ================================================================
 
+
 def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     TASK 09: Buyer submits a question about a product.
@@ -2379,8 +2419,21 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
+    # S-02 FIX: Rate limit question submissions (max 5/hour per user)
+    from services.rate_limiter import RateLimiter
+
+    _limiter = RateLimiter(get_db())
+    allowed, msg = _limiter.check_rate_limit(
+        identifier=req.auth.uid,
+        action="ask_product_question",
+        max_requests=5,
+        window_minutes=60,
+        fail_closed=False,
+    )
+    if not allowed:
+        raise https_fn.HttpsError("resource-exhausted", msg)
+
     from utils.helpers import sanitized_text
-    from datetime import timezone
 
     user_id = req.auth.uid
     data = req.data
@@ -2398,26 +2451,30 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not product_doc.exists:
         raise https_fn.HttpsError("not-found", "Product not found")
     product_data = product_doc.to_dict() or {}
+    # S-03 FIX: Always derive sellerId from the actual product document (prevents spoofing)
     seller_id = product_data.get(Fields.SELLER_ID)
 
     question_ref = get_db().collection(Collections.PRODUCT_QUESTIONS).document()
-    question_ref.set({
-        Fields.QUESTION_ID: question_ref.id,
-        Fields.PRODUCT_ID: product_id,
-        Fields.SELLER_ID: seller_id,
-        Fields.ASKER_ID: user_id,
-        Fields.QUESTION_TEXT: question,
-        Fields.ANSWER_TEXT: None,
-        Fields.ANSWERED_AT: None,
-        Fields.ANSWERED_BY: None,
-        Fields.IS_ANSWERED: False,
-        Fields.UPVOTES: 0,
-        Fields.CREATED_AT: datetime.now(timezone.utc),
-    })
+    question_ref.set(
+        {
+            Fields.QUESTION_ID: question_ref.id,
+            Fields.PRODUCT_ID: product_id,
+            Fields.SELLER_ID: seller_id,
+            Fields.ASKER_ID: user_id,
+            Fields.QUESTION_TEXT: question,
+            Fields.ANSWER_TEXT: None,
+            Fields.ANSWERED_AT: None,
+            Fields.ANSWERED_BY: None,
+            Fields.IS_ANSWERED: False,
+            Fields.UPVOTES: 0,
+            Fields.CREATED_AT: datetime.now(UTC),
+        }
+    )
 
     # Email seller about new question
     try:
         from services.email_service import send_email
+
         seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
         if seller_doc.exists:
             seller_email = (seller_doc.to_dict() or {}).get(Fields.EMAIL)
@@ -2460,7 +2517,6 @@ def answer_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
     from utils.helpers import sanitized_text
-    from datetime import timezone
 
     user_id = req.auth.uid
     token = req.auth.token or {}
@@ -2489,17 +2545,20 @@ def answer_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not is_admin and user_id != seller_id:
         raise https_fn.HttpsError("permission-denied", "Only the seller or an admin can answer this question")
 
-    now_utc = datetime.now(timezone.utc)
-    question_ref.update({
-        Fields.ANSWER_TEXT: answer,
-        Fields.ANSWERED_AT: now_utc,
-        Fields.ANSWERED_BY: user_id,
-        Fields.IS_ANSWERED: True,
-    })
+    now_utc = datetime.now(UTC)
+    question_ref.update(
+        {
+            Fields.ANSWER_TEXT: answer,
+            Fields.ANSWERED_AT: now_utc,
+            Fields.ANSWERED_BY: user_id,
+            Fields.IS_ANSWERED: True,
+        }
+    )
 
     # Email asker about the answer
     try:
         from services.email_service import send_email
+
         asker_id = question_data.get(Fields.ASKER_ID)
         product_id = question_data.get(Fields.PRODUCT_ID)
         if asker_id:
@@ -2512,7 +2571,7 @@ def answer_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
                     if pdoc.exists:
                         product_name = (pdoc.to_dict() or {}).get(Fields.NAME, "")
                 if asker_email:
-                    subject = f"[Origna] Your question was answered"
+                    subject = "[Origna] Your question was answered"
                     html = f"""
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <h2 style="color: #5B30F6;">Your question was answered!</h2>
@@ -2555,11 +2614,7 @@ def get_product_questions(req: https_fn.CallableRequest) -> dict[str, Any]:
     limit = min(int(data.get("limit", 20)), 50)
     answered_only = bool(data.get("answeredOnly", False))
 
-    query = (
-        get_db()
-        .collection(Collections.PRODUCT_QUESTIONS)
-        .where(Fields.PRODUCT_ID, "==", product_id)
-    )
+    query = get_db().collection(Collections.PRODUCT_QUESTIONS).where(Fields.PRODUCT_ID, "==", product_id)
     if answered_only:
         query = query.where(Fields.IS_ANSWERED, "==", True)
     query = query.order_by(Fields.CREATED_AT, direction="DESCENDING").limit(limit)
@@ -2568,14 +2623,16 @@ def get_product_questions(req: https_fn.CallableRequest) -> dict[str, Any]:
     questions = []
     for doc in docs:
         d = doc.to_dict() or {}
-        questions.append({
-            Fields.QUESTION_ID: doc.id,
-            Fields.QUESTION_TEXT: d.get(Fields.QUESTION_TEXT, ""),
-            Fields.ANSWER_TEXT: d.get(Fields.ANSWER_TEXT),
-            Fields.ANSWERED_AT: d.get(Fields.ANSWERED_AT),
-            Fields.IS_ANSWERED: d.get(Fields.IS_ANSWERED, False),
-            Fields.UPVOTES: d.get(Fields.UPVOTES, 0),
-            Fields.CREATED_AT: d.get(Fields.CREATED_AT),
-        })
+        questions.append(
+            {
+                Fields.QUESTION_ID: doc.id,
+                Fields.QUESTION_TEXT: d.get(Fields.QUESTION_TEXT, ""),
+                Fields.ANSWER_TEXT: d.get(Fields.ANSWER_TEXT),
+                Fields.ANSWERED_AT: d.get(Fields.ANSWERED_AT),
+                Fields.IS_ANSWERED: d.get(Fields.IS_ANSWERED, False),
+                Fields.UPVOTES: d.get(Fields.UPVOTES, 0),
+                Fields.CREATED_AT: d.get(Fields.CREATED_AT),
+            }
+        )
 
     return create_success_response({"questions": questions, "total": len(questions)})

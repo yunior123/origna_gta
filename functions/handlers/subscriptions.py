@@ -30,19 +30,21 @@ _db = None
 _firestore = None
 
 
-def __get_db():
+def _get_db():
     global _db, _firestore
     if _db is None:
         from firebase_admin import firestore as fs
+
         _firestore = fs
         _db = fs.client()
     return _db
 
 
-def __get_server_timestamp():
+def _get_server_timestamp():
     global _firestore
     if _firestore is None:
         from firebase_admin import firestore as fs
+
         _firestore = fs
     return _firestore.SERVER_TIMESTAMP
 
@@ -63,9 +65,7 @@ def _get_or_create_stripe_customer(uid: str, user_data: dict) -> str:
         name=user_data.get(Fields.NAME, ""),
         metadata={"uid": uid},
     )
-    _get_db().collection(Collections.USERS).document(uid).update({
-        Fields.CUSTOMER_ID: customer.id
-    })
+    _get_db().collection(Collections.USERS).document(uid).update({Fields.CUSTOMER_ID: customer.id})
     return customer.id
 
 
@@ -100,9 +100,9 @@ def create_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
     _stripe_init()
 
     from config import BASE_URL
-    from schema_constants import AppConfig
 
     customer_id = _get_or_create_stripe_customer(uid, user_data)
+    now = datetime.now(UTC)
 
     try:
         session = stripe.checkout.Session.create(
@@ -114,7 +114,8 @@ def create_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
             client_reference_id=uid,
             metadata={"uid": uid},
             subscription_data={"metadata": {"uid": uid}},
-            idempotency_key=f"premium_sub_{uid}",
+            # Use 5-minute window idempotency to allow retry after session expiry
+            idempotency_key=f"premium_sub_{uid}_{int(now.timestamp()) // 300}",
         )
         return {"success": True, "checkoutUrl": session.url, "sessionId": session.id}
     except stripe.StripeError as e:
@@ -148,10 +149,12 @@ def cancel_subscription(req: https_fn.CallableRequest) -> dict[str, Any]:
     _stripe_init()
     try:
         stripe.Subscription.modify(stripe_sub_id, cancel_at_period_end=True)
-        _get_db().collection(Collections.SUBSCRIPTIONS).document(uid).update({
-            Fields.CANCEL_AT_PERIOD_END: True,
-            Fields.UPDATED_AT: _get_server_timestamp(),
-        })
+        _get_db().collection(Collections.SUBSCRIPTIONS).document(uid).update(
+            {
+                Fields.CANCEL_AT_PERIOD_END: True,
+                Fields.UPDATED_AT: _get_server_timestamp(),
+            }
+        )
         return {"success": True, "message": "Subscription will cancel at end of billing period."}
     except stripe.StripeError as e:
         logger.error(f"Stripe error canceling subscription for {uid}: {e}")
@@ -209,21 +212,27 @@ def handle_subscription_deleted(event: stripe.Event) -> None:
     db = _get_db()
     now = datetime.now(UTC)
 
-    db.collection(Collections.SUBSCRIPTIONS).document(uid).set({
-        Fields.STRIPE_SUBSCRIPTION_ID: sub["id"],
-        Fields.STATUS: SubscriptionStatusValues.CANCELED,
-        Fields.CANCEL_AT_PERIOD_END: False,
-        Fields.CURRENT_PERIOD_END: _ts_to_datetime(sub.get("current_period_end")),
-        Fields.UPDATED_AT: now,
-    }, merge=True)
+    db.collection(Collections.SUBSCRIPTIONS).document(uid).set(
+        {
+            Fields.STRIPE_SUBSCRIPTION_ID: sub["id"],
+            Fields.STATUS: SubscriptionStatusValues.CANCELED,
+            Fields.CANCEL_AT_PERIOD_END: False,
+            Fields.CURRENT_PERIOD_END: _ts_to_datetime(sub.get("current_period_end")),
+            Fields.UPDATED_AT: now,
+        },
+        merge=True,
+    )
 
     # Clear premium cache on user doc
-    db.collection(Collections.USERS).document(uid).update({
-        Fields.IS_PREMIUM: False,
-        Fields.PREMIUM_EXPIRES_AT: None,
-        Fields.STRIPE_SUBSCRIPTION_ID: None,
-        Fields.UPDATED_AT: now,
-    })
+    db.collection(Collections.USERS).document(uid).update(
+        {
+            Fields.IS_PREMIUM: False,
+            Fields.PREMIUM_EXPIRES_AT: None,
+            Fields.STRIPE_SUBSCRIPTION_ID: None,
+            Fields.PREMIUM_SINCE: None,
+            Fields.UPDATED_AT: now,
+        }
+    )
     logger.info(f"Premium cleared for user {uid} (subscription deleted)")
 
 
@@ -246,7 +255,9 @@ def _sync_subscription(sub: dict | stripe.Subscription) -> None:
     """Sync a Stripe Subscription object to Firestore and update user.isPremium cache."""
     uid = sub.get("metadata", {}).get("uid") if isinstance(sub, dict) else (sub.metadata or {}).get("uid")
     if not uid:
-        logger.warning(f"_sync_subscription: no uid in metadata for sub {sub.get('id') if isinstance(sub, dict) else sub.id}")
+        logger.warning(
+            f"_sync_subscription: no uid in metadata for sub {sub.get('id') if isinstance(sub, dict) else sub.id}"
+        )
         return
 
     status = sub["status"] if isinstance(sub, dict) else sub.status
@@ -262,15 +273,18 @@ def _sync_subscription(sub: dict | stripe.Subscription) -> None:
 
     db = _get_db()
 
-    db.collection(Collections.SUBSCRIPTIONS).document(uid).set({
-        Fields.UID: uid,
-        Fields.STRIPE_SUBSCRIPTION_ID: sub_id,
-        Fields.STATUS: status,
-        Fields.CURRENT_PERIOD_START: period_start,
-        Fields.CURRENT_PERIOD_END: period_end,
-        Fields.CANCEL_AT_PERIOD_END: cancel_at_end,
-        Fields.UPDATED_AT: now,
-    }, merge=True)
+    db.collection(Collections.SUBSCRIPTIONS).document(uid).set(
+        {
+            Fields.UID: uid,
+            Fields.STRIPE_SUBSCRIPTION_ID: sub_id,
+            Fields.STATUS: status,
+            Fields.CURRENT_PERIOD_START: period_start,
+            Fields.CURRENT_PERIOD_END: period_end,
+            Fields.CANCEL_AT_PERIOD_END: cancel_at_end,
+            Fields.UPDATED_AT: now,
+        },
+        merge=True,
+    )
 
     # Update cached isPremium on user doc
     user_update: dict[str, Any] = {

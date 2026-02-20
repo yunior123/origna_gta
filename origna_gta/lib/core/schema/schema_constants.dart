@@ -35,6 +35,23 @@ abstract final class AddressLabelValues {
 // DOCUMENTS - Singleton document IDs within collections
 // =============================================================================
 
+abstract final class AdminActionValues {
+  static const paymentProviderUpdate = 'payment_provider_update';
+}
+
+// =============================================================================
+// FIELD NAMES - All Firestore document field names
+// =============================================================================
+
+abstract final class AlgoliaActionValues {
+  static const index = 'index';
+  static const delete = 'delete';
+}
+
+// =============================================================================
+// ENUM VALUES - Valid values for enum fields
+// =============================================================================
+
 /// Cloud Function API parameter and response keys.
 /// These are NOT Firestore fields — they are the contract between
 /// Flutter and Cloud Functions (request params + response keys).
@@ -103,10 +120,6 @@ abstract final class ApiKeys {
   static const approvalRequired = 'approvalRequired';
 }
 
-// =============================================================================
-// FIELD NAMES - All Firestore document field names
-// =============================================================================
-
 /// Business rule constants
 abstract final class BusinessRules {
   static const platformFeePercent = 2.5;
@@ -135,10 +148,6 @@ abstract final class BusinessRules {
     'YT': {'GST': 5.0},
   };
 }
-
-// =============================================================================
-// ENUM VALUES - Valid values for enum fields
-// =============================================================================
 
 /// Product category IDs
 abstract final class CategoryIds {
@@ -256,11 +265,15 @@ abstract final class Collections {
   static const cart = 'cart'; // users/{userId}/cart
   static const favorites = 'favorites'; // users/{userId}/favorites
   static const notifications = 'notifications'; // users/{uid}/notifications
-  static const qa = 'qa'; // products/{productId}/qa
+  static const productQuestions = 'product_questions'; // products/{productId}/product_questions
   static const addresses = 'addresses'; // users/{userId}/addresses
   static const stockNotifications = 'stock_notifications'; // Tasks 07
-  static const productQuestions = 'product_questions'; // Tasks 09
   static const sellerMetrics = 'seller_metrics'; // Tasks 11
+
+  // Digital Products Collections
+  static const licenses = 'licenses'; // users/{userId}/licenses
+  static const bookAccessTokens = 'book_access_tokens'; // users/{userId}/book_access_tokens
+  static const softwareAccessTokens = 'software_access_tokens'; // users/{userId}/software_access_tokens
 
   // Premium & Chat collections
   static const subscriptions = 'subscriptions'; // subscriptions/{userId}
@@ -290,6 +303,11 @@ abstract final class CountryValues {
   static const canadaCode = 'CA';
 
   static const all = {canada, canadaCode};
+}
+
+abstract final class CronLockStatusValues {
+  static const running = 'running';
+  static const completed = 'completed';
 }
 
 /// Centralized per-item delivery status transitions.
@@ -872,6 +890,10 @@ abstract final class LicenseStatusValues {
   LicenseStatusValues._();
 }
 
+// =============================================================================
+// EMAIL & COMPLIANCE CONFIGURATION
+// =============================================================================
+
 /// Special values for itemId parameter in updateItemStatus.
 /// Convention: 'all' means apply the status change to the entire order (all items).
 abstract final class OrderItemIdValues {
@@ -925,7 +947,7 @@ abstract final class PaymentProviderValues {
 }
 
 // =============================================================================
-// EMAIL & COMPLIANCE CONFIGURATION
+// BUSINESS CONSTANTS
 // =============================================================================
 
 /// Valid values for paymentStatus field
@@ -962,6 +984,10 @@ abstract final class PaymentStatusValues {
   };
 }
 
+// =============================================================================
+// CATEGORY IDS
+// =============================================================================
+
 /// Valid values for payoutStatus field
 abstract final class PayoutStatusValues {
   static const pending = 'pending';
@@ -976,13 +1002,17 @@ abstract final class PayoutStatusValues {
   static const all = {pending, processing, completed, partial, failed, reversed, partiallyReversed, reversedDispute};
 }
 
+// =============================================================================
+// API KEYS - Cloud Function request/response parameter names
+// =============================================================================
+
 /// Default policy/terms version numbers
 abstract final class PolicyVersionValues {
   static const defaultVersion = '1.0';
 }
 
 // =============================================================================
-// BUSINESS CONSTANTS
+// CLOUD FUNCTION ENDPOINTS - Single source of truth for all Firebase callable names
 // =============================================================================
 
 /// Valid values for product approvalStatus field.
@@ -996,7 +1026,7 @@ abstract final class ProductApprovalStatusValues {
 }
 
 // =============================================================================
-// CATEGORY IDS
+// SYSTEM VALUES - Default values and system constants (not user-facing)
 // =============================================================================
 
 /// Valid values for product status field
@@ -1010,18 +1040,10 @@ abstract final class ProductStatusValues {
   static const all = {draft, active, paused, archived, outOfStock};
 }
 
-// =============================================================================
-// API KEYS - Cloud Function request/response parameter names
-// =============================================================================
-
 /// Canadian province code values
 abstract final class ProvinceCodeValues {
   static const ontario = 'ON';
 }
-
-// =============================================================================
-// CLOUD FUNCTION ENDPOINTS - Single source of truth for all Firebase callable names
-// =============================================================================
 
 /// Firebase RemoteConfig keys
 abstract final class RemoteConfigKeys {
@@ -1031,10 +1053,6 @@ abstract final class RemoteConfigKeys {
   static const imageBaseUrl = 'image_base_url';
   static const sentryDnsKey = 'sentry_dns';
 }
-
-// =============================================================================
-// SYSTEM VALUES - Default values and system constants (not user-facing)
-// =============================================================================
 
 /// Registry of expected fields per collection.
 /// Used for validation and to get the correct timestamp field.
@@ -1095,6 +1113,25 @@ abstract final class ShippingApprovalStatusValues {
   static const all = {notRequired, pending, approved, rejected};
 }
 
+abstract final class ShippingSourceValues {
+  static const internationalSupplier = 'international_supplier';
+  static const internationalGeneric = 'international_generic';
+  static const domestic = 'domestic';
+}
+
+abstract final class SubscriptionStatusValues {
+  static const active = 'active';
+  static const canceled = 'canceled';
+  static const pastDue = 'past_due';
+  static const incomplete = 'incomplete';
+  static const incompleteExpired = 'incomplete_expired';
+  static const trialing = 'trialing';
+  static const unpaid = 'unpaid';
+
+  /// Statuses that grant premium access
+  static const premiumActive = {active, trialing};
+}
+
 /// Valid values for supplier platform types
 abstract final class SupplierTypeValues {
   static const aliexpress = 'aliexpress';
@@ -1134,17 +1171,10 @@ abstract final class WarehouseTypeValues {
   static const all = {warehouse, personal};
 }
 
-abstract final class SubscriptionStatusValues {
-  static const active = 'active';
-  static const canceled = 'canceled';
-  static const pastDue = 'past_due';
-  static const incomplete = 'incomplete';
-  static const incompleteExpired = 'incomplete_expired';
-  static const trialing = 'trialing';
-  static const unpaid = 'unpaid';
-
-  /// Statuses that grant premium access
-  static const premiumActive = {active, trialing};
+abstract final class WebhookResponseStatus {
+  static const processed = 'processed';
+  static const ignored = 'ignored';
+  static const error = 'error';
 }
 
 /// Valid values for webhook processing status

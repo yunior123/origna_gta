@@ -1,5 +1,5 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
@@ -23,22 +23,6 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
   String _stockFilter = 'all';
 
   @override
-  void initState() {
-    super.initState();
-    _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Column(
       children: [
@@ -46,11 +30,7 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
         Container(
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(DesignTokens.radius16),
-            boxShadow: DesignTokens.shadowSm,
-          ),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(DesignTokens.radius16), boxShadow: DesignTokens.shadowSm),
           child: Column(
             children: [
               TextField(
@@ -69,10 +49,7 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                       : null,
                   filled: true,
                   fillColor: DesignTokens.surfaceVariant,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                    borderSide: BorderSide.none,
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12), borderSide: BorderSide.none),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
               ),
@@ -108,7 +85,6 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
                   final products = productsRaw.where((data) {
                     final name = data.name.toLowerCase();
                     final stock = data.stockQuantity;
-
 
                     final matchesSearch = _searchQuery.isEmpty || name.contains(_searchQuery);
 
@@ -153,58 +129,76 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
     );
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
   Widget _buildApprovalFilterChip() {
-    return ref.watch(adminProductsProvider(null)).when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (products) {
-        final pendingCount = products.where((p) => p.approvalStatus == ProductApprovalStatusValues.underReview).length;
-        final isSelected = _stockFilter == 'pending_review';
-        return Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: GestureDetector(
-            onTap: () => setState(() => _stockFilter = 'pending_review'),
-            child: AnimatedContainer(
-              duration: DesignTokens.durationFast,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                color: isSelected ? DesignTokens.warning : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: isSelected ? DesignTokens.warning : DesignTokens.outlineVariant.withValues(alpha: 0.5)),
-                boxShadow: isSelected ? [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 2))] : [],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '⏳ Pending Review',
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : DesignTokens.textSecondary,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      fontSize: 12,
-                    ),
+    return ref
+        .watch(adminProductsProvider(null))
+        .when(
+          loading: () => const SizedBox.shrink(),
+          error: (err, stack) => const SizedBox.shrink(),
+          data: (products) {
+            final pendingCount = products.where((p) => p.approvalStatus == ProductApprovalStatusValues.underReview).length;
+            final isSelected = _stockFilter == 'pending_review';
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => setState(() => _stockFilter = 'pending_review'),
+                child: AnimatedContainer(
+                  duration: DesignTokens.durationFast,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: isSelected ? DesignTokens.warning : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: isSelected ? DesignTokens.warning : DesignTokens.outlineVariant.withValues(alpha: 0.5)),
+                    boxShadow: isSelected ? [BoxShadow(color: DesignTokens.warning.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 2))] : [],
                   ),
-                  if (pendingCount > 0) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.white.withValues(alpha: 0.3) : DesignTokens.warning,
-                        borderRadius: BorderRadius.circular(10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '⏳ Pending Review',
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : DesignTokens.textSecondary,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          fontSize: 12,
+                        ),
                       ),
-                      child: Text(
-                        '$pendingCount',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11),
-                      ),
-                    ),
-                  ],
-                ],
+                      if (pendingCount > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.white.withValues(alpha: 0.3) : DesignTokens.warning,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '$pendingCount',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
-      },
-    );
   }
 
   Widget _buildFilterChip(String label, String value) {
@@ -224,9 +218,56 @@ class _AdminProductsTabState extends ConsumerState<AdminProductsTab> {
           ),
           child: Text(
             label,
-            style: TextStyle(color: isSelected ? Colors.white : DesignTokens.textSecondary, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400, fontSize: 12),
+            style: TextStyle(
+              color: isSelected ? Colors.white : DesignTokens.textSecondary,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              fontSize: 12,
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ApprovalBadge extends StatelessWidget {
+  final String approvalStatus;
+  const _ApprovalBadge({required this.approvalStatus});
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    String label;
+    IconData icon;
+    switch (approvalStatus) {
+      case ProductApprovalStatusValues.approved:
+        color = const Color(0xFF22C55E);
+        label = 'Approved';
+        icon = Icons.check_circle_rounded;
+        break;
+      case ProductApprovalStatusValues.rejected:
+        color = const Color(0xFFEF4444);
+        label = 'Rejected';
+        icon = Icons.cancel_rounded;
+        break;
+      default:
+        color = const Color(0xFFF59E0B);
+        label = 'Under Review';
+        icon = Icons.hourglass_top_rounded;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }
@@ -278,18 +319,21 @@ class _ProductCard extends ConsumerWidget {
                       height: 70,
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Container(
-                        width: 70, height: 70,
+                        width: 70,
+                        height: 70,
                         decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
                         child: Icon(Icons.image_rounded, color: DesignTokens.textDisabled),
                       ),
                       errorWidget: (context, url, error) => Container(
-                        width: 70, height: 70,
+                        width: 70,
+                        height: 70,
                         decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
                         child: Icon(Icons.broken_image_rounded, color: DesignTokens.textDisabled),
                       ),
                     )
                   : Container(
-                      width: 70, height: 70,
+                      width: 70,
+                      height: 70,
                       decoration: BoxDecoration(color: DesignTokens.surfaceVariant, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
                       child: Icon(Icons.image_rounded, color: DesignTokens.textDisabled),
                     ),
@@ -301,9 +345,17 @@ class _ProductCard extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(
+                    name,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 6),
-                  Text('\$${price.toStringAsFixed(2)}', style: const TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600, fontSize: 15)),
+                  Text(
+                    '\$${price.toStringAsFixed(2)}',
+                    style: const TextStyle(color: DesignTokens.primary, fontWeight: FontWeight.w600, fontSize: 15),
+                  ),
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -313,7 +365,10 @@ class _ProductCard extends ConsumerWidget {
                       children: [
                         Icon(stockIcon, size: 13, color: stockColor),
                         const SizedBox(width: 4),
-                        Text(stockText, style: TextStyle(color: stockColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                        Text(
+                          stockText,
+                          style: TextStyle(color: stockColor, fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
                       ],
                     ),
                   ),
@@ -346,6 +401,33 @@ class _ProductCard extends ConsumerWidget {
     );
   }
 
+  void _approveProduct(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final success = await ref.read(adminActionsViewModelProvider.notifier).approveProduct(product.id);
+    if (!context.mounted) return;
+    if (success) {
+      messenger.showSnackBar(const SnackBar(content: Text('✅ Product approved and now live'), backgroundColor: Color(0xFF22C55E)));
+    } else {
+      final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to approve product';
+      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+    }
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 60,
+          child: Text(label, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13)),
+        ),
+        Expanded(
+          child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+        ),
+      ],
+    );
+  }
+
   void _handleAction(BuildContext context, WidgetRef ref, String action) {
     switch (action) {
       case 'approve':
@@ -372,100 +454,15 @@ class _ProductCard extends ConsumerWidget {
     }
   }
 
-  void _approveProduct(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final success = await ref.read(adminActionsViewModelProvider.notifier).approveProduct(product.id);
-    if (!context.mounted) return;
-    if (success) {
-      messenger.showSnackBar(const SnackBar(content: Text('✅ Product approved and now live'), backgroundColor: Color(0xFF22C55E)));
-    } else {
-      final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to approve product';
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
-    }
-  }
-
-  void _showRejectDialog(BuildContext context, WidgetRef ref) {
-    final reasonController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
-        title: Row(children: [Icon(Icons.cancel_rounded, color: DesignTokens.error), const SizedBox(width: 10), const Text('Reject Product')]),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Product: ${product.name}', style: const TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: reasonController,
-              maxLines: 3,
-              maxLength: 1000,
-              decoration: const InputDecoration(
-                labelText: 'Rejection reason (shown to seller)',
-                border: OutlineInputBorder(),
-                hintText: 'e.g. Images are low quality, please upload clearer photos.',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
-          FilledButton(
-            onPressed: () async {
-              final reason = reasonController.text.trim();
-              if (reason.isEmpty) return;
-              Navigator.pop(ctx);
-              final messenger = ScaffoldMessenger.of(context);
-              final success = await ref.read(adminActionsViewModelProvider.notifier).rejectProduct(product.id, reason);
-              if (!context.mounted) return;
-              if (success) {
-                messenger.showSnackBar(SnackBar(content: const Text('❌ Product rejected. Seller notified.'), backgroundColor: DesignTokens.error));
-              } else {
-                final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to reject product';
-                messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
-              }
-            },
-            style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
-            child: const Text('Reject'),
-          ),
+  PopupMenuItem<String> _menuItem(String value, IconData icon, String label, Color color) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 10),
+          Text(label, style: TextStyle(fontSize: 13, color: color)),
         ],
-      ),
-    );
-  }
-
-  void _showDigitalUrls(BuildContext context) {
-    final builds = product.digitalBuilds ?? {};
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
-        title: Row(children: [Icon(Icons.link_rounded, color: DesignTokens.info), const SizedBox(width: 10), const Text('Download URLs')]),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Type: ${product.digitalType ?? 'unknown'}', style: const TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 12),
-              if (builds.isEmpty)
-                const Text('No digitalBuilds URLs', style: TextStyle(color: Color(0xFF6B7280)))
-              else
-                ...builds.entries.map((e) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                      const SizedBox(height: 2),
-                      SelectableText(e.value, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
-                    ],
-                  ),
-                )),
-            ],
-          ),
-        ),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.close'.tr()))],
       ),
     );
   }
@@ -508,15 +505,115 @@ class _ProductCard extends ConsumerWidget {
               final messenger = ScaffoldMessenger.of(context);
               final success = await ref.read(adminActionsViewModelProvider.notifier).deleteProduct(product.id);
               if (!context.mounted) return;
-                if (success) {
-                  messenger.showSnackBar(SnackBar(content: Text('admin.sellers.deleted_success'.tr()), backgroundColor: DesignTokens.error));
-                } else {
-                  final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'admin.sellers.failed_delete'.tr();
-                  messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
-                }
+              if (success) {
+                messenger.showSnackBar(SnackBar(content: Text('admin.sellers.deleted_success'.tr()), backgroundColor: DesignTokens.error));
+              } else {
+                final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'admin.sellers.failed_delete'.tr();
+                messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+              }
             },
             style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
             child: Text('common.delete'.tr()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDigitalUrls(BuildContext context) {
+    final builds = product.digitalBuilds ?? {};
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        title: Row(
+          children: [
+            Icon(Icons.link_rounded, color: DesignTokens.info),
+            const SizedBox(width: 10),
+            const Text('Download URLs'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Type: ${product.digitalType ?? 'unknown'}', style: const TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              if (builds.isEmpty)
+                const Text('No digitalBuilds URLs', style: TextStyle(color: Color(0xFF6B7280)))
+              else
+                ...builds.entries.map(
+                  (e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                        const SizedBox(height: 2),
+                        SelectableText(e.value, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.close'.tr()))],
+      ),
+    );
+  }
+
+  void _showRejectDialog(BuildContext context, WidgetRef ref) {
+    final reasonController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius16)),
+        title: Row(
+          children: [
+            Icon(Icons.cancel_rounded, color: DesignTokens.error),
+            const SizedBox(width: 10),
+            const Text('Reject Product'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Product: ${product.name}', style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonController,
+              maxLines: 3,
+              maxLength: 1000,
+              decoration: const InputDecoration(
+                labelText: 'Rejection reason (shown to seller)',
+                border: OutlineInputBorder(),
+                hintText: 'e.g. Images are low quality, please upload clearer photos.',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
+          FilledButton(
+            onPressed: () async {
+              final reason = reasonController.text.trim();
+              if (reason.isEmpty) return;
+              Navigator.pop(ctx);
+              final messenger = ScaffoldMessenger.of(context);
+              final success = await ref.read(adminActionsViewModelProvider.notifier).rejectProduct(product.id, reason);
+              if (!context.mounted) return;
+              if (success) {
+                messenger.showSnackBar(SnackBar(content: const Text('❌ Product rejected. Seller notified.'), backgroundColor: DesignTokens.error));
+              } else {
+                final error = ref.read(adminActionsViewModelProvider).errorMessage ?? 'Failed to reject product';
+                messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: DesignTokens.error));
+              }
+            },
+            style: FilledButton.styleFrom(backgroundColor: DesignTokens.error),
+            child: const Text('Reject'),
           ),
         ],
       ),
@@ -570,10 +667,7 @@ class _ProductCard extends ConsumerWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: DesignTokens.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                decoration: BoxDecoration(color: DesignTokens.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                 child: Icon(Icons.person_rounded, color: DesignTokens.primary, size: 20),
               ),
               const SizedBox(width: 10),
@@ -595,68 +689,5 @@ class _ProductCard extends ConsumerWidget {
         ),
       );
     }
-  }
-
-  Widget _detailRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(width: 60, child: Text(label, style: TextStyle(color: DesignTokens.textSecondary, fontSize: 13))),
-        Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13))),
-      ],
-    );
-  }
-
-  PopupMenuItem<String> _menuItem(String value, IconData icon, String label, Color color) {
-    return PopupMenuItem(
-      value: value,
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 10),
-          Text(label, style: TextStyle(fontSize: 13, color: color)),
-        ],
-      ),
-    );
-  }
-}
-
-class _ApprovalBadge extends StatelessWidget {
-  final String approvalStatus;
-  const _ApprovalBadge({required this.approvalStatus});
-
-  @override
-  Widget build(BuildContext context) {
-    Color color;
-    String label;
-    IconData icon;
-    switch (approvalStatus) {
-      case ProductApprovalStatusValues.approved:
-        color = const Color(0xFF22C55E);
-        label = 'Approved';
-        icon = Icons.check_circle_rounded;
-        break;
-      case ProductApprovalStatusValues.rejected:
-        color = const Color(0xFFEF4444);
-        label = 'Rejected';
-        icon = Icons.cancel_rounded;
-        break;
-      default:
-        color = const Color(0xFFF59E0B);
-        label = 'Under Review';
-        icon = Icons.hourglass_top_rounded;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 11, color: color),
-          const SizedBox(width: 3),
-          Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
   }
 }

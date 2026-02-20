@@ -1,16 +1,17 @@
 """Digital product handlers: license activation, book redirect, deactivation."""
+
 import json
 import logging
 import re
 import secrets
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 from firebase_functions import https_fn
 
 from schema_constants import (
     Collections,
-    Fields,
     DigitalTypeValues,
+    Fields,
     LicenseStatusValues,
 )
 from services.rate_limiter import RateLimiter
@@ -25,8 +26,10 @@ def get_db():
     global _db
     if _db is None:
         from firebase_admin import firestore as fs
+
         _db = fs.client()
     return _db
+
 
 # Regex for license key format validation (prevents DB lookup on garbage input)
 _LICENSE_KEY_RE = re.compile(r"^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$")
@@ -57,7 +60,7 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str) -> d
         raise ValueError("platform_not_supported")
 
     activations: list = list(lic.get(Fields.ACTIVATIONS, []))
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Idempotent re-activation: same device already registered
     for i, act in enumerate(activations):
@@ -86,9 +89,7 @@ def _activate_license_impl(license_key: str, device_id: str, platform: str) -> d
         Fields.LAST_VERIFIED_AT: now,
     }
     activations.append(new_activation)
-    db.collection(Collections.LICENSES).document(license_key).update(
-        {"activations": activations, "updatedAt": now}
-    )
+    db.collection(Collections.LICENSES).document(license_key).update({"activations": activations, "updatedAt": now})
 
     return {
         "approved": True,
@@ -112,12 +113,9 @@ def _deactivate_license_impl(license_key: str, device_id: str, caller_uid: str) 
     if lic.get(Fields.USER_ID) != caller_uid:
         raise ValueError("unauthorized")
 
-    activations = [
-        a for a in lic.get(Fields.ACTIVATIONS, [])
-        if a.get(Fields.DEVICE_ID) != device_id
-    ]
+    activations = [a for a in lic.get(Fields.ACTIVATIONS, []) if a.get(Fields.DEVICE_ID) != device_id]
     db.collection(Collections.LICENSES).document(license_key).update(
-        {"activations": activations, "updatedAt": datetime.now(timezone.utc)}
+        {"activations": activations, "updatedAt": datetime.now(UTC)}
     )
     return {"deactivated": True, "remainingActivations": len(activations)}
 
@@ -143,7 +141,7 @@ def _generate_book_download_session_impl(license_key: str, caller_uid: str) -> d
         raise ValueError("not_a_book_license")
 
     token = "tok_" + secrets.token_hex(32)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     token_doc = {
         Fields.ACCESS_TOKEN: token,
         Fields.LICENSE_KEY: license_key,
@@ -176,10 +174,10 @@ def _get_book_redirect_impl(token: str) -> str:
         raise ValueError("already_used")
 
     expires_at = data.get("expiresAt")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     # Handle both Firestore Timestamp and Python datetime
     if hasattr(expires_at, "tzinfo"):
-        expires_dt = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=timezone.utc)
+        expires_dt = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=UTC)
     else:
         expires_dt = expires_at
     if expires_dt < now:
@@ -203,22 +201,20 @@ def _revoke_digital_licenses_for_order(order_id: str) -> int:
     any refund invalidates the license.
     """
     db = get_db()
-    licenses = (
-        db.collection(Collections.LICENSES)
-        .where(Fields.ORDER_ID, "==", order_id)
-        .stream()
-    )
+    licenses = db.collection(Collections.LICENSES).where(Fields.ORDER_ID, "==", order_id).stream()
     count = 0
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for lic_doc in licenses:
         lic = lic_doc.to_dict()
         if lic.get(Fields.STATUS) == LicenseStatusValues.ACTIVE:
-            lic_doc.reference.update({
-                Fields.STATUS: LicenseStatusValues.REVOKED,
-                "revokedAt": now,
-                "revokedReason": "refunded",
-                Fields.UPDATED_AT: now,
-            })
+            lic_doc.reference.update(
+                {
+                    Fields.STATUS: LicenseStatusValues.REVOKED,
+                    "revokedAt": now,
+                    "revokedReason": "refunded",
+                    Fields.UPDATED_AT: now,
+                }
+            )
             count += 1
             logger.info(f"License {lic_doc.id} revoked for order {order_id} (refund)")
     return count
@@ -252,8 +248,11 @@ def activate_license(req: https_fn.Request) -> https_fn.Response:
         rate_id = f"device:{device_id[:64]}"
         limiter = RateLimiter(get_db())
         allowed, msg = limiter.check_rate_limit(
-            identifier=rate_id, action="activate_license",
-            max_requests=10, window_minutes=10, fail_closed=True,
+            identifier=rate_id,
+            action="activate_license",
+            max_requests=10,
+            window_minutes=10,
+            fail_closed=True,
         )
         if not allowed:
             return https_fn.Response(
@@ -297,10 +296,10 @@ def deactivate_license(req: https_fn.CallableRequest) -> dict:
     except ValueError as e:
         code = str(e)
         if code == "not_found":
-            raise https_fn.HttpsError("not-found", "License not found")
+            raise https_fn.HttpsError("not-found", "License not found") from e
         if code == "unauthorized":
-            raise https_fn.HttpsError("permission-denied", "Not your license")
-        raise https_fn.HttpsError("invalid-argument", code)
+            raise https_fn.HttpsError("permission-denied", "Not your license") from e
+        raise https_fn.HttpsError("invalid-argument", code) from e
 
 
 @https_fn.on_call()
@@ -318,12 +317,12 @@ def generate_book_download_session(req: https_fn.CallableRequest) -> dict:
     except ValueError as e:
         code = str(e)
         if code == "not_found":
-            raise https_fn.HttpsError("not-found", "License not found")
+            raise https_fn.HttpsError("not-found", "License not found") from e
         if code == "unauthorized":
-            raise https_fn.HttpsError("permission-denied", "Not your license")
+            raise https_fn.HttpsError("permission-denied", "Not your license") from e
         if code == "revoked":
-            raise https_fn.HttpsError("failed-precondition", "License revoked")
-        raise https_fn.HttpsError("invalid-argument", code)
+            raise https_fn.HttpsError("failed-precondition", "License revoked") from e
+        raise https_fn.HttpsError("invalid-argument", code) from e
 
 
 @https_fn.on_request()
@@ -385,14 +384,14 @@ def _generate_software_download_session_impl(license_key: str, platform: str, ca
     download_url = builds[platform]
 
     token = "tok_" + secrets.token_hex(32)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     token_doc = {
         Fields.ACCESS_TOKEN: token,
         Fields.LICENSE_KEY: license_key,
         Fields.USER_ID: caller_uid,
         Fields.PRODUCT_ID: lic.get(Fields.PRODUCT_ID),
         "platform": platform,
-        "downloadUrl": download_url,        # stored server-side only
+        "downloadUrl": download_url,  # stored server-side only
         "expiresAt": now + timedelta(minutes=15),
         "used": False,
         Fields.CREATED_AT: now,
@@ -418,9 +417,9 @@ def _get_software_redirect_impl(token: str) -> str:
         raise ValueError("already_used")
 
     expires_at = data.get("expiresAt")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if hasattr(expires_at, "tzinfo"):
-        expires_dt = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=timezone.utc)
+        expires_dt = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=UTC)
     else:
         expires_dt = expires_at
     if expires_dt < now:
@@ -461,7 +460,7 @@ def generate_software_download_session(req: https_fn.CallableRequest) -> dict:
             "platform_not_supported": ("failed-precondition", "Platform not available for this license"),
         }
         fn_code, msg = error_map.get(code, ("invalid-argument", code))
-        raise https_fn.HttpsError(fn_code, msg)
+        raise https_fn.HttpsError(fn_code, msg) from e
 
 
 @https_fn.on_request()
@@ -519,8 +518,11 @@ def verify_license(req: https_fn.Request) -> https_fn.Response:
         # Rate limit: 60 verify calls per device per hour (app calls this on launch)
         limiter = RateLimiter(get_db())
         allowed, msg = limiter.check_rate_limit(
-            identifier=f"device:{device_id[:64]}", action="verify_license",
-            max_requests=60, window_minutes=60, fail_closed=False,
+            identifier=f"device:{device_id[:64]}",
+            action="verify_license",
+            max_requests=60,
+            window_minutes=60,
+            fail_closed=False,
         )
         if not allowed:
             return https_fn.Response(

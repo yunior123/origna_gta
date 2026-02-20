@@ -46,7 +46,9 @@ def test_credentials_directly():
         print("Attempting list_buckets...")
         resp = r2.list_buckets()
         print(f"Buckets: {[b['Name'] for b in resp.get('Buckets', [])]}")
-        return True
+        assert hasattr(R2Config, "BUCKET_NAME")
+        assert R2Config.BUCKET_NAME is not None
+
 
     except Exception as e:
         print(f"❌ Direct Credential Test Failed: {e}")

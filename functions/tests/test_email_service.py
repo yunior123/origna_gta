@@ -495,9 +495,11 @@ class TestModuleConstants:
 
 # ── Tasks 6 & 7: Digital product email ───────────────────────────────────────
 
+
 def test_digital_order_shows_instant_delivery_tracker():
     """Digital-only order: status tracker shows Confirmed + Delivered Instantly (no shipping steps)."""
     from services.email_service import get_order_confirmation_email
+
     order = {
         "orderId": "ord-digital-001",
         "userId": "buyer1",
@@ -517,6 +519,7 @@ def test_digital_order_shows_instant_delivery_tracker():
 def test_physical_order_shows_full_tracker():
     """Physical order: status tracker still shows all 4 steps including truck."""
     from services.email_service import get_order_confirmation_email
+
     order = {
         "orderId": "ord-phys-001",
         "userId": "buyer1",
@@ -527,8 +530,11 @@ def test_physical_order_shows_full_tracker():
         "totalAmountCents": 2759,
         "taxes": {"HST": 2.60},
         "shippingAddress": {
-            "street": "123 Main St", "city": "Toronto", "state": "ON",
-            "postalCode": "M5V1A1", "country": "Canada",
+            "street": "123 Main St",
+            "city": "Toronto",
+            "state": "ON",
+            "postalCode": "M5V1A1",
+            "country": "Canada",
         },
     }
     html_out = get_order_confirmation_email(order, lang="en")
@@ -538,19 +544,22 @@ def test_physical_order_shows_full_tracker():
 def test_digital_order_email_contains_license_key():
     """Software digital item: order confirmation email shows license key and download link."""
     from services.email_service import get_order_confirmation_email
+
     order = {
         "orderId": "ord-digital-002",
         "userId": "buyer1",
-        "items": [{
-            "name": "FXCleaner",
-            "price": 29.99,
-            "quantity": 1,
-            "isDigital": True,
-            "digitalType": "software",
-            "digitalUnlocked": True,
-            "licenseKey": "ABCD-EFGH-IJKL-MNOP",
-            "digitalBuilds": {"macos": "https://r2.example.com/fxcleaner.dmg"},
-        }],
+        "items": [
+            {
+                "name": "FXCleaner",
+                "price": 29.99,
+                "quantity": 1,
+                "isDigital": True,
+                "digitalType": "software",
+                "digitalUnlocked": True,
+                "licenseKey": "ABCD-EFGH-IJKL-MNOP",
+                "digitalBuilds": {"macos": "https://r2.example.com/fxcleaner.dmg"},
+            }
+        ],
         "subtotalCents": 2999,
         "shippingCostCents": 0,
         "taxAmountCents": 0,
@@ -567,18 +576,21 @@ def test_digital_order_email_contains_license_key():
 def test_book_order_email_contains_access_instructions():
     """Book digital item: email shows access instructions and license key."""
     from services.email_service import get_order_confirmation_email
+
     order = {
         "orderId": "ord-book-001",
         "userId": "buyer1",
-        "items": [{
-            "name": "Python Mastery",
-            "price": 19.99,
-            "quantity": 1,
-            "isDigital": True,
-            "digitalType": "book",
-            "digitalUnlocked": True,
-            "licenseKey": "BOOK-ABCD-EFGH-IJKL",
-        }],
+        "items": [
+            {
+                "name": "Python Mastery",
+                "price": 19.99,
+                "quantity": 1,
+                "isDigital": True,
+                "digitalType": "book",
+                "digitalUnlocked": True,
+                "licenseKey": "BOOK-ABCD-EFGH-IJKL",
+            }
+        ],
         "subtotalCents": 1999,
         "shippingCostCents": 0,
         "taxAmountCents": 0,
@@ -594,6 +606,7 @@ def test_book_order_email_contains_access_instructions():
 def test_physical_order_email_has_no_license_block():
     """Physical-only order: no license key section in email."""
     from services.email_service import get_order_confirmation_email
+
     order = {
         "orderId": "ord-phys-002",
         "items": [{"name": "Widget", "price": 19.99, "quantity": 1, "isDigital": False}],
@@ -603,8 +616,11 @@ def test_physical_order_email_has_no_license_block():
         "totalAmountCents": 2759,
         "taxes": {"HST": 2.60},
         "shippingAddress": {
-            "street": "123 Main St", "city": "Toronto", "state": "ON",
-            "postalCode": "M5V1A1", "country": "Canada",
+            "street": "123 Main St",
+            "city": "Toronto",
+            "state": "ON",
+            "postalCode": "M5V1A1",
+            "country": "Canada",
         },
     }
     html_out = get_order_confirmation_email(order, lang="en")

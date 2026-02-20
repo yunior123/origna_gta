@@ -20,10 +20,9 @@ import {
   toFirestoreFields,
   TEST_ACCOUNTS,
   DEFAULT_PASS,
-  checkInfrastructure,
-} from '../api-helpers';
+} from './api-helpers';
 
-const SELLER_EMAIL = TEST_ACCOUNTS.SELLER1_EMAIL;
+const SELLER_EMAIL = TEST_ACCOUNTS.SELLER_EMAIL;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -59,8 +58,6 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // T1: Seller can create a warehouse via Cloud Function callable
   // ────────────────────────────────────────────────────────────────────────────
   test('T1: seller creates a warehouse and it is persisted in Firestore', async ({ request }) => {
-    const infra = await checkInfrastructure(request);
-    test.skip(!infra.functions, 'Functions emulator not running');
 
     const { token, uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
 
@@ -88,8 +85,6 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // T2: Seller with multiple warehouses — both returned by get_seller_warehouses
   // ────────────────────────────────────────────────────────────────────────────
   test('T2: seller can have multiple warehouses and list them all', async ({ request }) => {
-    const infra = await checkInfrastructure(request);
-    test.skip(!infra.functions, 'Functions emulator not running');
 
     const { token, uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
 
@@ -120,8 +115,6 @@ test.describe('Warehouse: multi-location seller flow', () => {
   //     gets isActive=false immediately (reactive safety net).
   // ────────────────────────────────────────────────────────────────────────────
   test('T3: duplicate sellerSku products cannot coexist — one is blocked on write', async ({ request }) => {
-    const infra = await checkInfrastructure(request);
-    test.skip(!infra.firestore, 'Firestore emulator not running');
 
     const { uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
 
@@ -170,8 +163,6 @@ test.describe('Warehouse: multi-location seller flow', () => {
   //     (simulates what the product card reads)
   // ────────────────────────────────────────────────────────────────────────────
   test('T4: product document has shipFromCity and shipFromProvince after warehouse-based creation', async ({ request }) => {
-    const infra = await checkInfrastructure(request);
-    test.skip(!infra.firestore, 'Firestore emulator not running');
 
     const { token, uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
 
@@ -221,8 +212,6 @@ test.describe('Warehouse: multi-location seller flow', () => {
   // T5: warehouseStock map is stored correctly; stockQuantity = sum of all warehouses
   // ────────────────────────────────────────────────────────────────────────────
   test('T5: warehouseStock map stored on product; stockQuantity equals sum across warehouses', async ({ request }) => {
-    const infra = await checkInfrastructure(request);
-    test.skip(!infra.firestore, 'Firestore emulator not running');
 
     const { token, uid } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
 

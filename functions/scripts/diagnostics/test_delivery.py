@@ -14,11 +14,11 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from mailjet_rest import Client
 
-from config import MAILJET_API_KEY, MAILJET_SECRET_KEY
+from config import get_mailjet_api_key, get_mailjet_secret_key
 from schema_constants import EmailConfig
 
-mj_send = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version="v3.1")
-mj_api = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version="v3")
+mj_send = Client(auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version="v3.1")
+mj_api = Client(auth=(get_mailjet_api_key(), get_mailjet_secret_key()), version="v3")
 
 print("Sending simple test email from support@orignaventures.ca...")
 

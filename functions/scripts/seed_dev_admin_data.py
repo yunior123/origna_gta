@@ -151,12 +151,7 @@ def _seed_product(db: firestore.Client, *, seller_uid: str) -> str:
 
 
 def _seed_favorite(db: firestore.Client, *, user_uid: str, product_id: str) -> None:
-    fav_ref = (
-        db.collection(Collections.USERS)
-        .document(user_uid)
-        .collection(Collections.FAVORITES)
-        .document(product_id)
-    )
+    fav_ref = db.collection(Collections.USERS).document(user_uid).collection(Collections.FAVORITES).document(product_id)
 
     fav_ref.set(
         {

@@ -246,16 +246,25 @@ class BaseHook(ABC):
         print(f"  📦 Context: {len(full_content):,} chars (~{est_input_tokens:,} tokens)")
         print(f"  💰 Est. cost: ~${est_cost:.3f}")
 
-        message = client.messages.create(
+        stream = client.messages.create(
             model=ANTHROPIC_MODEL,
             max_tokens=MAX_OUTPUT_TOKENS,
             temperature=0.3,
             messages=[{"role": "user", "content": full_content}],
+            stream=True,
         )
 
-        output = message.content[0].text
-        used_in = message.usage.input_tokens
-        used_out = message.usage.output_tokens
+        output = ""
+        used_in = 0
+        used_out = 0
+        
+        for event in stream:
+            if event.type == "content_block_delta":
+                output += event.delta.text
+            elif event.type == "message_start":
+                used_in = event.message.usage.input_tokens
+            elif event.type == "message_delta":
+                used_out = event.usage.output_tokens
         actual_cost = (used_in / 1_000_000) * 15 + (used_out / 1_000_000) * 75
 
         print(f"  ✅ {len(output):,} chars | {used_in:,} in + {used_out:,} out tokens")

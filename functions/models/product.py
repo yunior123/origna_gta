@@ -235,7 +235,9 @@ class Product(BaseModel):
         }
     )
 
-    productId: str = Field(default="", max_length=100, description="Unique product identifier (assigned by Firestore on create)")
+    productId: str = Field(
+        default="", max_length=100, description="Unique product identifier (assigned by Firestore on create)"
+    )
     name: str = Field(..., min_length=1, max_length=120, description="Product name")
     price: float = Field(..., gt=0, le=100000, description="Price in CAD")
     compareAtPrice: float | None = Field(
@@ -301,14 +303,28 @@ class Product(BaseModel):
     keywords: list[str] = Field(default_factory=list, description="Search keywords for Algolia")
 
     # Multi-warehouse support
-    sellerSku: str | None = Field(default=None, max_length=100, description="Seller's unique product identifier — enforced unique per seller at write time")
+    sellerSku: str | None = Field(
+        default=None,
+        max_length=100,
+        description="Seller's unique product identifier — enforced unique per seller at write time",
+    )
     warehouseIds: list[str] | None = Field(default=None, description="IDs of seller warehouses this product ships from")
-    warehouseStock: dict[str, int] | None = Field(default=None, description="Stock per warehouse: {warehouseId: quantity}")
+    warehouseStock: dict[str, int] | None = Field(
+        default=None, description="Stock per warehouse: {warehouseId: quantity}"
+    )
     # Denormalized for O(1) card rendering — set from default/primary warehouse on write
-    shipFromCity: str | None = Field(default=None, max_length=100, description="City of primary shipping warehouse (denormalized)")
-    shipFromProvince: str | None = Field(default=None, max_length=10, description="Province code of primary warehouse (denormalized)")
-    shipFromCountry: str | None = Field(default=None, max_length=100, description="Country of primary warehouse (denormalized)")
-    shipFromCountries: list[str] | None = Field(default=None, description="All unique countries across warehouses (denormalized for card display)")
+    shipFromCity: str | None = Field(
+        default=None, max_length=100, description="City of primary shipping warehouse (denormalized)"
+    )
+    shipFromProvince: str | None = Field(
+        default=None, max_length=10, description="Province code of primary warehouse (denormalized)"
+    )
+    shipFromCountry: str | None = Field(
+        default=None, max_length=100, description="Country of primary warehouse (denormalized)"
+    )
+    shipFromCountries: list[str] | None = Field(
+        default=None, description="All unique countries across warehouses (denormalized for card display)"
+    )
 
     # Admin approval — all products start under_review, go live only when approved
     approvalStatus: str = Field(
@@ -331,7 +347,9 @@ class Product(BaseModel):
     )
 
     # === TRENDING & ENGAGEMENT ===
-    trendingScore: int = Field(default=0, ge=0, description="Computed trending score (views + purchases×3 + favorites×2)")
+    trendingScore: int = Field(
+        default=0, ge=0, description="Computed trending score (views + purchases×3 + favorites×2)"
+    )
     viewCount: int = Field(default=0, ge=0, description="Total product page views")
     purchaseCount: int = Field(default=0, ge=0, description="Total number of purchases")
     isTrending: bool = Field(default=False, description="Whether product is currently in trending list")
@@ -416,7 +434,9 @@ class Product(BaseModel):
     def validate_compare_at_price(self) -> "Product":
         """Ensure compareAtPrice is strictly greater than price when set (it represents the original/higher price)."""
         if self.compareAtPrice is not None and self.compareAtPrice <= self.price:
-            raise ValueError("compareAtPrice must be greater than price (it represents the original, higher price before discount)")
+            raise ValueError(
+                "compareAtPrice must be greater than price (it represents the original, higher price before discount)"
+            )
         return self
 
     @model_validator(mode="after")
@@ -428,9 +448,8 @@ class Product(BaseModel):
             if self.digitalType == "software":
                 if not self.digitalBuilds:
                     raise ValueError("digitalBuilds must have at least one platform URL for software products")
-            elif self.digitalType == "book":
-                if not self.bookSourceUrl:
-                    raise ValueError("bookSourceUrl is required for book products")
+            elif self.digitalType == "book" and not self.bookSourceUrl:
+                raise ValueError("bookSourceUrl is required for book products")
         return self
 
 
@@ -449,7 +468,9 @@ class ProductCreate(BaseModel):
     description: str = Field(..., min_length=10, max_length=4000)
     imageUrls: list[str] = Field(..., min_length=1, max_length=5)
     sellerId: str = Field(..., min_length=1)
-    sellerAddress: Address | None = Field(default=None, description="Legacy single-address; required if warehouseIds is not provided")
+    sellerAddress: Address | None = Field(
+        default=None, description="Legacy single-address; required if warehouseIds is not provided"
+    )
     categoryId: int = Field(..., ge=CategoryIds.MIN, le=CategoryIds.MAX)
     stockQuantity: int = Field(..., ge=0)
     rating: float = Field(default=0.0, ge=0, le=5)
