@@ -897,10 +897,7 @@ class UserModel {
   final bool onboardingCompleted; // Completed Stripe onboarding
   final bool suspended;
   final DateTime? suspendedAt;
-  final String paymentProvider; // stripe | airwallex
-  final String? airwallexAccountId;
-  final String? airwallexCustomerId;
-  final String? airwallexStatus;
+  final String paymentProvider; // stripe
   // Seller-specific fields
   final double commissionRate; // Per-seller commission rate (default 0.025 = 2.5%)
   final bool verified; // Manual verification by admin
@@ -936,9 +933,6 @@ class UserModel {
     this.suspended = false,
     this.suspendedAt,
     this.paymentProvider = PaymentProviderValues.stripe,
-    this.airwallexAccountId,
-    this.airwallexCustomerId,
-    this.airwallexStatus,
     this.commissionRate = 0.025, // Default 2.5%
     this.verified = false,
     this.verificationStatus,
@@ -974,9 +968,6 @@ class UserModel {
       suspended: map[Fields.suspended] ?? false,
       suspendedAt: _parseDateTime(map[Fields.suspendedAt]),
       paymentProvider: map[Fields.paymentProvider] ?? PaymentProviderValues.stripe,
-      airwallexAccountId: map[Fields.airwallexAccountId] as String?,
-      airwallexCustomerId: map[Fields.airwallexCustomerId] as String?,
-      airwallexStatus: map[Fields.airwallexStatus] as String?,
       // Seller-specific fields
       commissionRate: (map[Fields.commissionRate] as num?)?.toDouble() ?? 0.025,
       verified: map[Fields.verified] ?? false,
@@ -1024,9 +1015,6 @@ class UserModel {
     bool? suspended,
     DateTime? suspendedAt,
     String? paymentProvider,
-    String? airwallexAccountId,
-    String? airwallexCustomerId,
-    String? airwallexStatus,
     double? commissionRate,
     bool? verified,
     String? verificationStatus,
@@ -1060,9 +1048,6 @@ class UserModel {
       suspended: suspended ?? this.suspended,
       suspendedAt: suspendedAt ?? this.suspendedAt,
       paymentProvider: paymentProvider ?? this.paymentProvider,
-      airwallexAccountId: airwallexAccountId ?? this.airwallexAccountId,
-      airwallexCustomerId: airwallexCustomerId ?? this.airwallexCustomerId,
-      airwallexStatus: airwallexStatus ?? this.airwallexStatus,
       commissionRate: commissionRate ?? this.commissionRate,
       verified: verified ?? this.verified,
       verificationStatus: verificationStatus ?? this.verificationStatus,
@@ -1099,9 +1084,6 @@ class UserModel {
       Fields.suspended: suspended,
       if (suspendedAt != null) Fields.suspendedAt: Timestamp.fromDate(suspendedAt!),
       Fields.paymentProvider: paymentProvider,
-      if (airwallexAccountId != null) Fields.airwallexAccountId: airwallexAccountId,
-      if (airwallexCustomerId != null) Fields.airwallexCustomerId: airwallexCustomerId,
-      if (airwallexStatus != null) Fields.airwallexStatus: airwallexStatus,
       // Seller-specific fields
       Fields.commissionRate: commissionRate,
       Fields.verified: verified,

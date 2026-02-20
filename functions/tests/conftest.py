@@ -78,8 +78,6 @@ os.environ["TESTING"] = "true"
 # Set mock environment variables for secrets to avoid Secret Manager calls
 os.environ["STRIPE_SECRET_KEY"] = "STRIPE_SECRET_KEY_REDACTED"
 os.environ["STRIPE_WEBHOOK_SECRET"] = "STRIPE_WEBHOOK_SECRET_REDACTED"
-os.environ["AIRWALLEX_API_KEY"] = "mock_airwallex_api_key_for_testing"
-os.environ["AIRWALLEX_CLIENT_ID"] = "mock_airwallex_client_id_for_testing"
 
 
 @pytest.fixture(scope="session", autouse=True)

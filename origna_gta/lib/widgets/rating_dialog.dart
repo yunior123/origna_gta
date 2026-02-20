@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/features/products/product_rating_viewmodel.dart';
+import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
@@ -42,6 +43,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isPremium = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? false;
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text('rating.title'.tr()),
@@ -69,7 +71,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
             ),
             const SizedBox(height: 16),
             // Photo picker section
-            _buildPhotoPicker(),
+            _buildPhotoPicker(isPremium),
           ],
         ),
       ),
@@ -94,7 +96,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
     );
   }
 
-  Widget _buildPhotoPicker() {
+  Widget _buildPhotoPicker(bool isPremium) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -105,30 +107,63 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary),
             ),
             const SizedBox(width: 4),
-            Text('(${_reviewImages.length}/3)', style: const TextStyle(fontSize: 12, color: DesignTokens.textDisabled)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            ..._reviewImages.asMap().entries.map((entry) => _buildImageThumb(entry.key, entry.value)),
-            if (_reviewImages.length < 3)
-              GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: DesignTokens.outlineVariant, style: BorderStyle.solid),
-                    borderRadius: BorderRadius.circular(8),
-                    color: DesignTokens.surface,
-                  ),
-                  child: const Icon(Icons.add_photo_alternate_outlined, color: DesignTokens.textSecondary, size: 28),
+            if (isPremium)
+              Text('(${_reviewImages.length}/3)', style: const TextStyle(fontSize: 12, color: DesignTokens.textDisabled))
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  gradient: DesignTokens.primaryGradient,
+                  borderRadius: BorderRadius.circular(4),
                 ),
+                child: Text('common.premium'.tr(), style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700)),
               ),
           ],
         ),
+        const SizedBox(height: 8),
+        if (!isPremium)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+            decoration: BoxDecoration(
+              color: DesignTokens.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: DesignTokens.outlineVariant),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.lock_rounded, color: DesignTokens.textDisabled, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'rating.photos_premium_only'.tr(),
+                    style: const TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          Row(
+            children: [
+              ..._reviewImages.asMap().entries.map((entry) => _buildImageThumb(entry.key, entry.value)),
+              if (_reviewImages.length < 3)
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: DesignTokens.outlineVariant, style: BorderStyle.solid),
+                      borderRadius: BorderRadius.circular(8),
+                      color: DesignTokens.surface,
+                    ),
+                    child: const Icon(Icons.add_photo_alternate_outlined, color: DesignTokens.textSecondary, size: 28),
+                  ),
+                ),
+            ],
+          ),
       ],
     );
   }

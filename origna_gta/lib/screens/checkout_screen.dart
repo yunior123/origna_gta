@@ -758,7 +758,7 @@ class _PaymentProviderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Only Stripe is currently integrated — Airwallex removed until backend support is wired
+    // Stripe is the only integrated payment provider
     return Column(
       key: const Key('checkout_payment_section'),
       crossAxisAlignment: CrossAxisAlignment.start,

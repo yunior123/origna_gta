@@ -5,6 +5,7 @@ import 'package:origna_gta/features/admin/admin_providers.dart';
 import 'package:origna_gta/features/admin/tabs/admin_orders_tab.dart';
 import 'package:origna_gta/features/admin/tabs/admin_payment_providers_tab.dart';
 import 'package:origna_gta/features/admin/tabs/admin_products_tab.dart';
+import 'package:origna_gta/features/admin/tabs/admin_reviews_tab.dart';
 import 'package:origna_gta/features/admin/tabs/admin_security_tab.dart';
 import 'package:origna_gta/features/admin/tabs/admin_sellers_tab.dart';
 import 'package:origna_gta/features/admin/tabs/admin_users_tab.dart';
@@ -31,6 +32,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
     _AdminTab(icon: Icons.receipt_long_rounded, label: 'admin.orders_tab'.tr(), semanticLabel: 'admin-tab-orders', key: const Key('admin_tab_orders')),
     _AdminTab(icon: Icons.inventory_2_rounded, label: 'admin.products_tab'.tr(), semanticLabel: 'admin-tab-products', key: const Key('admin_tab_products')),
     _AdminTab(icon: Icons.payment_rounded, label: 'admin.payments_tab'.tr(), semanticLabel: 'admin-tab-payments', key: const Key('admin_tab_payments')),
+    _AdminTab(icon: Icons.rate_review_rounded, label: 'admin.reviews_tab'.tr(), semanticLabel: 'admin-tab-reviews', key: const Key('admin_tab_reviews')),
     _AdminTab(icon: Icons.security_rounded, label: 'admin.security_tab'.tr(), semanticLabel: 'admin-tab-security', key: const Key('admin_tab_security')),
   ];
 
@@ -117,7 +119,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         setState(() => _selectedIndex = _tabController.index);
@@ -168,7 +170,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
       ),
       body: TabBarView(
         controller: _tabController,
-        children: const [AdminSellersTab(), AdminUsersTab(), AdminOrdersTab(), AdminProductsTab(), AdminPaymentProvidersTab(), AdminSecurityTab()],
+        children: const [AdminSellersTab(), AdminUsersTab(), AdminOrdersTab(), AdminProductsTab(), AdminPaymentProvidersTab(), AdminReviewsTab(), AdminSecurityTab()],
       ),
     );
   }
@@ -180,6 +182,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen> with Single
       const AdminOrdersTab(),
       const AdminProductsTab(),
       const AdminPaymentProvidersTab(),
+      const AdminReviewsTab(),
       const AdminSecurityTab(),
     ];
 

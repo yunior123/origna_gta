@@ -149,17 +149,21 @@ class SubscriptionScreen extends ConsumerWidget {
 
             // Cancel button
             if (!subInfo.cancelAtPeriodEnd)
-              OutlinedButton(
-                onPressed: vmState.isLoading ? null : () => _confirmCancel(context, vm),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: DesignTokens.error,
-                  side: BorderSide(color: DesignTokens.error),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              Semantics(
+                button: true,
+                label: 'btn-cancel-subscription',
+                child: OutlinedButton(
+                  onPressed: vmState.isLoading ? null : () => _confirmCancel(context, vm),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: DesignTokens.error,
+                    side: BorderSide(color: DesignTokens.error),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: vmState.isLoading
+                      ? const ModernLoadingIndicator(size: 20)
+                      : const Text('Cancel Subscription', style: TextStyle(fontWeight: FontWeight.w600)),
                 ),
-                child: vmState.isLoading
-                    ? const ModernLoadingIndicator(size: 20)
-                    : const Text('Cancel Subscription', style: TextStyle(fontWeight: FontWeight.w600)),
               )
             else
               Container(
@@ -351,13 +355,21 @@ class SubscriptionScreen extends ConsumerWidget {
           'You\'ll keep premium benefits until the end of your billing period. Are you sure?',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Keep Premium')),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              vm.cancelSubscription();
-            },
-            child: Text('Cancel Subscription', style: TextStyle(color: DesignTokens.error)),
+          Semantics(
+            button: true,
+            label: 'btn-keep-premium',
+            child: TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Keep Premium')),
+          ),
+          Semantics(
+            button: true,
+            label: 'btn-confirm-cancel-subscription',
+            child: TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                vm.cancelSubscription();
+              },
+              child: Text('Cancel Subscription', style: TextStyle(color: DesignTokens.error)),
+            ),
           ),
         ],
       ),

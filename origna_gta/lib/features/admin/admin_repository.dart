@@ -7,10 +7,12 @@ import 'package:origna_gta/utils/utils.dart';
 abstract class AdminRepository {
   Future<void> approveProduct(String productId);
   Future<void> deleteProduct(String productId);
+  Future<void> deleteReview(String reviewId);
   Future<void> disableAdminMfa(String code);
   Future<Map<String, dynamic>> enableAdminMfa();
   Future<UserModel?> fetchUserById(String userId);
   Future<Map<String, dynamic>> getPaymentProviders();
+  Future<void> flagReview(String reviewId, {required bool flagged});
   Future<void> rejectProduct(String productId, String reason);
   Future<void> setUserSuspended(String userId, bool suspended);
   Future<void> updatePaymentProvider(String provider, bool enabled, {String? reason});
@@ -19,6 +21,7 @@ abstract class AdminRepository {
   Future<Map<String, dynamic>> verifyAdminMfa(String code);
   Stream<List<OrderModel>> watchOrders({String? status, int limit});
   Stream<List<ProductModel>> watchProducts({int limit, String? sellerId});
+  Stream<List<Map<String, dynamic>>> watchReviews({bool flaggedOnly, bool hasPhotosOnly, int limit});
   Stream<List<UserModel>> watchSellers({int limit});
   Stream<List<UserModel>> watchUsers({int limit});
 }
@@ -158,5 +161,28 @@ class FirebaseAdminRepository implements AdminRepository {
     return _firestore.collection(Collections.users).orderBy(Fields.createdAt, descending: true).limit(limit).snapshots().map((snapshot) {
       return snapshot.docs.map((doc) => UserModel.fromMap({Fields.uid: doc.id, ...doc.data()})).toList();
     });
+  }
+
+  @override
+  Stream<List<Map<String, dynamic>>> watchReviews({bool flaggedOnly = false, bool hasPhotosOnly = false, int limit = 100}) {
+    Query query = _firestore.collection(Collections.productRatings).orderBy(Fields.createdAt, descending: true).limit(limit);
+    if (flaggedOnly) query = query.where('isFlagged', isEqualTo: true);
+    return query.snapshots().map((snapshot) {
+      final docs = snapshot.docs.map((doc) => <String, dynamic>{'id': doc.id, ...doc.data() as Map<String, dynamic>}).toList();
+      if (hasPhotosOnly) {
+        return docs.where((d) => (d[Fields.reviewImageUrls] as List?)?.isNotEmpty == true).toList();
+      }
+      return docs;
+    });
+  }
+
+  @override
+  Future<void> deleteReview(String reviewId) async {
+    await _firestore.collection(Collections.productRatings).doc(reviewId).delete();
+  }
+
+  @override
+  Future<void> flagReview(String reviewId, {required bool flagged}) async {
+    await _firestore.collection(Collections.productRatings).doc(reviewId).update({'isFlagged': flagged});
   }
 }

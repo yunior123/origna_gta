@@ -114,7 +114,6 @@ if __name__ == "__main__":
         "handlers/payment_stripe.py",
         "handlers/orders.py",
         "handlers/admin.py",
-        "handlers/payment_airwallex.py",
         "handlers/cron_jobs.py",
         "handlers/products.py",
     ]

@@ -15,6 +15,13 @@ final adminRepositoryProvider = Provider<AdminRepository>((ref) {
   return FirebaseAdminRepository(ref.watch(firestoreProvider), ref.watch(firebaseFunctionsProvider));
 });
 
+final adminReviewsProvider = StreamProvider.autoDispose.family<List<Map<String, dynamic>>, ({bool flaggedOnly, bool hasPhotosOnly})>((ref, filters) {
+  return ref.watch(adminRepositoryProvider).watchReviews(
+    flaggedOnly: filters.flaggedOnly,
+    hasPhotosOnly: filters.hasPhotosOnly,
+  );
+});
+
 final adminSellersProvider = StreamProvider.autoDispose<List<UserModel>>((ref) {
   return ref.watch(adminRepositoryProvider).watchSellers();
 });

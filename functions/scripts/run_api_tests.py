@@ -17,7 +17,7 @@ REGION = "us-central1"
 
 # Known URLs (from deployment logs)
 STRIPE_WEBHOOK_URL = "https://stripe-webhook-wwnxr2xxoq-uc.a.run.app"
-AIRWALLEX_WEBHOOK_URL = "https://airwallex-webhook-wwnxr2xxoq-uc.a.run.app"
+
 
 # For Gen 2 Callable functions, they are typically at:
 # https://{function_name}-{random_hash}-{region}.a.run.app
@@ -111,16 +111,7 @@ def main():
             "expected_status": [400],  # Should fail due to missing Stripe-Signature
             "verify_response": lambda r: "signature" in str(r).lower() or "error" in r,
         },
-        # 2. Airwallex Webhook
-        {
-            "name": "Airwallex Webhook (Missing Signature)",
-            "absolute_url": AIRWALLEX_WEBHOOK_URL,
-            "method": "POST",
-            "headers": {"x-resource-id": "test"},  # Missing signature header
-            "body": {"id": "evt_test"},
-            "expected_status": [400, 401, 403],
-        },
-        # 3. Create Checkout Session (Callable)
+        # 2. Create Checkout Session (Callable)
         # Expects specific wrapper {"data": ...}
         {
             "name": "Create Checkout Session (Unauthenticated)",

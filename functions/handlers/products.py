@@ -265,6 +265,11 @@ def upload_review_images(req: https_fn.CallableRequest) -> dict[str, Any]:
 
     user_id = req.auth.uid
 
+    # Photo reviews are a premium-only feature
+    _user_doc = get_db().collection(Collections.USERS).document(user_id).get()
+    if not _user_doc.exists or not _user_doc.to_dict().get(Fields.IS_PREMIUM, False):
+        raise https_fn.HttpsError("permission-denied", "Photo reviews are a premium feature. Upgrade to add photos to your reviews.")
+
     from utils.helpers import sanitize_path
 
     data = req.data
@@ -485,12 +490,16 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Sanitize review text to prevent XSS
     review = sanitized_text(review_raw)[:1000] if review_raw else ""  # Max 1000 chars
 
-    # TASK 06: Validate reviewImageUrls — max 3, must be from CDN
+    # TASK 06: Validate reviewImageUrls — max 3, must be from CDN, premium only
     if review_image_urls_raw:
         if not isinstance(review_image_urls_raw, list):
             raise https_fn.HttpsError("invalid-argument", "reviewImageUrls must be a list")
         if len(review_image_urls_raw) > 3:
             raise https_fn.HttpsError("invalid-argument", "Maximum 3 review images allowed")
+        # Photo reviews require premium — verify before accepting URLs
+        _user_doc = get_db().collection(Collections.USERS).document(user_id).get()
+        if not _user_doc.exists or not _user_doc.to_dict().get(Fields.IS_PREMIUM, False):
+            raise https_fn.HttpsError("permission-denied", "Photo reviews are a premium feature. Upgrade to add photos to your reviews.")
         for url in review_image_urls_raw:
             if not isinstance(url, str) or not url.startswith(CDN_BASE_URL):
                 raise https_fn.HttpsError("invalid-argument", "Review images must be uploaded to the platform CDN")
