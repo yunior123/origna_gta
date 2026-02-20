@@ -5,6 +5,7 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../features/subscription/subscription_provider.dart';
@@ -378,6 +379,6 @@ class SubscriptionScreen extends ConsumerWidget {
 
   String _formatDate(DateTime? date) {
     if (date == null) return '—';
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    return DateFormat('MMM d, yyyy').format(date);
   }
 }
