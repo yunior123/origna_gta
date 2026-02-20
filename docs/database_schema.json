@@ -1,8 +1,7 @@
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "lastUpdated": "2026-02-19",
   "description": "Complete Firestore database schema for OrignaGTA e-commerce platform. Marketplace serving Canadian buyers, with sellers worldwide.",
-
   "collections": {
     "users": {
       "description": "User accounts including buyers, sellers, and admins",
@@ -31,7 +30,11 @@
           "type": "array<string>",
           "required": true,
           "description": "User roles: 'admin', 'seller', 'buyer'",
-          "values": ["admin", "seller", "buyer"]
+          "values": [
+            "admin",
+            "seller",
+            "buyer"
+          ]
         },
         "address": {
           "type": "map",
@@ -64,6 +67,11 @@
           "required": false,
           "description": "Timestamp of last checkout"
         },
+        "lastCartAbandonEmailAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "Last time an abandoned-cart recovery email was sent to this user (TASK 10)"
+        },
         "stripeAccountId": {
           "type": "string",
           "required": false,
@@ -93,7 +101,10 @@
           "type": "string",
           "required": false,
           "description": "Seller payout provider",
-          "values": ["stripe", "airwallex"],
+          "values": [
+            "stripe",
+            "airwallex"
+          ],
           "default": "stripe"
         },
         "airwallexAccountId": {
@@ -142,7 +153,11 @@
           "type": "string",
           "required": false,
           "description": "Verification workflow status (admin-managed)",
-          "values": ["pending", "approved", "rejected"]
+          "values": [
+            "pending",
+            "approved",
+            "rejected"
+          ]
         },
         "platform": {
           "type": "string",
@@ -305,9 +320,116 @@
           "type": "boolean",
           "required": false,
           "description": "Flag on orders indicating the original user was deleted (GDPR)"
+        },
+        "isPremium": {
+          "type": "boolean",
+          "default": false,
+          "description": "Cached premium status \u2014 authoritative: subscriptions/{uid}"
+        },
+        "premiumSince": {
+          "type": "timestamp",
+          "nullable": true,
+          "description": "When premium started"
+        },
+        "premiumExpiresAt": {
+          "type": "timestamp",
+          "nullable": true,
+          "description": "Current billing period end"
+        },
+        "stripeSubscriptionId": {
+          "type": "string",
+          "nullable": true,
+          "description": "Stripe Subscription ID"
+        },
+        "notifyNewProducts": {
+          "type": "boolean",
+          "default": false,
+          "description": "Opt-in: FCM notification for new products (premium only)"
+        },
+        "notifyTrending": {
+          "type": "boolean",
+          "default": false,
+          "description": "Opt-in: FCM notification for trending products (premium only)"
+        },
+        "fcmToken": {
+          "type": "string",
+          "nullable": true,
+          "description": "FCM device token for push notifications"
+        },
+        "fcmTokenUpdatedAt": {
+          "type": "timestamp",
+          "nullable": true,
+          "description": "Last FCM token update"
         }
       },
       "subcollections": {
+        "addresses": {
+          "description": "User's address book for shipping and billing",
+          "documentId": "{addressId} - auto-generated",
+          "fields": {
+            "addressId": {
+              "type": "string",
+              "description": "Auto-generated document ID"
+            },
+            "isDefault": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether this is the user's default address"
+            },
+            "label": {
+              "type": "string",
+              "required": false,
+              "description": "e.g., Home, Work, Other"
+            },
+            "street": {
+              "type": "string",
+              "required": true
+            },
+            "city": {
+              "type": "string",
+              "required": true
+            },
+            "state": {
+              "type": "string",
+              "required": true
+            },
+            "postalCode": {
+              "type": "string",
+              "required": true
+            },
+            "country": {
+              "type": "string",
+              "default": "Canada"
+            },
+            "phoneNumber": {
+              "type": "string",
+              "required": false
+            },
+            "latitude": {
+              "type": "number",
+              "required": false
+            },
+            "longitude": {
+              "type": "number",
+              "required": false
+            },
+            "apartment": {
+              "type": "string",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "fields": [
+                "isDefault desc"
+              ],
+              "description": "Default address first"
+            }
+          ],
+          "notes": [
+            "Users can have up to 10 addresses. One must be marked as isDefault=true."
+          ]
+        },
         "cart": {
           "description": "User's shopping cart items",
           "documentId": "{productId}",
@@ -367,7 +489,10 @@
             "type": {
               "type": "string",
               "required": true,
-              "enum": ["warehouse", "personal"],
+              "enum": [
+                "warehouse",
+                "personal"
+              ],
               "description": "Warehouse type. 'personal' covers small-business/home addresses."
             },
             "address": {
@@ -394,29 +519,36 @@
           },
           "indexes": [
             {
-              "fields": ["isDefault desc", "createdAt asc"],
+              "fields": [
+                "isDefault desc",
+                "createdAt asc"
+              ],
               "description": "Default warehouse first, then oldest first"
             }
           ],
           "notes": [
             "Only sellers have warehouses. Security rules allow read/write only to the owner (sellerId == request.auth.uid).",
-            "A seller may have 1–N warehouses across different cities or countries.",
+            "A seller may have 1\u2013N warehouses across different cities or countries.",
             "Products reference warehouse IDs via the warehouseIds array field."
           ]
         }
       },
       "indexes": [
         {
-          "fields": ["stripeAccountId"],
+          "fields": [
+            "stripeAccountId"
+          ],
           "description": "For looking up users by Stripe Connect account"
         },
         {
-          "fields": ["roles", "createdAt desc"],
+          "fields": [
+            "roles",
+            "createdAt desc"
+          ],
           "description": "For admin seller listing"
         }
       ]
     },
-
     "products": {
       "description": "Product listings",
       "documentId": "{auto-generated}",
@@ -431,6 +563,11 @@
           "type": "number",
           "required": true,
           "description": "SELLING price in CAD (Canadian Dollars only). All prices on the platform are in CAD."
+        },
+        "compareAtPrice": {
+          "type": "number",
+          "required": false,
+          "description": "Original or MSRP price in CAD, must be greater than price. Used for strikethrough pricing display."
         },
         "description": {
           "type": "string",
@@ -452,13 +589,13 @@
         "sellerSku": {
           "type": "string",
           "required": false,
-          "description": "Seller-defined SKU. Unique per seller (sellerId + sellerSku). Used for deduplication — a product is rejected (isActive=false) if a duplicate sellerId+sellerSku already exists.",
+          "description": "Seller-defined SKU. Unique per seller (sellerId + sellerSku). Used for deduplication \u2014 a product is rejected (isActive=false) if a duplicate sellerId+sellerSku already exists.",
           "maxLength": 100
         },
         "sellerAddress": {
           "type": "map",
           "required": false,
-          "description": "Seller's manual shipping address. Mutually exclusive with warehouseIds — physical products must have either sellerAddress OR warehouseIds, not both.",
+          "description": "Seller's manual shipping address. Mutually exclusive with warehouseIds \u2014 physical products must have either sellerAddress OR warehouseIds, not both.",
           "schema": "$ref:Address"
         },
         "warehouseIds": {
@@ -470,7 +607,7 @@
         "warehouseStock": {
           "type": "map<string, number>",
           "required": false,
-          "description": "Per-warehouse stock quantities. Keys are warehouseId strings; values are integer stock counts. stockQuantity field equals the sum of all values. E.g. {\"wh_abc\": 10, \"wh_xyz\": 5} → stockQuantity=15."
+          "description": "Per-warehouse stock quantities. Keys are warehouseId strings; values are integer stock counts. stockQuantity field equals the sum of all values. E.g. {\"wh_abc\": 10, \"wh_xyz\": 5} \u2192 stockQuantity=15."
         },
         "shipFromCity": {
           "type": "string",
@@ -490,7 +627,7 @@
         "shipFromCountries": {
           "type": "array<string>",
           "required": false,
-          "description": "Deduplicated list of all countries across all warehouseIds. Powers smart multi-country display on product cards: 1 country→'Ships from: City, Province, Country'; 2–3→'Ships from: Canada · Germany'; 4+→'Ships from: N locations worldwide'."
+          "description": "Deduplicated list of all countries across all warehouseIds. Powers smart multi-country display on product cards: 1 country\u2192'Ships from: City, Province, Country'; 2\u20133\u2192'Ships from: Canada \u00b7 Germany'; 4+\u2192'Ships from: N locations worldwide'."
         },
         "categoryId": {
           "type": "number",
@@ -525,7 +662,11 @@
         },
         "approvalStatus": {
           "type": "string",
-          "enum": ["under_review", "approved", "rejected"],
+          "enum": [
+            "under_review",
+            "approved",
+            "rejected"
+          ],
           "default": "under_review",
           "description": "Admin approval gate: all products start under_review, go live only when approved"
         },
@@ -757,35 +898,89 @@
           "type": "string",
           "default": "active",
           "description": "Product status",
-          "values": ["draft", "active", "paused", "archived", "out_of_stock"]
+          "values": [
+            "draft",
+            "active",
+            "paused",
+            "archived",
+            "out_of_stock"
+          ]
         },
         "deliverySpeed": {
           "type": "string",
           "required": false,
           "description": "Delivery speed tier",
-          "values": ["standard", "express", "same_day", "economy"]
+          "values": [
+            "standard",
+            "express",
+            "same_day",
+            "economy"
+          ]
+        },
+        "lastLowStockAlertAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "Last time a low-stock alert email was sent for this product. Written by check_low_stock_alerts cron. Used to enforce the 23-hour cooldown between alerts."
+        },
+        "trendingScore": {
+          "type": "integer",
+          "default": 0,
+          "description": "Computed trending score (views + purchases\u00d73 + favorites\u00d72 in last 48h)"
+        },
+        "viewCount": {
+          "type": "integer",
+          "default": 0,
+          "description": "Total product page views"
+        },
+        "purchaseCount": {
+          "type": "integer",
+          "default": 0,
+          "description": "Total purchases"
+        },
+        "isTrending": {
+          "type": "boolean",
+          "default": false,
+          "description": "Currently in trending list (top 20)"
+        },
+        "trendingAt": {
+          "type": "timestamp",
+          "nullable": true,
+          "description": "When product last entered trending"
         }
       },
       "indexes": [
         {
-          "fields": ["sellerId", "createdAt desc"],
+          "fields": [
+            "sellerId",
+            "createdAt desc"
+          ],
           "description": "For seller's product listings"
         },
         {
-          "fields": ["isActive", "categoryId", "createdAt desc"],
+          "fields": [
+            "isActive",
+            "categoryId",
+            "createdAt desc"
+          ],
           "description": "For category browsing (active only)"
         },
         {
-          "fields": ["isActive", "keywords", "createdAt desc"],
+          "fields": [
+            "isActive",
+            "keywords",
+            "createdAt desc"
+          ],
           "description": "For product search (active only)"
         },
         {
-          "fields": ["isActive", "__name__"],
+          "fields": [
+            "isActive",
+            "__name__"
+          ],
           "description": "For ID batch fetch with active filter"
         }
       ]
     },
-
     "orders": {
       "description": "Customer orders",
       "documentId": "{auto-generated}",
@@ -844,19 +1039,46 @@
         "currency": {
           "type": "string",
           "default": "cad",
-          "description": "Currency code (always 'cad' — all transactions in CAD)"
+          "description": "Currency code (always 'cad' \u2014 all transactions in CAD)"
         },
         "orderStatus": {
           "type": "string",
           "required": true,
           "description": "Order fulfillment status",
-          "values": ["pending", "confirmed", "processing", "shipped", "in_transit", "delivered", "cancelled", "failed", "expired", "refunded", "partially_refunded", "disputed"]
+          "values": [
+            "pending",
+            "confirmed",
+            "processing",
+            "shipped",
+            "in_transit",
+            "delivered",
+            "cancelled",
+            "failed",
+            "expired",
+            "refunded",
+            "partially_refunded",
+            "disputed"
+          ]
         },
         "paymentStatus": {
           "type": "string",
           "required": true,
           "description": "Payment status",
-          "values": ["awaiting_payment", "processing", "paid", "payment_failed", "refunded", "session_expired", "authorized", "captured", "cancelled", "authorization_expired", "capturing", "cancelling", "expiring"]
+          "values": [
+            "awaiting_payment",
+            "processing",
+            "paid",
+            "payment_failed",
+            "refunded",
+            "session_expired",
+            "authorized",
+            "captured",
+            "cancelled",
+            "authorization_expired",
+            "capturing",
+            "cancelling",
+            "expiring"
+          ]
         },
         "shippingAddress": {
           "type": "map",
@@ -934,7 +1156,13 @@
           "type": "string",
           "default": "pending",
           "description": "Payout status",
-          "values": ["pending", "processing", "completed", "partial", "failed"]
+          "values": [
+            "pending",
+            "processing",
+            "completed",
+            "partial",
+            "failed"
+          ]
         },
         "ratings": {
           "type": "map<string, number>",
@@ -955,7 +1183,12 @@
           "type": "string",
           "default": "not_required",
           "description": "Shipping approval status",
-          "values": ["not_required", "pending", "approved", "rejected"]
+          "values": [
+            "not_required",
+            "pending",
+            "approved",
+            "rejected"
+          ]
         },
         "shippingApprovalRequired": {
           "type": "boolean",
@@ -1021,7 +1254,10 @@
           "type": "string",
           "required": false,
           "description": "Dispute outcome (won, lost)",
-          "values": ["won", "lost"]
+          "values": [
+            "won",
+            "lost"
+          ]
         },
         "requiresManualReview": {
           "type": "boolean",
@@ -1071,48 +1307,78 @@
       },
       "indexes": [
         {
-          "fields": ["userId", "paymentStatus", "createdAt desc"],
+          "fields": [
+            "userId",
+            "paymentStatus",
+            "createdAt desc"
+          ],
           "description": "For buyer's order history (Flutter uses createdAt)"
         },
         {
-          "fields": ["sellerIds", "paymentStatus", "createdAt desc"],
+          "fields": [
+            "sellerIds",
+            "paymentStatus",
+            "createdAt desc"
+          ],
           "description": "For seller's order view"
         },
         {
-          "fields": ["paymentStatus", "createdAt desc"],
+          "fields": [
+            "paymentStatus",
+            "createdAt desc"
+          ],
           "description": "For admin orders by status"
         },
         {
-          "fields": ["stripeSessionId", "paymentStatus"],
+          "fields": [
+            "stripeSessionId",
+            "paymentStatus"
+          ],
           "description": "For session lookup"
         },
         {
-          "fields": ["paymentStatus", "confirmedByClient", "payoutStatus"],
+          "fields": [
+            "paymentStatus",
+            "confirmedByClient",
+            "payoutStatus"
+          ],
           "description": "For auto-release payout job"
         },
         {
-          "fields": ["paymentStatus", "authorizationExpiresAt"],
+          "fields": [
+            "paymentStatus",
+            "authorizationExpiresAt"
+          ],
           "description": "For expired authorization job"
         },
         {
-          "fields": ["paymentStatus", "captureMethod"],
+          "fields": [
+            "paymentStatus",
+            "captureMethod"
+          ],
           "description": "For expiring authorization job"
         },
         {
-          "fields": ["userId", "idempotencyKey"],
+          "fields": [
+            "userId",
+            "idempotencyKey"
+          ],
           "description": "For idempotent checkout lookups"
         },
         {
-          "fields": ["stripePaymentIntentId"],
+          "fields": [
+            "stripePaymentIntentId"
+          ],
           "description": "For webhook lookups"
         },
         {
-          "fields": ["stripeSessionId"],
+          "fields": [
+            "stripeSessionId"
+          ],
           "description": "For checkout completion"
         }
       ]
     },
-
     "payouts": {
       "description": "Seller payout records (Stripe Transfers)",
       "documentId": "{auto-generated}",
@@ -1146,7 +1412,16 @@
           "type": "string",
           "required": true,
           "description": "Payout status",
-          "values": ["pending", "processing", "completed", "partial", "failed", "reversed", "partially_reversed", "reversed_dispute"]
+          "values": [
+            "pending",
+            "processing",
+            "completed",
+            "partial",
+            "failed",
+            "reversed",
+            "partially_reversed",
+            "reversed_dispute"
+          ]
         },
         "stripeTransferId": {
           "type": "string",
@@ -1207,20 +1482,26 @@
       },
       "indexes": [
         {
-          "fields": ["orderId"],
+          "fields": [
+            "orderId"
+          ],
           "description": "Query payouts by order"
         },
         {
-          "fields": ["sellerId", "status"],
+          "fields": [
+            "sellerId",
+            "status"
+          ],
           "description": "Query seller payouts"
         },
         {
-          "fields": ["stripeTransferId"],
+          "fields": [
+            "stripeTransferId"
+          ],
           "description": "Webhook lookup by transfer ID"
         }
       ]
     },
-
     "webhook_logs": {
       "description": "Audit trail for Stripe webhook events",
       "documentId": "{auto-generated}",
@@ -1249,7 +1530,11 @@
           "type": "string",
           "required": true,
           "description": "Processing result",
-          "values": ["processing", "completed", "failed"]
+          "values": [
+            "processing",
+            "completed",
+            "failed"
+          ]
         },
         "orderId": {
           "type": "string",
@@ -1268,7 +1553,6 @@
         }
       }
     },
-
     "webhook_events": {
       "description": "Idempotency tracking for webhook processing",
       "documentId": "{stripeEventId}",
@@ -1320,132 +1604,751 @@
         }
       }
     },
-
     "refunds": {
       "description": "Refund records for order items",
       "documentId": "{auto-generated}",
       "fields": {
-        "orderId": { "type": "string", "required": true, "description": "Associated order ID" },
-        "productId": { "type": "string", "required": true, "description": "Refunded product ID" },
-        "sellerId": { "type": "string", "required": true, "description": "Seller user ID" },
-        "buyerId": { "type": "string", "required": true, "description": "Buyer user ID" },
-        "amountCents": { "type": "integer", "required": true, "description": "Refund amount in cents" },
-        "reason": { "type": "string", "required": false, "description": "Refund reason" },
-        "stripeRefundId": { "type": "string", "required": false, "description": "Stripe Refund ID" },
-        "status": { "type": "string", "required": true, "values": ["pending", "completed", "failed"], "description": "Refund status" },
-        "createdAt": { "type": "timestamp", "required": true, "description": "Refund creation time" }
+        "orderId": {
+          "type": "string",
+          "required": true,
+          "description": "Associated order ID"
+        },
+        "productId": {
+          "type": "string",
+          "required": true,
+          "description": "Refunded product ID"
+        },
+        "sellerId": {
+          "type": "string",
+          "required": true,
+          "description": "Seller user ID"
+        },
+        "buyerId": {
+          "type": "string",
+          "required": true,
+          "description": "Buyer user ID"
+        },
+        "amountCents": {
+          "type": "integer",
+          "required": true,
+          "description": "Refund amount in cents"
+        },
+        "reason": {
+          "type": "string",
+          "required": false,
+          "description": "Refund reason"
+        },
+        "stripeRefundId": {
+          "type": "string",
+          "required": false,
+          "description": "Stripe Refund ID"
+        },
+        "status": {
+          "type": "string",
+          "required": true,
+          "values": [
+            "pending",
+            "completed",
+            "failed"
+          ],
+          "description": "Refund status"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "required": true,
+          "description": "Refund creation time"
+        }
       }
     },
-
     "security_alerts": {
       "description": "Security alert records for suspicious activity, payment issues, and system health",
       "documentId": "{auto-generated}",
       "fields": {
-        "type": { "type": "string", "required": true, "description": "Alert type (SecurityAlertTypes constant)", "values": ["algolia_sync_issue", "dispute_created", "role_change", "seller_suspended", "seller_unsuspended", "payment_provider_disabled", "refund_reversal_failed", "payout_failed", "refund_failed", "seller_account_changed", "payout_record_incomplete", "mfa_low_backup_codes", "seller_kyc_failed", "invalid_gst_attempt", "blocked_gst_attempt", "shared_gst_number", "tax_exemption_pending_review", "suspicious_tax_exemption", "auth_deletion_failed"] },
-        "severity": { "type": "string", "required": true, "values": ["low", "medium", "high", "critical"], "description": "Alert severity" },
-        "resolved": { "type": "boolean", "default": false, "description": "Whether alert has been resolved" },
-        "resolvedAt": { "type": "timestamp", "required": false, "description": "When the alert was resolved" },
-        "resolution": { "type": "string", "required": false, "description": "Resolution description" },
-        "timestamp": { "type": "timestamp", "required": true, "description": "Alert creation timestamp (SERVER_TIMESTAMP)" },
-        "orderId": { "type": "string", "required": false, "description": "Associated order ID (for dispute/payout alerts)" },
-        "sellerId": { "type": "string", "required": false, "description": "Associated seller ID" },
-        "userId": { "type": "string", "required": false, "description": "Affected user ID" },
-        "chargeId": { "type": "string", "required": false, "description": "Stripe charge ID (dispute alerts)" },
-        "accountId": { "type": "string", "required": false, "description": "Stripe account ID" },
-        "reason": { "type": "string", "required": false, "description": "Alert reason" },
-        "paymentIntentId": { "type": "string", "required": false, "description": "Stripe Payment Intent ID" },
-        "destination": { "type": "string", "required": false, "description": "Transfer destination account" },
-        "failureMessage": { "type": "string", "required": false, "description": "Failure detail message" },
-        "firestoreCount": { "type": "integer", "required": false, "description": "Firestore product count (Algolia sync alerts)" },
-        "algoliaCount": { "type": "integer", "required": false, "description": "Algolia product count (Algolia sync alerts)" },
-        "mismatchPercent": { "type": "number", "required": false, "description": "Mismatch percentage (Algolia sync alerts)" },
-        "adminId": { "type": "string", "required": false, "description": "Admin who triggered action (role_change alerts)" },
-        "targetUserId": { "type": "string", "required": false, "description": "User targeted by admin action" },
-        "oldRoles": { "type": "array<string>", "required": false, "description": "Previous roles (role_change alerts)" },
-        "newRoles": { "type": "array<string>", "required": false, "description": "New roles (role_change alerts)" },
-        "productsDeactivated": { "type": "integer", "required": false, "description": "Count of products deactivated (seller_suspended alerts)" },
-        "ordersCancelled": { "type": "integer", "required": false, "description": "Count of orders cancelled (seller_suspended alerts)" },
-        "errorCode": { "type": "string", "required": false, "description": "Error code from Stripe or other service" },
-        "payoutId": { "type": "string", "required": false, "description": "Payout document ID" },
-        "transferId": { "type": "string", "required": false, "description": "Stripe Transfer ID" },
-        "reversalErrors": { "type": "array<string>", "required": false, "description": "List of reversal error messages" }
+        "type": {
+          "type": "string",
+          "required": true,
+          "description": "Alert type (SecurityAlertTypes constant)",
+          "values": [
+            "algolia_sync_issue",
+            "dispute_created",
+            "role_change",
+            "seller_suspended",
+            "seller_unsuspended",
+            "payment_provider_disabled",
+            "refund_reversal_failed",
+            "payout_failed",
+            "refund_failed",
+            "seller_account_changed",
+            "payout_record_incomplete",
+            "mfa_low_backup_codes",
+            "seller_kyc_failed",
+            "invalid_gst_attempt",
+            "blocked_gst_attempt",
+            "shared_gst_number",
+            "tax_exemption_pending_review",
+            "suspicious_tax_exemption",
+            "auth_deletion_failed"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "required": true,
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "description": "Alert severity"
+        },
+        "resolved": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether alert has been resolved"
+        },
+        "resolvedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When the alert was resolved"
+        },
+        "resolution": {
+          "type": "string",
+          "required": false,
+          "description": "Resolution description"
+        },
+        "timestamp": {
+          "type": "timestamp",
+          "required": true,
+          "description": "Alert creation timestamp (SERVER_TIMESTAMP)"
+        },
+        "orderId": {
+          "type": "string",
+          "required": false,
+          "description": "Associated order ID (for dispute/payout alerts)"
+        },
+        "sellerId": {
+          "type": "string",
+          "required": false,
+          "description": "Associated seller ID"
+        },
+        "userId": {
+          "type": "string",
+          "required": false,
+          "description": "Affected user ID"
+        },
+        "chargeId": {
+          "type": "string",
+          "required": false,
+          "description": "Stripe charge ID (dispute alerts)"
+        },
+        "accountId": {
+          "type": "string",
+          "required": false,
+          "description": "Stripe account ID"
+        },
+        "reason": {
+          "type": "string",
+          "required": false,
+          "description": "Alert reason"
+        },
+        "paymentIntentId": {
+          "type": "string",
+          "required": false,
+          "description": "Stripe Payment Intent ID"
+        },
+        "destination": {
+          "type": "string",
+          "required": false,
+          "description": "Transfer destination account"
+        },
+        "failureMessage": {
+          "type": "string",
+          "required": false,
+          "description": "Failure detail message"
+        },
+        "firestoreCount": {
+          "type": "integer",
+          "required": false,
+          "description": "Firestore product count (Algolia sync alerts)"
+        },
+        "algoliaCount": {
+          "type": "integer",
+          "required": false,
+          "description": "Algolia product count (Algolia sync alerts)"
+        },
+        "mismatchPercent": {
+          "type": "number",
+          "required": false,
+          "description": "Mismatch percentage (Algolia sync alerts)"
+        },
+        "adminId": {
+          "type": "string",
+          "required": false,
+          "description": "Admin who triggered action (role_change alerts)"
+        },
+        "targetUserId": {
+          "type": "string",
+          "required": false,
+          "description": "User targeted by admin action"
+        },
+        "oldRoles": {
+          "type": "array<string>",
+          "required": false,
+          "description": "Previous roles (role_change alerts)"
+        },
+        "newRoles": {
+          "type": "array<string>",
+          "required": false,
+          "description": "New roles (role_change alerts)"
+        },
+        "productsDeactivated": {
+          "type": "integer",
+          "required": false,
+          "description": "Count of products deactivated (seller_suspended alerts)"
+        },
+        "ordersCancelled": {
+          "type": "integer",
+          "required": false,
+          "description": "Count of orders cancelled (seller_suspended alerts)"
+        },
+        "errorCode": {
+          "type": "string",
+          "required": false,
+          "description": "Error code from Stripe or other service"
+        },
+        "payoutId": {
+          "type": "string",
+          "required": false,
+          "description": "Payout document ID"
+        },
+        "transferId": {
+          "type": "string",
+          "required": false,
+          "description": "Stripe Transfer ID"
+        },
+        "reversalErrors": {
+          "type": "array<string>",
+          "required": false,
+          "description": "List of reversal error messages"
+        }
       }
     },
-
     "rate_limits": {
       "description": "Rate limiting records for API protection. Cleaned up by cleanup_stale_rate_limits cron every 30 min.",
       "documentId": "{identifier}",
       "fields": {
-        "count": { "type": "integer", "required": true, "description": "Request count in current window" },
-        "first_request": { "type": "timestamp", "required": true, "description": "Start of rate limit window" },
-        "last_request": { "type": "timestamp", "required": true, "description": "Most recent request in window (used by cleanup cron)" }
+        "count": {
+          "type": "integer",
+          "required": true,
+          "description": "Request count in current window"
+        },
+        "first_request": {
+          "type": "timestamp",
+          "required": true,
+          "description": "Start of rate limit window"
+        },
+        "last_request": {
+          "type": "timestamp",
+          "required": true,
+          "description": "Most recent request in window (used by cleanup cron)"
+        }
       }
     },
-
     "config": {
       "description": "Application configuration (feature flags, settings)",
       "documentId": "{configKey}",
       "fields": {
-        "key": { "type": "string", "required": true, "description": "Configuration key" },
-        "value": { "type": "any", "required": true, "description": "Configuration value" },
-        "updatedAt": { "type": "timestamp", "required": false, "description": "Last update time" },
-        "updatedBy": { "type": "string", "required": false, "description": "Admin who last updated" }
+        "key": {
+          "type": "string",
+          "required": true,
+          "description": "Configuration key"
+        },
+        "value": {
+          "type": "any",
+          "required": true,
+          "description": "Configuration value"
+        },
+        "updatedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "Last update time"
+        },
+        "updatedBy": {
+          "type": "string",
+          "required": false,
+          "description": "Admin who last updated"
+        }
       }
     },
-
     "admin_logs": {
       "description": "Admin action audit trail",
       "documentId": "{auto-generated}",
       "fields": {
-        "adminId": { "type": "string", "required": true, "description": "Admin user ID" },
-        "action": { "type": "string", "required": true, "description": "Action performed" },
-        "targetId": { "type": "string", "required": false, "description": "Target entity ID" },
-        "targetType": { "type": "string", "required": false, "description": "Target type (user, order, product)" },
-        "details": { "type": "map", "required": false, "description": "Action details" },
-        "createdAt": { "type": "timestamp", "required": true, "description": "Action timestamp" }
+        "adminId": {
+          "type": "string",
+          "required": true,
+          "description": "Admin user ID"
+        },
+        "action": {
+          "type": "string",
+          "required": true,
+          "description": "Action performed"
+        },
+        "targetId": {
+          "type": "string",
+          "required": false,
+          "description": "Target entity ID"
+        },
+        "targetType": {
+          "type": "string",
+          "required": false,
+          "description": "Target type (user, order, product)"
+        },
+        "details": {
+          "type": "map",
+          "required": false,
+          "description": "Action details"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "required": true,
+          "description": "Action timestamp"
+        }
       }
     },
-
     "product_ratings": {
       "description": "Individual product ratings and reviews",
       "documentId": "{auto-generated}",
       "fields": {
-        "productId": { "type": "string", "required": true, "description": "Rated product ID" },
-        "userId": { "type": "string", "required": true, "description": "Rating user ID" },
-        "orderId": { "type": "string", "required": true, "description": "Associated order ID" },
-        "rating": { "type": "number", "required": true, "description": "Rating value (1-5)" },
-        "comment": { "type": "string", "required": false, "description": "Review text" },
-        "createdAt": { "type": "timestamp", "required": true, "description": "Rating timestamp" }
+        "productId": {
+          "type": "string",
+          "required": true,
+          "description": "Rated product ID"
+        },
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "Rating user ID"
+        },
+        "orderId": {
+          "type": "string",
+          "required": true,
+          "description": "Associated order ID"
+        },
+        "rating": {
+          "type": "number",
+          "required": true,
+          "description": "Rating value (1-5)"
+        },
+        "comment": {
+          "type": "string",
+          "required": false,
+          "description": "Review text"
+        },
+        "reviewImageUrls": {
+          "type": "array<string>",
+          "required": false,
+          "description": "Optional review photo URLs (max 3, must be CDN hosted)"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "required": true,
+          "description": "Rating timestamp"
+        }
       }
     },
-
+    "stock_notifications": {
+      "description": "Back-in-stock notification subscriptions (TASK 07)",
+      "documentId": "{auto-generated}",
+      "fields": {
+        "productId": {
+          "type": "string",
+          "required": true,
+          "description": "Product to watch"
+        },
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "Buyer who subscribed"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Buyer email at time of subscription"
+        },
+        "productName": {
+          "type": "string",
+          "required": true,
+          "description": "Product name (denormalized)"
+        },
+        "notifiedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When notification email was sent (null = not yet notified)"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "required": true,
+          "description": "Subscription timestamp"
+        }
+      }
+    },
+    "product_questions": {
+      "description": "Buyer Q&A on product pages (TASK 09)",
+      "documentId": "{questionId}",
+      "fields": {
+        "questionId": {
+          "type": "string",
+          "required": true,
+          "description": "Document ID"
+        },
+        "productId": {
+          "type": "string",
+          "required": true,
+          "description": "Product the question is about"
+        },
+        "sellerId": {
+          "type": "string",
+          "required": true,
+          "description": "Product seller ID (denormalized)"
+        },
+        "askerId": {
+          "type": "string",
+          "required": true,
+          "description": "User ID of the buyer who asked"
+        },
+        "question": {
+          "type": "string",
+          "required": true,
+          "description": "Question text (10-500 chars)"
+        },
+        "answer": {
+          "type": "string",
+          "required": false,
+          "description": "Seller's answer"
+        },
+        "answeredAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When the seller answered"
+        },
+        "answeredBy": {
+          "type": "string",
+          "required": false,
+          "description": "UID of whoever answered (seller or admin)"
+        },
+        "isAnswered": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the question has been answered"
+        },
+        "upvotes": {
+          "type": "integer",
+          "default": 0,
+          "description": "Number of helpful votes"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "required": true,
+          "description": "When the question was asked"
+        }
+      }
+    },
+    "seller_metrics": {
+      "description": "Weekly seller performance metrics (TASK 11). Document ID = sellerId.",
+      "documentId": "{sellerId}",
+      "fields": {
+        "sellerId": {
+          "type": "string",
+          "required": true,
+          "description": "Seller user ID"
+        },
+        "disputeRate": {
+          "type": "number",
+          "required": true,
+          "description": "Dispute rate (0.0\u20131.0) over last 30 days"
+        },
+        "refundRate": {
+          "type": "number",
+          "required": true,
+          "description": "Refund rate (0.0\u20131.0) over last 30 days"
+        },
+        "cancellationRate": {
+          "type": "number",
+          "required": true,
+          "description": "Cancellation rate (0.0\u20131.0) over last 30 days"
+        },
+        "lateShipmentRate": {
+          "type": "number",
+          "required": true,
+          "description": "Late shipment rate (0.0\u20131.0) over last 30 days"
+        },
+        "avgResponseTimeHours": {
+          "type": "number",
+          "required": true,
+          "description": "Average hours to first response on buyer messages (30-day avg)"
+        },
+        "totalOrders30d": {
+          "type": "integer",
+          "required": true,
+          "description": "Total orders in the last 30 days"
+        },
+        "totalRevenueCents30d": {
+          "type": "integer",
+          "required": true,
+          "description": "Seller's gross revenue (integer, 100 = $1.00 CAD) in the last 30 days"
+        },
+        "computedAt": {
+          "type": "timestamp",
+          "required": true,
+          "description": "When these metrics were last computed"
+        }
+      }
+    },
     "_cron_locks": {
       "description": "Distributed locks for cron jobs to prevent concurrent execution across Cloud Function instances",
       "documentId": "{jobName} - cron job function name",
       "fields": {
-        "lockedAt": { "type": "timestamp", "required": true, "description": "When the lock was acquired" },
-        "lockedBy": { "type": "string", "required": true, "description": "Identifier of the instance holding the lock (cron_{jobName})" },
-        "status": { "type": "string", "required": true, "values": ["running", "completed"], "description": "Lock status" },
-        "completedAt": { "type": "timestamp", "required": false, "description": "When the job finished and released the lock" }
+        "lockedAt": {
+          "type": "timestamp",
+          "required": true,
+          "description": "When the lock was acquired"
+        },
+        "lockedBy": {
+          "type": "string",
+          "required": true,
+          "description": "Identifier of the instance holding the lock (cron_{jobName})"
+        },
+        "status": {
+          "type": "string",
+          "required": true,
+          "values": [
+            "running",
+            "completed"
+          ],
+          "description": "Lock status"
+        },
+        "completedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "When the job finished and released the lock"
+        }
       }
     },
-
     "algolia_sync_failures": {
       "description": "Dead Letter Queue for failed Algolia sync operations, retried hourly up to max retries",
       "documentId": "{auto-generated}",
       "fields": {
-        "productId": { "type": "string", "required": true, "description": "Product ID that failed to sync" },
-        "action": { "type": "string", "required": true, "values": ["index", "delete"], "description": "Sync action that failed" },
-        "resolved": { "type": "boolean", "default": false, "description": "Whether the failure has been resolved (retried or max retries exceeded)" },
-        "retryCount": { "type": "integer", "default": 0, "description": "Number of retry attempts" },
-        "maxRetriesExceeded": { "type": "boolean", "default": false, "description": "True if retry limit reached without success" },
-        "lastRetryError": { "type": "string", "required": false, "description": "Error type from most recent retry attempt" },
-        "createdAt": { "type": "timestamp", "required": true, "description": "When the failure was first recorded" },
-        "updatedAt": { "type": "timestamp", "required": false, "description": "Last retry or resolution timestamp" }
+        "productId": {
+          "type": "string",
+          "required": true,
+          "description": "Product ID that failed to sync"
+        },
+        "action": {
+          "type": "string",
+          "required": true,
+          "values": [
+            "index",
+            "delete"
+          ],
+          "description": "Sync action that failed"
+        },
+        "resolved": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the failure has been resolved (retried or max retries exceeded)"
+        },
+        "retryCount": {
+          "type": "integer",
+          "default": 0,
+          "description": "Number of retry attempts"
+        },
+        "maxRetriesExceeded": {
+          "type": "boolean",
+          "default": false,
+          "description": "True if retry limit reached without success"
+        },
+        "lastRetryError": {
+          "type": "string",
+          "required": false,
+          "description": "Error type from most recent retry attempt"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "required": true,
+          "description": "When the failure was first recorded"
+        },
+        "updatedAt": {
+          "type": "timestamp",
+          "required": false,
+          "description": "Last retry or resolution timestamp"
+        }
       }
+    },
+    "subscriptions": {
+      "description": "Premium subscription records \u2014 one per user. Authoritative source for isPremium status. Written by backend on Stripe webhook.",
+      "docIdPattern": "{userId}",
+      "fields": {
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "Firebase Auth UID (same as document ID)"
+        },
+        "stripeSubscriptionId": {
+          "type": "string",
+          "required": true,
+          "description": "Stripe Subscription ID"
+        },
+        "status": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "active",
+            "canceled",
+            "past_due",
+            "incomplete",
+            "incomplete_expired",
+            "trialing",
+            "unpaid"
+          ],
+          "description": "Stripe subscription status"
+        },
+        "currentPeriodStart": {
+          "type": "timestamp",
+          "required": true,
+          "description": "Start of current billing period"
+        },
+        "currentPeriodEnd": {
+          "type": "timestamp",
+          "required": true,
+          "description": "End of current billing period (premium expires after this)"
+        },
+        "cancelAtPeriodEnd": {
+          "type": "boolean",
+          "required": true,
+          "default": false,
+          "description": "Whether subscription cancels at end of current period"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "required": true
+        },
+        "updatedAt": {
+          "type": "timestamp",
+          "required": true
+        }
+      },
+      "indexes": [
+        {
+          "fields": [
+            "status"
+          ],
+          "description": "Query active subscriptions"
+        }
+      ],
+      "security": "User reads own. Backend-only writes (Stripe webhooks)."
+    },
+    "chats": {
+      "description": "Product-scoped buyer\u2194seller chat threads. Premium buyers only. One thread per buyer+product combination.",
+      "docIdPattern": "{chatId} (auto-generated)",
+      "fields": {
+        "chatId": {
+          "type": "string",
+          "required": true
+        },
+        "productId": {
+          "type": "string",
+          "required": true
+        },
+        "productTitle": {
+          "type": "string",
+          "required": true,
+          "description": "Denormalized product title"
+        },
+        "productImageUrl": {
+          "type": "string",
+          "required": false,
+          "description": "Denormalized product image URL"
+        },
+        "buyerId": {
+          "type": "string",
+          "required": true,
+          "description": "Buyer UID (must be premium)"
+        },
+        "sellerId": {
+          "type": "string",
+          "required": true,
+          "description": "Seller UID"
+        },
+        "lastMessage": {
+          "type": "string",
+          "required": false,
+          "description": "Preview of last message"
+        },
+        "lastMessageAt": {
+          "type": "timestamp",
+          "required": false
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "required": true
+        },
+        "updatedAt": {
+          "type": "timestamp",
+          "required": true
+        }
+      },
+      "subcollections": {
+        "messages": {
+          "docIdPattern": "{messageId} (auto-generated)",
+          "fields": {
+            "senderId": {
+              "type": "string",
+              "required": true
+            },
+            "text": {
+              "type": "string",
+              "required": true,
+              "maxLength": 2000
+            },
+            "createdAt": {
+              "type": "timestamp",
+              "required": true
+            },
+            "read": {
+              "type": "boolean",
+              "required": true,
+              "default": false
+            }
+          }
+        }
+      },
+      "indexes": [
+        {
+          "fields": [
+            "buyerId",
+            "updatedAt"
+          ],
+          "description": "Buyer inbox"
+        },
+        {
+          "fields": [
+            "sellerId",
+            "updatedAt"
+          ],
+          "description": "Seller inbox"
+        },
+        {
+          "fields": [
+            "productId",
+            "buyerId"
+          ],
+          "description": "Unique thread per product+buyer"
+        }
+      ],
+      "security": "Buyer and seller of the thread can read/write. Backend creates threads."
     }
   },
-
   "sharedSchemas": {
     "Address": {
       "description": "Address object used throughout the app",
@@ -1521,7 +2424,6 @@
         }
       }
     },
-
     "OrderItem": {
       "description": "Individual item within an order",
       "fields": {
@@ -1570,13 +2472,22 @@
           "type": "string",
           "default": "pending",
           "description": "Per-item status for granular tracking",
-          "values": ["pending", "shipped", "delivered", "refunded"]
+          "values": [
+            "pending",
+            "shipped",
+            "delivered",
+            "refunded"
+          ]
         },
         "deliveryStatus": {
           "type": "string",
           "default": "pending",
           "description": "Parallel status field for type-safe enum access (both 'status' and 'deliveryStatus' are written)",
-          "values": ["pending", "shipped", "delivered"]
+          "values": [
+            "pending",
+            "shipped",
+            "delivered"
+          ]
         },
         "trackingNumber": {
           "type": "string",
@@ -1689,10 +2600,14 @@
               "description": "Supplier platform: aliexpress, alibaba, 1688, etc."
             }
           }
+        },
+        "fulfillmentWarehouseId": {
+          "type": "string",
+          "required": false,
+          "description": "Warehouse ID from which this item was fulfilled (null if seller ships from address)"
         }
       }
     },
-
     "SellerPayout": {
       "description": "Payout breakdown for a single seller. All money in integer cents.",
       "fields": {
@@ -1725,7 +2640,12 @@
           "type": "string",
           "default": "pending",
           "description": "Payout status",
-          "values": ["pending", "processing", "completed", "failed"]
+          "values": [
+            "pending",
+            "processing",
+            "completed",
+            "failed"
+          ]
         },
         "stripeTransferId": {
           "type": "string",
@@ -1745,7 +2665,6 @@
       }
     }
   },
-
   "enums": {
     "OrderStatus": {
       "description": "Order lifecycle states",
@@ -1813,34 +2732,95 @@
       }
     }
   },
-
   "categories": {
     "description": "Product category IDs and names",
     "list": [
-      {"id": 1, "name": "Electronics"},
-      {"id": 2, "name": "Computers"},
-      {"id": 3, "name": "Gaming"},
-      {"id": 4, "name": "Home & Kitchen"},
-      {"id": 5, "name": "Fashion"},
-      {"id": 6, "name": "Shoes & Accessories"},
-      {"id": 7, "name": "Jewelry & Watches"},
-      {"id": 8, "name": "Beauty & Personal Care"},
-      {"id": 9, "name": "Health & Wellness"},
-      {"id": 10, "name": "Sports & Fitness"},
-      {"id": 11, "name": "Automotive"},
-      {"id": 12, "name": "Tools & Hardware"},
-      {"id": 13, "name": "Office Supplies"},
-      {"id": 14, "name": "Books"},
-      {"id": 15, "name": "Music & Instruments"},
-      {"id": 16, "name": "Toys & Games"},
-      {"id": 17, "name": "Baby & Kids"},
-      {"id": 18, "name": "Pet Supplies"},
-      {"id": 19, "name": "Groceries"},
-      {"id": 20, "name": "Art & Collectibles"},
-      {"id": 21, "name": "Digital Products"}
+      {
+        "id": 1,
+        "name": "Electronics"
+      },
+      {
+        "id": 2,
+        "name": "Computers"
+      },
+      {
+        "id": 3,
+        "name": "Gaming"
+      },
+      {
+        "id": 4,
+        "name": "Home & Kitchen"
+      },
+      {
+        "id": 5,
+        "name": "Fashion"
+      },
+      {
+        "id": 6,
+        "name": "Shoes & Accessories"
+      },
+      {
+        "id": 7,
+        "name": "Jewelry & Watches"
+      },
+      {
+        "id": 8,
+        "name": "Beauty & Personal Care"
+      },
+      {
+        "id": 9,
+        "name": "Health & Wellness"
+      },
+      {
+        "id": 10,
+        "name": "Sports & Fitness"
+      },
+      {
+        "id": 11,
+        "name": "Automotive"
+      },
+      {
+        "id": 12,
+        "name": "Tools & Hardware"
+      },
+      {
+        "id": 13,
+        "name": "Office Supplies"
+      },
+      {
+        "id": 14,
+        "name": "Books"
+      },
+      {
+        "id": 15,
+        "name": "Music & Instruments"
+      },
+      {
+        "id": 16,
+        "name": "Toys & Games"
+      },
+      {
+        "id": 17,
+        "name": "Baby & Kids"
+      },
+      {
+        "id": 18,
+        "name": "Pet Supplies"
+      },
+      {
+        "id": 19,
+        "name": "Groceries"
+      },
+      {
+        "id": 20,
+        "name": "Art & Collectibles"
+      },
+      {
+        "id": 21,
+        "name": "Digital Products"
+      }
     ]
   },
-
   "businessRules": {
     "platformFee": {
       "percentage": 2.5,
@@ -1857,8 +2837,12 @@
     },
     "geographicRestrictions": {
       "sellersAllowedCountries": "worldwide",
-      "buyersAllowedCountries": ["Canada"],
-      "billingAllowedCountries": ["Canada"],
+      "buyersAllowedCountries": [
+        "Canada"
+      ],
+      "billingAllowedCountries": [
+        "Canada"
+      ],
       "description": "Marketplace serving Canadian buyers. Sellers can be from any country. Buyers must have Canadian billing/shipping addresses."
     },
     "shippingCalculation": {
@@ -1868,47 +2852,143 @@
     "taxes": {
       "description": "Provincial tax rates applied based on delivery address",
       "provinces": {
-        "AB": {"GST": 5},
-        "BC": {"GST": 5, "PST": 7},
-        "MB": {"GST": 5, "PST": 7},
-        "NB": {"HST": 15},
-        "NL": {"HST": 15},
-        "NS": {"HST": 14},
-        "NT": {"GST": 5},
-        "NU": {"GST": 5},
-        "ON": {"HST": 13},
-        "PE": {"HST": 15},
-        "QC": {"GST": 5, "QST": 9.975},
-        "SK": {"GST": 5, "PST": 6},
-        "YT": {"GST": 5}
+        "AB": {
+          "GST": 5
+        },
+        "BC": {
+          "GST": 5,
+          "PST": 7
+        },
+        "MB": {
+          "GST": 5,
+          "PST": 7
+        },
+        "NB": {
+          "HST": 15
+        },
+        "NL": {
+          "HST": 15
+        },
+        "NS": {
+          "HST": 14
+        },
+        "NT": {
+          "GST": 5
+        },
+        "NU": {
+          "GST": 5
+        },
+        "ON": {
+          "HST": 13
+        },
+        "PE": {
+          "HST": 15
+        },
+        "QC": {
+          "GST": 5,
+          "QST": 9.975
+        },
+        "SK": {
+          "GST": 5,
+          "PST": 6
+        },
+        "YT": {
+          "GST": 5
+        }
       }
     },
     "paymentProviders": {
-      "supported": ["stripe", "airwallex"],
-      "comingSoon": ["paypal", "wise"],
+      "supported": [
+        "stripe",
+        "airwallex"
+      ],
+      "comingSoon": [
+        "paypal",
+        "wise"
+      ],
       "description": "Payment providers for seller payouts"
     },
     "supplierPlatforms": {
       "description": "Supported international supplier platforms for dropshipping",
       "regions": {
-        "china": ["aliexpress", "alibaba", "1688", "dhgate", "temu", "made_in_china", "global_sources", "banggood"],
-        "korea": ["gmarket", "coupang"],
-        "japan": ["rakuten", "amazon_japan"],
-        "india": ["indiamart", "flipkart_wholesale"],
-        "europe": ["amazon_europe", "faire"],
-        "northAmerica": ["amazon_usa", "walmart", "costco_business", "etsy_wholesale"],
-        "dropshipping": ["cjdropshipping", "spocket", "printful", "printify", "modalyst", "doba"],
-        "custom": ["custom", "other"]
+        "china": [
+          "aliexpress",
+          "alibaba",
+          "1688",
+          "dhgate",
+          "temu",
+          "made_in_china",
+          "global_sources",
+          "banggood"
+        ],
+        "korea": [
+          "gmarket",
+          "coupang"
+        ],
+        "japan": [
+          "rakuten",
+          "amazon_japan"
+        ],
+        "india": [
+          "indiamart",
+          "flipkart_wholesale"
+        ],
+        "europe": [
+          "amazon_europe",
+          "faire"
+        ],
+        "northAmerica": [
+          "amazon_usa",
+          "walmart",
+          "costco_business",
+          "etsy_wholesale"
+        ],
+        "dropshipping": [
+          "cjdropshipping",
+          "spocket",
+          "printful",
+          "printify",
+          "modalyst",
+          "doba"
+        ],
+        "custom": [
+          "custom",
+          "other"
+        ]
       },
       "deliveryEstimates": {
-        "aliexpress": {"minDays": 15, "maxDays": 30},
-        "alibaba": {"minDays": 25, "maxDays": 45},
-        "1688": {"minDays": 25, "maxDays": 45},
-        "dhgate": {"minDays": 20, "maxDays": 40},
-        "temu": {"minDays": 7, "maxDays": 15},
-        "cjdropshipping": {"minDays": 10, "maxDays": 20},
-        "local": {"minDays": 1, "maxDays": 5},
-        "default": {"minDays": 3, "maxDays": 7}
+        "aliexpress": {
+          "minDays": 15,
+          "maxDays": 30
+        },
+        "alibaba": {
+          "minDays": 25,
+          "maxDays": 45
+        },
+        "1688": {
+          "minDays": 25,
+          "maxDays": 45
+        },
+        "dhgate": {
+          "minDays": 20,
+          "maxDays": 40
+        },
+        "temu": {
+          "minDays": 7,
+          "maxDays": 15
+        },
+        "cjdropshipping": {
+          "minDays": 10,
+          "maxDays": 20
+        },
+        "local": {
+          "minDays": 1,
+          "maxDays": 5
+        },
+        "default": {
+          "minDays": 3,
+          "maxDays": 7
+        }
       }
     }
   }

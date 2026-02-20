@@ -222,3 +222,191 @@ def update_email_consent(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.EMAIL_CONSENT: email_consent,
         }
     )
+
+
+# ============================================================================
+# BUYER ADDRESS BOOK MANAGEMENT
+# ============================================================================
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def add_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """Add a new address to the buyer's address book."""
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    data = req.data
+
+    from models.base import Address
+    try:
+        address = Address(**data)
+    except Exception as e:
+        raise https_fn.HttpsError("invalid-argument", f"Invalid address: {e}") from e
+
+    address_dict = address.model_dump()
+
+    db = get_db()
+    addresses_ref = db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES)
+
+    # Check limit
+    existing_addresses = list(addresses_ref.get())
+    if len(existing_addresses) >= 10:
+        raise https_fn.HttpsError("resource-exhausted", "Maximum of 10 addresses allowed.")
+
+    # First address is automatically default
+    if len(existing_addresses) == 0:
+        address_dict[Fields.IS_DEFAULT] = True
+
+    # If this one is set to default, we must unset others
+    if address_dict.get(Fields.IS_DEFAULT):
+        batch = db.batch()
+        for doc in existing_addresses:
+            if doc.to_dict().get(Fields.IS_DEFAULT):
+                batch.update(doc.reference, {Fields.IS_DEFAULT: False})
+
+        new_ref = addresses_ref.document()
+        batch.set(new_ref, address_dict)
+        batch.commit()
+        address_id = new_ref.id
+    else:
+        # Just add it
+        _, new_ref = addresses_ref.add(address_dict)
+        address_id = new_ref.id
+
+    return create_success_response({Fields.ADDRESS_ID: address_id})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def update_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """Update an existing address in the buyer's address book."""
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    data = req.data
+    address_id = data.get(Fields.ADDRESS_ID)
+
+    if not address_id:
+        raise https_fn.HttpsError("invalid-argument", "addressId is required")
+
+    # Validate syntax by passing through Pydantic
+    from models.base import Address
+    try:
+        address = Address(**data)
+    except Exception as e:
+        raise https_fn.HttpsError("invalid-argument", f"Invalid address: {e}") from e
+
+    address_dict = address.model_dump()
+
+    db = get_db()
+    address_ref = db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).document(address_id)
+    doc = address_ref.get()
+
+    if not doc.exists:
+        raise https_fn.HttpsError("not-found", "Address not found")
+
+    # If this one is set to default and wasn't before, we must unset others
+    if address_dict.get(Fields.IS_DEFAULT) and not doc.to_dict().get(Fields.IS_DEFAULT):
+        batch = db.batch()
+        existing_addresses = db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).get()
+        for existing_doc in existing_addresses:
+            if existing_doc.id != address_id and existing_doc.to_dict().get(Fields.IS_DEFAULT):
+                batch.update(existing_doc.reference, {Fields.IS_DEFAULT: False})
+        batch.update(address_ref, address_dict)
+        batch.commit()
+    elif not address_dict.get(Fields.IS_DEFAULT) and doc.to_dict().get(Fields.IS_DEFAULT):
+        # Prevent unsetting default if it's the only one
+        existing_addresses = list(db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES).get())
+        if len(existing_addresses) > 1:
+            # We enforce that AT LEAST one must be default
+            # Auto-promote the first non-matching address
+            batch = db.batch()
+            promoted = False
+            for existing_doc in existing_addresses:
+                if existing_doc.id != address_id and not promoted:
+                    batch.update(existing_doc.reference, {Fields.IS_DEFAULT: True})
+                    promoted = True
+            batch.update(address_ref, address_dict)
+            batch.commit()
+        else:
+            # Cannot unset default if it's the only one
+            address_dict[Fields.IS_DEFAULT] = True
+            address_ref.update(address_dict)
+    else:
+        address_ref.update(address_dict)
+
+    return create_success_response({"updated": True})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def delete_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """Delete an address from the buyer's address book."""
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    data = req.data
+    address_id = data.get(Fields.ADDRESS_ID)
+
+    if not address_id:
+        raise https_fn.HttpsError("invalid-argument", "addressId is required")
+
+    db = get_db()
+    addresses_ref = db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES)
+    address_ref = addresses_ref.document(address_id)
+    doc = address_ref.get()
+
+    if not doc.exists:
+        raise https_fn.HttpsError("not-found", "Address not found")
+
+    was_default = doc.to_dict().get(Fields.IS_DEFAULT)
+
+    # If it was default, try to promote another address
+    if was_default:
+        existing_addresses = list(addresses_ref.get())
+        batch = db.batch()
+        batch.delete(address_ref)
+        promoted = False
+        for existing_doc in existing_addresses:
+            if existing_doc.id != address_id and not promoted:
+                batch.update(existing_doc.reference, {Fields.IS_DEFAULT: True})
+                promoted = True
+        batch.commit()
+    else:
+        address_ref.delete()
+
+    return create_success_response({"deleted": True})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def set_default_buyer_address(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """Set an address as the default buyer address."""
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    data = req.data
+    address_id = data.get(Fields.ADDRESS_ID)
+
+    if not address_id:
+        raise https_fn.HttpsError("invalid-argument", "addressId is required")
+
+    db = get_db()
+    addresses_ref = db.collection(Collections.USERS).document(user_id).collection(Collections.ADDRESSES)
+    address_ref = addresses_ref.document(address_id)
+    doc = address_ref.get()
+
+    if not doc.exists:
+        raise https_fn.HttpsError("not-found", "Address not found")
+
+    batch = db.batch()
+    existing_addresses = addresses_ref.get()
+    for existing_doc in existing_addresses:
+        if existing_doc.id == address_id:
+            batch.update(existing_doc.reference, {Fields.IS_DEFAULT: True})
+        elif existing_doc.to_dict().get(Fields.IS_DEFAULT):
+            batch.update(existing_doc.reference, {Fields.IS_DEFAULT: False})
+
+    batch.commit()
+
+    return create_success_response({"updated": True})

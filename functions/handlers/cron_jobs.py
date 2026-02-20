@@ -1074,3 +1074,523 @@ def revalidate_digital_product_urls(event: scheduler_fn.ScheduledEvent) -> None:
             logger.warning(f"Deactivated product {product_id} — dead URLs: {dead}")
 
     logger.info(f"Digital URL revalidation done: {checked} checked, {deactivated} deactivated")
+
+
+@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+def check_low_stock_alerts(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    Daily cron: email sellers when a product's stockQuantity falls at or below
+    inventory.lowStockThreshold (only when the seller has opted into alerts).
+
+    Runs: Every 24 hours
+
+    Logic:
+    - Only products where isActive=True AND approvalStatus=approved
+    - inventory.lowStockThreshold > 0 (seller opted in)
+    - inventory.trackQuantity = True (stock tracking is on)
+    - stockQuantity <= inventory.lowStockThreshold
+    - lastLowStockAlertAt is None OR > 23 hours ago (avoid daily spam)
+    """
+    from datetime import timezone
+    from services.email_service import send_email
+
+    logger.info("Running check_low_stock_alerts cron job")
+    alerted_count = 0
+    checked_count = 0
+
+    # Fetch active + approved products in batches of 500
+    query = (
+        get_db()
+        .collection(Collections.PRODUCTS)
+        .where(Fields.IS_ACTIVE, "==", True)
+        .where(Fields.APPROVAL_STATUS, "==", ProductApprovalStatusValues.APPROVED)
+        .limit(500)
+    )
+
+    now_utc = datetime.now(timezone.utc)
+    alert_cooldown = timedelta(hours=23)
+
+    for doc in query.stream():
+        checked_count += 1
+        data = doc.to_dict() or {}
+
+        inventory = data.get(Fields.INVENTORY) or {}
+        threshold = inventory.get(Fields.LOW_STOCK_THRESHOLD, 0)
+        track_quantity = inventory.get(Fields.TRACK_QUANTITY, True)
+
+        # Skip if seller hasn't opted in (threshold=0) or tracking is disabled
+        if not threshold or not track_quantity:
+            continue
+
+        stock = data.get(Fields.STOCK_QUANTITY, 0)
+        if stock > threshold:
+            continue
+
+        # Check cooldown — don't re-alert within 23 hours
+        last_alert = data.get(Fields.LAST_LOW_STOCK_ALERT_AT)
+        if last_alert:
+            if hasattr(last_alert, "tzinfo") and last_alert.tzinfo is None:
+                last_alert = last_alert.replace(tzinfo=timezone.utc)
+            elif not hasattr(last_alert, "tzinfo"):
+                last_alert = None
+        if last_alert and (now_utc - last_alert) < alert_cooldown:
+            continue
+
+        # Send email to seller
+        seller_id = data.get(Fields.SELLER_ID)
+        if not seller_id:
+            continue
+
+        seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
+        if not seller_doc.exists:
+            continue
+
+        seller_email = (seller_doc.to_dict() or {}).get(Fields.EMAIL)
+        if not seller_email:
+            continue
+
+        product_name = data.get(Fields.NAME, "Your product")
+        subject = f"[Origna] Low stock alert: {product_name}"
+        html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #E53E3E;">⚠️ Low Stock Alert</h2>
+  <p>Your product <strong>{product_name}</strong> is running low on stock.</p>
+  <table style="width:100%; border-collapse:collapse; margin: 16px 0;">
+    <tr><td style="padding:6px 0; color:#666; width:160px;">Current stock</td>
+        <td style="font-weight:bold; color:#E53E3E;">{stock} unit{'s' if stock != 1 else ''} remaining</td></tr>
+    <tr><td style="padding:6px 0; color:#666;">Alert threshold</td>
+        <td>{threshold} units</td></tr>
+    <tr><td style="padding:6px 0; color:#666;">Product ID</td>
+        <td><code style="font-size:12px;">{doc.id}</code></td></tr>
+  </table>
+  <p>Please restock soon to avoid missing sales.</p>
+  <p style="margin-top:20px;">
+    <a href="https://orignagta.ca/seller/products" style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
+      Manage Inventory
+    </a>
+  </p>
+  <p style="color:#999; font-size:12px; margin-top:20px;">
+    You are receiving this because you enabled low stock alerts for this product.<br>
+    To disable, edit the product and uncheck "Notify me when stock falls below threshold".<br>
+    Origna Ventures Inc. — {EmailConfig.PHYSICAL_ADDRESS}
+  </p>
+</div>"""
+
+        try:
+            send_email(seller_email, subject, html)
+            get_db().collection(Collections.PRODUCTS).document(doc.id).update(
+                {Fields.LAST_LOW_STOCK_ALERT_AT: now_utc}
+            )
+            alerted_count += 1
+            logger.info(f"Low stock alert sent for product {doc.id} (stock={stock}, threshold={threshold})")
+        except Exception as e:
+            logger.error(f"Failed to send low stock alert for {doc.id}: {e}")
+
+    logger.info(f"check_low_stock_alerts done: {checked_count} checked, {alerted_count} alerted")
+
+
+@scheduler_fn.on_schedule(schedule="every 24 hours", **CRON_OPTIONS)
+def send_abandoned_cart_emails(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    TASK 10 — Daily cron: email buyers who have items in cart but haven't checked out.
+
+    Logic:
+    - Only users with marketingOptIn=True (CASL compliance)
+    - lastCheckoutTimestamp is None OR > 24h ago
+    - User has at least one active product in their cart subcollection
+    - lastCartAbandonEmailAt is None OR > 72h ago (3-day cooldown)
+    - Skip users whose cart items are all deactivated/deleted
+    """
+    from datetime import timezone
+    from services.email_service import send_email
+
+    logger.info("Running send_abandoned_cart_emails cron job")
+
+    now_utc = datetime.now(timezone.utc)
+    cooldown_cutoff = now_utc - timedelta(hours=72)
+    checkout_cutoff = now_utc - timedelta(hours=24)
+    sent_count = 0
+    skipped_count = 0
+
+    # Fetch users who opted into marketing and haven't been emailed in 3 days
+    users_query = (
+        get_db()
+        .collection(Collections.USERS)
+        .where(Fields.MARKETING_OPT_IN, "==", True)
+        .limit(500)
+    )
+
+    for user_doc in users_query.stream():
+        user_data = user_doc.to_dict() or {}
+        user_id = user_doc.id
+        user_email = user_data.get(Fields.EMAIL)
+
+        if not user_email:
+            continue
+
+        # 3-day cooldown check
+        last_abandon_email = user_data.get(Fields.LAST_CART_ABANDON_EMAIL_AT)
+        if last_abandon_email:
+            if hasattr(last_abandon_email, "tzinfo") and last_abandon_email.tzinfo is None:
+                last_abandon_email = last_abandon_email.replace(tzinfo=timezone.utc)
+            if last_abandon_email > cooldown_cutoff:
+                skipped_count += 1
+                continue
+
+        # Skip if checked out recently (< 24h ago)
+        last_checkout = user_data.get(Fields.LAST_CHECKOUT_TIMESTAMP)
+        if last_checkout:
+            if hasattr(last_checkout, "tzinfo") and last_checkout.tzinfo is None:
+                last_checkout = last_checkout.replace(tzinfo=timezone.utc)
+            if last_checkout > checkout_cutoff:
+                skipped_count += 1
+                continue
+
+        # Check cart subcollection
+        cart_items = list(
+            get_db()
+            .collection(Collections.USERS)
+            .document(user_id)
+            .collection(Collections.CART)
+            .limit(10)
+            .stream()
+        )
+
+        if not cart_items:
+            continue
+
+        # Verify at least one cart item is still active
+        active_product_names: list[str] = []
+        for cart_doc in cart_items:
+            cart_data = cart_doc.to_dict() or {}
+            product_id = cart_data.get(Fields.PRODUCT_ID) or cart_doc.id
+            product_doc = get_db().collection(Collections.PRODUCTS).document(product_id).get()
+            if product_doc.exists:
+                pd = product_doc.to_dict() or {}
+                if pd.get(Fields.IS_ACTIVE) and pd.get(Fields.STOCK_QUANTITY, 0) > 0:
+                    active_product_names.append(pd.get(Fields.NAME, "an item"))
+            if len(active_product_names) >= 3:
+                break
+
+        if not active_product_names:
+            skipped_count += 1
+            continue
+
+        # Build simple abandoned cart email
+        product_list_html = "".join(f"<li>{name}</li>" for name in active_product_names)
+        more_label = f" (and {len(cart_items) - len(active_product_names)} more)" if len(cart_items) > len(active_product_names) else ""
+        display_name = user_data.get(Fields.NAME) or "there"
+        subject = "You left something in your cart — Origna"
+        html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #5B30F6;">Your cart is waiting 🛒</h2>
+  <p>Hi {display_name},</p>
+  <p>You have items in your cart that are still available:</p>
+  <ul style="margin:12px 0; padding-left:20px;">
+    {product_list_html}
+  </ul>
+  {f'<p style="color:#666; font-size:13px;">{more_label}</p>' if more_label else ''}
+  <p style="margin-top:20px;">
+    <a href="https://orignagta.ca/cart" style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
+      Complete your purchase
+    </a>
+  </p>
+  <p style="color:#999; font-size:12px; margin-top:24px;">
+    You are receiving this reminder because you opted in to marketing emails.<br>
+    <a href="https://orignagta.ca/settings/notifications" style="color:#999;">Unsubscribe</a> · Origna Ventures Inc.
+  </p>
+</div>"""
+
+        try:
+            send_email(user_email, subject, html)
+            get_db().collection(Collections.USERS).document(user_id).update(
+                {Fields.LAST_CART_ABANDON_EMAIL_AT: now_utc}
+            )
+            sent_count += 1
+        except Exception as e:
+            logger.error(f"Failed to send abandoned cart email to user {user_id}: {e}")
+
+    logger.info(f"send_abandoned_cart_emails done: {sent_count} sent, {skipped_count} skipped")
+
+
+@scheduler_fn.on_schedule(schedule="every 168 hours", **CRON_OPTIONS)  # weekly
+def compute_seller_metrics(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    TASK 11 — Weekly cron: compute seller health metrics and raise security alerts for threshold breaches.
+
+    Thresholds → SECURITY_ALERT:
+    - disputeRate  > 5%
+    - refundRate   > 15%
+    - cancellationRate > 10%
+
+    Metrics are written to seller_metrics/{sellerId}.
+    """
+    from datetime import timezone
+    from schema_constants import SecurityAlertTypes, SeverityLevels
+
+    logger.info("Running compute_seller_metrics cron job")
+
+    now_utc = datetime.now(timezone.utc)
+    window_start = now_utc - timedelta(days=30)
+    processed_count = 0
+    alerted_count = 0
+
+    DISPUTE_THRESHOLD = 0.05
+    REFUND_THRESHOLD = 0.15
+    CANCEL_THRESHOLD = 0.10
+
+    # Get all sellers
+    sellers_query = (
+        get_db()
+        .collection(Collections.USERS)
+        .where("roles", "array_contains", "seller")
+        .limit(500)
+    )
+
+    for seller_doc in sellers_query.stream():
+        seller_id = seller_doc.id
+        seller_data = seller_doc.to_dict() or {}
+
+        if not seller_data.get("isSeller") and "seller" not in (seller_data.get("roles") or []):
+            continue
+
+        # Fetch orders for this seller in the last 30 days
+        orders_query = (
+            get_db()
+            .collection(Collections.ORDERS)
+            .where(Fields.SELLER_IDS, "array_contains", seller_id)
+            .where(Fields.CREATED_AT, ">=", window_start)
+            .limit(500)
+        )
+
+        orders = list(orders_query.stream())
+        total_orders = len(orders)
+
+        if total_orders == 0:
+            # Write zero-metrics doc (no alert)
+            get_db().collection(Collections.SELLER_METRICS).document(seller_id).set({
+                Fields.SELLER_ID: seller_id,
+                Fields.DISPUTE_RATE: 0.0,
+                Fields.REFUND_RATE: 0.0,
+                Fields.CANCELLATION_RATE: 0.0,
+                Fields.LATE_SHIPMENT_RATE: 0.0,
+                Fields.AVG_RESPONSE_TIME_HOURS: 0.0,
+                Fields.TOTAL_ORDERS_30D: 0,
+                Fields.TOTAL_REVENUE_CENTS_30D: 0,
+                Fields.COMPUTED_AT: now_utc,
+            })
+            processed_count += 1
+            continue
+
+        # Tally metrics
+        disputed = 0
+        refunded = 0
+        cancelled = 0
+        late_shipped = 0
+        total_revenue_cents = 0
+
+        for order_doc in orders:
+            od = order_doc.to_dict() or {}
+            status = od.get(Fields.ORDER_STATUS, "")
+            payment_status = od.get(Fields.PAYMENT_STATUS, "")
+
+            if status == OrderStatusValues.CANCELLED:
+                cancelled += 1
+            if payment_status == "refunded":
+                refunded += 1
+
+            # Revenue: sum payout amounts for this seller
+            payouts = od.get("sellerPayouts") or []
+            for payout in payouts:
+                if isinstance(payout, dict) and payout.get(Fields.SELLER_ID) == seller_id:
+                    total_revenue_cents += payout.get("sellerAmountCents", 0)
+
+            # Dispute: check if order has an associated dispute in webhook_events
+            if od.get("hasDispute"):
+                disputed += 1
+
+            # Late shipment: shipped > estimatedShipDays after order
+            items = od.get(Fields.ITEMS, [])
+            for item in items:
+                if isinstance(item, dict) and item.get(Fields.SELLER_ID) == seller_id:
+                    shipped_at = item.get("shippedAt")
+                    created_at = od.get(Fields.CREATED_AT)
+                    est_days = item.get(Fields.ESTIMATED_SHIP_DAYS, 3)
+                    if shipped_at and created_at:
+                        if hasattr(shipped_at, "tzinfo") and shipped_at.tzinfo is None:
+                            shipped_at = shipped_at.replace(tzinfo=timezone.utc)
+                        if hasattr(created_at, "tzinfo") and created_at.tzinfo is None:
+                            created_at = created_at.replace(tzinfo=timezone.utc)
+                        actual_days = (shipped_at - created_at).days
+                        if actual_days > est_days:
+                            late_shipped += 1
+
+        dispute_rate = disputed / total_orders
+        refund_rate = refunded / total_orders
+        cancel_rate = cancelled / total_orders
+        late_rate = late_shipped / total_orders
+
+        # Write metrics
+        get_db().collection(Collections.SELLER_METRICS).document(seller_id).set({
+            Fields.SELLER_ID: seller_id,
+            Fields.DISPUTE_RATE: round(dispute_rate, 4),
+            Fields.REFUND_RATE: round(refund_rate, 4),
+            Fields.CANCELLATION_RATE: round(cancel_rate, 4),
+            Fields.LATE_SHIPMENT_RATE: round(late_rate, 4),
+            Fields.AVG_RESPONSE_TIME_HOURS: 0.0,  # TODO: implement response time tracking
+            Fields.TOTAL_ORDERS_30D: total_orders,
+            Fields.TOTAL_REVENUE_CENTS_30D: total_revenue_cents,
+            Fields.COMPUTED_AT: now_utc,
+        })
+        processed_count += 1
+
+        # Check threshold breaches (only for active sellers)
+        seller_status = seller_data.get(Fields.STATUS, "active")
+        if seller_status not in ("suspended", "banned"):
+            breaches = []
+            if dispute_rate > DISPUTE_THRESHOLD:
+                breaches.append(f"disputeRate={dispute_rate:.1%}")
+            if refund_rate > REFUND_THRESHOLD:
+                breaches.append(f"refundRate={refund_rate:.1%}")
+            if cancel_rate > CANCEL_THRESHOLD:
+                breaches.append(f"cancellationRate={cancel_rate:.1%}")
+
+            if breaches:
+                get_db().collection("security_alerts").add({
+                    "type": SecurityAlertTypes.SELLER_METRICS_BREACH,
+                    Fields.SELLER_ID: seller_id,
+                    "breaches": breaches,
+                    "totalOrders": total_orders,
+                    "severity": SeverityLevels.HIGH,
+                    Fields.CREATED_AT: now_utc,
+                    "requiresManualReview": True,
+                })
+                alerted_count += 1
+                logger.warning(f"Seller {seller_id} metrics breach: {', '.join(breaches)}")
+
+    logger.info(f"compute_seller_metrics done: {processed_count} sellers processed, {alerted_count} alerts raised")
+
+
+# ============================================================================
+# TRENDING PRODUCTS CRON
+# ============================================================================
+
+TRENDING_TOP_N = 20  # How many products to mark as trending
+TRENDING_WINDOW_HOURS = 48  # Look-back window for trending signals
+TRENDING_PURCHASE_WEIGHT = 3  # Purchases are 3× more valuable than views
+TRENDING_FAVORITE_WEIGHT = 2  # Favorites are 2× more valuable than views
+
+
+@scheduler_fn.on_schedule(schedule="every 6 hours", **CRON_OPTIONS)
+def compute_trending_products(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    Compute trending products every 6 hours.
+    Score = viewCount + purchaseCount×3 + favoriteCount×2 within last 48h.
+    Tags top-20 as isTrending=True, clears old trending flags.
+    Sends FCM to premium users with notifyTrending=True.
+    """
+    from datetime import timezone
+
+    from schema_constants import SubscriptionStatusValues
+
+    now = datetime.now(timezone.utc)
+    window_start = now - timedelta(hours=TRENDING_WINDOW_HOURS)
+
+    db = get_db()
+    logger.info("compute_trending_products started")
+
+    # Fetch all active approved products
+    products_query = (
+        db.collection(Collections.PRODUCTS)
+        .where(Fields.IS_ACTIVE, "==", True)
+        .where(Fields.APPROVAL_STATUS, "==", ProductApprovalStatusValues.APPROVED)
+        .stream()
+    )
+
+    scored: list[tuple[int, str, str, str]] = []  # (score, productId, name, imageUrl)
+
+    for prod_snap in products_query:
+        data = prod_snap.to_dict() or {}
+        view_count = data.get(Fields.VIEW_COUNT, 0) or 0
+        purchase_count = data.get(Fields.PURCHASE_COUNT, 0) or 0
+        # Favorite count is not stored on product doc yet; use 0 until we track it
+        score = view_count + purchase_count * TRENDING_PURCHASE_WEIGHT
+        if score > 0:
+            images = data.get(Fields.IMAGE_URLS) or []
+            image_url = images[0] if images else None
+            scored.append((score, prod_snap.id, data.get(Fields.NAME, ""), image_url))
+
+    # Sort descending and take top N
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top_ids = {item[1] for item in scored[:TRENDING_TOP_N]}
+    top_products = scored[:TRENDING_TOP_N]
+
+    batch = db.batch()
+
+    # Mark top-N as trending
+    for _score, prod_id, _name, _img in top_products:
+        ref = db.collection(Collections.PRODUCTS).document(prod_id)
+        batch.update(ref, {
+            Fields.IS_TRENDING: True,
+            Fields.TRENDING_AT: now,
+            Fields.TRENDING_SCORE: _score,
+        })
+
+    # Clear trending from products that dropped out of top-N
+    old_trending = (
+        db.collection(Collections.PRODUCTS)
+        .where(Fields.IS_TRENDING, "==", True)
+        .stream()
+    )
+    cleared = 0
+    for snap in old_trending:
+        if snap.id not in top_ids:
+            batch.update(snap.reference, {
+                Fields.IS_TRENDING: False,
+                Fields.TRENDING_SCORE: snap.to_dict().get(Fields.TRENDING_SCORE, 0),
+            })
+            cleared += 1
+
+    batch.commit()
+    logger.info(f"Trending: {len(top_products)} products marked trending, {cleared} cleared")
+
+    # Notify premium users who opted in
+    if top_products:
+        _notify_trending_products(db, top_products[:5])  # notify about top 5
+
+
+def _notify_trending_products(db, top_products: list[tuple]) -> None:
+    """Send FCM push to premium users with notifyTrending=True (max 500)."""
+    try:
+        from firebase_admin import messaging
+
+        users_query = (
+            db.collection(Collections.USERS)
+            .where(Fields.IS_PREMIUM, "==", True)
+            .where(Fields.NOTIFY_TRENDING, "==", True)
+            .limit(500)
+            .stream()
+        )
+
+        tokens = [
+            (user.to_dict() or {}).get(Fields.FCM_TOKEN)
+            for user in users_query
+            if (user.to_dict() or {}).get(Fields.FCM_TOKEN)
+        ]
+
+        if not tokens:
+            return
+
+        names = ", ".join(item[2] for item in top_products[:3])
+        msg = messaging.MulticastMessage(
+            tokens=tokens,
+            notification=messaging.Notification(
+                title="🔥 Trending Now on Origna",
+                body=f"{names} and more are trending right now!",
+            ),
+            data={"type": "trending", "screen": "/trending"},
+        )
+        response = messaging.send_each_for_multicast(msg)
+        logger.info(f"Trending FCM sent: {response.success_count} ok, {response.failure_count} failed")
+    except Exception as e:
+        logger.error(f"Failed to send trending FCM: {e}")

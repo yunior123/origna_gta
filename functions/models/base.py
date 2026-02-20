@@ -113,6 +113,7 @@ class Address(BaseModel):
     phoneNumber: str | None = Field(default=None, description="Contact phone number for delivery")
     isDefault: bool = Field(default=False, description="Whether this is the default address")
     label: str | None = Field(default=None, max_length=20, description="Address label (Home, Work, Other)")
+    addressId: str | None = Field(default=None, description="Unique identifier for the address document")
     latitude: float | None = Field(default=None, ge=-90, le=90, description="Latitude for mapping/delivery routing")
     longitude: float | None = Field(default=None, ge=-180, le=180, description="Longitude for mapping/delivery routing")
 

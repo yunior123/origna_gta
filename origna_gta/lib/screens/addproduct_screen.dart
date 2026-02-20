@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/config/supplier_config.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
@@ -10,7 +11,6 @@ import 'package:origna_gta/screens/seller/seller_warehouses_screen.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
-import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 import '../../features/products/add_product_state.dart';
@@ -29,6 +29,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
+  final _compareAtPriceController = TextEditingController();
   final _categoryController = TextEditingController();
   final _streetController = TextEditingController();
   final _apartmentController = TextEditingController();
@@ -73,6 +74,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   bool _inventoryManaged = true;
   bool _trackQuantity = true;
   bool _allowBackorder = false;
+  bool _lowStockAlertEnabled = false;
   bool _hasAttemptedSubmit = false;
 
   // Active section for stepper
@@ -98,14 +100,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
   };
 
   @override
-  void initState() {
-    super.initState();
-    _fadeController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
-    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
-    _fadeController.forward();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final state = ref.watch(addProductViewModelProvider);
     final viewModel = ref.read(addProductViewModelProvider.notifier);
@@ -115,23 +109,19 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         _onSuccess();
       } else if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
         ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          key: const Key('addproduct_error_snackbar'),
-          content: Text(next.errorMessage!),
-          backgroundColor: DesignTokens.error,
-          duration: const Duration(seconds: 5),
-          behavior: SnackBarBehavior.floating,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            key: const Key('addproduct_error_snackbar'),
+            content: Text(next.errorMessage!),
+            backgroundColor: DesignTokens.error,
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     });
 
-    final maxWidth = ResponsiveBreakpoints.getValue<double>(
-      context: context,
-      mobile: double.infinity,
-      mobilePlus: 540,
-      tablet: 640,
-      desktop: 720,
-    );
+    final maxWidth = ResponsiveBreakpoints.getValue<double>(context: context, mobile: double.infinity, mobilePlus: 540, tablet: 640, desktop: 720);
 
     return Scaffold(
       backgroundColor: DesignTokens.surface,
@@ -148,11 +138,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    DesignTokens.gradientStart,
-                    DesignTokens.gradientMiddle,
-                    DesignTokens.gradientEnd,
-                  ],
+                  colors: [DesignTokens.gradientStart, DesignTokens.gradientMiddle, DesignTokens.gradientEnd],
                 ),
               ),
               child: Stack(
@@ -164,10 +150,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                     child: Container(
                       width: 120,
                       height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.06),
-                      ),
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.06)),
                     ),
                   ),
                   Positioned(
@@ -176,10 +159,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                     child: Container(
                       width: 80,
                       height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.04),
-                      ),
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.04)),
                     ),
                   ),
                 ],
@@ -201,10 +181,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                         tooltip: 'product.go_back'.tr(),
                         icon: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
                           child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
                         ),
                       ),
@@ -212,21 +189,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                         child: Text(
                           key: const Key('addproduct_screen_title'),
                           'product.new_product'.tr(),
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: 0.3,
-                          ),
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.3),
                         ),
                       ),
                       // Step indicator
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: List.generate(5, (i) {
@@ -258,9 +227,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                           constraints: BoxConstraints(maxWidth: maxWidth),
                           child: Form(
                             key: _formKey,
-                            autovalidateMode: _hasAttemptedSubmit
-                                ? AutovalidateMode.onUserInteraction
-                                : AutovalidateMode.disabled,
+                            autovalidateMode: _hasAttemptedSubmit ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -316,6 +283,29 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           ),
                                         ),
                                       ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildGlassTextField(
+                                      key: const Key('product_compare_at_price_field'),
+                                      controller: _compareAtPriceController,
+                                      label: 'product.compare_at_price'.tr(),
+                                      icon: Icons.local_offer_rounded,
+                                      hint: 'product.compare_at_price_hint'.tr(),
+                                      keyboardType: TextInputType.number,
+                                      prefixText: '\$ ',
+                                      validator: (v) {
+                                        if (v == null || v.isEmpty) return null; // optional field
+                                        final cap = double.tryParse(v);
+                                        if (cap == null) return 'product.invalid_price'.tr();
+                                        final currentPrice = double.tryParse(_priceController.text.trim()) ?? 0;
+                                        if (cap <= currentPrice) return 'product.compare_at_price_must_be_higher'.tr();
+                                        return null;
+                                      },
+                                    ),
+                                    _buildTappableInfoHint(
+                                      'product.compare_at_price_learn_more'.tr(),
+                                      'product.compare_at_price'.tr(),
+                                      'product.compare_at_price_info_body'.tr(),
                                     ),
                                     const SizedBox(height: 16),
                                     Row(
@@ -385,9 +375,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                   icon: Icons.photo_library_rounded,
                                   title: 'product.product_images'.tr(),
                                   subtitle: 'product.up_to_5_photos'.tr(),
-                                  children: [
-                                    ProductAddImages(imageModels: state.imageModels, onImagesChanged: viewModel.updateImages),
-                                  ],
+                                  children: [ProductAddImages(imageModels: state.imageModels, onImagesChanged: viewModel.updateImages)],
                                 ),
                                 const SizedBox(height: 16),
 
@@ -413,14 +401,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       Padding(
                                         key: const Key('addproduct_digital_info_banner'),
                                         padding: const EdgeInsets.only(top: 8),
-                                        child: _buildInfoBanner(
-                                          'product.digital_skip_shipping'.tr(),
-                                          Icons.info_outline_rounded,
-                                          DesignTokens.info,
-                                        ),
+                                        child: _buildInfoBanner('product.digital_skip_shipping'.tr(), Icons.info_outline_rounded, DesignTokens.info),
                                       ),
-                                    if (state.isDigital)
-                                      _buildDigitalProductSection(context, state, viewModel),
+                                    if (state.isDigital) _buildDigitalProductSection(context, state, viewModel),
                                     if (!state.isDigital) ...[
                                       const SizedBox(height: 12),
                                       _buildGlassToggle(
@@ -445,9 +428,22 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         children: [
                                           Row(
                                             children: [
-                                              Expanded(child: _buildGlassTextField(controller: _standardDaysController, label: 'product.days_label'.tr(), keyboardType: TextInputType.number)),
+                                              Expanded(
+                                                child: _buildGlassTextField(
+                                                  controller: _standardDaysController,
+                                                  label: 'product.days_label'.tr(),
+                                                  keyboardType: TextInputType.number,
+                                                ),
+                                              ),
                                               const SizedBox(width: 12),
-                                              Expanded(child: _buildGlassTextField(controller: _standardPriceController, label: 'product.price_dollar'.tr(), keyboardType: TextInputType.number, hint: 'product.free_hint'.tr())),
+                                              Expanded(
+                                                child: _buildGlassTextField(
+                                                  controller: _standardPriceController,
+                                                  label: 'product.price_dollar'.tr(),
+                                                  keyboardType: TextInputType.number,
+                                                  hint: 'product.free_hint'.tr(),
+                                                ),
+                                              ),
                                             ],
                                           ),
                                         ],
@@ -457,11 +453,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       if (state.freeShipping)
                                         Padding(
                                           padding: const EdgeInsets.only(top: 12),
-                                          child: _buildInfoBanner(
-                                            'product.free_shipping_banner'.tr(),
-                                            Icons.local_shipping_rounded,
-                                            DesignTokens.success,
-                                          ),
+                                          child: _buildInfoBanner('product.free_shipping_banner'.tr(), Icons.local_shipping_rounded, DesignTokens.success),
                                         ),
                                       if (!state.freeShipping) ...[
                                         const SizedBox(height: 10),
@@ -477,9 +469,21 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           children: [
                                             Row(
                                               children: [
-                                                Expanded(child: _buildGlassTextField(controller: _expressDaysController, label: 'product.days_label'.tr(), keyboardType: TextInputType.number)),
+                                                Expanded(
+                                                  child: _buildGlassTextField(
+                                                    controller: _expressDaysController,
+                                                    label: 'product.days_label'.tr(),
+                                                    keyboardType: TextInputType.number,
+                                                  ),
+                                                ),
                                                 const SizedBox(width: 12),
-                                                Expanded(child: _buildGlassTextField(controller: _expressPriceController, label: 'product.price_dollar'.tr(), keyboardType: TextInputType.number)),
+                                                Expanded(
+                                                  child: _buildGlassTextField(
+                                                    controller: _expressPriceController,
+                                                    label: 'product.price_dollar'.tr(),
+                                                    keyboardType: TextInputType.number,
+                                                  ),
+                                                ),
                                               ],
                                             ),
                                           ],
@@ -495,7 +499,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           infoTitle: 'product.same_day_delivery'.tr(),
                                           infoBody: 'product.same_day_delivery_info_body'.tr(),
                                           children: [
-                                            _buildGlassTextField(controller: _sameDayPriceController, label: 'product.price_dollar'.tr(), keyboardType: TextInputType.number),
+                                            _buildGlassTextField(
+                                              controller: _sameDayPriceController,
+                                              label: 'product.price_dollar'.tr(),
+                                              keyboardType: TextInputType.number,
+                                            ),
                                           ],
                                         ),
                                         const SizedBox(height: 16),
@@ -526,16 +534,43 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       ),
                                       if (!state.isLocalDeliveryOnly) ...[
                                         const SizedBox(height: 16),
-                                        _buildGlassTextField(controller: _weightController, key: const Key('addproduct_weight_field'), label: 'product.weight'.tr(), icon: Icons.scale_rounded, keyboardType: TextInputType.number),
+                                        _buildGlassTextField(
+                                          controller: _weightController,
+                                          key: const Key('addproduct_weight_field'),
+                                          label: 'product.weight'.tr(),
+                                          icon: Icons.scale_rounded,
+                                          keyboardType: TextInputType.number,
+                                        ),
                                         const SizedBox(height: 12),
                                         // Dimensions row
                                         Row(
                                           children: [
-                                            Expanded(child: _buildGlassTextField(controller: _lengthController, key: const Key('addproduct_length_field'), label: 'product.length_cm'.tr(), keyboardType: TextInputType.number)),
+                                            Expanded(
+                                              child: _buildGlassTextField(
+                                                controller: _lengthController,
+                                                key: const Key('addproduct_length_field'),
+                                                label: 'product.length_cm'.tr(),
+                                                keyboardType: TextInputType.number,
+                                              ),
+                                            ),
                                             const SizedBox(width: 8),
-                                            Expanded(child: _buildGlassTextField(controller: _widthController, key: const Key('addproduct_width_field'), label: 'product.width_cm'.tr(), keyboardType: TextInputType.number)),
+                                            Expanded(
+                                              child: _buildGlassTextField(
+                                                controller: _widthController,
+                                                key: const Key('addproduct_width_field'),
+                                                label: 'product.width_cm'.tr(),
+                                                keyboardType: TextInputType.number,
+                                              ),
+                                            ),
                                             const SizedBox(width: 8),
-                                            Expanded(child: _buildGlassTextField(controller: _heightController, key: const Key('addproduct_height_field'), label: 'product.height_cm'.tr(), keyboardType: TextInputType.number)),
+                                            Expanded(
+                                              child: _buildGlassTextField(
+                                                controller: _heightController,
+                                                key: const Key('addproduct_height_field'),
+                                                label: 'product.height_cm'.tr(),
+                                                keyboardType: TextInputType.number,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                         _buildTappableInfoHint(
@@ -584,11 +619,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       ),
                                     ],
                                     const SizedBox(height: 12),
-                                    _buildInfoBanner(
-                                      'product.supplier_cost_banner'.tr(),
-                                      Icons.info_outline_rounded,
-                                      DesignTokens.info,
-                                    ),
+                                    _buildInfoBanner('product.supplier_cost_banner'.tr(), Icons.info_outline_rounded, DesignTokens.info),
                                     const SizedBox(height: 12),
                                     Row(
                                       children: [
@@ -606,7 +637,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                           child: _buildGlassDropdown(
                                             label: 'product.currency_label'.tr(),
                                             value: _selectedSupplierCurrency,
-                                            items: getSupplierConfig(_selectedSupplierType).supportedCurrencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                                            items: getSupplierConfig(
+                                              _selectedSupplierType,
+                                            ).supportedCurrencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                                             onChanged: (v) => setState(() => _selectedSupplierCurrency = v ?? 'USD'),
                                           ),
                                         ),
@@ -617,11 +650,22 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                     const SizedBox(height: 12),
                                     _buildGlassTextField(controller: _supplierSkuController, label: 'product.supplier_sku'.tr(), icon: Icons.qr_code_2_rounded),
                                     const SizedBox(height: 12),
-                                    _buildGlassTextField(controller: _supplierUrlController, label: 'product.supplier_url'.tr(), icon: Icons.link_rounded, keyboardType: TextInputType.url),
+                                    _buildGlassTextField(
+                                      controller: _supplierUrlController,
+                                      label: 'product.supplier_url'.tr(),
+                                      icon: Icons.link_rounded,
+                                      keyboardType: TextInputType.url,
+                                    ),
                                     const SizedBox(height: 12),
                                     Row(
                                       children: [
-                                        Expanded(child: _buildGlassTextField(controller: _supplierShippingDaysController, label: 'product.ship_days'.tr(), icon: Icons.schedule_rounded)),
+                                        Expanded(
+                                          child: _buildGlassTextField(
+                                            controller: _supplierShippingDaysController,
+                                            label: 'product.ship_days'.tr(),
+                                            icon: Icons.schedule_rounded,
+                                          ),
+                                        ),
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: _buildGlassToggle(
@@ -636,7 +680,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                       ],
                                     ),
                                     const SizedBox(height: 12),
-                                    _buildGlassTextField(controller: _supplierNotesController, label: 'product.internal_notes'.tr(), icon: Icons.sticky_note_2_rounded, maxLines: 2),
+                                    _buildGlassTextField(
+                                      controller: _supplierNotesController,
+                                      label: 'product.internal_notes'.tr(),
+                                      icon: Icons.sticky_note_2_rounded,
+                                      maxLines: 2,
+                                    ),
                                     const SizedBox(height: 24),
                                     _buildSubSectionHeader('product.inventory_settings'.tr(), Icons.warehouse_rounded),
                                     const SizedBox(height: 12),
@@ -671,13 +720,24 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                         infoTitle: 'product.allow_backorders'.tr(),
                                         infoBody: 'product.allow_backorders_info_body'.tr(),
                                       ),
-                                      const SizedBox(height: 12),
-                                      _buildGlassTextField(
-                                        controller: _lowStockThresholdController,
+                                      const SizedBox(height: 8),
+                                      _buildGlassToggle(
+                                        key: const Key('addproduct_low_stock_alert_toggle'),
                                         label: 'product.low_stock_alert'.tr(),
-                                        icon: Icons.warning_amber_rounded,
-                                        keyboardType: TextInputType.number,
+                                        subtitle: 'product.low_stock_alert_subtitle'.tr(),
+                                        icon: Icons.notifications_active_rounded,
+                                        value: _lowStockAlertEnabled,
+                                        onChanged: (v) => setState(() => _lowStockAlertEnabled = v),
                                       ),
+                                      if (_lowStockAlertEnabled) ...[
+                                        const SizedBox(height: 8),
+                                        _buildGlassTextField(
+                                          controller: _lowStockThresholdController,
+                                          label: 'product.low_stock_threshold'.tr(),
+                                          icon: Icons.warning_amber_rounded,
+                                          keyboardType: TextInputType.number,
+                                        ),
+                                      ],
                                     ],
                                   ],
                                 ),
@@ -702,74 +762,140 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
-  // ─── SECTION BUILDERS ─────────────────────────────────────────────────
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _nameController.dispose();
+    _descriptionController.dispose();
+    _priceController.dispose();
+    _categoryController.dispose();
+    _streetController.dispose();
+    _apartmentController.dispose();
+    _cityController.dispose();
+    _postalCodeController.dispose();
+    _stockController.dispose();
+    _weightController.dispose();
+    _lengthController.dispose();
+    _widthController.dispose();
+    _heightController.dispose();
+    _taxCodeController.dispose();
+    _minOrderController.dispose();
+    _standardDaysController.dispose();
+    _standardPriceController.dispose();
+    _expressDaysController.dispose();
+    _expressPriceController.dispose();
+    _sameDayPriceController.dispose();
+    _costController.dispose();
+    _supplierSkuController.dispose();
+    _sellerSkuController.dispose();
+    _supplierUrlController.dispose();
+    _supplierShippingDaysController.dispose();
+    _supplierNotesController.dispose();
+    _customSupplierNameController.dispose();
+    _lowStockThresholdController.dispose();
+    _shippingDiscount3Controller.dispose();
+    _shippingDiscount5Controller.dispose();
+    _additionalItemCostController.dispose();
+    _maxItemsPerShipmentController.dispose();
+    super.dispose();
+  }
 
-  Widget _buildSectionCard({
-    Key? key,
-    required int index,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required List<Widget> children,
-  }) {
-    return TapRegion(
-      key: key,
-      onTapInside: (_) {
-        if (_activeStep != index) setState(() => _activeStep = index);
-      },
-      child: AnimatedContainer(
-        duration: DesignTokens.durationNormal,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: _activeStep == index ? DesignTokens.primary.withValues(alpha: 0.3) : DesignTokens.outlineVariant,
-            width: _activeStep == index ? 1.5 : 1,
-          ),
-          boxShadow: _activeStep == index ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 4))] : DesignTokens.shadowSm,
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
+    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
+    _fadeController.forward();
+  }
+
+  Widget _buildAddressSuggestions(AddProductState state, AddProductViewModel viewModel) {
+    return Container(
+      key: const Key('addproduct_address_suggestions'),
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: DesignTokens.shadowLg,
+        border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.2)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: ListView.separated(
+          shrinkWrap: true,
+          itemCount: state.addressSuggestions.length,
+          separatorBuilder: (_, _) => Divider(height: 1, color: DesignTokens.outlineVariant),
+          itemBuilder: (context, i) {
+            final s = state.addressSuggestions[i];
+            return ListTile(
+              dense: true,
+              leading: Icon(Icons.location_on_rounded, size: 18, color: DesignTokens.primary),
+              title: Text(s['properties']?['formatted'] ?? '', style: const TextStyle(fontSize: 13)),
+              onTap: () {
+                viewModel.selectAddress(s);
+                final props = s['properties'] as Map<String, dynamic>?;
+                final street = (props?['street'] as String?)?.trim() ?? '';
+                final houseNumber =
+                    (props?['housenumber'] as String?)?.trim() ??
+                    (props?['house_number'] as String?)?.trim() ??
+                    (props?['address_line1'] as String?)?.trim() ??
+                    '';
+                final formatted = (props?['formatted'] as String?)?.trim() ?? '';
+
+                final fullStreet = (houseNumber.isNotEmpty && street.isNotEmpty) ? '$houseNumber $street' : (street.isNotEmpty ? street : formatted);
+
+                _streetController.text = fullStreet;
+                _cityController.text = s['properties']?['city'] ?? '';
+                _postalCodeController.text = s['properties']?['postcode'] ?? '';
+              },
+            );
+          },
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Section header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+      ),
+    );
+  }
+
+  // ─── SPECIALIZED WIDGETS ──────────────────────────────────────────────
+
+  Widget _buildCategorySelector(AddProductViewModel viewModel) {
+    return DropdownButtonFormField<String>(
+      key: const Key('addproduct_category_selector'),
+      decoration: InputDecoration(
+        labelText: 'Category',
+        prefixIcon: const Icon(Icons.category_rounded, size: 20),
+        filled: true,
+        fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.5)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+      ),
+      items: productCategories
+          .map(
+            (c) => DropdownMenuItem(
+              key: Key('category_item_${c.name}'),
+              value: c.categoryId.toString(),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: DesignTokens.primaryGradient,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(icon, color: Colors.white, size: 20),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface, letterSpacing: -0.3)),
-                        const SizedBox(height: 2),
-                        Text(subtitle, style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
-                      ],
-                    ),
-                  ),
-                  // Active indicator icon
-                  if (_activeStep == index)
-                    Icon(Icons.edit_rounded, size: 18, color: DesignTokens.primary),
+                  Icon(c.icon, size: 18, color: DesignTokens.primary),
+                  const SizedBox(width: 10),
+                  Text(c.name.tr()),
                 ],
               ),
             ),
-            const Divider(height: 24, indent: 20, endIndent: 20),
-            // Section content
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
-            ),
-          ],
-        ),
-      ),
+          )
+          .toList(),
+      onChanged: (v) => _categoryController.text = v ?? '',
+      validator: (v) => v == null ? 'Required' : null,
     );
   }
 
@@ -803,7 +929,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             ),
             child: Icon(icon, color: Colors.white, size: 20),
           ),
-          title: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface, letterSpacing: -0.3)),
+          title: Text(
+            title,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface, letterSpacing: -0.3),
+          ),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 2),
             child: Text(subtitle, style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
@@ -811,6 +940,248 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
           children: children,
         ),
       ),
+    );
+  }
+
+  // ─── DATA BUILDERS ────────────────────────────────────────────────────
+
+  List<SellerDeliveryOption> _buildDeliveryOptions(AddProductState state) {
+    if (state.isDigital) return [];
+
+    // Bug #2: Local-only products need a pickup delivery option
+    if (state.isLocalDeliveryOnly) {
+      return [SellerDeliveryOption(type: 'pickup', description: 'product.local_pickup_only'.tr(), estimatedDays: 0, cost: 0.0)];
+    }
+
+    final quantityDiscounts = <ShippingQuantityDiscount>[];
+
+    final discount3 = double.tryParse(_shippingDiscount3Controller.text);
+    if (discount3 != null && discount3 > 0) {
+      quantityDiscounts.add(
+        ShippingQuantityDiscount(
+          minQuantity: 3,
+          discountType: 'percent',
+          discountValue: discount3,
+          label: 'product.shipping_discount_label'.tr(namedArgs: {'percent': discount3.toStringAsFixed(0), 'qty': '3'}),
+        ),
+      );
+    }
+
+    final discount5 = double.tryParse(_shippingDiscount5Controller.text);
+    if (discount5 != null && discount5 > 0) {
+      quantityDiscounts.add(
+        ShippingQuantityDiscount(
+          minQuantity: 5,
+          discountType: 'percent',
+          discountValue: discount5,
+          label: 'product.shipping_discount_label'.tr(namedArgs: {'percent': discount5.toStringAsFixed(0), 'qty': '5'}),
+        ),
+      );
+    }
+
+    if (state.freeShippingAt10Plus) {
+      quantityDiscounts.add(
+        ShippingQuantityDiscount(minQuantity: 10, discountType: 'flat_rate', discountValue: 0, label: 'product.free_shipping_10_plus_label'.tr()),
+      );
+    }
+
+    final additionalItemCost = double.tryParse(_additionalItemCostController.text) ?? 0.0;
+    final maxItems = int.tryParse(_maxItemsPerShipmentController.text) ?? 0;
+
+    return [
+      if (state.standardEnabled)
+        SellerDeliveryOption(
+          type: 'standard',
+          description: 'product.standard_delivery'.tr(),
+          estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
+          cost: double.tryParse(_standardPriceController.text) ?? 0.0,
+          quantityDiscounts: quantityDiscounts,
+          additionalItemCost: additionalItemCost,
+          maxItemsPerShipment: maxItems,
+        ),
+      if (state.expressEnabled)
+        SellerDeliveryOption(
+          type: 'express',
+          description: 'product.express_delivery'.tr(),
+          estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
+          cost: double.tryParse(_expressPriceController.text) ?? 9.99,
+          quantityDiscounts: quantityDiscounts,
+          additionalItemCost: additionalItemCost,
+          maxItemsPerShipment: maxItems,
+        ),
+      if (state.sameDayEnabled)
+        SellerDeliveryOption(
+          type: 'same_day',
+          description: 'product.same_day_delivery'.tr(),
+          estimatedDays: 0,
+          cost: double.tryParse(_sameDayPriceController.text) ?? 14.99,
+          quantityDiscounts: quantityDiscounts,
+          additionalItemCost: additionalItemCost,
+          maxItemsPerShipment: maxItems,
+        ),
+    ];
+  }
+
+  Widget _buildDeliveryTierCard({
+    Key? key,
+    required String title,
+    required IconData icon,
+    required bool isEnabled,
+    required ValueChanged<bool> onChanged,
+    required Color color,
+    required List<Widget> children,
+    String? infoTitle,
+    String? infoBody,
+  }) {
+    return AnimatedContainer(
+      key: key,
+      duration: DesignTokens.durationNormal,
+      decoration: BoxDecoration(
+        color: isEnabled ? color.withValues(alpha: 0.04) : DesignTokens.surfaceVariant.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isEnabled ? color.withValues(alpha: 0.3) : DesignTokens.outline.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 4, 0),
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: isEnabled ? color : DesignTokens.textDisabled),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isEnabled ? color : DesignTokens.textSecondary),
+                  ),
+                ),
+                if (infoTitle != null && infoBody != null)
+                  GestureDetector(
+                    onTap: () => _showInfoSheet(infoTitle, infoBody),
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Icon(Icons.info_outline_rounded, size: 16, color: isEnabled ? color.withValues(alpha: 0.5) : DesignTokens.textDisabled),
+                    ),
+                  ),
+                Switch.adaptive(value: isEnabled, onChanged: onChanged, activeThumbColor: color),
+              ],
+            ),
+          ),
+          if (isEnabled)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(children: children),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDigitalProductSection(BuildContext context, AddProductState state, AddProductViewModel viewModel) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        // Sub-type selector
+        Row(
+          children: [
+            Expanded(
+              child: _DigitalTypeCard(
+                key: const Key('addproduct_digital_type_software'),
+                label: 'Software',
+                icon: Icons.computer_outlined,
+                selected: state.digitalType == DigitalTypeValues.software,
+                onTap: () => viewModel.setDigitalType(DigitalTypeValues.software),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _DigitalTypeCard(
+                key: const Key('addproduct_digital_type_book'),
+                label: 'Book',
+                icon: Icons.menu_book_outlined,
+                selected: state.digitalType == DigitalTypeValues.book,
+                onTap: () => viewModel.setDigitalType(DigitalTypeValues.book),
+              ),
+            ),
+          ],
+        ),
+        if (state.digitalType == DigitalTypeValues.software) ...[
+          const SizedBox(height: 16),
+          Text('Download Links', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          _buildUrlField(
+            label: 'macOS (.dmg)',
+            placeholder: 'https://releases.yoursite.com/app.dmg',
+            value: state.macosDownloadUrl,
+            onChanged: viewModel.setMacosDownloadUrl,
+          ),
+          _buildUrlField(
+            label: 'Windows (.exe / .msi)',
+            placeholder: 'https://releases.yoursite.com/app.exe',
+            value: state.windowsDownloadUrl,
+            onChanged: viewModel.setWindowsDownloadUrl,
+          ),
+          _buildUrlField(
+            label: 'Linux (.deb / .AppImage) — optional',
+            placeholder: 'https://releases.yoursite.com/app.deb',
+            value: state.linuxDownloadUrl,
+            onChanged: viewModel.setLinuxDownloadUrl,
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            initialValue: state.deviceLimit?.toString(),
+            decoration: const InputDecoration(labelText: 'Device limit', hintText: 'Leave blank for unlimited'),
+            keyboardType: TextInputType.number,
+            onChanged: (v) => viewModel.setDeviceLimit(int.tryParse(v.trim())),
+          ),
+        ],
+        if (state.digitalType == DigitalTypeValues.book) ...[
+          const SizedBox(height: 16),
+          Text('Book Download URL', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          _buildUrlField(
+            label: 'Download source URL',
+            placeholder: 'https://storage.yoursite.com/book.pdf',
+            value: state.bookSourceUrl,
+            onChanged: viewModel.setBookSourceUrl,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildGlassDropdown({
+    Key? key,
+    required String label,
+    required String? value,
+    required List<DropdownMenuItem<String>> items,
+    required void Function(String?)? onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      key: key,
+      initialValue: value,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.5)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
+      ),
+      items: items,
+      onChanged: onChanged,
     );
   }
 
@@ -847,39 +1218,26 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         prefixIcon: icon != null ? Icon(icon, size: 20) : null,
         filled: true,
         fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.5))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5)),
-        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: DesignTokens.error)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.5)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: DesignTokens.error),
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
         hintStyle: TextStyle(color: DesignTokens.textDisabled, fontSize: 13),
       ),
-    );
-  }
-
-  Widget _buildGlassDropdown({
-    Key? key,
-    required String label,
-    required String? value,
-    required List<DropdownMenuItem<String>> items,
-    required void Function(String?)? onChanged,
-  }) {
-    return DropdownButtonFormField<String>(
-      key: key,
-      initialValue: value,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.5))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
-      ),
-      items: items,
-      onChanged: onChanged,
     );
   }
 
@@ -902,9 +1260,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         decoration: BoxDecoration(
           color: value ? DesignTokens.primary.withValues(alpha: 0.06) : DesignTokens.surfaceVariant.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: value ? DesignTokens.primary.withValues(alpha: 0.3) : DesignTokens.outline.withValues(alpha: 0.3),
-          ),
+          border: Border.all(color: value ? DesignTokens.primary.withValues(alpha: 0.3) : DesignTokens.outline.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
@@ -914,7 +1270,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: value ? DesignTokens.primary : DesignTokens.textPrimary)),
+                  Text(
+                    label,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: value ? DesignTokens.primary : DesignTokens.textPrimary),
+                  ),
                   if (subtitle != null) Text(subtitle, style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
                 ],
               ),
@@ -943,188 +1302,26 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     );
   }
 
-  // ─── SPECIALIZED WIDGETS ──────────────────────────────────────────────
-
-  Widget _buildCategorySelector(AddProductViewModel viewModel) {
-    return DropdownButtonFormField<String>(
-      key: const Key('addproduct_category_selector'),
-      decoration: InputDecoration(
-        labelText: 'Category',
-        prefixIcon: const Icon(Icons.category_rounded, size: 20),
-        filled: true,
-        fillColor: DesignTokens.surfaceVariant.withValues(alpha: 0.5),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.5))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: DesignTokens.primary, width: 1.5)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        labelStyle: TextStyle(color: DesignTokens.textSecondary, fontSize: 13),
-      ),
-      items: productCategories.map((c) => DropdownMenuItem(
-        key: Key('category_item_${c.name}'),
-        value: c.categoryId.toString(),
-        child: Row(
-          children: [
-            Icon(c.icon, size: 18, color: DesignTokens.primary),
-            const SizedBox(width: 10),
-            Text(c.name.tr()),
-          ],
-        ),
-      )).toList(),
-      onChanged: (v) => _categoryController.text = v ?? '',
-      validator: (v) => v == null ? 'Required' : null,
-    );
-  }
-
-  Widget _buildDeliveryTierCard({
-    Key? key,
-    required String title,
-    required IconData icon,
-    required bool isEnabled,
-    required ValueChanged<bool> onChanged,
-    required Color color,
-    required List<Widget> children,
-    String? infoTitle,
-    String? infoBody,
-  }) {
-    return AnimatedContainer(
-      key: key,
-      duration: DesignTokens.durationNormal,
-      decoration: BoxDecoration(
-        color: isEnabled ? color.withValues(alpha: 0.04) : DesignTokens.surfaceVariant.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isEnabled ? color.withValues(alpha: 0.3) : DesignTokens.outline.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 4, 0),
-            child: Row(
-              children: [
-                Icon(icon, size: 20, color: isEnabled ? color : DesignTokens.textDisabled),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isEnabled ? color : DesignTokens.textSecondary)),
-                ),
-                if (infoTitle != null && infoBody != null)
-                  GestureDetector(
-                    onTap: () => _showInfoSheet(infoTitle, infoBody),
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 4),
-                      child: Icon(Icons.info_outline_rounded, size: 16, color: isEnabled ? color.withValues(alpha: 0.5) : DesignTokens.textDisabled),
-                    ),
-                  ),
-                Switch.adaptive(
-                  value: isEnabled,
-                  onChanged: onChanged,
-                  activeThumbColor: color,
-                ),
-              ],
-            ),
-          ),
-          if (isEnabled) Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: Column(children: children)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuantityShippingDiscountsSection(AddProductViewModel viewModel, AddProductState state) {
+  Widget _buildInfoBanner(String text, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [DesignTokens.success.withValues(alpha: 0.04), DesignTokens.primary.withValues(alpha: 0.04)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: DesignTokens.success.withValues(alpha: 0.2)),
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: DesignTokens.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                child: Icon(Icons.local_offer_rounded, color: DesignTokens.success, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Expanded(child: Text('product.bulk_shipping_discounts'.tr(), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
-              GestureDetector(
-                onTap: () => _showInfoSheet(
-                  'product.bulk_shipping_discounts'.tr(),
-                  'product.bulk_discount_info_body'.tr(),
-                ),
-                child: Icon(Icons.info_outline_rounded, size: 18, color: DesignTokens.textDisabled),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text('product.encourage_larger_orders'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12)),
-          const SizedBox(height: 16),
-          _buildShippingDiscountTier(label: 'product.three_plus_items'.tr(), controller: _shippingDiscount3Controller, hint: '20'),
-          const SizedBox(height: 8),
-          _buildShippingDiscountTier(label: 'product.five_plus_items'.tr(), controller: _shippingDiscount5Controller, hint: '50'),
-          const SizedBox(height: 8),
-          _buildGlassToggle(
-            label: 'product.ten_plus_free'.tr(),
-            icon: Icons.celebration_rounded,
-            value: state.freeShippingAt10Plus,
-            onChanged: viewModel.setFreeShippingAt10Plus,
-            infoTitle: 'product.bulk_free_shipping_title'.tr(),
-            infoBody: 'product.bulk_free_shipping_body'.tr(),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _buildGlassTextField(controller: _additionalItemCostController, label: 'product.cost_extra_item'.tr(), prefixText: '\$', keyboardType: TextInputType.number)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildGlassTextField(controller: _maxItemsPerShipmentController, label: 'product.max_per_shipment'.tr(), keyboardType: TextInputType.number, hint: 'product.unlimited_hint'.tr())),
-            ],
-          ),
-          _buildTappableInfoHint(
-            'product.multi_item_learn_more'.tr(),
-            'product.multi_item_shipping_title'.tr(),
-            'product.multi_item_shipping_body'.tr(),
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500),
+            ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildShippingDiscountTier({required String label, required TextEditingController controller, required String hint}) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(label, style: TextStyle(color: DesignTokens.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
-        ),
-        Expanded(
-          child: TextFormField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(fontSize: 13),
-            validator: (v) {
-              if (v == null || v.isEmpty) return null; // optional field
-              final val = double.tryParse(v);
-              if (val == null || val < 0 || val > 100) return 'product.discount_range'.tr();
-              return null;
-            },
-            decoration: InputDecoration(
-              hintText: hint,
-              suffixText: 'product.percent_off'.tr(),
-              isDense: true,
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3))),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.2))),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: DesignTokens.success, width: 1.5)),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -1143,11 +1340,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color.withValues(alpha: 0.08), color.withValues(alpha: 0.03)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: LinearGradient(colors: [color.withValues(alpha: 0.08), color.withValues(alpha: 0.03)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
@@ -1176,7 +1369,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('product.profit_margin'.tr(), style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500)),
+                    Text(
+                      'product.profit_margin'.tr(),
+                      style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       'product.per_unit'.tr(namedArgs: {'amount': profit.toStringAsFixed(2)}),
@@ -1185,11 +1381,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                   ],
                 ),
               ),
-              Icon(
-                isGood ? Icons.trending_up_rounded : (isOk ? Icons.trending_flat_rounded : Icons.trending_down_rounded),
-                color: color,
-                size: 28,
-              ),
+              Icon(isGood ? Icons.trending_up_rounded : (isOk ? Icons.trending_flat_rounded : Icons.trending_down_rounded), color: color, size: 28),
             ],
           ),
           if (_selectedSupplierCurrency != 'CAD')
@@ -1202,6 +1394,341 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildQuantityShippingDiscountsSection(AddProductViewModel viewModel, AddProductState state) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [DesignTokens.success.withValues(alpha: 0.04), DesignTokens.primary.withValues(alpha: 0.04)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: DesignTokens.success.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: DesignTokens.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                child: Icon(Icons.local_offer_rounded, color: DesignTokens.success, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('product.bulk_shipping_discounts'.tr(), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              ),
+              GestureDetector(
+                onTap: () => _showInfoSheet('product.bulk_shipping_discounts'.tr(), 'product.bulk_discount_info_body'.tr()),
+                child: Icon(Icons.info_outline_rounded, size: 18, color: DesignTokens.textDisabled),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('product.encourage_larger_orders'.tr(), style: TextStyle(color: DesignTokens.textSecondary, fontSize: 12)),
+          const SizedBox(height: 16),
+          _buildShippingDiscountTier(label: 'product.three_plus_items'.tr(), controller: _shippingDiscount3Controller, hint: '20'),
+          const SizedBox(height: 8),
+          _buildShippingDiscountTier(label: 'product.five_plus_items'.tr(), controller: _shippingDiscount5Controller, hint: '50'),
+          const SizedBox(height: 8),
+          _buildGlassToggle(
+            label: 'product.ten_plus_free'.tr(),
+            icon: Icons.celebration_rounded,
+            value: state.freeShippingAt10Plus,
+            onChanged: viewModel.setFreeShippingAt10Plus,
+            infoTitle: 'product.bulk_free_shipping_title'.tr(),
+            infoBody: 'product.bulk_free_shipping_body'.tr(),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildGlassTextField(
+                  controller: _additionalItemCostController,
+                  label: 'product.cost_extra_item'.tr(),
+                  prefixText: '\$',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildGlassTextField(
+                  controller: _maxItemsPerShipmentController,
+                  label: 'product.max_per_shipment'.tr(),
+                  keyboardType: TextInputType.number,
+                  hint: 'product.unlimited_hint'.tr(),
+                ),
+              ),
+            ],
+          ),
+          _buildTappableInfoHint('product.multi_item_learn_more'.tr(), 'product.multi_item_shipping_title'.tr(), 'product.multi_item_shipping_body'.tr()),
+        ],
+      ),
+    );
+  }
+
+  // ─── SECTION BUILDERS ─────────────────────────────────────────────────
+
+  Widget _buildSectionCard({
+    Key? key,
+    required int index,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required List<Widget> children,
+  }) {
+    return TapRegion(
+      key: key,
+      onTapInside: (_) {
+        if (_activeStep != index) setState(() => _activeStep = index);
+      },
+      child: AnimatedContainer(
+        duration: DesignTokens.durationNormal,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: _activeStep == index ? DesignTokens.primary.withValues(alpha: 0.3) : DesignTokens.outlineVariant,
+            width: _activeStep == index ? 1.5 : 1,
+          ),
+          boxShadow: _activeStep == index
+              ? [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 4))]
+              : DesignTokens.shadowSm,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Section header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(gradient: DesignTokens.primaryGradient, borderRadius: BorderRadius.circular(12)),
+                    child: Icon(icon, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface, letterSpacing: -0.3),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(subtitle, style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  // Active indicator icon
+                  if (_activeStep == index) Icon(Icons.edit_rounded, size: 18, color: DesignTokens.primary),
+                ],
+              ),
+            ),
+            const Divider(height: 24, indent: 20, endIndent: 20),
+            // Section content
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShippingDiscountTier({required String label, required TextEditingController controller, required String hint}) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: TextStyle(color: DesignTokens.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+          ),
+        ),
+        Expanded(
+          child: TextFormField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 13),
+            validator: (v) {
+              if (v == null || v.isEmpty) return null; // optional field
+              final val = double.tryParse(v);
+              if (val == null || val < 0 || val > 100) return 'product.discount_range'.tr();
+              return null;
+            },
+            decoration: InputDecoration(
+              hintText: hint,
+              suffixText: 'product.percent_off'.tr(),
+              isDense: true,
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.3)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: DesignTokens.outline.withValues(alpha: 0.2)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: DesignTokens.success, width: 1.5),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubmitButton(AddProductState state, AddProductViewModel viewModel) {
+    return Semantics(
+      button: true,
+      label: 'btn-publish-product',
+      child: GestureDetector(
+        onTapDown: state.isLoading ? null : (_) => HapticFeedback.mediumImpact(),
+        child: AnimatedContainer(
+          duration: DesignTokens.durationFast,
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: state.isLoading ? null : DesignTokens.primaryGradient,
+            color: state.isLoading ? DesignTokens.outline : null,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: state.isLoading ? [] : [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              key: const Key('addproduct_submit_button'),
+              borderRadius: BorderRadius.circular(16),
+              onTap: state.isLoading
+                  ? null
+                  : () {
+                      // FIX: Validate discount tiers before form validation
+                      final discount3 = double.tryParse(_shippingDiscount3Controller.text);
+                      final discount5 = double.tryParse(_shippingDiscount5Controller.text);
+                      if (discount3 != null && discount5 != null && discount5 < discount3) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('product.discount_validation'.tr()), backgroundColor: DesignTokens.error));
+                        return;
+                      }
+                      if (!_hasAttemptedSubmit) {
+                        setState(() => _hasAttemptedSubmit = true);
+                      }
+                      // Clear previous error before re-validation
+                      viewModel.clearError();
+                      if (!_formKey.currentState!.validate()) {
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            key: const Key('addproduct_error_snackbar'),
+                            content: Text('product.fix_errors_before_submit'.tr()),
+                            backgroundColor: DesignTokens.error,
+                            duration: const Duration(seconds: 5),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
+                      {
+                        SupplierInfo? supplierInfo;
+                        final hasCost = _costController.text.trim().isNotEmpty;
+                        final hasSku = _supplierSkuController.text.trim().isNotEmpty;
+                        final hasUrl = _supplierUrlController.text.trim().isNotEmpty;
+
+                        if (hasCost || hasSku || hasUrl) {
+                          supplierInfo = SupplierInfo(
+                            type: _selectedSupplierType,
+                            cost: double.tryParse(_costController.text),
+                            currency: _selectedSupplierCurrency,
+                            supplierSku: hasSku ? _supplierSkuController.text.trim() : null,
+                            supplierUrl: hasUrl ? _supplierUrlController.text.trim() : null,
+                            shippingDays: _supplierShippingDaysController.text.trim().isEmpty ? null : _supplierShippingDaysController.text.trim(),
+                            hasTracking: _hasTracking,
+                            notes: _supplierNotesController.text.trim().isEmpty ? null : _supplierNotesController.text.trim(),
+                          );
+                        }
+
+                        // FIX: Always create inventory config to persist settings
+                        final inventoryConfig = InventoryConfig(
+                          managed: _inventoryManaged,
+                          trackQuantity: _trackQuantity,
+                          allowBackorder: _allowBackorder,
+                          lowStockThreshold: _lowStockAlertEnabled ? (int.tryParse(_lowStockThresholdController.text) ?? 5) : 0,
+                        );
+
+                        viewModel.addProduct(
+                          name: _nameController.text.trim(),
+                          description: _descriptionController.text.trim(),
+                          price: double.tryParse(_priceController.text.trim()) ?? 0,
+                          compareAtPrice: _compareAtPriceController.text.trim().isEmpty ? null : double.tryParse(_compareAtPriceController.text.trim()),
+                          stock: int.tryParse(_stockController.text.trim()) ?? 0,
+                          categoryId: int.tryParse(_categoryController.text.trim()) ?? 0,
+                          street: _streetController.text.trim(),
+                          apartment: _apartmentController.text.trim(),
+                          city: _cityController.text.trim(),
+                          postalCode: _postalCodeController.text.trim(),
+                          weight: double.tryParse(_weightController.text),
+                          length: double.tryParse(_lengthController.text),
+                          width: double.tryParse(_widthController.text),
+                          height: double.tryParse(_heightController.text),
+                          taxCode: _taxCodeController.text.trim(),
+                          deliveryOptions: _buildDeliveryOptions(state),
+                          minimumOrderQuantity: int.tryParse(_minOrderController.text) ?? 1,
+                          freeShipping: state.freeShipping,
+                          cost: double.tryParse(_costController.text),
+                          supplierSku: _supplierSkuController.text.trim().isEmpty ? null : _supplierSkuController.text.trim(),
+                          supplierUrl: _supplierUrlController.text.trim().isEmpty ? null : _supplierUrlController.text.trim(),
+                          supplier: supplierInfo,
+                          inventory: inventoryConfig,
+                        );
+                      }
+                    },
+              child: Center(
+                child: state.isLoading
+                    ? const ModernLoadingIndicator(size: 24, strokeWidth: 2.5, color: Colors.white, centered: false)
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 20),
+                          const SizedBox(width: 10),
+                          Text(
+                            'product.publish_product'.tr(),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── HELPERS ──────────────────────────────────────────────────────────
+
+  Widget _buildSubSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: DesignTokens.secondary),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface),
+        ),
+      ],
     );
   }
 
@@ -1229,7 +1756,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(config.displayName, style: TextStyle(fontWeight: FontWeight.w700, color: config.color, fontSize: 13)),
+                Text(
+                  config.displayName,
+                  style: TextStyle(fontWeight: FontWeight.w700, color: config.color, fontSize: 13),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   '${config.region} · ${deliveryRange.minDays}-${deliveryRange.maxDays} days · ${config.country}',
@@ -1245,9 +1775,43 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 gradient: LinearGradient(colors: [DesignTokens.info.withValues(alpha: 0.15), DesignTokens.info.withValues(alpha: 0.05)]),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Text('product.intl_label'.tr(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: DesignTokens.info)),
+              child: Text(
+                'product.intl_label'.tr(),
+                style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: DesignTokens.info),
+              ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTappableInfoHint(String shortText, String title, String body) {
+    return GestureDetector(
+      onTap: () => _showInfoSheet(title, body),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, size: 14, color: DesignTokens.info.withValues(alpha: 0.6)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(shortText, style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary)),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 14, color: DesignTokens.textDisabled),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUrlField({required String label, required String placeholder, required String? value, required void Function(String?) onChanged}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: TextFormField(
+        initialValue: value,
+        decoration: InputDecoration(labelText: label, hintText: placeholder),
+        keyboardType: TextInputType.url,
+        onChanged: (v) => onChanged(v.trim().isEmpty ? null : v.trim()),
       ),
     );
   }
@@ -1272,17 +1836,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             children: [
               _buildSubSectionHeader('Shipping Location', Icons.pin_drop_rounded),
               const SizedBox(height: 8),
-              _buildInfoBanner(
-                'Add your shipping locations in Warehouse Settings for faster listing.',
-                Icons.info_outline_rounded,
-                DesignTokens.info,
-              ),
+              _buildInfoBanner('Add your shipping locations in Warehouse Settings for faster listing.', Icons.info_outline_rounded, DesignTokens.info),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 key: const Key('addproduct_manage_warehouses_button'),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SellerWarehousesScreen()),
-                ),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SellerWarehousesScreen())),
                 icon: const Icon(Icons.add_location_alt_rounded, size: 18),
                 label: const Text('Add Warehouse / Address'),
                 style: OutlinedButton.styleFrom(foregroundColor: DesignTokens.primary),
@@ -1305,8 +1863,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 validator: _validateStreet,
                 hint: 'product.street_hint'.tr(),
               ),
-              if (state.showSuggestions && state.addressSuggestions.isNotEmpty)
-                _buildAddressSuggestions(state, viewModel),
+              if (state.showSuggestions && state.addressSuggestions.isNotEmpty) _buildAddressSuggestions(state, viewModel),
               const SizedBox(height: 12),
               _buildGlassTextField(
                 controller: _apartmentController,
@@ -1380,9 +1937,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                 const Spacer(),
                 TextButton.icon(
                   key: const Key('addproduct_manage_warehouses_button'),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const SellerWarehousesScreen()),
-                  ),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SellerWarehousesScreen())),
                   icon: const Icon(Icons.settings_rounded, size: 14),
                   label: const Text('Manage', style: TextStyle(fontSize: 12)),
                   style: TextButton.styleFrom(foregroundColor: DesignTokens.primary),
@@ -1396,7 +1951,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
               child: Row(
                 children: [
                   Tooltip(
-                    message: 'Select one or more locations to ship this product from. '
+                    message:
+                        'Select one or more locations to ship this product from. '
                         'Can be a warehouse facility or a home/business address. '
                         'Buyers see the closest one.',
                     triggerMode: TooltipTriggerMode.tap,
@@ -1405,10 +1961,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                       children: [
                         Icon(Icons.info_outline_rounded, size: 14, color: DesignTokens.textTertiary),
                         const SizedBox(width: 4),
-                        Text(
-                          'Select locations & set stock per location',
-                          style: TextStyle(fontSize: 12, color: DesignTokens.textTertiary),
-                        ),
+                        Text('Select locations & set stock per location', style: TextStyle(fontSize: 12, color: DesignTokens.textTertiary)),
                       ],
                     ),
                   ),
@@ -1418,22 +1971,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             ...warehouses.map((warehouse) {
               final isSelected = state.selectedWarehouseIds.contains(warehouse.warehouseId);
               final stockQty = state.warehouseStockMap[warehouse.warehouseId] ?? 0;
-              final typeIcon = warehouse.type == WarehouseTypeValues.warehouse
-                  ? Icons.warehouse_rounded
-                  : Icons.home_work_rounded;
+              final typeIcon = warehouse.type == WarehouseTypeValues.warehouse ? Icons.warehouse_rounded : Icons.home_work_rounded;
               return Padding(
                 key: Key('addproduct_warehouse_${warehouse.warehouseId}'),
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? Color.fromRGBO(102, 126, 234, 0.08)
-                        : DesignTokens.surfaceVariant,
+                    color: isSelected ? Color.fromRGBO(102, 126, 234, 0.08) : DesignTokens.surfaceVariant,
                     borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                    border: Border.all(
-                      color: isSelected ? DesignTokens.primary : DesignTokens.outline,
-                      width: isSelected ? 1.5 : 1,
-                    ),
+                    border: Border.all(color: isSelected ? DesignTokens.primary : DesignTokens.outline, width: isSelected ? 1.5 : 1),
                   ),
                   child: Column(
                     children: [
@@ -1446,19 +1992,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                             Icon(typeIcon, size: 16, color: DesignTokens.primary),
                             const SizedBox(width: 6),
                             Expanded(
-                              child: Text(
-                                warehouse.label,
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                              ),
+                              child: Text(warehouse.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                             ),
                             if (warehouse.isDefault)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Color.fromRGBO(102, 126, 234, 0.15),
-                                  borderRadius: BorderRadius.circular(6),
+                                decoration: BoxDecoration(color: Color.fromRGBO(102, 126, 234, 0.15), borderRadius: BorderRadius.circular(6)),
+                                child: Text(
+                                  'Default',
+                                  style: TextStyle(fontSize: 10, color: DesignTokens.primary, fontWeight: FontWeight.w600),
                                 ),
-                                child: Text('Default', style: TextStyle(fontSize: 10, color: DesignTokens.primary, fontWeight: FontWeight.w600)),
                               ),
                           ],
                         ),
@@ -1468,8 +2011,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                         ),
                         controlAffinity: ListTileControlAffinity.trailing,
                         checkColor: Colors.white,
-                        fillColor: WidgetStateProperty.resolveWith((states) =>
-                          states.contains(WidgetState.selected) ? DesignTokens.primary : null),
+                        fillColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.selected) ? DesignTokens.primary : null),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DesignTokens.radius12)),
                       ),
@@ -1496,10 +2038,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                                     isDense: true,
                                   ),
-                                  onChanged: (v) => viewModel.setWarehouseStock(
-                                    warehouse.warehouseId,
-                                    int.tryParse(v) ?? 0,
-                                  ),
+                                  onChanged: (v) => viewModel.setWarehouseStock(warehouse.warehouseId, int.tryParse(v) ?? 0),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -1516,10 +2055,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
             if (state.selectedWarehouseIds.isEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  'Select at least one shipping location',
-                  style: TextStyle(fontSize: 12, color: DesignTokens.error),
-                ),
+                child: Text('Select at least one shipping location', style: TextStyle(fontSize: 12, color: DesignTokens.error)),
               ),
             if (state.selectedWarehouseIds.isNotEmpty)
               Padding(
@@ -1539,454 +2075,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
         );
       },
     );
-  }
-
-  Widget _buildAddressSuggestions(AddProductState state, AddProductViewModel viewModel) {
-    return Container(
-      key: const Key('addproduct_address_suggestions'),
-      margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: DesignTokens.shadowLg,
-        border: Border.all(color: DesignTokens.outline.withValues(alpha: 0.2)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: ListView.separated(
-          shrinkWrap: true,
-          itemCount: state.addressSuggestions.length,
-          separatorBuilder: (_, _) => Divider(height: 1, color: DesignTokens.outlineVariant),
-          itemBuilder: (context, i) {
-            final s = state.addressSuggestions[i];
-            return ListTile(
-              dense: true,
-              leading: Icon(Icons.location_on_rounded, size: 18, color: DesignTokens.primary),
-              title: Text(s['properties']?['formatted'] ?? '', style: const TextStyle(fontSize: 13)),
-              onTap: () {
-                viewModel.selectAddress(s);
-                final props = s['properties'] as Map<String, dynamic>?;
-                final street = (props?['street'] as String?)?.trim() ?? '';
-                final houseNumber =
-                    (props?['housenumber'] as String?)?.trim() ??
-                    (props?['house_number'] as String?)?.trim() ??
-                    (props?['address_line1'] as String?)?.trim() ??
-                    '';
-                final formatted = (props?['formatted'] as String?)?.trim() ?? '';
-
-                final fullStreet =
-                    (houseNumber.isNotEmpty && street.isNotEmpty)
-                        ? '$houseNumber $street'
-                        : (street.isNotEmpty ? street : formatted);
-
-                _streetController.text = fullStreet;
-                _cityController.text = s['properties']?['city'] ?? '';
-                _postalCodeController.text = s['properties']?['postcode'] ?? '';
-              },
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  // ─── HELPERS ──────────────────────────────────────────────────────────
-
-  Widget _buildSubSectionHeader(String title, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: DesignTokens.secondary),
-        const SizedBox(width: 8),
-        Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface)),
-      ],
-    );
-  }
-
-  Widget _buildInfoBanner(String text, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500))),
-        ],
-      ),
-    );
-  }
-
-  void _showInfoSheet(String title, String body) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -4))],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: DesignTokens.info.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.lightbulb_rounded, color: DesignTokens.info, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface)),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(ctx),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(color: DesignTokens.surfaceVariant, shape: BoxShape.circle),
-                    child: const Icon(Icons.close_rounded, size: 16, color: DesignTokens.textSecondary),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(body, style: TextStyle(fontSize: 14, color: DesignTokens.textPrimary, height: 1.6)),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTappableInfoHint(String shortText, String title, String body) {
-    return GestureDetector(
-      onTap: () => _showInfoSheet(title, body),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: Row(
-          children: [
-            Icon(Icons.info_outline_rounded, size: 14, color: DesignTokens.info.withValues(alpha: 0.6)),
-            const SizedBox(width: 6),
-            Expanded(child: Text(shortText, style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary))),
-            Icon(Icons.chevron_right_rounded, size: 14, color: DesignTokens.textDisabled),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDigitalProductSection(BuildContext context, AddProductState state, AddProductViewModel viewModel) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 12),
-        // Sub-type selector
-        Row(
-          children: [
-            Expanded(
-              child: _DigitalTypeCard(
-                key: const Key('addproduct_digital_type_software'),
-                label: 'Software',
-                icon: Icons.computer_outlined,
-                selected: state.digitalType == DigitalTypeValues.software,
-                onTap: () => viewModel.setDigitalType(DigitalTypeValues.software),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _DigitalTypeCard(
-                key: const Key('addproduct_digital_type_book'),
-                label: 'Book',
-                icon: Icons.menu_book_outlined,
-                selected: state.digitalType == DigitalTypeValues.book,
-                onTap: () => viewModel.setDigitalType(DigitalTypeValues.book),
-              ),
-            ),
-          ],
-        ),
-        if (state.digitalType == DigitalTypeValues.software) ...[
-          const SizedBox(height: 16),
-          Text('Download Links', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 4),
-          _buildUrlField(
-            label: 'macOS (.dmg)',
-            placeholder: 'https://releases.yoursite.com/app.dmg',
-            value: state.macosDownloadUrl,
-            onChanged: viewModel.setMacosDownloadUrl,
-          ),
-          _buildUrlField(
-            label: 'Windows (.exe / .msi)',
-            placeholder: 'https://releases.yoursite.com/app.exe',
-            value: state.windowsDownloadUrl,
-            onChanged: viewModel.setWindowsDownloadUrl,
-          ),
-          _buildUrlField(
-            label: 'Linux (.deb / .AppImage) — optional',
-            placeholder: 'https://releases.yoursite.com/app.deb',
-            value: state.linuxDownloadUrl,
-            onChanged: viewModel.setLinuxDownloadUrl,
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            initialValue: state.deviceLimit?.toString(),
-            decoration: const InputDecoration(
-              labelText: 'Device limit',
-              hintText: 'Leave blank for unlimited',
-            ),
-            keyboardType: TextInputType.number,
-            onChanged: (v) => viewModel.setDeviceLimit(int.tryParse(v.trim())),
-          ),
-        ],
-        if (state.digitalType == DigitalTypeValues.book) ...[
-          const SizedBox(height: 16),
-          Text('Book Download URL', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 4),
-          _buildUrlField(
-            label: 'Download source URL',
-            placeholder: 'https://storage.yoursite.com/book.pdf',
-            value: state.bookSourceUrl,
-            onChanged: viewModel.setBookSourceUrl,
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildUrlField({
-    required String label,
-    required String placeholder,
-    required String? value,
-    required void Function(String?) onChanged,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: TextFormField(
-        initialValue: value,
-        decoration: InputDecoration(labelText: label, hintText: placeholder),
-        keyboardType: TextInputType.url,
-        onChanged: (v) => onChanged(v.trim().isEmpty ? null : v.trim()),
-      ),
-    );
-  }
-
-  Widget _buildSubmitButton(AddProductState state, AddProductViewModel viewModel) {
-    return Semantics(
-      button: true,
-      label: 'btn-publish-product',
-      child: GestureDetector(
-      onTapDown: state.isLoading ? null : (_) => HapticFeedback.mediumImpact(),
-      child: AnimatedContainer(
-        duration: DesignTokens.durationFast,
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: state.isLoading ? null : DesignTokens.primaryGradient,
-          color: state.isLoading ? DesignTokens.outline : null,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: state.isLoading
-              ? []
-              : [BoxShadow(color: DesignTokens.primary.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            key: const Key('addproduct_submit_button'),
-            borderRadius: BorderRadius.circular(16),
-            onTap: state.isLoading
-                ? null
-                : () {
-                    // FIX: Validate discount tiers before form validation
-                    final discount3 = double.tryParse(_shippingDiscount3Controller.text);
-                    final discount5 = double.tryParse(_shippingDiscount5Controller.text);
-                    if (discount3 != null && discount5 != null && discount5 < discount3) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('product.discount_validation'.tr()),
-                          backgroundColor: DesignTokens.error,
-                        ),
-                      );
-                      return;
-                    }
-                    if (!_hasAttemptedSubmit) {
-                      setState(() => _hasAttemptedSubmit = true);
-                    }
-                    // Clear previous error before re-validation
-                    viewModel.clearError();
-                    if (!_formKey.currentState!.validate()) {
-                      ScaffoldMessenger.of(context).clearSnackBars();
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        key: const Key('addproduct_error_snackbar'),
-                        content: Text('product.fix_errors_before_submit'.tr()),
-                        backgroundColor: DesignTokens.error,
-                        duration: const Duration(seconds: 5),
-                        behavior: SnackBarBehavior.floating,
-                      ));
-                      return;
-                    }
-                    {
-                      SupplierInfo? supplierInfo;
-                      final hasCost = _costController.text.trim().isNotEmpty;
-                      final hasSku = _supplierSkuController.text.trim().isNotEmpty;
-                      final hasUrl = _supplierUrlController.text.trim().isNotEmpty;
-
-                      if (hasCost || hasSku || hasUrl) {
-                        supplierInfo = SupplierInfo(
-                          type: _selectedSupplierType,
-                          cost: double.tryParse(_costController.text),
-                          currency: _selectedSupplierCurrency,
-                          supplierSku: hasSku ? _supplierSkuController.text.trim() : null,
-                          supplierUrl: hasUrl ? _supplierUrlController.text.trim() : null,
-                          shippingDays: _supplierShippingDaysController.text.trim().isEmpty ? null : _supplierShippingDaysController.text.trim(),
-                          hasTracking: _hasTracking,
-                          notes: _supplierNotesController.text.trim().isEmpty ? null : _supplierNotesController.text.trim(),
-                        );
-                      }
-
-                      // FIX: Always create inventory config to persist settings
-                      final inventoryConfig = InventoryConfig(
-                        managed: _inventoryManaged,
-                        trackQuantity: _trackQuantity,
-                        allowBackorder: _allowBackorder,
-                        lowStockThreshold: int.tryParse(_lowStockThresholdController.text) ?? 5,
-                      );
-
-                      viewModel.addProduct(
-                        name: _nameController.text.trim(),
-                        description: _descriptionController.text.trim(),
-                        price: double.tryParse(_priceController.text.trim()) ?? 0,
-                        stock: int.tryParse(_stockController.text.trim()) ?? 0,
-                        categoryId: int.tryParse(_categoryController.text.trim()) ?? 0,
-                        street: _streetController.text.trim(),
-                        apartment: _apartmentController.text.trim(),
-                        city: _cityController.text.trim(),
-                        postalCode: _postalCodeController.text.trim(),
-                        weight: double.tryParse(_weightController.text),
-                        length: double.tryParse(_lengthController.text),
-                        width: double.tryParse(_widthController.text),
-                        height: double.tryParse(_heightController.text),
-                        taxCode: _taxCodeController.text.trim(),
-                        deliveryOptions: _buildDeliveryOptions(state),
-                        minimumOrderQuantity: int.tryParse(_minOrderController.text) ?? 1,
-                        freeShipping: state.freeShipping,
-                        cost: double.tryParse(_costController.text),
-                        supplierSku: _supplierSkuController.text.trim().isEmpty ? null : _supplierSkuController.text.trim(),
-                        supplierUrl: _supplierUrlController.text.trim().isEmpty ? null : _supplierUrlController.text.trim(),
-                        supplier: supplierInfo,
-                        inventory: inventoryConfig,
-                      );
-                    }
-                  },
-            child: Center(
-              child: state.isLoading
-                  ? const ModernLoadingIndicator(size: 24, strokeWidth: 2.5, color: Colors.white, centered: false)
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 20),
-                        const SizedBox(width: 10),
-                        Text(
-                          'product.publish_product'.tr(),
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5),
-                        ),
-                      ],
-                    ),
-            ),
-          ),
-        ),
-      ),
-    ),
-    );
-  }
-
-  // ─── DATA BUILDERS ────────────────────────────────────────────────────
-
-  List<SellerDeliveryOption> _buildDeliveryOptions(AddProductState state) {
-    if (state.isDigital) return [];
-
-    // Bug #2: Local-only products need a pickup delivery option
-    if (state.isLocalDeliveryOnly) {
-      return [
-        SellerDeliveryOption(
-          type: 'pickup',
-          description: 'product.local_pickup_only'.tr(),
-          estimatedDays: 0,
-          cost: 0.0,
-        ),
-      ];
-    }
-
-    final quantityDiscounts = <ShippingQuantityDiscount>[];
-
-    final discount3 = double.tryParse(_shippingDiscount3Controller.text);
-    if (discount3 != null && discount3 > 0) {
-      quantityDiscounts.add(ShippingQuantityDiscount(
-        minQuantity: 3,
-        discountType: 'percent',
-        discountValue: discount3,
-        label: 'product.shipping_discount_label'.tr(namedArgs: {'percent': discount3.toStringAsFixed(0), 'qty': '3'}),
-      ));
-    }
-
-    final discount5 = double.tryParse(_shippingDiscount5Controller.text);
-    if (discount5 != null && discount5 > 0) {
-      quantityDiscounts.add(ShippingQuantityDiscount(
-        minQuantity: 5,
-        discountType: 'percent',
-        discountValue: discount5,
-        label: 'product.shipping_discount_label'.tr(namedArgs: {'percent': discount5.toStringAsFixed(0), 'qty': '5'}),
-      ));
-    }
-
-    if (state.freeShippingAt10Plus) {
-      quantityDiscounts.add(ShippingQuantityDiscount(minQuantity: 10, discountType: 'flat_rate', discountValue: 0, label: 'product.free_shipping_10_plus_label'.tr()));
-    }
-
-    final additionalItemCost = double.tryParse(_additionalItemCostController.text) ?? 0.0;
-    final maxItems = int.tryParse(_maxItemsPerShipmentController.text) ?? 0;
-
-    return [
-      if (state.standardEnabled)
-        SellerDeliveryOption(
-          type: 'standard',
-          description: 'product.standard_delivery'.tr(),
-          estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
-          cost: double.tryParse(_standardPriceController.text) ?? 0.0,
-          quantityDiscounts: quantityDiscounts,
-          additionalItemCost: additionalItemCost,
-          maxItemsPerShipment: maxItems,
-        ),
-      if (state.expressEnabled)
-        SellerDeliveryOption(
-          type: 'express',
-          description: 'product.express_delivery'.tr(),
-          estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
-          cost: double.tryParse(_expressPriceController.text) ?? 9.99,
-          quantityDiscounts: quantityDiscounts,
-          additionalItemCost: additionalItemCost,
-          maxItemsPerShipment: maxItems,
-        ),
-      if (state.sameDayEnabled)
-        SellerDeliveryOption(
-          type: 'same_day',
-          description: 'product.same_day_delivery'.tr(),
-          estimatedDays: 0,
-          cost: double.tryParse(_sameDayPriceController.text) ?? 14.99,
-          quantityDiscounts: quantityDiscounts,
-          additionalItemCost: additionalItemCost,
-          maxItemsPerShipment: maxItems,
-        ),
-    ];
   }
 
   void _onSuccess() {
@@ -2019,11 +2107,54 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     Navigator.pop(context);
   }
 
-  String? _validateStreet(String? v) {
-    if (v == null || v.trim().isEmpty) return 'common.required'.tr();
-    if (v.trim().length < 3) return 'product.street_too_short'.tr();
-    if (v.trim().length > 100) return 'product.street_too_long'.tr();
-    return null;
+  void _showInfoSheet(String title, String body) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -4))],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: DesignTokens.info.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.lightbulb_rounded, color: DesignTokens.info, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DesignTokens.darkSurface),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(color: DesignTokens.surfaceVariant, shape: BoxShape.circle),
+                    child: const Icon(Icons.close_rounded, size: 16, color: DesignTokens.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(body, style: TextStyle(fontSize: 14, color: DesignTokens.textPrimary, height: 1.6)),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   String? _validateCity(String? v) {
@@ -2041,42 +2172,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> with Ticker
     return null;
   }
 
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    _nameController.dispose();
-    _descriptionController.dispose();
-    _priceController.dispose();
-    _categoryController.dispose();
-    _streetController.dispose();
-    _apartmentController.dispose();
-    _cityController.dispose();
-    _postalCodeController.dispose();
-    _stockController.dispose();
-    _weightController.dispose();
-    _lengthController.dispose();
-    _widthController.dispose();
-    _heightController.dispose();
-    _taxCodeController.dispose();
-    _minOrderController.dispose();
-    _standardDaysController.dispose();
-    _standardPriceController.dispose();
-    _expressDaysController.dispose();
-    _expressPriceController.dispose();
-    _sameDayPriceController.dispose();
-    _costController.dispose();
-    _supplierSkuController.dispose();
-    _sellerSkuController.dispose();
-    _supplierUrlController.dispose();
-    _supplierShippingDaysController.dispose();
-    _supplierNotesController.dispose();
-    _customSupplierNameController.dispose();
-    _lowStockThresholdController.dispose();
-    _shippingDiscount3Controller.dispose();
-    _shippingDiscount5Controller.dispose();
-    _additionalItemCostController.dispose();
-    _maxItemsPerShipmentController.dispose();
-    super.dispose();
+  String? _validateStreet(String? v) {
+    if (v == null || v.trim().isEmpty) return 'common.required'.tr();
+    if (v.trim().length < 3) return 'product.street_too_short'.tr();
+    if (v.trim().length > 100) return 'product.street_too_long'.tr();
+    return null;
   }
 }
 
@@ -2086,13 +2186,7 @@ class _DigitalTypeCard extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _DigitalTypeCard({
-    super.key,
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
+  const _DigitalTypeCard({super.key, required this.label, required this.icon, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -2103,12 +2197,7 @@ class _DigitalTypeCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: selected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
-          border: Border.all(
-            color: selected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).dividerColor,
-            width: selected ? 2 : 1,
-          ),
+          border: Border.all(color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor, width: selected ? 2 : 1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -2117,10 +2206,7 @@ class _DigitalTypeCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(
-                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                color: selected ? Theme.of(context).colorScheme.primary : null,
-              ),
+              style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal, color: selected ? Theme.of(context).colorScheme.primary : null),
             ),
           ],
         ),

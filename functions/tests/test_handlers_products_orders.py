@@ -823,3 +823,159 @@ def test_generate_product_slug_different_each_call():
     s2 = _generate_product_slug("Same Name")
     # Extremely unlikely to collide (1/65536 chance)
     assert s1 != s2
+
+
+# =============================================================================
+# BUG-4: status ↔ isActive sync invariant tests
+# =============================================================================
+
+class TestComputeIsActive:
+    """_compute_is_active() enforces: isActive = (status=='active' AND approvalStatus=='approved')"""
+
+    def test_active_and_approved_returns_true(self):
+        from handlers.products import _compute_is_active
+        assert _compute_is_active("active", "approved") is True
+
+    def test_active_but_under_review_returns_false(self):
+        from handlers.products import _compute_is_active
+        assert _compute_is_active("active", "under_review") is False
+
+    def test_active_but_rejected_returns_false(self):
+        from handlers.products import _compute_is_active
+        assert _compute_is_active("active", "rejected") is False
+
+    def test_draft_and_approved_returns_false(self):
+        from handlers.products import _compute_is_active
+        assert _compute_is_active("draft", "approved") is False
+
+    def test_paused_and_approved_returns_false(self):
+        from handlers.products import _compute_is_active
+        assert _compute_is_active("paused", "approved") is False
+
+    def test_archived_and_approved_returns_false(self):
+        from handlers.products import _compute_is_active
+        assert _compute_is_active("archived", "approved") is False
+
+    def test_out_of_stock_and_approved_returns_false(self):
+        from handlers.products import _compute_is_active
+        assert _compute_is_active("out_of_stock", "approved") is False
+
+    def test_empty_strings_return_false(self):
+        from handlers.products import _compute_is_active
+        assert _compute_is_active("", "") is False
+
+
+class TestAdminApproveProductStatusSync:
+    """admin_approve_product must write STATUS='active' alongside IS_ACTIVE=True"""
+
+    @patch("handlers.products._compute_is_active", return_value=True)
+    @patch("handlers.products._get_seller_email", return_value=None)
+    @patch("handlers.products.index_product")
+    @patch("handlers.products.create_success_response")
+    @patch("handlers.products.get_db")
+    def test_approve_writes_status_active(
+        self, mock_get_db, mock_create_response, mock_index, mock_email, mock_compute
+    ):
+        from handlers.products import admin_approve_product
+
+        product_data = {
+            "isActive": False,
+            "status": "draft",
+            "approvalStatus": "under_review",
+            "isDigital": False,
+            "sellerId": "seller_1",
+        }
+        mock_product_doc = Mock()
+        mock_product_doc.exists = True
+        mock_product_doc.to_dict.return_value = product_data
+
+        mock_product_ref = Mock()
+        mock_product_ref.get.return_value = mock_product_doc
+
+        mock_user_doc = Mock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {"roles": ["admin"]}
+
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        # Wire: users/{admin_id} → user_doc, products/{prod_id} → product_ref
+        def collection_side_effect(name):
+            coll = Mock()
+            if name == "users":
+                coll.document.return_value.get.return_value = mock_user_doc
+            elif name == "products":
+                coll.document.return_value = mock_product_ref
+            return coll
+
+        mock_db.collection.side_effect = collection_side_effect
+        mock_create_response.return_value = {"success": True}
+
+        req = Mock()
+        req.auth = Mock(uid="admin_1")
+        req.data = {"productId": "prod_1"}
+
+        admin_approve_product(req)
+
+        update_calls = mock_product_ref.update.call_args_list
+        assert update_calls, "Expected product_ref.update() to be called"
+        update_payload = update_calls[0][0][0]
+        assert update_payload.get("status") == "active", f"Expected status='active', got: {update_payload}"
+        assert update_payload.get("isActive") is True
+
+
+class TestAdminRejectProductStatusSync:
+    """admin_reject_product must write STATUS='paused' alongside IS_ACTIVE=False"""
+
+    @patch("handlers.products.algolia_delete_product")
+    @patch("handlers.products._get_seller_email", return_value=None)
+    @patch("handlers.products.create_success_response")
+    @patch("handlers.products.get_db")
+    def test_reject_writes_status_paused(
+        self, mock_get_db, mock_create_response, mock_email, mock_algolia_delete
+    ):
+        from handlers.products import admin_reject_product
+
+        product_data = {
+            "isActive": True,
+            "status": "active",
+            "approvalStatus": "approved",
+            "sellerId": "seller_1",
+            "name": "Test Product",
+        }
+        mock_product_doc = Mock()
+        mock_product_doc.exists = True
+        mock_product_doc.to_dict.return_value = product_data
+
+        mock_product_ref = Mock()
+        mock_product_ref.get.return_value = mock_product_doc
+
+        mock_user_doc = Mock()
+        mock_user_doc.exists = True
+        mock_user_doc.to_dict.return_value = {"roles": ["admin"]}
+
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        def collection_side_effect(name):
+            coll = Mock()
+            if name == "users":
+                coll.document.return_value.get.return_value = mock_user_doc
+            elif name == "products":
+                coll.document.return_value = mock_product_ref
+            return coll
+
+        mock_db.collection.side_effect = collection_side_effect
+        mock_create_response.return_value = {"success": True}
+
+        req = Mock()
+        req.auth = Mock(uid="admin_1")
+        req.data = {"productId": "prod_1", "reason": "Violates policy"}
+
+        admin_reject_product(req)
+
+        update_calls = mock_product_ref.update.call_args_list
+        assert update_calls, "Expected product_ref.update() to be called"
+        update_payload = update_calls[0][0][0]
+        assert update_payload.get("status") == "paused", f"Expected status='paused', got: {update_payload}"
+        assert update_payload.get("isActive") is False

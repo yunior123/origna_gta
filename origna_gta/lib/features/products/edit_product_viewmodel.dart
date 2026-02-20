@@ -74,16 +74,23 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     );
   }
 
+  void setBookSourceUrl(String? url) => state = state.copyWith(bookSourceUrl: url);
+
+  void setDeviceLimit(int? limit) => state = state.copyWith(deviceLimit: limit);
+
+  void setDigitalType(String? type) => state = state.copyWith(digitalType: type);
+
   void setExpressEnabled(bool value) => state = state.copyWith(expressEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
 
+  void setLinuxDownloadUrl(String? url) => state = state.copyWith(linuxDownloadUrl: url);
+
+  void setMacosDownloadUrl(String? url) => state = state.copyWith(macosDownloadUrl: url);
+
   void setMinimumOrderQuantity(int value) => state = state.copyWith(minimumOrderQuantity: value);
-
   void setProvince(String province) => state = state.copyWith(selectedProvince: province);
-
   void setSameDayEnabled(bool value) => state = state.copyWith(sameDayEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
-
   void setStandardEnabled(bool value) => state = state.copyWith(standardEnabled: value, isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly);
-
+  void setWindowsDownloadUrl(String? url) => state = state.copyWith(windowsDownloadUrl: url);
   void toggleDigital(bool value) => state = state.copyWith(
     isDigital: value,
     freeShipping: value ? true : state.freeShipping,
@@ -100,13 +107,6 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     bookSourceUrl: value ? state.bookSourceUrl : null,
     deviceLimit: value ? state.deviceLimit : null,
   );
-
-  void setDigitalType(String? type) => state = state.copyWith(digitalType: type);
-  void setMacosDownloadUrl(String? url) => state = state.copyWith(macosDownloadUrl: url);
-  void setWindowsDownloadUrl(String? url) => state = state.copyWith(windowsDownloadUrl: url);
-  void setLinuxDownloadUrl(String? url) => state = state.copyWith(linuxDownloadUrl: url);
-  void setBookSourceUrl(String? url) => state = state.copyWith(bookSourceUrl: url);
-  void setDeviceLimit(int? limit) => state = state.copyWith(deviceLimit: limit);
 
   void toggleFreeShipping(bool value) => state = state.copyWith(freeShipping: value);
 
@@ -132,6 +132,10 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     double? height,
     required int shipDays,
     required List<models.SellerDeliveryOption> deliveryOptions,
+    models.InventoryConfig? inventory,
+
+    /// Original/crossed-out price for discount display (null = no sale, must be > price)
+    double? compareAtPrice,
   }) async {
     // Guard: prevent double-submit
     if (state.isLoading) return;
@@ -150,6 +154,10 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     }
     if (price > 100000) {
       state = state.copyWith(errorMessage: 'Price cannot exceed \$100,000');
+      return;
+    }
+    if (compareAtPrice != null && compareAtPrice <= price) {
+      state = state.copyWith(errorMessage: 'product.compare_at_price_must_be_higher'.tr());
       return;
     }
     if (stock < 0) {
@@ -265,6 +273,8 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
         deviceLimit: state.isDigital ? state.deviceLimit : null,
         minimumOrderQuantity: state.minimumOrderQuantity,
         freeShipping: state.freeShipping,
+        inventory: inventory ?? _product.inventory,
+        compareAtPrice: compareAtPrice,
       );
 
       // Build update map and add bookSourceUrl only if seller re-entered it

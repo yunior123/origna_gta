@@ -730,5 +730,79 @@ def test_order_item_digital_fields():
     assert item.digitalBuilds["macos"] == "https://example.com/app.dmg"
 
 
+# ============================================================================
+# COMPARE AT PRICE TESTS (TASK 08)
+# ============================================================================
+
+
+_BASE_ADDR = dict(street="123 Test St", city="Toronto", state="ON", postalCode="M5V 3A8", country="Canada")
+
+def test_compare_at_price_must_be_higher_than_price():
+    """compareAtPrice <= price must raise ValidationError."""
+    from pydantic import ValidationError
+    from models.product import Product
+
+    # Equal price → rejected
+    with pytest.raises(ValidationError, match="compare"):
+        Product(
+            name="Test Product",
+            description="A valid product description long enough to pass",
+            price=29.99,
+            compareAtPrice=29.99,  # Equal — not allowed
+            categoryId=1,
+            stockQuantity=10,
+            imageUrls=["https://cdn.example.com/img.jpg"],
+            sellerId="seller_123",
+        )
+
+    # Lower price → rejected
+    with pytest.raises(ValidationError, match="compare"):
+        Product(
+            name="Test Product",
+            description="A valid product description long enough to pass",
+            price=29.99,
+            compareAtPrice=19.99,  # Lower than price — not allowed
+            categoryId=1,
+            stockQuantity=10,
+            imageUrls=["https://cdn.example.com/img.jpg"],
+            sellerId="seller_123",
+        )
+
+
+def test_compare_at_price_null_is_allowed():
+    """compareAtPrice = None (no sale) must be valid."""
+    from models.product import Product
+
+    product = Product(
+        name="Regular Product",
+        description="A valid product description long enough to pass",
+        price=29.99,
+        compareAtPrice=None,  # No sale — allowed
+        categoryId=1,
+        stockQuantity=10,
+        imageUrls=["https://cdn.example.com/img.jpg"],
+        sellerId="seller_123",
+    )
+    assert product.compareAtPrice is None
+
+
+def test_compare_at_price_higher_is_allowed():
+    """compareAtPrice > price must be valid and stored correctly."""
+    from models.product import Product
+
+    product = Product(
+        name="Sale Product",
+        description="A valid product description long enough to pass",
+        price=29.99,
+        compareAtPrice=49.99,  # Higher than price — allowed
+        categoryId=1,
+        stockQuantity=10,
+        imageUrls=["https://cdn.example.com/img.jpg"],
+        sellerId="seller_123",
+    )
+    assert product.compareAtPrice == 49.99
+    assert product.price == 29.99
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

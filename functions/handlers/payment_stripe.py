@@ -200,7 +200,23 @@ def _rollback_checkout(validated_items: list, order_ref) -> None:
                 if snapshot.exists:
                     product_data = snapshot.to_dict()
                     current_stock = product_data.get(Fields.STOCK_QUANTITY, 0)
-                    transaction.update(ref, {Fields.STOCK_QUANTITY: current_stock + qty})
+                    patch = {Fields.STOCK_QUANTITY: current_stock + qty}
+
+                    # BUG-2 FIX: Restore warehouseStock in sync with stockQuantity.
+                    # Reverse the drain: add back to the warehouse with the least stock first
+                    # (mirrors the drain-fullest-first strategy in reserve_stock_transaction).
+                    warehouse_stock: dict = product_data.get(Fields.WAREHOUSE_STOCK) or {}
+                    if warehouse_stock:
+                        sorted_warehouses = sorted(warehouse_stock.items(), key=lambda kv: kv[1])
+                        remaining = qty
+                        for wh_id, wh_stock in sorted_warehouses:
+                            if remaining <= 0:
+                                break
+                            restore = min(qty, remaining)
+                            patch[f"{Fields.WAREHOUSE_STOCK}.{wh_id}"] = wh_stock + restore
+                            remaining -= restore
+
+                    transaction.update(ref, patch)
 
         transaction = get_db().transaction()
         rollback_stock(transaction)
@@ -650,9 +666,10 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
                 },
             )
 
-        # Check stock availability
+        # Check stock availability (skip if seller allows backorders)
         stock_quantity = product_data.get(Fields.STOCK_QUANTITY, 0)
-        if stock_quantity < item[Fields.QUANTITY]:
+        allow_backorder = product_data.get(Fields.INVENTORY, {}).get(Fields.ALLOW_BACKORDER, False)
+        if stock_quantity < item[Fields.QUANTITY] and not allow_backorder:
             raise https_fn.HttpsError(
                 "resource-exhausted",
                 f"Insufficient stock for product {item[Fields.PRODUCT_ID]} ({item[Fields.NAME]}): {stock_quantity} available, {item[Fields.QUANTITY]} requested",
@@ -741,6 +758,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.HEIGHT_CM: product_data.get(Fields.HEIGHT_CM),
             # Supplier info for international shipping estimation (e.g., AliExpress/DHGate)
             Fields.SUPPLIER: product_data.get(Fields.SUPPLIER),
+            Fields.BUYER_NOTE: item.get(Fields.BUYER_NOTE),
         }
         validated_items.append(validated_item)
         actual_subtotal += db_price * item[Fields.QUANTITY]
@@ -879,6 +897,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     # Reserve stock atomically using Firestore transactions
     # IMPORTANT: All reads MUST happen before any writes to avoid
     # "Attempted read after write in a transaction" errors
+    fulfillment_warehouse_ids: list[str | None] = [None] * len(validated_items)  # TASK 02: track per-item
+
     @get_transactional()
     def reserve_stock_transaction(transaction):
         # Phase 1: Read ALL product snapshots first
@@ -890,7 +910,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
             product_refs.append(product_ref)
             product_snapshots.append(product_snapshot)
 
-        # Phase 2: Validate ALL stock levels
+        # Phase 2: Validate ALL stock levels and compute warehouse decrements
         updates = []
         for i, item in enumerate(validated_items):
             snapshot = product_snapshots[i]
@@ -899,17 +919,45 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
 
             product_data = snapshot.to_dict()
             current_stock = product_data.get(Fields.STOCK_QUANTITY, 0)
+            allow_backorder = product_data.get(Fields.INVENTORY, {}).get(Fields.ALLOW_BACKORDER, False)
 
-            if current_stock < item[Fields.QUANTITY]:
+            if current_stock < item[Fields.QUANTITY] and not allow_backorder:
                 raise https_fn.HttpsError(
                     "resource-exhausted",
                     f"Stock changed: {product_data[Fields.NAME]} now has {current_stock} available",
                 )
-            updates.append((product_refs[i], current_stock - item[Fields.QUANTITY]))
+
+            qty = item[Fields.QUANTITY]
+            new_total_stock = current_stock - qty
+
+            # BUG-2 FIX: Also decrement warehouseStock to keep it in sync with stockQuantity.
+            # Strategy: drain from the warehouse with the most stock first (greedy).
+            warehouse_stock: dict = product_data.get(Fields.WAREHOUSE_STOCK) or {}
+            warehouse_patches: dict = {}
+            if warehouse_stock:
+                sorted_warehouses = sorted(warehouse_stock.items(), key=lambda kv: kv[1], reverse=True)
+                remaining = qty
+                for wh_id, wh_stock in sorted_warehouses:
+                    if remaining <= 0:
+                        break
+                    drain = min(wh_stock, remaining)
+                    warehouse_patches[f"{Fields.WAREHOUSE_STOCK}.{wh_id}"] = wh_stock - drain
+                    if fulfillment_warehouse_ids[i] is None:
+                        fulfillment_warehouse_ids[i] = wh_id  # TASK 02: first warehouse drained = primary
+                    remaining -= drain
+                # If backorder active and demand exceeded all warehouse stock, allow last to go negative
+                if remaining > 0 and sorted_warehouses:
+                    last_wh_id = sorted_warehouses[-1][0]
+                    key = f"{Fields.WAREHOUSE_STOCK}.{last_wh_id}"
+                    warehouse_patches[key] = warehouse_patches.get(key, sorted_warehouses[-1][1]) - remaining
+
+            updates.append((product_refs[i], new_total_stock, warehouse_patches))
 
         # Phase 3: Write ALL updates after all reads are done
-        for ref, new_stock in updates:
-            transaction.update(ref, {Fields.STOCK_QUANTITY: new_stock})
+        for ref, new_stock, warehouse_patches in updates:
+            patch = {Fields.STOCK_QUANTITY: new_stock}
+            patch.update(warehouse_patches)
+            transaction.update(ref, patch)
 
     transaction = get_db().transaction()
     try:
@@ -919,6 +967,11 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Stock reservation error: {str(e)}")
         raise https_fn.HttpsError("internal", "Could not reserve stock. Please try again.") from e
+
+    # TASK 02: stamp fulfillmentWarehouseId onto each item before order creation
+    for i, wh_id in enumerate(fulfillment_warehouse_ids):
+        if wh_id is not None:
+            validated_items[i][Fields.FULFILLMENT_WAREHOUSE_ID] = wh_id
 
     # Create order in Firestore — all amounts in cents
     # IDEMPOTENCY: Check if user already has a recent pending order with same subtotal
@@ -1002,8 +1055,8 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict[str, Any]:
         Fields.CURRENCY: BusinessRules.DEFAULT_CURRENCY,
         Fields.PAYMENT_PROVIDER: PaymentProvider.STRIPE,
         Fields.DELIVERY_SPEED: delivery_speed,
-        # Platform fee on product subtotal only (not taxes/shipping — those aren't platform revenue)
-        Fields.PLATFORM_FEE_TOTAL_CENTS: round(actual_subtotal_cents * PLATFORM_FEE_PERCENT),
+        # Platform fee: waived for premium subscribers (isPremium=True)
+        Fields.PLATFORM_FEE_TOTAL_CENTS: 0 if user_data.get(Fields.IS_PREMIUM, False) else round(actual_subtotal_cents * PLATFORM_FEE_PERCENT),
         Fields.ARCHIVED: False,
         Fields.STOCK_RESTORED: False,
         Fields.TAX_EXEMPTION: tax_exemption if gst_number else None,
@@ -1310,6 +1363,18 @@ def stripe_webhook(req: https_fn.Request) -> https_fn.Response:
             process_payment_intent_canceled(event["data"]["object"])
         elif event_type == "account.updated":
             process_account_updated(event["data"]["object"])
+        elif event_type == "customer.subscription.created":
+            from handlers.subscriptions import handle_subscription_created
+            handle_subscription_created(event)
+        elif event_type == "customer.subscription.updated":
+            from handlers.subscriptions import handle_subscription_updated
+            handle_subscription_updated(event)
+        elif event_type == "customer.subscription.deleted":
+            from handlers.subscriptions import handle_subscription_deleted
+            handle_subscription_deleted(event)
+        elif event_type == "invoice.payment_failed":
+            from handlers.subscriptions import handle_invoice_payment_failed
+            handle_invoice_payment_failed(event)
         else:
             logger.info(f"ℹ️ Unhandled Stripe event type: {event_type}")
 

@@ -170,7 +170,9 @@ service cloud.firestore {
           'address',
           'lastCheckoutSession',
           'lastOrderId',
-          'lastCheckoutTimestamp'
+          'lastCheckoutTimestamp',
+          'notifyNewProducts',
+          'notifyTrending'
         ]));
       
       // Users can create their own profile with strict fields only
@@ -210,6 +212,13 @@ service cloud.firestore {
           request.resource.data.keys().hasOnly(['productId','dateFavorited']) &&
           request.resource.data.productId is string &&
           request.resource.data.dateFavorited is timestamp;
+        allow delete: if isOwner(userId);
+      }
+      
+      // --- ADDRESSES SUBCOLLECTION ---
+      match /addresses/{addressId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidAddress(request.resource.data);
         allow delete: if isOwner(userId);
       }
       
@@ -267,7 +276,7 @@ service cloud.firestore {
         // CRITICAL: Prevent client injecting arbitrary fields (e.g., rating)
         request.resource.data.keys().hasOnly([
           // Core
-          'name', 'price', 'description', 'imageUrls',
+          'name', 'price', 'compareAtPrice', 'description', 'imageUrls',
           'sellerId', 'sellerAddress',
           'categoryId', 'stockQuantity',
           'keywords',
@@ -323,7 +332,7 @@ service cloud.firestore {
         ((resource.data.sellerId == request.auth.uid && isSellerApproved()) || isAdmin()) &&
           // Only allow specific fields to be changed via client updates
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'name', 'price', 'description', 'imageUrls',
+            'name', 'price', 'compareAtPrice', 'description', 'imageUrls',
             'sellerAddress', 'keywords',
             'stockQuantity',
             'weightKg', 'lengthCm', 'widthCm', 'heightCm',
@@ -435,6 +444,39 @@ service cloud.firestore {
     }
     
     // ================================================================
+    // SELLER_METRICS COLLECTION (TASKS 11)
+    // ================================================================
+    match /seller_metrics/{sellerMetricsId} {
+      // Sellers can read their own metrics, Admins can read all
+      allow read: if isAdmin() || isOwner(sellerMetricsId);
+      
+      // Backend only
+      allow create, update, delete: if false;
+    }
+
+    // ================================================================
+    // STOCK_NOTIFICATIONS COLLECTION (TASKS 07)
+    // ================================================================
+    match /stock_notifications/{notifId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Backend only handles creates via specific `subscribe_stock_notification` endpoint to ensure consistency
+      allow create, update: if false;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // ================================================================
+    // PRODUCT_QUESTIONS COLLECTION (TASKS 09)
+    // ================================================================
+    match /product_questions/{questionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.askerId == request.auth.uid
+        && request.resource.data.question.size() >= 10
+        && request.resource.data.question.size() <= 500;
+      allow update: if false;  // answers written by backend only
+      allow delete: if false;  // no deletes from client
+    }
+    
+    // ================================================================
     // ADMIN_LOGS COLLECTION
     // ================================================================
     match /admin_logs/{logId} {
@@ -511,6 +553,52 @@ service cloud.firestore {
       allow read: if isAdmin();
       // Backend-only writes (Cloud Functions only)
       allow create, update, delete: if false;
+    }
+
+    // ================================================================
+    // SUBSCRIPTIONS COLLECTION
+    // subscriptions/{userId} — premium subscription records.
+    // Backend writes on Stripe webhook. User reads own. No client writes.
+    // ================================================================
+    match /subscriptions/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update, delete: if false; // Backend-only writes
+    }
+
+    // ================================================================
+    // CHATS COLLECTION
+    // chats/{chatId} — product-scoped buyer↔seller chat threads.
+    // Only premium buyers and the seller of the product can participate.
+    // Backend creates threads. Participants read/write messages.
+    // ================================================================
+    match /chats/{chatId} {
+      allow read: if isAuthenticated() && (
+        resource.data.buyerId == request.auth.uid ||
+        resource.data.sellerId == request.auth.uid ||
+        isAdmin()
+      );
+      // Chat threads created via backend only
+      allow create, update, delete: if false;
+
+      match /messages/{messageId} {
+        // Buyer (premium) and seller can read messages in their thread
+        allow read: if isAuthenticated() && (
+          get(/databases/$(database)/documents/chats/$(chatId)).data.buyerId == request.auth.uid ||
+          get(/databases/$(database)/documents/chats/$(chatId)).data.sellerId == request.auth.uid ||
+          isAdmin()
+        );
+        // Only participants can send messages; premium check enforced by backend
+        allow create: if isAuthenticated() && (
+          get(/databases/$(database)/documents/chats/$(chatId)).data.buyerId == request.auth.uid ||
+          get(/databases/$(database)/documents/chats/$(chatId)).data.sellerId == request.auth.uid
+        ) && request.resource.data.keys().hasOnly(['senderId','text','createdAt','read']) &&
+          request.resource.data.senderId == request.auth.uid &&
+          request.resource.data.text is string &&
+          request.resource.data.text.size() > 0 &&
+          request.resource.data.text.size() <= 2000 &&
+          request.resource.data.read == false;
+        allow update, delete: if false;
+      }
     }
 
     // ================================================================

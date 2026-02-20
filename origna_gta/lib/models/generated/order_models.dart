@@ -6,9 +6,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../../core/schema/schema_constants.dart';
 import 'base_models.dart';
 import 'product_models.dart';
-import '../../core/schema/schema_constants.dart';
 
 part 'order_models.freezed.dart';
 part 'order_models.g.dart';
@@ -22,71 +22,19 @@ DateTime? _parseDateTime(dynamic value) {
   return null;
 }
 
-/// Safely convert any Firestore value to String (handles MiniFieldValue, int, etc.)
-String _safeString(dynamic value, [String fallback = '']) {
-  if (value == null) return fallback;
-  if (value is String) return value;
-  return value.toString();
-}
-
-/// Safely convert to double
-double _safeDouble(dynamic value, [double fallback = 0.0]) {
-  if (value == null) return fallback;
-  if (value is double) return value;
-  if (value is int) return value.toDouble();
-  if (value is num) return value.toDouble();
-  if (value is String) return double.tryParse(value) ?? fallback;
-  return fallback;
-}
-
-/// Safely convert to int
-int _safeInt(dynamic value, [int fallback = 0]) {
-  if (value == null) return fallback;
-  if (value is int) return value;
-  if (value is num) return value.toInt();
-  if (value is String) return int.tryParse(value) ?? fallback;
-  return fallback;
-}
-
-/// Safely convert to bool
-bool _safeBool(dynamic value, [bool fallback = false]) {
-  if (value == null) return fallback;
-  if (value is bool) return value;
-  if (value is String) return value.toLowerCase() == 'true';
-  return fallback;
-}
-
-/// Safely convert to List String
-List<String> _safeStringList(dynamic value) {
-  if (value == null) return [];
-  if (value is List) return value.map((e) => _safeString(e)).toList();
-  return [];
-}
-
-/// Safely parse a Map from dynamic (handles Firestore internal types)
-Map<String, dynamic> _safeMap(dynamic value) {
-  if (value == null) return {};
-  if (value is Map<String, dynamic>) return value;
-  if (value is Map) return Map<String, dynamic>.from(value);
-  return {};
-}
-
-/// Parse an Address from any dynamic Firestore value
-Address _safeAddress(dynamic value) {
-  final map = _safeMap(value);
-  return Address(
-    street: _safeString(map[Fields.street]),
-    apartment: _safeString(map[Fields.apartment]),
-    city: _safeString(map[Fields.city]),
-    state: _safeString(map[Fields.state]),
-    postalCode: _safeString(map[Fields.postalCode]),
-    country: _safeString(map[Fields.country], BusinessRules.allowedShippingCountries.first),
-    phoneNumber: map[Fields.phoneNumber] != null ? _safeString(map[Fields.phoneNumber]) : null,
-    isDefault: _safeBool(map[Fields.isDefault]),
-    label: map[Fields.label] != null ? _safeString(map[Fields.label]) : null,
-    latitude: map[Fields.latitude] != null ? _safeDouble(map[Fields.latitude]) : null,
-    longitude: map[Fields.longitude] != null ? _safeDouble(map[Fields.longitude]) : null,
-  );
+/// Parse DeliveryStatus from dynamic
+DeliveryStatus _parseDeliveryStatus(dynamic raw) {
+  final value = _safeString(raw, DeliveryStatusValues.pending);
+  switch (value) {
+    case DeliveryStatusValues.shipped:
+      return DeliveryStatus.shipped;
+    case DeliveryStatusValues.delivered:
+      return DeliveryStatus.delivered;
+    case DeliveryStatusValues.refunded:
+      return DeliveryStatus.refunded;
+    default:
+      return DeliveryStatus.pending;
+  }
 }
 
 /// Parse an OrderItem from a Firestore map without relying on generated fromJson
@@ -102,9 +50,7 @@ OrderItem _parseOrderItem(dynamic raw) {
     sellerId: _safeString(map[Fields.sellerId]),
     sellerAddress: _safeAddress(map[Fields.sellerAddress]),
     status: _safeString(
-      (map[Fields.status] == null || map[Fields.status].toString().isEmpty)
-          ? map[Fields.deliveryStatus]
-          : map[Fields.status],
+      (map[Fields.status] == null || map[Fields.status].toString().isEmpty) ? map[Fields.deliveryStatus] : map[Fields.status],
       DeliveryStatusValues.pending,
     ),
     deliveryStatus: _parseDeliveryStatus(map[Fields.deliveryStatus]),
@@ -132,22 +78,9 @@ OrderItem _parseOrderItem(dynamic raw) {
     digitalType: map[Fields.digitalType] != null ? _safeString(map[Fields.digitalType]) : null,
     digitalBuilds: map[Fields.digitalBuilds] != null ? Map<String, String>.from(map[Fields.digitalBuilds] as Map) : null,
     taxCode: map[Fields.taxCode] != null ? _safeString(map[Fields.taxCode]) : null,
+    buyerNote: map[Fields.buyerNote] != null ? _safeString(map[Fields.buyerNote]) : null,
+    fulfillmentWarehouseId: map[Fields.fulfillmentWarehouseId] != null ? _safeString(map[Fields.fulfillmentWarehouseId]) : null,
   );
-}
-
-/// Parse DeliveryStatus from dynamic
-DeliveryStatus _parseDeliveryStatus(dynamic raw) {
-  final value = _safeString(raw, DeliveryStatusValues.pending);
-  switch (value) {
-    case DeliveryStatusValues.shipped:
-      return DeliveryStatus.shipped;
-    case DeliveryStatusValues.delivered:
-      return DeliveryStatus.delivered;
-    case DeliveryStatusValues.refunded:
-      return DeliveryStatus.refunded;
-    default:
-      return DeliveryStatus.pending;
-  }
 }
 
 /// Parse Ratings from a Firestore map without relying on generated fromJson
@@ -159,6 +92,73 @@ Ratings _parseRating(dynamic raw) {
     review: map[Fields.review] != null ? _safeString(map[Fields.review]) : null,
     createdAt: _parseDateTime(map[Fields.createdAt]) ?? DateTime.now(),
   );
+}
+
+/// Parse an Address from any dynamic Firestore value
+Address _safeAddress(dynamic value) {
+  final map = _safeMap(value);
+  return Address(
+    street: _safeString(map[Fields.street]),
+    apartment: _safeString(map[Fields.apartment]),
+    city: _safeString(map[Fields.city]),
+    state: _safeString(map[Fields.state]),
+    postalCode: _safeString(map[Fields.postalCode]),
+    country: _safeString(map[Fields.country], BusinessRules.allowedShippingCountries.first),
+    phoneNumber: map[Fields.phoneNumber] != null ? _safeString(map[Fields.phoneNumber]) : null,
+    isDefault: _safeBool(map[Fields.isDefault]),
+    label: map[Fields.label] != null ? _safeString(map[Fields.label]) : null,
+    latitude: map[Fields.latitude] != null ? _safeDouble(map[Fields.latitude]) : null,
+    longitude: map[Fields.longitude] != null ? _safeDouble(map[Fields.longitude]) : null,
+  );
+}
+
+/// Safely convert to bool
+bool _safeBool(dynamic value, [bool fallback = false]) {
+  if (value == null) return fallback;
+  if (value is bool) return value;
+  if (value is String) return value.toLowerCase() == 'true';
+  return fallback;
+}
+
+/// Safely convert to double
+double _safeDouble(dynamic value, [double fallback = 0.0]) {
+  if (value == null) return fallback;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? fallback;
+  return fallback;
+}
+
+/// Safely convert to int
+int _safeInt(dynamic value, [int fallback = 0]) {
+  if (value == null) return fallback;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? fallback;
+  return fallback;
+}
+
+/// Safely parse a Map from dynamic (handles Firestore internal types)
+Map<String, dynamic> _safeMap(dynamic value) {
+  if (value == null) return {};
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  return {};
+}
+
+/// Safely convert any Firestore value to String (handles MiniFieldValue, int, etc.)
+String _safeString(dynamic value, [String fallback = '']) {
+  if (value == null) return fallback;
+  if (value is String) return value;
+  return value.toString();
+}
+
+/// Safely convert to List String
+List<String> _safeStringList(dynamic value) {
+  if (value == null) return [];
+  if (value is List) return value.map((e) => _safeString(e)).toList();
+  return [];
 }
 
 // ============================================================================
@@ -394,17 +394,17 @@ abstract class Order with _$Order {
 
   const Order._();
 
-  /// Total in dollars (derived from cents)
-  double get total => totalAmountCents / 100.0;
+  /// Shipping in dollars (derived from cents)
+  double get shippingCost => shippingCostCents / 100.0;
 
   /// Subtotal in dollars (derived from cents)
   double get subtotal => subtotalCents / 100.0;
 
-  /// Shipping in dollars (derived from cents)
-  double get shippingCost => shippingCostCents / 100.0;
-
   /// Tax in dollars (derived from cents)
   double get taxAmount => taxAmountCents / 100.0;
+
+  /// Total in dollars (derived from cents)
+  double get total => totalAmountCents / 100.0;
 }
 
 // ============================================================================
@@ -472,6 +472,8 @@ abstract class OrderItem with _$OrderItem {
     @Default(null) Map<String, String>? digitalBuilds,
     // Tax field (new)
     String? taxCode,
+    String? buyerNote,
+    String? fulfillmentWarehouseId, // TASK 02: warehouse from which this item was fulfilled
   }) = _OrderItem;
 
   factory OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);
@@ -532,11 +534,11 @@ abstract class SellerPayout with _$SellerPayout {
   /// Amount in dollars
   double get amount => amountCents / 100.0;
 
-  /// Platform fee in dollars
-  double get platformFee => platformFeeCents / 100.0;
-
   /// Net amount in dollars
   double get netAmount => netAmountCents / 100.0;
+
+  /// Platform fee in dollars
+  double get platformFee => platformFeeCents / 100.0;
 }
 
 // ============================================================================
@@ -556,8 +558,12 @@ abstract class Taxes with _$Taxes {
     );
   }
 
-  factory Taxes.fromMap(Map<String, dynamic> map) =>
-      Taxes(gst: (map[Fields.GST] ?? 0.0).toDouble(), pst: (map[Fields.PST] ?? 0.0).toDouble(), hst: (map[Fields.HST] ?? 0.0).toDouble(), qst: (map[Fields.QST] ?? 0.0).toDouble());
+  factory Taxes.fromMap(Map<String, dynamic> map) => Taxes(
+    gst: (map[Fields.GST] ?? 0.0).toDouble(),
+    pst: (map[Fields.PST] ?? 0.0).toDouble(),
+    hst: (map[Fields.HST] ?? 0.0).toDouble(),
+    qst: (map[Fields.QST] ?? 0.0).toDouble(),
+  );
 
   const Taxes._();
 

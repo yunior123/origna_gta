@@ -37,6 +37,10 @@ class AppRoutes {
   static const String sellerReturn = '/seller/return';
   static const String sellerRefresh = '/seller/refresh';
   static const String productBySlug = '/p';
+  static const String subscription = '/subscription';
+  static const String subscriptionSuccess = '/subscription/success';
+  static const String subscriptionCancel = '/subscription/cancel';
+  static const String chat = '/chat';
 }
 
 // ─── Typed route arguments ─────────────────────────────────────────
@@ -69,4 +73,11 @@ class EditProductArgs {
 class ProductSlugArgs {
   final String slug;
   const ProductSlugArgs({required this.slug});
+}
+
+/// Arguments for [AppRoutes.chat].
+class ChatArgs {
+  final String productId;
+  final String productTitle;
+  const ChatArgs({required this.productId, required this.productTitle});
 }

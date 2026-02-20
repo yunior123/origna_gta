@@ -6,8 +6,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'base_models.dart';
 import '../../core/schema/schema_constants.dart';
+import 'base_models.dart';
 
 part 'product_models.freezed.dart';
 part 'product_models.g.dart';
@@ -86,45 +86,6 @@ abstract class InventoryConfig with _$InventoryConfig {
 }
 
 // ============================================================================
-// SELLER WAREHOUSE MODEL
-// ============================================================================
-
-@Freezed(toJson: true, fromJson: true)
-abstract class SellerWarehouse with _$SellerWarehouse {
-  const factory SellerWarehouse({
-    required String warehouseId,
-
-    /// Display name, e.g. 'Toronto Warehouse' or 'Home Office'
-    required String label,
-
-    /// Location type: 'warehouse' | 'personal'
-    @Default('warehouse') String type,
-
-    /// Physical address of this location
-    required Address address,
-
-    /// Whether this is the seller's default shipping origin
-    @Default(false) bool isDefault,
-
-    DateTime? createdAt,
-  }) = _SellerWarehouse;
-
-  factory SellerWarehouse.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return SellerWarehouse.fromJson({...data, 'warehouseId': doc.id});
-  }
-
-  factory SellerWarehouse.fromJson(Map<String, dynamic> json) => _$SellerWarehouseFromJson(json);
-}
-
-extension SellerWarehouseExtension on SellerWarehouse {
-  bool get isWarehouse => type == 'warehouse';
-  bool get isPersonal => type == 'personal';
-  String get typeLabel => isWarehouse ? 'Warehouse' : 'Personal Address';
-  String get cityProvince => '${address.city}, ${address.state}';
-}
-
-// ============================================================================
 // PRODUCT MODEL
 // ============================================================================
 
@@ -134,6 +95,9 @@ abstract class Product with _$Product {
     required String productId,
     required String name,
     required double price,
+
+    /// Original/crossed-out price for discount display (null = no sale, must be > price)
+    @Default(null) double? compareAtPrice,
     required String description,
     required List<String> imageUrls,
     required String sellerId,
@@ -205,6 +169,13 @@ abstract class Product with _$Product {
 
     /// All unique countries across all warehouses (for multi-country display on card)
     @Default(null) List<String>? shipFromCountries,
+
+    // === TRENDING & ENGAGEMENT ===
+    @Default(0) int trendingScore,
+    @Default(0) int viewCount,
+    @Default(0) int purchaseCount,
+    @Default(false) bool isTrending,
+    DateTime? trendingAt,
   }) = _Product;
 
   factory Product.fromFirestore(DocumentSnapshot doc) {
@@ -233,6 +204,9 @@ abstract class ProductCreate with _$ProductCreate {
   const factory ProductCreate({
     required String name,
     required double price,
+
+    /// Original/crossed-out price for discount display (null = no sale, must be > price)
+    @Default(null) double? compareAtPrice,
     required String description,
     required List<String> imageUrls,
     required String sellerId,
@@ -314,8 +288,39 @@ abstract class SellerDeliveryOption with _$SellerDeliveryOption {
     @Default(true) bool availableInternational,
   }) = _SellerDeliveryOption;
 
-  factory SellerDeliveryOption.fromJson(Map<String, dynamic> json) =>
-      _$SellerDeliveryOptionFromJson(json);
+  factory SellerDeliveryOption.fromJson(Map<String, dynamic> json) => _$SellerDeliveryOptionFromJson(json);
+}
+
+// ============================================================================
+// SELLER WAREHOUSE MODEL
+// ============================================================================
+
+@Freezed(toJson: true, fromJson: true)
+abstract class SellerWarehouse with _$SellerWarehouse {
+  const factory SellerWarehouse({
+    required String warehouseId,
+
+    /// Display name, e.g. 'Toronto Warehouse' or 'Home Office'
+    required String label,
+
+    /// Location type: 'warehouse' | 'personal'
+    @Default('warehouse') String type,
+
+    /// Physical address of this location
+    required Address address,
+
+    /// Whether this is the seller's default shipping origin
+    @Default(false) bool isDefault,
+
+    DateTime? createdAt,
+  }) = _SellerWarehouse;
+
+  factory SellerWarehouse.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return SellerWarehouse.fromJson({...data, 'warehouseId': doc.id});
+  }
+
+  factory SellerWarehouse.fromJson(Map<String, dynamic> json) => _$SellerWarehouseFromJson(json);
 }
 
 // ============================================================================
@@ -401,8 +406,8 @@ extension ProductExtension on Product {
       isInternational: isInternationalSupplier,
       hasTracking: supplier?.hasTracking ?? !isInternationalSupplier,
       estimateText: deliveryEstimateText,
-      supplierRegion: isInternationalSupplier 
-          ? _getSupplierRegion(supplier?.type) 
+      supplierRegion: isInternationalSupplier
+          ? _getSupplierRegion(supplier?.type)
           : '${sellerAddress?.city ?? shipFromCity ?? 'Unknown'}, ${sellerAddress?.state ?? shipFromProvince ?? ''}',
     );
   }
@@ -464,10 +469,6 @@ extension ProductExtension on Product {
   }
 }
 
-// ============================================================================
-// DELIVERY INFO - Structured delivery information for UI display
-// ============================================================================
-
 /// Extension for calculating shipping cost with quantity discounts
 extension SellerDeliveryOptionExtension on SellerDeliveryOption {
   /// Calculate the effective shipping cost for a given quantity
@@ -526,4 +527,38 @@ extension SellerDeliveryOptionExtension on SellerDeliveryOption {
     }
     return null;
   }
+}
+
+// ============================================================================
+// DELIVERY INFO - Structured delivery information for UI display
+// ============================================================================
+
+// ============================================================================
+// PRODUCT QUESTION MODEL — TASK 09 Q&A
+// ============================================================================
+
+@freezed
+abstract class ProductQuestion with _$ProductQuestion {
+  const factory ProductQuestion({
+    required String questionId,
+    required String productId,
+    required String sellerId,
+    required String askerId,
+    required String question,
+    String? answer,
+    DateTime? answeredAt,
+    String? answeredBy,
+    @Default(false) bool isAnswered,
+    @Default(0) int upvotes,
+    required DateTime createdAt,
+  }) = _ProductQuestion;
+
+  factory ProductQuestion.fromJson(Map<String, dynamic> json) => _$ProductQuestionFromJson(json);
+}
+
+extension SellerWarehouseExtension on SellerWarehouse {
+  String get cityProvince => '${address.city}, ${address.state}';
+  bool get isPersonal => type == 'personal';
+  bool get isWarehouse => type == 'warehouse';
+  String get typeLabel => isWarehouse ? 'Warehouse' : 'Personal Address';
 }

@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
-import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/models/generated/product_models.dart';
+import 'package:origna_gta/models/qa_model.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
@@ -59,10 +61,7 @@ class ProductDetailScreen extends ConsumerWidget {
                       icon: const Icon(Icons.share_outlined),
                       tooltip: 'Share',
                       onPressed: () => SharePlus.instance.share(
-                        ShareParams(
-                          text: 'Check out ${product.name} on Origna!\n${envConfig.baseUrl}/p/${product.slug}',
-                          subject: product.name,
-                        ),
+                        ShareParams(text: 'Check out ${product.name} on Origna!\n${envConfig.baseUrl}/p/${product.slug}', subject: product.name),
                       ),
                     ),
                 ],
@@ -91,18 +90,18 @@ class ProductDetailScreen extends ConsumerWidget {
                                       onTap: () => _showImageDialog(context, imageUrls, index),
                                       child: SizedBox.expand(
                                         child: CachedNetworkImage(
-                                        imageUrl: imageUrls[index],
-                                        fit: BoxFit.cover,
-                                        placeholder: (context, url) => Shimmer.fromColors(
-                                          baseColor: DesignTokens.outlineVariant,
-                                          highlightColor: DesignTokens.surface,
-                                          child: Container(color: Colors.white),
+                                          imageUrl: imageUrls[index],
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) => Shimmer.fromColors(
+                                            baseColor: DesignTokens.outlineVariant,
+                                            highlightColor: DesignTokens.surface,
+                                            child: Container(color: Colors.white),
+                                          ),
+                                          errorWidget: (context, url, error) =>
+                                              Container(color: DesignTokens.outlineVariant, child: const Icon(Icons.image_not_supported, size: 100)),
                                         ),
-                                        errorWidget: (context, url, error) =>
-                                            Container(color: DesignTokens.outlineVariant, child: const Icon(Icons.image_not_supported, size: 100)),
                                       ),
                                     ),
-                                  ),
                                   );
                                 },
                               )
@@ -212,10 +211,8 @@ class ProductDetailScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 20),
                           // Delivery Information Card — suppress for digital
-                          if (!product.isDigital)
-                            _DeliveryInfoCard(product: product),
-                          if (!product.isDigital)
-                            const SizedBox(height: 28),
+                          if (!product.isDigital) _DeliveryInfoCard(product: product),
+                          if (!product.isDigital) const SizedBox(height: 28),
                           Text(
                             'product.description'.tr(),
                             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
@@ -225,17 +222,21 @@ class ProductDetailScreen extends ConsumerWidget {
                             key: const Key('product_description_section'),
                             child: Text(
                               product.description,
-                              style: TextStyle(fontSize: 15, color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary, height: 1.6, fontWeight: FontWeight.w400),
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: isDark ? DesignTokens.outlineVariant : DesignTokens.textPrimary,
+                                height: 1.6,
+                                fontWeight: FontWeight.w400,
+                              ),
                             ),
                           ),
-                          if (product.isDigital) ...[
-                            const SizedBox(height: 12),
-                            _DigitalProductInfo(product: product),
-                          ],
+                          if (product.isDigital) ...[const SizedBox(height: 12), _DigitalProductInfo(product: product)],
                           const SizedBox(height: 28),
                           _QuantitySelector(viewModel: viewModel),
                           const SizedBox(height: 24),
                           _AddToCartButton(productId: productId, sellerId: product.sellerId),
+                          const SizedBox(height: 32),
+                          _QASection(productId: productId, sellerId: product.sellerId),
                           const SizedBox(height: 40),
                         ],
                       ),
@@ -328,50 +329,6 @@ class ProductDetailScreen extends ConsumerWidget {
   }
 }
 
-class _DigitalProductInfo extends StatelessWidget {
-  final Product product;
-  const _DigitalProductInfo({required this.product});
-
-  @override
-  Widget build(BuildContext context) {
-    final builds = product.digitalBuilds ?? {};
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.deepPurple.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.deepPurple.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Icon(Icons.download_outlined, size: 16, color: Colors.deepPurple),
-            const SizedBox(width: 6),
-            Text(
-              product.digitalType == DigitalTypeValues.software ? 'Desktop Software' : 'Digital Book',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple),
-            ),
-          ]),
-          if (builds.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            const Text('Available for:', style: TextStyle(fontSize: 12)),
-            const SizedBox(height: 4),
-            Wrap(spacing: 6, children: builds.keys.map((p) {
-              final label = const {'macos': 'macOS', 'windows': 'Windows', 'linux': 'Linux'}[p] ?? p;
-              return Chip(label: Text(label, style: const TextStyle(fontSize: 11)), visualDensity: VisualDensity.compact);
-            }).toList()),
-          ],
-          const Padding(
-            padding: EdgeInsets.only(top: 8),
-            child: Text('License key + download link delivered after purchase.', style: TextStyle(fontSize: 12)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _AddToCartButton extends ConsumerWidget {
   final String productId;
   final String sellerId;
@@ -389,20 +346,11 @@ class _AddToCartButton extends ConsumerWidget {
       return Column(
         key: const Key('product_own_product_message'),
         children: [
-          ModernButton(
-            label: 'product.own_product_title'.tr(),
-            onPressed: null,
-            fullWidth: true,
-            icon: Icons.storefront,
-          ),
+          ModernButton(label: 'product.own_product_title'.tr(), onPressed: null, fullWidth: true, icon: Icons.storefront),
           const SizedBox(height: 8),
           Text(
             'product.own_product_msg'.tr(),
-            style: TextStyle(
-              fontSize: 13,
-              color: DesignTokens.textSecondary,
-              fontStyle: FontStyle.italic,
-            ),
+            style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary, fontStyle: FontStyle.italic),
           ),
         ],
       );
@@ -423,7 +371,7 @@ class _AddToCartButton extends ConsumerWidget {
         if (!context.mounted) return;
         final messenger = ScaffoldMessenger.of(context);
         final success = await ref.read(cartControllerProvider).addToCart(productId, quantity);
-        
+
         if (success) {
           HapticFeedback.mediumImpact();
         } else {
@@ -487,15 +435,15 @@ class _DeliveryInfoCard extends StatelessWidget {
           _DeliveryInfoRow(icon: Icons.access_time_rounded, label: 'checkout.estimated_delivery'.tr(), value: deliveryInfo.estimateText, isDark: isDark),
           const SizedBox(height: 10),
           if (deliveryInfo.supplierRegion != null) ...[
-              _DeliveryInfoRow(
-                icon: Icons.public_rounded,
-                label: 'product.ships_from'.tr(),
-                value: deliveryInfo.supplierRegion!,
-                isDark: isDark,
-                isWarning: deliveryInfo.isInternational,
-              ),
-              const SizedBox(height: 10),
-            ],
+            _DeliveryInfoRow(
+              icon: Icons.public_rounded,
+              label: 'product.ships_from'.tr(),
+              value: deliveryInfo.supplierRegion!,
+              isDark: isDark,
+              isWarning: deliveryInfo.isInternational,
+            ),
+            const SizedBox(height: 10),
+          ],
           const SizedBox(height: 10),
           _DeliveryInfoRow(
             icon: deliveryInfo.hasTracking ? Icons.track_changes_rounded : Icons.info_outline_rounded,
@@ -535,10 +483,7 @@ class _DeliveryInfoCard extends StatelessWidget {
                   Icon(Icons.info_outline_rounded, size: 16, color: DesignTokens.warning),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      'product.details.international_disclaimer'.tr(),
-                      style: TextStyle(fontSize: 12, color: DesignTokens.warning, height: 1.3),
-                    ),
+                    child: Text('product.details.international_disclaimer'.tr(), style: TextStyle(fontSize: 12, color: DesignTokens.warning, height: 1.3)),
                   ),
                 ],
               ),
@@ -568,9 +513,65 @@ class _DeliveryInfoRow extends StatelessWidget {
         Text('$label: ', style: TextStyle(fontSize: 14, color: isDark ? DesignTokens.textOnDarkSecondary : DesignTokens.textSecondary)),
         Text(
           value,
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isWarning ? DesignTokens.warning : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary)),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: isWarning ? DesignTokens.warning : (isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary),
+          ),
         ),
       ],
+    );
+  }
+}
+
+class _DigitalProductInfo extends StatelessWidget {
+  final Product product;
+  const _DigitalProductInfo({required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    final builds = product.digitalBuilds ?? {};
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.deepPurple.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.deepPurple.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.download_outlined, size: 16, color: Colors.deepPurple),
+              const SizedBox(width: 6),
+              Text(
+                product.digitalType == DigitalTypeValues.software ? 'Desktop Software' : 'Digital Book',
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple),
+              ),
+            ],
+          ),
+          if (builds.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Text('Available for:', style: TextStyle(fontSize: 12)),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 6,
+              children: builds.keys.map((p) {
+                final label = const {'macos': 'macOS', 'windows': 'Windows', 'linux': 'Linux'}[p] ?? p;
+                return Chip(
+                  label: Text(label, style: const TextStyle(fontSize: 11)),
+                  visualDensity: VisualDensity.compact,
+                );
+              }).toList(),
+            ),
+          ],
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text('License key + download link delivered after purchase.', style: TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -598,6 +599,266 @@ class _ImageDots extends ConsumerWidget {
             decoration: BoxDecoration(shape: BoxShape.circle, color: currentIndex == index ? Colors.white : Colors.white.withValues(alpha: 0.5)),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _QACard extends ConsumerWidget {
+  final QAModel qa;
+  final String productId;
+  final String sellerId;
+  final String? currentUserId;
+
+  const _QACard({required this.qa, required this.productId, required this.sellerId, this.currentUserId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isSeller = currentUserId == sellerId;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final formatter = DateFormat.yMMMd();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey.shade900 : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: DesignTokens.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.help_outline, size: 20, color: DesignTokens.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(qa.question, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'qa.asked_on'.tr(namedArgs: {'date': formatter.format(qa.createdAt)}),
+                      style: const TextStyle(fontSize: 12, color: DesignTokens.textDisabled),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (qa.answer != null && qa.answer!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: DesignTokens.outlineVariant.withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.check_circle_outline, size: 20, color: DesignTokens.success),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'qa.answer_label'.tr(),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DesignTokens.success),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(qa.answer!, style: const TextStyle(fontSize: 15)),
+                        if (qa.answeredAt != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '${'qa.answered'.tr()} ${formatter.format(qa.answeredAt!)}',
+                            style: const TextStyle(fontSize: 11, color: DesignTokens.textDisabled),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (isSeller) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => _showAnswerDialog(context, ref),
+                icon: const Icon(Icons.reply, size: 18),
+                label: Text('qa.your_answer'.tr()),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showAnswerDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('qa.your_answer'.tr()),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(hintText: 'qa.answer_hint'.tr()),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                ref.read(qaControllerProvider.notifier).answerQuestion(productId: productId, qaId: qa.id, answer: controller.text);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('qa.answer_submitted'.tr())));
+              }
+            },
+            child: Text('qa.submit_answer'.tr()),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QASection extends ConsumerStatefulWidget {
+  final String productId;
+  final String sellerId;
+
+  const _QASection({required this.productId, required this.sellerId});
+
+  @override
+  ConsumerState<_QASection> createState() => _QASectionState();
+}
+
+class _QASectionState extends ConsumerState<_QASection> {
+  bool _showAll = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final qaAsync = ref.watch(qaListProvider(widget.productId));
+    final currentUserId = ref.watch(userIdProvider);
+    final isSeller = currentUserId == widget.sellerId;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'qa.title'.tr(),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? Colors.white : DesignTokens.textPrimary),
+        ),
+        const SizedBox(height: 16),
+        qaAsync.when(
+          data: (qaList) {
+            if (qaList.isEmpty) {
+              return _emptyState(context, currentUserId, isSeller);
+            }
+
+            final displayList = _showAll ? qaList : qaList.take(3).toList();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ...displayList.map((qa) => _QACard(qa: qa, productId: widget.productId, sellerId: widget.sellerId, currentUserId: currentUserId)),
+                if (qaList.length > 3 && !_showAll)
+                  TextButton(
+                    onPressed: () => setState(() => _showAll = true),
+                    child: Text('qa.see_all'.tr(namedArgs: {'count': qaList.length.toString()})),
+                  ),
+                const SizedBox(height: 16),
+                if (!isSeller && currentUserId != null)
+                  ElevatedButton.icon(
+                    onPressed: () => _showAskDialog(context),
+                    icon: const Icon(Icons.help_outline),
+                    label: Text('qa.ask_question'.tr()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark ? Colors.grey.shade900 : Colors.white,
+                      foregroundColor: DesignTokens.primary,
+                      elevation: 0,
+                      side: const BorderSide(color: DesignTokens.primary),
+                    ),
+                  )
+                else if (currentUserId == null)
+                  Center(
+                    child: Text('qa.sign_in_to_ask'.tr(), style: const TextStyle(color: DesignTokens.textSecondary)),
+                  ),
+              ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Text('Error loading Q&A: $e', style: const TextStyle(color: DesignTokens.error)),
+        ),
+      ],
+    );
+  }
+
+  Widget _emptyState(BuildContext context, String? currentUserId, bool isSeller) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade900 : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: DesignTokens.outlineVariant),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.forum_outlined, size: 48, color: DesignTokens.textDisabled),
+          const SizedBox(height: 16),
+          Text(
+            'qa.no_questions'.tr(),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: DesignTokens.textSecondary),
+          ),
+          if (!isSeller && currentUserId != null) ...[
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: () => _showAskDialog(context), child: Text('qa.ask_question'.tr())),
+          ] else if (currentUserId == null) ...[
+            const SizedBox(height: 16),
+            Text(
+              'qa.sign_in_to_ask'.tr(),
+              style: const TextStyle(color: DesignTokens.textSecondary, fontStyle: FontStyle.italic),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showAskDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('qa.ask_question'.tr()),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(hintText: 'qa.question_hint'.tr()),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                ref.read(qaControllerProvider.notifier).askQuestion(widget.productId, controller.text);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('qa.question_submitted'.tr())));
+              }
+            },
+            child: Text('qa.submit_question'.tr()),
+          ),
+        ],
       ),
     );
   }
@@ -645,18 +906,36 @@ class _QuantitySelector extends ConsumerWidget {
       children: [
         Text(
           '${'product.quantity'.tr()}:',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : DesignTokens.textPrimary,
+          ),
         ),
         const SizedBox(width: 20),
         GlassContainer(
           child: Row(
             children: [
-              _QuantityButton(key: const Key('product_qty_minus'), icon: Icons.remove, onPressed: quantity > 1 ? viewModel.decrementQuantity : null, semanticLabel: 'btn-product-qty-minus'),
+              _QuantityButton(
+                key: const Key('product_qty_minus'),
+                icon: Icons.remove,
+                onPressed: quantity > 1 ? viewModel.decrementQuantity : null,
+                semanticLabel: 'btn-product-qty-minus',
+              ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('$quantity', key: const Key('product_qty_value'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                child: Text(
+                  '$quantity',
+                  key: const Key('product_qty_value'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
               ),
-              _QuantityButton(key: const Key('product_qty_plus'), icon: Icons.add, onPressed: viewModel.incrementQuantity, semanticLabel: 'btn-product-qty-plus'),
+              _QuantityButton(
+                key: const Key('product_qty_plus'),
+                icon: Icons.add,
+                onPressed: viewModel.incrementQuantity,
+                semanticLabel: 'btn-product-qty-plus',
+              ),
             ],
           ),
         ),

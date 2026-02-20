@@ -412,3 +412,214 @@ class TestSecurityEdgeCases:
         # All logging should mask sensitive fields
         # Verify logger sanitizes these fields
         pass
+
+
+# =============================================================================
+# BUG-3: Low-stock threshold seller alert cron
+# =============================================================================
+
+class TestCheckLowStockAlerts:
+    """check_low_stock_alerts daily cron — emails sellers when stock <= threshold."""
+
+    def _make_product(self, stock=2, threshold=5, track=True, last_alert=None, seller_id="seller_1"):
+        return {
+            "isActive": True,
+            "approvalStatus": "approved",
+            "stockQuantity": stock,
+            "sellerId": seller_id,
+            "name": "Test Widget",
+            "inventory": {
+                "trackQuantity": track,
+                "lowStockThreshold": threshold,
+            },
+            "lastLowStockAlertAt": last_alert,
+        }
+
+    def _wire_db(self, mock_get_db, product_data, seller_email="seller@example.com"):
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        mock_doc = Mock()
+        mock_doc.id = "prod_1"
+        mock_doc.to_dict.return_value = product_data
+
+        mock_products_coll = Mock()
+        mock_products_coll.where.return_value = mock_products_coll
+        mock_products_coll.limit.return_value = mock_products_coll
+        mock_products_coll.stream.return_value = [mock_doc]
+
+        mock_product_ref = Mock()
+
+        mock_seller_doc = Mock()
+        mock_seller_doc.exists = True
+        mock_seller_doc.to_dict.return_value = {"email": seller_email}
+
+        def collection_side_effect(name):
+            coll = Mock()
+            if name == "products":
+                coll.where.return_value = mock_products_coll
+                mock_products_coll.document.return_value = mock_product_ref
+                coll.document.return_value = mock_product_ref
+                # Re-wire after stream so update() call works
+                return coll
+            elif name == "users":
+                coll.document.return_value.get.return_value = mock_seller_doc
+            return coll
+
+        mock_db.collection.side_effect = collection_side_effect
+        return mock_db, mock_product_ref, mock_products_coll
+
+    @patch("handlers.cron_jobs.get_db")
+    @patch("services.email_service.send_email")
+    def test_sends_alert_when_stock_at_threshold(self, mock_send_email, mock_get_db):
+        """Stock == threshold → alert sent, lastLowStockAlertAt written."""
+        from handlers.cron_jobs import check_low_stock_alerts
+
+        product_data = self._make_product(stock=5, threshold=5)
+        self._wire_db(mock_get_db, product_data)
+
+        check_low_stock_alerts(Mock())
+
+        mock_send_email.assert_called_once()
+        call_args = mock_send_email.call_args
+        assert "seller@example.com" in call_args[0]
+        assert "Low stock" in call_args[0][1]
+
+    @patch("handlers.cron_jobs.get_db")
+    @patch("services.email_service.send_email")
+    def test_sends_alert_when_stock_below_threshold(self, mock_send_email, mock_get_db):
+        """Stock < threshold → alert sent."""
+        from handlers.cron_jobs import check_low_stock_alerts
+
+        product_data = self._make_product(stock=1, threshold=5)
+        self._wire_db(mock_get_db, product_data)
+
+        check_low_stock_alerts(Mock())
+
+        mock_send_email.assert_called_once()
+
+    @patch("handlers.cron_jobs.get_db")
+    @patch("services.email_service.send_email")
+    def test_no_alert_when_stock_above_threshold(self, mock_send_email, mock_get_db):
+        """Stock > threshold → no email."""
+        from handlers.cron_jobs import check_low_stock_alerts
+
+        product_data = self._make_product(stock=10, threshold=5)
+        self._wire_db(mock_get_db, product_data)
+
+        check_low_stock_alerts(Mock())
+
+        mock_send_email.assert_not_called()
+
+    @patch("handlers.cron_jobs.get_db")
+    @patch("services.email_service.send_email")
+    def test_no_alert_when_threshold_zero(self, mock_send_email, mock_get_db):
+        """threshold=0 means seller opted out → no email."""
+        from handlers.cron_jobs import check_low_stock_alerts
+
+        product_data = self._make_product(stock=0, threshold=0)
+        self._wire_db(mock_get_db, product_data)
+
+        check_low_stock_alerts(Mock())
+
+        mock_send_email.assert_not_called()
+
+    @patch("handlers.cron_jobs.get_db")
+    @patch("services.email_service.send_email")
+    def test_no_alert_when_track_quantity_false(self, mock_send_email, mock_get_db):
+        """trackQuantity=False means unlimited stock → no alert even if stock low."""
+        from handlers.cron_jobs import check_low_stock_alerts
+
+        product_data = self._make_product(stock=0, threshold=5, track=False)
+        self._wire_db(mock_get_db, product_data)
+
+        check_low_stock_alerts(Mock())
+
+        mock_send_email.assert_not_called()
+
+    @patch("handlers.cron_jobs.get_db")
+    @patch("services.email_service.send_email")
+    def test_cooldown_blocks_second_alert_within_23h(self, mock_send_email, mock_get_db):
+        """lastLowStockAlertAt set 1 hour ago → cooldown active → no email."""
+        from datetime import timezone
+        from handlers.cron_jobs import check_low_stock_alerts
+
+        recent_alert = datetime.now(timezone.utc) - timedelta(hours=1)
+        product_data = self._make_product(stock=2, threshold=5, last_alert=recent_alert)
+        self._wire_db(mock_get_db, product_data)
+
+        check_low_stock_alerts(Mock())
+
+        mock_send_email.assert_not_called()
+
+    @patch("handlers.cron_jobs.get_db")
+    @patch("services.email_service.send_email")
+    def test_alert_allowed_after_23h_cooldown_expires(self, mock_send_email, mock_get_db):
+        """lastLowStockAlertAt set 24 hours ago → cooldown expired → email sent."""
+        from datetime import timezone
+        from handlers.cron_jobs import check_low_stock_alerts
+
+        old_alert = datetime.now(timezone.utc) - timedelta(hours=24)
+        product_data = self._make_product(stock=2, threshold=5, last_alert=old_alert)
+        self._wire_db(mock_get_db, product_data)
+
+        check_low_stock_alerts(Mock())
+
+        mock_send_email.assert_called_once()
+
+    @patch("handlers.cron_jobs.get_db")
+    @patch("services.email_service.send_email")
+    def test_email_failure_does_not_crash_cron(self, mock_send_email, mock_get_db):
+        """send_email raising → cron logs error but does not re-raise (other products still processed)."""
+        from handlers.cron_jobs import check_low_stock_alerts
+
+        mock_send_email.side_effect = Exception("SMTP down")
+        product_data = self._make_product(stock=1, threshold=5)
+        self._wire_db(mock_get_db, product_data)
+
+        # Must NOT raise
+        check_low_stock_alerts(Mock())
+
+    @patch("handlers.cron_jobs.get_db")
+    @patch("services.email_service.send_email")
+    def test_no_alert_when_seller_has_no_email(self, mock_send_email, mock_get_db):
+        """Seller doc missing email → skip silently, no email sent."""
+        from handlers.cron_jobs import check_low_stock_alerts
+
+        product_data = self._make_product(stock=1, threshold=5)
+        self._wire_db(mock_get_db, product_data, seller_email=None)
+
+        check_low_stock_alerts(Mock())
+
+        mock_send_email.assert_not_called()
+
+    @patch("handlers.cron_jobs.get_db")
+    @patch("services.email_service.send_email")
+    def test_no_alert_when_no_seller_id(self, mock_send_email, mock_get_db):
+        """Product missing sellerId → skip, no email."""
+        from handlers.cron_jobs import check_low_stock_alerts
+
+        product_data = self._make_product(stock=1, threshold=5, seller_id=None)
+        self._wire_db(mock_get_db, product_data)
+
+        check_low_stock_alerts(Mock())
+
+        mock_send_email.assert_not_called()
+
+    def test_uses_constants_not_magic_strings(self):
+        """Verify cron_jobs.py references Fields constants for all low-stock field names."""
+        import ast
+        from pathlib import Path
+
+        source = (Path(__file__).parent.parent / "handlers" / "cron_jobs.py").read_text()
+        # The four inventory sub-fields and the cooldown field must NOT be raw strings
+        forbidden_literals = [
+            '"lowStockThreshold"',
+            '"trackQuantity"',
+            '"lastLowStockAlertAt"',
+            '"allowBackorder"',
+        ]
+        for literal in forbidden_literals:
+            assert literal not in source, (
+                f"Magic string {literal} found in cron_jobs.py — use Fields constant instead"
+            )

@@ -22,6 +22,7 @@ class CartItemScreen extends StatelessWidget {
     final name = item[Fields.name] as String? ?? 'product.product_fallback'.tr();
     final unitPrice = (item[Fields.price] ?? 0.0).toDouble();
     final isDigital = item[Fields.isDigital] as bool? ?? false;
+    final buyerNote = item[Fields.buyerNote] as String?;
 
     return Dismissible(
       key: ValueKey('dismiss_$productId'),
@@ -51,9 +52,7 @@ class CartItemScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: isDark ? DesignTokens.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.outline.withValues(alpha: 0.5),
-          ),
+          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.outline.withValues(alpha: 0.5)),
           boxShadow: [
             BoxShadow(
               color: DesignTokens.primary.withValues(alpha: isDark ? 0.08 : 0.04),
@@ -67,160 +66,154 @@ class CartItemScreen extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
           children: [
-            // Product image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(DesignTokens.radius12),
-              child: SizedBox(
-                width: 80,
-                height: 80,
-                child: _buildImage(imageUrlsList, isDark),
-              ),
-            ),
-            const SizedBox(width: DesignTokens.spacing12),
-            // Name + price
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: isDark ? Colors.white : DesignTokens.textPrimary,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (isDigital) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.download_outlined, size: 11, color: Colors.deepPurple.withValues(alpha: 0.8)),
-                        const SizedBox(width: 3),
-                        Text(
-                          'Digital product — instant delivery',
-                          style: TextStyle(fontSize: 11, color: Colors.deepPurple.withValues(alpha: 0.8), fontWeight: FontWeight.w500),
+            Row(
+              children: [
+                // Product image
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                  child: SizedBox(width: 80, height: 80, child: _buildImage(imageUrlsList, isDark)),
+                ),
+                const SizedBox(width: DesignTokens.spacing12),
+                // Name + price
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (isDigital) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.download_outlined, size: 11, color: Colors.deepPurple.withValues(alpha: 0.8)),
+                            const SizedBox(width: 3),
+                            Text(
+                              'Digital product — instant delivery',
+                              style: TextStyle(fontSize: 11, color: Colors.deepPurple.withValues(alpha: 0.8), fontWeight: FontWeight.w500),
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  // Price display wrapped in Consumer - only this rebuilds when quantity changes
-                  Consumer(
-                    builder: (context, ref, _) {
-                      final quantityAsync = ref.watch(cartItemQuantityProvider(productId));
-                      final quantity = quantityAsync.valueOrNull ?? 1;
-                      final totalPrice = unitPrice * quantity;
-                      return ShaderMask(
-                        shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
-                        child: Text(
-                          '\$${totalPrice.toStringAsFixed(2)}',
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white),
-                        ),
-                      );
-                    },
-                  ),
-                  // Unit price hint when qty > 1
-                  Consumer(
-                    builder: (context, ref, _) {
-                      final quantityAsync = ref.watch(cartItemQuantityProvider(productId));
-                      final quantity = quantityAsync.valueOrNull ?? 1;
-                      if (quantity <= 1) return const SizedBox.shrink();
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          '\$${unitPrice.toStringAsFixed(2)} ${'cart.each_suffix'.tr()}',
-                          style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            // Quantity controls + delete
-            Column(
-              children: [
-                Consumer(
-                  builder: (context, ref, _) {
-                    final quantityAsync = ref.watch(cartItemQuantityProvider(productId));
-                    final quantity = quantityAsync.valueOrNull ?? 0;
-                    final cartController = ref.read(cartControllerProvider);
-
-                    if (quantity <= 0) return const SizedBox.shrink();
-
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.surfaceVariant,
-                        borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                        border: Border.all(
-                          color: isDark ? Colors.white.withValues(alpha: 0.1) : DesignTokens.outline.withValues(alpha: 0.6),
-                        ),
+                      const SizedBox(height: 6),
+                      // Price display wrapped in Consumer - only this rebuilds when quantity changes
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final quantityAsync = ref.watch(cartItemQuantityProvider(productId));
+                          final quantity = quantityAsync.valueOrNull ?? 1;
+                          final totalPrice = unitPrice * quantity;
+                          return ShaderMask(
+                            shaderCallback: (bounds) => DesignTokens.primaryGradient.createShader(bounds),
+                            child: Text(
+                              '\$${totalPrice.toStringAsFixed(2)}',
+                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white),
+                            ),
+                          );
+                        },
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _QuantityButton(
-                            key: Key('cart_qty_minus_$productId'),
-                            icon: Icons.remove_rounded,
-                            onPressed: quantity > 1 ? () => cartController.updateQuantity(productId, quantity - 1) : null,
-                            isDark: isDark,
-                            semanticLabel: 'btn-cart-qty-minus',
+                      // Unit price hint when qty > 1
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final quantityAsync = ref.watch(cartItemQuantityProvider(productId));
+                          final quantity = quantityAsync.valueOrNull ?? 1;
+                          if (quantity <= 1) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              '\$${unitPrice.toStringAsFixed(2)} ${'cart.each_suffix'.tr()}',
+                              style: TextStyle(fontSize: 11, color: DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                // Quantity controls + delete
+                Column(
+                  children: [
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final quantityAsync = ref.watch(cartItemQuantityProvider(productId));
+                        final quantity = quantityAsync.valueOrNull ?? 0;
+                        final cartController = ref.read(cartControllerProvider);
+
+                        if (quantity <= 0) return const SizedBox.shrink();
+
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.06) : DesignTokens.surfaceVariant,
+                            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                            border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : DesignTokens.outline.withValues(alpha: 0.6)),
                           ),
-                          AnimatedSwitcher(
-                            duration: DesignTokens.durationFast,
-                            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                            child: Padding(
-                              key: ValueKey(quantity),
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                              child: Text(
-                                '$quantity',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                  color: isDark ? Colors.white : DesignTokens.textPrimary,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _QuantityButton(
+                                key: Key('cart_qty_minus_$productId'),
+                                icon: Icons.remove_rounded,
+                                onPressed: quantity > 1 ? () => cartController.updateQuantity(productId, quantity - 1) : null,
+                                isDark: isDark,
+                                semanticLabel: 'btn-cart-qty-minus',
+                              ),
+                              AnimatedSwitcher(
+                                duration: DesignTokens.durationFast,
+                                transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                                child: Padding(
+                                  key: ValueKey(quantity),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  child: Text(
+                                    '$quantity',
+                                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? Colors.white : DesignTokens.textPrimary),
+                                  ),
                                 ),
                               ),
-                            ),
+                              _QuantityButton(
+                                key: Key('cart_qty_plus_$productId'),
+                                icon: Icons.add_rounded,
+                                onPressed: () async {
+                                  // AUDIT FIX (H6): Show feedback if stock limit reached
+                                  final success = await cartController.updateQuantity(productId, quantity + 1);
+                                  if (!success && context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('cart.stock_limit_reached'.tr()),
+                                        duration: const Duration(seconds: 2),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                },
+                                isDark: isDark,
+                                semanticLabel: 'btn-cart-qty-plus',
+                              ),
+                            ],
                           ),
-                          _QuantityButton(
-                            key: Key('cart_qty_plus_$productId'),
-                            icon: Icons.add_rounded,
-                            onPressed: () async {
-                              // AUDIT FIX (H6): Show feedback if stock limit reached
-                              final success = await cartController.updateQuantity(productId, quantity + 1);
-                              if (!success && context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('cart.stock_limit_reached'.tr()),
-                                    duration: const Duration(seconds: 2),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
-                            },
-                            isDark: isDark,
-                            semanticLabel: 'btn-cart-qty-plus',
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: DesignTokens.spacing8),
-                IconButton(
-                  tooltip: 'cart.remove_from_cart'.tr(),
-                  icon: Icon(Icons.delete_outline_rounded, color: DesignTokens.error.withValues(alpha: 0.7), size: 20),
-                  onPressed: onRemove,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  splashRadius: 18,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: DesignTokens.spacing8),
+                    IconButton(
+                      tooltip: 'cart.remove_from_cart'.tr(),
+                      icon: Icon(Icons.delete_outline_rounded, color: DesignTokens.error.withValues(alpha: 0.7), size: 20),
+                      onPressed: onRemove,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      splashRadius: 18,
+                    ),
+                  ],
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            _buildNoteRow(context, isDark, buyerNote),
           ],
         ),
       ),
@@ -283,12 +276,134 @@ class CartItemScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.collections, color: Colors.white, size: 10),
                 const SizedBox(width: 2),
-                Text('${imageUrlsList.length}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                Text(
+                  '${imageUrlsList.length}',
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                ),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildNoteRow(BuildContext context, bool isDark, String? buyerNote) {
+    if (buyerNote == null || buyerNote.isEmpty) {
+      return InkWell(
+        onTap: () => _showAddNoteSheet(context),
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_comment_outlined, size: 14, color: DesignTokens.primary),
+              const SizedBox(width: 6),
+              Text(
+                'cart.item_note_add'.tr(),
+                style: TextStyle(fontSize: 12, color: DesignTokens.primary, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return InkWell(
+      onTap: () => _showAddNoteSheet(context, initialNote: buyerNote),
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isDark ? DesignTokens.surfaceVariant : DesignTokens.surface,
+          border: Border.all(color: DesignTokens.outlineVariant),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.edit_note_outlined, size: 16, color: DesignTokens.textSecondary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('cart.item_note_label'.tr(), style: TextStyle(fontSize: 10, color: DesignTokens.textSecondary)),
+                  const SizedBox(height: 2),
+                  Text(
+                    buyerNote,
+                    style: TextStyle(fontSize: 12, color: DesignTokens.textPrimary, fontStyle: FontStyle.italic),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.edit_outlined, size: 14, color: DesignTokens.primary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddNoteSheet(BuildContext context, {String? initialNote}) {
+    final controller = TextEditingController(text: initialNote);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 20, top: 24, left: 20, right: 20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  initialNote == null ? 'cart.item_note_add'.tr() : 'cart.item_note_edit'.tr(),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              maxLength: 200,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'cart.item_note_hint'.tr(),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Consumer(
+              builder: (context, ref, _) {
+                return ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: DesignTokens.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    final note = controller.text.trim();
+                    ref.read(cartControllerProvider).updateBuyerNote(productId, note.isEmpty ? null : note);
+                    Navigator.pop(context);
+                  },
+                  child: Text('cart.item_note_save'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -321,11 +436,7 @@ class _QuantityButton extends StatelessWidget {
                 },
           child: Padding(
             padding: const EdgeInsets.all(6),
-            child: Icon(
-              icon,
-              size: 18,
-              color: isDisabled ? DesignTokens.textDisabled : (isDark ? Colors.white70 : DesignTokens.primary),
-            ),
+            child: Icon(icon, size: 18, color: isDisabled ? DesignTokens.textDisabled : (isDark ? Colors.white70 : DesignTokens.primary)),
           ),
         ),
       ),

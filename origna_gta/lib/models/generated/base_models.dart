@@ -23,6 +23,7 @@ abstract class Address with _$Address {
     @Default('Canada') String country,
     String? phoneNumber,
     @Default(false) bool isDefault,
+    String? addressId,
     String? label,
     double? latitude,
     double? longitude,

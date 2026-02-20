@@ -1,16 +1,90 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 class FirebaseUserRepository implements UserRepository {
   final FirebaseFirestore _firestore;
+  final FirebaseFunctions _functions;
 
-  FirebaseUserRepository(this._firestore);
+  FirebaseUserRepository(this._firestore, this._functions);
+
+  @override
+  Future<String> addBuyerAddress(Address address) async {
+    final callable = _functions.httpsCallable('add_buyer_address');
+    final response = await callable.call(address.toMap());
+    final data = response.data as Map<String, dynamic>;
+    if (data['success'] != true) {
+      throw Exception(data['error'] ?? 'Failed to add address');
+    }
+    return data[Fields.addressId] as String;
+  }
+
+  @override
+  Future<void> deleteBuyerAddress(String addressId) async {
+    final callable = _functions.httpsCallable('delete_buyer_address');
+    final response = await callable.call({'addressId': addressId});
+    final data = response.data as Map<String, dynamic>;
+    if (data['success'] != true) {
+      throw Exception(data['error'] ?? 'Failed to delete address');
+    }
+  }
 
   @override
   Future<SellerAccountStatus> getSellerAccountStatus(String userId) async {
     final doc = await _firestore.collection(Collections.users).doc(userId).get();
     return _parseSellerStatus(doc.data());
+  }
+
+  @override
+  Future<UserModel?> getUserProfile(String userId) async {
+    final doc = await _firestore.collection(Collections.users).doc(userId).get();
+    if (!doc.exists) return null;
+    return UserModel.fromMap(doc.data()!);
+  }
+
+  @override
+  Future<void> setDefaultBuyerAddress(String addressId) async {
+    final callable = _functions.httpsCallable('set_default_buyer_address');
+    final response = await callable.call({'addressId': addressId});
+    final data = response.data as Map<String, dynamic>;
+    if (data['success'] != true) {
+      throw Exception(data['error'] ?? 'Failed to set default address');
+    }
+  }
+
+  @override
+  Future<void> updateAddress(String userId, Address address) async {
+    await _firestore.collection(Collections.users).doc(userId).update({Fields.address: address.toMap()});
+  }
+
+  @override
+  Future<void> updateBuyerAddress(String addressId, Address address) async {
+    final callable = _functions.httpsCallable('update_buyer_address');
+    final Map<String, dynamic> payload = address.toMap();
+    payload['addressId'] = addressId;
+    final response = await callable.call(payload);
+    final data = response.data as Map<String, dynamic>;
+    if (data['success'] != true) {
+      throw Exception(data['error'] ?? 'Failed to update address');
+    }
+  }
+
+  @override
+  Future<void> updatePreferredLanguage(String userId, String lang) async {
+    await _firestore.collection(Collections.users).doc(userId).update({Fields.preferredLanguage: lang});
+  }
+
+  // --- Address Book Methods ---
+
+  @override
+  Stream<List<Address>> watchAddresses(String userId) {
+    return _firestore.collection(Collections.users).doc(userId).collection(Collections.addresses).snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return Address.fromMap(data, docId: doc.id);
+      }).toList();
+    });
   }
 
   @override
@@ -35,23 +109,6 @@ class FirebaseUserRepository implements UserRepository {
       pendingRequirements: pendingRequirements,
     );
   }
-
-  @override
-  Future<UserModel?> getUserProfile(String userId) async {
-    final doc = await _firestore.collection(Collections.users).doc(userId).get();
-    if (!doc.exists) return null;
-    return UserModel.fromMap(doc.data()!);
-  }
-
-  @override
-  Future<void> updateAddress(String userId, Address address) async {
-    await _firestore.collection(Collections.users).doc(userId).update({Fields.address: address.toMap()});
-  }
-
-  @override
-  Future<void> updatePreferredLanguage(String userId, String lang) async {
-    await _firestore.collection(Collections.users).doc(userId).update({Fields.preferredLanguage: lang});
-  }
 }
 
 class SellerAccountStatus {
@@ -62,7 +119,7 @@ class SellerAccountStatus {
   final List<String> pendingRequirements;
 
   const SellerAccountStatus({
-    required this.isSeller, 
+    required this.isSeller,
     required this.chargesEnabled,
     this.detailsSubmitted = false,
     this.hasPendingRequirements = false,
@@ -71,24 +128,22 @@ class SellerAccountStatus {
 
   /// Account is fully verified and can sell products
   bool get isComplete => isSeller && chargesEnabled;
-  
-  /// User has submitted all info and documents, waiting for Stripe review
-  bool get isPendingVerification => isSeller && detailsSubmitted && !chargesEnabled && !hasPendingRequirements;
-  
+
   /// User has started but there are still requirements to complete
   bool get isIncomplete => isSeller && (!detailsSubmitted || hasPendingRequirements);
-  
+
+  /// User has submitted all info and documents, waiting for Stripe review
+  bool get isPendingVerification => isSeller && detailsSubmitted && !chargesEnabled && !hasPendingRequirements;
+
   /// Check if identity documents are required
-  bool get needsIdentityDocuments => pendingRequirements.any((r) => 
-    r.contains('verification') || 
-    r.contains('document') || 
-    r.contains('individual.id_number') ||
-    r.contains('individual.verification'));
-  
+  bool get needsIdentityDocuments => pendingRequirements.any(
+    (r) => r.contains('verification') || r.contains('document') || r.contains('individual.id_number') || r.contains('individual.verification'),
+  );
+
   /// Get a human-readable description of what's missing
   String get pendingRequirementsDescription {
     if (pendingRequirements.isEmpty) return '';
-    
+
     final descriptions = <String>[];
     for (final req in pendingRequirements) {
       if (req.contains('verification.document')) {
@@ -111,9 +166,16 @@ class SellerAccountStatus {
 }
 
 abstract class UserRepository {
+  Future<String> addBuyerAddress(Address address);
+  Future<void> deleteBuyerAddress(String addressId);
   Future<SellerAccountStatus> getSellerAccountStatus(String userId);
-  Stream<SellerAccountStatus> watchSellerAccountStatus(String userId);
   Future<UserModel?> getUserProfile(String userId);
+  Future<void> setDefaultBuyerAddress(String addressId);
+
   Future<void> updateAddress(String userId, Address address);
+  Future<void> updateBuyerAddress(String addressId, Address address);
   Future<void> updatePreferredLanguage(String userId, String lang);
+  // Address Book
+  Stream<List<Address>> watchAddresses(String userId);
+  Stream<SellerAccountStatus> watchSellerAccountStatus(String userId);
 }

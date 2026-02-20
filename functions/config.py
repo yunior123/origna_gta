@@ -120,6 +120,10 @@ class CaptureMethod:
 
 PLATFORM_FEE_RATIO = 0.025  # 2.5% platform fee as ratio (0.025 = 2.5/100)
 PLATFORM_FEE_PERCENT = PLATFORM_FEE_RATIO  # Alias used by payment handlers
+
+# Premium subscription — $7.86 CAD/month (no platform fee for premium buyers)
+PREMIUM_MONTHLY_PRICE_CAD = 7.86
+PREMIUM_MONTHLY_PRICE_CENTS = 786
 AUTO_CONFIRM_DAYS = (
     5  # Auto-capture after 5 days post-delivery (must be < AUTHORIZATION_VALID_DAYS with 2-day safety margin)
 )
@@ -250,6 +254,7 @@ def _load_secret(key: str, required: bool = True) -> str:
 # Define SecretParams (resolved at runtime in production)
 _STRIPE_SECRET_KEY_PARAM = params.SecretParam("STRIPE_SECRET_KEY")
 _STRIPE_WEBHOOK_SECRET_PARAM = params.SecretParam("STRIPE_WEBHOOK_SECRET")
+_STRIPE_PREMIUM_PRICE_ID_PARAM = params.SecretParam("STRIPE_PREMIUM_PRICE_ID")
 
 
 def get_stripe_secret_key() -> str:
@@ -264,6 +269,13 @@ def get_stripe_webhook_secret() -> str:
     if IS_EMULATOR:
         return _load_secret("STRIPE_WEBHOOK_SECRET", required=False)
     return _STRIPE_WEBHOOK_SECRET_PARAM.value
+
+
+def get_stripe_premium_price_id() -> str:
+    """Get Stripe Premium Subscription Price ID (lazy load)."""
+    if IS_EMULATOR:
+        return _load_secret("STRIPE_PREMIUM_PRICE_ID", required=False)
+    return _STRIPE_PREMIUM_PRICE_ID_PARAM.value
 
 
 class StripeConfig:

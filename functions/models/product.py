@@ -238,6 +238,9 @@ class Product(BaseModel):
     productId: str = Field(default="", max_length=100, description="Unique product identifier (assigned by Firestore on create)")
     name: str = Field(..., min_length=1, max_length=120, description="Product name")
     price: float = Field(..., gt=0, le=100000, description="Price in CAD")
+    compareAtPrice: float | None = Field(
+        default=None, gt=0, le=100000, description="Original/crossed-out price for sale display (must be > price)"
+    )
     description: str = Field(..., min_length=10, max_length=4000, description="Product description")
     imageUrls: list[str] = Field(..., min_length=1, max_length=5, description="Product image URLs (1-5 images)")
     sellerId: str = Field(..., min_length=1, description="Seller user ID")
@@ -327,6 +330,13 @@ class Product(BaseModel):
         default=ProductStatusValues.ACTIVE, description="Product status: draft, active, paused, archived, out_of_stock"
     )
 
+    # === TRENDING & ENGAGEMENT ===
+    trendingScore: int = Field(default=0, ge=0, description="Computed trending score (views + purchases×3 + favorites×2)")
+    viewCount: int = Field(default=0, ge=0, description="Total product page views")
+    purchaseCount: int = Field(default=0, ge=0, description="Total number of purchases")
+    isTrending: bool = Field(default=False, description="Whether product is currently in trending list")
+    trendingAt: datetime | None = Field(default=None, description="When product last entered trending")
+
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str) -> str:
@@ -403,6 +413,13 @@ class Product(BaseModel):
         return self
 
     @model_validator(mode="after")
+    def validate_compare_at_price(self) -> "Product":
+        """Ensure compareAtPrice is strictly greater than price when set (it represents the original/higher price)."""
+        if self.compareAtPrice is not None and self.compareAtPrice <= self.price:
+            raise ValueError("compareAtPrice must be greater than price (it represents the original, higher price before discount)")
+        return self
+
+    @model_validator(mode="after")
     def validate_digital_consistency(self) -> "Product":
         """Ensure digital product sub-fields are consistent."""
         if self.isDigital:
@@ -426,6 +443,9 @@ class ProductCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=120)
     price: float = Field(..., gt=0, le=100000)
+    compareAtPrice: float | None = Field(
+        default=None, gt=0, le=100000, description="Original/crossed-out price (must be > price when set)"
+    )
     description: str = Field(..., min_length=10, max_length=4000)
     imageUrls: list[str] = Field(..., min_length=1, max_length=5)
     sellerId: str = Field(..., min_length=1)

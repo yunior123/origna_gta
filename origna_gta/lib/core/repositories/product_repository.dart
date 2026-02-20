@@ -312,15 +312,20 @@ class FirebaseProductRepository implements ProductRepository {
   Future<void> submitRating(
     String orderId,
     String productId,
-    int rating,
-  ) async {
+    int rating, {
+    List<String>? reviewImageUrls,
+  }) async {
+    final payload = {
+      Fields.orderId: orderId,
+      Fields.productId: productId,
+      Fields.rating: rating,
+    };
+    if (reviewImageUrls != null && reviewImageUrls.isNotEmpty) {
+      payload[Fields.reviewImageUrls] = reviewImageUrls;
+    }
     await _functions
         .httpsCallable(CloudFunctionEndpoints.submitProductRating)
-        .call({
-          Fields.orderId: orderId,
-          Fields.productId: productId,
-          Fields.rating: rating,
-        });
+        .call(payload);
   }
 
   @override
@@ -494,7 +499,7 @@ abstract class ProductRepository {
   Future<List<Map<String, dynamic>>> getAutocompleteSuggestions(String query);
   Future<Product?> getProductBySlug(String slug);
   Future<String?> getUploadUrl(String fileName);
-  Future<void> submitRating(String orderId, String productId, int rating);
+  Future<void> submitRating(String orderId, String productId, int rating, {List<String>? reviewImageUrls});
   Future<void> toggleFavorite(String userId, String productId);
   Future<void> updateProduct(String productId, Map<String, dynamic> data);
   Future<List<String>> uploadImages(List<Uint8List> images, String productId);

@@ -24,6 +24,220 @@
 // COLLECTIONS - Top-level Firestore collection names
 // =============================================================================
 
+/// Standard address labels
+abstract final class AddressLabelValues {
+  static const home = 'Home';
+  static const work = 'Work';
+  static const other = 'Other';
+}
+
+// =============================================================================
+// DOCUMENTS - Singleton document IDs within collections
+// =============================================================================
+
+/// Cloud Function API parameter and response keys.
+/// These are NOT Firestore fields — they are the contract between
+/// Flutter and Cloud Functions (request params + response keys).
+abstract final class ApiKeys {
+  // === REQUEST PARAMS (sent to Cloud Functions) ===
+  static const add = 'add';
+  static const remove = 'remove';
+  static const reason = 'reason';
+  static const code = 'code';
+  static const provider = 'provider';
+  static const enabled = 'enabled';
+  static const refreshUrl = 'refreshUrl';
+  static const returnUrl = 'returnUrl';
+  static const newStatus = 'newStatus';
+  static const approved = 'approved';
+  static const newShippingCost = 'newShippingCost';
+  static const subtotal = 'subtotal';
+  static const itemIds = 'itemIds';
+  static const idempotencyKey = 'idempotencyKey';
+
+  // === RESPONSE KEYS (returned from Cloud Functions) ===
+  static const success = 'success';
+  static const itemStatus = 'itemStatus';
+  static const allItemsDelivered = 'allItemsDelivered';
+  static const providerName = 'providerName';
+  static const checkoutUrl = 'checkoutUrl';
+  static const sessionId = 'sessionId';
+  static const url = 'url';
+  static const secret = 'secret';
+  static const qrCodeUrl = 'qrCodeUrl';
+  static const provisioningUri = 'provisioning_uri';
+  static const backupCodes = 'backup_codes';
+  static const mfaVerified = 'mfaVerified';
+  static const remainingCodes = 'remainingCodes';
+  static const detailsSubmitted = 'detailsSubmitted';
+  static const requirementsCurrentlyDue = 'requirementsCurrentlyDue';
+  static const duplicate = 'duplicate';
+  static const emulatorMode = 'emulatorMode';
+  static const captured = 'captured';
+  static const message = 'message';
+  static const paymentIntentId = 'paymentIntentId';
+  static const accountId = 'accountId';
+  static const existing = 'existing';
+  static const hasChanges = 'hasChanges';
+  static const priceChanges = 'priceChanges';
+  static const stockChanges = 'stockChanges';
+  static const removedProducts = 'removedProducts';
+  static const oldPrice = 'oldPrice';
+  static const newPrice = 'newPrice';
+  static const requested = 'requested';
+  static const available = 'available';
+  static const productName = 'productName';
+
+  // === PAYMENT PROVIDER RESPONSE KEYS ===
+  static const supportedCurrencies = 'supportedCurrencies';
+  static const supportedCountries = 'supportedCountries';
+  static const features = 'features';
+  static const providers = 'providers';
+  static const providerStatus = 'providerStatus';
+  static const configured = 'configured';
+  static const missingKeys = 'missingKeys';
+  static const enabledProviders = 'enabledProviders';
+
+  // === SHIPPING RESPONSE KEYS ===
+  static const allItemsShipped = 'allItemsShipped';
+  static const approvalRequired = 'approvalRequired';
+}
+
+// =============================================================================
+// FIELD NAMES - All Firestore document field names
+// =============================================================================
+
+/// Business rule constants
+abstract final class BusinessRules {
+  static const platformFeePercent = 2.5;
+  static const autoConfirmDays = 5; // Must be < authorizationExpiryDays (2-day safety margin)
+  static const authorizationExpiryDays = 7;
+  static const returnWindowDays = 7; // No returns/refunds after 7 days post-delivery
+  static const maxCaptureAttempts = 3;
+  static const defaultCurrency = 'cad';
+  static const allowedShippingCountries = {'Canada', 'CA'};
+  // Sellers can be from any country — no country restriction on seller addresses
+
+  /// Tax rates by province
+  static const taxRates = {
+    'AB': {'GST': 5.0},
+    'BC': {'GST': 5.0, 'PST': 7.0},
+    'MB': {'GST': 5.0, 'PST': 7.0},
+    'NB': {'HST': 15.0},
+    'NL': {'HST': 15.0},
+    'NS': {'HST': 14.0}, // Changed from 15% to 14% on April 1, 2025 (CRA)
+    'NT': {'GST': 5.0},
+    'NU': {'GST': 5.0},
+    'ON': {'HST': 13.0},
+    'PE': {'HST': 15.0},
+    'QC': {'GST': 5.0, 'QST': 9.975},
+    'SK': {'GST': 5.0, 'PST': 6.0},
+    'YT': {'GST': 5.0},
+  };
+}
+
+// =============================================================================
+// ENUM VALUES - Valid values for enum fields
+// =============================================================================
+
+/// Product category IDs
+abstract final class CategoryIds {
+  static const electronics = 1;
+  static const computers = 2;
+  static const gaming = 3;
+  static const homeKitchen = 4;
+  static const fashion = 5;
+  static const shoesAccessories = 6;
+  static const jewelryWatches = 7;
+  static const beautyPersonalCare = 8;
+  static const healthWellness = 9;
+  static const sportsFitness = 10;
+  static const automotive = 11;
+  static const toolsHardware = 12;
+  static const officeSupplies = 13;
+  static const books = 14;
+  static const musicInstruments = 15;
+  static const toysGames = 16;
+  static const babyKids = 17;
+  static const petSupplies = 18;
+  static const groceries = 19;
+  static const artCollectibles = 20;
+  static const digitalProducts = 21;
+
+  static const min = 1;
+  static const max = 21;
+}
+
+/// Cloud Function endpoint names. Update here ONLY if backend function names change.
+/// Prevents endpoint name drift between frontend and backend.
+abstract final class CloudFunctionEndpoints {
+  // === AUTH ENDPOINTS ===
+  static const deleteAccount = 'delete_account';
+
+  // === ADMIN ENDPOINTS ===
+  static const updateUserRoles = 'update_user_roles';
+  static const suspendSeller = 'suspend_seller';
+  static const unsuspendSeller = 'unsuspend_seller';
+  static const adminUpdateProductStock = 'admin_update_product_stock';
+  static const adminMfaEnroll = 'admin_mfa_enroll';
+  static const adminMfaVerify = 'admin_mfa_verify';
+  static const adminMfaDisable = 'admin_mfa_disable';
+  static const adminApproveProduct = 'admin_approve_product';
+  static const adminRejectProduct = 'admin_reject_product';
+
+  // === PRODUCT ENDPOINTS ===
+  static const deleteProduct = 'delete_product';
+  static const getR2PresignedUrl = 'get_r2_presigned_url';
+  static const submitProductRating = 'submit_product_rating';
+  // Back-in-stock (TASK 07)
+  static const subscribeStockNotification = 'subscribe_stock_notification';
+  static const unsubscribeStockNotification = 'unsubscribe_stock_notification';
+  // Product Q&A (TASK 09)
+  static const askProductQuestion = 'ask_product_question';
+  static const answerProductQuestion = 'answer_product_question';
+  static const getProductQuestions = 'get_product_questions';
+
+  // === WAREHOUSE ENDPOINTS ===
+  static const createWarehouse = 'create_warehouse';
+  static const updateWarehouse = 'update_warehouse';
+  static const deleteWarehouse = 'delete_warehouse';
+  static const getSellerWarehouses = 'get_seller_warehouses';
+
+  // === ORDER ENDPOINTS ===
+  static const confirmOrderReceipt = 'confirm_order_receipt';
+  static const updateOrderStatus = 'update_order_status';
+  static const updateItemStatus = 'update_item_status';
+  static const cancelOrder = 'cancel_order';
+  static const refundOrderItem = 'refund_order_item';
+  static const approveShippingCost = 'approve_shipping_cost';
+  static const updateShippingCost = 'update_shipping_cost';
+
+  // === PAYMENT ENDPOINTS ===
+  static const createCheckoutSession = 'create_checkout_session';
+  static const verifyCartPrices = 'verify_cart_prices';
+  static const capturePayment = 'capture_payment';
+  static const createConnectAccount = 'create_connect_account';
+  static const createAccountLink = 'create_account_link';
+  static const getConnectAccountStatus = 'get_connect_account_status';
+  static const getPaymentProviders = 'get_payment_providers';
+  static const updatePaymentProvider = 'update_payment_provider';
+  static const getProviderStatus = 'get_provider_status';
+
+  // === AIRWALLEX ENDPOINTS ===
+  static const airwallexCreateSellerAccount = 'airwallex_create_seller_account';
+  static const airwallexProcessPayment = 'airwallex_process_payment';
+  static const airwallexCapturePayment = 'airwallex_capture_payment';
+
+  // === SUBSCRIPTION ENDPOINTS ===
+  static const createSubscription = 'create_subscription';
+  static const cancelSubscription = 'cancel_subscription';
+  static const getSubscriptionStatus = 'get_subscription_status';
+
+  // === CHAT ENDPOINTS ===
+  static const getOrCreateChat = 'get_or_create_chat';
+  static const markMessagesRead = 'mark_messages_read';
+}
+
 /// Firestore collection names
 abstract final class Collections {
   static const users = 'users';
@@ -41,24 +255,132 @@ abstract final class Collections {
   static const algoliaSyncFailures = 'algolia_sync_failures';
   static const cronLocks = '_cron_locks';
 
-    // Subcollections
+  // Subcollections
   static const warehouses = 'warehouses'; // users/{sellerId}/warehouses
   static const cart = 'cart'; // users/{userId}/cart
   static const favorites = 'favorites'; // users/{userId}/favorites
+  static const notifications = 'notifications'; // users/{uid}/notifications
+  static const qa = 'qa'; // products/{productId}/qa
+  static const addresses = 'addresses'; // users/{userId}/addresses
+  static const stockNotifications = 'stock_notifications'; // Tasks 07
+  static const productQuestions = 'product_questions'; // Tasks 09
+  static const sellerMetrics = 'seller_metrics'; // Tasks 11
+
+  // Premium & Chat collections
+  static const subscriptions = 'subscriptions'; // subscriptions/{userId}
+  static const chats = 'chats'; // chats/{chatId}
+  static const chatMessages = 'messages'; // chats/{chatId}/messages/{msgId}
 }
 
-// =============================================================================
-// DOCUMENTS - Singleton document IDs within collections
-// =============================================================================
+/// Confirmation values for sensitive operations requiring explicit confirmation
+abstract final class ConfirmationValues {
+  /// Confirmation string for account deletion
+  static const deleteMyAccount = 'DELETE_MY_ACCOUNT';
+}
+
+/// Consent method values for CASL compliance tracking
+abstract final class ConsentMethodValues {
+  static const signup = 'signup';
+  static const checkbox = 'checkbox';
+  static const doubleOptIn = 'double_opt_in';
+  static const implied = 'implied';
+
+  static const all = {signup, checkbox, doubleOptIn, implied};
+}
+
+/// Valid values for country fields
+abstract final class CountryValues {
+  static const canada = 'Canada';
+  static const canadaCode = 'CA';
+
+  static const all = {canada, canadaCode};
+}
+
+/// Centralized per-item delivery status transitions.
+/// Must match schema_constants.py DeliveryItemStatusTransitions.VALID_TRANSITIONS.
+abstract final class DeliveryItemStatusTransitions {
+  static const validTransitions = <String, List<String>>{
+    DeliveryStatusValues.pending: [DeliveryStatusValues.shipped],
+    DeliveryStatusValues.shipped: [DeliveryStatusValues.delivered],
+    DeliveryStatusValues.delivered: [DeliveryStatusValues.refunded],
+    DeliveryStatusValues.refunded: [], // Terminal
+  };
+}
+
+/// Valid values for deliveryStatus/status field on order items
+abstract final class DeliveryStatusValues {
+  static const pending = 'pending';
+  static const shipped = 'shipped';
+  static const delivered = 'delivered';
+  static const refunded = 'refunded';
+
+  static const all = {pending, shipped, delivered, refunded};
+}
+
+/// Valid values for delivery option types
+abstract final class DeliveryTypeValues {
+  static const pickup = 'pickup';
+  static const standard = 'standard';
+  static const express = 'express';
+  static const sameDay = 'same_day';
+  static const localDelivery = 'local_delivery';
+  static const custom = 'custom';
+}
+
+/// Valid values for supportedPlatforms field
+abstract final class DigitalPlatformValues {
+  static const macos = 'macos';
+  static const windows = 'windows';
+  static const linux = 'linux';
+
+  static const all = [macos, windows, linux];
+}
+
+/// Valid values for digitalType field
+abstract final class DigitalTypeValues {
+  static const software = 'software';
+  static const book = 'book';
+
+  static const all = [software, book];
+}
+
+/// Valid values for shipping discount types
+abstract final class DiscountTypeValues {
+  static const percent = 'percent';
+  static const fixed = 'fixed';
+  static const flatRate = 'flat_rate';
+
+  static const all = {percent, fixed, flatRate};
+}
 
 /// Singleton document IDs within collections
 abstract final class Documents {
   static const paymentProviders = 'payment_providers';
 }
 
-// =============================================================================
-// FIELD NAMES - All Firestore document field names
-// =============================================================================
+/// Email and CASL compliance constants — Dart mirror of Python EmailConfig
+abstract final class EmailConfig {
+  static const supportEmail = 'support@orignaventures.ca';
+  static const senderName = 'Origna GTA';
+  static const copyrightText = '\u00a9 2026 Origna Ventures Inc. All rights reserved.';
+  static const appTagline = "Canada's Modern Marketplace";
+  static const prodUrl = 'https://orignagta.ca';
+
+  // === CASL COMPLIANCE ===
+  /// Physical mailing address — REQUIRED by CASL in every commercial email
+  static const physicalAddress = 'Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada';
+
+  /// GST/HST Registration Number — REQUIRED on all receipts (Excise Tax Act)
+  static const gstHstNumber = '708286364RC0001';
+
+  /// Unsubscribe URL — REQUIRED by CASL
+  static const unsubscribeUrl = 'https://orignagta.ca/unsubscribe';
+
+  /// Privacy Officer contact — REQUIRED by Quebec Law 25
+  /// NOTE: Using support@ until dedicated privacy@ mailbox is provisioned
+  static const privacyOfficerEmail = 'support@orignaventures.ca';
+  static const privacyOfficerName = 'Yunior Rodriguez Osorio';
+}
 
 /// Firestore document field names.
 ///
@@ -86,6 +408,8 @@ abstract final class Fields {
   static const roles = 'roles';
   static const address = 'address';
   static const customerId = 'customerId';
+  static const fcmToken = 'fcmToken';
+  static const fcmTokenUpdatedAt = 'fcmTokenUpdatedAt';
   static const lastCheckoutSession = 'lastCheckoutSession';
   static const lastOrderId = 'lastOrderId';
   static const lastCheckoutTimestamp = 'lastCheckoutTimestamp';
@@ -138,6 +462,9 @@ abstract final class Fields {
   // === PRODUCT FIELDS ===
   static const productId = 'productId';
   static const price = 'price';
+
+  /// Original/crossed-out price for sale display (null = no active sale)
+  static const compareAtPrice = 'compareAtPrice';
   static const description = 'description';
   static const imageUrls = 'imageUrls';
   static const sellerId = 'sellerId';
@@ -145,6 +472,7 @@ abstract final class Fields {
   static const sellerSku = 'sellerSku';
   static const warehouseIds = 'warehouseIds';
   static const warehouseStock = 'warehouseStock';
+  static const fulfillmentWarehouseId = 'fulfillmentWarehouseId'; // TASK 02: warehouse used to fulfill order item
   static const shipFromCity = 'shipFromCity';
   static const shipFromProvince = 'shipFromProvince';
   static const shipFromCountry = 'shipFromCountry';
@@ -187,6 +515,11 @@ abstract final class Fields {
   static const taxCode = 'taxCode';
   static const supplier = 'supplier';
   static const inventory = 'inventory';
+  // Inventory sub-fields (keys inside the `inventory` map)
+  static const allowBackorder = 'allowBackorder';
+  static const lowStockThreshold = 'lowStockThreshold';
+  static const trackQuantity = 'trackQuantity';
+  static const reservationHoldMinutes = 'reservationHoldMinutes';
   static const status = 'status';
   static const deliverySpeed = 'deliverySpeed';
 
@@ -246,6 +579,7 @@ abstract final class Fields {
   // === ORDER FIELDS (missing from Dart, present in Python) ===
   static const shippingApproval = 'shippingApproval';
   static const stockRestored = 'stockRestored';
+  static const lastLowStockAlertAt = 'lastLowStockAlertAt';
   static const cancelledBy = 'cancelledBy';
   static const cancelledAt = 'cancelledAt';
   static const cancellationReason = 'cancellationReason';
@@ -286,8 +620,43 @@ abstract final class Fields {
   static const unsubscribedAt = 'unsubscribedAt';
   static const dataProcessingConsent = 'dataProcessingConsent';
 
+  // === PREMIUM SUBSCRIPTION FIELDS ===
+  static const isPremium = 'isPremium';
+  static const premiumSince = 'premiumSince';
+  static const premiumExpiresAt = 'premiumExpiresAt';
+  static const stripeSubscriptionId = 'stripeSubscriptionId';
+  static const notifyNewProducts = 'notifyNewProducts';
+  static const notifyTrending = 'notifyTrending';
+
+  // === TRENDING PRODUCT FIELDS ===
+  static const trendingScore = 'trendingScore';
+  static const viewCount = 'viewCount';
+  static const isTrending = 'isTrending';
+  static const trendingAt = 'trendingAt';
+  static const purchaseCount = 'purchaseCount';
+
+  // === SUBSCRIPTION DOCUMENT FIELDS ===
+  static const subscriptionStatus = 'subscriptionStatus';
+  static const currentPeriodStart = 'currentPeriodStart';
+  static const currentPeriodEnd = 'currentPeriodEnd';
+  static const cancelAtPeriodEnd = 'cancelAtPeriodEnd';
+
+  // === CHAT FIELDS ===
+  static const chatId = 'chatId';
+  static const buyerId = 'buyerId';
+  static const productTitle = 'productTitle';
+  static const productImageUrl = 'productImageUrl';
+  static const lastMessage = 'lastMessage';
+  static const lastMessageAt = 'lastMessageAt';
+  static const senderId = 'senderId';
+  static const messageText = 'text';
+  static const isRead = 'read';
+
   // === DELIVERY FIELDS ===
   static const deliveryInstructions = 'deliveryInstructions';
+
+  // === CART / ORDER ITEM NOTE ===
+  static const buyerNote = 'buyerNote';
 
   // === FIELDS missing from Dart (present in Python) ===
   static const archived = 'archived';
@@ -379,6 +748,30 @@ abstract final class Fields {
   static const severity = 'severity';
   static const resolved = 'resolved';
   static const resolvedAt = 'resolvedAt';
+
+  // === NEW FEATURE FIELDS (TASKS 05-11) ===
+  static const addressId = 'addressId';
+  static const reviewImageUrls = 'reviewImageUrls';
+  static const notifiedAt = 'notifiedAt';
+  static const subscribedAt = 'subscribedAt';
+  static const questionText = 'question';
+  static const answerText = 'answer';
+  static const answeredAt = 'answeredAt';
+  static const answeredBy = 'answeredBy';
+  static const isAnswered = 'isAnswered';
+  static const upvotes = 'upvotes';
+  static const askerId = 'askerId';
+  static const questionId = 'questionId';
+  static const lastCartAbandonEmailAt = 'lastCartAbandonEmailAt';
+  static const disputeRate = 'disputeRate';
+  static const refundRate = 'refundRate';
+  static const cancellationRate = 'cancellationRate';
+  static const lateShipmentRate = 'lateShipmentRate';
+  static const avgResponseTimeHours = 'avgResponseTimeHours';
+  static const totalOrders30d = 'totalOrders30d';
+  static const totalRevenueCents30d = 'totalRevenueCents30d';
+  static const computedAt = 'computedAt';
+
   static const resolution = 'resolution';
   static const timestamp = 'timestamp';
   static const chargeId = 'chargeId';
@@ -469,9 +862,37 @@ abstract final class Fields {
   static const confirmation = 'confirmation';
 }
 
-// =============================================================================
-// ENUM VALUES - Valid values for enum fields
-// =============================================================================
+/// Filter sentinel values — special values used in query filters to mean "no filter"
+abstract final class FilterValues {
+  /// Special filter value meaning "show all items regardless of status"
+  static const all = 'all';
+}
+
+/// Geographic constants
+abstract final class GeoValues {
+  static const countryCanada = 'Canada';
+}
+
+/// Language preference defaults (ISO 639-1 codes)
+abstract final class LanguageValues {
+  static const english = 'en';
+  static const french = 'fr';
+}
+
+/// Valid values for license status field
+abstract final class LicenseStatusValues {
+  static const active = 'active';
+  static const revoked = 'revoked';
+  static const all = [active, revoked];
+  LicenseStatusValues._();
+}
+
+/// Special values for itemId parameter in updateItemStatus.
+/// Convention: 'all' means apply the status change to the entire order (all items).
+abstract final class OrderItemIdValues {
+  /// Apply status change to all items in the order
+  static const all = 'all';
+}
 
 /// Valid values for orderStatus field
 abstract final class OrderStatusValues {
@@ -488,20 +909,7 @@ abstract final class OrderStatusValues {
   static const partiallyRefunded = 'partially_refunded';
   static const disputed = 'disputed';
 
-  static const all = {
-    pending,
-    confirmed,
-    processing,
-    shipped,
-    inTransit,
-    delivered,
-    cancelled,
-    failed,
-    expired,
-    refunded,
-    partiallyRefunded,
-    disputed,
-  };
+  static const all = {pending, confirmed, processing, shipped, inTransit, delivered, cancelled, failed, expired, refunded, partiallyRefunded, disputed};
 
   /// Centralized state machine — single source of truth for order transitions.
   /// Must match schema_constants.py OrderStatusValues.VALID_TRANSITIONS.
@@ -524,35 +932,17 @@ abstract final class OrderStatusValues {
   static const terminalStates = {cancelled, refunded};
 }
 
-/// Filter sentinel values — special values used in query filters to mean "no filter"
-abstract final class FilterValues {
-  /// Special filter value meaning "show all items regardless of status"
-  static const all = 'all';
+/// Valid values for payment provider
+abstract final class PaymentProviderValues {
+  static const stripe = 'stripe';
+  static const airwallex = 'airwallex';
+
+  static const all = {stripe, airwallex};
 }
 
-/// Confirmation values for sensitive operations requiring explicit confirmation
-abstract final class ConfirmationValues {
-  /// Confirmation string for account deletion
-  static const deleteMyAccount = 'DELETE_MY_ACCOUNT';
-}
-
-/// Centralized per-item delivery status transitions.
-/// Must match schema_constants.py DeliveryItemStatusTransitions.VALID_TRANSITIONS.
-abstract final class DeliveryItemStatusTransitions {
-  static const validTransitions = <String, List<String>>{
-    DeliveryStatusValues.pending: [DeliveryStatusValues.shipped],
-    DeliveryStatusValues.shipped: [DeliveryStatusValues.delivered],
-    DeliveryStatusValues.delivered: [DeliveryStatusValues.refunded],
-    DeliveryStatusValues.refunded: [], // Terminal
-  };
-}
-
-/// Special values for itemId parameter in updateItemStatus.
-/// Convention: 'all' means apply the status change to the entire order (all items).
-abstract final class OrderItemIdValues {
-  /// Apply status change to all items in the order
-  static const all = 'all';
-}
+// =============================================================================
+// EMAIL & COMPLIANCE CONFIGURATION
+// =============================================================================
 
 /// Valid values for paymentStatus field
 abstract final class PaymentStatusValues {
@@ -588,16 +978,6 @@ abstract final class PaymentStatusValues {
   };
 }
 
-/// Valid values for deliveryStatus/status field on order items
-abstract final class DeliveryStatusValues {
-  static const pending = 'pending';
-  static const shipped = 'shipped';
-  static const delivered = 'delivered';
-  static const refunded = 'refunded';
-
-  static const all = {pending, shipped, delivered, refunded};
-}
-
 /// Valid values for payoutStatus field
 abstract final class PayoutStatusValues {
   static const pending = 'pending';
@@ -609,45 +989,85 @@ abstract final class PayoutStatusValues {
   static const partiallyReversed = 'partially_reversed';
   static const reversedDispute = 'reversed_dispute';
 
-  static const all = {
-    pending,
-    processing,
-    completed,
-    partial,
-    failed,
-    reversed,
-    partiallyReversed,
-    reversedDispute,
-  };
+  static const all = {pending, processing, completed, partial, failed, reversed, partiallyReversed, reversedDispute};
 }
 
-/// Valid values for webhook processing status
-abstract final class WebhookStatusValues {
-  static const processing = 'processing';
-  static const completed = 'completed';
-  static const failed = 'failed';
-
-  static const all = {processing, completed, failed};
+/// Default policy/terms version numbers
+abstract final class PolicyVersionValues {
+  static const defaultVersion = '1.0';
 }
 
-/// Valid values for shippingApprovalStatus field
-abstract final class ShippingApprovalStatusValues {
-  static const notRequired = 'not_required';
-  static const pending = 'pending';
+// =============================================================================
+// BUSINESS CONSTANTS
+// =============================================================================
+
+/// Valid values for product approvalStatus field.
+/// All new products start as underReview until an admin approves them.
+abstract final class ProductApprovalStatusValues {
+  static const underReview = 'under_review';
   static const approved = 'approved';
   static const rejected = 'rejected';
 
-  static const all = {notRequired, pending, approved, rejected};
+  static const all = {underReview, approved, rejected};
 }
 
-/// Valid values for delivery option types
-abstract final class DeliveryTypeValues {
-  static const pickup = 'pickup';
-  static const standard = 'standard';
-  static const express = 'express';
-  static const sameDay = 'same_day';
-  static const localDelivery = 'local_delivery';
-  static const custom = 'custom';
+// =============================================================================
+// CATEGORY IDS
+// =============================================================================
+
+/// Valid values for product status field
+abstract final class ProductStatusValues {
+  static const draft = 'draft';
+  static const active = 'active';
+  static const paused = 'paused';
+  static const archived = 'archived';
+  static const outOfStock = 'out_of_stock';
+
+  static const all = {draft, active, paused, archived, outOfStock};
+}
+
+// =============================================================================
+// API KEYS - Cloud Function request/response parameter names
+// =============================================================================
+
+/// Canadian province code values
+abstract final class ProvinceCodeValues {
+  static const ontario = 'ON';
+}
+
+// =============================================================================
+// CLOUD FUNCTION ENDPOINTS - Single source of truth for all Firebase callable names
+// =============================================================================
+
+/// Firebase RemoteConfig keys
+abstract final class RemoteConfigKeys {
+  static const algoliaAppId = 'algolia_app_id';
+  static const algoliaSearchApiKey = 'algolia_search_api_key';
+  static const geoapifyApiKey = 'geoapify_api_key';
+  static const imageBaseUrl = 'image_base_url';
+  static const sentryDnsKey = 'sentry_dns';
+}
+
+// =============================================================================
+// SYSTEM VALUES - Default values and system constants (not user-facing)
+// =============================================================================
+
+/// Registry of expected fields per collection.
+/// Used for validation and to get the correct timestamp field.
+abstract final class SchemaRegistry {
+  /// Timestamp field mapping (which field name each collection uses)
+  static const timestampField = {
+    Collections.users: Fields.createdAt,
+    Collections.products: Fields.createdAt,
+    Collections.orders: Fields.createdAt,
+    Collections.payouts: Fields.createdAt,
+    Collections.cart: Fields.createdAt,
+  };
+
+  /// Get the correct timestamp field name for a collection.
+  static String getTimestampField(String collection) {
+    return timestampField[collection] ?? Fields.createdAt;
+  }
 }
 
 /// Security alert type values
@@ -681,6 +1101,39 @@ abstract final class SeverityLevels {
   static const critical = 'critical';
 }
 
+/// Valid values for shippingApprovalStatus field
+abstract final class ShippingApprovalStatusValues {
+  static const notRequired = 'not_required';
+  static const pending = 'pending';
+  static const approved = 'approved';
+  static const rejected = 'rejected';
+
+  static const all = {notRequired, pending, approved, rejected};
+}
+
+/// Valid values for supplier platform types
+abstract final class SupplierTypeValues {
+  static const aliexpress = 'aliexpress';
+  static const dhgate = 'dhgate';
+  static const alibaba = 'alibaba';
+  static const s1688 = '1688'; // Can't start with number, so use 's1688' as const name
+  static const temu = 'temu';
+  static const cjdropshipping = 'cjdropshipping';
+  static const local = 'local';
+  static const other = 'other';
+
+  static const all = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping, local, other};
+
+  /// International suppliers (non-local)
+  static const international = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping};
+}
+
+/// User-facing UI messages
+abstract final class UIMessages {
+  static const sessionExpired = 'Session expired due to inactivity. Please login again.';
+  static const sessionExpiredTitle = 'Session Expired';
+}
+
 /// Valid values for roles array
 abstract final class UserRoleValues {
   static const admin = 'admin';
@@ -690,91 +1143,6 @@ abstract final class UserRoleValues {
   static const all = {admin, seller, buyer};
 }
 
-/// Valid values for payment provider
-abstract final class PaymentProviderValues {
-  static const stripe = 'stripe';
-  static const airwallex = 'airwallex';
-
-  static const all = {stripe, airwallex};
-}
-
-/// Valid values for product status field
-abstract final class ProductStatusValues {
-  static const draft = 'draft';
-  static const active = 'active';
-  static const paused = 'paused';
-  static const archived = 'archived';
-  static const outOfStock = 'out_of_stock';
-
-  static const all = {draft, active, paused, archived, outOfStock};
-}
-
-/// Valid values for product approvalStatus field.
-/// All new products start as underReview until an admin approves them.
-abstract final class ProductApprovalStatusValues {
-  static const underReview = 'under_review';
-  static const approved = 'approved';
-  static const rejected = 'rejected';
-
-  static const all = {underReview, approved, rejected};
-}
-
-/// Valid values for country fields
-abstract final class CountryValues {
-  static const canada = 'Canada';
-  static const canadaCode = 'CA';
-
-  static const all = {canada, canadaCode};
-}
-
-/// Canadian province code values
-abstract final class ProvinceCodeValues {
-  static const ontario = 'ON';
-}
-
-/// Valid values for supplier platform types
-abstract final class SupplierTypeValues {
-  static const aliexpress = 'aliexpress';
-  static const dhgate = 'dhgate';
-  static const alibaba = 'alibaba';
-  static const s1688 =
-      '1688'; // Can't start with number, so use 's1688' as const name
-  static const temu = 'temu';
-  static const cjdropshipping = 'cjdropshipping';
-  static const local = 'local';
-  static const other = 'other';
-
-  static const all = {
-    aliexpress,
-    dhgate,
-    alibaba,
-    s1688,
-    temu,
-    cjdropshipping,
-    local,
-    other,
-  };
-
-  /// International suppliers (non-local)
-  static const international = {
-    aliexpress,
-    dhgate,
-    alibaba,
-    s1688,
-    temu,
-    cjdropshipping,
-  };
-}
-
-/// Valid values for shipping discount types
-abstract final class DiscountTypeValues {
-  static const percent = 'percent';
-  static const fixed = 'fixed';
-  static const flatRate = 'flat_rate';
-
-  static const all = {percent, fixed, flatRate};
-}
-
 abstract final class WarehouseTypeValues {
   static const warehouse = 'warehouse';
   static const personal = 'personal';
@@ -782,324 +1150,24 @@ abstract final class WarehouseTypeValues {
   static const all = {warehouse, personal};
 }
 
-// =============================================================================
-// EMAIL & COMPLIANCE CONFIGURATION
-// =============================================================================
-
-/// Email and CASL compliance constants — Dart mirror of Python EmailConfig
-abstract final class EmailConfig {
-  static const supportEmail = 'support@orignaventures.ca';
-  static const senderName = 'Origna GTA';
-  static const copyrightText = '\u00a9 2026 Origna Ventures Inc. All rights reserved.';
-  static const appTagline = "Canada's Modern Marketplace";
-  static const prodUrl = 'https://orignagta.ca';
-
-  // === CASL COMPLIANCE ===
-  /// Physical mailing address — REQUIRED by CASL in every commercial email
-  static const physicalAddress =
-      'Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada';
-
-  /// GST/HST Registration Number — REQUIRED on all receipts (Excise Tax Act)
-  static const gstHstNumber = '708286364RC0001';
-
-  /// Unsubscribe URL — REQUIRED by CASL
-  static const unsubscribeUrl = 'https://orignagta.ca/unsubscribe';
-
-  /// Privacy Officer contact — REQUIRED by Quebec Law 25
-  /// NOTE: Using support@ until dedicated privacy@ mailbox is provisioned
-  static const privacyOfficerEmail = 'support@orignaventures.ca';
-  static const privacyOfficerName = 'Yunior Rodriguez Osorio';
-}
-
-/// Consent method values for CASL compliance tracking
-abstract final class ConsentMethodValues {
-  static const signup = 'signup';
-  static const checkbox = 'checkbox';
-  static const doubleOptIn = 'double_opt_in';
-  static const implied = 'implied';
-
-  static const all = {signup, checkbox, doubleOptIn, implied};
-}
-
-
-/// Registry of expected fields per collection.
-/// Used for validation and to get the correct timestamp field.
-abstract final class SchemaRegistry {
-  /// Timestamp field mapping (which field name each collection uses)
-  static const timestampField = {
-    Collections.users: Fields.createdAt,
-    Collections.products: Fields.createdAt,
-    Collections.orders: Fields.createdAt,
-    Collections.payouts: Fields.createdAt,
-    Collections.cart: Fields.createdAt,
-  };
-
-  /// Get the correct timestamp field name for a collection.
-  static String getTimestampField(String collection) {
-    return timestampField[collection] ?? Fields.createdAt;
-  }
-}
-
-// =============================================================================
-// BUSINESS CONSTANTS
-// =============================================================================
-
-/// Business rule constants
-abstract final class BusinessRules {
-  static const platformFeePercent = 2.5;
-  static const autoConfirmDays =
-      5; // Must be < authorizationExpiryDays (2-day safety margin)
-  static const authorizationExpiryDays = 7;
-  static const returnWindowDays =
-      7; // No returns/refunds after 7 days post-delivery
-  static const maxCaptureAttempts = 3;
-  static const defaultCurrency = 'cad';
-  static const allowedShippingCountries = {'Canada', 'CA'};
-  // Sellers can be from any country — no country restriction on seller addresses
-
-  /// Tax rates by province
-  static const taxRates = {
-    'AB': {'GST': 5.0},
-    'BC': {'GST': 5.0, 'PST': 7.0},
-    'MB': {'GST': 5.0, 'PST': 7.0},
-    'NB': {'HST': 15.0},
-    'NL': {'HST': 15.0},
-    'NS': {'HST': 14.0}, // Changed from 15% to 14% on April 1, 2025 (CRA)
-    'NT': {'GST': 5.0},
-    'NU': {'GST': 5.0},
-    'ON': {'HST': 13.0},
-    'PE': {'HST': 15.0},
-    'QC': {'GST': 5.0, 'QST': 9.975},
-    'SK': {'GST': 5.0, 'PST': 6.0},
-    'YT': {'GST': 5.0},
-  };
-}
-
-// =============================================================================
-// CATEGORY IDS
-// =============================================================================
-
-/// Product category IDs
-abstract final class CategoryIds {
-  static const electronics = 1;
-  static const computers = 2;
-  static const gaming = 3;
-  static const homeKitchen = 4;
-  static const fashion = 5;
-  static const shoesAccessories = 6;
-  static const jewelryWatches = 7;
-  static const beautyPersonalCare = 8;
-  static const healthWellness = 9;
-  static const sportsFitness = 10;
-  static const automotive = 11;
-  static const toolsHardware = 12;
-  static const officeSupplies = 13;
-  static const books = 14;
-  static const musicInstruments = 15;
-  static const toysGames = 16;
-  static const babyKids = 17;
-  static const petSupplies = 18;
-  static const groceries = 19;
-  static const artCollectibles = 20;
-  static const digitalProducts = 21;
-
-  static const min = 1;
-  static const max = 21;
-}
-
-// =============================================================================
-// API KEYS - Cloud Function request/response parameter names
-// =============================================================================
-
-/// Cloud Function API parameter and response keys.
-/// These are NOT Firestore fields — they are the contract between
-/// Flutter and Cloud Functions (request params + response keys).
-abstract final class ApiKeys {
-  // === REQUEST PARAMS (sent to Cloud Functions) ===
-  static const add = 'add';
-  static const remove = 'remove';
-  static const reason = 'reason';
-  static const code = 'code';
-  static const provider = 'provider';
-  static const enabled = 'enabled';
-  static const refreshUrl = 'refreshUrl';
-  static const returnUrl = 'returnUrl';
-  static const newStatus = 'newStatus';
-  static const approved = 'approved';
-  static const newShippingCost = 'newShippingCost';
-  static const subtotal = 'subtotal';
-  static const itemIds = 'itemIds';
-  static const idempotencyKey = 'idempotencyKey';
-
-  // === RESPONSE KEYS (returned from Cloud Functions) ===
-  static const success = 'success';
-  static const itemStatus = 'itemStatus';
-  static const allItemsDelivered = 'allItemsDelivered';
-  static const providerName = 'providerName';
-  static const checkoutUrl = 'checkoutUrl';
-  static const sessionId = 'sessionId';
-  static const url = 'url';
-  static const secret = 'secret';
-  static const qrCodeUrl = 'qrCodeUrl';
-  static const provisioningUri = 'provisioning_uri';
-  static const backupCodes = 'backup_codes';
-  static const mfaVerified = 'mfaVerified';
-  static const remainingCodes = 'remainingCodes';
-  static const detailsSubmitted = 'detailsSubmitted';
-  static const requirementsCurrentlyDue = 'requirementsCurrentlyDue';
-  static const duplicate = 'duplicate';
-  static const emulatorMode = 'emulatorMode';
-  static const captured = 'captured';
-  static const message = 'message';
-  static const paymentIntentId = 'paymentIntentId';
-  static const accountId = 'accountId';
-  static const existing = 'existing';
-  static const hasChanges = 'hasChanges';
-  static const priceChanges = 'priceChanges';
-  static const stockChanges = 'stockChanges';
-  static const removedProducts = 'removedProducts';
-  static const oldPrice = 'oldPrice';
-  static const newPrice = 'newPrice';
-  static const requested = 'requested';
-  static const available = 'available';
-  static const productName = 'productName';
-
-  // === PAYMENT PROVIDER RESPONSE KEYS ===
-  static const supportedCurrencies = 'supportedCurrencies';
-  static const supportedCountries = 'supportedCountries';
-  static const features = 'features';
-  static const providers = 'providers';
-  static const providerStatus = 'providerStatus';
-  static const configured = 'configured';
-  static const missingKeys = 'missingKeys';
-  static const enabledProviders = 'enabledProviders';
-
-  // === SHIPPING RESPONSE KEYS ===
-  static const allItemsShipped = 'allItemsShipped';
-  static const approvalRequired = 'approvalRequired';
-}
-
-// =============================================================================
-// CLOUD FUNCTION ENDPOINTS - Single source of truth for all Firebase callable names
-// =============================================================================
-
-/// Cloud Function endpoint names. Update here ONLY if backend function names change.
-/// Prevents endpoint name drift between frontend and backend.
-abstract final class CloudFunctionEndpoints {
-  // === AUTH ENDPOINTS ===
-  static const deleteAccount = 'delete_account';
-
-  // === ADMIN ENDPOINTS ===
-  static const updateUserRoles = 'update_user_roles';
-  static const suspendSeller = 'suspend_seller';
-  static const unsuspendSeller = 'unsuspend_seller';
-  static const adminUpdateProductStock = 'admin_update_product_stock';
-  static const adminMfaEnroll = 'admin_mfa_enroll';
-  static const adminMfaVerify = 'admin_mfa_verify';
-  static const adminMfaDisable = 'admin_mfa_disable';
-  static const adminApproveProduct = 'admin_approve_product';
-  static const adminRejectProduct = 'admin_reject_product';
-
-  // === PRODUCT ENDPOINTS ===
-  static const deleteProduct = 'delete_product';
-  static const getR2PresignedUrl = 'get_r2_presigned_url';
-  static const submitProductRating = 'submit_product_rating';
-
-  // === WAREHOUSE ENDPOINTS ===
-  static const createWarehouse = 'create_warehouse';
-  static const updateWarehouse = 'update_warehouse';
-  static const deleteWarehouse = 'delete_warehouse';
-  static const getSellerWarehouses = 'get_seller_warehouses';
-
-  // === ORDER ENDPOINTS ===
-  static const confirmOrderReceipt = 'confirm_order_receipt';
-  static const updateOrderStatus = 'update_order_status';
-  static const updateItemStatus = 'update_item_status';
-  static const cancelOrder = 'cancel_order';
-  static const refundOrderItem = 'refund_order_item';
-  static const approveShippingCost = 'approve_shipping_cost';
-  static const updateShippingCost = 'update_shipping_cost';
-
-  // === PAYMENT ENDPOINTS ===
-  static const createCheckoutSession = 'create_checkout_session';
-  static const verifyCartPrices = 'verify_cart_prices';
-  static const capturePayment = 'capture_payment';
-  static const createConnectAccount = 'create_connect_account';
-  static const createAccountLink = 'create_account_link';
-  static const getConnectAccountStatus = 'get_connect_account_status';
-  static const getPaymentProviders = 'get_payment_providers';
-  static const updatePaymentProvider = 'update_payment_provider';
-  static const getProviderStatus = 'get_provider_status';
-
-  // === AIRWALLEX ENDPOINTS ===
-  static const airwallexCreateSellerAccount = 'airwallex_create_seller_account';
-  static const airwallexProcessPayment = 'airwallex_process_payment';
-  static const airwallexCapturePayment = 'airwallex_capture_payment';
-}
-
-// =============================================================================
-// SYSTEM VALUES - Default values and system constants (not user-facing)
-// =============================================================================
-
-/// Default policy/terms version numbers
-abstract final class PolicyVersionValues {
-  static const defaultVersion = '1.0';
-}
-
-/// Language preference defaults (ISO 639-1 codes)
-abstract final class LanguageValues {
-  static const english = 'en';
-  static const french = 'fr';
-}
-
-/// Geographic constants
-abstract final class GeoValues {
-  static const countryCanada = 'Canada';
-}
-
-/// Standard address labels
-abstract final class AddressLabelValues {
-  static const home = 'Home';
-  static const work = 'Work';
-  static const other = 'Other';
-}
-
-/// Firebase RemoteConfig keys
-abstract final class RemoteConfigKeys {
-  static const algoliaAppId = 'algolia_app_id';
-  static const algoliaSearchApiKey = 'algolia_search_api_key';
-  static const geoapifyApiKey = 'geoapify_api_key';
-  static const imageBaseUrl = 'image_base_url';
-  static const sentryDnsKey = 'sentry_dns';
-}
-
-/// User-facing UI messages
-abstract final class UIMessages {
-  static const sessionExpired = 'Session expired due to inactivity. Please login again.';
-  static const sessionExpiredTitle = 'Session Expired';
-}
-
-/// Valid values for digitalType field
-abstract final class DigitalTypeValues {
-  static const software = 'software';
-  static const book = 'book';
-
-  static const all = [software, book];
-}
-
-/// Valid values for supportedPlatforms field
-abstract final class DigitalPlatformValues {
-  static const macos = 'macos';
-  static const windows = 'windows';
-  static const linux = 'linux';
-
-  static const all = [macos, windows, linux];
-}
-
-/// Valid values for license status field
-abstract final class LicenseStatusValues {
-  LicenseStatusValues._();
+abstract final class SubscriptionStatusValues {
   static const active = 'active';
-  static const revoked = 'revoked';
-  static const all = [active, revoked];
+  static const canceled = 'canceled';
+  static const pastDue = 'past_due';
+  static const incomplete = 'incomplete';
+  static const incompleteExpired = 'incomplete_expired';
+  static const trialing = 'trialing';
+  static const unpaid = 'unpaid';
+
+  /// Statuses that grant premium access
+  static const premiumActive = {active, trialing};
+}
+
+/// Valid values for webhook processing status
+abstract final class WebhookStatusValues {
+  static const processing = 'processing';
+  static const completed = 'completed';
+  static const failed = 'failed';
+
+  static const all = {processing, completed, failed};
 }

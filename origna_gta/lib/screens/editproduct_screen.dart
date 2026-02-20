@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/screens/productaddimages_screen.dart';
-import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
+import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
@@ -21,11 +21,47 @@ class EditProductScreen extends ConsumerStatefulWidget {
   ConsumerState<EditProductScreen> createState() => _EditProductScreenState();
 }
 
+class _EditDigitalTypeChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _EditDigitalTypeChip({super.key, required this.label, required this.icon, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: selected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
+          border: Border.all(color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor, width: selected ? 2 : 1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: selected ? Theme.of(context).colorScheme.primary : null),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal, color: selected ? Theme.of(context).colorScheme.primary : null),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _priceController;
+  late final TextEditingController _compareAtPriceController;
   late final TextEditingController _categoryController;
   late final TextEditingController _streetController;
   late final TextEditingController _apartmentController;
@@ -38,6 +74,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   late final TextEditingController _heightController;
   late final TextEditingController _shipDaysController;
   late final TextEditingController _minOrderController;
+
+  // Inventory config
+  bool _lowStockAlertEnabled = false;
+  late final TextEditingController _lowStockThresholdController;
 
   // Digital product controllers
   late final TextEditingController _macosUrlController;
@@ -140,6 +180,27 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       ),
                     ],
                   ),
+                  SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('product_edit_compare_at_price_field'),
+                    controller: _compareAtPriceController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'product.compare_at_price'.tr(),
+                      prefixIcon: const Icon(Icons.local_offer_outlined),
+                      hintText: 'product.compare_at_price_hint'.tr(),
+                      helperText: 'product.compare_at_price_info_body'.tr(),
+                      helperMaxLines: 3,
+                    ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return null; // optional
+                      final cap = double.tryParse(v);
+                      if (cap == null) return 'product.invalid_price'.tr();
+                      final currentPrice = double.tryParse(_priceController.text.trim()) ?? 0;
+                      if (cap <= currentPrice) return 'product.compare_at_price_must_be_higher'.tr();
+                      return null;
+                    },
+                  ),
                   SwitchListTile(
                     title: Text('product.mark_sold_out'.tr()),
                     value: state.isSoldOut,
@@ -151,6 +212,26 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     },
                   ),
                   SwitchListTile(
+                    key: const Key('editproduct_low_stock_alert_toggle'),
+                    title: Text('product.low_stock_alert'.tr()),
+                    subtitle: Text('product.low_stock_alert_subtitle'.tr()),
+                    secondary: const Icon(Icons.notifications_active_rounded),
+                    value: _lowStockAlertEnabled,
+                    activeTrackColor: DesignTokens.primary,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (v) => setState(() => _lowStockAlertEnabled = v),
+                  ),
+                  if (_lowStockAlertEnabled) ...[
+                    const SizedBox(height: 4),
+                    TextFormField(
+                      key: const Key('editproduct_low_stock_threshold_field'),
+                      controller: _lowStockThresholdController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(labelText: 'product.low_stock_threshold'.tr(), prefixIcon: const Icon(Icons.warning_amber_rounded)),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                  SwitchListTile(
                     title: Text('product.digital_product'.tr()),
                     subtitle: Text('product.digital_subtitle'.tr()),
                     value: state.isDigital,
@@ -158,10 +239,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     contentPadding: EdgeInsets.zero,
                     onChanged: viewModel.toggleDigital,
                   ),
-                  if (state.isDigital) ...[
-                    const SizedBox(height: 12),
-                    _buildEditDigitalSection(state, viewModel),
-                  ],
+                  if (state.isDigital) ...[const SizedBox(height: 12), _buildEditDigitalSection(state, viewModel)],
                   DropdownButtonFormField<String>(
                     key: const Key('product_edit_category_dropdown'),
                     initialValue: _categoryController.text.isNotEmpty ? _categoryController.text : null,
@@ -343,6 +421,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _nameController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
+    _compareAtPriceController.dispose();
     _categoryController.dispose();
     _streetController.dispose();
     _apartmentController.dispose();
@@ -355,6 +434,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _heightController.dispose();
     _shipDaysController.dispose();
     _minOrderController.dispose();
+    _lowStockThresholdController.dispose();
     _macosUrlController.dispose();
     _windowsUrlController.dispose();
     _linuxUrlController.dispose();
@@ -375,6 +455,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _nameController = TextEditingController(text: p.name);
     _descriptionController = TextEditingController(text: p.description);
     _priceController = TextEditingController(text: p.price.toString());
+    _compareAtPriceController = TextEditingController(text: p.compareAtPrice?.toString() ?? '');
     _categoryController = TextEditingController(text: p.categoryId.toString());
     _streetController = TextEditingController(text: p.sellerAddress?.street ?? '');
     _apartmentController = TextEditingController(text: p.sellerAddress?.apartment ?? '');
@@ -387,6 +468,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _heightController = TextEditingController(text: p.heightCm?.toString() ?? '');
     _shipDaysController = TextEditingController(text: p.estimatedShipDays.toString());
     _minOrderController = TextEditingController(text: p.minimumOrderQuantity.toString());
+    final existingThreshold = p.inventory?.lowStockThreshold ?? 0;
+    _lowStockAlertEnabled = existingThreshold > 0;
+    _lowStockThresholdController = TextEditingController(text: existingThreshold > 0 ? existingThreshold.toString() : '5');
     _macosUrlController = TextEditingController(text: p.digitalBuilds?[DigitalPlatformValues.macos] ?? '');
     _windowsUrlController = TextEditingController(text: p.digitalBuilds?[DigitalPlatformValues.windows] ?? '');
     _linuxUrlController = TextEditingController(text: p.digitalBuilds?[DigitalPlatformValues.linux] ?? '');
@@ -417,60 +501,6 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _sameDayPriceController = TextEditingController(text: sameDayOpt.cost.toStringAsFixed(2));
   }
 
-  Widget _buildEditDigitalSection(EditProductState state, EditProductViewModel viewModel) {
-    return Column(
-      key: const Key('editproduct_digital_section'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(children: [
-          Expanded(child: _EditDigitalTypeChip(
-            key: const Key('editproduct_digital_type_software'),
-            label: 'Software', icon: Icons.computer_outlined,
-            selected: state.digitalType == DigitalTypeValues.software,
-            onTap: () => viewModel.setDigitalType(DigitalTypeValues.software),
-          )),
-          const SizedBox(width: 8),
-          Expanded(child: _EditDigitalTypeChip(
-            key: const Key('editproduct_digital_type_book'),
-            label: 'Book', icon: Icons.menu_book_outlined,
-            selected: state.digitalType == DigitalTypeValues.book,
-            onTap: () => viewModel.setDigitalType(DigitalTypeValues.book),
-          )),
-        ]),
-        if (state.digitalType == DigitalTypeValues.software) ...[
-          const SizedBox(height: 16),
-          Text('Download Links', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 4),
-          _editUrlField(key: const Key('editproduct_macos_url'), label: 'macOS (.dmg)', controller: _macosUrlController, onChanged: (v) => viewModel.setMacosDownloadUrl(v.isEmpty ? null : v)),
-          _editUrlField(key: const Key('editproduct_windows_url'), label: 'Windows (.exe / .msi)', controller: _windowsUrlController, onChanged: (v) => viewModel.setWindowsDownloadUrl(v.isEmpty ? null : v)),
-          _editUrlField(key: const Key('editproduct_linux_url'), label: 'Linux (.deb / .AppImage) — optional', controller: _linuxUrlController, onChanged: (v) => viewModel.setLinuxDownloadUrl(v.isEmpty ? null : v)),
-          const SizedBox(height: 8),
-          TextFormField(
-            key: const Key('editproduct_device_limit'),
-            controller: _deviceLimitController,
-            decoration: const InputDecoration(labelText: 'Device limit', hintText: 'Blank = unlimited'),
-            keyboardType: TextInputType.number,
-            onChanged: (v) => viewModel.setDeviceLimit(int.tryParse(v)),
-          ),
-        ],
-        if (state.digitalType == DigitalTypeValues.book) ...[
-          const SizedBox(height: 16),
-          const Text('Re-enter the download URL to update it (not shown for security)', style: TextStyle(fontSize: 12, color: Colors.orange)),
-          const SizedBox(height: 6),
-          _editUrlField(key: const Key('editproduct_book_url'), label: 'Book download URL (PDF/EPUB)', controller: _bookUrlController, onChanged: (v) => viewModel.setBookSourceUrl(v.isEmpty ? null : v)),
-        ],
-      ],
-    );
-  }
-
-  Widget _editUrlField({Key? key, required String label, required TextEditingController controller, required void Function(String) onChanged}) {
-    return Padding(
-      key: key,
-      padding: const EdgeInsets.only(bottom: 10),
-      child: TextFormField(controller: controller, decoration: InputDecoration(labelText: label), keyboardType: TextInputType.url, onChanged: onChanged),
-    );
-  }
-
   Widget _buildAddressSuggestions(EditProductState state, EditProductViewModel viewModel) {
     return Card(
       child: Column(
@@ -486,6 +516,57 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             },
           );
         }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildApprovalStatusBanner() {
+    final status = widget.product.approvalStatus;
+    final reason = widget.product.approvalRejectionReason;
+    if (status == ProductApprovalStatusValues.approved) return const SizedBox.shrink();
+
+    Color bgColor;
+    Color textColor;
+    IconData icon;
+    String title;
+    String subtitle = '';
+
+    if (status == ProductApprovalStatusValues.rejected) {
+      bgColor = const Color(0xFFFEE2E2);
+      textColor = const Color(0xFFDC2626);
+      icon = Icons.cancel_rounded;
+      title = 'product.approval_rejected_title'.tr();
+      subtitle = reason ?? 'product.approval_rejected_generic'.tr();
+    } else {
+      bgColor = const Color(0xFFFEF3C7);
+      textColor = const Color(0xFFB45309);
+      icon = Icons.hourglass_top_rounded;
+      title = 'product.under_review_title'.tr();
+      subtitle = 'product.under_review_edit_note'.tr();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(DesignTokens.radius12)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: textColor, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(fontWeight: FontWeight.w700, color: textColor, fontSize: 13),
+                ),
+                ...[const SizedBox(height: 4), Text(subtitle, style: TextStyle(color: textColor, fontSize: 12))],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -582,6 +663,80 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
   }
 
+  Widget _buildEditDigitalSection(EditProductState state, EditProductViewModel viewModel) {
+    return Column(
+      key: const Key('editproduct_digital_section'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _EditDigitalTypeChip(
+                key: const Key('editproduct_digital_type_software'),
+                label: 'Software',
+                icon: Icons.computer_outlined,
+                selected: state.digitalType == DigitalTypeValues.software,
+                onTap: () => viewModel.setDigitalType(DigitalTypeValues.software),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _EditDigitalTypeChip(
+                key: const Key('editproduct_digital_type_book'),
+                label: 'Book',
+                icon: Icons.menu_book_outlined,
+                selected: state.digitalType == DigitalTypeValues.book,
+                onTap: () => viewModel.setDigitalType(DigitalTypeValues.book),
+              ),
+            ),
+          ],
+        ),
+        if (state.digitalType == DigitalTypeValues.software) ...[
+          const SizedBox(height: 16),
+          Text('Download Links', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          _editUrlField(
+            key: const Key('editproduct_macos_url'),
+            label: 'macOS (.dmg)',
+            controller: _macosUrlController,
+            onChanged: (v) => viewModel.setMacosDownloadUrl(v.isEmpty ? null : v),
+          ),
+          _editUrlField(
+            key: const Key('editproduct_windows_url'),
+            label: 'Windows (.exe / .msi)',
+            controller: _windowsUrlController,
+            onChanged: (v) => viewModel.setWindowsDownloadUrl(v.isEmpty ? null : v),
+          ),
+          _editUrlField(
+            key: const Key('editproduct_linux_url'),
+            label: 'Linux (.deb / .AppImage) — optional',
+            controller: _linuxUrlController,
+            onChanged: (v) => viewModel.setLinuxDownloadUrl(v.isEmpty ? null : v),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            key: const Key('editproduct_device_limit'),
+            controller: _deviceLimitController,
+            decoration: const InputDecoration(labelText: 'Device limit', hintText: 'Blank = unlimited'),
+            keyboardType: TextInputType.number,
+            onChanged: (v) => viewModel.setDeviceLimit(int.tryParse(v)),
+          ),
+        ],
+        if (state.digitalType == DigitalTypeValues.book) ...[
+          const SizedBox(height: 16),
+          const Text('Re-enter the download URL to update it (not shown for security)', style: TextStyle(fontSize: 12, color: Colors.orange)),
+          const SizedBox(height: 6),
+          _editUrlField(
+            key: const Key('editproduct_book_url'),
+            label: 'Book download URL (PDF/EPUB)',
+            controller: _bookUrlController,
+            onChanged: (v) => viewModel.setBookSourceUrl(v.isEmpty ? null : v),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildImageGrid(EditProductState state, EditProductViewModel viewModel) {
     if (state.existingImageUrls.isEmpty) return const SizedBox.shrink();
     return SizedBox(
@@ -614,66 +769,25 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
   }
 
-  Widget _buildApprovalStatusBanner() {
-    final status = widget.product.approvalStatus;
-    final reason = widget.product.approvalRejectionReason;
-    if (status == ProductApprovalStatusValues.approved) return const SizedBox.shrink();
-
-    Color bgColor;
-    Color textColor;
-    IconData icon;
-    String title;
-    String? subtitle;
-
-    if (status == ProductApprovalStatusValues.rejected) {
-      bgColor = const Color(0xFFFEE2E2);
-      textColor = const Color(0xFFDC2626);
-      icon = Icons.cancel_rounded;
-      title = 'product.approval_rejected_title'.tr();
-      subtitle = reason ?? 'product.approval_rejected_generic'.tr();
-    } else {
-      bgColor = const Color(0xFFFEF3C7);
-      textColor = const Color(0xFFB45309);
-      icon = Icons.hourglass_top_rounded;
-      title = 'product.under_review_title'.tr();
-      subtitle = 'product.under_review_edit_note'.tr();
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(DesignTokens.radius12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: textColor, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: textColor, fontSize: 13)),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: TextStyle(color: textColor, fontSize: 12)),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, top: 4),
       child: Text(
         title,
         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: DesignTokens.primary),
+      ),
+    );
+  }
+
+  Widget _editUrlField({Key? key, required String label, required TextEditingController controller, required void Function(String) onChanged}) {
+    return Padding(
+      key: key,
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(labelText: label),
+        keyboardType: TextInputType.url,
+        onChanged: onChanged,
       ),
     );
   }
@@ -699,14 +813,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       deliveryOptions = <SellerDeliveryOption>[];
     } else if (state.isLocalDeliveryOnly) {
       // Bug #2: Inject pickup option for local-only products
-      deliveryOptions = [
-        SellerDeliveryOption(
-          type: 'pickup',
-          description: 'product.local_pickup_only'.tr(),
-          estimatedDays: 0,
-          cost: 0.0,
-        ),
-      ];
+      deliveryOptions = [SellerDeliveryOption(type: 'pickup', description: 'product.local_pickup_only'.tr(), estimatedDays: 0, cost: 0.0)];
     } else {
       deliveryOptions = <SellerDeliveryOption>[
         if (state.standardEnabled)
@@ -739,6 +846,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       ];
     }
 
+    final existingInventory = widget.product.inventory ?? const InventoryConfig();
+    final updatedInventory = existingInventory.copyWith(lowStockThreshold: _lowStockAlertEnabled ? (int.tryParse(_lowStockThresholdController.text) ?? 5) : 0);
+
     viewModel.updateProduct(
       name: _nameController.text.trim(),
       description: _descriptionController.text.trim(),
@@ -755,6 +865,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       height: double.tryParse(_heightController.text),
       shipDays: state.isDigital ? 0 : int.tryParse(_shipDaysController.text) ?? 3,
       deliveryOptions: deliveryOptions,
+      inventory: updatedInventory,
+      compareAtPrice: _compareAtPriceController.text.trim().isEmpty ? null : double.tryParse(_compareAtPriceController.text.trim()),
     );
   }
 
@@ -768,52 +880,5 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     final reg = RegExp(r'^[A-Z]\d[A-Z] \d[A-Z]\d$');
     if (!reg.hasMatch(v.toUpperCase().trim())) return 'product.invalid_postal'.tr();
     return null;
-  }
-}
-
-class _EditDigitalTypeChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _EditDigitalTypeChip({
-    super.key,
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: selected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
-          border: Border.all(
-            color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor,
-            width: selected ? 2 : 1,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: selected ? Theme.of(context).colorScheme.primary : null),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                color: selected ? Theme.of(context).colorScheme.primary : null,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

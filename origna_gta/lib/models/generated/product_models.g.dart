@@ -25,32 +25,11 @@ Map<String, dynamic> _$InventoryConfigToJson(_InventoryConfig instance) =>
       'reservationHoldMinutes': instance.reservationHoldMinutes,
     };
 
-_SellerWarehouse _$SellerWarehouseFromJson(Map<String, dynamic> json) =>
-    _SellerWarehouse(
-      warehouseId: json['warehouseId'] as String,
-      label: json['label'] as String,
-      type: json['type'] as String? ?? 'warehouse',
-      address: Address.fromJson(json['address'] as Map<String, dynamic>),
-      isDefault: json['isDefault'] as bool? ?? false,
-      createdAt: json['createdAt'] == null
-          ? null
-          : DateTime.parse(json['createdAt'] as String),
-    );
-
-Map<String, dynamic> _$SellerWarehouseToJson(_SellerWarehouse instance) =>
-    <String, dynamic>{
-      'warehouseId': instance.warehouseId,
-      'label': instance.label,
-      'type': instance.type,
-      'address': instance.address,
-      'isDefault': instance.isDefault,
-      'createdAt': instance.createdAt?.toIso8601String(),
-    };
-
 _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   productId: json['productId'] as String,
   name: json['name'] as String,
   price: (json['price'] as num).toDouble(),
+  compareAtPrice: (json['compareAtPrice'] as num?)?.toDouble() ?? null,
   description: json['description'] as String,
   imageUrls: (json['imageUrls'] as List<dynamic>)
       .map((e) => e as String)
@@ -125,12 +104,20 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
           ?.map((e) => e as String)
           .toList() ??
       null,
+  trendingScore: (json['trendingScore'] as num?)?.toInt() ?? 0,
+  viewCount: (json['viewCount'] as num?)?.toInt() ?? 0,
+  purchaseCount: (json['purchaseCount'] as num?)?.toInt() ?? 0,
+  isTrending: json['isTrending'] as bool? ?? false,
+  trendingAt: json['trendingAt'] == null
+      ? null
+      : DateTime.parse(json['trendingAt'] as String),
 );
 
 Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'productId': instance.productId,
   'name': instance.name,
   'price': instance.price,
+  'compareAtPrice': instance.compareAtPrice,
   'description': instance.description,
   'imageUrls': instance.imageUrls,
   'sellerId': instance.sellerId,
@@ -173,6 +160,11 @@ Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
   'shipFromProvince': instance.shipFromProvince,
   'shipFromCountry': instance.shipFromCountry,
   'shipFromCountries': instance.shipFromCountries,
+  'trendingScore': instance.trendingScore,
+  'viewCount': instance.viewCount,
+  'purchaseCount': instance.purchaseCount,
+  'isTrending': instance.isTrending,
+  'trendingAt': instance.trendingAt?.toIso8601String(),
 };
 
 _ProductCreate _$ProductCreateFromJson(
@@ -180,6 +172,7 @@ _ProductCreate _$ProductCreateFromJson(
 ) => _ProductCreate(
   name: json['name'] as String,
   price: (json['price'] as num).toDouble(),
+  compareAtPrice: (json['compareAtPrice'] as num?)?.toDouble() ?? null,
   description: json['description'] as String,
   imageUrls: (json['imageUrls'] as List<dynamic>)
       .map((e) => e as String)
@@ -254,6 +247,7 @@ Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
     <String, dynamic>{
       'name': instance.name,
       'price': instance.price,
+      'compareAtPrice': instance.compareAtPrice,
       'description': instance.description,
       'imageUrls': instance.imageUrls,
       'sellerId': instance.sellerId,
@@ -326,6 +320,28 @@ Map<String, dynamic> _$SellerDeliveryOptionToJson(
   'availableInternational': instance.availableInternational,
 };
 
+_SellerWarehouse _$SellerWarehouseFromJson(Map<String, dynamic> json) =>
+    _SellerWarehouse(
+      warehouseId: json['warehouseId'] as String,
+      label: json['label'] as String,
+      type: json['type'] as String? ?? 'warehouse',
+      address: Address.fromJson(json['address'] as Map<String, dynamic>),
+      isDefault: json['isDefault'] as bool? ?? false,
+      createdAt: json['createdAt'] == null
+          ? null
+          : DateTime.parse(json['createdAt'] as String),
+    );
+
+Map<String, dynamic> _$SellerWarehouseToJson(_SellerWarehouse instance) =>
+    <String, dynamic>{
+      'warehouseId': instance.warehouseId,
+      'label': instance.label,
+      'type': instance.type,
+      'address': instance.address,
+      'isDefault': instance.isDefault,
+      'createdAt': instance.createdAt?.toIso8601String(),
+    };
+
 _ShippingQuantityDiscount _$ShippingQuantityDiscountFromJson(
   Map<String, dynamic> json,
 ) => _ShippingQuantityDiscount(
@@ -366,4 +382,36 @@ Map<String, dynamic> _$SupplierInfoToJson(_SupplierInfo instance) =>
       'shippingDays': instance.shippingDays,
       'hasTracking': instance.hasTracking,
       'notes': instance.notes,
+    };
+
+_ProductQuestion _$ProductQuestionFromJson(Map<String, dynamic> json) =>
+    _ProductQuestion(
+      questionId: json['questionId'] as String,
+      productId: json['productId'] as String,
+      sellerId: json['sellerId'] as String,
+      askerId: json['askerId'] as String,
+      question: json['question'] as String,
+      answer: json['answer'] as String?,
+      answeredAt: json['answeredAt'] == null
+          ? null
+          : DateTime.parse(json['answeredAt'] as String),
+      answeredBy: json['answeredBy'] as String?,
+      isAnswered: json['isAnswered'] as bool? ?? false,
+      upvotes: (json['upvotes'] as num?)?.toInt() ?? 0,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+    );
+
+Map<String, dynamic> _$ProductQuestionToJson(_ProductQuestion instance) =>
+    <String, dynamic>{
+      'questionId': instance.questionId,
+      'productId': instance.productId,
+      'sellerId': instance.sellerId,
+      'askerId': instance.askerId,
+      'question': instance.question,
+      'answer': instance.answer,
+      'answeredAt': instance.answeredAt?.toIso8601String(),
+      'answeredBy': instance.answeredBy,
+      'isAnswered': instance.isAnswered,
+      'upvotes': instance.upvotes,
+      'createdAt': instance.createdAt.toIso8601String(),
     };

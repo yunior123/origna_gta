@@ -69,6 +69,16 @@ _User _$UserFromJson(Map<String, dynamic> json) => _User(
       ? null
       : DateTime.parse(json['unsubscribedAt'] as String),
   dataProcessingConsent: json['dataProcessingConsent'] as bool? ?? false,
+  isPremium: json['isPremium'] as bool? ?? false,
+  premiumSince: json['premiumSince'] == null
+      ? null
+      : DateTime.parse(json['premiumSince'] as String),
+  premiumExpiresAt: json['premiumExpiresAt'] == null
+      ? null
+      : DateTime.parse(json['premiumExpiresAt'] as String),
+  stripeSubscriptionId: json['stripeSubscriptionId'] as String?,
+  notifyNewProducts: json['notifyNewProducts'] as bool? ?? false,
+  notifyTrending: json['notifyTrending'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
@@ -114,6 +124,12 @@ Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
   'preferredLanguage': instance.preferredLanguage,
   'unsubscribedAt': instance.unsubscribedAt?.toIso8601String(),
   'dataProcessingConsent': instance.dataProcessingConsent,
+  'isPremium': instance.isPremium,
+  'premiumSince': instance.premiumSince?.toIso8601String(),
+  'premiumExpiresAt': instance.premiumExpiresAt?.toIso8601String(),
+  'stripeSubscriptionId': instance.stripeSubscriptionId,
+  'notifyNewProducts': instance.notifyNewProducts,
+  'notifyTrending': instance.notifyTrending,
 };
 
 const _$UserRoleEnumMap = {

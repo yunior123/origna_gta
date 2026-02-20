@@ -66,6 +66,12 @@ sys.modules["firebase_functions"].https_fn.HttpsError = MockHttpsError
 sys.modules["firebase_functions"].https_fn.Response = MockResponse
 sys.modules["firebase_functions.https_fn"] = sys.modules["firebase_functions"].https_fn
 
+# Make scheduler_fn decorators pass through so cron functions remain callable in tests
+sys.modules["firebase_functions"].scheduler_fn = MagicMock()
+sys.modules["firebase_functions"].scheduler_fn.on_schedule = decorator_passthrough
+sys.modules["firebase_functions"].scheduler_fn.ScheduledEvent = Mock
+sys.modules["firebase_functions.scheduler_fn"] = sys.modules["firebase_functions"].scheduler_fn
+
 # Set TESTING environment variable to prevent Secret Manager calls
 os.environ["TESTING"] = "true"
 

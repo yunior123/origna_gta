@@ -5,25 +5,16 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
-import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/utils/circuit_breaker.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 import 'checkout_state.dart';
-export 'checkout_state.dart';
 
-/// Circuit breakers for external service calls
-final _stripeCircuitBreaker = CircuitBreakerRegistry.get(
-  'stripe_checkout',
-  config: CircuitBreakerConfig.paymentDefault,
-);
-final _algoliaCircuitBreaker = CircuitBreakerRegistry.get(
-  'algolia_search',
-  config: CircuitBreakerConfig.searchDefault,
-);
+export 'checkout_state.dart';
 
 /// StateNotifierProvider for checkout
 final checkoutStateProvider = StateNotifierProvider.autoDispose<CheckoutNotifier, CheckoutState>((ref) {
@@ -44,6 +35,11 @@ final checkoutTotalProvider = Provider.autoDispose<double>((ref) {
   return subtotal + checkoutState.taxAmount + checkoutState.shippingCost;
 });
 
+final _algoliaCircuitBreaker = CircuitBreakerRegistry.get('algolia_search', config: CircuitBreakerConfig.searchDefault);
+
+/// Circuit breakers for external service calls
+final _stripeCircuitBreaker = CircuitBreakerRegistry.get('stripe_checkout', config: CircuitBreakerConfig.paymentDefault);
+
 // ============================================================================
 // CHECKOUT NOTIFIER
 // ============================================================================
@@ -58,7 +54,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   UserRepository get _userRepository => _ref.read(userRepositoryProvider);
 
   /// Calculate shipping cost for cart items and determine available delivery options
-  /// 
+  ///
   /// Uses circuit breaker pattern to handle Algolia/service outages gracefully
   Future<void> calculateShipping(List<CartItemDetailModel> items) async {
     if (items.isEmpty) {
@@ -98,9 +94,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
     try {
       // Use circuit breaker for external service calls
-      final cost = await _algoliaCircuitBreaker.execute(
-        () => calculateShippingCost(items, state.address),
-      );
+      final cost = await _algoliaCircuitBreaker.execute(() => calculateShippingCost(items, state.address));
 
       // Determine if local delivery (check if any seller is within ~50km)
       final isLocal = await _checkLocalDelivery(items, state.address!);
@@ -122,10 +116,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       );
     } on CircuitBreakerOpenException catch (_) {
       // Algolia/service is temporarily unavailable
-      state = state.copyWith(
-        shippingError: 'checkout.errors.shipping_unavailable'.tr(),
-        isCalculatingShipping: false,
-      );
+      state = state.copyWith(shippingError: 'checkout.errors.shipping_unavailable'.tr(), isCalculatingShipping: false);
     } catch (e) {
       state = state.copyWith(shippingError: 'checkout.errors.shipping_calc_failed'.tr(), isCalculatingShipping: false);
     }
@@ -147,9 +138,16 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     if (userId == null) return;
 
     try {
-      final user = await _userRepository.getUserProfile(userId);
-      if (user?.address != null) {
-        state = state.copyWith(address: user!.address);
+      final addresses = await _ref.read(userAddressesProvider.future);
+      if (addresses.isNotEmpty) {
+        final defaultAddress = addresses.firstWhere((a) => a.isDefault, orElse: () => addresses.first);
+        state = state.copyWith(address: defaultAddress);
+      } else {
+        // Fallback to legacy address if addresses subcollection is empty
+        final user = await _userRepository.getUserProfile(userId);
+        if (user?.address != null) {
+          state = state.copyWith(address: user!.address);
+        }
       }
     } catch (e, st) {
       // Initialization error - non-critical, continue without address
@@ -205,10 +203,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       }
     } catch (e) {
       // SECURITY: Block checkout if we can't verify email status
-      return CheckoutError(
-        message: 'Unable to verify email status. Please try again.', 
-        code: 'verification-check-failed',
-      );
+      return CheckoutError(message: 'Unable to verify email status. Please try again.', code: 'verification-check-failed');
     }
 
     if (state.isProcessing) {
@@ -229,10 +224,10 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
       // Backend expects: items, shippingAddress, subtotal, userId, deliverySpeed
       // Backend handles: tax calculation, shipping calculation, total calculation server-side
-      
+
       // Get delivery instructions from cart provider
       final deliveryInstructions = _ref.read(deliveryInstructionsProvider);
-      
+
       final orderData = {
         Fields.userId: userId,
         Fields.items: items
@@ -258,9 +253,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       };
 
       // Use circuit breaker for Stripe checkout calls
-      final result = await _stripeCircuitBreaker.execute(
-        () => _orderRepository.createCheckoutSession(orderData),
-      );
+      final result = await _stripeCircuitBreaker.execute(() => _orderRepository.createCheckoutSession(orderData));
 
       // Check if widget is still mounted after async operation
       if (!mounted) {
@@ -303,27 +296,18 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       if (!mounted) {
         return CheckoutError(message: 'Operation cancelled');
       }
-      state = state.copyWith(
-        isProcessing: false,
-        checkoutError: 'Payment service is temporarily unavailable. Please try again in a moment.',
-      );
-      return CheckoutError(
-        message: 'Payment service is temporarily unavailable. Please try again in a moment.',
-        code: 'service-unavailable',
-      );
+      state = state.copyWith(isProcessing: false, checkoutError: 'Payment service is temporarily unavailable. Please try again in a moment.');
+      return CheckoutError(message: 'Payment service is temporarily unavailable. Please try again in a moment.', code: 'service-unavailable');
     } on FirebaseFunctionsException catch (e) {
       // Handle known backend validation errors (e.g., "Distance > 50km")
       if (!mounted) {
         return CheckoutError(message: 'Operation cancelled');
       }
-      
+
       final message = e.message ?? 'An error occurred';
       state = state.copyWith(isProcessing: false, checkoutError: message);
-      
-      return CheckoutError(
-        message: message,
-        code: e.code,
-      );
+
+      return CheckoutError(message: message, code: e.code);
     } catch (e) {
       if (!mounted) {
         return CheckoutError(message: 'Operation cancelled');
@@ -388,4 +372,3 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
   double _toRadians(double deg) => deg * pi / 180;
 }
-

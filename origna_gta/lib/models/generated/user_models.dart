@@ -88,6 +88,13 @@ abstract class User with _$User {
     @Default('en') String preferredLanguage,
     DateTime? unsubscribedAt,
     @Default(false) bool dataProcessingConsent,
+    // === PREMIUM SUBSCRIPTION ===
+    @Default(false) bool isPremium,
+    DateTime? premiumSince,
+    DateTime? premiumExpiresAt,
+    String? stripeSubscriptionId,
+    @Default(false) bool notifyNewProducts,
+    @Default(false) bool notifyTrending,
   }) = _User;
 
   factory User.fromFirestore(DocumentSnapshot doc) {
@@ -142,6 +149,13 @@ abstract class User with _$User {
       preferredLanguage: data[Fields.preferredLanguage] as String? ?? 'en',
       unsubscribedAt: _parseDateTime(data[Fields.unsubscribedAt]),
       dataProcessingConsent: data[Fields.dataProcessingConsent] ?? false,
+      // === PREMIUM SUBSCRIPTION ===
+      isPremium: data[Fields.isPremium] ?? false,
+      premiumSince: _parseDateTime(data[Fields.premiumSince]),
+      premiumExpiresAt: _parseDateTime(data[Fields.premiumExpiresAt]),
+      stripeSubscriptionId: data[Fields.stripeSubscriptionId] as String?,
+      notifyNewProducts: data[Fields.notifyNewProducts] ?? false,
+      notifyTrending: data[Fields.notifyTrending] ?? false,
     );
   }
 

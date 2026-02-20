@@ -55,6 +55,15 @@ class Collections:
     LICENSES = "licenses"
     BOOK_ACCESS_TOKENS = "book_access_tokens"
     SOFTWARE_ACCESS_TOKENS = "software_access_tokens"
+    ADDRESSES = "addresses"  # users/{userId}/addresses  (TASK 05: buyer address book)
+    STOCK_NOTIFICATIONS = "stock_notifications"  # TASK 07: back-in-stock
+    PRODUCT_QUESTIONS = "product_questions"  # TASK 09: product Q&A
+    SELLER_METRICS = "seller_metrics"  # TASK 11: seller health metrics
+
+    # Premium & Chat
+    SUBSCRIPTIONS = "subscriptions"  # top-level: subscriptions/{userId}
+    CHATS = "chats"  # top-level: chats/{chatId}
+    CHAT_MESSAGES = "messages"  # subcollection: chats/{chatId}/messages/{msgId}
 
 
 class Documents:
@@ -223,6 +232,7 @@ class Fields:
     # === PRODUCT FIELDS ===
     PRODUCT_ID = "productId"
     PRICE = "price"
+    COMPARE_AT_PRICE = "compareAtPrice"  # Original/crossed-out price for sale display
     DESCRIPTION = "description"
     IMAGE_URLS = "imageUrls"
     SELLER_ID = "sellerId"
@@ -230,6 +240,7 @@ class Fields:
     SELLER_SKU = "sellerSku"
     WAREHOUSE_IDS = "warehouseIds"
     WAREHOUSE_STOCK = "warehouseStock"
+    FULFILLMENT_WAREHOUSE_ID = "fulfillmentWarehouseId"  # TASK 02: warehouse used to fulfill this order item
     SHIP_FROM_CITY = "shipFromCity"
     SHIP_FROM_PROVINCE = "shipFromProvince"
     SHIP_FROM_COUNTRY = "shipFromCountry"
@@ -294,7 +305,38 @@ class Fields:
     UNSUBSCRIBED_AT = "unsubscribedAt"  # datetime — when user unsubscribed from marketing
     DATA_PROCESSING_CONSENT = "dataProcessingConsent"  # bool — explicit consent for data processing
 
-    # === DELIVERY FIELDS ===
+    # === PREMIUM SUBSCRIPTION FIELDS ===
+    IS_PREMIUM = "isPremium"  # bool — cached premium status (authoritative: subscriptions/{uid})
+    PREMIUM_SINCE = "premiumSince"  # datetime — when premium started
+    PREMIUM_EXPIRES_AT = "premiumExpiresAt"  # datetime — current billing period end
+    STRIPE_SUBSCRIPTION_ID = "stripeSubscriptionId"  # str — Stripe Subscription ID
+    NOTIFY_NEW_PRODUCTS = "notifyNewProducts"  # bool — opt-in: notify on new products
+    NOTIFY_TRENDING = "notifyTrending"  # bool — opt-in: notify on trending products
+    FCM_TOKEN = "fcmToken"  # str — Firebase Cloud Messaging device token
+    FCM_TOKEN_UPDATED_AT = "fcmTokenUpdatedAt"  # datetime — last FCM token update
+
+    # === TRENDING PRODUCT FIELDS ===
+    TRENDING_SCORE = "trendingScore"  # int — computed trending score
+    VIEW_COUNT = "viewCount"  # int — total product views
+    IS_TRENDING = "isTrending"  # bool — currently in trending list
+    TRENDING_AT = "trendingAt"  # datetime — when product last entered trending
+    PURCHASE_COUNT = "purchaseCount"  # int — total purchases (for trending)
+
+    # === SUBSCRIPTION DOCUMENT FIELDS ===
+    CURRENT_PERIOD_START = "currentPeriodStart"  # datetime
+    CURRENT_PERIOD_END = "currentPeriodEnd"  # datetime
+    CANCEL_AT_PERIOD_END = "cancelAtPeriodEnd"  # bool
+
+    # === CHAT FIELDS ===
+    CHAT_ID = "chatId"
+    BUYER_ID = "buyerId"
+    PRODUCT_TITLE = "productTitle"
+    PRODUCT_IMAGE_URL = "productImageUrl"
+    LAST_MESSAGE = "lastMessage"  # str — text of last message
+    LAST_MESSAGE_AT = "lastMessageAt"  # datetime
+    SENDER_ID = "senderId"
+    MESSAGE_TEXT = "text"
+    IS_READ = "read"  # bool — message read by recipient
     DELIVERY_INSTRUCTIONS = "deliveryInstructions"
     SHIPPING_DAYS = "shippingDays"
     HAS_TRACKING = "hasTracking"
@@ -307,6 +349,11 @@ class Fields:
 
     SUPPLIER = "supplier"
     INVENTORY = "inventory"
+    # === INVENTORY SUB-FIELDS (keys inside the `inventory` map) ===
+    ALLOW_BACKORDER = "allowBackorder"
+    LOW_STOCK_THRESHOLD = "lowStockThreshold"
+    TRACK_QUANTITY = "trackQuantity"
+    RESERVATION_HOLD_MINUTES = "reservationHoldMinutes"
     STATUS = "status"
     DELIVERY_SPEED = "deliverySpeed"
 
@@ -355,6 +402,7 @@ class Fields:
     PENDING_TOTAL_CENTS = "pendingTotalCents"
     SHIPPING_APPROVAL = "shippingApproval"
     STOCK_RESTORED = "stockRestored"
+    LAST_LOW_STOCK_ALERT_AT = "lastLowStockAlertAt"
     ARCHIVED = "archived"
     ARCHIVED_AT = "archivedAt"
     CANCELLED_BY = "cancelledBy"
@@ -388,6 +436,7 @@ class Fields:
 
     # === ORDER ITEM FIELDS ===
     QUANTITY = "quantity"
+    BUYER_NOTE = "buyerNote"
     TRACKING_NUMBER = "trackingNumber"
     CARRIER = "carrier"
     SHIPPED_AT = "shippedAt"
@@ -462,6 +511,29 @@ class Fields:
     SEVERITY = "severity"
     RESOLVED = "resolved"
     RESOLVED_AT = "resolvedAt"
+
+    # === NEW FEATURE FIELDS (TASKS 05-11) ===
+    ADDRESS_ID = "addressId"
+    REVIEW_IMAGE_URLS = "reviewImageUrls"
+    NOTIFIED_AT = "notifiedAt"
+    SUBSCRIBED_AT = "subscribedAt"
+    QUESTION_TEXT = "question"
+    ANSWER_TEXT = "answer"
+    ANSWERED_AT = "answeredAt"
+    ANSWERED_BY = "answeredBy"
+    IS_ANSWERED = "isAnswered"
+    UPVOTES = "upvotes"
+    ASKER_ID = "askerId"
+    QUESTION_ID = "questionId"
+    LAST_CART_ABANDON_EMAIL_AT = "lastCartAbandonEmailAt"
+    DISPUTE_RATE = "disputeRate"
+    REFUND_RATE = "refundRate"
+    CANCELLATION_RATE = "cancellationRate"
+    LATE_SHIPMENT_RATE = "lateShipmentRate"
+    AVG_RESPONSE_TIME_HOURS = "avgResponseTimeHours"
+    TOTAL_ORDERS_30D = "totalOrders30d"
+    TOTAL_REVENUE_CENTS_30D = "totalRevenueCents30d"
+    COMPUTED_AT = "computedAt"
     RESOLUTION = "resolution"
     TIMESTAMP = "timestamp"
     CHARGE_ID = "chargeId"
@@ -773,6 +845,7 @@ class SecurityAlertTypes:
     TAX_EXEMPTION_PENDING_REVIEW = "tax_exemption_pending_review"
     SUSPICIOUS_TAX_EXEMPTION = "suspicious_tax_exemption"
     AUTH_DELETION_FAILED = "auth_deletion_failed"
+    SELLER_METRICS_BREACH = "seller_metrics_breach"  # TASK 11
 
 
 class SeverityLevels:
@@ -1035,6 +1108,8 @@ class BusinessRules:
 
     PLATFORM_FEE_PERCENT = 2.5
     PLATFORM_FEE_RATIO = 0.025  # PLATFORM_FEE_PERCENT / 100 — use this for calculations
+    PREMIUM_MONTHLY_PRICE_CAD = 7.86  # Premium subscription monthly price in CAD
+    PREMIUM_MONTHLY_PRICE_CENTS = 786  # Premium subscription monthly price in cents
     AUTO_CONFIRM_DAYS = 5  # Must be < AUTHORIZATION_EXPIRY_DAYS (2-day safety margin)
     AUTHORIZATION_EXPIRY_DAYS = 7
     RETURN_WINDOW_DAYS = 7  # No returns/refunds after 7 days post-delivery (Amazon-style policy)
@@ -1258,3 +1333,17 @@ class LicenseStatusValues:
     ACTIVE = "active"
     REVOKED = "revoked"
     ALL = [ACTIVE, REVOKED]
+
+
+class SubscriptionStatusValues:
+    """Stripe subscription status values"""
+    ACTIVE = "active"
+    CANCELED = "canceled"
+    PAST_DUE = "past_due"
+    INCOMPLETE = "incomplete"
+    INCOMPLETE_EXPIRED = "incomplete_expired"
+    TRIALING = "trialing"
+    UNPAID = "unpaid"
+    ALL = [ACTIVE, CANCELED, PAST_DUE, INCOMPLETE, INCOMPLETE_EXPIRED, TRIALING, UNPAID]
+    # Statuses that grant premium access
+    PREMIUM_ACTIVE = frozenset({ACTIVE, TRIALING})

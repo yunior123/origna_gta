@@ -8,6 +8,7 @@ class AddressState {
   final bool showSuggestions;
   final double? latitude;
   final double? longitude;
+  final String? addressId;
   final String? errorMessage;
   final bool isSuccess;
 
@@ -19,6 +20,7 @@ class AddressState {
     this.showSuggestions = false,
     this.latitude,
     this.longitude,
+    this.addressId,
     this.errorMessage,
     this.isSuccess = false,
   });
@@ -31,6 +33,7 @@ class AddressState {
     bool? showSuggestions,
     double? latitude,
     double? longitude,
+    String? addressId,
     String? errorMessage,
     bool? isSuccess,
     bool clearCoordinates = false,
@@ -43,6 +46,7 @@ class AddressState {
       showSuggestions: showSuggestions ?? this.showSuggestions,
       latitude: clearCoordinates ? null : (latitude ?? this.latitude),
       longitude: clearCoordinates ? null : (longitude ?? this.longitude),
+      addressId: addressId ?? this.addressId,
       errorMessage: errorMessage,
       isSuccess: isSuccess ?? this.isSuccess,
     );

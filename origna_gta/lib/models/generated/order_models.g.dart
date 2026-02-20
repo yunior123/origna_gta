@@ -277,6 +277,8 @@ _OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => _OrderItem(
       ) ??
       null,
   taxCode: json['taxCode'] as String?,
+  buyerNote: json['buyerNote'] as String?,
+  fulfillmentWarehouseId: json['fulfillmentWarehouseId'] as String?,
 );
 
 Map<String, dynamic> _$OrderItemToJson(_OrderItem instance) =>
@@ -316,6 +318,8 @@ Map<String, dynamic> _$OrderItemToJson(_OrderItem instance) =>
       'digitalType': instance.digitalType,
       'digitalBuilds': instance.digitalBuilds,
       'taxCode': instance.taxCode,
+      'buyerNote': instance.buyerNote,
+      'fulfillmentWarehouseId': instance.fulfillmentWarehouseId,
     };
 
 const _$DeliveryStatusEnumMap = {

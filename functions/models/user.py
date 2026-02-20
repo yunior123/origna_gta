@@ -87,6 +87,16 @@ class User(BaseModel):
         default=False, description="Explicit consent for personal data processing (PIPEDA / Law 25)"
     )
 
+    # === PREMIUM SUBSCRIPTION ===
+    isPremium: bool = Field(default=False, description="Cached premium status — authoritative source: subscriptions/{uid}")
+    premiumSince: datetime | None = Field(default=None, description="When premium subscription started")
+    premiumExpiresAt: datetime | None = Field(default=None, description="Current billing period end (premium expires after this)")
+    stripeSubscriptionId: str | None = Field(default=None, description="Stripe Subscription ID")
+    notifyNewProducts: bool = Field(default=False, description="Opt-in: receive FCM notification when new products are added (premium only)")
+    notifyTrending: bool = Field(default=False, description="Opt-in: receive FCM notification for trending products (premium only)")
+    fcmToken: str | None = Field(default=None, description="Firebase Cloud Messaging device token for push notifications")
+    fcmTokenUpdatedAt: datetime | None = Field(default=None, description="Last FCM token update timestamp")
+
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:

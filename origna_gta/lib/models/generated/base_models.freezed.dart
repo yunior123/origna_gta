@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Address {
 
- String get street; String get apartment; String get city; String get state; String get postalCode; String get country; String? get phoneNumber; bool get isDefault; String? get label; double? get latitude; double? get longitude;
+ String get street; String get apartment; String get city; String get state; String get postalCode; String get country; String? get phoneNumber; bool get isDefault; String? get addressId; String? get label; double? get latitude; double? get longitude;
 /// Create a copy of Address
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $AddressCopyWith<Address> get copyWith => _$AddressCopyWithImpl<Address>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Address&&(identical(other.street, street) || other.street == street)&&(identical(other.apartment, apartment) || other.apartment == apartment)&&(identical(other.city, city) || other.city == city)&&(identical(other.state, state) || other.state == state)&&(identical(other.postalCode, postalCode) || other.postalCode == postalCode)&&(identical(other.country, country) || other.country == country)&&(identical(other.phoneNumber, phoneNumber) || other.phoneNumber == phoneNumber)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.label, label) || other.label == label)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Address&&(identical(other.street, street) || other.street == street)&&(identical(other.apartment, apartment) || other.apartment == apartment)&&(identical(other.city, city) || other.city == city)&&(identical(other.state, state) || other.state == state)&&(identical(other.postalCode, postalCode) || other.postalCode == postalCode)&&(identical(other.country, country) || other.country == country)&&(identical(other.phoneNumber, phoneNumber) || other.phoneNumber == phoneNumber)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.addressId, addressId) || other.addressId == addressId)&&(identical(other.label, label) || other.label == label)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,street,apartment,city,state,postalCode,country,phoneNumber,isDefault,label,latitude,longitude);
+int get hashCode => Object.hash(runtimeType,street,apartment,city,state,postalCode,country,phoneNumber,isDefault,addressId,label,latitude,longitude);
 
 @override
 String toString() {
-  return 'Address(street: $street, apartment: $apartment, city: $city, state: $state, postalCode: $postalCode, country: $country, phoneNumber: $phoneNumber, isDefault: $isDefault, label: $label, latitude: $latitude, longitude: $longitude)';
+  return 'Address(street: $street, apartment: $apartment, city: $city, state: $state, postalCode: $postalCode, country: $country, phoneNumber: $phoneNumber, isDefault: $isDefault, addressId: $addressId, label: $label, latitude: $latitude, longitude: $longitude)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $AddressCopyWith<$Res>  {
   factory $AddressCopyWith(Address value, $Res Function(Address) _then) = _$AddressCopyWithImpl;
 @useResult
 $Res call({
- String street, String apartment, String city, String state, String postalCode, String country, String? phoneNumber, bool isDefault, String? label, double? latitude, double? longitude
+ String street, String apartment, String city, String state, String postalCode, String country, String? phoneNumber, bool isDefault, String? addressId, String? label, double? latitude, double? longitude
 });
 
 
@@ -65,7 +65,7 @@ class _$AddressCopyWithImpl<$Res>
 
 /// Create a copy of Address
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? street = null,Object? apartment = null,Object? city = null,Object? state = null,Object? postalCode = null,Object? country = null,Object? phoneNumber = freezed,Object? isDefault = null,Object? label = freezed,Object? latitude = freezed,Object? longitude = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? street = null,Object? apartment = null,Object? city = null,Object? state = null,Object? postalCode = null,Object? country = null,Object? phoneNumber = freezed,Object? isDefault = null,Object? addressId = freezed,Object? label = freezed,Object? latitude = freezed,Object? longitude = freezed,}) {
   return _then(_self.copyWith(
 street: null == street ? _self.street : street // ignore: cast_nullable_to_non_nullable
 as String,apartment: null == apartment ? _self.apartment : apartment // ignore: cast_nullable_to_non_nullable
@@ -75,7 +75,8 @@ as String,postalCode: null == postalCode ? _self.postalCode : postalCode // igno
 as String,country: null == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
 as String,phoneNumber: freezed == phoneNumber ? _self.phoneNumber : phoneNumber // ignore: cast_nullable_to_non_nullable
 as String?,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
-as bool,label: freezed == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
+as bool,addressId: freezed == addressId ? _self.addressId : addressId // ignore: cast_nullable_to_non_nullable
+as String?,label: freezed == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String?,latitude: freezed == latitude ? _self.latitude : latitude // ignore: cast_nullable_to_non_nullable
 as double?,longitude: freezed == longitude ? _self.longitude : longitude // ignore: cast_nullable_to_non_nullable
 as double?,
@@ -163,10 +164,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String street,  String apartment,  String city,  String state,  String postalCode,  String country,  String? phoneNumber,  bool isDefault,  String? label,  double? latitude,  double? longitude)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String street,  String apartment,  String city,  String state,  String postalCode,  String country,  String? phoneNumber,  bool isDefault,  String? addressId,  String? label,  double? latitude,  double? longitude)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Address() when $default != null:
-return $default(_that.street,_that.apartment,_that.city,_that.state,_that.postalCode,_that.country,_that.phoneNumber,_that.isDefault,_that.label,_that.latitude,_that.longitude);case _:
+return $default(_that.street,_that.apartment,_that.city,_that.state,_that.postalCode,_that.country,_that.phoneNumber,_that.isDefault,_that.addressId,_that.label,_that.latitude,_that.longitude);case _:
   return orElse();
 
 }
@@ -184,10 +185,10 @@ return $default(_that.street,_that.apartment,_that.city,_that.state,_that.postal
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String street,  String apartment,  String city,  String state,  String postalCode,  String country,  String? phoneNumber,  bool isDefault,  String? label,  double? latitude,  double? longitude)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String street,  String apartment,  String city,  String state,  String postalCode,  String country,  String? phoneNumber,  bool isDefault,  String? addressId,  String? label,  double? latitude,  double? longitude)  $default,) {final _that = this;
 switch (_that) {
 case _Address():
-return $default(_that.street,_that.apartment,_that.city,_that.state,_that.postalCode,_that.country,_that.phoneNumber,_that.isDefault,_that.label,_that.latitude,_that.longitude);case _:
+return $default(_that.street,_that.apartment,_that.city,_that.state,_that.postalCode,_that.country,_that.phoneNumber,_that.isDefault,_that.addressId,_that.label,_that.latitude,_that.longitude);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -204,10 +205,10 @@ return $default(_that.street,_that.apartment,_that.city,_that.state,_that.postal
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String street,  String apartment,  String city,  String state,  String postalCode,  String country,  String? phoneNumber,  bool isDefault,  String? label,  double? latitude,  double? longitude)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String street,  String apartment,  String city,  String state,  String postalCode,  String country,  String? phoneNumber,  bool isDefault,  String? addressId,  String? label,  double? latitude,  double? longitude)?  $default,) {final _that = this;
 switch (_that) {
 case _Address() when $default != null:
-return $default(_that.street,_that.apartment,_that.city,_that.state,_that.postalCode,_that.country,_that.phoneNumber,_that.isDefault,_that.label,_that.latitude,_that.longitude);case _:
+return $default(_that.street,_that.apartment,_that.city,_that.state,_that.postalCode,_that.country,_that.phoneNumber,_that.isDefault,_that.addressId,_that.label,_that.latitude,_that.longitude);case _:
   return null;
 
 }
@@ -219,7 +220,7 @@ return $default(_that.street,_that.apartment,_that.city,_that.state,_that.postal
 @JsonSerializable()
 
 class _Address extends Address {
-  const _Address({required this.street, this.apartment = '', required this.city, required this.state, required this.postalCode, this.country = 'Canada', this.phoneNumber, this.isDefault = false, this.label, this.latitude, this.longitude}): super._();
+  const _Address({required this.street, this.apartment = '', required this.city, required this.state, required this.postalCode, this.country = 'Canada', this.phoneNumber, this.isDefault = false, this.addressId, this.label, this.latitude, this.longitude}): super._();
   factory _Address.fromJson(Map<String, dynamic> json) => _$AddressFromJson(json);
 
 @override final  String street;
@@ -230,6 +231,7 @@ class _Address extends Address {
 @override@JsonKey() final  String country;
 @override final  String? phoneNumber;
 @override@JsonKey() final  bool isDefault;
+@override final  String? addressId;
 @override final  String? label;
 @override final  double? latitude;
 @override final  double? longitude;
@@ -247,16 +249,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Address&&(identical(other.street, street) || other.street == street)&&(identical(other.apartment, apartment) || other.apartment == apartment)&&(identical(other.city, city) || other.city == city)&&(identical(other.state, state) || other.state == state)&&(identical(other.postalCode, postalCode) || other.postalCode == postalCode)&&(identical(other.country, country) || other.country == country)&&(identical(other.phoneNumber, phoneNumber) || other.phoneNumber == phoneNumber)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.label, label) || other.label == label)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Address&&(identical(other.street, street) || other.street == street)&&(identical(other.apartment, apartment) || other.apartment == apartment)&&(identical(other.city, city) || other.city == city)&&(identical(other.state, state) || other.state == state)&&(identical(other.postalCode, postalCode) || other.postalCode == postalCode)&&(identical(other.country, country) || other.country == country)&&(identical(other.phoneNumber, phoneNumber) || other.phoneNumber == phoneNumber)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.addressId, addressId) || other.addressId == addressId)&&(identical(other.label, label) || other.label == label)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,street,apartment,city,state,postalCode,country,phoneNumber,isDefault,label,latitude,longitude);
+int get hashCode => Object.hash(runtimeType,street,apartment,city,state,postalCode,country,phoneNumber,isDefault,addressId,label,latitude,longitude);
 
 @override
 String toString() {
-  return 'Address(street: $street, apartment: $apartment, city: $city, state: $state, postalCode: $postalCode, country: $country, phoneNumber: $phoneNumber, isDefault: $isDefault, label: $label, latitude: $latitude, longitude: $longitude)';
+  return 'Address(street: $street, apartment: $apartment, city: $city, state: $state, postalCode: $postalCode, country: $country, phoneNumber: $phoneNumber, isDefault: $isDefault, addressId: $addressId, label: $label, latitude: $latitude, longitude: $longitude)';
 }
 
 
@@ -267,7 +269,7 @@ abstract mixin class _$AddressCopyWith<$Res> implements $AddressCopyWith<$Res> {
   factory _$AddressCopyWith(_Address value, $Res Function(_Address) _then) = __$AddressCopyWithImpl;
 @override @useResult
 $Res call({
- String street, String apartment, String city, String state, String postalCode, String country, String? phoneNumber, bool isDefault, String? label, double? latitude, double? longitude
+ String street, String apartment, String city, String state, String postalCode, String country, String? phoneNumber, bool isDefault, String? addressId, String? label, double? latitude, double? longitude
 });
 
 
@@ -284,7 +286,7 @@ class __$AddressCopyWithImpl<$Res>
 
 /// Create a copy of Address
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? street = null,Object? apartment = null,Object? city = null,Object? state = null,Object? postalCode = null,Object? country = null,Object? phoneNumber = freezed,Object? isDefault = null,Object? label = freezed,Object? latitude = freezed,Object? longitude = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? street = null,Object? apartment = null,Object? city = null,Object? state = null,Object? postalCode = null,Object? country = null,Object? phoneNumber = freezed,Object? isDefault = null,Object? addressId = freezed,Object? label = freezed,Object? latitude = freezed,Object? longitude = freezed,}) {
   return _then(_Address(
 street: null == street ? _self.street : street // ignore: cast_nullable_to_non_nullable
 as String,apartment: null == apartment ? _self.apartment : apartment // ignore: cast_nullable_to_non_nullable
@@ -294,7 +296,8 @@ as String,postalCode: null == postalCode ? _self.postalCode : postalCode // igno
 as String,country: null == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
 as String,phoneNumber: freezed == phoneNumber ? _self.phoneNumber : phoneNumber // ignore: cast_nullable_to_non_nullable
 as String?,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
-as bool,label: freezed == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
+as bool,addressId: freezed == addressId ? _self.addressId : addressId // ignore: cast_nullable_to_non_nullable
+as String?,label: freezed == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String?,latitude: freezed == latitude ? _self.latitude : latitude // ignore: cast_nullable_to_non_nullable
 as double?,longitude: freezed == longitude ? _self.longitude : longitude // ignore: cast_nullable_to_non_nullable
 as double?,

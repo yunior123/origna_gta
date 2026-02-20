@@ -38,8 +38,10 @@ class Address {
   final String? label; // "Home", "Work", "Other"
   final double? latitude; // For mapping/delivery
   final double? longitude;
+  final String? addressId; // For Address Book subcollection
 
   Address({
+    this.addressId,
     required this.street,
     this.apartment = '',
     required this.city,
@@ -56,8 +58,9 @@ class Address {
   /// Create an empty address for fallback when data is missing
   factory Address.empty() => Address(street: '', city: '', state: '', postalCode: '', country: 'Canada');
 
-  factory Address.fromMap(Map<String, dynamic> map) {
+  factory Address.fromMap(Map<String, dynamic> map, {String? docId}) {
     return Address(
+      addressId: docId ?? map[Fields.addressId],
       street: map[Fields.street] ?? '',
       apartment: map[Fields.apartment] ?? '',
       city: map[Fields.city] ?? '',
@@ -100,6 +103,7 @@ class Address {
     String? label,
     double? latitude,
     double? longitude,
+    String? addressId,
   }) {
     return Address(
       street: street ?? this.street,
@@ -113,11 +117,13 @@ class Address {
       label: label ?? this.label,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      addressId: addressId ?? this.addressId,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
+      if (addressId != null) Fields.addressId: addressId,
       Fields.street: street,
       Fields.apartment: apartment,
       Fields.city: city,
@@ -168,6 +174,7 @@ class CartItemDetailModel {
   final int minimumOrderQuantity;
   final bool freeShipping;
   final bool isDigital;
+  final String? buyerNote;
 
   CartItemDetailModel({
     required this.productId,
@@ -193,6 +200,7 @@ class CartItemDetailModel {
     this.minimumOrderQuantity = 1,
     this.freeShipping = false,
     this.isDigital = false,
+    this.buyerNote,
   });
 
   // Convert Firestore Map to CartItemDetailModel
@@ -219,14 +227,15 @@ class CartItemDetailModel {
       estimatedShipDays: map[Fields.estimatedShipDays] ?? 3,
       deliveryOptions: map[Fields.deliveryOptions] != null
           ? (map[Fields.deliveryOptions] as List)
-              .whereType<Map>()
-              .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
-              .whereType<SellerDeliveryOption>()
-              .toList()
+                .whereType<Map>()
+                .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
+                .whereType<SellerDeliveryOption>()
+                .toList()
           : [],
       minimumOrderQuantity: (map[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
       freeShipping: map[Fields.freeShipping] ?? false,
       isDigital: map[Fields.isDigital] ?? false,
+      buyerNote: map[Fields.buyerNote] as String?,
     );
   }
 
@@ -258,6 +267,7 @@ class CartItemDetailModel {
       Fields.minimumOrderQuantity: minimumOrderQuantity,
       Fields.freeShipping: freeShipping,
       Fields.isDigital: isDigital,
+      if (buyerNote != null) Fields.buyerNote: buyerNote,
     };
   }
 }
@@ -266,7 +276,10 @@ class CartItemModel {
   final int quantity;
   final String productId;
   final Timestamp createdAt;
-  CartItemModel({required this.quantity, required this.productId, required this.createdAt});
+  final String? buyerNote;
+
+  CartItemModel({required this.quantity, required this.productId, required this.createdAt, this.buyerNote});
+
   factory CartItemModel.fromMap(Map<String, dynamic> map) {
     final raw = map[Fields.createdAt];
     Timestamp ts;
@@ -283,11 +296,16 @@ class CartItemModel {
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
       productId: map[Fields.productId] ?? '',
       createdAt: ts,
+      buyerNote: map[Fields.buyerNote] as String?,
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {Fields.quantity: quantity, Fields.productId: productId, Fields.createdAt: createdAt};
+    final map = <String, dynamic>{Fields.quantity: quantity, Fields.productId: productId, Fields.createdAt: createdAt};
+    if (buyerNote != null) {
+      map[Fields.buyerNote] = buyerNote;
+    }
+    return map;
   }
 }
 
@@ -402,12 +420,6 @@ class OrderModel {
     this.ratings = const {},
   }) : paymentStatus = paymentStatus ?? PaymentStatus.awaitingPayment.value;
 
-  // Dollar getters derived from cents
-  double get total => totalAmountCents / 100.0;
-  double get subtotal => subtotalCents / 100.0;
-  double get shippingCost => shippingCostCents / 100.0;
-  double get taxAmount => taxAmountCents / 100.0;
-
   factory OrderModel.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
@@ -434,10 +446,7 @@ class OrderModel {
 
     // Parse seller payouts (safe cast — skip malformed entries)
     final payoutsData = data[Fields.sellerPayouts] as List<dynamic>? ?? [];
-    final sellerPayouts = payoutsData
-        .whereType<Map<String, dynamic>>()
-        .map((p) => SellerPayout.fromMap(p))
-        .toList();
+    final sellerPayouts = payoutsData.whereType<Map<String, dynamic>>().map((p) => SellerPayout.fromMap(p)).toList();
 
     // Money — all cents
     final totalAmountCents = (data[Fields.totalAmountCents] as num?)?.toInt() ?? 0;
@@ -483,7 +492,6 @@ class OrderModel {
       ratings: Map<String, dynamic>.from(data[Fields.ratings] ?? {}),
     );
   }
-
   factory OrderModel.fromMap(Map<String, dynamic> data) {
     // Convert the list of items
     final itemsData = data[Fields.items] as List<dynamic>? ?? [];
@@ -508,10 +516,7 @@ class OrderModel {
 
     // Parse seller payouts (safe cast — skip malformed entries)
     final payoutsData = data[Fields.sellerPayouts] as List<dynamic>? ?? [];
-    final sellerPayouts = payoutsData
-        .whereType<Map<String, dynamic>>()
-        .map((p) => SellerPayout.fromMap(p))
-        .toList();
+    final sellerPayouts = payoutsData.whereType<Map<String, dynamic>>().map((p) => SellerPayout.fromMap(p)).toList();
 
     // Money — all cents
     final totalAmountCents = (data[Fields.totalAmountCents] as num?)?.toInt() ?? 0;
@@ -566,6 +571,15 @@ class OrderModel {
 
   /// Check if all sellers have been paid
   bool get allSellersPaid => sellerPayouts.isNotEmpty && sellerPayouts.every((p) => p.paid);
+
+  double get shippingCost => shippingCostCents / 100.0;
+
+  double get subtotal => subtotalCents / 100.0;
+
+  double get taxAmount => taxAmountCents / 100.0;
+
+  // Dollar getters derived from cents
+  double get total => totalAmountCents / 100.0;
 
   // Convert OrderModel to map for Firestore
   Map<String, dynamic> toMap() {
@@ -714,9 +728,7 @@ class ProductModel {
       stockQuantity: _parseInt(map[Fields.stockQuantity]),
       isDigital: map[Fields.isDigital] as bool? ?? false,
       digitalType: map[Fields.digitalType]?.toString(),
-      digitalBuilds: map[Fields.digitalBuilds] != null
-          ? Map<String, String>.from(map[Fields.digitalBuilds] as Map)
-          : null,
+      digitalBuilds: map[Fields.digitalBuilds] != null ? Map<String, String>.from(map[Fields.digitalBuilds] as Map) : null,
       approvalStatus: map[Fields.approvalStatus]?.toString() ?? 'under_review',
       approvalRejectionReason: map[Fields.approvalRejectionReason]?.toString(),
       weightKg: map[Fields.weightKg] != null ? _parseDouble(map[Fields.weightKg]) : null,
@@ -832,12 +844,6 @@ class SellerPayout {
     this.failureReason,
   });
 
-  // Dollar getters
-  double get amount => amountCents / 100.0;
-  double get platformFee => platformFeeCents / 100.0;
-  double get netAmount => netAmountCents / 100.0;
-  bool get paid => status == PayoutStatusValues.completed;
-
   factory SellerPayout.fromMap(Map<String, dynamic> map) {
     return SellerPayout(
       sellerId: map[Fields.sellerId] ?? '',
@@ -851,6 +857,12 @@ class SellerPayout {
       failureReason: map[Fields.failureReason],
     );
   }
+  // Dollar getters
+  double get amount => amountCents / 100.0;
+  double get netAmount => netAmountCents / 100.0;
+  bool get paid => status == PayoutStatusValues.completed;
+
+  double get platformFee => platformFeeCents / 100.0;
 
   Map<String, dynamic> toMap() {
     return {
@@ -898,6 +910,13 @@ class UserModel {
   final String? businessName; // Company name for business sellers
   final int payoutHoldDays; // Custom hold period before payout (default 7)
   final List<String> pendingRequirements; // Stripe requirements still needed
+  // Premium subscription
+  final bool isPremium;
+  final DateTime? premiumSince;
+  final DateTime? premiumExpiresAt;
+  final String? stripeSubscriptionId;
+  final bool notifyNewProducts;
+  final bool notifyTrending;
 
   UserModel({
     required this.uid,
@@ -928,6 +947,12 @@ class UserModel {
     this.businessName,
     this.payoutHoldDays = 7,
     this.pendingRequirements = const [],
+    this.isPremium = false,
+    this.premiumSince,
+    this.premiumExpiresAt,
+    this.stripeSubscriptionId,
+    this.notifyNewProducts = false,
+    this.notifyTrending = false,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -961,6 +986,12 @@ class UserModel {
       businessName: map[Fields.businessName] as String?,
       payoutHoldDays: map[Fields.payoutHoldDays] ?? 7,
       pendingRequirements: List<String>.from(map[Fields.pendingRequirements] ?? const []),
+      isPremium: map[Fields.isPremium] ?? false,
+      premiumSince: _parseDateTime(map[Fields.premiumSince]),
+      premiumExpiresAt: _parseDateTime(map[Fields.premiumExpiresAt]),
+      stripeSubscriptionId: map[Fields.stripeSubscriptionId] as String?,
+      notifyNewProducts: map[Fields.notifyNewProducts] ?? false,
+      notifyTrending: map[Fields.notifyTrending] ?? false,
     );
   }
 
@@ -1004,6 +1035,12 @@ class UserModel {
     String? businessName,
     int? payoutHoldDays,
     List<String>? pendingRequirements,
+    bool? isPremium,
+    DateTime? premiumSince,
+    DateTime? premiumExpiresAt,
+    String? stripeSubscriptionId,
+    bool? notifyNewProducts,
+    bool? notifyTrending,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -1034,6 +1071,12 @@ class UserModel {
       businessName: businessName ?? this.businessName,
       payoutHoldDays: payoutHoldDays ?? this.payoutHoldDays,
       pendingRequirements: pendingRequirements ?? this.pendingRequirements,
+      isPremium: isPremium ?? this.isPremium,
+      premiumSince: premiumSince ?? this.premiumSince,
+      premiumExpiresAt: premiumExpiresAt ?? this.premiumExpiresAt,
+      stripeSubscriptionId: stripeSubscriptionId ?? this.stripeSubscriptionId,
+      notifyNewProducts: notifyNewProducts ?? this.notifyNewProducts,
+      notifyTrending: notifyTrending ?? this.notifyTrending,
     );
   }
 

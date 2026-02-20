@@ -11,6 +11,7 @@ import logging
 import re
 import secrets
 import uuid
+from datetime import datetime
 from typing import Any
 
 import boto3
@@ -35,6 +36,7 @@ from schema_constants import (
     Fields,
     OrderStatusValues,
     ProductApprovalStatusValues,
+    ProductStatusValues,
     UserRoleValues,
     WarehouseTypeValues,
 )
@@ -361,6 +363,7 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         orderId: Order ID (for verification)
         rating: 1-5
         review: Optional text review
+        reviewImageUrls: Optional list of CDN image URLs (max 3)
 
     Returns:
         {success: True, newRating: 4.5, ratingCount: 120}
@@ -388,9 +391,21 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
     order_id = data.get(Fields.ORDER_ID)
     rating = data.get(Fields.RATING)
     review_raw = data.get(Fields.REVIEW, "")
+    review_image_urls_raw = data.get(Fields.REVIEW_IMAGE_URLS, [])
 
     # Sanitize review text to prevent XSS
     review = sanitized_text(review_raw)[:1000] if review_raw else ""  # Max 1000 chars
+
+    # TASK 06: Validate reviewImageUrls — max 3, must be from CDN
+    if review_image_urls_raw:
+        if not isinstance(review_image_urls_raw, list):
+            raise https_fn.HttpsError("invalid-argument", "reviewImageUrls must be a list")
+        if len(review_image_urls_raw) > 3:
+            raise https_fn.HttpsError("invalid-argument", "Maximum 3 review images allowed")
+        for url in review_image_urls_raw:
+            if not isinstance(url, str) or not url.startswith(CDN_BASE_URL):
+                raise https_fn.HttpsError("invalid-argument", "Review images must be uploaded to the platform CDN")
+    review_image_urls: list[str] = [str(u) for u in review_image_urls_raw] if review_image_urls_raw else []
 
     if not product_id or not order_id or rating is None:
         raise https_fn.HttpsError("invalid-argument", "productId, orderId, and rating required")
@@ -435,16 +450,17 @@ def submit_product_rating(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("already-exists", "You have already rated this product")
 
     # Save rating
-    get_db().collection(Collections.PRODUCT_RATINGS).add(
-        {
-            Fields.PRODUCT_ID: product_id,
-            Fields.USER_ID: user_id,
-            Fields.ORDER_ID: order_id,
-            Fields.RATING: rating,
-            Fields.REVIEW: review,
-            Fields.CREATED_AT: get_server_timestamp(),
-        }
-    )
+    rating_doc: dict = {
+        Fields.PRODUCT_ID: product_id,
+        Fields.USER_ID: user_id,
+        Fields.ORDER_ID: order_id,
+        Fields.RATING: rating,
+        Fields.REVIEW: review,
+        Fields.CREATED_AT: get_server_timestamp(),
+    }
+    if review_image_urls:
+        rating_doc[Fields.REVIEW_IMAGE_URLS] = review_image_urls
+    get_db().collection(Collections.PRODUCT_RATINGS).add(rating_doc)
 
     # Update product's average rating using transaction (atomic, prevents race conditions)
     product_ref = get_db().collection(Collections.PRODUCTS).document(product_id)
@@ -625,6 +641,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
                 get_db().collection(Collections.PRODUCTS).document(product_id).update(
                     {
                         Fields.IS_ACTIVE: False,
+                        Fields.STATUS: ProductStatusValues.DRAFT,
                         Fields.DEACTIVATION_REASON: "Seller is suspended",
                     }
                 )
@@ -653,6 +670,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
                 {
                     Fields.IS_ACTIVE: False,
+                    Fields.STATUS: ProductStatusValues.DRAFT,
                     Fields.DEACTIVATION_REASON: f"Duplicate sellerSku: '{seller_sku}' already exists for this seller",
                 }
             )
@@ -665,6 +683,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
                 Fields.IS_ACTIVE: False,
+                Fields.STATUS: ProductStatusValues.DRAFT,
                 Fields.DEACTIVATION_REASON: f"Invalid price: {price}",
             }
         )
@@ -677,6 +696,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
                 Fields.IS_ACTIVE: False,
+                Fields.STATUS: ProductStatusValues.DRAFT,
                 Fields.DEACTIVATION_REASON: f"Invalid stock: {stock}",
             }
         )
@@ -695,6 +715,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
                 {
                     Fields.IS_ACTIVE: False,
+                    Fields.STATUS: ProductStatusValues.DRAFT,
                     Fields.DEACTIVATION_REASON: "Missing seller country",
                 }
             )
@@ -712,6 +733,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
                 {
                     Fields.IS_ACTIVE: False,
+                    Fields.STATUS: ProductStatusValues.DRAFT,
                     Fields.DEACTIVATION_REASON: "Address not verified via Geoapify (missing coordinates)",
                 }
             )
@@ -726,6 +748,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
                 get_db().collection(Collections.PRODUCTS).document(product_id).update(
                     {
                         Fields.IS_ACTIVE: False,
+                        Fields.STATUS: ProductStatusValues.DRAFT,
                         Fields.DEACTIVATION_REASON: f"Address verification failed: {error_reason}",
                     }
                 )
@@ -747,6 +770,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
                 Fields.IS_ACTIVE: False,
+                Fields.STATUS: ProductStatusValues.DRAFT,
                 Fields.DEACTIVATION_REASON: f"Invalid categoryId: {category_id}",
             }
         )
@@ -836,6 +860,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
                 {
                     Fields.IS_ACTIVE: False,
+                    Fields.STATUS: ProductStatusValues.DRAFT,
                     Fields.DEACTIVATION_REASON: "Image validation failed (invalid file type)",
                 }
             )
@@ -876,6 +901,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
             get_db().collection(Collections.PRODUCTS).document(product_id).update(
                 {
                     Fields.IS_ACTIVE: False,
+                    Fields.STATUS: ProductStatusValues.DRAFT,
                     Fields.DEACTIVATION_REASON: f"Digital download URLs must use HTTPS: {', '.join(bad_urls)}",
                     Fields.APPROVAL_STATUS: ProductApprovalStatusValues.REJECTED,
                     Fields.APPROVAL_REJECTION_REASON: f"Download URLs must use HTTPS: {', '.join(bad_urls)}",
@@ -890,6 +916,7 @@ def on_product_created(event: firestore_fn.Event) -> None:
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
                 Fields.IS_ACTIVE: False,
+                Fields.STATUS: ProductStatusValues.DRAFT,
                 Fields.APPROVAL_STATUS: ProductApprovalStatusValues.UNDER_REVIEW,
             }
         )
@@ -907,6 +934,17 @@ def on_product_created(event: firestore_fn.Event) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _compute_is_active(status: str, approval_status: str) -> bool:
+    """Single source of truth: isActive = status=='active' AND approvalStatus=='approved'.
+
+    This invariant must be enforced at every product write path.
+    """
+    return (
+        status == ProductStatusValues.ACTIVE
+        and approval_status == ProductApprovalStatusValues.APPROVED
+    )
+
 
 def _notify_admins_new_product(product_id: str, product_data: dict) -> None:
     """Email all admin users when a product is submitted for review."""
@@ -993,6 +1031,52 @@ def _send_product_rejection_email(seller_email: str, product_name: str, reason: 
     send_email(seller_email, f"Product review update: {product_name}", html)
 
 
+def _notify_premium_users_new_product(product_data: dict, product_id: str) -> None:
+    """Send FCM push to premium users with notifyNewProducts=True (max 500)."""
+    try:
+        from firebase_admin import messaging
+    except ImportError:
+        logger.warning("firebase_admin.messaging not available")
+        return
+
+    users_query = (
+        get_db()
+        .collection(Collections.USERS)
+        .where(Fields.IS_PREMIUM, "==", True)
+        .where(Fields.NOTIFY_NEW_PRODUCTS, "==", True)
+        .limit(500)
+        .stream()
+    )
+
+    tokens = []
+    for user in users_query:
+        token = (user.to_dict() or {}).get(Fields.FCM_TOKEN)
+        if token:
+            tokens.append(token)
+
+    if not tokens:
+        return
+
+    product_name = product_data.get(Fields.NAME, "New Product")
+    images = product_data.get(Fields.IMAGE_URLS) or []
+    image_url = images[0] if images else None
+
+    notification_kwargs: dict = {
+        "title": "🛍️ New Product on Origna",
+        "body": f"{product_name} just went live!",
+    }
+    if image_url:
+        notification_kwargs["image"] = image_url
+
+    msg = messaging.MulticastMessage(
+        tokens=tokens,
+        notification=messaging.Notification(**notification_kwargs),
+        data={"type": "new_product", "productId": product_id, "screen": f"/product/{product_id}"},
+    )
+    response = messaging.send_each_for_multicast(msg)
+    logger.info(f"New product FCM sent: {response.success_count} ok, {response.failure_count} failed")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # ADMIN CALLABLES
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1043,6 +1127,7 @@ def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
                     Fields.APPROVAL_STATUS: ProductApprovalStatusValues.REJECTED,
                     Fields.APPROVAL_REJECTION_REASON: reason,
                     Fields.IS_ACTIVE: False,
+                    Fields.STATUS: ProductStatusValues.PAUSED,
                 }
             )
             if seller_email:
@@ -1052,12 +1137,13 @@ def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
                 message=f"Product auto-rejected: {reason}",
             )
 
-    # Approve
+    # Approve — STATUS must be set to 'active' atomically with IS_ACTIVE=True
     product_ref.update(
         {
             Fields.APPROVAL_STATUS: ProductApprovalStatusValues.APPROVED,
             Fields.APPROVAL_REJECTION_REASON: None,
-            Fields.IS_ACTIVE: True,
+            Fields.IS_ACTIVE: _compute_is_active(ProductStatusValues.ACTIVE, ProductApprovalStatusValues.APPROVED),
+            Fields.STATUS: ProductStatusValues.ACTIVE,
         }
     )
 
@@ -1084,6 +1170,13 @@ def admin_approve_product(req: https_fn.CallableRequest) -> dict[str, Any]:
             logger.error(f"Failed to send approval email for {product_id}: {e}")
 
     logger.info(f"Admin {user_id} approved product {product_id}")
+
+    # Notify premium users who opted in for new product alerts
+    try:
+        _notify_premium_users_new_product(product_data, product_id)
+    except Exception as e:
+        logger.error(f"Failed to send new product FCM for {product_id}: {e}")
+
     return create_success_response({}, message="Product approved and now live")
 
 
@@ -1133,6 +1226,7 @@ def admin_reject_product(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.APPROVAL_STATUS: ProductApprovalStatusValues.REJECTED,
             Fields.APPROVAL_REJECTION_REASON: reason,
             Fields.IS_ACTIVE: False,
+            Fields.STATUS: ProductStatusValues.PAUSED,
         }
     )
 
@@ -1219,6 +1313,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         Fields.STOCK_QUANTITY, Fields.UPDATED_AT, Fields.STOCK_RESTORED,
         Fields.IS_ACTIVE, Fields.DEACTIVATION_REASON,
         Fields.APPROVAL_STATUS, Fields.APPROVAL_REJECTION_REASON,
+        Fields.STATUS,  # seller pause/unpause — synced via _compute_is_active below
     }
     _address_changed = False
     if before_data:
@@ -1246,6 +1341,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
                     Fields.APPROVAL_STATUS: ProductApprovalStatusValues.UNDER_REVIEW,
                     Fields.APPROVAL_REJECTION_REASON: None,
                     Fields.IS_ACTIVE: False,
+                    Fields.STATUS: ProductStatusValues.PAUSED,
                 }
             )
             # Notify admins of the resubmission
@@ -1256,13 +1352,28 @@ def on_product_updated(event: firestore_fn.Event) -> None:
             return
 
         if changed_fields and changed_fields.issubset(_SKIP_VALIDATION_FIELDS):
-            # Non-security-relevant update — just re-index and return
-            if product_data.get(Fields.IS_ACTIVE, True):
+            # Non-security-relevant update — sync IS_ACTIVE from STATUS+APPROVAL_STATUS, then re-index
+            current_status = product_data.get(Fields.STATUS, ProductStatusValues.DRAFT)
+            current_approval = product_data.get(Fields.APPROVAL_STATUS, ProductApprovalStatusValues.UNDER_REVIEW)
+            correct_is_active = _compute_is_active(current_status, current_approval)
+            if product_data.get(Fields.IS_ACTIVE) != correct_is_active:
+                get_db().collection(Collections.PRODUCTS).document(product_id).update(
+                    {Fields.IS_ACTIVE: correct_is_active}
+                )
+                product_data[Fields.IS_ACTIVE] = correct_is_active
+            if correct_is_active:
                 try:
                     product_data["id"] = product_id
                     index_product(product_id, product_data)
                 except Exception as e:
                     logger.error(f"Failed to index product {product_id} after metadata update: {str(e)}")
+
+            # TASK 07: Fire back-in-stock notifications when stockQuantity 0→>0
+            try:
+                _fire_back_in_stock_notifications(product_id, before_data, product_data)
+            except Exception as e:
+                logger.error(f"Back-in-stock notification error for {product_id}: {e}")
+
             return
         # Track whether address changed — skip geocoding if it didn't
         _address_changed = before_data.get(Fields.SELLER_ADDRESS) != product_data.get(Fields.SELLER_ADDRESS)
@@ -1281,6 +1392,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
                 get_db().collection(Collections.PRODUCTS).document(product_id).update(
                     {
                         Fields.IS_ACTIVE: False,
+                        Fields.STATUS: ProductStatusValues.PAUSED,
                         Fields.DEACTIVATION_REASON: "Seller is suspended",
                     }
                 )
@@ -1293,6 +1405,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
                 Fields.IS_ACTIVE: False,
+                Fields.STATUS: ProductStatusValues.PAUSED,
             }
         )
         return
@@ -1304,6 +1417,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
                 Fields.IS_ACTIVE: False,
+                Fields.STATUS: ProductStatusValues.PAUSED,
             }
         )
         return
@@ -1316,6 +1430,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
         get_db().collection(Collections.PRODUCTS).document(product_id).update(
             {
                 Fields.IS_ACTIVE: False,
+                Fields.STATUS: ProductStatusValues.PAUSED,
             }
         )
         return
@@ -1338,6 +1453,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
                 get_db().collection(Collections.PRODUCTS).document(product_id).update(
                     {
                         Fields.IS_ACTIVE: False,
+                        Fields.STATUS: ProductStatusValues.PAUSED,
                         Fields.DEACTIVATION_REASON: "Address not verified via Geoapify (missing coordinates)",
                     }
                 )
@@ -1352,6 +1468,7 @@ def on_product_updated(event: firestore_fn.Event) -> None:
                 get_db().collection(Collections.PRODUCTS).document(product_id).update(
                     {
                         Fields.IS_ACTIVE: False,
+                        Fields.STATUS: ProductStatusValues.PAUSED,
                         Fields.DEACTIVATION_REASON: f"Address verification failed: {error_reason}",
                     }
                 )
@@ -1997,3 +2114,370 @@ def _clear_default_warehouse(seller_id: str, exclude_id: str | None = None) -> N
         if exclude_id and doc.id == exclude_id:
             continue
         doc.reference.update({"isDefault": False})
+
+
+# ================================================================
+# TASK 07 — BACK-IN-STOCK NOTIFICATIONS
+# ================================================================
+
+def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_data: dict) -> None:
+    """Send back-in-stock emails to subscribers when stockQuantity transitions 0 → >0."""
+    from datetime import timezone
+
+    before_stock = before_data.get(Fields.STOCK_QUANTITY, 0)
+    after_stock = after_data.get(Fields.STOCK_QUANTITY, 0)
+
+    # Only trigger on 0→>0 transition on active products
+    if before_stock > 0 or after_stock <= 0:
+        return
+    if not after_data.get(Fields.IS_ACTIVE):
+        return
+
+    from services.email_service import send_email
+
+    product_name = after_data.get(Fields.NAME, "A product you wanted")
+    now_utc = datetime.now(timezone.utc)
+
+    subscriptions = (
+        get_db()
+        .collection(Collections.STOCK_NOTIFICATIONS)
+        .where(Fields.PRODUCT_ID, "==", product_id)
+        .where(Fields.NOTIFIED_AT, "==", None)
+        .limit(200)
+        .stream()
+    )
+
+    for sub_doc in subscriptions:
+        sub_data = sub_doc.to_dict() or {}
+        email = sub_data.get(Fields.EMAIL)
+        if not email:
+            continue
+        subject = f"🎉 Back in stock: {product_name} — Origna"
+        html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #5B30F6;">It's back! 🎉</h2>
+  <p><strong>{product_name}</strong> is back in stock on Origna.</p>
+  <p style="margin-top:20px;">
+    <a href="https://orignagta.ca/products/{product_id}"
+       style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
+      Shop now
+    </a>
+  </p>
+  <p style="color:#999; font-size:12px; margin-top:24px;">
+    You requested this notification. If you no longer want back-in-stock emails,
+    visit your <a href="https://orignagta.ca/settings/notifications" style="color:#999;">notification settings</a>.<br>
+    Origna Ventures Inc.
+  </p>
+</div>"""
+        try:
+            send_email(email, subject, html)
+            sub_doc.reference.update({Fields.NOTIFIED_AT: now_utc})
+        except Exception as e:
+            logger.error(f"Failed to send back-in-stock email for sub {sub_doc.id}: {e}")
+
+
+def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    TASK 07: Subscribe to back-in-stock notification for a product.
+
+    Request data:
+        productId: Product to watch
+
+    Idempotent — re-subscribing after being notified creates a new subscription.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    data = req.data
+    product_id = data.get(Fields.PRODUCT_ID)
+    if not product_id:
+        raise https_fn.HttpsError("invalid-argument", "productId required")
+
+    # Verify product exists and is actually out of stock
+    product_doc = get_db().collection(Collections.PRODUCTS).document(product_id).get()
+    if not product_doc.exists:
+        raise https_fn.HttpsError("not-found", "Product not found")
+    product_data = product_doc.to_dict() or {}
+    if product_data.get(Fields.STOCK_QUANTITY, 0) > 0:
+        raise https_fn.HttpsError("failed-precondition", "Product is already in stock")
+
+    # Fetch buyer email
+    user_doc = get_db().collection(Collections.USERS).document(user_id).get()
+    if not user_doc.exists:
+        raise https_fn.HttpsError("not-found", "User not found")
+    user_email = (user_doc.to_dict() or {}).get(Fields.EMAIL)
+    if not user_email:
+        raise https_fn.HttpsError("failed-precondition", "Account has no email")
+
+    # Idempotency: skip if active subscription already exists
+    existing = list(
+        get_db()
+        .collection(Collections.STOCK_NOTIFICATIONS)
+        .where(Fields.PRODUCT_ID, "==", product_id)
+        .where(Fields.USER_ID, "==", user_id)
+        .where(Fields.NOTIFIED_AT, "==", None)
+        .limit(1)
+        .stream()
+    )
+    if existing:
+        return create_success_response({"alreadySubscribed": True})
+
+    from datetime import timezone
+    get_db().collection(Collections.STOCK_NOTIFICATIONS).add({
+        Fields.PRODUCT_ID: product_id,
+        Fields.USER_ID: user_id,
+        Fields.EMAIL: user_email,
+        Fields.NAME: product_data.get(Fields.NAME, ""),
+        Fields.NOTIFIED_AT: None,
+        Fields.CREATED_AT: datetime.now(timezone.utc),
+    })
+    return create_success_response({"subscribed": True})
+
+
+def unsubscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    TASK 07: Unsubscribe from back-in-stock notification.
+
+    Request data:
+        productId: Product to stop watching
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+    data = req.data
+    product_id = data.get(Fields.PRODUCT_ID)
+    if not product_id:
+        raise https_fn.HttpsError("invalid-argument", "productId required")
+
+    subscriptions = list(
+        get_db()
+        .collection(Collections.STOCK_NOTIFICATIONS)
+        .where(Fields.PRODUCT_ID, "==", product_id)
+        .where(Fields.USER_ID, "==", user_id)
+        .where(Fields.NOTIFIED_AT, "==", None)
+        .limit(5)
+        .stream()
+    )
+    for sub in subscriptions:
+        sub.reference.delete()
+
+    return create_success_response({"unsubscribed": True})
+
+
+# ================================================================
+# TASK 09 — PRODUCT Q&A
+# ================================================================
+
+def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    TASK 09: Buyer submits a question about a product.
+
+    Request data:
+        productId: Product ID
+        question: Question text (10-500 chars)
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    from utils.helpers import sanitized_text
+    from datetime import timezone
+
+    user_id = req.auth.uid
+    data = req.data
+    product_id = data.get(Fields.PRODUCT_ID)
+    question_raw = data.get(Fields.QUESTION_TEXT, "")
+
+    if not product_id or not question_raw:
+        raise https_fn.HttpsError("invalid-argument", "productId and question required")
+
+    question = sanitized_text(question_raw)[:500]
+    if len(question) < 10:
+        raise https_fn.HttpsError("invalid-argument", "Question must be at least 10 characters")
+
+    product_doc = get_db().collection(Collections.PRODUCTS).document(product_id).get()
+    if not product_doc.exists:
+        raise https_fn.HttpsError("not-found", "Product not found")
+    product_data = product_doc.to_dict() or {}
+    seller_id = product_data.get(Fields.SELLER_ID)
+
+    question_ref = get_db().collection(Collections.PRODUCT_QUESTIONS).document()
+    question_ref.set({
+        Fields.QUESTION_ID: question_ref.id,
+        Fields.PRODUCT_ID: product_id,
+        Fields.SELLER_ID: seller_id,
+        Fields.ASKER_ID: user_id,
+        Fields.QUESTION_TEXT: question,
+        Fields.ANSWER_TEXT: None,
+        Fields.ANSWERED_AT: None,
+        Fields.ANSWERED_BY: None,
+        Fields.IS_ANSWERED: False,
+        Fields.UPVOTES: 0,
+        Fields.CREATED_AT: datetime.now(timezone.utc),
+    })
+
+    # Email seller about new question
+    try:
+        from services.email_service import send_email
+        seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
+        if seller_doc.exists:
+            seller_email = (seller_doc.to_dict() or {}).get(Fields.EMAIL)
+            if seller_email:
+                product_name = product_data.get(Fields.NAME, "your product")
+                subject = f"[Origna] New question on {product_name}"
+                html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #5B30F6;">New buyer question</h2>
+  <p>A buyer asked a question about <strong>{product_name}</strong>:</p>
+  <blockquote style="border-left:3px solid #5B30F6; padding-left:12px; color:#333; margin:16px 0;">
+    {question}
+  </blockquote>
+  <p style="margin-top:20px;">
+    <a href="https://orignagta.ca/seller/products/{product_id}/questions"
+       style="background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;">
+      Answer question
+    </a>
+  </p>
+  <p style="color:#999; font-size:12px; margin-top:24px;">
+    Answering buyer questions improves conversions and builds trust.
+  </p>
+</div>"""
+                send_email(seller_email, subject, html)
+    except Exception as e:
+        logger.error(f"Failed to email seller about new question for product {product_id}: {e}")
+
+    return create_success_response({Fields.QUESTION_ID: question_ref.id})
+
+
+def answer_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    TASK 09: Seller (or admin) answers a product question.
+
+    Request data:
+        questionId: Question document ID
+        answer: Answer text (10-2000 chars)
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    from utils.helpers import sanitized_text
+    from datetime import timezone
+
+    user_id = req.auth.uid
+    token = req.auth.token or {}
+    is_admin = token.get("admin") is True
+
+    data = req.data
+    question_id = data.get(Fields.QUESTION_ID)
+    answer_raw = data.get(Fields.ANSWER_TEXT, "")
+
+    if not question_id or not answer_raw:
+        raise https_fn.HttpsError("invalid-argument", "questionId and answer required")
+
+    answer = sanitized_text(answer_raw)[:2000]
+    if len(answer) < 10:
+        raise https_fn.HttpsError("invalid-argument", "Answer must be at least 10 characters")
+
+    question_ref = get_db().collection(Collections.PRODUCT_QUESTIONS).document(question_id)
+    question_doc = question_ref.get()
+    if not question_doc.exists:
+        raise https_fn.HttpsError("not-found", "Question not found")
+
+    question_data = question_doc.to_dict() or {}
+    seller_id = question_data.get(Fields.SELLER_ID)
+
+    # Only product's seller or admin can answer
+    if not is_admin and user_id != seller_id:
+        raise https_fn.HttpsError("permission-denied", "Only the seller or an admin can answer this question")
+
+    now_utc = datetime.now(timezone.utc)
+    question_ref.update({
+        Fields.ANSWER_TEXT: answer,
+        Fields.ANSWERED_AT: now_utc,
+        Fields.ANSWERED_BY: user_id,
+        Fields.IS_ANSWERED: True,
+    })
+
+    # Email asker about the answer
+    try:
+        from services.email_service import send_email
+        asker_id = question_data.get(Fields.ASKER_ID)
+        product_id = question_data.get(Fields.PRODUCT_ID)
+        if asker_id:
+            asker_doc = get_db().collection(Collections.USERS).document(asker_id).get()
+            if asker_doc.exists:
+                asker_email = (asker_doc.to_dict() or {}).get(Fields.EMAIL)
+                product_name = ""
+                if product_id:
+                    pdoc = get_db().collection(Collections.PRODUCTS).document(product_id).get()
+                    if pdoc.exists:
+                        product_name = (pdoc.to_dict() or {}).get(Fields.NAME, "")
+                if asker_email:
+                    subject = f"[Origna] Your question was answered"
+                    html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #5B30F6;">Your question was answered!</h2>
+  {"<p>About <strong>" + product_name + "</strong>:</p>" if product_name else ""}
+  <p style="color:#555;"><strong>Your question:</strong></p>
+  <blockquote style="border-left:3px solid #5B30F6; padding-left:12px; color:#333; margin:8px 0 16px;">
+    {question_data.get(Fields.QUESTION_TEXT, "")}
+  </blockquote>
+  <p style="color:#555;"><strong>Answer:</strong></p>
+  <blockquote style="border-left:3px solid #38A169; padding-left:12px; color:#333; margin:8px 0 16px;">
+    {answer}
+  </blockquote>
+  {"<p><a href='https://orignagta.ca/products/" + product_id + "' style='background:#5B30F6; color:#fff; padding:10px 22px; border-radius:6px; text-decoration:none; font-weight:bold;'>View product</a></p>" if product_id else ""}
+  <p style="color:#999; font-size:12px; margin-top:24px;">Origna Ventures Inc.</p>
+</div>"""
+                    send_email(asker_email, subject, html)
+    except Exception as e:
+        logger.error(f"Failed to email asker about answer for question {question_id}: {e}")
+
+    return create_success_response({"answered": True})
+
+
+def get_product_questions(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    TASK 09: Get paginated Q&A for a product.
+
+    Request data:
+        productId: Product ID
+        limit: Max results (default 20, max 50)
+        answeredOnly: If true, only return answered questions (default false)
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    data = req.data
+    product_id = data.get(Fields.PRODUCT_ID)
+    if not product_id:
+        raise https_fn.HttpsError("invalid-argument", "productId required")
+
+    limit = min(int(data.get("limit", 20)), 50)
+    answered_only = bool(data.get("answeredOnly", False))
+
+    query = (
+        get_db()
+        .collection(Collections.PRODUCT_QUESTIONS)
+        .where(Fields.PRODUCT_ID, "==", product_id)
+    )
+    if answered_only:
+        query = query.where(Fields.IS_ANSWERED, "==", True)
+    query = query.order_by(Fields.CREATED_AT, direction="DESCENDING").limit(limit)
+
+    docs = list(query.stream())
+    questions = []
+    for doc in docs:
+        d = doc.to_dict() or {}
+        questions.append({
+            Fields.QUESTION_ID: doc.id,
+            Fields.QUESTION_TEXT: d.get(Fields.QUESTION_TEXT, ""),
+            Fields.ANSWER_TEXT: d.get(Fields.ANSWER_TEXT),
+            Fields.ANSWERED_AT: d.get(Fields.ANSWERED_AT),
+            Fields.IS_ANSWERED: d.get(Fields.IS_ANSWERED, False),
+            Fields.UPVOTES: d.get(Fields.UPVOTES, 0),
+            Fields.CREATED_AT: d.get(Fields.CREATED_AT),
+        })
+
+    return create_success_response({"questions": questions, "total": len(questions)})

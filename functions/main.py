@@ -24,7 +24,6 @@ import firebase_admin
 # See: https://github.com/firebase/firebase-functions-python/issues/187
 # ===============================================
 import stripe
-from google.cloud import secretmanager
 
 _original_get_attributes = None
 
@@ -51,16 +50,6 @@ except Exception:
 # ===============================================
 # DIGITAL PRODUCT HANDLERS
 # ===============================================
-from handlers.digital import (  # noqa: E402
-    activate_license,
-    deactivate_license,
-    generate_book_download_session,
-    generate_software_download_session,
-    get_book_redirect,
-    get_software_redirect,
-    verify_license,
-)
-
 # ===============================================
 # ADMIN HANDLERS
 # ===============================================
@@ -85,13 +74,26 @@ from handlers.cron_jobs import (  # noqa: E402
     auto_archive_old_orders,
     auto_capture_confirmed_receipts,
     check_expired_authorizations,
+    check_low_stock_alerts,
     cleanup_orphaned_r2_images,
     cleanup_stale_rate_limits,
     cleanup_stale_security_alerts,
     cleanup_stale_webhook_events,
+    compute_seller_metrics,
+    compute_trending_products,
     monitor_algolia_sync,
-    revalidate_digital_product_urls,
     retry_failed_algolia_syncs,
+    revalidate_digital_product_urls,
+    send_abandoned_cart_emails,
+)
+from handlers.digital import (  # noqa: E402
+    activate_license,
+    deactivate_license,
+    generate_book_download_session,
+    generate_software_download_session,
+    get_book_redirect,
+    get_software_redirect,
+    verify_license,
 )
 
 # ===============================================
@@ -136,13 +138,25 @@ from handlers.payment_stripe import (  # noqa: E402
     stripe_webhook,
     verify_cart_prices,
 )
+from handlers.subscriptions import (  # noqa: E402
+    cancel_subscription,
+    create_subscription,
+    get_subscription_status,
+)
+from handlers.chat import (  # noqa: E402
+    get_or_create_chat,
+    mark_messages_read,
+)
 from handlers.products import (  # noqa: E402
     admin_approve_product,
     admin_reject_product,
+    answer_product_question,
+    ask_product_question,
     configure_algolia,
     create_warehouse,
     delete_product,
     delete_warehouse,
+    get_product_questions,
     get_product_ratings_paginated,
     get_products_paginated,
     get_seller_products_paginated,
@@ -151,11 +165,17 @@ from handlers.products import (  # noqa: E402
     on_product_deleted,
     on_product_updated,
     submit_product_rating,
+    subscribe_stock_notification,
+    unsubscribe_stock_notification,
     update_warehouse,
     upload_product_images,
 )
 from handlers.users import (  # noqa: E402
+    add_buyer_address,
+    delete_buyer_address,
     get_user_profile,
+    set_default_buyer_address,
+    update_buyer_address,
     update_email_consent,
     update_user_profile,
 )
@@ -163,8 +183,6 @@ from handlers.users import (  # noqa: E402
 # ===============================================
 # PRODUCT HANDLERS
 # ===============================================
-from schema_constants import Fields  # noqa: E402
-
 # ===============================================
 # SHIPPING CALCULATION — Canonical source is services/shipping_service.py
 # This wrapper re-exports calculate_shipping_cost for external HTTP callers.
@@ -211,6 +229,13 @@ __all__ = [
     "create_connect_account",
     "get_connect_account_status",
     "create_account_link",
+    # Premium subscriptions
+    "create_subscription",
+    "cancel_subscription",
+    "get_subscription_status",
+    # Chat (premium feature)
+    "get_or_create_chat",
+    "mark_messages_read",
     # Dispute handlers
     "process_charge_refunded",
     "process_dispute_created",
@@ -235,6 +260,13 @@ __all__ = [
     "on_product_created",
     "on_product_updated",
     "on_product_deleted",
+    # Back-in-stock (TASK 07)
+    "subscribe_stock_notification",
+    "unsubscribe_stock_notification",
+    # Product Q&A (TASK 09)
+    "ask_product_question",
+    "answer_product_question",
+    "get_product_questions",
     # Warehouses
     "create_warehouse",
     "update_warehouse",
@@ -262,9 +294,13 @@ __all__ = [
     "export_my_data",
     "unsubscribe_email",
     # User Profile
-    "update_user_profile",
+    "add_buyer_address",
+    "delete_buyer_address",
     "get_user_profile",
+    "set_default_buyer_address",
+    "update_buyer_address",
     "update_email_consent",
+    "update_user_profile",
     # Payment Provider Management
     "get_payment_providers",
     "update_payment_provider",
@@ -280,6 +316,11 @@ __all__ = [
     "cleanup_stale_webhook_events",
     "cleanup_stale_security_alerts",
     "retry_failed_algolia_syncs",
+    "check_low_stock_alerts",
+    "send_abandoned_cart_emails",
+    "compute_seller_metrics",
+    # Trending products
+    "compute_trending_products",
     # Shipping
     "calculate_shipping_cost",
     # Digital products

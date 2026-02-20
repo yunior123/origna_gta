@@ -259,6 +259,13 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 24),
 
+                      // Premium Subscription Section
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 75),
+                        child: _buildPremiumMenuItem(context, userModel.isPremium),
+                      ),
+                      const SizedBox(height: 24),
+
                       // Account Settings Section
                       FadeSlideIn(
                         delay: const Duration(milliseconds: 100),
@@ -480,6 +487,107 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
       ),
+      ),
+    );
+  }
+
+  Widget _buildPremiumMenuItem(BuildContext context, bool isPremium) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            DesignTokens.primary.withValues(alpha: isPremium ? 0.1 : 0.06),
+            DesignTokens.secondary.withValues(alpha: isPremium ? 0.1 : 0.06),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(DesignTokens.radius12),
+        border: Border.all(
+          color: DesignTokens.primary.withValues(alpha: isPremium ? 0.3 : 0.15),
+          width: isPremium ? 1.5 : 1,
+        ),
+      ),
+      child: Semantics(
+        button: true,
+        label: 'menu-premium',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              Navigator.pushNamed(context, AppRoutes.subscription);
+            },
+            borderRadius: BorderRadius.circular(DesignTokens.radius12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [DesignTokens.primary, DesignTokens.secondary],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(DesignTokens.radius8),
+                    ),
+                    child: const Icon(Icons.workspace_premium, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Premium Membership',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? DesignTokens.textOnDark : DesignTokens.textPrimary,
+                              ),
+                            ),
+                            if (isPremium) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: DesignTokens.success.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  'ACTIVE',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: DesignTokens.success,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isPremium
+                              ? 'Manage subscription & notifications'
+                              : 'Upgrade for no fees & seller chat — CAD \$7.86/mo',
+                          style: TextStyle(fontSize: 12, color: DesignTokens.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: DesignTokens.textDisabled, size: 20),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

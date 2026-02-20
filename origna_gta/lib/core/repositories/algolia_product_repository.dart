@@ -190,15 +190,20 @@ class AlgoliaProductRepository implements ProductRepository {
   Future<void> submitRating(
     String orderId,
     String productId,
-    int rating,
-  ) async {
+    int rating, {
+    List<String>? reviewImageUrls,
+  }) async {
     // Call backend Cloud Function for secure rating submission
     // Backend validates: auth, ownership, delivery status, duplicate check
-    await _functions.httpsCallable(CloudFunctionEndpoints.submitProductRating).call({
+    final payload = {
       Fields.orderId: orderId,
       Fields.productId: productId,
       Fields.rating: rating,
-    });
+    };
+    if (reviewImageUrls != null && reviewImageUrls.isNotEmpty) {
+      payload[Fields.reviewImageUrls] = reviewImageUrls;
+    }
+    await _functions.httpsCallable(CloudFunctionEndpoints.submitProductRating).call(payload);
   }
 
   @override

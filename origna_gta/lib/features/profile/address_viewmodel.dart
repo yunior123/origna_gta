@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/utils.dart';
+
 import 'address_state.dart';
 
 final addressViewModelProvider = StateNotifierProvider.autoDispose<AddressViewModel, AddressState>((ref) {
@@ -13,35 +14,16 @@ class AddressViewModel extends StateNotifier<AddressState> {
 
   AddressViewModel(this._ref) : super(AddressState());
 
-  void setProvince(String province) => state = state.copyWith(selectedProvince: province);
-  void setLabel(String label) => state = state.copyWith(selectedLabel: label);
-
-  void setInitialData(Address? address) {
-    if (address != null) {
-      state = state.copyWith(
-        selectedProvince: address.state,
-        selectedLabel: address.label ?? AddressLabelValues.home,
-        latitude: address.latitude,
-        longitude: address.longitude,
-      );
-    }
-  }
-
   Future<void> onStreetChanged(String value) async {
     // Reset coordinates when user types manually
     state = state.copyWith(clearCoordinates: true);
-    
+
     if (value.length < 3) {
       state = state.copyWith(showSuggestions: false, addressSuggestions: []);
       return;
     }
     final suggestions = await _ref.read(locationRepositoryProvider).getAddressSuggestions(value);
     state = state.copyWith(addressSuggestions: suggestions, showSuggestions: suggestions.isNotEmpty);
-  }
-
-  void selectAddress(Map<String, dynamic> suggestion) {
-    final details = parseAddressSuggestion(suggestion);
-    state = state.copyWith(selectedProvince: details.state, latitude: details.latitude, longitude: details.longitude, showSuggestions: false, addressSuggestions: []);
   }
 
   Future<void> saveAddress({
@@ -71,15 +53,48 @@ class AddressViewModel extends StateNotifier<AddressState> {
         country: GeoValues.countryCanada,
         phoneNumber: phoneNumber.trim(),
         label: state.selectedLabel,
-        isDefault: true,
+        isDefault: state.addressId == null, // first or specific
         latitude: state.latitude,
         longitude: state.longitude,
+        addressId: state.addressId,
       );
 
-      await _ref.read(userRepositoryProvider).updateAddress(userId, address);
+      if (state.addressId != null) {
+        await _ref.read(userRepositoryProvider).updateBuyerAddress(state.addressId!, address);
+      } else {
+        await _ref.read(userRepositoryProvider).addBuyerAddress(address);
+      }
+
       state = state.copyWith(isLoading: false, isSuccess: true);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: AppError.getMessage(e, 'Failed to save address'));
     }
   }
+
+  void selectAddress(Map<String, dynamic> suggestion) {
+    final details = parseAddressSuggestion(suggestion);
+    state = state.copyWith(
+      selectedProvince: details.state,
+      latitude: details.latitude,
+      longitude: details.longitude,
+      showSuggestions: false,
+      addressSuggestions: [],
+    );
+  }
+
+  void setInitialData(Address? address) {
+    if (address != null) {
+      state = state.copyWith(
+        selectedProvince: address.state,
+        selectedLabel: address.label ?? AddressLabelValues.home,
+        latitude: address.latitude,
+        longitude: address.longitude,
+        addressId: address.addressId,
+      );
+    }
+  }
+
+  void setLabel(String label) => state = state.copyWith(selectedLabel: label);
+
+  void setProvince(String province) => state = state.copyWith(selectedProvince: province);
 }

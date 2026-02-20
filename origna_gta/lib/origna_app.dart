@@ -11,7 +11,6 @@ import 'package:origna_gta/core/routes.dart';
 // Deferred imports for code splitting — reduces initial JS bundle on Flutter Web
 import 'package:origna_gta/features/admin/admin_panel_screen.dart' deferred as admin_panel;
 import 'package:origna_gta/features/products/products_provider.dart';
-import 'package:origna_gta/models/generated/models.dart' show Product;
 import 'package:origna_gta/models/models.dart' show Address;
 import 'package:origna_gta/screens/addproduct_screen.dart' deferred as add_product;
 import 'package:origna_gta/screens/addressmanagement_screen.dart';
@@ -34,7 +33,10 @@ import 'package:origna_gta/screens/seller_orders_screen.dart' deferred as seller
 import 'package:origna_gta/screens/seller_registration_screen.dart' deferred as seller_reg;
 import 'package:origna_gta/screens/seller_setup_screen.dart';
 import 'package:origna_gta/screens/shipping_approval_screen.dart' deferred as shipping_approval;
+import 'package:origna_gta/screens/chat_screen.dart';
+import 'package:origna_gta/screens/subscription_screen.dart';
 import 'package:origna_gta/screens/terms_of_service_screen.dart' deferred as terms;
+import 'package:origna_gta/services/notification_service.dart';
 import 'package:origna_gta/services/session_timeout_service.dart';
 import 'package:origna_gta/utils/deferred_widget.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -70,16 +72,13 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
       return [
         MaterialPageRoute(builder: (_) => const AuthWrapper()),
         MaterialPageRoute(
-          builder: (_) =>
-              AuthRequiredGate(child: OrderSuccessGate(sessionId: sessionId)),
+          builder: (_) => AuthRequiredGate(child: OrderSuccessGate(sessionId: sessionId)),
         ),
       ];
     }
     return [
       MaterialPageRoute(builder: (_) => const AuthWrapper()),
-      MaterialPageRoute(
-        builder: (_) => ErrorScreen(message: 'errors.invalid_payment_link'.tr()),
-      ),
+      MaterialPageRoute(builder: (_) => ErrorScreen(message: 'errors.invalid_payment_link'.tr())),
     ];
   }
 
@@ -87,34 +86,30 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   if (uri != null && uri.path == AppRoutes.privacyPolicy) {
     return [
       MaterialPageRoute(builder: (_) => const AuthWrapper()),
-      MaterialPageRoute(builder: (_) => DeferredWidget(loader: privacy.loadLibrary, builder: () => privacy.PrivacyPolicyScreen())),
+      MaterialPageRoute(
+        builder: (_) => DeferredWidget(loader: privacy.loadLibrary, builder: () => privacy.PrivacyPolicyScreen()),
+      ),
     ];
   }
   if (uri != null && uri.path == AppRoutes.termsOfService) {
     return [
       MaterialPageRoute(builder: (_) => const AuthWrapper()),
-      MaterialPageRoute(builder: (_) => DeferredWidget(loader: terms.loadLibrary, builder: () => terms.TermsOfServiceScreen())),
+      MaterialPageRoute(
+        builder: (_) => DeferredWidget(loader: terms.loadLibrary, builder: () => terms.TermsOfServiceScreen()),
+      ),
     ];
   }
 
   // Handle payment cancellation redirect
   if (uri != null && uri.path == AppRoutes.paymentCancel) {
-    return [
-      MaterialPageRoute(builder: (_) => const AuthWrapper()),
-      MaterialPageRoute(
-        builder: (_) => const AuthRequiredGate(child: PaymentCanceledScreen()),
-      ),
-    ];
+    return [MaterialPageRoute(builder: (_) => const AuthWrapper()), MaterialPageRoute(builder: (_) => const AuthRequiredGate(child: PaymentCanceledScreen()))];
   }
 
   // Handle seller registration return from Stripe Connect
   if (uri != null && uri.path == AppRoutes.sellerReturn) {
     return [
       MaterialPageRoute(builder: (_) => const AuthWrapper()),
-      MaterialPageRoute(
-        builder: (_) =>
-            const AuthRequiredGate(child: SellerSetupCompleteScreen()),
-      ),
+      MaterialPageRoute(builder: (_) => const AuthRequiredGate(child: SellerSetupCompleteScreen())),
     ];
   }
 
@@ -122,10 +117,7 @@ List<Route<dynamic>> _onGenerateInitialRoutes(String initialRoute) {
   if (uri != null && uri.path == AppRoutes.sellerRefresh) {
     return [
       MaterialPageRoute(builder: (_) => const AuthWrapper()),
-      MaterialPageRoute(
-        builder: (_) =>
-            const AuthRequiredGate(child: SellerSetupRefreshScreen()),
-      ),
+      MaterialPageRoute(builder: (_) => const AuthRequiredGate(child: SellerSetupRefreshScreen())),
     ];
   }
 
@@ -148,10 +140,14 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Handle privacy policy route
   if (uri.path == AppRoutes.privacyPolicy) {
-    return MaterialPageRoute(builder: (_) => DeferredWidget(loader: privacy.loadLibrary, builder: () => privacy.PrivacyPolicyScreen()));
+    return MaterialPageRoute(
+      builder: (_) => DeferredWidget(loader: privacy.loadLibrary, builder: () => privacy.PrivacyPolicyScreen()),
+    );
   }
   if (uri.path == AppRoutes.termsOfService) {
-    return MaterialPageRoute(builder: (_) => DeferredWidget(loader: terms.loadLibrary, builder: () => terms.TermsOfServiceScreen()));
+    return MaterialPageRoute(
+      builder: (_) => DeferredWidget(loader: terms.loadLibrary, builder: () => terms.TermsOfServiceScreen()),
+    );
   }
 
   // Handle payment success deep link
@@ -159,37 +155,27 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     final sessionId = uri.queryParameters['session_id'];
 
     if (sessionId == null || sessionId.isEmpty) {
-      return MaterialPageRoute(
-        builder: (_) => ErrorScreen(message: 'errors.invalid_payment_link'.tr()),
-      );
+      return MaterialPageRoute(builder: (_) => ErrorScreen(message: 'errors.invalid_payment_link'.tr()));
     }
 
     return MaterialPageRoute(
-      builder: (_) =>
-          AuthRequiredGate(child: OrderSuccessGate(sessionId: sessionId)),
+      builder: (_) => AuthRequiredGate(child: OrderSuccessGate(sessionId: sessionId)),
     );
   }
 
   // Handle payment cancellation deep link
   if (uri.path == AppRoutes.paymentCancel) {
-    return MaterialPageRoute(
-      builder: (_) => const AuthRequiredGate(child: PaymentCanceledScreen()),
-    );
+    return MaterialPageRoute(builder: (_) => const AuthRequiredGate(child: PaymentCanceledScreen()));
   }
 
   // Handle seller registration return
   if (uri.path == AppRoutes.sellerReturn) {
-    return MaterialPageRoute(
-      builder: (_) =>
-          const AuthRequiredGate(child: SellerSetupCompleteScreen()),
-    );
+    return MaterialPageRoute(builder: (_) => const AuthRequiredGate(child: SellerSetupCompleteScreen()));
   }
 
   // Handle seller registration refresh
   if (uri.path == AppRoutes.sellerRefresh) {
-    return MaterialPageRoute(
-      builder: (_) => const AuthRequiredGate(child: SellerSetupRefreshScreen()),
-    );
+    return MaterialPageRoute(builder: (_) => const AuthRequiredGate(child: SellerSetupRefreshScreen()));
   }
 
   // /p/{slug} — shareable product deep link
@@ -205,10 +191,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
 
   // Login screen
   if (uri.path == AppRoutes.login) {
-    return MaterialPageRoute(
-      settings: settings,
-      builder: (_) => const LoginScreen(),
-    );
+    return MaterialPageRoute(settings: settings, builder: (_) => const LoginScreen());
   }
 
   // Cart screen
@@ -239,7 +222,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.addProduct) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: add_product.loadLibrary, builder: () => add_product.AddProductScreen())),
+      builder: (_) => AuthRequiredGate(
+        child: DeferredWidget(loader: add_product.loadLibrary, builder: () => add_product.AddProductScreen()),
+      ),
     );
   }
 
@@ -254,7 +239,12 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     }
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: edit_product.loadLibrary, builder: () => edit_product.EditProductScreen(product: args.product))),
+      builder: (_) => AuthRequiredGate(
+        child: DeferredWidget(
+          loader: edit_product.loadLibrary,
+          builder: () => edit_product.EditProductScreen(product: args.product),
+        ),
+      ),
     );
   }
 
@@ -269,10 +259,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     }
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => ProductDetailScreen(
-        productId: args.productId,
-        product: args.product,
-      ),
+      builder: (_) => ProductDetailScreen(productId: args.productId, product: args.product),
     );
   }
 
@@ -307,10 +294,7 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
       builder: (_) => AuthRequiredGate(
         child: DeferredWidget(
           loader: checkout.loadLibrary,
-          builder: () => checkout.CheckoutScreen(
-            items: args.items,
-            total: args.total,
-          ),
+          builder: () => checkout.CheckoutScreen(items: args.items, total: args.total),
         ),
       ),
     );
@@ -335,7 +319,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.shippingApproval) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: shipping_approval.loadLibrary, builder: () => shipping_approval.ShippingApprovalScreen())),
+      builder: (_) => AuthRequiredGate(
+        child: DeferredWidget(loader: shipping_approval.loadLibrary, builder: () => shipping_approval.ShippingApprovalScreen()),
+      ),
     );
   }
 
@@ -343,7 +329,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.sellerRegistration) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: seller_reg.loadLibrary, builder: () => seller_reg.SellerRegistrationScreen())),
+      builder: (_) => AuthRequiredGate(
+        child: DeferredWidget(loader: seller_reg.loadLibrary, builder: () => seller_reg.SellerRegistrationScreen()),
+      ),
     );
   }
 
@@ -351,7 +339,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.sellerOrders) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: seller_orders.loadLibrary, builder: () => seller_orders.SellerOrdersScreen())),
+      builder: (_) => AuthRequiredGate(
+        child: DeferredWidget(loader: seller_orders.loadLibrary, builder: () => seller_orders.SellerOrdersScreen()),
+      ),
     );
   }
 
@@ -359,7 +349,9 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.sellerIntegration) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => AuthRequiredGate(child: DeferredWidget(loader: seller_integration.loadLibrary, builder: () => seller_integration.SellerIntegrationScreen())),
+      builder: (_) => AuthRequiredGate(
+        child: DeferredWidget(loader: seller_integration.loadLibrary, builder: () => seller_integration.SellerIntegrationScreen()),
+      ),
     );
   }
 
@@ -367,7 +359,11 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   if (uri.path == AppRoutes.adminPanel) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (_) => AuthRequiredGate(child: AdminRequiredGate(child: DeferredWidget(loader: admin_panel.loadLibrary, builder: () => admin_panel.AdminPanelScreen()))),
+      builder: (_) => AuthRequiredGate(
+        child: AdminRequiredGate(
+          child: DeferredWidget(loader: admin_panel.loadLibrary, builder: () => admin_panel.AdminPanelScreen()),
+        ),
+      ),
     );
   }
 
@@ -376,6 +372,33 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     return MaterialPageRoute(
       settings: settings,
       builder: (_) => const AuthRequiredGate(child: FavoritesScreen()),
+    );
+  }
+
+  // Subscription screen
+  if (uri.path == AppRoutes.subscription ||
+      uri.path == AppRoutes.subscriptionSuccess ||
+      uri.path == AppRoutes.subscriptionCancel) {
+    return MaterialPageRoute(
+      settings: settings,
+      builder: (_) => const AuthRequiredGate(child: SubscriptionScreen()),
+    );
+  }
+
+  // Chat screen
+  if (uri.path == AppRoutes.chat) {
+    final args = settings.arguments as ChatArgs?;
+    if (args == null) {
+      return MaterialPageRoute(
+        settings: const RouteSettings(name: '/'),
+        builder: (_) => const AuthWrapper(),
+      );
+    }
+    return MaterialPageRoute(
+      settings: settings,
+      builder: (_) => AuthRequiredGate(
+        child: ChatScreen(productId: args.productId, productTitle: args.productTitle),
+      ),
     );
   }
 
@@ -453,9 +476,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
             style: ElevatedButton.styleFrom(
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               backgroundColor: DesignTokens.primary,
               foregroundColor: Colors.white,
             ),
@@ -463,10 +484,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
             fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: DesignTokens.outlineVariant),
@@ -477,44 +495,19 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: DesignTokens.primary,
-                width: 2,
-              ),
+              borderSide: const BorderSide(color: DesignTokens.primary, width: 2),
             ),
           ),
           cardTheme: CardThemeData(
             elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             color: Colors.white,
             surfaceTintColor: Colors.transparent,
           ),
-          dividerTheme: DividerThemeData(
-            color: DesignTokens.outlineVariant,
-            thickness: 1,
-            space: 1,
-          ),
+          dividerTheme: DividerThemeData(color: DesignTokens.outlineVariant, thickness: 1, space: 1),
         ),
       ),
     );
-  }
-
-  void _handleDeepLink(Uri uri) {
-    final navigator = _navigatorKey.currentState;
-    if (navigator != null) {
-      final segs = uri.pathSegments;
-      // /p/{slug} — product share link
-      if (segs.length >= 2 && segs[0] == 'p') {
-        navigator.pushNamed('/p/${segs[1]}');
-        return;
-      }
-      // Route the deep link through the existing route handler
-      final path = uri.path.isNotEmpty ? uri.path : '/';
-      final query = uri.query.isNotEmpty ? '?${uri.query}' : '';
-      navigator.pushNamed('$path$query');
-    }
   }
 
   @override
@@ -529,10 +522,15 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
   void initState() {
     super.initState();
 
+    // Initialize Push Notifications
+    if (!kIsWeb) {
+      NotificationService.instance.initialize(ref);
+    }
+
     // Listen for incoming deep links (Universal Links / URL schemes on iOS)
     if (!kIsWeb) {
       final appLinks = AppLinks();
-      
+
       // Handle initial link if app was closed
       appLinks.getInitialLink().then((uri) {
         if (uri != null) {
@@ -564,6 +562,22 @@ class _OrignaAppState extends ConsumerState<OrignaApp> {
       }
     });
   }
+
+  void _handleDeepLink(Uri uri) {
+    final navigator = _navigatorKey.currentState;
+    if (navigator != null) {
+      final segs = uri.pathSegments;
+      // /p/{slug} — product share link
+      if (segs.length >= 2 && segs[0] == 'p') {
+        navigator.pushNamed('/p/${segs[1]}');
+        return;
+      }
+      // Route the deep link through the existing route handler
+      final path = uri.path.isNotEmpty ? uri.path : '/';
+      final query = uri.query.isNotEmpty ? '?${uri.query}' : '';
+      navigator.pushNamed('$path$query');
+    }
+  }
 }
 
 /// Resolves a slug to a product and renders the product detail screen directly.
@@ -574,39 +588,32 @@ class _ProductBySlugScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ref.watch(productBySlugProvider(slug)).when(
-      data: (product) {
-        if (product == null) {
-          return Scaffold(
+    return ref
+        .watch(productBySlugProvider(slug))
+        .when(
+          data: (product) {
+            if (product == null) {
+              return Scaffold(
+                appBar: AppBar(),
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.search_off_rounded, size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text('product.not_found'.tr(), style: const TextStyle(fontSize: 18, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+              );
+            }
+            return ProductDetailScreen(productId: product.productId, product: product.toJson());
+          },
+          loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+          error: (error, _) => Scaffold(
             appBar: AppBar(),
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.search_off_rounded, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text('product.not_found'.tr(), style: const TextStyle(fontSize: 18, color: Colors.grey)),
-                ],
-              ),
-            ),
-          );
-        }
-        return ProductDetailScreen(
-          productId: product.productId,
-          product: product.toJson(),
+            body: Center(child: Text('Error loading product: $error')),
+          ),
         );
-      },
-      loading: () => const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      ),
-      error: (error, _) => Scaffold(
-        appBar: AppBar(),
-        body: Center(
-          child: Text('Error loading product: $error'),
-        ),
-      ),
-    );
   }
 }

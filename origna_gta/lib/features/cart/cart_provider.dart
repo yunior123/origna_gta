@@ -56,10 +56,10 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
     estimatedShipDays: productData[Fields.estimatedShipDays] ?? 3,
     deliveryOptions: productData[Fields.deliveryOptions] != null
         ? (productData[Fields.deliveryOptions] as List)
-            .whereType<Map>()
-            .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
-            .whereType<SellerDeliveryOption>()
-            .toList()
+              .whereType<Map>()
+              .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
+              .whereType<SellerDeliveryOption>()
+              .toList()
         : [],
     minimumOrderQuantity: (productData[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
     freeShipping: productData[Fields.freeShipping] ?? false,
@@ -69,63 +69,6 @@ final cartItemDetailProvider = FutureProvider.autoDispose.family<CartItemDetailM
 
 // ============================================================================
 // BATCH PRODUCT CACHE — fetches all cart product docs in one whereIn query
-// ============================================================================
-
-/// Internal provider that batch-fetches product documents for all cart items.
-/// Returns a `Map<productId, productData>` for O(1) lookup by [cartItemDetailProvider].
-final _cartProductsBatchProvider = FutureProvider.autoDispose<Map<String, Map<String, dynamic>>>((ref) async {
-  final firestore = ref.watch(firestoreProvider);
-  final cartItems = ref.watch(cartItemsProvider);
-
-  final productIds = cartItems.maybeWhen(
-    data: (items) => items.map((i) => i.productId).toList(),
-    orElse: () => <String>[],
-  );
-
-  if (productIds.isEmpty) return {};
-
-  final Map<String, Map<String, dynamic>> cache = {};
-
-  // Firestore whereIn limit is 30 — batch accordingly
-  for (int i = 0; i < productIds.length; i += 30) {
-    final chunk = productIds.skip(i).take(30).toList();
-    final snapshot = await firestore
-        .collection(Collections.products)
-        .where(FieldPath.documentId, whereIn: chunk)
-        .get();
-    for (final doc in snapshot.docs) {
-      if (doc.exists) {
-        cache[doc.id] = doc.data();
-      }
-    }
-  }
-
-  return cache;
-});
-
-// ============================================================================
-// AUDIT FIX (C4): Unavailable cart items provider
-// ============================================================================
-
-/// Exposes product IDs that are in the cart but no longer available in the catalog.
-/// UI should use this to display "X items are no longer available" banners.
-final unavailableCartItemsProvider = FutureProvider.autoDispose<List<String>>((ref) async {
-  final cartItems = ref.watch(cartItemsProvider);
-  final productCache = await ref.watch(_cartProductsBatchProvider.future);
-
-  return cartItems.maybeWhen(
-    data: (items) {
-      return items
-          .where((item) => !productCache.containsKey(item.productId))
-          .map((item) => item.productId)
-          .toList();
-    },
-    orElse: () => <String>[],
-  );
-});
-
-// ============================================================================
-// CART DETAILS PROVIDER (with product info) - BATCH FETCH
 // ============================================================================
 
 /// Provider that returns the current quantity for a specific product in cart
@@ -141,6 +84,10 @@ final cartItemQuantityProvider = StreamProvider.autoDispose.family<int, String>(
 });
 
 // ============================================================================
+// AUDIT FIX (C4): Unavailable cart items provider
+// ============================================================================
+
+// ============================================================================
 // CART PROVIDERS
 // ============================================================================
 
@@ -151,15 +98,15 @@ final cartItemsProvider = StreamProvider.autoDispose<List<CartItemModel>>((ref) 
   return ref.watch(cartRepositoryProvider).watchCart(userId);
 });
 
+// ============================================================================
+// CART DETAILS PROVIDER (with product info) - BATCH FETCH
+// ============================================================================
+
 /// Cart subtotal - computed from cartWithDetailsProvider
 final cartSubtotalProvider = Provider.autoDispose<double>((ref) {
   final cartDetails = ref.watch(cartWithDetailsProvider);
   return cartDetails.maybeWhen(data: (items) => items.fold(0.0, (total, item) => total + (item.price * item.quantity)), orElse: () => 0.0);
 });
-
-// ============================================================================
-// SINGLE CART ITEM DETAIL PROVIDER (Family)
-// ============================================================================
 
 /// Fetches cart items with full product details using batch fetch
 final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailModel>>((ref) async {
@@ -209,14 +156,15 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
                 estimatedShipDays: productData[Fields.estimatedShipDays] ?? 3,
                 deliveryOptions: productData[Fields.deliveryOptions] != null
                     ? (productData[Fields.deliveryOptions] as List)
-                        .whereType<Map>()
-                        .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
-                        .whereType<SellerDeliveryOption>()
-                        .toList()
+                          .whereType<Map>()
+                          .map((o) => SellerDeliveryOption.fromMap(o.cast<String, dynamic>()))
+                          .whereType<SellerDeliveryOption>()
+                          .toList()
                     : [],
                 minimumOrderQuantity: (productData[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
                 freeShipping: productData[Fields.freeShipping] ?? false,
                 isDigital: productData[Fields.isDigital] ?? false,
+                buyerNote: cartItem.buyerNote,
               ),
             );
           }
@@ -233,6 +181,50 @@ final cartWithDetailsProvider = FutureProvider.autoDispose<List<CartItemDetailMo
 // Provider for delivery instructions (stored during cart/checkout flow)
 final deliveryInstructionsProvider = StateProvider.autoDispose<String>((ref) => '');
 
+// ============================================================================
+// SINGLE CART ITEM DETAIL PROVIDER (Family)
+// ============================================================================
+
+/// Exposes product IDs that are in the cart but no longer available in the catalog.
+/// UI should use this to display "X items are no longer available" banners.
+final unavailableCartItemsProvider = FutureProvider.autoDispose<List<String>>((ref) async {
+  final cartItems = ref.watch(cartItemsProvider);
+  final productCache = await ref.watch(_cartProductsBatchProvider.future);
+
+  return cartItems.maybeWhen(
+    data: (items) {
+      return items.where((item) => !productCache.containsKey(item.productId)).map((item) => item.productId).toList();
+    },
+    orElse: () => <String>[],
+  );
+});
+
+/// Internal provider that batch-fetches product documents for all cart items.
+/// Returns a `Map<productId, productData>` for O(1) lookup by [cartItemDetailProvider].
+final _cartProductsBatchProvider = FutureProvider.autoDispose<Map<String, Map<String, dynamic>>>((ref) async {
+  final firestore = ref.watch(firestoreProvider);
+  final cartItems = ref.watch(cartItemsProvider);
+
+  final productIds = cartItems.maybeWhen(data: (items) => items.map((i) => i.productId).toList(), orElse: () => <String>[]);
+
+  if (productIds.isEmpty) return {};
+
+  final Map<String, Map<String, dynamic>> cache = {};
+
+  // Firestore whereIn limit is 30 — batch accordingly
+  for (int i = 0; i < productIds.length; i += 30) {
+    final chunk = productIds.skip(i).take(30).toList();
+    final snapshot = await firestore.collection(Collections.products).where(FieldPath.documentId, whereIn: chunk).get();
+    for (final doc in snapshot.docs) {
+      if (doc.exists) {
+        cache[doc.id] = doc.data();
+      }
+    }
+  }
+
+  return cache;
+});
+
 class CartController {
   final Ref _ref;
 
@@ -240,21 +232,6 @@ class CartController {
 
   CartRepository get _repository => _ref.read(cartRepositoryProvider);
   String? get _userId => _ref.read(userIdProvider);
-
-  /// Check if user can add this product (not their own)
-  Future<bool> canAddToCart(String productId) async {
-    final userId = _userId;
-    if (userId == null) return false;
-    
-    try {
-      final sellerId = await _repository.getProductSellerId(productId);
-      if (sellerId == null) return false;
-      return sellerId != userId;
-    } catch (e, st) {
-      Sentry.captureException(e, stackTrace: st);
-      return false;
-    }
-  }
 
   Future<bool> addToCart(String productId, int quantity) async {
     final userId = _userId;
@@ -265,9 +242,24 @@ class CartController {
       final sellerId = await _repository.getProductSellerId(productId);
       if (sellerId == null) return false;
       if (sellerId == userId) return false;
-      
+
       await _repository.addToCart(userId, productId, quantity);
       return true;
+    } catch (e, st) {
+      Sentry.captureException(e, stackTrace: st);
+      return false;
+    }
+  }
+
+  /// Check if user can add this product (not their own)
+  Future<bool> canAddToCart(String productId) async {
+    final userId = _userId;
+    if (userId == null) return false;
+
+    try {
+      final sellerId = await _repository.getProductSellerId(productId);
+      if (sellerId == null) return false;
+      return sellerId != userId;
     } catch (e, st) {
       Sentry.captureException(e, stackTrace: st);
       return false;
@@ -288,6 +280,12 @@ class CartController {
     final userId = _userId;
     if (userId == null) return;
     await _repository.removeFromCart(userId, productId);
+  }
+
+  Future<void> updateBuyerNote(String productId, String? note) async {
+    final userId = _userId;
+    if (userId == null) return;
+    await _repository.updateBuyerNote(userId, productId, note);
   }
 
   /// Updates the quantity of a product in the cart.

@@ -3,35 +3,25 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 abstract class CartRepository {
-  Stream<List<CartItemModel>> watchCart(String userId);
   Future<void> addToCart(String userId, String productId, int quantity);
-  Future<void> updateQuantity(String userId, String productId, int quantity);
-  Future<void> removeFromCart(String userId, String productId);
   Future<void> clearCart(String userId);
 
   /// Fetch the seller ID for a product to prevent self-purchase.
   /// Returns null if the product does not exist.
   Future<String?> getProductSellerId(String productId);
+  Future<void> removeFromCart(String userId, String productId);
+  Future<void> updateBuyerNote(String userId, String productId, String? note);
+  Future<void> updateQuantity(String userId, String productId, int quantity);
+
+  Stream<List<CartItemModel>> watchCart(String userId);
 }
 
 class FirebaseCartRepository implements CartRepository {
-  final FirebaseFirestore _firestore;
   static const int maxCartItemQuantity = 99;
   static const int minCartItemQuantity = 1;
+  final FirebaseFirestore _firestore;
 
   FirebaseCartRepository(this._firestore);
-
-  @override
-  Stream<List<CartItemModel>> watchCart(String userId) {
-    return _firestore
-        .collection(Collections.users)
-        .doc(userId)
-        .collection(Collections.cart)
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs.map((doc) => CartItemModel.fromMap(doc.data())).where((item) => item.quantity > 0).toList();
-        });
-  }
 
   @override
   Future<void> addToCart(String userId, String productId, int quantity) async {
@@ -53,21 +43,6 @@ class FirebaseCartRepository implements CartRepository {
   }
 
   @override
-  Future<void> updateQuantity(String userId, String productId, int quantity) async {
-    final cartItemRef = _firestore.collection(Collections.users).doc(userId).collection(Collections.cart).doc(productId);
-    if (quantity < minCartItemQuantity) {
-      await cartItemRef.delete();
-    } else {
-      await cartItemRef.update({Fields.quantity: quantity.clamp(minCartItemQuantity, maxCartItemQuantity)});
-    }
-  }
-
-  @override
-  Future<void> removeFromCart(String userId, String productId) async {
-    await _firestore.collection(Collections.users).doc(userId).collection(Collections.cart).doc(productId).delete();
-  }
-
-  @override
   Future<void> clearCart(String userId) async {
     final cartRef = _firestore.collection(Collections.users).doc(userId).collection(Collections.cart);
     final snapshot = await cartRef.get();
@@ -83,5 +58,37 @@ class FirebaseCartRepository implements CartRepository {
     final productDoc = await _firestore.collection(Collections.products).doc(productId).get();
     if (!productDoc.exists) return null;
     return productDoc.data()?[Fields.sellerId] as String?;
+  }
+
+  @override
+  Future<void> removeFromCart(String userId, String productId) async {
+    await _firestore.collection(Collections.users).doc(userId).collection(Collections.cart).doc(productId).delete();
+  }
+
+  @override
+  Future<void> updateBuyerNote(String userId, String productId, String? note) async {
+    final cartItemRef = _firestore.collection(Collections.users).doc(userId).collection(Collections.cart).doc(productId);
+    if (note == null) {
+      await cartItemRef.update({Fields.buyerNote: FieldValue.delete()}).catchError((_) {});
+    } else {
+      await cartItemRef.set({Fields.buyerNote: note}, SetOptions(merge: true));
+    }
+  }
+
+  @override
+  Future<void> updateQuantity(String userId, String productId, int quantity) async {
+    final cartItemRef = _firestore.collection(Collections.users).doc(userId).collection(Collections.cart).doc(productId);
+    if (quantity < minCartItemQuantity) {
+      await cartItemRef.delete();
+    } else {
+      await cartItemRef.update({Fields.quantity: quantity.clamp(minCartItemQuantity, maxCartItemQuantity)});
+    }
+  }
+
+  @override
+  Stream<List<CartItemModel>> watchCart(String userId) {
+    return _firestore.collection(Collections.users).doc(userId).collection(Collections.cart).snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => CartItemModel.fromMap(doc.data())).where((item) => item.quantity > 0).toList();
+    });
   }
 }

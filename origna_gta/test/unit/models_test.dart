@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/utils.dart';
 
 void main() {
   group('Address', () {
@@ -218,7 +218,13 @@ void main() {
         Fields.name: 'Test Product',
         Fields.price: 29.99,
         Fields.imageUrls: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
-        Fields.sellerAddress: {Fields.street: '123 Main St', Fields.city: 'Toronto', Fields.state: 'ON', Fields.postalCode: 'M5V 1A1', Fields.country: 'Canada'},
+        Fields.sellerAddress: {
+          Fields.street: '123 Main St',
+          Fields.city: 'Toronto',
+          Fields.state: 'ON',
+          Fields.postalCode: 'M5V 1A1',
+          Fields.country: 'Canada',
+        },
         Fields.description: 'A great product',
         Fields.sellerId: 'seller123',
         Fields.stockQuantity: 50,
@@ -307,7 +313,7 @@ void main() {
   });
 
   group('CartModel', () {
-     test('fromMap creates correct CartModel', () {
+    test('fromMap creates correct CartModel', () {
       final now = DateTime(2024, 1, 15, 10, 30);
       final map = {Fields.productId: 'prod123', Fields.quantity: 3, Fields.createdAt: Timestamp.fromDate(now)};
 
@@ -338,23 +344,30 @@ void main() {
 
   group('CartItemModel', () {
     test('fromMap creates correct CartItemModel', () {
-      final map = {Fields.productId: 'prod123', Fields.quantity: 5, Fields.createdAt: Timestamp.fromDate(DateTime(2024, 1, 15))};
+      final map = {
+        Fields.productId: 'prod123',
+        Fields.quantity: 5,
+        Fields.createdAt: Timestamp.fromDate(DateTime(2024, 1, 15)),
+        Fields.buyerNote: 'Gift for friend',
+      };
 
       final item = CartItemModel.fromMap(map);
 
       expect(item.productId, 'prod123');
       expect(item.quantity, 5);
+      expect(item.buyerNote, 'Gift for friend');
     });
 
     test('toMap returns correct map', () {
       final now = Timestamp.fromDate(DateTime(2024, 1, 15));
-      final item = CartItemModel(productId: 'prod123', quantity: 3, createdAt: now);
+      final item = CartItemModel(productId: 'prod123', quantity: 3, createdAt: now, buyerNote: 'Gift wrapped please');
 
       final map = item.toMap();
 
       expect(map[Fields.productId], 'prod123');
       expect(map[Fields.quantity], 3);
       expect(map[Fields.createdAt], now);
+      expect(map[Fields.buyerNote], 'Gift wrapped please');
     });
   });
 
@@ -407,12 +420,7 @@ void main() {
     });
 
     test('dollar getters compute correctly from cents', () {
-      final payout = SellerPayout(
-        sellerId: 'seller123',
-        amountCents: 10000,
-        platformFeeCents: 250,
-        netAmountCents: 9750,
-      );
+      final payout = SellerPayout(sellerId: 'seller123', amountCents: 10000, platformFeeCents: 250, netAmountCents: 9750);
 
       expect(payout.amount, 100.0);
       expect(payout.platformFee, 2.5);
