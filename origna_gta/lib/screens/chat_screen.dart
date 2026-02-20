@@ -66,19 +66,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       appBar: AppBarFactory.simple(title: widget.productTitle),
       body: Column(
         children: [
-          // Error or paywall
-          if (vmState.errorMessage != null)
-            vmState.errorMessage!.contains('Premium')
-                ? PremiumPaywallWidget(featureName: 'Chat with Sellers')
-                : Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(vmState.errorMessage!, style: TextStyle(color: DesignTokens.error)),
-                  ),
-
-          if (vmState.isLoading && vmState.chatId == null)
+          if (vmState.errorMessage != null && vmState.errorMessage!.contains('Premium'))
+            Expanded(
+              child: Center(
+                child: PremiumPaywallWidget(featureName: 'Chat with Sellers'),
+              ),
+            )
+          else if (vmState.errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(vmState.errorMessage!, style: TextStyle(color: DesignTokens.error)),
+            )
+          else if (vmState.isLoading && vmState.chatId == null)
             const Expanded(child: Center(child: ModernLoadingIndicator()))
           else if (vmState.chatId != null) ...[
-            // Messages list
             Expanded(
               child: _MessagesList(
                 chatId: vmState.chatId!,
@@ -88,8 +89,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 onNewMessages: _scrollToBottom,
               ),
             ),
-
-            // Message input
             _MessageInput(
               controller: _textController,
               isDark: isDark,
