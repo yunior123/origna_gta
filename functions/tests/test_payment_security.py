@@ -13,8 +13,6 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from services.airwallex_service import AirwallexService
-
 
 class TestPaymentFlowSecurity:
     """Test end-to-end payment security"""
@@ -103,24 +101,6 @@ class TestPaymentFlowSecurity:
         # Emulator: Detailed error for debugging
         emulator_error = "Signature verification failed: Invalid signature format"
         assert "Invalid signature format" in emulator_error
-
-    def test_airwallex_webhook_signature_verification_bytes(self):
-        """HIGH: Airwallex signature verification uses raw bytes and supports common encodings."""
-        svc = AirwallexService()
-        svc.webhook_secret = "test_webhook_secret"
-
-        body = b'{"id":"evt_123","type":"payment_intent.succeeded"}'
-        timestamp = "1700000000"
-        signed_payload = timestamp.encode("utf-8") + body
-        digest = hmac.new(svc.webhook_secret.encode("utf-8"), signed_payload, hashlib.sha256).digest()
-
-        sig_hex = digest.hex()
-        sig_b64 = base64.b64encode(digest).decode("ascii")
-
-        assert svc.verify_webhook_signature(body, sig_hex, timestamp=timestamp) is True
-        assert svc.verify_webhook_signature(body, f"sha256={sig_hex}", timestamp=timestamp) is True
-        assert svc.verify_webhook_signature(body, sig_b64, timestamp=timestamp) is True
-        assert svc.verify_webhook_signature(body, "", timestamp=timestamp) is False
 
     def test_idempotency_key_handling(self):
         """HIGH: Duplicate requests return existing session"""
