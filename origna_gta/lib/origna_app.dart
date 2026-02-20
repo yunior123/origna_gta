@@ -35,6 +35,8 @@ import 'package:origna_gta/screens/seller_setup_screen.dart';
 import 'package:origna_gta/screens/shipping_approval_screen.dart' deferred as shipping_approval;
 import 'package:origna_gta/screens/chat_screen.dart';
 import 'package:origna_gta/screens/subscription_screen.dart';
+import 'package:origna_gta/screens/subscription_cancel_screen.dart';
+import 'package:origna_gta/screens/subscription_success_screen.dart';
 import 'package:origna_gta/screens/terms_of_service_screen.dart' deferred as terms;
 import 'package:origna_gta/services/notification_service.dart';
 import 'package:origna_gta/services/session_timeout_service.dart';
@@ -376,12 +378,26 @@ Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
   }
 
   // Subscription screen
-  if (uri.path == AppRoutes.subscription ||
-      uri.path == AppRoutes.subscriptionSuccess ||
-      uri.path == AppRoutes.subscriptionCancel) {
+  if (uri.path == AppRoutes.subscription) {
     return MaterialPageRoute(
       settings: settings,
       builder: (_) => const AuthRequiredGate(child: SubscriptionScreen()),
+    );
+  }
+
+  // Subscription success (redirect from Stripe)
+  if (uri.path == AppRoutes.subscriptionSuccess) {
+    return MaterialPageRoute(
+      settings: settings,
+      builder: (_) => const AuthRequiredGate(child: SubscriptionSuccessScreen()),
+    );
+  }
+
+  // Subscription cancel (redirect from Stripe)
+  if (uri.path == AppRoutes.subscriptionCancel) {
+    return MaterialPageRoute(
+      settings: settings,
+      builder: (_) => const AuthRequiredGate(child: SubscriptionCancelScreen()),
     );
   }
 
