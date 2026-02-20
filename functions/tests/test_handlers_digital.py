@@ -44,7 +44,7 @@ def test_activate_license_success(mocker):
 
     assert result["approved"] is True
     assert result["licenseKey"] == "ABCD-EFGH-IJKL-MNOP"
-    assert "downloadUrls" in result
+    assert "productName" in result
 
 
 def test_activate_license_not_found(mocker):

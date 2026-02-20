@@ -1,5 +1,5 @@
 """
-Tests de Sécurité des Webhooks Stripe et Airwallex
+Tests de Sécurité des Webhooks Stripe
 
 Ce module contient les tests pour valider:
 1. Vérification de signature
@@ -216,135 +216,6 @@ class TestStripeWebhookSecurity:
         assert any(term in response_text.lower() for term in ["invalid", "error", "bad request", "internal"])
 
 
-class TestAirwallexWebhookSecurity:
-    """Tests de sécurité pour le webhook Airwallex"""
-
-    def test_signature_verification_implemented(self):
-        """
-        CRITIQUE: Vérifier que la signature est VÉRIFIÉE (correction du bug)
-
-        Scénario: Webhook Airwallex avec signature
-        Attendu: verify_webhook_signature() est appelé AVANT traitement
-        """
-        # Arrange
-        mock_request = Mock()
-        mock_request.headers.get = Mock(
-            side_effect=lambda h, default=None: {
-                "x-signature": "test_signature",
-                "X-Signature": "test_signature",
-                "x-timestamp": "1700000000",
-                "X-Timestamp": "1700000000",
-                "X-Forwarded-For": "192.168.1.1",
-            }.get(h, default)
-        )
-
-        payload = json.dumps(
-            {"id": "evt_test", "name": "payment_intent.succeeded", "data": {"object": {"id": "pi_123"}}}
-        ).encode()
-        mock_request.data = payload
-
-        # Mock RateLimiter, get_db, and AirwallexService
-        with (
-            patch("services.rate_limiter.RateLimiter") as MockRateLimiter,
-            patch("handlers.payment_airwallex.get_db") as mock_get_db,
-            patch("handlers.payment_airwallex.get_airwallex_service") as mock_service,
-        ):
-            mock_limiter = Mock()
-            mock_limiter.check_rate_limit = Mock(return_value=(True, "OK"))
-            MockRateLimiter.return_value = mock_limiter
-            mock_get_db.return_value = Mock()
-            mock_service.return_value.verify_webhook_signature = Mock(return_value=False)
-
-            # Act
-            from handlers.payment_airwallex import airwallex_webhook
-
-            response = airwallex_webhook(mock_request)
-
-            # Assert
-            assert response.status_code == 400
-            assert "Invalid signature" in response.response[0].decode()
-
-            # CRITIQUE: Vérifier que verify_webhook_signature a été appelé
-            mock_service.return_value.verify_webhook_signature.assert_called_once_with(
-                payload,
-                "test_signature",
-                timestamp="1700000000",
-            )
-
-    def test_json_parsing_after_signature_verification(self):
-        """
-        SÉCURITÉ: JSON ne doit être parsé QU'APRÈS vérification de signature
-
-        Scénario: Signature invalide avec JSON valide
-        Attendu: Rejeté AVANT parsing (pas d'erreur JSON)
-        """
-        # Arrange
-        mock_request = Mock()
-        mock_request.headers.get = Mock(
-            side_effect=lambda h, default=None: {
-                "x-signature": "invalid_sig",
-                "X-Signature": "invalid_sig",
-                "x-timestamp": "1700000000",
-                "X-Timestamp": "1700000000",
-                "X-Forwarded-For": "192.168.1.1",
-            }.get(h, default)
-        )
-        mock_request.data = b'{"id": "evt_test", "name": "test"}'
-
-        with (
-            patch("services.rate_limiter.RateLimiter") as MockRateLimiter,
-            patch("handlers.payment_airwallex.get_db") as mock_get_db,
-            patch("handlers.payment_airwallex.get_airwallex_service") as mock_service,
-        ):
-            mock_limiter = Mock()
-            mock_limiter.check_rate_limit = Mock(return_value=(True, "OK"))
-            MockRateLimiter.return_value = mock_limiter
-            mock_get_db.return_value = Mock()
-            mock_service.return_value.verify_webhook_signature = Mock(return_value=False)
-
-            # Act
-            from handlers.payment_airwallex import airwallex_webhook
-
-            response = airwallex_webhook(mock_request)
-
-            # Assert
-            assert response.status_code == 400
-            assert "Invalid signature" in response.response[0].decode()
-            # Si JSON avait été parsé avant, on aurait une erreur différente
-
-    def test_rate_limiting_protects_against_ddos(self):
-        """
-        SÉCURITÉ: Rate limiting protège contre DDoS
-
-        Scénario: 101 webhooks Airwallex de la même IP
-        Attendu: 100 OK, puis 429 Too Many Requests
-        """
-        # Arrange
-        mock_request = Mock()
-        mock_request.headers.get = Mock(
-            side_effect=lambda h, default=None: {"X-Signature": "valid_sig", "X-Forwarded-For": "192.168.1.200"}.get(
-                h, default
-            )
-        )
-        mock_request.data = b'{"id": "evt_ddos", "name": "test"}'
-
-        with (
-            patch("services.rate_limiter.RateLimiter") as MockRateLimiter,
-            patch("handlers.payment_airwallex.get_db") as mock_get_db,
-        ):
-            mock_limiter = Mock()
-            mock_limiter.check_rate_limit = Mock(return_value=(False, "Rate limit exceeded"))
-            MockRateLimiter.return_value = mock_limiter
-            mock_get_db.return_value = Mock()
-
-            # Act
-            from handlers.payment_airwallex import airwallex_webhook
-
-            response = airwallex_webhook(mock_request)
-
-            # Assert
-            assert response.status_code == 429
-
 
 class TestWebhookSignatureCryptography:
     """Tests de cryptographie pour les signatures"""
@@ -375,45 +246,6 @@ class TestWebhookSignatureCryptography:
             assert event is not None
         except stripe.error.SignatureVerificationError:
             pytest.fail("Signature valide rejetée")
-
-    def test_airwallex_hmac_sha256_hex_encoding(self):
-        """
-        SÉCURITÉ: Signature Airwallex HMAC-SHA256 (hex encoding)
-        """
-        # Arrange
-        secret = "airwallex_webhook_secret_xyz"
-        payload = b'{"id": "evt_test", "name": "payment_intent.succeeded"}'
-
-        # Compute signature (hex encoding)
-        computed_digest = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256)
-        expected_sig_hex = computed_digest.hexdigest()
-
-        # Act - Simulate verification
-        is_valid = hmac.compare_digest(computed_digest.hexdigest(), expected_sig_hex)
-
-        # Assert
-        assert is_valid is True
-
-    def test_airwallex_hmac_sha256_base64_encoding(self):
-        """
-        SÉCURITÉ: Signature Airwallex HMAC-SHA256 (base64 encoding)
-        """
-        import base64
-
-        # Arrange
-        secret = "airwallex_webhook_secret_xyz"
-        payload = b'{"id": "evt_test", "name": "payment_intent.succeeded"}'
-
-        # Compute signature (base64 encoding)
-        computed_digest = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).digest()
-        expected_sig_b64 = base64.b64encode(computed_digest).decode()
-
-        # Act - Simulate verification
-        decoded = base64.b64decode(expected_sig_b64)
-        is_valid = hmac.compare_digest(computed_digest, decoded)
-
-        # Assert
-        assert is_valid is True
 
 
 class TestRateLimiterSecurity:
@@ -604,22 +436,6 @@ class TestWebhookSecurityIntegration:
         # À implémenter avec fixtures Firestore
         pass
 
-    @pytest.mark.integration
-    def test_complete_airwallex_webhook_flow_secure(self):
-        """
-        TEST INTÉGRATION: Flow complet Airwallex avec toutes les protections
-
-        1. Rate limiting
-        2. Signature verification (NOUVEAU!)
-        3. JSON parsing (après signature)
-        4. Idempotency
-        5. Business logic
-        6. Audit trail
-        """
-        # Ce test nécessite un environnement de test complet
-        # À implémenter avec fixtures Firestore
-        pass
-
 
 # ===== FIXTURES =====
 
@@ -649,16 +465,6 @@ def valid_stripe_signature():
 
     return f"t={timestamp},v1={signature}"
 
-
-@pytest.fixture
-def valid_airwallex_signature():
-    """Génère une signature Airwallex valide pour tests"""
-    secret = "airwallex_webhook_secret"
-    payload = b'{"id": "evt_test", "name": "payment_intent.succeeded"}'
-
-    signature = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
-
-    return signature
 
 
 # ===== COMMANDES D'EXÉCUTION =====

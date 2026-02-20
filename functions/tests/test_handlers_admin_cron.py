@@ -1,6 +1,6 @@
 """
-Comprehensive unit tests for handlers/admin.py, payment_airwallex.py, and cron_jobs.py
-Tests MFA, user roles, GDPR compliance, Airwallex payments, and scheduled tasks
+Comprehensive unit tests for handlers/admin.py and cron_jobs.py
+Tests MFA, user roles, GDPR compliance, and scheduled tasks
 
 Run: pytest tests/test_handlers_admin_cron.py -v --cov
 """
@@ -293,52 +293,6 @@ class TestAdminHandlers:
 # NOTE: test_delete_account_gdpr_compliance moved to e2e/tests/ - requires full Firestore integration
 
 
-class TestAirwallexPayments:
-    """Test Airwallex payment handlers"""
-
-    @patch("handlers.payment_airwallex.get_utils")
-    @patch("handlers.payment_airwallex.get_collections")
-    @patch("handlers.payment_airwallex.get_airwallex_service")
-    @patch("handlers.payment_airwallex.get_db")
-    def test_create_airwallex_seller_account(
-        self, mock_get_db, mock_get_airwallex, mock_get_collections, mock_get_utils
-    ):
-        """Test Airwallex connected account creation"""
-        from handlers.payment_airwallex import airwallex_create_seller_account
-
-        mock_db = Mock()
-        mock_get_db.return_value = mock_db
-
-        # Mock collections
-        mock_collections = Mock()
-        mock_collections.USERS = "users"
-        mock_get_collections.return_value = mock_collections
-
-        # Mock utils
-        mock_utils = Mock()
-        mock_utils.create_success_response = lambda x: {"success": True, **x}
-        mock_get_utils.return_value = mock_utils
-
-        mock_airwallex_service = Mock()
-        mock_get_airwallex.return_value = mock_airwallex_service
-        mock_airwallex_service.create_connected_account.return_value = "acct_airwallex_123"
-
-        mock_user_ref = Mock()
-        mock_db.collection.return_value.document.return_value = mock_user_ref
-
-        mock_request = Mock()
-        mock_request.auth = Mock(uid="seller_123")
-        mock_request.data = {"email": "seller@example.com", "businessInfo": {"name": "Test Shop"}}
-
-        result = airwallex_create_seller_account(mock_request)
-
-        assert result["success"] is True
-        assert result["accountId"] == "acct_airwallex_123"
-        # Verify saved to DB
-        mock_user_ref.update.assert_called_once()
-
-
-# NOTE: Airwallex 3DS and webhook tests moved to e2e/tests/ - require full integration
 # NOTE: Cron job tests (auto_capture, expired_auth, archive, algolia_sync, rate_limits) moved to e2e/tests/
 
 
