@@ -21,20 +21,21 @@ import {
   fullCheckoutAndPay,
   fillStripeCheckout,
   waitForOrderStatus,
+  verifyEmailSent,
   FUNCTIONS_URL,
   TEST_ACCOUNTS,
 } from './api-helpers';
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const BUYER_EMAIL    = TEST_ACCOUNTS.BUYER_EMAIL;
-const DIGITAL_PASS   = 'REDACTED_TEST_PASSWORD';
+const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
+const DIGITAL_PASS = 'REDACTED_TEST_PASSWORD';
 
 /** product_031 = FXCleaner software (macOS) */
-const DIGITAL_SW_ID  = 'product_031';
+const DIGITAL_SW_ID = 'product_031';
 /** product_010 = Canadian History eBook Bundle */
 const DIGITAL_BOOK_ID = 'product_010';
 /** product_001 = physical Scarf — used in mixed cart */
-const PHYSICAL_ID     = 'product_001';
+const PHYSICAL_ID = 'product_001';
 
 // ════════════════════════════════════════════════════════════════════════════
 // SUITE A · DIGITAL PRODUCT CATALOGUE
@@ -79,7 +80,7 @@ test.describe('A. Digital Product Catalogue', () => {
       readDoc(`products/${DIGITAL_SW_ID}`),
       readDoc(`products/${DIGITAL_BOOK_ID}`),
     ]);
-    const sw   = parseDoc(swDoc);
+    const sw = parseDoc(swDoc);
     const book = parseDoc(bookDoc);
 
     for (const [label, p] of [['software', sw], ['book', book]] as const) {
@@ -142,6 +143,12 @@ test.describe('B. Digital-Only Checkout', () => {
     expect(lic.status, 'License must be active').toBe('active');
     expect(lic.digitalType, 'License type must match product').toBe('software');
     expect(lic.userId, 'License must belong to buyer').toBe(auth.localId);
+
+    // Verify order confirmation email was sent via _mail_logs
+    const authAdmin = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    const emails = await verifyEmailSent(BUYER_EMAIL, authAdmin.idToken);
+    const orderEmail = emails.find(e => e.subject?.includes('Order Confirmed'));
+    expect(orderEmail, 'Buyer should receive an order confirmation email').toBeTruthy();
   });
 
   test('B.3 Buy digital book product → book license created with bookSourceUrl', async ({ page }) => {
@@ -161,6 +168,12 @@ test.describe('B. Digital-Only Checkout', () => {
     expect(lic.digitalType, 'Book license type').toBe('book');
     expect(lic.bookSourceUrl, 'bookSourceUrl stored on license').toBeTruthy();
     expect(lic.status).toBe('active');
+
+    // Verify order confirmation email
+    const authAdmin = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    const emails = await verifyEmailSent(BUYER_EMAIL, authAdmin.idToken);
+    const orderEmail = emails.find(e => e.subject?.includes('Order Confirmed'));
+    expect(orderEmail, 'Buyer should receive an order confirmation email for the book').toBeTruthy();
   });
 });
 
@@ -177,7 +190,7 @@ test.describe('C. Mixed Cart — Digital + Physical', () => {
       auth.localId,
       [
         { productId: DIGITAL_SW_ID, quantity: 1 },
-        { productId: PHYSICAL_ID,   quantity: 1 },
+        { productId: PHYSICAL_ID, quantity: 1 },
       ],
       auth.idToken,
     );
@@ -196,7 +209,7 @@ test.describe('C. Mixed Cart — Digital + Physical', () => {
       auth.localId,
       [
         { productId: DIGITAL_SW_ID, quantity: 1 },
-        { productId: PHYSICAL_ID,   quantity: 1 },
+        { productId: PHYSICAL_ID, quantity: 1 },
       ],
       auth.idToken,
     );
@@ -211,7 +224,7 @@ test.describe('C. Mixed Cart — Digital + Physical', () => {
     const order = await waitForOrderStatus(session.orderId, ['confirmed', 'delivered'], auth.idToken, 90_000);
     expect(order.items.length, 'Order must have 2 items').toBeGreaterThanOrEqual(2);
 
-    const digitalItem  = order.items.find((it: any) => it.productId === DIGITAL_SW_ID);
+    const digitalItem = order.items.find((it: any) => it.productId === DIGITAL_SW_ID);
     const physicalItem = order.items.find((it: any) => it.productId === PHYSICAL_ID);
     expect(digitalItem, 'Digital item in order').toBeTruthy();
     expect(physicalItem, 'Physical item in order').toBeTruthy();
@@ -219,6 +232,12 @@ test.describe('C. Mixed Cart — Digital + Physical', () => {
     // Digital item gets a license; physical does not
     expect(digitalItem.isDigital).toBe(true);
     expect(physicalItem.isDigital).toBeFalsy();
+
+    // Verify order confirmation email was sent via _mail_logs
+    const authAdmin = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    const emails = await verifyEmailSent(BUYER_EMAIL, authAdmin.idToken);
+    const orderEmail = emails.find(e => e.subject?.includes('Order Confirmed'));
+    expect(orderEmail, 'Buyer should receive an order confirmation email for mixed cart').toBeTruthy();
   });
 
   test('C.3 Shipping cost is nonzero in mixed cart (physical item triggers shipping calc)', async () => {
@@ -227,7 +246,7 @@ test.describe('C. Mixed Cart — Digital + Physical', () => {
       auth.localId,
       [
         { productId: DIGITAL_SW_ID, quantity: 1 },
-        { productId: PHYSICAL_ID,   quantity: 1 },
+        { productId: PHYSICAL_ID, quantity: 1 },
       ],
       auth.idToken,
     );

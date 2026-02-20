@@ -1295,37 +1295,127 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             payout_count += 1
 
         payout_batch.commit()
-
     if payout_count > 0:
         logger.info(f"GDPR: Anonymized {payout_count} payout records for deleted user {user_id}")
 
-    # Delete cart and favorites (subcollections, paginated)
+    # GDPR: Anonymize or delete product questions (where user is asker or seller)
+    # 1. User as Asker (anonymize askerId)
     while True:
-        cart_docs = list(
-            get_db().collection(Collections.USERS).document(user_id).collection(Collections.CART).limit(500).stream()
+        asker_questions = list(
+            get_db().collection(Collections.PRODUCT_QUESTIONS).where(Fields.ASKER_ID, "==", user_id).limit(500).stream()
         )
-        if not cart_docs:
+        if not asker_questions:
             break
-        cart_batch = get_db().batch()
-        for doc in cart_docs:
-            cart_batch.delete(doc.reference)
-        cart_batch.commit()
+        q_batch = get_db().batch()
+        for q_doc in asker_questions:
+            q_batch.update(q_doc.reference, {Fields.ASKER_ID: anonymized_id})
+        q_batch.commit()
 
+    # 2. User as Seller (anonymize sellerId)
     while True:
-        favorites_docs = list(
+        seller_questions = list(
+            get_db().collection(Collections.PRODUCT_QUESTIONS).where(Fields.SELLER_ID, "==", user_id).limit(500).stream()
+        )
+        if not seller_questions:
+            break
+        q_batch = get_db().batch()
+        for q_doc in seller_questions:
+            q_batch.update(q_doc.reference, {Fields.SELLER_ID: anonymized_id})
+        q_batch.commit()
+
+    # GDPR: Anonymize product ratings (keep the rating but unlink identity)
+    while True:
+        user_ratings = list(
+            get_db().collection(Collections.PRODUCT_RATINGS).where(Fields.USER_ID, "==", user_id).limit(500).stream()
+        )
+        if not user_ratings:
+            break
+        r_batch = get_db().batch()
+        for r_doc in user_ratings:
+            r_batch.update(r_doc.reference, {Fields.USER_ID: anonymized_id})
+        r_batch.commit()
+
+    # GDPR: Delete stock notifications (contains email)
+    while True:
+        stock_notifs = list(
+            get_db().collection(Collections.STOCK_NOTIFICATIONS).where(Fields.USER_ID, "==", user_id).limit(500).stream()
+        )
+        if not stock_notifs:
+            break
+        s_batch = get_db().batch()
+        for s_doc in stock_notifs:
+            s_batch.delete(s_doc.reference)
+        s_batch.commit()
+
+    # GDPR: Anonymize or delete chat threads
+    while True:
+        user_chats = list(
             get_db()
-            .collection(Collections.USERS)
-            .document(user_id)
-            .collection(Collections.FAVORITES)
-            .limit(500)
+            .collection(Collections.CHATS)
+            .where(
+                Fields.BUYER_ID if "buyer" in user_data.get(Fields.ROLES, []) else Fields.SELLER_ID,
+                "==",
+                user_id,
+            )
+            .limit(100)
             .stream()
         )
-        if not favorites_docs:
-            break
-        fav_batch = get_db().batch()
-        for doc in favorites_docs:
-            fav_batch.delete(doc.reference)
-        fav_batch.commit()
+        # Note: A user could be both buyer and seller, but usually one role predominates in a chat.
+        # Just to be safe, we check both for each user.
+        if not user_chats:
+            # Try the other role just in case
+            user_chats = list(
+                get_db()
+                .collection(Collections.CHATS)
+                .where(
+                    Fields.SELLER_ID if "buyer" in user_data.get(Fields.ROLES, []) else Fields.BUYER_ID,
+                    "==",
+                    user_id,
+                )
+                .limit(100)
+                .stream()
+            )
+            if not user_chats:
+                break
+
+        for chat_doc in user_chats:
+            # GDPR: Delete all messages in the thread first
+            while True:
+                messages = list(chat_doc.reference.collection(Collections.CHAT_MESSAGES).limit(500).stream())
+                if not messages:
+                    break
+                m_batch = get_db().batch()
+                for m_doc in messages:
+                    m_batch.delete(m_doc.reference)
+                m_batch.commit()
+
+            # Now anonymize or delete the thread
+            # If both parties are deleted, we can delete the thread. For now, anonymize.
+            chat_doc.reference.update(
+                {
+                    Fields.BUYER_ID: anonymized_id if chat_doc.to_dict().get(Fields.BUYER_ID) == user_id else chat_doc.to_dict().get(Fields.BUYER_ID),
+                    Fields.SELLER_ID: anonymized_id if chat_doc.to_dict().get(Fields.SELLER_ID) == user_id else chat_doc.to_dict().get(Fields.SELLER_ID),
+                    Fields.LAST_MESSAGE: "[Chat history deleted]",
+                }
+            )
+
+    # Delete cart, favorites, address book, notifications, warehouses, and metrics (subcollections, paginated)
+    for sub_coll in [
+        Collections.CART,
+        Collections.FAVORITES,
+        Collections.ADDRESSES,
+        Collections.NOTIFICATIONS,
+        Collections.WAREHOUSES,
+        Collections.SELLER_METRICS,
+    ]:
+        while True:
+            docs = list(get_db().collection(Collections.USERS).document(user_id).collection(sub_coll).limit(500).stream())
+            if not docs:
+                break
+            batch = get_db().batch()
+            for doc in docs:
+                batch.delete(doc.reference)
+            batch.commit()
 
     # Delete Firebase Auth user
     try:
@@ -1465,3 +1555,51 @@ def unsubscribe_email(req: https_fn.CallableRequest) -> dict[str, Any]:
     logger.info(f"User {user_id} unsubscribed from marketing emails (CASL)")
 
     return create_success_response({ApiKeys.MESSAGE: "Successfully unsubscribed from marketing emails"})
+
+
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def e2e_get_mail_logs(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """DEV ONLY: Get mail logs for E2E tests by email."""
+    from config import CURRENT_ENV, Environment
+
+    if CURRENT_ENV == Environment.PRODUCTION:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.PERMISSION_DENIED, message="Not allowed in production environment"
+        )
+
+    # Verify caller is authenticated
+    if not req.auth:
+        raise https_fn.HttpsError(code=https_fn.FunctionsErrorCode.UNAUTHENTICATED, message="Not authenticated")
+    user_id = req.auth.uid
+
+    db = get_db()
+    user_doc = db.collection(Collections.USERS).document(user_id).get()
+
+    if not user_doc.exists or UserRoleValues.ADMIN not in user_doc.to_dict().get(Fields.ROLES, []):
+        raise https_fn.HttpsError(code=https_fn.FunctionsErrorCode.PERMISSION_DENIED, message="Admin role required")
+
+    to_email = req.data.get("to")
+    if not to_email:
+        raise https_fn.HttpsError(code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT, message="Missing 'to' parameter")
+
+    # Get recent emails sent to this address
+    from google.cloud.firestore_v1.base_query import FieldFilter
+
+    logs = (
+        db.collection("_mail_logs")
+        .where(filter=FieldFilter("to", "==", to_email))
+        .order_by("sentAt", direction=get_firestore().Query.DESCENDING)
+        .limit(10)
+        .stream()
+    )
+
+    results = []
+    for log in logs:
+        data = log.to_dict()
+        data["id"] = log.id
+        # Convert timestamp to ISO string for JSON serialization
+        if "sentAt" in data and data["sentAt"]:
+            data["sentAt"] = data["sentAt"].isoformat()
+        results.append(data)
+
+    return create_success_response({"logs": results})

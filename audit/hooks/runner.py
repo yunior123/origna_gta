@@ -18,7 +18,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from .config import OUTPUT_DIR, PROJECT_ROOT, CRITICAL, HIGH, MEDIUM, SEVERITY_ORDER, ANTHROPIC_MODEL
+from .config import (
+    OUTPUT_DIR, PROJECT_ROOT, CRITICAL, HIGH, MEDIUM, SEVERITY_ORDER,
+    ANTHROPIC_MODEL, DEEPSEEK_MODEL
+)
 from .base import (
     BaseHook, HookResult, Finding,
     get_all_hooks, get_hook, get_git_changed_files,
@@ -77,9 +80,10 @@ class HookRunner:
         # Instantiate hooks
         hook_instances = [cls(provider=self.provider) for cls in self.hook_classes]
 
+        model_name = ANTHROPIC_MODEL if self.provider == "anthropic" else DEEPSEEK_MODEL
         print(f"\n{'='*60}")
         print(f"🪝 Running {len(hook_instances)} audit hook(s)")
-        print(f"   Model: {ANTHROPIC_MODEL}")
+        print(f"   Model: {model_name}")
         print(f"   Mode: {'changed files only' if self.changed_only else 'full codebase'}")
         print(f"{'='*60}")
 

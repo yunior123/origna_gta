@@ -102,25 +102,9 @@
           "required": false,
           "description": "Seller payout provider",
           "values": [
-            "stripe",
-            "airwallex"
+            "stripe"
           ],
           "default": "stripe"
-        },
-        "airwallexAccountId": {
-          "type": "string",
-          "required": false,
-          "description": "Airwallex connected account ID"
-        },
-        "airwallexCustomerId": {
-          "type": "string",
-          "required": false,
-          "description": "Airwallex customer ID"
-        },
-        "airwallexStatus": {
-          "type": "string",
-          "required": false,
-          "description": "Airwallex account status"
         },
         "suspended": {
           "type": "boolean",
@@ -2486,7 +2470,8 @@
           "values": [
             "pending",
             "shipped",
-            "delivered"
+            "delivered",
+            "refunded"
           ]
         },
         "trackingNumber": {
@@ -2899,8 +2884,7 @@
     },
     "paymentProviders": {
       "supported": [
-        "stripe",
-        "airwallex"
+        "stripe"
       ],
       "comingSoon": [
         "paypal",

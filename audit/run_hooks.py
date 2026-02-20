@@ -109,9 +109,9 @@ Available hooks:
     )
     parser.add_argument(
         "--provider", "-p",
-        choices=["anthropic"],
+        choices=["anthropic", "deepseek"],
         default="anthropic",
-        help="LLM provider (Anthropic API with Claude Opus 4)",
+        help="LLM provider (anthropic: Claude Opus 4, deepseek: DeepSeek Chat)",
     )
     parser.add_argument(
         "--sequential", "-s",

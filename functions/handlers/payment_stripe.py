@@ -1630,15 +1630,41 @@ def process_checkout_session_completed(session: dict) -> str | None:
             return f"Order {order_id} cancelled - seller suspended"
 
     # Update order status
-    order_ref.update(
-        {
-            Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
-            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
-            Fields.STRIPE_PAYMENT_INTENT_ID: session.get("payment_intent"),
-            Fields.CAPTURED_AT: get_server_timestamp(),
-            Fields.UPDATED_AT: get_server_timestamp(),
-        }
-    )
+    # AUDIT FIX (CRITICAL-001): Correctly reflect manual capture status.
+    # We mark as AUTHORIZED instead of CAPTURED because capture_method is manual.
+    # The actual capture happens in capture_payment (on delivery) or auto-capture cron.
+    pi_id = session.get("payment_intent")
+
+    # Initialize update data
+    update_data = {
+        Fields.ORDER_STATUS: OrderStatusValues.CONFIRMED,
+        Fields.STRIPE_PAYMENT_INTENT_ID: pi_id,
+        Fields.UPDATED_AT: get_server_timestamp(),
+    }
+
+    # Verify PI status to be robust: if it's already captured (unlikely here but possible on retries),
+    # reflect that accurately. Otherwise, mark as AUTHORIZED.
+    if pi_id:
+        try:
+            # We fetch the PI to know its actual state (authorized vs captured)
+            pi = stripe.PaymentIntent.retrieve(pi_id)
+            if pi.status == "requires_capture":
+                update_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.AUTHORIZED
+            elif pi.status in ["succeeded", "processing"]:
+                update_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.CAPTURED
+                update_data[Fields.CAPTURED_AT] = get_server_timestamp()
+            else:
+                # Fallback to AUTHORIZED if state is ambiguous but not failed
+                update_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.AUTHORIZED
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to check PI status for order {order_id}: {e}")
+            update_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.AUTHORIZED
+    else:
+        # No PI ID present (e.g. zero-amount order)
+        update_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.CAPTURED
+        update_data[Fields.CAPTURED_AT] = get_server_timestamp()
+
+    order_ref.update(update_data)
 
     # Send confirmation emails
     try:
@@ -3397,17 +3423,16 @@ def _capture_payment_impl(req: https_fn.CallableRequest) -> dict[str, Any]:
             raise https_fn.HttpsError(
                 "internal", f"No charge found after capturing PI {payment_intent_id}. Cannot create transfers."
             )
-            
+
         # SECURITY FIX (CRITICAL-003): Capture-Dispute Race Window
         # Check if a dispute was filed exactly as we captured
         charge = stripe.Charge.retrieve(charge_id)
         if charge.dispute:
             logger.error(f"🚨 CRITICAL: Charge {charge_id} for order {order_id} is already disputed! Aborting payouts.")
             # Update order status to reflect dispute, skipping payouts
-            get_db().collection(Collections.ORDERS).document(order_id).update({
-                Fields.PAYMENT_STATUS: PaymentStatusValues.DISPUTED,
-                Fields.UPDATED_AT: get_server_timestamp()
-            })
+            get_db().collection(Collections.ORDERS).document(order_id).update(
+                {Fields.PAYMENT_STATUS: PaymentStatusValues.DISPUTED, Fields.UPDATED_AT: get_server_timestamp()}
+            )
             raise https_fn.HttpsError(
                 "failed-precondition", "Payment is currently disputed and cannot be processed for payout."
             )

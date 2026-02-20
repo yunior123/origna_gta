@@ -123,9 +123,11 @@ abstract final class ApiKeys {
 /// Business rule constants
 abstract final class BusinessRules {
   static const platformFeePercent = 2.5;
-  static const autoConfirmDays = 5; // Must be < authorizationExpiryDays (2-day safety margin)
+  static const autoConfirmDays =
+      5; // Must be < authorizationExpiryDays (2-day safety margin)
   static const authorizationExpiryDays = 7;
-  static const returnWindowDays = 7; // No returns/refunds after 7 days post-delivery
+  static const returnWindowDays =
+      7; // No returns/refunds after 7 days post-delivery
   static const maxCaptureAttempts = 3;
   static const defaultCurrency = 'cad';
   static const allowedShippingCountries = {'Canada', 'CA'};
@@ -147,6 +149,10 @@ abstract final class BusinessRules {
     'SK': {'GST': 5.0, 'PST': 6.0},
     'YT': {'GST': 5.0},
   };
+}
+
+abstract final class CartVerificationReasonValues {
+  static const deactivated = 'deactivated';
 }
 
 /// Product category IDs
@@ -265,15 +271,18 @@ abstract final class Collections {
   static const cart = 'cart'; // users/{userId}/cart
   static const favorites = 'favorites'; // users/{userId}/favorites
   static const notifications = 'notifications'; // users/{uid}/notifications
-  static const productQuestions = 'product_questions'; // products/{productId}/product_questions
+  static const productQuestions =
+      'product_questions'; // products/{productId}/product_questions
   static const addresses = 'addresses'; // users/{userId}/addresses
   static const stockNotifications = 'stock_notifications'; // Tasks 07
   static const sellerMetrics = 'seller_metrics'; // Tasks 11
 
   // Digital Products Collections
   static const licenses = 'licenses'; // users/{userId}/licenses
-  static const bookAccessTokens = 'book_access_tokens'; // users/{userId}/book_access_tokens
-  static const softwareAccessTokens = 'software_access_tokens'; // users/{userId}/software_access_tokens
+  static const bookAccessTokens =
+      'book_access_tokens'; // users/{userId}/book_access_tokens
+  static const softwareAccessTokens =
+      'software_access_tokens'; // users/{userId}/software_access_tokens
 
   // Premium & Chat collections
   static const subscriptions = 'subscriptions'; // subscriptions/{userId}
@@ -376,13 +385,15 @@ abstract final class Documents {
 abstract final class EmailConfig {
   static const supportEmail = 'support@orignaventures.ca';
   static const senderName = 'Origna GTA';
-  static const copyrightText = '\u00a9 2026 Origna Ventures Inc. All rights reserved.';
+  static const copyrightText =
+      '\u00a9 2026 Origna Ventures Inc. All rights reserved.';
   static const appTagline = "Canada's Modern Marketplace";
   static const prodUrl = 'https://orignagta.ca';
 
   // === CASL COMPLIANCE ===
   /// Physical mailing address — REQUIRED by CASL in every commercial email
-  static const physicalAddress = 'Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada';
+  static const physicalAddress =
+      'Origna Ventures Inc., 136 Shaver Ave N, Toronto, ON M9B 4N8, Canada';
 
   /// GST/HST Registration Number — REQUIRED on all receipts (Excise Tax Act)
   static const gstHstNumber = '708286364RC0001';
@@ -394,6 +405,10 @@ abstract final class EmailConfig {
   /// NOTE: Using support@ until dedicated privacy@ mailbox is provisioned
   static const privacyOfficerEmail = 'support@orignaventures.ca';
   static const privacyOfficerName = 'Yunior Rodriguez Osorio';
+}
+
+abstract final class ErrorCodeValues {
+  static const priceChanged = 'PRICE_CHANGED';
 }
 
 /// Firestore document field names.
@@ -483,7 +498,8 @@ abstract final class Fields {
   static const sellerSku = 'sellerSku';
   static const warehouseIds = 'warehouseIds';
   static const warehouseStock = 'warehouseStock';
-  static const fulfillmentWarehouseId = 'fulfillmentWarehouseId'; // TASK 02: warehouse used to fulfill order item
+  static const fulfillmentWarehouseId =
+      'fulfillmentWarehouseId'; // TASK 02: warehouse used to fulfill order item
   static const shipFromCity = 'shipFromCity';
   static const shipFromProvince = 'shipFromProvince';
   static const shipFromCountry = 'shipFromCountry';
@@ -510,7 +526,8 @@ abstract final class Fields {
   static const deviceId = 'deviceId';
   static const lastVerifiedAt = 'lastVerifiedAt';
   static const accessToken = 'accessToken';
-  static const productName = 'productName'; // stored in license doc; denormalized from product
+  static const productName =
+      'productName'; // stored in license doc; denormalized from product
   static const weightKg = 'weightKg';
   static const lengthCm = 'lengthCm';
   static const widthCm = 'widthCm';
@@ -876,6 +893,10 @@ abstract final class GeoValues {
   static const countryCanada = 'Canada';
 }
 
+// =============================================================================
+// EMAIL & COMPLIANCE CONFIGURATION
+// =============================================================================
+
 /// Language preference defaults (ISO 639-1 codes)
 abstract final class LanguageValues {
   static const english = 'en';
@@ -890,16 +911,16 @@ abstract final class LicenseStatusValues {
   LicenseStatusValues._();
 }
 
-// =============================================================================
-// EMAIL & COMPLIANCE CONFIGURATION
-// =============================================================================
-
 /// Special values for itemId parameter in updateItemStatus.
 /// Convention: 'all' means apply the status change to the entire order (all items).
 abstract final class OrderItemIdValues {
   /// Apply status change to all items in the order
   static const all = 'all';
 }
+
+// =============================================================================
+// BUSINESS CONSTANTS
+// =============================================================================
 
 /// Valid values for orderStatus field
 abstract final class OrderStatusValues {
@@ -916,7 +937,20 @@ abstract final class OrderStatusValues {
   static const partiallyRefunded = 'partially_refunded';
   static const disputed = 'disputed';
 
-  static const all = {pending, confirmed, processing, shipped, inTransit, delivered, cancelled, failed, expired, refunded, partiallyRefunded, disputed};
+  static const all = {
+    pending,
+    confirmed,
+    processing,
+    shipped,
+    inTransit,
+    delivered,
+    cancelled,
+    failed,
+    expired,
+    refunded,
+    partiallyRefunded,
+    disputed,
+  };
 
   /// Centralized state machine — single source of truth for order transitions.
   /// Must match schema_constants.py OrderStatusValues.VALID_TRANSITIONS.
@@ -939,6 +973,10 @@ abstract final class OrderStatusValues {
   static const terminalStates = {cancelled, refunded};
 }
 
+// =============================================================================
+// CATEGORY IDS
+// =============================================================================
+
 /// Valid values for payment provider
 abstract final class PaymentProviderValues {
   static const stripe = 'stripe';
@@ -947,7 +985,7 @@ abstract final class PaymentProviderValues {
 }
 
 // =============================================================================
-// BUSINESS CONSTANTS
+// API KEYS - Cloud Function request/response parameter names
 // =============================================================================
 
 /// Valid values for paymentStatus field
@@ -985,7 +1023,7 @@ abstract final class PaymentStatusValues {
 }
 
 // =============================================================================
-// CATEGORY IDS
+// CLOUD FUNCTION ENDPOINTS - Single source of truth for all Firebase callable names
 // =============================================================================
 
 /// Valid values for payoutStatus field
@@ -999,21 +1037,33 @@ abstract final class PayoutStatusValues {
   static const partiallyReversed = 'partially_reversed';
   static const reversedDispute = 'reversed_dispute';
 
-  static const all = {pending, processing, completed, partial, failed, reversed, partiallyReversed, reversedDispute};
+  static const all = {
+    pending,
+    processing,
+    completed,
+    partial,
+    failed,
+    reversed,
+    partiallyReversed,
+    reversedDispute,
+  };
 }
 
 // =============================================================================
-// API KEYS - Cloud Function request/response parameter names
+// SYSTEM VALUES - Default values and system constants (not user-facing)
 // =============================================================================
+
+abstract final class PlaceholderAddressValues {
+  static const unknownText = 'N/A';
+  static const defaultState = 'ON';
+  static const defaultPostalCode = 'M5V 3A8';
+  static const defaultCountry = 'Canada';
+}
 
 /// Default policy/terms version numbers
 abstract final class PolicyVersionValues {
   static const defaultVersion = '1.0';
 }
-
-// =============================================================================
-// CLOUD FUNCTION ENDPOINTS - Single source of truth for all Firebase callable names
-// =============================================================================
 
 /// Valid values for product approvalStatus field.
 /// All new products start as underReview until an admin approves them.
@@ -1024,10 +1074,6 @@ abstract final class ProductApprovalStatusValues {
 
   static const all = {underReview, approved, rejected};
 }
-
-// =============================================================================
-// SYSTEM VALUES - Default values and system constants (not user-facing)
-// =============================================================================
 
 /// Valid values for product status field
 abstract final class ProductStatusValues {
@@ -1132,26 +1178,79 @@ abstract final class SubscriptionStatusValues {
   static const premiumActive = {active, trialing};
 }
 
+abstract final class SupplierCurrencyValues {
+  static const cad = 'CAD';
+  static const usd = 'USD';
+  static const eur = 'EUR';
+  static const gbp = 'GBP';
+  static const cny = 'CNY';
+  static const jpy = 'JPY';
+  static const krw = 'KRW';
+  static const inr = 'INR';
+  static const aud = 'AUD';
+  static const mxn = 'MXN';
+  static const brl = 'BRL';
+  static const hkd = 'HKD';
+  static const sgd = 'SGD';
+  static const twd = 'TWD';
+
+  static const defaultCurrency = 'USD';
+  static const all = {
+    cad,
+    usd,
+    eur,
+    gbp,
+    cny,
+    jpy,
+    krw,
+    inr,
+    aud,
+    mxn,
+    brl,
+    hkd,
+    sgd,
+    twd,
+  };
+}
+
 /// Valid values for supplier platform types
 abstract final class SupplierTypeValues {
   static const aliexpress = 'aliexpress';
   static const dhgate = 'dhgate';
   static const alibaba = 'alibaba';
-  static const s1688 = '1688'; // Can't start with number, so use 's1688' as const name
+  static const s1688 =
+      '1688'; // Can't start with number, so use 's1688' as const name
   static const temu = 'temu';
   static const cjdropshipping = 'cjdropshipping';
   static const local = 'local';
   static const other = 'other';
 
-  static const all = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping, local, other};
+  static const all = {
+    aliexpress,
+    dhgate,
+    alibaba,
+    s1688,
+    temu,
+    cjdropshipping,
+    local,
+    other,
+  };
 
   /// International suppliers (non-local)
-  static const international = {aliexpress, dhgate, alibaba, s1688, temu, cjdropshipping};
+  static const international = {
+    aliexpress,
+    dhgate,
+    alibaba,
+    s1688,
+    temu,
+    cjdropshipping,
+  };
 }
 
 /// User-facing UI messages
 abstract final class UIMessages {
-  static const sessionExpired = 'Session expired due to inactivity. Please login again.';
+  static const sessionExpired =
+      'Session expired due to inactivity. Please login again.';
   static const sessionExpiredTitle = 'Session Expired';
 }
 

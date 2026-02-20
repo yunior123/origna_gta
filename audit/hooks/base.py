@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import requests
 import anthropic
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -147,7 +148,7 @@ class BaseHook(ABC):
     def _get_client(self) -> anthropic.Anthropic:
         """Lazy-init Anthropic client."""
         if self._client is None:
-            self._client = anthropic.Anthropic(api_key=load_api_key())
+            self._client = anthropic.Anthropic(api_key=load_api_key(self.provider))
         return self._client
 
     # ── Abstract ──────────────────────────────────────────────────────────
@@ -231,10 +232,17 @@ class BaseHook(ABC):
 
     def call_llm(self, prompt: str, context: str) -> str:
         """
-        Call Claude Opus 4 via Anthropic API.
-
-        Budget-conscious: estimates cost before calling.
+        Call LLM via chosen provider (Anthropic or DeepSeek).
         """
+        if self.provider == "anthropic":
+            return self._call_anthropic(prompt, context)
+        elif self.provider == "deepseek":
+            return self._call_deepseek(prompt, context)
+        else:
+            raise ValueError(f"Unsupported provider: {self.provider}")
+
+    def _call_anthropic(self, prompt: str, context: str) -> str:
+        """Call Claude Opus 4 via Anthropic API."""
         client = self._get_client()
         full_content = prompt + "\n\n" + context
 
@@ -269,6 +277,50 @@ class BaseHook(ABC):
 
         print(f"  ✅ {len(output):,} chars | {used_in:,} in + {used_out:,} out tokens")
         print(f"  💰 Actual cost: ${actual_cost:.4f}")
+        return output
+
+    def _call_deepseek(self, prompt: str, context: str) -> str:
+        """Call DeepSeek API."""
+        from .config import DEEPSEEK_MODEL, DEEPSEEK_URL
+        api_key = load_api_key("deepseek")
+        
+        full_content = prompt + "\n\n" + context
+
+        # DeepSeek usually has a lower output token limit (4096-8192). 
+        # Clamping to 4096 for stability.
+        max_out = min(MAX_OUTPUT_TOKENS, 4096)
+
+        payload = {
+            "model": DEEPSEEK_MODEL,
+            "messages": [
+                {"role": "system", "content": "You are a senior security and logic auditor for a production e-commerce marketplace."},
+                {"role": "user", "content": full_content}
+            ],
+            "temperature": 0.2,
+            "max_tokens": max_out,
+            "stream": False,
+        }
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+
+        print(f"  📡 Calling {DEEPSEEK_MODEL}...")
+        print(f"  📦 Context: {len(full_content):,} chars")
+
+        res = requests.post(DEEPSEEK_URL, headers=headers, json=payload, timeout=(30, 600))
+        if res.status_code != 200:
+            print(f"  ❌ DeepSeek API Error ({res.status_code}): {res.text}")
+            res.raise_for_status()
+        
+        data = res.json()
+        output = data["choices"][0]["message"]["content"]
+        
+        used_in = data.get("usage", {}).get("prompt_tokens", 0)
+        used_out = data.get("usage", {}).get("completion_tokens", 0)
+        
+        print(f"  ✅ {len(output):,} chars | {used_in:,} in + {used_out:,} out tokens")
         return output
 
     # ── Parsing ───────────────────────────────────────────────────────────

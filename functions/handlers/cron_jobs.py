@@ -13,7 +13,13 @@ from datetime import UTC, datetime, timedelta
 import stripe
 from firebase_functions import scheduler_fn
 
-from config import AUTHORIZATION_VALID_DAYS, AUTO_CONFIRM_DAYS, PLATFORM_FEE_PERCENT, get_stripe_secret_key
+from config import (
+    AUTHORIZATION_VALID_DAYS,
+    AUTO_CONFIRM_DAYS,
+    IS_EMULATOR,
+    PLATFORM_FEE_PERCENT,
+    get_stripe_secret_key,
+)
 from schema_constants import (
     AlgoliaActionValues,
     BusinessRules,
@@ -161,11 +167,12 @@ def _run_auto_capture() -> None:
     all_orders = []
 
     # DELIVERED orders ready for payout (payoutStatus not yet completed)
+    # AUDIT FIX (CRITICAL-001): Include AUTHORIZED payments for auto-capture
     delivered_orders = (
         get_db()
         .collection(Collections.ORDERS)
         .where(Fields.ORDER_STATUS, "==", OrderStatusValues.DELIVERED)
-        .where(Fields.PAYMENT_STATUS, "==", PaymentStatusValues.CAPTURED)
+        .where(Fields.PAYMENT_STATUS, "in", [PaymentStatusValues.CAPTURED, PaymentStatusValues.AUTHORIZED])
         .where(Fields.UPDATED_AT, "<=", cutoff_date)
         .limit(250)
         .stream()
@@ -173,11 +180,12 @@ def _run_auto_capture() -> None:
     all_orders.extend(delivered_orders)
 
     # SHIPPED orders past cutoff — auto-confirm as delivered for payout
+    # AUDIT FIX (CRITICAL-001): Include AUTHORIZED payments for auto-capture
     shipped_orders = (
         get_db()
         .collection(Collections.ORDERS)
         .where(Fields.ORDER_STATUS, "==", OrderStatusValues.SHIPPED)
-        .where(Fields.PAYMENT_STATUS, "==", PaymentStatusValues.CAPTURED)
+        .where(Fields.PAYMENT_STATUS, "in", [PaymentStatusValues.CAPTURED, PaymentStatusValues.AUTHORIZED])
         .where(Fields.UPDATED_AT, "<=", cutoff_date)
         .limit(250)
         .stream()
@@ -195,6 +203,50 @@ def _run_auto_capture() -> None:
         if not payment_intent_id:
             logger.info(f"Order {order_id} has no payment intent, skipping")
             continue
+
+        # CRITICAL FIX (CRITICAL-001): Capture payment if it's only authorized
+        if order_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.AUTHORIZED:
+            try:
+                # Emulator mode: skip real Stripe capture for fake payment intents
+                if IS_EMULATOR and not payment_intent_id.startswith("pi_3"):
+                    order_doc.reference.update(
+                        {
+                            Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+                            Fields.CAPTURED_AT: datetime.now(UTC),
+                            Fields.UPDATED_AT: datetime.now(UTC),
+                        }
+                    )
+                    order_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.CAPTURED
+                else:
+                    # 1. Fetch PI status
+                    pi = stripe.PaymentIntent.retrieve(payment_intent_id)
+                    if pi.status == "requires_capture":
+                        # 2. Capture the funds
+                        logger.info(f"Auto-capturing funds for order {order_id} (PI: {payment_intent_id})")
+                        pi = stripe.PaymentIntent.capture(
+                            payment_intent_id, idempotency_key=f"auto_capture_{order_id}_{payment_intent_id}"
+                        )
+
+                    # 3. Update Firestore status immediately
+                    if pi.status in ["succeeded", "processing"]:
+                        order_doc.reference.update(
+                            {
+                                Fields.PAYMENT_STATUS: PaymentStatusValues.CAPTURED,
+                                Fields.CAPTURED_AT: datetime.now(UTC),
+                                Fields.UPDATED_AT: datetime.now(UTC),
+                            }
+                        )
+                        # Refresh order_data for the rest of the loop
+                        order_data[Fields.PAYMENT_STATUS] = PaymentStatusValues.CAPTURED
+                        logger.info(f"Successfully auto-captured order {order_id}")
+                    else:
+                        logger.warning(
+                            f"⚠️ Auto-capture for order {order_id} resulted in unexpected PI status: {pi.status}"
+                        )
+                        continue
+            except Exception as capture_err:
+                logger.error(f"Error during auto-capture for order {order_id}: {capture_err}")
+                continue
 
         # Skip orders that already have completed payouts
         payout_status = order_data.get(Fields.PAYOUT_STATUS)
@@ -492,7 +544,7 @@ def _run_expired_authorizations() -> None:
                 PaymentStatusValues.AUTHORIZED,
             ],
         )
-        .where(Fields.ORDER_STATUS, "in", [OrderStatusValues.PENDING])
+        .where(Fields.ORDER_STATUS, "in", [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED])
         .where(Fields.CREATED_AT, "<=", cutoff_date)
         .limit(100)
         .stream()
@@ -512,7 +564,7 @@ def _run_expired_authorizations() -> None:
                 return "not_found"
             fresh_data = fresh_doc.to_dict()
             current_status = fresh_data.get(Fields.ORDER_STATUS)
-            if current_status != OrderStatusValues.PENDING:
+            if current_status not in [OrderStatusValues.PENDING, OrderStatusValues.CONFIRMED]:
                 return f"invalid_status:{current_status}"
             transaction.update(
                 order_doc.reference,
@@ -526,12 +578,29 @@ def _run_expired_authorizations() -> None:
 
         try:
             expire_result = try_expire_order(get_db().transaction())
+            if expire_result != "locked":
+                logger.info(f"Order {order_id} cannot be expired: {expire_result}")
+                continue
+
+            # CRITICAL FIX (CRITICAL-002): Cancel Stripe authorization if present
+            if order_data.get(Fields.PAYMENT_STATUS) == PaymentStatusValues.AUTHORIZED:
+                pi_id = order_data.get(Fields.STRIPE_PAYMENT_INTENT_ID)
+                if pi_id:
+                    try:
+                        # Cancel the PaymentIntent in Stripe to release funds
+                        logger.info(f"Cancelling stale authorization for order {order_id} (PI: {pi_id})")
+                        stripe.api_key = get_stripe_secret_key()
+                        stripe.PaymentIntent.cancel(pi_id)
+                        order_doc.reference.update(
+                            {
+                                Fields.PAYMENT_STATUS: PaymentStatusValues.AUTHORIZATION_EXPIRED,
+                                Fields.UPDATED_AT: get_server_timestamp(),
+                            }
+                        )
+                    except Exception as cancel_err:
+                        logger.warning(f"⚠️ Failed to cancel Stripe PI {pi_id} for expired order {order_id}: {cancel_err}")
         except Exception as e:
             logger.warning(f"⚠️ Failed to lock order {order_id} for expiry: {str(e)}")
-            continue
-
-        if expire_result != "locked":
-            logger.info(f"Order {order_id} cannot be expired: {expire_result}")
             continue
 
         # Skip if stock already restored (idempotency)

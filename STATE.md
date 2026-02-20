@@ -345,14 +345,25 @@ These features have complete backend implementations but no UI yet:
 #### HIGH — S-02: Product questions lack rate limiting
 - **FILE:** `functions/handlers/products.py` (ask_product_question handler)
 - **ISSUE:** No rate limiter on `ask_product_question`. A malicious user could spam thousands of questions, flooding seller inboxes with emails.
-- **FIX:** Add rate limit check: `max_requests=5, window_minutes=60` per user for question submissions.
+- **FIX:** Add rate limit check: `max_requests=5, window_minutes=60` per### Phase 1: Logic & Schema Audit — [COMPLETED]
 
-#### HIGH — S-03: `product_questions` `create` rule allows askerId spoofing edge case
-- **FILE:** `firestore.rules:472`
-- **ISSUE:** Rule enforces `request.resource.data.askerId == request.auth.uid` on create. But there's no check that `productId` references a real product, or that `sellerId` matches the product's actual seller. A client could create a question with a spoofed `sellerId`.
-- **FIX:** Since answers come from backend only, this is LOW risk. But add server-side validation in `ask_product_question` handler to verify `sellerId` matches the product doc.
+#### Findings:
+- **Idempotency Bug (Checkout):** `create_checkout_session` does not properly utilize idempotency keys, potentially leading to duplicate orders.
+- **GDPR Gap (User Deletion):** `delete_account` fails to remove `warehouses` and `addresses` subcollections.
+- **SKU Uniqueness (Update):** `on_product_updated` does not enforce SKU uniqueness, allowing duplicates.
+- **Atomicity Risk (Order Expiry):** Race condition in `_run_expired_authorizations` between status update and stock restoration.
+- **Financial Risk (Refunds):** `refund_order_item` fails to handle errors in Stripe Transfer reversals.
+- **Validation Gap (Prices):** 1% tolerance in order subtotal validation is exploitable.
 
-#### MEDIUM — S-04: Subscription doc is readable by the user but not write-protected from admin
+### Phase 2: Security & Permissions Audit — [COMPLETED]
+
+#### Findings:
+- **CRITICAL: _mail_logs PII Exposure (firestore.rules):** `_mail_logs` has public read access (`allow read: if true`). This leaks full email bodies, including license keys, order details, and PII in non-production environments.
+- **HIGH: Admin MFA Bypass:** `products.py` admin handlers (`admin_approve_product`, `admin_reject_product`) only require the `admin` role and do not enforce the "Recent MFA" policy used in `admin.py`.
+- **MEDIUM: Role Check Inconsistency:** Some handlers check `req.auth.token` for admin privileges, while others check the Firestore document. Token-based checks are susceptible to stale permissions (up to 1 hour).
+- **MEDIUM: GDPR Deletion Gaps:** `delete_account` misses several user-owned subcollections: `warehouses`, `addresses`, `notifications`, `stock_notifications`, and `seller_metrics`.
+- **LOW: Inconsistent Audit Logging:** Sensitive admin actions are split between `security_alerts` and `admin_logs` without a unified logging policy.
+readable by the user but not write-protected from admin
 - **FILE:** `firestore.rules:563-566`
 - **ISSUE:** Rules say `allow create, update, delete: if false` — which blocks ALL client writes including admin. Admin must use backend functions to modify subscriptions, which is correct. But if admin needs to manually fix a subscription, they'd need to use the Firebase console directly (no Cloud Function wrappers for admin subscription management).
 - **IMPACT:** Low — admin console access is sufficient.
@@ -491,3 +502,61 @@ These features have complete backend implementations but no UI yet:
   - **FIX:** Add `helpfulCount` and a vote handler with dedup per user.
   - **EFFORT:** S
   - **FILES:** `products.py`, `productdetails_screen.dart`
+
+## 7. Schema Drift Audit (Phase 1)
+Below are the findings from the `schema-sync-checker`:
+
+- [ ] **SCHEMA-01: Missing Model Fields in Constants** — `firestore.rules` references `fraudScore`, `sellerCaptures`, `captureAttempts`, and `requiresManualReview` (Phase 3.5 fields), but they are missing from `Fields` in both `functions/schema_constants.py` and `origna_gta/lib/core/schema/schema_constants.dart`.
+  - **FIX:** Add missing string constants to both Python and Dart `schema_constants`.
+  - **EFFORT:** S
+  - **FILES:** `functions/schema_constants.py`, `origna_gta/lib/core/schema/schema_constants.dart`
+
+- [ ] **SCHEMA-02: Missing Collections in Python** — Dart `schema_constants.dart` includes collections `favorites`, `notifications`, and `product_questions` which are absent from Python `schema_constants.py` `Collections` class.
+  - **FIX:** Add missing collection names to Python constants.
+  - **EFFORT:** S
+  - **FILES:** `functions/schema_constants.py`
+
+- [ ] **SCHEMA-03: Tax Rate Duplication** — `taxRates` are defined directly in `origna_gta/lib/core/schema/schema_constants.dart` and `audit/hooks/hook_tax.py`, but missing from shared Python constants or database schema documentation.
+  - **FIX:** Consolidate tax rules or ensure they are consistently defined in Python models/constants if used backend-side.
+  - **EFFORT:** S
+  - **FILES:** `functions/schema_constants.py`, `origna_gta/lib/core/schema/schema_constants.dart`
+
+## 8. Cross-Stack Audit (Phase 1)
+Below are the findings from the `cross-stack-auditor`:
+
+  - **FILES:** `functions/models/base.py`, `origna_gta/lib/models/generated/base_models.dart`
+## 9. Integrations & Compliance Audit (Phase 3)
+Findings from the audit of external integrations and regulatory compliance (Phase 3).
+
+- [x] **INTEG-01: Algolia Data Leakage Audit** — Audited `algolia_service.py` and `products.py` triggers. Confirmed that sensitive fields (e.g., `STRIPE_ACCOUNT_ID`, private order data) are correctly excluded from indices. Triggers correctly gate indexing behind admin approval.
+  - **STATUS:** Verified/Safe.
+
+- [x] **GDPR-01: Incomplete Account Deletion Cleanup** — The `delete_account` handler was missing cleanup for several PII-bearing collections.
+  - **FINDING:** User identities remained in `product_questions`, `product_ratings`, `chats`, and `stock_notifications`. The `addresses` subcollection was also left behind.
+  - **FIX:** Updated `admin.py` to recursively delete or anonymize all relevant collections, ensuring full GDPR/PIPEDA compliance.
+  - **EFFORT:** M
+  - **FILES:** `functions/handlers/admin.py`
+
+- [x] **INTEG-02: Stripe Lifecycle & Manual Capture Audit** — Trace-audit of checkout flow, webhook handling, and auto-capture cron jobs.
+  - **Status**: ✅ **FIXED** (Implemented in `payment_stripe.py` and `cron_jobs.py`)
+  - **Fix**: Updated `process_checkout_session_completed` to set `PaymentStatusValues.AUTHORIZED`. Enhanced `auto_capture_confirmed_receipts` to perform Stripe capture before payout. Added `check_expired_authorizations` to cancel stale Stripe PIs.
+  - **RISK:** Funds could expire without being captured (7-day window) while the system mistakenly paid sellers or fulfilled orders.
+  - **FINDING (HIGH):** The `auto_capture_confirmed_receipts` cron job attempted to pay sellers for delivered orders without first triggering the actual Stripe capture for manually-captured intents.
+
+- [x] **INTEG-03: Algolia Search Synchronization Audit** — Verification of Firestore triggers and search index consistency.
+  - **Status**: ✅ **VERIFIED**
+  - **Findings**:
+    - **Robust Sync**: Uses `on_product_created`, `on_product_updated`, and `on_product_deleted` triggers.
+    - **Dead Letter Queue**: Failed syncs are logged to `algolia_sync_failures` and retried by a dedicated cron job (`retry_failed_algolia_syncs`).
+    - **Drift Monitoring**: `monitor_algolia_sync` runs every 15 mins and alerts admins if Firestore↔Algolia drift exceeds 5%.
+    - **Security**: Pydantic validation and XSS sanitization are enforced before indexing.
+  - **RISK**: Low. The system has multiple layers of redundancy for search consistency.
+  - **FIX:** Updated `payment_stripe.py` to correctly use `PaymentStatusValues.AUTHORIZED` for manual-capture sessions and enhanced `cron_jobs.py` to perform the capture before payout.
+  - **EFFORT:** L
+  - **FILES:** `functions/handlers/payment_stripe.py`, `functions/handlers/cron_jobs.py`
+
+- [x] **INTEG-04: Dispute & Reversal Logic Audit** — Audited dispute handlers for edge cases.
+  - **FINDING:** Identified a risk of "Double Reversal" if multiple dispute-related webhooks fired closely.
+  - **FIX:** Implemented cumulative tracking of reversed amounts (`cumulativeReversedCents`) to ensure total reversed funds never exceed the original transfer amount. Added automatic seller suspension for insufficient funds during reversal to prevent platform loss.
+  - **STATUS:** Verified/Fixed.
+  - **FILES:** `functions/handlers/payment_stripe.py`

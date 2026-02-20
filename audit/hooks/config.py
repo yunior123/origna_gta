@@ -33,6 +33,18 @@ SEVERITY_ORDER = {CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3}
 
 OUTPUT_DIR = PROJECT_ROOT / "audit" / "output" / "hooks"
 
+# --- Anthropic API Configuration ---
+
+ANTHROPIC_MODEL = "claude-opus-4-20250514"  # Opus 4
+
+# --- DeepSeek API Configuration ---
+DEEPSEEK_MODEL = "deepseek-chat"
+DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
+
+# Token limits - balanced for quality vs budget
+MAX_OUTPUT_TOKENS = 16384      # Audit responses (enough for full JSON findings)
+MAX_OUTPUT_TOKENS_FIX = 8192   # Fixer needs more room (~$0.61)
+
 # --- File Targeting ---
 
 MAX_CONTEXT_CHARS = 100_000  # ~25K tokens
@@ -44,9 +56,9 @@ EXCLUDE_PATTERNS = {
 }
 
 
-def load_api_key() -> str:
-    """Load Anthropic API key from env or functions/.env."""
-    key_name = "ANTHROPIC_API_KEY"
+def load_api_key(provider: str = "anthropic") -> str:
+    """Load API key from env or functions/.env."""
+    key_name = "ANTHROPIC_API_KEY" if provider == "anthropic" else "DEEPSEEK_API_KEY"
 
     key = os.getenv(key_name)
     if key:

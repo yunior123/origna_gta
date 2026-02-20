@@ -14,18 +14,44 @@ class FirebaseQARepository implements QARepository {
   FirebaseQARepository(this._firestore);
 
   @override
-  Future<void> submitAnswer(String productId, String qaId, String sellerId, String answer) async {
-    final docRef = _firestore.collection(Collections.products).doc(productId).collection(Collections.productQuestions).doc(qaId);
+  Future<void> submitAnswer(
+    String productId,
+    String qaId,
+    String sellerId,
+    String answer,
+  ) async {
+    final docRef = _firestore
+        .collection(Collections.products)
+        .doc(productId)
+        .collection(Collections.productQuestions)
+        .doc(qaId);
 
     // We only update the answer fields
-    await docRef.update({Fields.answerText: answer.trim(), Fields.answeredAt: FieldValue.serverTimestamp(), Fields.answeredBy: sellerId});
+    await docRef.update({
+      Fields.answerText: answer.trim(),
+      Fields.answeredAt: FieldValue.serverTimestamp(),
+      Fields.answeredBy: sellerId,
+    });
   }
 
   @override
-  Future<void> submitQuestion(String productId, String buyerId, String question) async {
-    final docRef = _firestore.collection(Collections.products).doc(productId).collection(Collections.productQuestions).doc();
+  Future<void> submitQuestion(
+    String productId,
+    String buyerId,
+    String question,
+  ) async {
+    final docRef = _firestore
+        .collection(Collections.products)
+        .doc(productId)
+        .collection(Collections.productQuestions)
+        .doc();
 
-    final model = QAModel(id: docRef.id, question: question.trim(), authorId: buyerId, createdAt: DateTime.now());
+    final model = QAModel(
+      id: docRef.id,
+      question: question.trim(),
+      authorId: buyerId,
+      createdAt: DateTime.now(),
+    );
 
     await docRef.set(model.toMap());
   }
@@ -41,13 +67,24 @@ class FirebaseQARepository implements QARepository {
         .snapshots()
         .map((snapshot) {
           if (snapshot.docs.isEmpty) return [];
-          return snapshot.docs.map((doc) => QAModel.fromMap(doc.id, doc.data())).toList();
+          return snapshot.docs
+              .map((doc) => QAModel.fromMap(doc.id, doc.data()))
+              .toList();
         });
   }
 }
 
 abstract class QARepository {
-  Future<void> submitAnswer(String productId, String qaId, String sellerId, String answer);
-  Future<void> submitQuestion(String productId, String buyerId, String question);
+  Future<void> submitAnswer(
+    String productId,
+    String qaId,
+    String sellerId,
+    String answer,
+  );
+  Future<void> submitQuestion(
+    String productId,
+    String buyerId,
+    String question,
+  );
   Stream<List<QAModel>> watchQA(String productId);
 }

@@ -61,9 +61,7 @@ class User(BaseModel):
     updatedAt: datetime | None = Field(default=None, description="Last update timestamp")
 
     # Tax exemption for businesses (GST/HST number)
-    taxExemption: str | None = Field(
-        default=None, description="Tax exemption details (e.g., GST/HST number)"
-    )
+    taxExemption: str | None = Field(default=None, description="Tax exemption details (e.g., GST/HST number)")
 
     # === CONSENT & COMPLIANCE (CASL + PIPEDA + Quebec Law 25) ===
     emailConsent: bool = Field(default=True, description="User consented to receive transactional emails")

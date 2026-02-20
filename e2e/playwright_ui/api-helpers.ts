@@ -118,18 +118,36 @@ export async function getDoc(path: string, token?: string): Promise<any> {
 
 /**
  * Write a Firestore document via REST API.
- * Fields must already be in Firestore REST format (use toFirestoreFields).
+ * Uses PATCH. If updateMask is provided via fields, it does a partial update.
+ * If no field selection is needed, it performs a set (create/overwrite).
  */
-export async function writeDoc(path: string, fields: Record<string, any>, token?: string): Promise<boolean> {
+export async function writeDoc(path: string, fields: Record<string, any>, token?: string, partial = true): Promise<boolean> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  // path includes collection/document. REST API PATCH uses document path directly.
-  const res = await fetch(`${FIRESTORE_BASE}/${path}`, {
+  let url = `${FIRESTORE_BASE}/${path}`;
+  if (partial) {
+    const fieldPaths = Object.keys(fields);
+    const queryParams = fieldPaths.map(p => `updateMask.fieldPaths=${p}`).join('&');
+    if (queryParams) url += `?${queryParams}`;
+  }
+
+  const body = JSON.stringify({ fields });
+  if (!token) console.warn('writeDoc called WITHOUT token');
+  else console.log(`writeDoc using token length: ${token.length}, prefix: ${token.substring(0, 10)}...`);
+
+  const res = await fetch(url, {
     method: 'PATCH',
     headers,
-    body: JSON.stringify({ fields }),
+    body,
   });
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    console.error(`writeDoc failed [${res.status}]: ${url}`);
+    console.error(`Request Body: ${body}`);
+    console.error(`Response Body: ${errorBody}`);
+  }
 
   return res.ok;
 }
@@ -243,6 +261,20 @@ export async function callOk(fn: string, data: any, token: string): Promise<any>
     return body.result || body;
   }
   throw new Error(`${fn} failed after 3 retries`);
+}
+
+/**
+ * Checks if an email was sent to the given address by querying _mail_logs via the admin callable function.
+ * E2E tests can use this to verify emails without actually sending them via Mailjet.
+ */
+export async function verifyEmailSent(email: string, adminToken?: string): Promise<any[]> {
+  let token = adminToken;
+  if (!token) {
+    const auth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+    token = auth.idToken;
+  }
+  const res = await callOk('e2e_get_mail_logs', { to: email }, token);
+  return res.logs || [];
 }
 
 /**
@@ -844,6 +876,44 @@ export async function getTwoSellerProducts(token: string): Promise<[DiscoveredPr
   return [a, b];
 }
 
+export async function createDummyProduct(sellerUid: string, prefix: string): Promise<DiscoveredProduct> {
+  const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+  const productId = `test_dummy_${prefix}_${Date.now()}`;
+  const productData = {
+    sellerId: sellerUid,
+    sellerSku: `DUMMY-${prefix}-${Date.now()}`,
+    name: `Dummy Test Product ${prefix}`,
+    description: `A high-quality test product created for E2E testing purposes.`,
+    price: 15.99,
+    isActive: true,
+    stockQuantity: 100,
+    categoryId: 1,
+    imageUrls: ['https://orignagta-dev.web.app/assets/icons/icon-192.png'],
+    keywords: ['dummy', prefix],
+    rating: 0,
+    createdAt: new Date(),
+    sellerAddress: {
+      street: '100 University Ave',
+      city: 'Toronto',
+      state: 'ON',
+      postalCode: 'M5J 1V6',
+      country: 'Canada'
+    }
+  };
+
+  const ok = await writeDoc(`products/${productId}`, toFirestoreFields(productData), adminAuth.idToken, false);
+  if (!ok) throw new Error(`Failed to create dummy product for ${sellerUid}`);
+
+  return {
+    id: productId,
+    name: productData.name,
+    price: productData.price,
+    sellerId: productData.sellerId,
+    stockQuantity: productData.stockQuantity,
+    isActive: productData.isActive,
+  };
+}
+
 /**
  * Ensures two products from different sellers exist on the dev environment.
  * If not, it uses the Admin REST API to create dummy products.
@@ -853,36 +923,6 @@ export async function ensureTwoSellerProducts(token: string): Promise<[Discovere
   if (existing) return existing;
 
   // We need to create products for admin and seller
-  const adminAuth = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
-
-  const createDummyProduct = async (sellerUid: string, prefix: string): Promise<DiscoveredProduct> => {
-    const productId = `test_dummy_${prefix}_${Date.now()}`;
-    const productData = {
-      sellerId: sellerUid,
-      sellerSku: `DUMMY-${prefix}-${Date.now()}`,
-      name: `Dummy Test Product ${prefix}`,
-      price: 15.99,
-      isActive: true,
-      stockQuantity: 100,
-      categoryId: 1,
-      imageUrls: [],
-      keywords: ['dummy', prefix],
-      rating: 0,
-    };
-
-    const ok = await writeDoc(`products/${productId}`, toFirestoreFields(productData), adminAuth.idToken);
-    if (!ok) throw new Error(`Failed to create dummy product for ${sellerUid}`);
-
-    return {
-      id: productId,
-      name: productData.name,
-      price: productData.price,
-      sellerId: productData.sellerId,
-      stockQuantity: productData.stockQuantity,
-      isActive: productData.isActive,
-    };
-  };
-
   const sellerA = await createDummyProduct(TEST_UIDS.ADMIN, 'A');
   const sellerB = await createDummyProduct(TEST_UIDS.SELLER, 'B');
 
@@ -915,4 +955,25 @@ export async function getSellerAuth(sellerId: string): Promise<AuthData> {
 
 export function uid(): string {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PRODUCT MANIPULATION
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Programmatically updates the trending status of a product.
+ * Used to set up E2E tests for trending products.
+ */
+export async function setProductTrending(productId: string, isTrending: boolean, adminToken?: string): Promise<boolean> {
+  const token = adminToken ?? (await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS)).idToken;
+  const docData = await getDoc(`products/${productId}`, token);
+  if (!docData) throw new Error(`Product ${productId} not found`);
+
+  const updates: Record<string, any> = {
+    isTrending: isTrending,
+    trendingAt: isTrending ? new Date() : null
+  };
+
+  return writeDoc(`products/${productId}`, toFirestoreFields(updates), token, true);
 }

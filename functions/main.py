@@ -60,6 +60,7 @@ from handlers.admin import (  # noqa: E402
     admin_mfa_verify_backup,
     admin_update_product_stock,
     delete_account,
+    e2e_get_mail_logs,
     export_my_data,
     suspend_seller,
     unsubscribe_email,
@@ -278,6 +279,7 @@ __all__ = [
     "delete_account",
     "export_my_data",
     "unsubscribe_email",
+    "e2e_get_mail_logs",
     # User Profile
     "add_buyer_address",
     "delete_buyer_address",
