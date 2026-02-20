@@ -13,9 +13,6 @@ import '../features/seller/seller_registration_state.dart';
 import '../features/seller/seller_registration_view_model.dart';
 
 /// Available payment providers - add new providers here.
-/// NOTE: Airwallex is included in the UI for post-launch readiness but
-/// is disabled at launch. Backend handlers are gated via
-/// `require_provider_enabled`. See payment_airwallex.py for details.
 const List<PaymentProviderConfig> availablePaymentProviders = [
   PaymentProviderConfig(
     id: PaymentProviderValues.stripe,
@@ -26,22 +23,6 @@ const List<PaymentProviderConfig> availablePaymentProviders = [
     payoutTiming: '7 days after delivery confirmation',
     features: ['Automatic payouts after 7-day hold period', 'Best for Canada-based sellers', 'Stripe Express instant setup', '2.9% + \$0.30 per transaction'],
     recommendedFor: 'Recommended for local Canadian sellers.',
-  ),
-  PaymentProviderConfig(
-    id: PaymentProviderValues.airwallex,
-    name: 'Airwallex',
-    icon: Icons.public,
-    primaryColor: Color(0xFF0066FF),
-    secondaryColor: Color(0xFF00CCFF),
-    payoutTiming: 'Every Friday (weekly batch)',
-    features: [
-      'Weekly batch payouts every Friday at 4 PM EST',
-      'Best for international sellers (China, Korea, etc.)',
-      'Multi-currency support (CAD, USD, CNY, EUR)',
-      'Lower fees for high volume',
-      '7-14 days total processing time',
-    ],
-    recommendedFor: 'Ideal for dropshipping & international suppliers.',
   ),
   PaymentProviderConfig(
     id: 'paypal', // Not in PaymentProviderValues — future provider
@@ -334,24 +315,6 @@ class _SellerRegistrationScreenState extends ConsumerState<SellerRegistrationScr
 
   Widget _buildActionButton(UserModel user, SellerRegistrationState viewState, SellerRegistrationViewModel viewModel) {
     final isLoading = viewState.isLoading;
-    final paymentProvider = viewState.paymentProvider;
-    
-    if (paymentProvider == PaymentProviderValues.airwallex) {
-      final hasAirwallex = user.airwallexAccountId != null && user.airwallexAccountId!.isNotEmpty;
-      // Disable button if terms not accepted (unless already connected)
-      final canProceed = _termsAccepted || hasAirwallex;
-      
-      return ModernButton(
-        onPressed: isLoading || !canProceed
-            ? null
-            : () {
-                viewModel.startRegistration();
-              },
-        label: hasAirwallex ? 'seller.airwallex_connected'.tr() : 'seller.connect_airwallex'.tr(),
-        isLoading: isLoading,
-        icon: Icons.public,
-      );
-    }
 
     final hasAccount = user.stripeAccountId != null && user.stripeAccountId!.isNotEmpty;
     final canReceivePayouts = user.payoutsEnabled;

@@ -398,35 +398,6 @@ def get_r2_credentials() -> dict:
 
 
 # ============================================================================
-# AIRWALLEX CONFIGURATION (OPTIONAL)
-# ============================================================================
-
-_AIRWALLEX_API_KEY_PARAM = params.SecretParam("AIRWALLEX_API_KEY")
-_AIRWALLEX_CLIENT_ID_PARAM = params.SecretParam("AIRWALLEX_CLIENT_ID")
-_AIRWALLEX_WEBHOOK_SECRET_PARAM = params.SecretParam("AIRWALLEX_WEBHOOK_SECRET")
-
-
-def get_airwallex_api_key() -> str:
-    if IS_EMULATOR:
-        return _load_secret("AIRWALLEX_API_KEY", required=False)
-    return _AIRWALLEX_API_KEY_PARAM.value
-
-
-def get_airwallex_client_id() -> str:
-    if IS_EMULATOR:
-        return _load_secret("AIRWALLEX_CLIENT_ID", required=False)
-    return _AIRWALLEX_CLIENT_ID_PARAM.value
-
-
-def get_airwallex_webhook_secret() -> str:
-    if IS_EMULATOR:
-        return _load_secret("AIRWALLEX_WEBHOOK_SECRET", required=False)
-    return _AIRWALLEX_WEBHOOK_SECRET_PARAM.value
-
-
-AIRWALLEX_BASE_URL = os.environ.get("AIRWALLEX_BASE_URL", "https://api.airwallex.com/api/v1")
-
-# ============================================================================
 # SENTRY ERROR MONITORING
 # ============================================================================
 

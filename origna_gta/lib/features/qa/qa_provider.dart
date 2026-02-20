@@ -13,6 +13,12 @@ final qaListProvider = StreamProvider.family<List<QAModel>, String>((ref, produc
   return repo.watchQA(productId);
 });
 
+/// Streams the count of unanswered Q&A questions for a product. Used for the seller badge.
+final unansweredQaCountProvider = StreamProvider.autoDispose.family<int, String>((ref, productId) {
+  final repo = ref.watch(qaRepositoryProvider);
+  return repo.watchQA(productId).map((list) => list.where((q) => q.answer == null || q.answer!.isEmpty).length);
+});
+
 class QAController extends StateNotifier<AsyncValue<void>> {
   final QARepository _repository;
   final Ref _ref;

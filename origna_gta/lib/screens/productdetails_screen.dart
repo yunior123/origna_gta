@@ -234,7 +234,7 @@ class ProductDetailScreen extends ConsumerWidget {
                           const SizedBox(height: 28),
                           _QuantitySelector(viewModel: viewModel),
                           const SizedBox(height: 24),
-                          _AddToCartButton(productId: productId, sellerId: product.sellerId),
+                          _AddToCartButton(productId: productId, sellerId: product.sellerId, stockQuantity: product.stockQuantity),
                           const SizedBox(height: 32),
                           _QASection(productId: productId, sellerId: product.sellerId),
                           const SizedBox(height: 40),
@@ -329,17 +329,26 @@ class ProductDetailScreen extends ConsumerWidget {
   }
 }
 
-class _AddToCartButton extends ConsumerWidget {
+class _AddToCartButton extends ConsumerStatefulWidget {
   final String productId;
   final String sellerId;
+  final int stockQuantity;
 
-  const _AddToCartButton({required this.productId, required this.sellerId});
+  const _AddToCartButton({required this.productId, required this.sellerId, required this.stockQuantity});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_AddToCartButton> createState() => _AddToCartButtonState();
+}
+
+class _AddToCartButtonState extends ConsumerState<_AddToCartButton> {
+  bool _notifyLoading = false;
+  bool? _subscribed; // null = unknown, true = subscribed, false = not subscribed
+
+  @override
+  Widget build(BuildContext context) {
     final quantity = ref.watch(productDetailViewModelProvider.select((state) => state.quantity));
     final currentUser = ref.watch(currentUserProvider);
-    final isOwnProduct = currentUser != null && currentUser.uid == sellerId;
+    final isOwnProduct = currentUser != null && currentUser.uid == widget.sellerId;
 
     // If user is the seller, show disabled button with message
     if (isOwnProduct) {
@@ -351,6 +360,28 @@ class _AddToCartButton extends ConsumerWidget {
           Text(
             'product.own_product_msg'.tr(),
             style: TextStyle(fontSize: 13, color: DesignTokens.textSecondary, fontStyle: FontStyle.italic),
+          ),
+        ],
+      );
+    }
+
+    // Out of stock: show "Notify me when available" button
+    if (widget.stockQuantity <= 0) {
+      final isSubscribed = _subscribed ?? false;
+      return Column(
+        key: const Key('product_notify_section'),
+        children: [
+          ModernButton(
+            key: const Key('product_notify_me_button'),
+            label: isSubscribed ? 'product.notify_cancel'.tr() : 'product.notify_me'.tr(),
+            onPressed: _notifyLoading ? null : () => _toggleNotification(context, currentUser),
+            fullWidth: true,
+            icon: isSubscribed ? Icons.notifications_off_outlined : Icons.notifications_outlined,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'product.out_of_stock'.tr(),
+            style: TextStyle(fontSize: 13, color: DesignTokens.error, fontStyle: FontStyle.italic),
           ),
         ],
       );
@@ -370,7 +401,7 @@ class _AddToCartButton extends ConsumerWidget {
         }
         if (!context.mounted) return;
         final messenger = ScaffoldMessenger.of(context);
-        final success = await ref.read(cartControllerProvider).addToCart(productId, quantity);
+        final success = await ref.read(cartControllerProvider).addToCart(widget.productId, quantity);
 
         if (success) {
           HapticFeedback.mediumImpact();
@@ -393,6 +424,42 @@ class _AddToCartButton extends ConsumerWidget {
       fullWidth: true,
       icon: Icons.shopping_cart_checkout,
     );
+  }
+
+  Future<void> _toggleNotification(BuildContext context, dynamic currentUser) async {
+    if (currentUser == null) {
+      showLoginPrompt(context);
+      return;
+    }
+    setState(() => _notifyLoading = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final functions = ref.read(firebaseFunctionsProvider);
+      final isSubscribed = _subscribed ?? false;
+      if (isSubscribed) {
+        await functions
+            .httpsCallable(CloudFunctionEndpoints.unsubscribeStockNotification)
+            .call({Fields.productId: widget.productId});
+        if (mounted) setState(() => _subscribed = false);
+        if (context.mounted) {
+          messenger.showSnackBar(SnackBar(content: Text('product.notify_cancelled'.tr()), backgroundColor: DesignTokens.textSecondary));
+        }
+      } else {
+        await functions
+            .httpsCallable(CloudFunctionEndpoints.subscribeStockNotification)
+            .call({Fields.productId: widget.productId});
+        if (mounted) setState(() => _subscribed = true);
+        if (context.mounted) {
+          messenger.showSnackBar(SnackBar(content: Text('product.notify_subscribed'.tr()), backgroundColor: DesignTokens.success));
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(AppError.getMessage(e, 'product.notify_error'.tr())), backgroundColor: DesignTokens.error));
+      }
+    } finally {
+      if (mounted) setState(() => _notifyLoading = false);
+    }
   }
 }
 

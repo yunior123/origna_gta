@@ -188,6 +188,7 @@ abstract final class CloudFunctionEndpoints {
   // === PRODUCT ENDPOINTS ===
   static const deleteProduct = 'delete_product';
   static const getR2PresignedUrl = 'get_r2_presigned_url';
+  static const uploadReviewImages = 'upload_review_images';
   static const submitProductRating = 'submit_product_rating';
   // Back-in-stock (TASK 07)
   static const subscribeStockNotification = 'subscribe_stock_notification';
@@ -222,11 +223,6 @@ abstract final class CloudFunctionEndpoints {
   static const getPaymentProviders = 'get_payment_providers';
   static const updatePaymentProvider = 'update_payment_provider';
   static const getProviderStatus = 'get_provider_status';
-
-  // === AIRWALLEX ENDPOINTS ===
-  static const airwallexCreateSellerAccount = 'airwallex_create_seller_account';
-  static const airwallexProcessPayment = 'airwallex_process_payment';
-  static const airwallexCapturePayment = 'airwallex_capture_payment';
 
   // === SUBSCRIPTION ENDPOINTS ===
   static const createSubscription = 'create_subscription';
@@ -423,9 +419,6 @@ abstract final class Fields {
   static const paymentProvider = 'paymentProvider';
   static const oldEnabled = 'oldEnabled';
   static const newEnabled = 'newEnabled';
-  static const airwallexAccountId = 'airwallexAccountId';
-  static const airwallexCustomerId = 'airwallexCustomerId';
-  static const airwallexStatus = 'airwallexStatus';
   static const suspended = 'suspended';
   static const suspendedAt = 'suspendedAt';
   static const unsuspendedAt = 'unsuspendedAt';
@@ -565,16 +558,8 @@ abstract final class Fields {
   // === STRIPE METADATA FIELDS ===
   static const metadataPlatformFee = 'platformFee';
 
-  // === AIRWALLEX-SPECIFIC FIELDS ===
-  static const airwallexPaymentId = 'airwallexPaymentId';
-  static const airwallexPaymentIntentId = 'airwallexPaymentIntentId';
   static const paymentCompletedAt = 'paymentCompletedAt';
   static const paymentError = 'paymentError';
-  static const requires3ds = 'requires3ds';
-  static const authenticationUrl = 'authenticationUrl';
-  static const airwallexAccountVerified = 'airwallexAccountVerified';
-  static const airwallexVerificationStatus = 'airwallexVerificationStatus';
-  static const airwallexVerificationError = 'airwallexVerificationError';
 
   // === ORDER FIELDS (missing from Dart, present in Python) ===
   static const shippingApproval = 'shippingApproval';
@@ -935,9 +920,8 @@ abstract final class OrderStatusValues {
 /// Valid values for payment provider
 abstract final class PaymentProviderValues {
   static const stripe = 'stripe';
-  static const airwallex = 'airwallex';
 
-  static const all = {stripe, airwallex};
+  static const all = {stripe};
 }
 
 // =============================================================================

@@ -9,9 +9,6 @@ Collections:
 
 Providers Supported:
 - stripe: Stripe payment processing (ACTIVE at launch)
-- airwallex: Airwallex payment processing (DEAD CODE FOR LAUNCH — post-launch)
-
-TODO(post-launch): Evaluate Airwallex activation or remove entirely.
 """
 
 import logging
@@ -81,17 +78,6 @@ def _is_provider_configured(provider: str) -> tuple:
             missing.append("STRIPE_WEBHOOK_SECRET")
         return (len(missing) == 0, missing)
 
-    elif provider == PaymentProviderValues.AIRWALLEX:
-        # Airwallex secrets are optional/legacy for now
-        from config import get_airwallex_api_key, get_airwallex_client_id
-
-        missing = []
-        if not get_airwallex_api_key():
-            missing.append("AIRWALLEX_API_KEY")
-        if not get_airwallex_client_id():
-            missing.append("AIRWALLEX_CLIENT_ID")
-        return (len(missing) == 0, missing)
-
     return (False, ["Unknown provider"])
 
 
@@ -104,8 +90,7 @@ class PaymentProvider:
     """Supported payment providers."""
 
     STRIPE: str = "stripe"
-    AIRWALLEX: str = "airwallex"
-    ALL: ClassVar[list[str]] = [STRIPE, AIRWALLEX]
+    ALL: ClassVar[list[str]] = [STRIPE]
 
 
 # Default provider settings
@@ -117,14 +102,6 @@ DEFAULT_PROVIDER_CONFIG = {
         ApiKeys.SUPPORTED_CURRENCIES: ["CAD", "USD"],
         ApiKeys.SUPPORTED_COUNTRIES: ["CA", "US"],
         ApiKeys.FEATURES: ["cards", "apple_pay", "google_pay"],
-    },
-    PaymentProvider.AIRWALLEX: {
-        ApiKeys.ENABLED: False,  # Disabled by default, requires full KYC setup
-        Fields.NAME: "Airwallex",
-        Fields.DESCRIPTION: "International payment processor",
-        ApiKeys.SUPPORTED_CURRENCIES: ["CAD", "USD", "EUR", "GBP", "CNY"],
-        ApiKeys.SUPPORTED_COUNTRIES: ["CA", "US", "CN", "GB", "EU"],
-        ApiKeys.FEATURES: ["cards", "alipay", "wechat_pay"],
     },
 }
 
@@ -139,7 +116,7 @@ def is_provider_enabled(provider: str) -> bool:
     Check if a payment provider is enabled.
 
     Args:
-        provider: Provider name ("stripe" or "airwallex")
+        provider: Provider name ("stripe")
 
     Returns:
         True if provider is enabled, False otherwise
@@ -275,7 +252,6 @@ def get_payment_providers(req: https_fn.CallableRequest) -> dict[str, Any]:
             success: True,
             providers: {
                 stripe: { enabled: true, name: "Stripe", configured: true, ... },
-                airwallex: { enabled: false, name: "Airwallex", configured: false, ... }
             },
             enabledProviders: ["stripe"]
         }
@@ -323,7 +299,7 @@ def update_payment_provider(req: https_fn.CallableRequest) -> dict[str, Any]:
     Enable or disable a payment provider (admin only).
 
     Request data:
-        provider: Provider name ("stripe" or "airwallex")
+        provider: Provider name ("stripe")
         enabled: Boolean - whether to enable the provider
         reason: Optional string - reason for the change (logged)
 
@@ -468,7 +444,6 @@ def get_provider_status(req: https_fn.CallableRequest) -> dict[str, Any]:
             success: True,
             providers: {
                 stripe: { enabled: true, name: "Stripe" },
-                airwallex: { enabled: false, name: "Airwallex" }
             }
         }
     """

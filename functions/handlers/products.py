@@ -245,8 +245,96 @@ def upload_product_images(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("internal", "Failed to generate upload URLs. Please try again.") from e
 
 
-@https_fn.on_call(**DEFAULT_OPTIONS)
-def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
+@https_fn.on_call(secrets=[R2_ACCESS_KEY_PARAM, R2_SECRET_KEY_PARAM, R2_ACCOUNT_ID_PARAM])
+def upload_review_images(req: https_fn.CallableRequest) -> dict[str, Any]:
+    """
+    Generates presigned URLs for uploading review images to Cloudflare R2.
+
+    Available to all authenticated users (buyers as well as sellers).
+    Max 3 images per request.
+
+    Request data:
+        fileNames: List of file names
+        contentTypes: List of MIME types
+
+    Returns:
+        { uploadUrls: [{uploadUrl, publicUrl, fileName}], success: True }
+    """
+    if not req.auth:
+        raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
+
+    user_id = req.auth.uid
+
+    from utils.helpers import sanitize_path
+
+    data = req.data
+    file_names_raw = data.get("fileNames", [])
+    content_types = data.get("contentTypes", [])
+
+    if not file_names_raw:
+        raise https_fn.HttpsError("invalid-argument", "No files specified")
+    if len(file_names_raw) > 3:
+        raise https_fn.HttpsError("invalid-argument", "Maximum 3 review images allowed")
+    if len(file_names_raw) != len(content_types):
+        raise https_fn.HttpsError("invalid-argument", "File names and content types count mismatch")
+
+    ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
+    for ct in content_types:
+        if ct not in ALLOWED_MIME_TYPES:
+            raise https_fn.HttpsError("invalid-argument", f"Invalid content type '{ct}'")
+
+    file_names = [sanitize_path(fn) for fn in file_names_raw]
+    ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
+    for fn in file_names:
+        ext = fn.rsplit(".", 1)[-1].lower() if "." in fn else ""
+        if ext not in ALLOWED_EXTENSIONS:
+            raise https_fn.HttpsError("invalid-argument", f"Invalid file extension '.{ext}'")
+
+    r2_creds = get_r2_credentials()
+    r2_access_key = r2_creds.get("access_key")
+    r2_secret_key = r2_creds.get("secret_key")
+    r2_account_id = r2_creds.get("account_id")
+
+    if not all([r2_access_key, r2_secret_key, r2_account_id]):
+        raise https_fn.HttpsError("failed-precondition", "R2 credentials not configured")
+
+    s3_client = boto3.client(
+        "s3",
+        endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
+        aws_access_key_id=r2_access_key,
+        aws_secret_access_key=r2_secret_key,
+        config=Config(signature_version="s3v4"),
+        region_name="auto",
+    )
+
+    bucket_name = R2Config.BUCKET_NAME
+    upload_urls = []
+
+    try:
+        for file_name, content_type in zip(file_names, content_types, strict=False):
+            file_extension = file_name.split(".")[-1]
+            unique_key = R2Config.get_image_path("reviews", f"{user_id}/{uuid.uuid4()}.{file_extension}")
+            presigned_url = s3_client.generate_presigned_url(
+                "put_object",
+                Params={
+                    "Bucket": bucket_name,
+                    "Key": unique_key,
+                    "ContentType": content_type,
+                    "ContentDisposition": "inline",
+                },
+                ExpiresIn=3600,
+            )
+            public_url = f"{CDN_BASE_URL}/{unique_key}"
+            upload_urls.append({"uploadUrl": presigned_url, "publicUrl": public_url, "fileName": file_name, "key": unique_key})
+
+        return create_success_response({"uploadUrls": upload_urls})
+
+    except Exception as e:
+        logger.error(f"ERROR: Failed to generate review upload URLs: {e}")
+        raise https_fn.HttpsError("internal", "Failed to generate upload URLs. Please try again.") from e
+
+
+
     """
     Soft deletes a product (sets isActive = False).
 

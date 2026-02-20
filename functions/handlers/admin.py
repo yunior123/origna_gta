@@ -1191,8 +1191,6 @@ def delete_account(req: https_fn.CallableRequest) -> dict[str, Any]:
             Fields.BUSINESS_NAME: get_delete_field(),
             Fields.FULL_NAME: get_delete_field(),
             Fields.CUSTOMER_ID: get_delete_field(),
-            Fields.AIRWALLEX_ACCOUNT_ID: get_delete_field(),
-            Fields.AIRWALLEX_CUSTOMER_ID: get_delete_field(),
             Fields.BANK_DETAILS: get_delete_field(),
             Fields.PHONE_NUMBER: get_delete_field(),
             Fields.MFA_SECRET: get_delete_field(),

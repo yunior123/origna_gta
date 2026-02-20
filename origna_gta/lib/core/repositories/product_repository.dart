@@ -421,6 +421,40 @@ class FirebaseProductRepository implements ProductRepository {
     }
     return null;
   }
+
+  @override
+  Future<List<String>> uploadReviewImages(List<Uint8List> images, String userId) async {
+    if (images.isEmpty) return [];
+    final fileNames = List.generate(images.length, (i) => 'review_${userId}_${i}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+    final contentTypes = List.filled(images.length, 'image/jpeg');
+
+    final result = await _functions
+        .httpsCallable(CloudFunctionEndpoints.uploadReviewImages)
+        .call({'fileNames': fileNames, 'contentTypes': contentTypes});
+
+    final uploadUrls = List<Map<String, dynamic>>.from(result.data['uploadUrls'] ?? []);
+
+    final uploadFutures = uploadUrls.asMap().entries.map((entry) async {
+      final i = entry.key;
+      final urlInfo = entry.value;
+      try {
+        final response = await http
+            .put(
+              Uri.parse(urlInfo['uploadUrl'] as String),
+              body: images[i],
+              headers: {'Content-Type': 'image/jpeg'},
+            )
+            .timeout(const Duration(seconds: 30));
+        if (response.statusCode == 200) return urlInfo['publicUrl'] as String;
+        return null;
+      } catch (_) {
+        return null;
+      }
+    });
+
+    final results = await Future.wait(uploadFutures);
+    return results.whereType<String>().toList();
+  }
 }
 
 class ProductQueryResult {
@@ -503,5 +537,6 @@ abstract class ProductRepository {
   Future<void> toggleFavorite(String userId, String productId);
   Future<void> updateProduct(String productId, Map<String, dynamic> data);
   Future<List<String>> uploadImages(List<Uint8List> images, String productId);
+  Future<List<String>> uploadReviewImages(List<Uint8List> images, String userId);
   Stream<Set<String>> watchFavorites(String userId);
 }

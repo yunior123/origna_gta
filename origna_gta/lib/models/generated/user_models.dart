@@ -59,10 +59,6 @@ abstract class User with _$User {
     // === AUDIT FIX: 13 missing fields synced from Python/Firestore ===
     // Payment provider
     String? paymentProvider,
-    // Airwallex (alternative payment provider)
-    String? airwallexAccountId,
-    String? airwallexCustomerId,
-    String? airwallexStatus,
     // Suspension details
     DateTime? unsuspendedAt,
     String? suspendedBy,
@@ -124,9 +120,6 @@ abstract class User with _$User {
       updatedAt: _parseDateTime(data[Fields.updatedAt]),
       // === AUDIT FIX: Parse 13 missing fields ===
       paymentProvider: data[Fields.paymentProvider] as String?,
-      airwallexAccountId: data[Fields.airwallexAccountId] as String?,
-      airwallexCustomerId: data[Fields.airwallexCustomerId] as String?,
-      airwallexStatus: data[Fields.airwallexStatus] as String?,
       unsuspendedAt: _parseDateTime(data[Fields.unsuspendedAt]),
       suspendedBy: data[Fields.suspendedBy] as String?,
       suspensionReason: data[Fields.suspensionReason] as String?,

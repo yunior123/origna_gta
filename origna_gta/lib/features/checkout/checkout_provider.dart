@@ -168,7 +168,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 
   void setPaymentProvider(String provider) {
-    if (provider == PaymentProviderValues.stripe || provider == PaymentProviderValues.airwallex) {
+    if (provider == PaymentProviderValues.stripe) {
       state = state.copyWith(paymentProvider: provider);
     }
   }

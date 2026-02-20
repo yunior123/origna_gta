@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:origna_gta/features/products/product_rating_viewmodel.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
@@ -34,34 +37,41 @@ class RatingDialog extends ConsumerStatefulWidget {
 class _RatingDialogState extends ConsumerState<RatingDialog> {
   int _selectedRating = 0;
   bool _isSubmitting = false;
+  final List<Uint8List> _reviewImages = [];
+  final _picker = ImagePicker();
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text('rating.title'.tr()),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            widget.productName,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 16),
-          Text('rating.prompt'.tr(), style: const TextStyle(color: DesignTokens.textSecondary)),
-          const SizedBox(height: 16),
-          _buildStarRating(),
-          const SizedBox(height: 8),
-          Center(
-            child: Text(
-              _getRatingText(),
-              style: TextStyle(color: _selectedRating > 0 ? DesignTokens.warning : DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.productName,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Text('rating.prompt'.tr(), style: const TextStyle(color: DesignTokens.textSecondary)),
+            const SizedBox(height: 16),
+            _buildStarRating(),
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                _getRatingText(),
+                style: TextStyle(color: _selectedRating > 0 ? DesignTokens.warning : DesignTokens.textSecondary, fontWeight: FontWeight.w500),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Photo picker section
+            _buildPhotoPicker(),
+          ],
+        ),
       ),
       actions: [
         Semantics(
@@ -82,6 +92,80 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
         ),
       ],
     );
+  }
+
+  Widget _buildPhotoPicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'rating.add_photos'.tr(),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.textSecondary),
+            ),
+            const SizedBox(width: 4),
+            Text('(${_reviewImages.length}/3)', style: const TextStyle(fontSize: 12, color: DesignTokens.textDisabled)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            ..._reviewImages.asMap().entries.map((entry) => _buildImageThumb(entry.key, entry.value)),
+            if (_reviewImages.length < 3)
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: DesignTokens.outlineVariant, style: BorderStyle.solid),
+                    borderRadius: BorderRadius.circular(8),
+                    color: DesignTokens.surface,
+                  ),
+                  child: const Icon(Icons.add_photo_alternate_outlined, color: DesignTokens.textSecondary, size: 28),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImageThumb(int index, Uint8List bytes) {
+    return Stack(
+      children: [
+        Container(
+          width: 60,
+          height: 60,
+          margin: const EdgeInsets.only(right: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            image: DecorationImage(image: MemoryImage(bytes), fit: BoxFit.cover),
+          ),
+        ),
+        Positioned(
+          top: -2,
+          right: 2,
+          child: GestureDetector(
+            onTap: () => setState(() => _reviewImages.removeAt(index)),
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+              child: const Icon(Icons.close, color: Colors.white, size: 12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickImage() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 1200);
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (mounted) setState(() => _reviewImages.add(bytes));
   }
 
   Widget _buildStarRating() {
@@ -129,7 +213,12 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final viewModel = ref.read(productRatingViewModelProvider.notifier);
-    final success = await viewModel.submitRating(widget.orderId, widget.productId, _selectedRating);
+    final success = await viewModel.submitRating(
+      widget.orderId,
+      widget.productId,
+      _selectedRating,
+      reviewImages: _reviewImages.isNotEmpty ? List.unmodifiable(_reviewImages) : null,
+    );
 
     if (!mounted) return;
 

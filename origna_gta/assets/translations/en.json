@@ -47,13 +47,7 @@
       "stripe_feature_1": "Credit/Debit Cards",
       "stripe_feature_2": "Apple Pay",
       "stripe_feature_3": "Google Pay",
-      "stripe_feature_4": "Connect Payouts",
-      "airwallex_name": "Airwallex",
-      "airwallex_desc": "International payment processor with support for Alipay and WeChat Pay.",
-      "airwallex_feature_1": "Cards",
-      "airwallex_feature_2": "Alipay",
-      "airwallex_feature_3": "WeChat Pay",
-      "airwallex_feature_4": "International"
+      "stripe_feature_4": "Connect Payouts"
     },
     "security_tab": "Security",
     "errors": {
@@ -613,6 +607,11 @@
     "product_fallback": "Product",
     "own_product_title": "This is your product",
     "own_product_msg": "You cannot purchase your own products",
+    "notify_me": "Notify Me When Available",
+    "notify_cancel": "Cancel Notification",
+    "notify_subscribed": "You'll be notified when this item is back in stock",
+    "notify_cancelled": "Notification cancelled",
+    "notify_error": "Failed to update notification",
     "tracking": "Tracking",
     "tracking_available": "Available",
     "tracking_limited": "Limited tracking",
@@ -868,8 +867,6 @@
     "error_loading_profile": "Error loading profile: {error}",
     "complete_setup_card_body": "Click the button below to finish providing your information to Stripe.",
     "identity_pending_card_body": "Stripe is reviewing your identity documents. This usually takes a few minutes but can take up to 2 business days. You'll be able to add products once verified.",
-    "airwallex_connected": "Airwallex Connected",
-    "connect_airwallex": "Connect Airwallex",
     "manage_stripe": "Manage Stripe Account",
     "complete_documents": "Complete Required Documents",
     "complete_stripe_setup": "Complete Stripe Setup",
@@ -1070,7 +1067,8 @@
     "invalid_range": "Rating must be between 1 and 5",
     "cancel_label": "Cancel rating",
     "submit_label": "Submit rating",
-    "star_label": "Rate {count} out of 5 stars"
+    "star_label": "Rate {count} out of 5 stars",
+    "add_photos": "Add photos (optional)"
   },
   "payment_status": {
     "awaiting_payment": "Awaiting Payment",

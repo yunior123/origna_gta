@@ -131,19 +131,12 @@ class SellerRegistrationViewModel extends StateNotifier<SellerRegistrationState>
 
     try {
       final functions = _ref.read(firebaseFunctionsProvider);
-      if (state.paymentProvider == PaymentProviderValues.airwallex) {
-        final createAccount = functions.httpsCallable(CloudFunctionEndpoints.airwallexCreateSellerAccount);
-        await createAccount.call();
-        state = state.copyWith(isLoading: false, successMessage: 'Airwallex account connected');
-        _isOperationInProgress = false;
-      } else {
-        final createAccount = functions.httpsCallable(CloudFunctionEndpoints.createConnectAccount);
+      final createAccount = functions.httpsCallable(CloudFunctionEndpoints.createConnectAccount);
 
-        await createAccount.call();
-        // Result contains account data — proceed to onboarding
-        // Note: _continueOnboarding will handle its own cleanup
-        await _continueOnboarding();
-      }
+      await createAccount.call();
+      // Result contains account data — proceed to onboarding
+      // Note: _continueOnboarding will handle its own cleanup
+      await _continueOnboarding();
     } on FirebaseFunctionsException catch (e) {
       state = state.copyWith(isLoading: false, error: _cleanErrorMessage(e, 'Failed to create seller account'));
       _isOperationInProgress = false;

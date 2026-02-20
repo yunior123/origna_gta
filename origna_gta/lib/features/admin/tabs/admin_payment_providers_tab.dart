@@ -127,19 +127,6 @@ class _AdminPaymentProvidersTabState extends ConsumerState<AdminPaymentProviders
                           'admin.payments.stripe_feature_4'.tr(),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      _buildProviderCard(
-                        provider: PaymentProviderValues.airwallex,
-                        name: 'admin.payments.airwallex_name'.tr(),
-                        icon: Icons.language,
-                        description: 'admin.payments.airwallex_desc'.tr(),
-                        features: [
-                          'admin.payments.airwallex_feature_1'.tr(),
-                          'admin.payments.airwallex_feature_2'.tr(),
-                          'admin.payments.airwallex_feature_3'.tr(),
-                          'admin.payments.airwallex_feature_4'.tr(),
-                        ],
-                      ),
                     ],
 
                     const SizedBox(height: 24),

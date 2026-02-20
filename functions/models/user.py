@@ -52,11 +52,8 @@ class User(BaseModel):
     suspended: bool = Field(default=False, description="Whether account is suspended")
     suspendedAt: datetime | None = Field(default=None, description="When account was suspended")
     paymentProvider: str | None = Field(
-        default=PaymentProviderValues.STRIPE, description="Payment provider for seller payouts (stripe or airwallex)"
+        default=PaymentProviderValues.STRIPE, description="Payment provider for seller payouts"
     )
-    airwallexAccountId: str | None = Field(default=None, description="Airwallex connected account ID")
-    airwallexCustomerId: str | None = Field(default=None, description="Airwallex customer ID")
-    airwallexStatus: str | None = Field(default=None, description="Airwallex account status")
     mfaEnabled: bool = Field(default=False, description="Whether admin MFA is enabled")
     mfaSecret: str | None = Field(default=None, description="Admin TOTP secret (server-only)")
     lastMfaVerify: datetime | None = Field(default=None, description="Last successful admin MFA verification")

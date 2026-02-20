@@ -252,6 +252,11 @@ class AlgoliaProductRepository implements ProductRepository {
   }
 
   @override
+  Future<List<String>> uploadReviewImages(List<Uint8List> images, String userId) async {
+    throw UnimplementedError('Review image upload should be handled by FirebaseProductRepository');
+  }
+
+  @override
   Stream<Set<String>> watchFavorites(String userId) {
     return _firestore
         .collection(Collections.users)

@@ -35,9 +35,6 @@ _User _$UserFromJson(Map<String, dynamic> json) => _User(
       ? null
       : DateTime.parse(json['updatedAt'] as String),
   paymentProvider: json['paymentProvider'] as String?,
-  airwallexAccountId: json['airwallexAccountId'] as String?,
-  airwallexCustomerId: json['airwallexCustomerId'] as String?,
-  airwallexStatus: json['airwallexStatus'] as String?,
   unsuspendedAt: json['unsuspendedAt'] == null
       ? null
       : DateTime.parse(json['unsuspendedAt'] as String),
@@ -100,9 +97,6 @@ Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
   'suspendedAt': instance.suspendedAt?.toIso8601String(),
   'updatedAt': instance.updatedAt?.toIso8601String(),
   'paymentProvider': instance.paymentProvider,
-  'airwallexAccountId': instance.airwallexAccountId,
-  'airwallexCustomerId': instance.airwallexCustomerId,
-  'airwallexStatus': instance.airwallexStatus,
   'unsuspendedAt': instance.unsuspendedAt?.toIso8601String(),
   'suspendedBy': instance.suspendedBy,
   'suspensionReason': instance.suspensionReason,

@@ -7,6 +7,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/products/product_actions_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
+import 'package:origna_gta/features/qa/qa_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/utils/constants.dart';
 import 'package:origna_gta/utils/design_tokens.dart';
@@ -300,6 +301,8 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
                       padding: EdgeInsets.all(isCompact ? 4 : 8),
                       constraints: BoxConstraints(minWidth: isCompact ? 32 : 48, minHeight: isCompact ? 32 : 48),
                     ),
+                    // Q&A badge: show unanswered count for seller/admin
+                    _QaBadgeButton(productId: widget.productId, product: widget.product, iconSize: iconSize, isCompact: isCompact),
                     IconButton(
                       icon: Icon(Icons.delete, color: DesignTokens.error, size: iconSize),
                       onPressed: () => _showDeleteConfirmation(context),
@@ -391,5 +394,56 @@ class _ProductCardState extends ConsumerState<ProductCard> with SingleTickerProv
         messenger.showSnackBar(SnackBar(content: Text('favorites.update_failed'.tr()), backgroundColor: DesignTokens.error));
       }
     }
+  }
+}
+
+/// Badge button showing count of unanswered Q&A questions for the seller.
+class _QaBadgeButton extends ConsumerWidget {
+  final String productId;
+  final Product product;
+  final double iconSize;
+  final bool isCompact;
+
+  const _QaBadgeButton({required this.productId, required this.product, required this.iconSize, required this.isCompact});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final countAsync = ref.watch(unansweredQaCountProvider(productId));
+    final count = countAsync.valueOrNull ?? 0;
+
+    return Tooltip(
+      message: count > 0 ? 'Q&A: $count unanswered question${count == 1 ? '' : 's'}' : 'Q&A: No pending questions',
+      child: Stack(
+        alignment: Alignment.topRight,
+        clipBehavior: Clip.none,
+        children: [
+          IconButton(
+            icon: Icon(Icons.help_outline, color: count > 0 ? DesignTokens.warning : DesignTokens.textSecondary, size: iconSize),
+            onPressed: () => Navigator.pushNamed(
+              context,
+              AppRoutes.productDetails,
+              arguments: ProductDetailsArgs(productId: productId, product: product.toJson()),
+            ),
+            padding: EdgeInsets.all(isCompact ? 4 : 8),
+            constraints: BoxConstraints(minWidth: isCompact ? 32 : 48, minHeight: isCompact ? 32 : 48),
+          ),
+          if (count > 0)
+            Positioned(
+              top: isCompact ? 0 : 2,
+              right: isCompact ? 0 : 2,
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(color: DesignTokens.warning, shape: BoxShape.circle),
+                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                child: Text(
+                  count > 9 ? '9+' : '$count',
+                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

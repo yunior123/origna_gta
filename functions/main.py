@@ -4,7 +4,6 @@ Refactored architecture with modular handlers
 
 All Firebase Cloud Functions are organized by domain:
 - payment_stripe: Stripe payment processing
-- payment_airwallex: Airwallex payment processing
 - products: Product CRUD + Algolia sync
 - orders: Order lifecycle management
 - admin: User roles + MFA + GDPR
@@ -111,16 +110,6 @@ from handlers.orders import (  # noqa: E402
 )
 
 # ===============================================
-# PAYMENT HANDLERS - AIRWALLEX
-# ===============================================
-from handlers.payment_airwallex import (  # noqa: E402
-    airwallex_capture_payment,
-    airwallex_create_seller_account,
-    airwallex_process_payment,
-    airwallex_webhook,
-)
-
-# ===============================================
 # PAYMENT PROVIDER MANAGEMENT
 # ===============================================
 from handlers.payment_providers import get_payment_providers, get_provider_status, update_payment_provider  # noqa: E402
@@ -169,6 +158,7 @@ from handlers.products import (  # noqa: E402
     unsubscribe_stock_notification,
     update_warehouse,
     upload_product_images,
+    upload_review_images,
 )
 from handlers.users import (  # noqa: E402
     add_buyer_address,
@@ -242,13 +232,9 @@ __all__ = [
     "process_dispute_closed",
     "process_dispute_updated",
     "process_dispute_funds_reinstated",
-    # Airwallex payments
-    "airwallex_create_seller_account",
-    "airwallex_process_payment",
-    "airwallex_capture_payment",
-    "airwallex_webhook",
     # Products
     "upload_product_images",
+    "upload_review_images",
     "delete_product",
     "submit_product_rating",
     "configure_algolia",

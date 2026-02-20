@@ -199,9 +199,6 @@ class Fields:
     ONBOARDING_COMPLETED = "onboardingCompleted"
     PENDING_REQUIREMENTS = "pendingRequirements"
     PAYMENT_PROVIDER = "paymentProvider"
-    AIRWALLEX_ACCOUNT_ID = "airwallexAccountId"
-    AIRWALLEX_CUSTOMER_ID = "airwallexCustomerId"
-    AIRWALLEX_STATUS = "airwallexStatus"
     SUSPENDED = "suspended"
     SUSPENDED_AT = "suspendedAt"
     UNSUSPENDED_AT = "unsuspendedAt"
@@ -422,16 +419,8 @@ class Fields:
     OLD_ENABLED = "oldEnabled"
     NEW_ENABLED = "newEnabled"
 
-    # === AIRWALLEX-SPECIFIC FIELDS ===
-    AIRWALLEX_PAYMENT_INTENT_ID = "airwallexPaymentIntentId"
-    AIRWALLEX_PAYMENT_ID = "airwallexPaymentId"
-    AIRWALLEX_ACCOUNT_VERIFIED = "airwallexAccountVerified"
-    AIRWALLEX_VERIFICATION_STATUS = "airwallexVerificationStatus"
-    AIRWALLEX_VERIFICATION_ERROR = "airwallexVerificationError"
     PAYMENT_COMPLETED_AT = "paymentCompletedAt"
     PAYMENT_ERROR = "paymentError"
-    REQUIRES_3DS = "requires3ds"
-    AUTHENTICATION_URL = "authenticationUrl"
     CUSTOMER_NAME = "customerName"
 
     # === ORDER ITEM FIELDS ===
@@ -836,7 +825,6 @@ class SecurityAlertTypes:
     SELLER_ACCOUNT_CHANGED = "seller_account_changed"
     PAYOUT_RECORD_INCOMPLETE = "payout_record_incomplete"
     MFA_LOW_BACKUP_CODES = "mfa_low_backup_codes"
-    # Airwallex
     SELLER_KYC_FAILED = "seller_kyc_failed"
     # Tax exemption fraud prevention
     INVALID_GST_ATTEMPT = "invalid_gst_attempt"
@@ -871,9 +859,8 @@ class PaymentProviderValues:
     """Valid values for payment provider"""
 
     STRIPE = "stripe"
-    AIRWALLEX = "airwallex"
 
-    ALL: frozenset[str] = frozenset({STRIPE, AIRWALLEX})
+    ALL: frozenset[str] = frozenset({STRIPE})
 
 
 class SupplierCurrencyValues:
