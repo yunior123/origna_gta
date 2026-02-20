@@ -16,6 +16,8 @@ import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
+import 'package:origna_gta/features/subscription/subscription_provider.dart';
+import 'package:origna_gta/widgets/premium_paywall_widget.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -816,6 +818,7 @@ class _QASectionState extends ConsumerState<_QASection> {
     final qaAsync = ref.watch(qaListProvider(widget.productId));
     final currentUserId = ref.watch(userIdProvider);
     final isSeller = currentUserId == widget.sellerId;
+    final isPremium = ref.watch(subscriptionStreamProvider).whenOrNull(data: (s) => s?.isPremium) ?? false;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
@@ -829,7 +832,7 @@ class _QASectionState extends ConsumerState<_QASection> {
         qaAsync.when(
           data: (qaList) {
             if (qaList.isEmpty) {
-              return _emptyState(context, currentUserId, isSeller);
+              return _emptyState(context, currentUserId, isSeller, isPremium);
             }
 
             final displayList = _showAll ? qaList : qaList.take(3).toList();
@@ -846,14 +849,35 @@ class _QASectionState extends ConsumerState<_QASection> {
                 const SizedBox(height: 16),
                 if (!isSeller && currentUserId != null)
                   ElevatedButton.icon(
-                    onPressed: () => _showAskDialog(context),
-                    icon: const Icon(Icons.help_outline),
-                    label: Text('qa.ask_question'.tr()),
+                    onPressed: () => isPremium
+                        ? _showAskDialog(context)
+                        : _showPremiumPaywall(context),
+                    icon: Icon(isPremium ? Icons.help_outline : Icons.lock_rounded),
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('qa.ask_question'.tr()),
+                        if (!isPremium) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              gradient: DesignTokens.primaryGradient,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Premium',
+                              style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isDark ? Colors.grey.shade900 : Colors.white,
-                      foregroundColor: DesignTokens.primary,
+                      foregroundColor: isPremium ? DesignTokens.primary : DesignTokens.textSecondary,
                       elevation: 0,
-                      side: const BorderSide(color: DesignTokens.primary),
+                      side: BorderSide(color: isPremium ? DesignTokens.primary : DesignTokens.outline),
                     ),
                   )
                 else if (currentUserId == null)
@@ -870,7 +894,7 @@ class _QASectionState extends ConsumerState<_QASection> {
     );
   }
 
-  Widget _emptyState(BuildContext context, String? currentUserId, bool isSeller) {
+  Widget _emptyState(BuildContext context, String? currentUserId, bool isSeller, bool isPremium) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -889,7 +913,32 @@ class _QASectionState extends ConsumerState<_QASection> {
           ),
           if (!isSeller && currentUserId != null) ...[
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: () => _showAskDialog(context), child: Text('qa.ask_question'.tr())),
+            ElevatedButton.icon(
+              onPressed: () => isPremium
+                  ? _showAskDialog(context)
+                  : _showPremiumPaywall(context),
+              icon: Icon(isPremium ? Icons.help_outline : Icons.lock_rounded, size: 18),
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('qa.ask_question'.tr()),
+                  if (!isPremium) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        gradient: DesignTokens.primaryGradient,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'Premium',
+                        style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ] else if (currentUserId == null) ...[
             const SizedBox(height: 16),
             Text(
@@ -902,9 +951,23 @@ class _QASectionState extends ConsumerState<_QASection> {
     );
   }
 
+  void _showPremiumPaywall(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: PremiumPaywallWidget(
+          featureName: 'Ask Questions',
+          description:
+              'Post questions on any product Q&A board. Upgrade to Premium to unlock Q&A, seller chat, and more — only CAD \$7.86/month.',
+        ),
+      ),
+    );
+  }
+
   void _showAskDialog(BuildContext context) {
     final controller = TextEditingController();
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('qa.ask_question'.tr()),
@@ -912,15 +975,30 @@ class _QASectionState extends ConsumerState<_QASection> {
           controller: controller,
           decoration: InputDecoration(hintText: 'qa.question_hint'.tr()),
           maxLines: 3,
+          autofocus: true,
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text('common.cancel'.tr())),
           ElevatedButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                ref.read(qaControllerProvider.notifier).askQuestion(widget.productId, controller.text);
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('qa.question_submitted'.tr())));
+            onPressed: () async {
+              final text = controller.text.trim();
+              if (text.isEmpty) return;
+              Navigator.pop(ctx);
+              final messenger = ScaffoldMessenger.of(context);
+              await ref.read(qaControllerProvider.notifier).askQuestion(widget.productId, text);
+              if (!mounted) return;
+              final state = ref.read(qaControllerProvider);
+              if (state.hasError) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(state.error.toString()),
+                    backgroundColor: DesignTokens.error,
+                  ),
+                );
+              } else {
+                messenger.showSnackBar(
+                  SnackBar(content: Text('qa.question_submitted'.tr())),
+                );
               }
             },
             child: Text('qa.submit_question'.tr()),
