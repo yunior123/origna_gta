@@ -334,7 +334,8 @@ def upload_review_images(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("internal", "Failed to generate upload URLs. Please try again.") from e
 
 
-
+@https_fn.on_call(**DEFAULT_OPTIONS)
+def delete_product(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     Soft deletes a product (sets isActive = False).
 
