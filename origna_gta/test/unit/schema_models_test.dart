@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/generated/models.dart';
 
 void main() {
@@ -61,7 +62,6 @@ void main() {
         stockQuantity: 100,
         rating: 4.5,
         createdAt: DateTime(2026, 2, 1),
-        isActive: true,
       );
 
       expect(product.name, 'Organic Apples');
@@ -148,13 +148,13 @@ void main() {
         imageUrls: ['url'],
         sellerId: 'seller_123',
         sellerAddress: address,
-        deliveryStatus: DeliveryStatus.shipped,
+        status: DeliveryStatusValues.shipped,
       );
 
-      final updated = item.copyWith(deliveryStatus: DeliveryStatus.delivered, confirmedByBuyer: true);
-      expect(updated.deliveryStatus, DeliveryStatus.delivered);
+      final updated = item.copyWith(status: DeliveryStatusValues.delivered, confirmedByBuyer: true);
+      expect(updated.status, DeliveryStatusValues.delivered);
       expect(updated.confirmedByBuyer, true);
-      expect(item.deliveryStatus, DeliveryStatus.shipped); // Original unchanged
+      expect(item.status, DeliveryStatusValues.shipped); // Original unchanged
     });
   });
 
@@ -276,9 +276,7 @@ void main() {
         name: 'John Seller',
         roles: [UserRole.seller],
         createdAt: DateTime.now(),
-        onboardingCompleted: true,
-        chargesEnabled: true,
-        payoutsEnabled: true,
+        isSeller: true,
       );
       expect(sellerComplete.isSeller, true);
       expect(sellerComplete.canSell, true);
@@ -289,9 +287,8 @@ void main() {
         name: 'Jane Seller',
         roles: [UserRole.seller],
         createdAt: DateTime.now(),
-        onboardingCompleted: false,
       );
-      expect(sellerIncomplete.isSeller, true);
+      expect(sellerIncomplete.isSeller, false);
       expect(sellerIncomplete.canSell, false);
 
       final admin = User(uid: 'user_4', email: 'admin@example.com', name: 'Admin User', roles: [UserRole.admin], createdAt: DateTime.now());
@@ -301,9 +298,9 @@ void main() {
     test('User copyWith maintains immutability', () {
       final user = User(uid: 'user_123', email: 'user@example.com', name: 'John Doe', roles: [UserRole.buyer], createdAt: DateTime.now());
 
-      final updated = user.copyWith(name: 'Jane Doe', onboardingCompleted: true);
+      final updated = user.copyWith(name: 'Jane Doe', isSeller: true);
       expect(updated.name, 'Jane Doe');
-      expect(updated.onboardingCompleted, true);
+      expect(updated.isSeller, true);
       expect(user.name, 'John Doe'); // Original unchanged
     });
   });

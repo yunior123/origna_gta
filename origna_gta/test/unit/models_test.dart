@@ -360,7 +360,7 @@ void main() {
 
     test('toMap returns correct map', () {
       final now = Timestamp.fromDate(DateTime(2024, 1, 15));
-      final item = CartItemModel(productId: 'prod123', quantity: 3, createdAt: now, buyerNote: 'Gift wrapped please');
+      final item = CartItemModel(cartItemId: 'cart_1', productId: 'prod123', quantity: 3, createdAt: now, buyerNote: 'Gift wrapped please');
 
       final map = item.toMap();
 

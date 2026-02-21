@@ -25,7 +25,6 @@ void main() {
         createdAt: Timestamp.now(),
         sellerAddress: mockAddress,
         sellerId: 'seller_123',
-        deliveryStatus: 'pending',
         weightKg: weightKg,
         lengthCm: lengthCm,
         widthCm: widthCm,
