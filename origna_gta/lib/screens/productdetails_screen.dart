@@ -1211,7 +1211,7 @@ class _QACard extends ConsumerWidget {
           ElevatedButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                ref.read(qaControllerProvider.notifier).answerQuestion(productId: productId, qaId: qa.id, answer: controller.text);
+                ref.read(qaControllerProvider.notifier).answerQuestion(qaId: qa.id, answer: controller.text);
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('qa.answer_submitted'.tr())));
               }

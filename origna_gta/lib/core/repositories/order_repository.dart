@@ -82,6 +82,7 @@ class FirebaseOrderRepository implements OrderRepository {
         .where(Fields.paymentStatus, whereIn: [
           constants.PaymentStatus.authorized.value,
           constants.PaymentStatus.captured.value,
+          constants.PaymentStatus.disputed.value,
           constants.PaymentStatus.refunded.value,
           constants.PaymentStatus.cancelled.value,
           constants.PaymentStatus.authorizationExpired.value,
@@ -114,6 +115,7 @@ class FirebaseOrderRepository implements OrderRepository {
         .where(Fields.paymentStatus, whereIn: [
           constants.PaymentStatus.authorized.value,
           constants.PaymentStatus.captured.value,
+          constants.PaymentStatus.disputed.value,
           constants.PaymentStatus.refunded.value,
           constants.PaymentStatus.cancelled.value,
           constants.PaymentStatus.authorizationExpired.value,

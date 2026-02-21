@@ -13,7 +13,6 @@ import 'package:origna_gta/widgets/animations.dart';
 import 'package:origna_gta/widgets/custom_app_bar.dart';
 import 'package:origna_gta/widgets/modern_button.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
-import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 // Streams the total count of unanswered product questions for a seller (U-03)
@@ -160,7 +159,7 @@ class _UnansweredQaBadge extends ConsumerWidget {
         children: [
           IconButton(
             icon: const Icon(Icons.forum_outlined),
-            onPressed: () {}, // Navigate to Q&A management when that screen exists
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.sellerProducts),
           ),
           if (count > 0)
             Positioned(

@@ -325,8 +325,7 @@ mixin _$Product {
  Map<String, int>? get warehouseStock;/// City of primary shipping warehouse (denormalized for O(1) card rendering)
  String? get shipFromCity;/// Province code of primary warehouse (denormalized for O(1) card rendering)
  String? get shipFromProvince;/// Country of primary warehouse (denormalized for O(1) card rendering)
- String? get shipFromCountry;/// All unique countries across all warehouses (for multi-country display on card)
- List<String>? get shipFromCountries;// === TRENDING & ENGAGEMENT ===
+ String? get shipFromCountry; List<String>? get shipFromCountries;// === TRENDING & ENGAGEMENT ===
  int get trendingScore; int get viewCount; int get purchaseCount; bool get isTrending; DateTime? get trendingAt;// === N-09: Product Variants ===
 /// Whether this product has variants (size, color, etc.)
  bool get hasVariants;/// List of variant objects: {variantId, optionValues, price?, stockQuantity, sku?, isActive}
@@ -617,14 +616,14 @@ return $default(_that.productId,_that.name,_that.price,_that.compareAtPrice,_tha
 @JsonSerializable()
 
 class _Product implements Product {
-  const _Product({required this.productId, required this.name, required this.price, this.compareAtPrice = null, required this.description, required final  List<String> imageUrls, required this.sellerId, this.sellerAddress, required this.categoryId, required this.stockQuantity, this.rating = 0.0, this.ratingCount = 0, required this.createdAt, this.isActive = true, this.weightKg, this.lengthCm, this.widthCm, this.heightCm, this.isLocalDeliveryOnly = false, this.isPerishable = false, this.estimatedShipDays = 3, final  List<SellerDeliveryOption> deliveryOptions = const [], this.minimumOrderQuantity = 1, this.freeShipping = false, this.isDigital = false, this.digitalType = null, this.slug = null, final  Map<String, String>? digitalBuilds = null, this.deviceLimit = null, this.taxCode, final  List<String> keywords = const [], this.approvalStatus = ProductApprovalStatusValues.underReview, this.approvalRejectionReason = null, this.cost, this.supplierSku, this.supplierUrl, this.supplier, this.inventory, this.status = ProductStatusValues.active, this.sellerSku, final  List<String>? warehouseIds = null, final  Map<String, int>? warehouseStock = null, this.shipFromCity, this.shipFromProvince, this.shipFromCountry, final  List<String>? shipFromCountries = null, this.trendingScore = 0, this.viewCount = 0, this.purchaseCount = 0, this.isTrending = false, this.trendingAt, this.hasVariants = false, final  List<Map<String, dynamic>> variants = const [], final  List<Map<String, dynamic>> variantOptions = const [], this.subcategory = null}): _imageUrls = imageUrls,_deliveryOptions = deliveryOptions,_digitalBuilds = digitalBuilds,_keywords = keywords,_warehouseIds = warehouseIds,_warehouseStock = warehouseStock,_shipFromCountries = shipFromCountries,_variants = variants,_variantOptions = variantOptions;
+  const _Product({required this.productId, required this.name, required this.price, this.compareAtPrice, required this.description, required final  List<String> imageUrls, required this.sellerId, this.sellerAddress, required this.categoryId, required this.stockQuantity, this.rating = 0.0, this.ratingCount = 0, required this.createdAt, this.isActive = true, this.weightKg, this.lengthCm, this.widthCm, this.heightCm, this.isLocalDeliveryOnly = false, this.isPerishable = false, this.estimatedShipDays = 3, final  List<SellerDeliveryOption> deliveryOptions = const [], this.minimumOrderQuantity = 1, this.freeShipping = false, this.isDigital = false, this.digitalType, this.slug, final  Map<String, String>? digitalBuilds, this.deviceLimit, this.taxCode, final  List<String> keywords = const [], this.approvalStatus = ProductApprovalStatusValues.underReview, this.approvalRejectionReason, this.cost, this.supplierSku, this.supplierUrl, this.supplier, this.inventory, this.status = ProductStatusValues.active, this.sellerSku, final  List<String>? warehouseIds, final  Map<String, int>? warehouseStock, this.shipFromCity, this.shipFromProvince, this.shipFromCountry, final  List<String>? shipFromCountries, this.trendingScore = 0, this.viewCount = 0, this.purchaseCount = 0, this.isTrending = false, this.trendingAt, this.hasVariants = false, final  List<Map<String, dynamic>> variants = const [], final  List<Map<String, dynamic>> variantOptions = const [], this.subcategory}): _imageUrls = imageUrls,_deliveryOptions = deliveryOptions,_digitalBuilds = digitalBuilds,_keywords = keywords,_warehouseIds = warehouseIds,_warehouseStock = warehouseStock,_shipFromCountries = shipFromCountries,_variants = variants,_variantOptions = variantOptions;
   factory _Product.fromJson(Map<String, dynamic> json) => _$ProductFromJson(json);
 
 @override final  String productId;
 @override final  String name;
 @override final  double price;
 /// Original/crossed-out price for discount display (null = no sale, must be > price)
-@override@JsonKey() final  double? compareAtPrice;
+@override final  double? compareAtPrice;
 @override final  String description;
  final  List<String> _imageUrls;
 @override List<String> get imageUrls {
@@ -662,10 +661,10 @@ class _Product implements Product {
 @override@JsonKey() final  bool freeShipping;
 // Digital product flag
 @override@JsonKey() final  bool isDigital;
-@override@JsonKey() final  String? digitalType;
-@override@JsonKey() final  String? slug;
+@override final  String? digitalType;
+@override final  String? slug;
  final  Map<String, String>? _digitalBuilds;
-@override@JsonKey() Map<String, String>? get digitalBuilds {
+@override Map<String, String>? get digitalBuilds {
   final value = _digitalBuilds;
   if (value == null) return null;
   if (_digitalBuilds is EqualUnmodifiableMapView) return _digitalBuilds;
@@ -674,7 +673,7 @@ class _Product implements Product {
 }
 
 // bookSourceUrl intentionally NOT included — buyer-protected: written by seller, never returned to client
-@override@JsonKey() final  int? deviceLimit;
+@override final  int? deviceLimit;
 // Tax and metadata
 @override final  String? taxCode;
  final  List<String> _keywords;
@@ -686,7 +685,7 @@ class _Product implements Product {
 
 // Admin approval — all products start under_review, go live only when approved
 @override@JsonKey() final  String approvalStatus;
-@override@JsonKey() final  String? approvalRejectionReason;
+@override final  String? approvalRejectionReason;
 // Flat supplier fields (used when supplier object is not provided)
 @override final  double? cost;
 @override final  String? supplierSku;
@@ -704,7 +703,7 @@ class _Product implements Product {
 /// IDs of seller warehouses this product ships from
  final  List<String>? _warehouseIds;
 /// IDs of seller warehouses this product ships from
-@override@JsonKey() List<String>? get warehouseIds {
+@override List<String>? get warehouseIds {
   final value = _warehouseIds;
   if (value == null) return null;
   if (_warehouseIds is EqualUnmodifiableListView) return _warehouseIds;
@@ -715,7 +714,7 @@ class _Product implements Product {
 /// Stock per warehouse: {warehouseId: quantity}
  final  Map<String, int>? _warehouseStock;
 /// Stock per warehouse: {warehouseId: quantity}
-@override@JsonKey() Map<String, int>? get warehouseStock {
+@override Map<String, int>? get warehouseStock {
   final value = _warehouseStock;
   if (value == null) return null;
   if (_warehouseStock is EqualUnmodifiableMapView) return _warehouseStock;
@@ -729,10 +728,8 @@ class _Product implements Product {
 @override final  String? shipFromProvince;
 /// Country of primary warehouse (denormalized for O(1) card rendering)
 @override final  String? shipFromCountry;
-/// All unique countries across all warehouses (for multi-country display on card)
  final  List<String>? _shipFromCountries;
-/// All unique countries across all warehouses (for multi-country display on card)
-@override@JsonKey() List<String>? get shipFromCountries {
+@override List<String>? get shipFromCountries {
   final value = _shipFromCountries;
   if (value == null) return null;
   if (_shipFromCountries is EqualUnmodifiableListView) return _shipFromCountries;
@@ -769,7 +766,7 @@ class _Product implements Product {
 
 // === N-11: Subcategories ===
 /// Optional subcategory within the main category
-@override@JsonKey() final  String? subcategory;
+@override final  String? subcategory;
 
 /// Create a copy of Product
 /// with the given fields replaced by the non-null parameter values.
@@ -1208,13 +1205,13 @@ return $default(_that.name,_that.price,_that.compareAtPrice,_that.description,_t
 @JsonSerializable()
 
 class _ProductCreate implements ProductCreate {
-  const _ProductCreate({required this.name, required this.price, this.compareAtPrice = null, required this.description, required final  List<String> imageUrls, required this.sellerId, this.sellerAddress, required this.categoryId, required this.stockQuantity, this.rating = 0.0, this.isActive = true, this.weightKg, this.lengthCm, this.widthCm, this.heightCm, this.isLocalDeliveryOnly = false, this.isPerishable = false, this.estimatedShipDays = 3, final  List<SellerDeliveryOption> deliveryOptions = const [], this.minimumOrderQuantity = 1, this.freeShipping = false, this.isDigital = false, this.digitalType = null, this.slug = null, final  Map<String, String>? digitalBuilds = null, this.deviceLimit = null, this.taxCode, final  List<String> keywords = const [], this.cost, this.supplierSku, this.supplierUrl, this.supplier, this.inventory, this.status = ProductStatusValues.active, this.sellerSku, final  List<String>? warehouseIds = null, final  Map<String, int>? warehouseStock = null, this.shipFromCity, this.shipFromProvince, this.shipFromCountry, final  List<String>? shipFromCountries = null, this.hasVariants = false, final  List<Map<String, dynamic>> variants = const [], final  List<Map<String, dynamic>> variantOptions = const [], this.subcategory = null}): _imageUrls = imageUrls,_deliveryOptions = deliveryOptions,_digitalBuilds = digitalBuilds,_keywords = keywords,_warehouseIds = warehouseIds,_warehouseStock = warehouseStock,_shipFromCountries = shipFromCountries,_variants = variants,_variantOptions = variantOptions;
+  const _ProductCreate({required this.name, required this.price, this.compareAtPrice, required this.description, required final  List<String> imageUrls, required this.sellerId, this.sellerAddress, required this.categoryId, required this.stockQuantity, this.rating = 0.0, this.isActive = true, this.weightKg, this.lengthCm, this.widthCm, this.heightCm, this.isLocalDeliveryOnly = false, this.isPerishable = false, this.estimatedShipDays = 3, final  List<SellerDeliveryOption> deliveryOptions = const [], this.minimumOrderQuantity = 1, this.freeShipping = false, this.isDigital = false, this.digitalType, this.slug, final  Map<String, String>? digitalBuilds, this.deviceLimit, this.taxCode, final  List<String> keywords = const [], this.cost, this.supplierSku, this.supplierUrl, this.supplier, this.inventory, this.status = ProductStatusValues.active, this.sellerSku, final  List<String>? warehouseIds, final  Map<String, int>? warehouseStock, this.shipFromCity, this.shipFromProvince, this.shipFromCountry, final  List<String>? shipFromCountries, this.hasVariants = false, final  List<Map<String, dynamic>> variants = const [], final  List<Map<String, dynamic>> variantOptions = const [], this.subcategory}): _imageUrls = imageUrls,_deliveryOptions = deliveryOptions,_digitalBuilds = digitalBuilds,_keywords = keywords,_warehouseIds = warehouseIds,_warehouseStock = warehouseStock,_shipFromCountries = shipFromCountries,_variants = variants,_variantOptions = variantOptions;
   factory _ProductCreate.fromJson(Map<String, dynamic> json) => _$ProductCreateFromJson(json);
 
 @override final  String name;
 @override final  double price;
 /// Original/crossed-out price for discount display (null = no sale, must be > price)
-@override@JsonKey() final  double? compareAtPrice;
+@override final  double? compareAtPrice;
 @override final  String description;
  final  List<String> _imageUrls;
 @override List<String> get imageUrls {
@@ -1247,10 +1244,10 @@ class _ProductCreate implements ProductCreate {
 @override@JsonKey() final  int minimumOrderQuantity;
 @override@JsonKey() final  bool freeShipping;
 @override@JsonKey() final  bool isDigital;
-@override@JsonKey() final  String? digitalType;
-@override@JsonKey() final  String? slug;
+@override final  String? digitalType;
+@override final  String? slug;
  final  Map<String, String>? _digitalBuilds;
-@override@JsonKey() Map<String, String>? get digitalBuilds {
+@override Map<String, String>? get digitalBuilds {
   final value = _digitalBuilds;
   if (value == null) return null;
   if (_digitalBuilds is EqualUnmodifiableMapView) return _digitalBuilds;
@@ -1259,7 +1256,7 @@ class _ProductCreate implements ProductCreate {
 }
 
 // bookSourceUrl intentionally NOT included — buyer-protected: written by seller, never returned to client
-@override@JsonKey() final  int? deviceLimit;
+@override final  int? deviceLimit;
 @override final  String? taxCode;
  final  List<String> _keywords;
 @override@JsonKey() List<String> get keywords {
@@ -1280,7 +1277,7 @@ class _ProductCreate implements ProductCreate {
 // Multi-warehouse support
 @override final  String? sellerSku;
  final  List<String>? _warehouseIds;
-@override@JsonKey() List<String>? get warehouseIds {
+@override List<String>? get warehouseIds {
   final value = _warehouseIds;
   if (value == null) return null;
   if (_warehouseIds is EqualUnmodifiableListView) return _warehouseIds;
@@ -1289,7 +1286,7 @@ class _ProductCreate implements ProductCreate {
 }
 
  final  Map<String, int>? _warehouseStock;
-@override@JsonKey() Map<String, int>? get warehouseStock {
+@override Map<String, int>? get warehouseStock {
   final value = _warehouseStock;
   if (value == null) return null;
   if (_warehouseStock is EqualUnmodifiableMapView) return _warehouseStock;
@@ -1301,7 +1298,7 @@ class _ProductCreate implements ProductCreate {
 @override final  String? shipFromProvince;
 @override final  String? shipFromCountry;
  final  List<String>? _shipFromCountries;
-@override@JsonKey() List<String>? get shipFromCountries {
+@override List<String>? get shipFromCountries {
   final value = _shipFromCountries;
   if (value == null) return null;
   if (_shipFromCountries is EqualUnmodifiableListView) return _shipFromCountries;
@@ -1326,7 +1323,7 @@ class _ProductCreate implements ProductCreate {
 }
 
 // === N-11: Subcategories ===
-@override@JsonKey() final  String? subcategory;
+@override final  String? subcategory;
 
 /// Create a copy of ProductCreate
 /// with the given fields replaced by the non-null parameter values.
@@ -1466,6 +1463,299 @@ $InventoryConfigCopyWith<$Res>? get inventory {
     return _then(_self.copyWith(inventory: value));
   });
 }
+}
+
+
+/// @nodoc
+mixin _$ProductQuestion {
+
+ String get questionId; String get productId; String get sellerId; String get askerId; String get question; String? get answer; DateTime? get answeredAt; String? get answeredBy; bool get isAnswered; int get upvotes; DateTime get createdAt;
+/// Create a copy of ProductQuestion
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ProductQuestionCopyWith<ProductQuestion> get copyWith => _$ProductQuestionCopyWithImpl<ProductQuestion>(this as ProductQuestion, _$identity);
+
+  /// Serializes this ProductQuestion to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductQuestion&&(identical(other.questionId, questionId) || other.questionId == questionId)&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.askerId, askerId) || other.askerId == askerId)&&(identical(other.question, question) || other.question == question)&&(identical(other.answer, answer) || other.answer == answer)&&(identical(other.answeredAt, answeredAt) || other.answeredAt == answeredAt)&&(identical(other.answeredBy, answeredBy) || other.answeredBy == answeredBy)&&(identical(other.isAnswered, isAnswered) || other.isAnswered == isAnswered)&&(identical(other.upvotes, upvotes) || other.upvotes == upvotes)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,questionId,productId,sellerId,askerId,question,answer,answeredAt,answeredBy,isAnswered,upvotes,createdAt);
+
+@override
+String toString() {
+  return 'ProductQuestion(questionId: $questionId, productId: $productId, sellerId: $sellerId, askerId: $askerId, question: $question, answer: $answer, answeredAt: $answeredAt, answeredBy: $answeredBy, isAnswered: $isAnswered, upvotes: $upvotes, createdAt: $createdAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ProductQuestionCopyWith<$Res>  {
+  factory $ProductQuestionCopyWith(ProductQuestion value, $Res Function(ProductQuestion) _then) = _$ProductQuestionCopyWithImpl;
+@useResult
+$Res call({
+ String questionId, String productId, String sellerId, String askerId, String question, String? answer, DateTime? answeredAt, String? answeredBy, bool isAnswered, int upvotes, DateTime createdAt
+});
+
+
+
+
+}
+/// @nodoc
+class _$ProductQuestionCopyWithImpl<$Res>
+    implements $ProductQuestionCopyWith<$Res> {
+  _$ProductQuestionCopyWithImpl(this._self, this._then);
+
+  final ProductQuestion _self;
+  final $Res Function(ProductQuestion) _then;
+
+/// Create a copy of ProductQuestion
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? questionId = null,Object? productId = null,Object? sellerId = null,Object? askerId = null,Object? question = null,Object? answer = freezed,Object? answeredAt = freezed,Object? answeredBy = freezed,Object? isAnswered = null,Object? upvotes = null,Object? createdAt = null,}) {
+  return _then(_self.copyWith(
+questionId: null == questionId ? _self.questionId : questionId // ignore: cast_nullable_to_non_nullable
+as String,productId: null == productId ? _self.productId : productId // ignore: cast_nullable_to_non_nullable
+as String,sellerId: null == sellerId ? _self.sellerId : sellerId // ignore: cast_nullable_to_non_nullable
+as String,askerId: null == askerId ? _self.askerId : askerId // ignore: cast_nullable_to_non_nullable
+as String,question: null == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
+as String,answer: freezed == answer ? _self.answer : answer // ignore: cast_nullable_to_non_nullable
+as String?,answeredAt: freezed == answeredAt ? _self.answeredAt : answeredAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,answeredBy: freezed == answeredBy ? _self.answeredBy : answeredBy // ignore: cast_nullable_to_non_nullable
+as String?,isAnswered: null == isAnswered ? _self.isAnswered : isAnswered // ignore: cast_nullable_to_non_nullable
+as bool,upvotes: null == upvotes ? _self.upvotes : upvotes // ignore: cast_nullable_to_non_nullable
+as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as DateTime,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [ProductQuestion].
+extension ProductQuestionPatterns on ProductQuestion {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ProductQuestion value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _ProductQuestion() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ProductQuestion value)  $default,){
+final _that = this;
+switch (_that) {
+case _ProductQuestion():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ProductQuestion value)?  $default,){
+final _that = this;
+switch (_that) {
+case _ProductQuestion() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String questionId,  String productId,  String sellerId,  String askerId,  String question,  String? answer,  DateTime? answeredAt,  String? answeredBy,  bool isAnswered,  int upvotes,  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _ProductQuestion() when $default != null:
+return $default(_that.questionId,_that.productId,_that.sellerId,_that.askerId,_that.question,_that.answer,_that.answeredAt,_that.answeredBy,_that.isAnswered,_that.upvotes,_that.createdAt);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String questionId,  String productId,  String sellerId,  String askerId,  String question,  String? answer,  DateTime? answeredAt,  String? answeredBy,  bool isAnswered,  int upvotes,  DateTime createdAt)  $default,) {final _that = this;
+switch (_that) {
+case _ProductQuestion():
+return $default(_that.questionId,_that.productId,_that.sellerId,_that.askerId,_that.question,_that.answer,_that.answeredAt,_that.answeredBy,_that.isAnswered,_that.upvotes,_that.createdAt);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String questionId,  String productId,  String sellerId,  String askerId,  String question,  String? answer,  DateTime? answeredAt,  String? answeredBy,  bool isAnswered,  int upvotes,  DateTime createdAt)?  $default,) {final _that = this;
+switch (_that) {
+case _ProductQuestion() when $default != null:
+return $default(_that.questionId,_that.productId,_that.sellerId,_that.askerId,_that.question,_that.answer,_that.answeredAt,_that.answeredBy,_that.isAnswered,_that.upvotes,_that.createdAt);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _ProductQuestion implements ProductQuestion {
+  const _ProductQuestion({required this.questionId, required this.productId, required this.sellerId, required this.askerId, required this.question, this.answer, this.answeredAt, this.answeredBy, this.isAnswered = false, this.upvotes = 0, required this.createdAt});
+  factory _ProductQuestion.fromJson(Map<String, dynamic> json) => _$ProductQuestionFromJson(json);
+
+@override final  String questionId;
+@override final  String productId;
+@override final  String sellerId;
+@override final  String askerId;
+@override final  String question;
+@override final  String? answer;
+@override final  DateTime? answeredAt;
+@override final  String? answeredBy;
+@override@JsonKey() final  bool isAnswered;
+@override@JsonKey() final  int upvotes;
+@override final  DateTime createdAt;
+
+/// Create a copy of ProductQuestion
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ProductQuestionCopyWith<_ProductQuestion> get copyWith => __$ProductQuestionCopyWithImpl<_ProductQuestion>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ProductQuestionToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProductQuestion&&(identical(other.questionId, questionId) || other.questionId == questionId)&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.askerId, askerId) || other.askerId == askerId)&&(identical(other.question, question) || other.question == question)&&(identical(other.answer, answer) || other.answer == answer)&&(identical(other.answeredAt, answeredAt) || other.answeredAt == answeredAt)&&(identical(other.answeredBy, answeredBy) || other.answeredBy == answeredBy)&&(identical(other.isAnswered, isAnswered) || other.isAnswered == isAnswered)&&(identical(other.upvotes, upvotes) || other.upvotes == upvotes)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,questionId,productId,sellerId,askerId,question,answer,answeredAt,answeredBy,isAnswered,upvotes,createdAt);
+
+@override
+String toString() {
+  return 'ProductQuestion(questionId: $questionId, productId: $productId, sellerId: $sellerId, askerId: $askerId, question: $question, answer: $answer, answeredAt: $answeredAt, answeredBy: $answeredBy, isAnswered: $isAnswered, upvotes: $upvotes, createdAt: $createdAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ProductQuestionCopyWith<$Res> implements $ProductQuestionCopyWith<$Res> {
+  factory _$ProductQuestionCopyWith(_ProductQuestion value, $Res Function(_ProductQuestion) _then) = __$ProductQuestionCopyWithImpl;
+@override @useResult
+$Res call({
+ String questionId, String productId, String sellerId, String askerId, String question, String? answer, DateTime? answeredAt, String? answeredBy, bool isAnswered, int upvotes, DateTime createdAt
+});
+
+
+
+
+}
+/// @nodoc
+class __$ProductQuestionCopyWithImpl<$Res>
+    implements _$ProductQuestionCopyWith<$Res> {
+  __$ProductQuestionCopyWithImpl(this._self, this._then);
+
+  final _ProductQuestion _self;
+  final $Res Function(_ProductQuestion) _then;
+
+/// Create a copy of ProductQuestion
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? questionId = null,Object? productId = null,Object? sellerId = null,Object? askerId = null,Object? question = null,Object? answer = freezed,Object? answeredAt = freezed,Object? answeredBy = freezed,Object? isAnswered = null,Object? upvotes = null,Object? createdAt = null,}) {
+  return _then(_ProductQuestion(
+questionId: null == questionId ? _self.questionId : questionId // ignore: cast_nullable_to_non_nullable
+as String,productId: null == productId ? _self.productId : productId // ignore: cast_nullable_to_non_nullable
+as String,sellerId: null == sellerId ? _self.sellerId : sellerId // ignore: cast_nullable_to_non_nullable
+as String,askerId: null == askerId ? _self.askerId : askerId // ignore: cast_nullable_to_non_nullable
+as String,question: null == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
+as String,answer: freezed == answer ? _self.answer : answer // ignore: cast_nullable_to_non_nullable
+as String?,answeredAt: freezed == answeredAt ? _self.answeredAt : answeredAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,answeredBy: freezed == answeredBy ? _self.answeredBy : answeredBy // ignore: cast_nullable_to_non_nullable
+as String?,isAnswered: null == isAnswered ? _self.isAnswered : isAnswered // ignore: cast_nullable_to_non_nullable
+as bool,upvotes: null == upvotes ? _self.upvotes : upvotes // ignore: cast_nullable_to_non_nullable
+as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as DateTime,
+  ));
+}
+
+
 }
 
 
@@ -2655,299 +2945,6 @@ as String,shippingDays: freezed == shippingDays ? _self.shippingDays : shippingD
 as String?,hasTracking: null == hasTracking ? _self.hasTracking : hasTracking // ignore: cast_nullable_to_non_nullable
 as bool,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
 as String?,
-  ));
-}
-
-
-}
-
-
-/// @nodoc
-mixin _$ProductQuestion {
-
- String get questionId; String get productId; String get sellerId; String get askerId; String get question; String? get answer; DateTime? get answeredAt; String? get answeredBy; bool get isAnswered; int get upvotes; DateTime get createdAt;
-/// Create a copy of ProductQuestion
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$ProductQuestionCopyWith<ProductQuestion> get copyWith => _$ProductQuestionCopyWithImpl<ProductQuestion>(this as ProductQuestion, _$identity);
-
-  /// Serializes this ProductQuestion to a JSON map.
-  Map<String, dynamic> toJson();
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductQuestion&&(identical(other.questionId, questionId) || other.questionId == questionId)&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.askerId, askerId) || other.askerId == askerId)&&(identical(other.question, question) || other.question == question)&&(identical(other.answer, answer) || other.answer == answer)&&(identical(other.answeredAt, answeredAt) || other.answeredAt == answeredAt)&&(identical(other.answeredBy, answeredBy) || other.answeredBy == answeredBy)&&(identical(other.isAnswered, isAnswered) || other.isAnswered == isAnswered)&&(identical(other.upvotes, upvotes) || other.upvotes == upvotes)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,questionId,productId,sellerId,askerId,question,answer,answeredAt,answeredBy,isAnswered,upvotes,createdAt);
-
-@override
-String toString() {
-  return 'ProductQuestion(questionId: $questionId, productId: $productId, sellerId: $sellerId, askerId: $askerId, question: $question, answer: $answer, answeredAt: $answeredAt, answeredBy: $answeredBy, isAnswered: $isAnswered, upvotes: $upvotes, createdAt: $createdAt)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $ProductQuestionCopyWith<$Res>  {
-  factory $ProductQuestionCopyWith(ProductQuestion value, $Res Function(ProductQuestion) _then) = _$ProductQuestionCopyWithImpl;
-@useResult
-$Res call({
- String questionId, String productId, String sellerId, String askerId, String question, String? answer, DateTime? answeredAt, String? answeredBy, bool isAnswered, int upvotes, DateTime createdAt
-});
-
-
-
-
-}
-/// @nodoc
-class _$ProductQuestionCopyWithImpl<$Res>
-    implements $ProductQuestionCopyWith<$Res> {
-  _$ProductQuestionCopyWithImpl(this._self, this._then);
-
-  final ProductQuestion _self;
-  final $Res Function(ProductQuestion) _then;
-
-/// Create a copy of ProductQuestion
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? questionId = null,Object? productId = null,Object? sellerId = null,Object? askerId = null,Object? question = null,Object? answer = freezed,Object? answeredAt = freezed,Object? answeredBy = freezed,Object? isAnswered = null,Object? upvotes = null,Object? createdAt = null,}) {
-  return _then(_self.copyWith(
-questionId: null == questionId ? _self.questionId : questionId // ignore: cast_nullable_to_non_nullable
-as String,productId: null == productId ? _self.productId : productId // ignore: cast_nullable_to_non_nullable
-as String,sellerId: null == sellerId ? _self.sellerId : sellerId // ignore: cast_nullable_to_non_nullable
-as String,askerId: null == askerId ? _self.askerId : askerId // ignore: cast_nullable_to_non_nullable
-as String,question: null == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
-as String,answer: freezed == answer ? _self.answer : answer // ignore: cast_nullable_to_non_nullable
-as String?,answeredAt: freezed == answeredAt ? _self.answeredAt : answeredAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,answeredBy: freezed == answeredBy ? _self.answeredBy : answeredBy // ignore: cast_nullable_to_non_nullable
-as String?,isAnswered: null == isAnswered ? _self.isAnswered : isAnswered // ignore: cast_nullable_to_non_nullable
-as bool,upvotes: null == upvotes ? _self.upvotes : upvotes // ignore: cast_nullable_to_non_nullable
-as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
-  ));
-}
-
-}
-
-
-/// Adds pattern-matching-related methods to [ProductQuestion].
-extension ProductQuestionPatterns on ProductQuestion {
-/// A variant of `map` that fallback to returning `orElse`.
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case final Subclass value:
-///     return ...;
-///   case _:
-///     return orElse();
-/// }
-/// ```
-
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ProductQuestion value)?  $default,{required TResult orElse(),}){
-final _that = this;
-switch (_that) {
-case _ProductQuestion() when $default != null:
-return $default(_that);case _:
-  return orElse();
-
-}
-}
-/// A `switch`-like method, using callbacks.
-///
-/// Callbacks receives the raw object, upcasted.
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case final Subclass value:
-///     return ...;
-///   case final Subclass2 value:
-///     return ...;
-/// }
-/// ```
-
-@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ProductQuestion value)  $default,){
-final _that = this;
-switch (_that) {
-case _ProductQuestion():
-return $default(_that);case _:
-  throw StateError('Unexpected subclass');
-
-}
-}
-/// A variant of `map` that fallback to returning `null`.
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case final Subclass value:
-///     return ...;
-///   case _:
-///     return null;
-/// }
-/// ```
-
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ProductQuestion value)?  $default,){
-final _that = this;
-switch (_that) {
-case _ProductQuestion() when $default != null:
-return $default(_that);case _:
-  return null;
-
-}
-}
-/// A variant of `when` that fallback to an `orElse` callback.
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case Subclass(:final field):
-///     return ...;
-///   case _:
-///     return orElse();
-/// }
-/// ```
-
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String questionId,  String productId,  String sellerId,  String askerId,  String question,  String? answer,  DateTime? answeredAt,  String? answeredBy,  bool isAnswered,  int upvotes,  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
-switch (_that) {
-case _ProductQuestion() when $default != null:
-return $default(_that.questionId,_that.productId,_that.sellerId,_that.askerId,_that.question,_that.answer,_that.answeredAt,_that.answeredBy,_that.isAnswered,_that.upvotes,_that.createdAt);case _:
-  return orElse();
-
-}
-}
-/// A `switch`-like method, using callbacks.
-///
-/// As opposed to `map`, this offers destructuring.
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case Subclass(:final field):
-///     return ...;
-///   case Subclass2(:final field2):
-///     return ...;
-/// }
-/// ```
-
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String questionId,  String productId,  String sellerId,  String askerId,  String question,  String? answer,  DateTime? answeredAt,  String? answeredBy,  bool isAnswered,  int upvotes,  DateTime createdAt)  $default,) {final _that = this;
-switch (_that) {
-case _ProductQuestion():
-return $default(_that.questionId,_that.productId,_that.sellerId,_that.askerId,_that.question,_that.answer,_that.answeredAt,_that.answeredBy,_that.isAnswered,_that.upvotes,_that.createdAt);case _:
-  throw StateError('Unexpected subclass');
-
-}
-}
-/// A variant of `when` that fallback to returning `null`
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case Subclass(:final field):
-///     return ...;
-///   case _:
-///     return null;
-/// }
-/// ```
-
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String questionId,  String productId,  String sellerId,  String askerId,  String question,  String? answer,  DateTime? answeredAt,  String? answeredBy,  bool isAnswered,  int upvotes,  DateTime createdAt)?  $default,) {final _that = this;
-switch (_that) {
-case _ProductQuestion() when $default != null:
-return $default(_that.questionId,_that.productId,_that.sellerId,_that.askerId,_that.question,_that.answer,_that.answeredAt,_that.answeredBy,_that.isAnswered,_that.upvotes,_that.createdAt);case _:
-  return null;
-
-}
-}
-
-}
-
-/// @nodoc
-@JsonSerializable()
-
-class _ProductQuestion implements ProductQuestion {
-  const _ProductQuestion({required this.questionId, required this.productId, required this.sellerId, required this.askerId, required this.question, this.answer, this.answeredAt, this.answeredBy, this.isAnswered = false, this.upvotes = 0, required this.createdAt});
-  factory _ProductQuestion.fromJson(Map<String, dynamic> json) => _$ProductQuestionFromJson(json);
-
-@override final  String questionId;
-@override final  String productId;
-@override final  String sellerId;
-@override final  String askerId;
-@override final  String question;
-@override final  String? answer;
-@override final  DateTime? answeredAt;
-@override final  String? answeredBy;
-@override@JsonKey() final  bool isAnswered;
-@override@JsonKey() final  int upvotes;
-@override final  DateTime createdAt;
-
-/// Create a copy of ProductQuestion
-/// with the given fields replaced by the non-null parameter values.
-@override @JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-_$ProductQuestionCopyWith<_ProductQuestion> get copyWith => __$ProductQuestionCopyWithImpl<_ProductQuestion>(this, _$identity);
-
-@override
-Map<String, dynamic> toJson() {
-  return _$ProductQuestionToJson(this, );
-}
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProductQuestion&&(identical(other.questionId, questionId) || other.questionId == questionId)&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.sellerId, sellerId) || other.sellerId == sellerId)&&(identical(other.askerId, askerId) || other.askerId == askerId)&&(identical(other.question, question) || other.question == question)&&(identical(other.answer, answer) || other.answer == answer)&&(identical(other.answeredAt, answeredAt) || other.answeredAt == answeredAt)&&(identical(other.answeredBy, answeredBy) || other.answeredBy == answeredBy)&&(identical(other.isAnswered, isAnswered) || other.isAnswered == isAnswered)&&(identical(other.upvotes, upvotes) || other.upvotes == upvotes)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,questionId,productId,sellerId,askerId,question,answer,answeredAt,answeredBy,isAnswered,upvotes,createdAt);
-
-@override
-String toString() {
-  return 'ProductQuestion(questionId: $questionId, productId: $productId, sellerId: $sellerId, askerId: $askerId, question: $question, answer: $answer, answeredAt: $answeredAt, answeredBy: $answeredBy, isAnswered: $isAnswered, upvotes: $upvotes, createdAt: $createdAt)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class _$ProductQuestionCopyWith<$Res> implements $ProductQuestionCopyWith<$Res> {
-  factory _$ProductQuestionCopyWith(_ProductQuestion value, $Res Function(_ProductQuestion) _then) = __$ProductQuestionCopyWithImpl;
-@override @useResult
-$Res call({
- String questionId, String productId, String sellerId, String askerId, String question, String? answer, DateTime? answeredAt, String? answeredBy, bool isAnswered, int upvotes, DateTime createdAt
-});
-
-
-
-
-}
-/// @nodoc
-class __$ProductQuestionCopyWithImpl<$Res>
-    implements _$ProductQuestionCopyWith<$Res> {
-  __$ProductQuestionCopyWithImpl(this._self, this._then);
-
-  final _ProductQuestion _self;
-  final $Res Function(_ProductQuestion) _then;
-
-/// Create a copy of ProductQuestion
-/// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? questionId = null,Object? productId = null,Object? sellerId = null,Object? askerId = null,Object? question = null,Object? answer = freezed,Object? answeredAt = freezed,Object? answeredBy = freezed,Object? isAnswered = null,Object? upvotes = null,Object? createdAt = null,}) {
-  return _then(_ProductQuestion(
-questionId: null == questionId ? _self.questionId : questionId // ignore: cast_nullable_to_non_nullable
-as String,productId: null == productId ? _self.productId : productId // ignore: cast_nullable_to_non_nullable
-as String,sellerId: null == sellerId ? _self.sellerId : sellerId // ignore: cast_nullable_to_non_nullable
-as String,askerId: null == askerId ? _self.askerId : askerId // ignore: cast_nullable_to_non_nullable
-as String,question: null == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
-as String,answer: freezed == answer ? _self.answer : answer // ignore: cast_nullable_to_non_nullable
-as String?,answeredAt: freezed == answeredAt ? _self.answeredAt : answeredAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,answeredBy: freezed == answeredBy ? _self.answeredBy : answeredBy // ignore: cast_nullable_to_non_nullable
-as String?,isAnswered: null == isAnswered ? _self.isAnswered : isAnswered // ignore: cast_nullable_to_non_nullable
-as bool,upvotes: null == upvotes ? _self.upvotes : upvotes // ignore: cast_nullable_to_non_nullable
-as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
   ));
 }
 

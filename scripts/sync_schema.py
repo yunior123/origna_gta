@@ -5,11 +5,11 @@ Schema Synchronization Script
 
 Synchronizes schema constants between Python backend and Dart frontend.
 This script only updates enum value classes that have corresponding Python sources:
-- OrderStatusValues (from Python OrderStatus)
-- PaymentStatusValues (from Python PaymentStatus)
-- DeliveryStatusValues (from Python DeliveryStatus)
-- UserRoleValues (from Python UserRoles)
-- BusinessRules (from Python constants)
+- OrderStatusValues (from Python schema_constants.OrderStatusValues)
+- PaymentStatusValues (from Python schema_constants.PaymentStatusValues)
+- DeliveryStatusValues (from Python schema_constants.DeliveryStatusValues)
+- UserRoleValues (from Python schema_constants.UserRoleValues)
+- BusinessRules (from Python schema_constants.BusinessRules)
 
 All other classes in the Dart file are preserved as-is.
 
@@ -29,7 +29,7 @@ from typing import Any
 
 # Configuration
 PROJECT_ROOT = Path(__file__).parent.parent
-PYTHON_SCHEMA_SOURCE = PROJECT_ROOT / "functions" / "config.py"
+PYTHON_SCHEMA_SOURCE = PROJECT_ROOT / "functions" / "schema_constants.py"
 DART_SCHEMA_FILE = PROJECT_ROOT / "origna_gta" / "lib" / "core" / "schema" / "schema_constants.dart"
 
 
@@ -39,6 +39,13 @@ CLASS_MAPPING = {
     'PaymentStatus': 'PaymentStatusValues',
     'DeliveryStatus': 'DeliveryStatusValues',
     'UserRoles': 'UserRoleValues',
+}
+
+PYTHON_CLASS_FALLBACKS = {
+    "OrderStatus": "OrderStatusValues",
+    "PaymentStatus": "PaymentStatusValues",
+    "DeliveryStatus": "DeliveryStatusValues",
+    "UserRoles": "UserRoleValues",
 }
 
 
@@ -69,25 +76,34 @@ def extract_python_class_constants(file_path: Path, class_name: str) -> dict[str
 
 
 def extract_business_rules(file_path: Path) -> dict[str, Any]:
-    """Extract business rule constants from Python config."""
+    """Extract business rule constants from schema constants or legacy config format."""
     content = file_path.read_text()
+    class_pattern = r"class BusinessRules(?:\([^)]*\))?:\n(.*?)(?:\nclass|\Z)"
+    class_match = re.search(class_pattern, content, re.DOTALL)
+    search_body = class_match.group(1) if class_match else content
+    if not search_body:
+        return {}
     rules = {}
-    
-    # Extract PLATFORM_FEE_PERCENT (convert to percentage)
-    match = re.search(r"PLATFORM_FEE_PERCENT\s*=\s*(\d+\.?\d*)", content)
+
+    # PLATFORM_FEE_PERCENT:
+    # - Legacy config.py used ratio (0.025)
+    # - schema_constants.BusinessRules uses percent (2.5)
+    match = re.search(r"PLATFORM_FEE_PERCENT\s*=\s*(\d+\.?\d*)", search_body)
     if match:
-        rules['platformFeePercent'] = float(match.group(1)) * 100
-    
-    # Extract AUTO_CONFIRM_DAYS
-    match = re.search(r"AUTO_CONFIRM_DAYS\s*=\s*(\d+)", content)
+        raw = float(match.group(1))
+        rules["platformFeePercent"] = raw * 100 if raw <= 1 else raw
+
+    match = re.search(r"AUTO_CONFIRM_DAYS\s*=\s*(\d+)", search_body)
     if match:
-        rules['autoConfirmDays'] = int(match.group(1))
-    
-    # Extract AUTHORIZATION_VALID_DAYS
-    match = re.search(r"AUTHORIZATION_VALID_DAYS\s*=\s*(\d+)", content)
+        rules["autoConfirmDays"] = int(match.group(1))
+
+    # Support both AUTHORIZATION_EXPIRY_DAYS (current) and AUTHORIZATION_VALID_DAYS (legacy)
+    match = re.search(r"AUTHORIZATION_EXPIRY_DAYS\s*=\s*(\d+)", search_body)
+    if not match:
+        match = re.search(r"AUTHORIZATION_VALID_DAYS\s*=\s*(\d+)", search_body)
     if match:
-        rules['authorizationExpiryDays'] = int(match.group(1))
-    
+        rules["authorizationExpiryDays"] = int(match.group(1))
+
     return rules
 
 
@@ -179,7 +195,7 @@ def update_timestamp(dart_content: str) -> str:
         # Add after the WARNING line
         return dart_content.replace(
             '// WARNING: THIS FILE IS AUTO-GENERATED',
-            f'// WARNING: THIS FILE IS AUTO-GENERATED\n//\n// Source: functions/config.py\n// Generated: {timestamp}'
+            f'// WARNING: THIS FILE IS AUTO-GENERATED\n//\n// Source: functions/schema_constants.py\n// Generated: {timestamp}'
         )
 
 
@@ -243,6 +259,8 @@ def main():
     
     for py_class, dart_class in CLASS_MAPPING.items():
         values = extract_python_class_constants(PYTHON_SCHEMA_SOURCE, py_class)
+        if not values and py_class in PYTHON_CLASS_FALLBACKS:
+            values = extract_python_class_constants(PYTHON_SCHEMA_SOURCE, PYTHON_CLASS_FALLBACKS[py_class])
         python_data[dart_class] = values
         print(f"   ✓ {py_class} → {dart_class}: {len(values)} values")
     

@@ -30,13 +30,13 @@ else
     FAILURES=$((FAILURES + 1))
 fi
 
-# 2. Generate JSON Schema from Pydantic
-echo -e "\n${YELLOW}[2/4] Generating JSON Schema from Pydantic...${NC}"
-cd "$REPO_ROOT/docs"
-if python3 generate_schema.py; then
-    echo -e "${GREEN}✓ JSON Schema generated${NC}"
+# 2. Validate Python schema contract tests
+echo -e "\n${YELLOW}[2/4] Validating Python schema contract tests...${NC}"
+cd "$REPO_ROOT/functions"
+if python3 -m pytest tests/test_schema_consistency.py tests/test_schema_contract.py -q; then
+    echo -e "${GREEN}✓ Python schema contract validated${NC}"
 else
-    echo -e "${RED}✗ JSON Schema generation failed${NC}"
+    echo -e "${RED}✗ Python schema contract validation failed${NC}"
     FAILURES=$((FAILURES + 1))
 fi
 
@@ -80,6 +80,6 @@ if [ $FAILURES -gt 0 ]; then
     exit 1
 else
     echo -e "${GREEN}✓ All validations passed!${NC}"
-    echo -e "${GREEN}✓ Python ↔ JSON Schema ↔ Dart consistency verified${NC}"
+    echo -e "${GREEN}✓ Python schema contracts ↔ Dart models consistency verified${NC}"
     exit 0
 fi

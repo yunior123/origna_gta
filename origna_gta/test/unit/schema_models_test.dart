@@ -318,7 +318,8 @@ void main() {
     test('PaymentStatus values', () {
       expect(PaymentStatus.awaitingPayment.name, 'awaitingPayment');
       expect(PaymentStatus.paid.name, 'paid');
-      expect(PaymentStatus.values.length, 13);
+      expect(PaymentStatus.disputed.name, 'disputed');
+      expect(PaymentStatus.values.length, 14);
     });
 
     test('DeliveryStatus values', () {

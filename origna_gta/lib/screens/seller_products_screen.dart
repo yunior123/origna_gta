@@ -316,7 +316,7 @@ class _SellerProductCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: product.imageUrls.isNotEmpty
-                  ? Image.network(product.imageUrls.first, width: 56, height: 56, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _placeholderImage())
+                  ? Image.network(product.imageUrls.first, width: 56, height: 56, fit: BoxFit.cover, errorBuilder: (_, _, _) => _placeholderImage())
                   : _placeholderImage(),
             ),
             const SizedBox(width: 12),

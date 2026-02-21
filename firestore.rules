@@ -95,7 +95,13 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return hasRole('admin') || (isAuthenticated() && request.auth.token.email == 'yr62813@gmail.com');
+      return hasRole('admin');
+    }
+
+    function hasActivePremium(userId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/subscriptions/$(userId)) &&
+        get(/databases/$(database)/documents/subscriptions/$(userId)).data.status in ['active', 'trialing'];
     }
 
     function sellerProfile() {
@@ -451,6 +457,7 @@ service cloud.firestore {
     match /product_questions/{questionId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.askerId == request.auth.uid
+        && hasActivePremium(request.auth.uid)
         && request.resource.data.question.size() >= 10
         && request.resource.data.question.size() <= 500;
       allow update: if false;  // answers written by backend only
@@ -601,7 +608,7 @@ service cloud.firestore {
     // MAIL LOGS COLLECTION (For E2E Testing)
     // ================================================================
     match /_mail_logs/{logId} {
-      allow read: if true;
+      allow read: if isAdmin();
       allow create, update, delete: if false;
     }
 

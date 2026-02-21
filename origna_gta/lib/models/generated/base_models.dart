@@ -123,6 +123,8 @@ enum PaymentStatus {
   cancelled,
   @JsonValue('authorization_expired')
   authorizationExpired,
+  @JsonValue('disputed')
+  disputed,
   @JsonValue('capturing')
   capturing,
   @JsonValue('cancelling')

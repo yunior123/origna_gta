@@ -211,6 +211,7 @@ enum PaymentStatus {
   sessionExpired(PaymentStatusValues.sessionExpired),
   cancelled(PaymentStatusValues.cancelled),
   authorizationExpired(PaymentStatusValues.authorizationExpired),
+  disputed(PaymentStatusValues.disputed),
   capturing(PaymentStatusValues.capturing),
   cancelling(PaymentStatusValues.cancelling),
   expiring(PaymentStatusValues.expiring);
@@ -241,6 +242,8 @@ enum PaymentStatus {
         return 'payment_status.cancelled'.tr();
       case PaymentStatus.authorizationExpired:
         return 'payment_status.authorization_expired'.tr();
+      case PaymentStatus.disputed:
+        return 'orders.status.disputed'.tr();
       case PaymentStatus.capturing:
         return 'payment_status.capturing'.tr();
       case PaymentStatus.cancelling:

@@ -182,6 +182,7 @@ const _$PaymentStatusEnumMap = {
   PaymentStatus.sessionExpired: 'session_expired',
   PaymentStatus.cancelled: 'cancelled',
   PaymentStatus.authorizationExpired: 'authorization_expired',
+  PaymentStatus.disputed: 'disputed',
   PaymentStatus.capturing: 'capturing',
   PaymentStatus.cancelling: 'cancelling',
   PaymentStatus.expiring: 'expiring',
@@ -268,14 +269,12 @@ _OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => _OrderItem(
   minimumOrderQuantity: (json['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
   freeShipping: json['freeShipping'] as bool? ?? false,
   isDigital: json['isDigital'] as bool? ?? false,
-  licenseKey: json['licenseKey'] as String? ?? null,
+  licenseKey: json['licenseKey'] as String?,
   digitalUnlocked: json['digitalUnlocked'] as bool? ?? false,
-  digitalType: json['digitalType'] as String? ?? null,
-  digitalBuilds:
-      (json['digitalBuilds'] as Map<String, dynamic>?)?.map(
-        (k, e) => MapEntry(k, e as String),
-      ) ??
-      null,
+  digitalType: json['digitalType'] as String?,
+  digitalBuilds: (json['digitalBuilds'] as Map<String, dynamic>?)?.map(
+    (k, e) => MapEntry(k, e as String),
+  ),
   taxCode: json['taxCode'] as String?,
   buyerNote: json['buyerNote'] as String?,
   fulfillmentWarehouseId: json['fulfillmentWarehouseId'] as String?,

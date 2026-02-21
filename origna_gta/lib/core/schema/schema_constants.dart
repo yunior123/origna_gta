@@ -279,7 +279,7 @@ abstract final class Collections {
   static const cart = 'cart'; // users/{userId}/cart
   static const favorites = 'favorites'; // users/{userId}/favorites
   static const notifications = 'notifications'; // users/{uid}/notifications
-  static const productQuestions = 'product_questions'; // products/{productId}/product_questions
+  static const productQuestions = 'product_questions'; // top-level: product_questions/{questionId}
   static const addresses = 'addresses'; // users/{userId}/addresses
   static const stockNotifications = 'stock_notifications'; // Tasks 07
   static const sellerMetrics = 'seller_metrics'; // Tasks 11

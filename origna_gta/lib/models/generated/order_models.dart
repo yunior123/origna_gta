@@ -260,6 +260,8 @@ abstract class Order with _$Order {
           return OrderStatus.refunded;
         case OrderStatusValues.partiallyRefunded:
           return OrderStatus.partiallyRefunded;
+        case OrderStatusValues.disputed:
+          return OrderStatus.disputed;
         default:
           return OrderStatus.pending;
       }
@@ -288,6 +290,14 @@ abstract class Order with _$Order {
           return PaymentStatus.cancelled;
         case PaymentStatusValues.authorizationExpired:
           return PaymentStatus.authorizationExpired;
+        case PaymentStatusValues.disputed:
+          return PaymentStatus.disputed;
+        case PaymentStatusValues.capturing:
+          return PaymentStatus.capturing;
+        case PaymentStatusValues.cancelling:
+          return PaymentStatus.cancelling;
+        case PaymentStatusValues.expiring:
+          return PaymentStatus.expiring;
         default:
           return PaymentStatus.awaitingPayment;
       }
@@ -466,10 +476,10 @@ abstract class OrderItem with _$OrderItem {
     @Default(1) int minimumOrderQuantity,
     @Default(false) bool freeShipping,
     @Default(false) bool isDigital,
-    @Default(null) String? licenseKey,
+    String? licenseKey,
     @Default(false) bool digitalUnlocked,
-    @Default(null) String? digitalType,
-    @Default(null) Map<String, String>? digitalBuilds,
+    String? digitalType,
+    Map<String, String>? digitalBuilds,
     // Tax field (new)
     String? taxCode,
     String? buyerNote,

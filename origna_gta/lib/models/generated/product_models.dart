@@ -100,7 +100,7 @@ abstract class Product with _$Product {
     required double price,
 
     /// Original/crossed-out price for discount display (null = no sale, must be > price)
-    @Default(null) double? compareAtPrice,
+    double? compareAtPrice,
     required String description,
     required List<String> imageUrls,
     required String sellerId,
@@ -126,17 +126,17 @@ abstract class Product with _$Product {
     @Default(false) bool freeShipping,
     // Digital product flag
     @Default(false) bool isDigital,
-    @Default(null) String? digitalType,
-    @Default(null) String? slug,
-    @Default(null) Map<String, String>? digitalBuilds,
+    String? digitalType,
+    String? slug,
+    Map<String, String>? digitalBuilds,
     // bookSourceUrl intentionally NOT included — buyer-protected: written by seller, never returned to client
-    @Default(null) int? deviceLimit,
+    int? deviceLimit,
     // Tax and metadata
     String? taxCode,
     @Default([]) List<String> keywords,
     // Admin approval — all products start under_review, go live only when approved
     @Default(ProductApprovalStatusValues.underReview) String approvalStatus,
-    @Default(null) String? approvalRejectionReason,
+    String? approvalRejectionReason,
     // Flat supplier fields (used when supplier object is not provided)
     double? cost,
     String? supplierSku,
@@ -156,10 +156,10 @@ abstract class Product with _$Product {
     String? sellerSku,
 
     /// IDs of seller warehouses this product ships from
-    @Default(null) List<String>? warehouseIds,
+    List<String>? warehouseIds,
 
     /// Stock per warehouse: {warehouseId: quantity}
-    @Default(null) Map<String, int>? warehouseStock,
+    Map<String, int>? warehouseStock,
 
     /// City of primary shipping warehouse (denormalized for O(1) card rendering)
     String? shipFromCity,
@@ -170,8 +170,7 @@ abstract class Product with _$Product {
     /// Country of primary warehouse (denormalized for O(1) card rendering)
     String? shipFromCountry,
 
-    /// All unique countries across all warehouses (for multi-country display on card)
-    @Default(null) List<String>? shipFromCountries,
+    List<String>? shipFromCountries,
 
     // === TRENDING & ENGAGEMENT ===
     @Default(0) int trendingScore,
@@ -192,7 +191,7 @@ abstract class Product with _$Product {
 
     // === N-11: Subcategories ===
     /// Optional subcategory within the main category
-    @Default(null) String? subcategory,
+    String? subcategory,
   }) = _Product;
 
   factory Product.fromFirestore(DocumentSnapshot doc) {
@@ -223,7 +222,7 @@ abstract class ProductCreate with _$ProductCreate {
     required double price,
 
     /// Original/crossed-out price for discount display (null = no sale, must be > price)
-    @Default(null) double? compareAtPrice,
+    double? compareAtPrice,
     required String description,
     required List<String> imageUrls,
     required String sellerId,
@@ -244,11 +243,11 @@ abstract class ProductCreate with _$ProductCreate {
     @Default(1) int minimumOrderQuantity,
     @Default(false) bool freeShipping,
     @Default(false) bool isDigital,
-    @Default(null) String? digitalType,
-    @Default(null) String? slug,
-    @Default(null) Map<String, String>? digitalBuilds,
+    String? digitalType,
+    String? slug,
+    Map<String, String>? digitalBuilds,
     // bookSourceUrl intentionally NOT included — buyer-protected: written by seller, never returned to client
-    @Default(null) int? deviceLimit,
+    int? deviceLimit,
     String? taxCode,
     @Default([]) List<String> keywords,
     // approvalStatus intentionally not in ProductCreate — backend sets it to under_review on creation
@@ -262,12 +261,12 @@ abstract class ProductCreate with _$ProductCreate {
     @Default(ProductStatusValues.active) String status,
     // Multi-warehouse support
     String? sellerSku,
-    @Default(null) List<String>? warehouseIds,
-    @Default(null) Map<String, int>? warehouseStock,
+    List<String>? warehouseIds,
+    Map<String, int>? warehouseStock,
     String? shipFromCity,
     String? shipFromProvince,
     String? shipFromCountry,
-    @Default(null) List<String>? shipFromCountries,
+    List<String>? shipFromCountries,
 
     // === N-09: Product Variants ===
     @Default(false) bool hasVariants,
@@ -275,10 +274,37 @@ abstract class ProductCreate with _$ProductCreate {
     @Default([]) List<Map<String, dynamic>> variantOptions,
 
     // === N-11: Subcategories ===
-    @Default(null) String? subcategory,
+    String? subcategory,
   }) = _ProductCreate;
 
   factory ProductCreate.fromJson(Map<String, dynamic> json) => _$ProductCreateFromJson(json);
+}
+
+// ============================================================================
+// DELIVERY INFO - Structured delivery information for UI display
+// ============================================================================
+
+// ============================================================================
+// PRODUCT QUESTION MODEL — TASK 09 Q&A
+// ============================================================================
+
+@freezed
+abstract class ProductQuestion with _$ProductQuestion {
+  const factory ProductQuestion({
+    required String questionId,
+    required String productId,
+    required String sellerId,
+    required String askerId,
+    required String question,
+    String? answer,
+    DateTime? answeredAt,
+    String? answeredBy,
+    @Default(false) bool isAnswered,
+    @Default(0) int upvotes,
+    required DateTime createdAt,
+  }) = _ProductQuestion;
+
+  factory ProductQuestion.fromJson(Map<String, dynamic> json) => _$ProductQuestionFromJson(json);
 }
 
 // ============================================================================
@@ -552,33 +578,6 @@ extension SellerDeliveryOptionExtension on SellerDeliveryOption {
     }
     return null;
   }
-}
-
-// ============================================================================
-// DELIVERY INFO - Structured delivery information for UI display
-// ============================================================================
-
-// ============================================================================
-// PRODUCT QUESTION MODEL — TASK 09 Q&A
-// ============================================================================
-
-@freezed
-abstract class ProductQuestion with _$ProductQuestion {
-  const factory ProductQuestion({
-    required String questionId,
-    required String productId,
-    required String sellerId,
-    required String askerId,
-    required String question,
-    String? answer,
-    DateTime? answeredAt,
-    String? answeredBy,
-    @Default(false) bool isAnswered,
-    @Default(0) int upvotes,
-    required DateTime createdAt,
-  }) = _ProductQuestion;
-
-  factory ProductQuestion.fromJson(Map<String, dynamic> json) => _$ProductQuestionFromJson(json);
 }
 
 extension SellerWarehouseExtension on SellerWarehouse {

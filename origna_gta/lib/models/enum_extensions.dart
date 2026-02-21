@@ -171,6 +171,8 @@ extension PaymentStatusExtension on PaymentStatus {
         return 'Cancelled';
       case PaymentStatus.authorizationExpired:
         return 'Authorization Expired';
+      case PaymentStatus.disputed:
+        return 'Disputed';
       case PaymentStatus.capturing:
         return 'Capturing';
       case PaymentStatus.cancelling:
@@ -202,6 +204,8 @@ extension PaymentStatusExtension on PaymentStatus {
         return 'cancelled';
       case PaymentStatus.authorizationExpired:
         return 'authorization_expired';
+      case PaymentStatus.disputed:
+        return 'disputed';
       case PaymentStatus.capturing:
         return 'capturing';
       case PaymentStatus.cancelling:
@@ -233,6 +237,8 @@ extension PaymentStatusExtension on PaymentStatus {
         return PaymentStatus.cancelled;
       case PaymentStatusValues.authorizationExpired:
         return PaymentStatus.authorizationExpired;
+      case PaymentStatusValues.disputed:
+        return PaymentStatus.disputed;
       case PaymentStatusValues.capturing:
         return PaymentStatus.capturing;
       case PaymentStatusValues.cancelling:

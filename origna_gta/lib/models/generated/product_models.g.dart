@@ -33,7 +33,7 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   productId: json['productId'] as String,
   name: json['name'] as String,
   price: (json['price'] as num).toDouble(),
-  compareAtPrice: (json['compareAtPrice'] as num?)?.toDouble() ?? null,
+  compareAtPrice: (json['compareAtPrice'] as num?)?.toDouble(),
   description: json['description'] as String,
   imageUrls: (json['imageUrls'] as List<dynamic>)
       .map((e) => e as String)
@@ -63,14 +63,12 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   minimumOrderQuantity: (json['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
   freeShipping: json['freeShipping'] as bool? ?? false,
   isDigital: json['isDigital'] as bool? ?? false,
-  digitalType: json['digitalType'] as String? ?? null,
-  slug: json['slug'] as String? ?? null,
-  digitalBuilds:
-      (json['digitalBuilds'] as Map<String, dynamic>?)?.map(
-        (k, e) => MapEntry(k, e as String),
-      ) ??
-      null,
-  deviceLimit: (json['deviceLimit'] as num?)?.toInt() ?? null,
+  digitalType: json['digitalType'] as String?,
+  slug: json['slug'] as String?,
+  digitalBuilds: (json['digitalBuilds'] as Map<String, dynamic>?)?.map(
+    (k, e) => MapEntry(k, e as String),
+  ),
+  deviceLimit: (json['deviceLimit'] as num?)?.toInt(),
   taxCode: json['taxCode'] as String?,
   keywords:
       (json['keywords'] as List<dynamic>?)?.map((e) => e as String).toList() ??
@@ -78,7 +76,7 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
   approvalStatus:
       json['approvalStatus'] as String? ??
       ProductApprovalStatusValues.underReview,
-  approvalRejectionReason: json['approvalRejectionReason'] as String? ?? null,
+  approvalRejectionReason: json['approvalRejectionReason'] as String?,
   cost: (json['cost'] as num?)?.toDouble(),
   supplierSku: json['supplierSku'] as String?,
   supplierUrl: json['supplierUrl'] as String?,
@@ -90,24 +88,18 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
       : InventoryConfig.fromJson(json['inventory'] as Map<String, dynamic>),
   status: json['status'] as String? ?? ProductStatusValues.active,
   sellerSku: json['sellerSku'] as String?,
-  warehouseIds:
-      (json['warehouseIds'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-      null,
-  warehouseStock:
-      (json['warehouseStock'] as Map<String, dynamic>?)?.map(
-        (k, e) => MapEntry(k, (e as num).toInt()),
-      ) ??
-      null,
+  warehouseIds: (json['warehouseIds'] as List<dynamic>?)
+      ?.map((e) => e as String)
+      .toList(),
+  warehouseStock: (json['warehouseStock'] as Map<String, dynamic>?)?.map(
+    (k, e) => MapEntry(k, (e as num).toInt()),
+  ),
   shipFromCity: json['shipFromCity'] as String?,
   shipFromProvince: json['shipFromProvince'] as String?,
   shipFromCountry: json['shipFromCountry'] as String?,
-  shipFromCountries:
-      (json['shipFromCountries'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-      null,
+  shipFromCountries: (json['shipFromCountries'] as List<dynamic>?)
+      ?.map((e) => e as String)
+      .toList(),
   trendingScore: (json['trendingScore'] as num?)?.toInt() ?? 0,
   viewCount: (json['viewCount'] as num?)?.toInt() ?? 0,
   purchaseCount: (json['purchaseCount'] as num?)?.toInt() ?? 0,
@@ -126,7 +118,7 @@ _Product _$ProductFromJson(Map<String, dynamic> json) => _Product(
           ?.map((e) => e as Map<String, dynamic>)
           .toList() ??
       const [],
-  subcategory: json['subcategory'] as String? ?? null,
+  subcategory: json['subcategory'] as String?,
 );
 
 Map<String, dynamic> _$ProductToJson(_Product instance) => <String, dynamic>{
@@ -192,7 +184,7 @@ _ProductCreate _$ProductCreateFromJson(
 ) => _ProductCreate(
   name: json['name'] as String,
   price: (json['price'] as num).toDouble(),
-  compareAtPrice: (json['compareAtPrice'] as num?)?.toDouble() ?? null,
+  compareAtPrice: (json['compareAtPrice'] as num?)?.toDouble(),
   description: json['description'] as String,
   imageUrls: (json['imageUrls'] as List<dynamic>)
       .map((e) => e as String)
@@ -220,14 +212,12 @@ _ProductCreate _$ProductCreateFromJson(
   minimumOrderQuantity: (json['minimumOrderQuantity'] as num?)?.toInt() ?? 1,
   freeShipping: json['freeShipping'] as bool? ?? false,
   isDigital: json['isDigital'] as bool? ?? false,
-  digitalType: json['digitalType'] as String? ?? null,
-  slug: json['slug'] as String? ?? null,
-  digitalBuilds:
-      (json['digitalBuilds'] as Map<String, dynamic>?)?.map(
-        (k, e) => MapEntry(k, e as String),
-      ) ??
-      null,
-  deviceLimit: (json['deviceLimit'] as num?)?.toInt() ?? null,
+  digitalType: json['digitalType'] as String?,
+  slug: json['slug'] as String?,
+  digitalBuilds: (json['digitalBuilds'] as Map<String, dynamic>?)?.map(
+    (k, e) => MapEntry(k, e as String),
+  ),
+  deviceLimit: (json['deviceLimit'] as num?)?.toInt(),
   taxCode: json['taxCode'] as String?,
   keywords:
       (json['keywords'] as List<dynamic>?)?.map((e) => e as String).toList() ??
@@ -243,24 +233,18 @@ _ProductCreate _$ProductCreateFromJson(
       : InventoryConfig.fromJson(json['inventory'] as Map<String, dynamic>),
   status: json['status'] as String? ?? ProductStatusValues.active,
   sellerSku: json['sellerSku'] as String?,
-  warehouseIds:
-      (json['warehouseIds'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-      null,
-  warehouseStock:
-      (json['warehouseStock'] as Map<String, dynamic>?)?.map(
-        (k, e) => MapEntry(k, (e as num).toInt()),
-      ) ??
-      null,
+  warehouseIds: (json['warehouseIds'] as List<dynamic>?)
+      ?.map((e) => e as String)
+      .toList(),
+  warehouseStock: (json['warehouseStock'] as Map<String, dynamic>?)?.map(
+    (k, e) => MapEntry(k, (e as num).toInt()),
+  ),
   shipFromCity: json['shipFromCity'] as String?,
   shipFromProvince: json['shipFromProvince'] as String?,
   shipFromCountry: json['shipFromCountry'] as String?,
-  shipFromCountries:
-      (json['shipFromCountries'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-      null,
+  shipFromCountries: (json['shipFromCountries'] as List<dynamic>?)
+      ?.map((e) => e as String)
+      .toList(),
   hasVariants: json['hasVariants'] as bool? ?? false,
   variants:
       (json['variants'] as List<dynamic>?)
@@ -272,7 +256,7 @@ _ProductCreate _$ProductCreateFromJson(
           ?.map((e) => e as Map<String, dynamic>)
           .toList() ??
       const [],
-  subcategory: json['subcategory'] as String? ?? null,
+  subcategory: json['subcategory'] as String?,
 );
 
 Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
@@ -322,6 +306,38 @@ Map<String, dynamic> _$ProductCreateToJson(_ProductCreate instance) =>
       'variants': instance.variants,
       'variantOptions': instance.variantOptions,
       'subcategory': instance.subcategory,
+    };
+
+_ProductQuestion _$ProductQuestionFromJson(Map<String, dynamic> json) =>
+    _ProductQuestion(
+      questionId: json['questionId'] as String,
+      productId: json['productId'] as String,
+      sellerId: json['sellerId'] as String,
+      askerId: json['askerId'] as String,
+      question: json['question'] as String,
+      answer: json['answer'] as String?,
+      answeredAt: json['answeredAt'] == null
+          ? null
+          : DateTime.parse(json['answeredAt'] as String),
+      answeredBy: json['answeredBy'] as String?,
+      isAnswered: json['isAnswered'] as bool? ?? false,
+      upvotes: (json['upvotes'] as num?)?.toInt() ?? 0,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+    );
+
+Map<String, dynamic> _$ProductQuestionToJson(_ProductQuestion instance) =>
+    <String, dynamic>{
+      'questionId': instance.questionId,
+      'productId': instance.productId,
+      'sellerId': instance.sellerId,
+      'askerId': instance.askerId,
+      'question': instance.question,
+      'answer': instance.answer,
+      'answeredAt': instance.answeredAt?.toIso8601String(),
+      'answeredBy': instance.answeredBy,
+      'isAnswered': instance.isAnswered,
+      'upvotes': instance.upvotes,
+      'createdAt': instance.createdAt.toIso8601String(),
     };
 
 _SellerDeliveryOption _$SellerDeliveryOptionFromJson(
@@ -418,36 +434,4 @@ Map<String, dynamic> _$SupplierInfoToJson(_SupplierInfo instance) =>
       'shippingDays': instance.shippingDays,
       'hasTracking': instance.hasTracking,
       'notes': instance.notes,
-    };
-
-_ProductQuestion _$ProductQuestionFromJson(Map<String, dynamic> json) =>
-    _ProductQuestion(
-      questionId: json['questionId'] as String,
-      productId: json['productId'] as String,
-      sellerId: json['sellerId'] as String,
-      askerId: json['askerId'] as String,
-      question: json['question'] as String,
-      answer: json['answer'] as String?,
-      answeredAt: json['answeredAt'] == null
-          ? null
-          : DateTime.parse(json['answeredAt'] as String),
-      answeredBy: json['answeredBy'] as String?,
-      isAnswered: json['isAnswered'] as bool? ?? false,
-      upvotes: (json['upvotes'] as num?)?.toInt() ?? 0,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-    );
-
-Map<String, dynamic> _$ProductQuestionToJson(_ProductQuestion instance) =>
-    <String, dynamic>{
-      'questionId': instance.questionId,
-      'productId': instance.productId,
-      'sellerId': instance.sellerId,
-      'askerId': instance.askerId,
-      'question': instance.question,
-      'answer': instance.answer,
-      'answeredAt': instance.answeredAt?.toIso8601String(),
-      'answeredBy': instance.answeredBy,
-      'isAnswered': instance.isAnswered,
-      'upvotes': instance.upvotes,
-      'createdAt': instance.createdAt.toIso8601String(),
     };

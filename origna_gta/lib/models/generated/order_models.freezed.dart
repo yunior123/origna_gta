@@ -1083,7 +1083,7 @@ return $default(_that.productId,_that.name,_that.description,_that.price,_that.q
 @JsonSerializable()
 
 class _OrderItem extends OrderItem {
-  const _OrderItem({required this.productId, required this.name, required this.description, required this.price, required this.quantity, required final  List<String> imageUrls, required this.sellerId, required this.sellerAddress, this.status = DeliveryStatusValues.pending, this.deliveryStatus = DeliveryStatus.pending, this.trackingNumber, this.carrier, this.shippedAt, this.deliveredAt, this.refundedAt, this.refundReason, this.refundAmountCents, this.refundId, this.confirmedByBuyer = false, this.weightKg, this.lengthCm, this.widthCm, this.heightCm, this.isLocalDeliveryOnly = false, this.isPerishable = false, this.estimatedShipDays = 3, final  List<SellerDeliveryOption> deliveryOptions = const [], this.minimumOrderQuantity = 1, this.freeShipping = false, this.isDigital = false, this.licenseKey = null, this.digitalUnlocked = false, this.digitalType = null, final  Map<String, String>? digitalBuilds = null, this.taxCode, this.buyerNote, this.fulfillmentWarehouseId}): _imageUrls = imageUrls,_deliveryOptions = deliveryOptions,_digitalBuilds = digitalBuilds,super._();
+  const _OrderItem({required this.productId, required this.name, required this.description, required this.price, required this.quantity, required final  List<String> imageUrls, required this.sellerId, required this.sellerAddress, this.status = DeliveryStatusValues.pending, this.deliveryStatus = DeliveryStatus.pending, this.trackingNumber, this.carrier, this.shippedAt, this.deliveredAt, this.refundedAt, this.refundReason, this.refundAmountCents, this.refundId, this.confirmedByBuyer = false, this.weightKg, this.lengthCm, this.widthCm, this.heightCm, this.isLocalDeliveryOnly = false, this.isPerishable = false, this.estimatedShipDays = 3, final  List<SellerDeliveryOption> deliveryOptions = const [], this.minimumOrderQuantity = 1, this.freeShipping = false, this.isDigital = false, this.licenseKey, this.digitalUnlocked = false, this.digitalType, final  Map<String, String>? digitalBuilds, this.taxCode, this.buyerNote, this.fulfillmentWarehouseId}): _imageUrls = imageUrls,_deliveryOptions = deliveryOptions,_digitalBuilds = digitalBuilds,super._();
   factory _OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);
 
 @override final  String productId;
@@ -1132,11 +1132,11 @@ class _OrderItem extends OrderItem {
 @override@JsonKey() final  int minimumOrderQuantity;
 @override@JsonKey() final  bool freeShipping;
 @override@JsonKey() final  bool isDigital;
-@override@JsonKey() final  String? licenseKey;
+@override final  String? licenseKey;
 @override@JsonKey() final  bool digitalUnlocked;
-@override@JsonKey() final  String? digitalType;
+@override final  String? digitalType;
  final  Map<String, String>? _digitalBuilds;
-@override@JsonKey() Map<String, String>? get digitalBuilds {
+@override Map<String, String>? get digitalBuilds {
   final value = _digitalBuilds;
   if (value == null) return null;
   if (_digitalBuilds is EqualUnmodifiableMapView) return _digitalBuilds;

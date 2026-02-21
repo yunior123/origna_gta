@@ -11,7 +11,7 @@ import logging
 import re
 import secrets
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import boto3
@@ -2602,6 +2602,7 @@ def _fire_back_in_stock_notifications(product_id: str, before_data: dict, after_
             logger.error(f"Failed to send back-in-stock email for sub {sub_doc.id}: {e}")
 
 
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     TASK 07: Subscribe to back-in-stock notification for a product.
@@ -2662,6 +2663,7 @@ def subscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any
     return create_success_response({"subscribed": True})
 
 
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def unsubscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     TASK 07: Unsubscribe from back-in-stock notification.
@@ -2698,6 +2700,7 @@ def unsubscribe_stock_notification(req: https_fn.CallableRequest) -> dict[str, A
 # ================================================================
 
 
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     TASK 09: Buyer submits a question about a product.
@@ -2709,10 +2712,20 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     if not req.auth:
         raise https_fn.HttpsError("unauthenticated", "User must be authenticated")
 
+    # Premium gate must be enforced backend-side (authoritative subscriptions/{uid}).
+    from utils.premium_check import is_premium_authoritative
+
+    db = get_db()
+    if not is_premium_authoritative(req.auth.uid, db=db):
+        raise https_fn.HttpsError(
+            "permission-denied",
+            "Origna Premium required to ask questions. Upgrade to unlock Q&A, chat with sellers, and more.",
+        )
+
     # S-02 FIX: Rate limit question submissions (max 5/hour per user)
     from services.rate_limiter import RateLimiter
 
-    _limiter = RateLimiter(get_db())
+    _limiter = RateLimiter(db)
     allowed, msg = _limiter.check_rate_limit(
         identifier=req.auth.uid,
         action="ask_product_question",
@@ -2724,10 +2737,9 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
         raise https_fn.HttpsError("resource-exhausted", msg)
 
     # Rate limit: max 5 questions per user per hour (Firestore count verification)
-    from datetime import datetime, timezone, timedelta
-    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    one_hour_ago = datetime.now(UTC) - timedelta(hours=1)
     recent_questions = (
-        get_db().collection(Collections.PRODUCT_QUESTIONS)
+        db.collection(Collections.PRODUCT_QUESTIONS)
         .where(Fields.ASKER_ID, "==", req.auth.uid)
         .where(Fields.CREATED_AT, ">=", one_hour_ago)
         .count()
@@ -2751,14 +2763,14 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     if len(question) < 10:
         raise https_fn.HttpsError("invalid-argument", "Question must be at least 10 characters")
 
-    product_doc = get_db().collection(Collections.PRODUCTS).document(product_id).get()
+    product_doc = db.collection(Collections.PRODUCTS).document(product_id).get()
     if not product_doc.exists:
         raise https_fn.HttpsError("not-found", "Product not found")
     product_data = product_doc.to_dict() or {}
     # S-03 FIX: Always derive sellerId from the actual product document (prevents spoofing)
     seller_id = product_data.get(Fields.SELLER_ID)
 
-    question_ref = get_db().collection(Collections.PRODUCT_QUESTIONS).document()
+    question_ref = db.collection(Collections.PRODUCT_QUESTIONS).document()
     question_ref.set(
         {
             Fields.QUESTION_ID: question_ref.id,
@@ -2779,7 +2791,7 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     try:
         from services.email_service import send_email
 
-        seller_doc = get_db().collection(Collections.USERS).document(seller_id).get()
+        seller_doc = db.collection(Collections.USERS).document(seller_id).get()
         if seller_doc.exists:
             seller_email = (seller_doc.to_dict() or {}).get(Fields.EMAIL)
             if seller_email:
@@ -2809,6 +2821,7 @@ def ask_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     return create_success_response({Fields.QUESTION_ID: question_ref.id})
 
 
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def answer_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     TASK 09: Seller (or admin) answers a product question.
@@ -2898,6 +2911,7 @@ def answer_product_question(req: https_fn.CallableRequest) -> dict[str, Any]:
     return create_success_response({"answered": True})
 
 
+@https_fn.on_call(**DEFAULT_OPTIONS)
 def get_product_questions(req: https_fn.CallableRequest) -> dict[str, Any]:
     """
     TASK 09: Get paginated Q&A for a product.
