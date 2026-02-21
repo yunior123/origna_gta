@@ -528,17 +528,6 @@
     }
     ,
     {
-      "collectionGroup": "inventoryLevels",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "availableQuantity",
-          "order": "DESCENDING"
-        }
-      ],
-      "comment": "Warehouse pipeline: order inventoryLevels by stock (drain fullest first)"
-    },
-    {
       "collectionGroup": "products",
       "queryScope": "COLLECTION",
       "fields": [
