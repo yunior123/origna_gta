@@ -7,7 +7,7 @@ This workflow automates the setup, configuration, and deployment of the `orignag
 # Prerequisites
 -   Firebase CLI installed and logged in (`firebase login`).
 -   Google Cloud SDK (`gcloud`) installed and authorized (`gcloud auth login`, `gcloud auth application-default login`).
--   Python 3.11+ installed.
+-   Python installed.
 -   `functions/.env` populated with required secrets.
 
 # Steps
